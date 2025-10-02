@@ -392,6 +392,63 @@ function Set-DefaultAuthenticationSettings {
     return $Device | Select-Object -Property $propertyOrder
 }
 
+function Export-SplitCsv {
+    param(
+        [Parameter(Mandatory=$true)]
+        [array]$InputObjects,
+
+        [Parameter(Mandatory=$true)]
+        [string]$Path,
+
+        [Parameter(Mandatory=$false)]
+        [int]$MaxItemsPerFile = 500
+    )
+
+    $exportedPaths = New-Object System.Collections.Generic.List[string]
+
+    if ($null -eq $InputObjects) {
+        $inputCollection = @()
+    } elseif ($InputObjects -is [System.Collections.IList]) {
+        $inputCollection = $InputObjects
+    } else {
+        $inputCollection = @($InputObjects)
+    }
+
+    $totalCount = $inputCollection.Count
+
+    if ($totalCount -le $MaxItemsPerFile) {
+        $inputCollection | Export-Csv -Path $Path -NoTypeInformation -ErrorAction Stop
+        $exportedPaths.Add($Path) | Out-Null
+        return $exportedPaths
+    }
+
+    $directory = [System.IO.Path]::GetDirectoryName($Path)
+    $extension = [System.IO.Path]::GetExtension($Path)
+    $baseName  = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+
+    $offset = 0
+    $partNumber = 1
+
+    while ($offset -lt $totalCount) {
+        $chunk = $inputCollection | Select-Object -Skip $offset -First $MaxItemsPerFile
+
+        if ($partNumber -eq 1) {
+            $chunkPath = $Path
+        } else {
+            $partFileName = '{0}_part{1}{2}' -f $baseName, $partNumber, $extension
+            $chunkPath = if ([string]::IsNullOrEmpty($directory)) { $partFileName } else { [System.IO.Path]::Combine($directory, $partFileName) }
+        }
+
+        $chunk | Export-Csv -Path $chunkPath -NoTypeInformation -ErrorAction Stop
+        $exportedPaths.Add($chunkPath) | Out-Null
+
+        $offset += $MaxItemsPerFile
+        $partNumber++
+    }
+
+    return $exportedPaths
+}
+
 #endregion
 
 #region Main Execution
@@ -576,11 +633,11 @@ try {
 
     # Export the *ordered* objects so headers & rows preserve desired column order
     # In PowerShell 7+, consider adding -UseQuotes AsNeeded
-    $orderedIseDevices | Export-Csv -Path $OutputPath -NoTypeInformation -ErrorAction Stop
-    
-    # Export summary
+    $deviceExportPaths = Export-SplitCsv -InputObjects $orderedIseDevices -Path $OutputPath
+
+    # Export summary (mirrors device chunking logic)
     $summaryPath = [System.IO.Path]::ChangeExtension($OutputPath, ".summary.csv")
-    $results | Export-Csv -Path $summaryPath -NoTypeInformation
+    $summaryExportPaths = Export-SplitCsv -InputObjects $results -Path $summaryPath
     
     # Display summary
     Write-Host "`n=== Update Summary ===" -ForegroundColor Green
@@ -589,8 +646,23 @@ try {
     Write-Host "  Empty DNAC site paths      : $($stats.EmptySite)" -ForegroundColor Yellow
     Write-Host "  No DNAC match              : $($stats.NoMatch)" -ForegroundColor Yellow
     Write-Host "  Used default location      : $($stats.UsedDefault)" -ForegroundColor Yellow
-    Write-Host "`n  Output file                : $OutputPath" -ForegroundColor Cyan
-    Write-Host "  Summary file               : $summaryPath" -ForegroundColor Cyan
+    if ($deviceExportPaths.Count -le 1) {
+        Write-Host "`n  Output file                : $($deviceExportPaths[0])" -ForegroundColor Cyan
+    } else {
+        Write-Host "`n  Output files               :" -ForegroundColor Cyan
+        foreach ($path in $deviceExportPaths) {
+            Write-Host "    - $path" -ForegroundColor Cyan
+        }
+    }
+
+    if ($summaryExportPaths.Count -le 1) {
+        Write-Host "  Summary file               : $($summaryExportPaths[0])" -ForegroundColor Cyan
+    } else {
+        Write-Host "  Summary files              :" -ForegroundColor Cyan
+        foreach ($path in $summaryExportPaths) {
+            Write-Host "    - $path" -ForegroundColor Cyan
+        }
+    }
     Write-Host ""
     
 } catch {
