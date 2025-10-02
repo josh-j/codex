@@ -157,43 +157,83 @@ function Get-LocationPathByBuilding {
     return $null
 }
 
-function Update-NetworkDeviceGroups {
+function Set-NetworkDeviceGroupValue {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]$OriginalGroups,
-        
+
         [Parameter(Mandatory=$true)]
-        [string]$NewLocationPath
+        [string]$TargetPrefix,
+
+        [Parameter(Mandatory=$true)]
+        [string]$Replacement
     )
-    
-    $groups = $OriginalGroups -split '\|'
+
+    $groups = if (-not [string]::IsNullOrWhiteSpace($OriginalGroups)) {
+        $OriginalGroups -split '\|'
+    } else {
+        @()
+    }
+
     $updatedGroups = @()
-    $locationUpdated = $false
-    
+    $entryUpdated = $false
+
     foreach ($group in $groups) {
-        if ($group -like 'Location#*') {
-            $updatedGroups += $NewLocationPath
-            $locationUpdated = $true
-        } elseif ($group -like '*#Cisco Switch') {
-            # Normalize device type
-            $updatedGroups += 'Device Type#All Device Types#Switch'
+        if ($group -like "$TargetPrefix*") {
+            if (-not $entryUpdated) {
+                $updatedGroups += $Replacement
+                $entryUpdated = $true
+            }
         } else {
             $updatedGroups += $group
         }
     }
-    
-    if (-not $locationUpdated) {
-        $updatedGroups += $NewLocationPath
+
+    if (-not $entryUpdated) {
+        $updatedGroups += $Replacement
     }
 
     return ($updatedGroups -join '|')
+}
+
+function Update-NetworkDeviceGroups {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$OriginalGroups,
+
+        [Parameter(Mandatory=$true)]
+        [string]$NewLocationPath
+    )
+
+    $groups = if (-not [string]::IsNullOrWhiteSpace($OriginalGroups)) {
+        $OriginalGroups -split '\|'
+    } else {
+        @()
+    }
+
+    $normalizedGroups = @()
+    foreach ($group in $groups) {
+        if ($group -like '*#Cisco Switch') {
+            $normalizedGroups += 'Device Type#All Device Types#Switch'
+        } else {
+            $normalizedGroups += $group
+        }
+    }
+
+    $normalizedGroupsString = if ($normalizedGroups.Count -gt 0) {
+        $normalizedGroups -join '|'
+    } else {
+        $null
+    }
+
+    return Set-NetworkDeviceGroupValue -OriginalGroups $normalizedGroupsString -TargetPrefix 'Location#' -Replacement $NewLocationPath
 }
 
 function Update-Reachability {
     param(
         [Parameter(Mandatory=$true)]
         [string]$OriginalGroups,
-        
+
         [Parameter(Mandatory=$true)]
         [ValidateScript({
             if ([string]::IsNullOrWhiteSpace($_)) {
@@ -206,7 +246,7 @@ function Update-Reachability {
         })]
         [string]$IP
     )
-    
+
     $isReachable = $false
     try {
         # Quick 1-ping test with 2s timeout
@@ -216,54 +256,24 @@ function Update-Reachability {
         Write-Verbose "Failed to test connectivity to $IP : $_"
         $isReachable = $false
     }
-    
-    $groups = $OriginalGroups -split '\|'
-    $updatedGroups = @()
-    $reachableUpdated = $false
-    
-    foreach ($group in $groups) {
-        if ($group -like 'Reachable#*') {
-            $updatedGroups += "Reachable#Reachable#$(if($isReachable){'Yes'}else{'No'})"
-            $reachableUpdated = $true
-        } else {
-            $updatedGroups += $group
-        }
-    }
-    
-    if (-not $reachableUpdated) {
-        $updatedGroups += "Reachable#Reachable#$(if($isReachable){'Yes'}else{'No'})"
-    }
-    
-    return ($updatedGroups -join '|')
+
+    $replacement = "Reachable#Reachable#$(if($isReachable){'Yes'}else{'No'})"
+
+    return Set-NetworkDeviceGroupValue -OriginalGroups $OriginalGroups -TargetPrefix 'Reachable#' -Replacement $replacement
 }
 
 function Update-OperationsOwner {
     param(
         [Parameter(Mandatory=$true)]
         [string]$OriginalGroups,
-        
+
         [Parameter(Mandatory=$true)]
         [string]$OperationsOwner
     )
-    
-    $groups = $OriginalGroups -split '\|'
-    $updatedGroups = @()
-    $opsOwnerUpdated = $false
-    
-    foreach ($group in $groups) {
-        if ($group -like 'Ops Owner#*') {
-            $updatedGroups += "Ops Owner#Ops Owner#$OperationsOwner"
-            $opsOwnerUpdated = $true
-        } else {
-            $updatedGroups += $group
-        }
-    }
-    
-    if (-not $opsOwnerUpdated) {
-        $updatedGroups += "Ops Owner#Ops Owner#$OperationsOwner"
-    }
-    
-    return ($updatedGroups -join '|')
+
+    $replacement = "Ops Owner#Ops Owner#$OperationsOwner"
+
+    return Set-NetworkDeviceGroupValue -OriginalGroups $OriginalGroups -TargetPrefix 'Ops Owner#' -Replacement $replacement
 }
 
 function Merge-DeviceData {
