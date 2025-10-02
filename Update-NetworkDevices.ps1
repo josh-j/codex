@@ -51,19 +51,46 @@ param(
 
 #region Helper Functions
 
+function Get-BuildingCode {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Label,
+
+        [Parameter(Mandatory=$false)]
+        [string]$InputString,
+
+        [Parameter(Mandatory=$true)]
+        [array]$Patterns
+    )
+
+    if ([string]::IsNullOrWhiteSpace($InputString)) {
+        Write-Verbose "$Label is empty or null"
+        return $null
+    }
+
+    Write-Verbose "Attempting to extract building code from $Label: $InputString"
+
+    foreach ($pattern in $Patterns) {
+        if ($InputString -match $pattern) {
+            $buildingCode = $Matches[1].Trim()
+            if ($buildingCode -match '^\d+[a-zA-Z]?$') {
+                $buildingCode = "B$buildingCode"
+            }
+            Write-Verbose "Extracted building code from $Label: $buildingCode"
+            return $buildingCode
+        }
+    }
+
+    Write-Warning "Could not extract building code from $Label: $InputString"
+    return $null
+}
+
 function Get-BuildingCodeFromSite {
     param(
         [Parameter(Mandatory=$false)]
         [string]$SitePath
     )
 
-    if ([string]::IsNullOrWhiteSpace($SitePath)) {
-        Write-Verbose "Site path is empty or null"
-        return $null
-    }
-
-    Write-Verbose "Attempting to extract building code from: $SitePath"
-    
     $patterns = @(
         '([B]\d+)\s*-',              # "B477 - CS HQ"
         '/([B]\d+)[\s\-]',           # "/B364 -" or "/B364 "
@@ -73,20 +100,8 @@ function Get-BuildingCodeFromSite {
         '-(\d+[a-zA-Z]?)',           # -382 or -29B
         '/(\d+)'                     # "/364" fallback
     )
-    
-    foreach ($pattern in $patterns) {
-        if ($SitePath -match $pattern) {
-            $buildingCode = $Matches[1]
-            if ($buildingCode -match '^\d+[a-zA-Z]?$') {
-                $buildingCode = "B$buildingCode"
-            }
-            Write-Verbose "Extracted building code: $buildingCode"
-            return $buildingCode
-        }
-    }
-    
-    Write-Warning "Could not extract building code from site: $SitePath"
-    return $null
+
+    return Get-BuildingCode -Label 'Site path' -InputString $SitePath -Patterns $patterns
 }
 
 function Get-BuildingCodeFromHostname {
@@ -95,32 +110,13 @@ function Get-BuildingCodeFromHostname {
         [string]$Hostname
     )
 
-    if ([string]::IsNullOrWhiteSpace($Hostname)) {
-        Write-Verbose "Hostname is empty or null"
-        return $null
-    }
-
-    Write-Verbose "Attempting to extract building code from hostname: $Hostname"
-    
     $patterns = @(
         'B(\d+)',                    # "B364"
         '(?i)-Bldg(\d+[a-zA-Z]?)',   # -Bldg382
         '-(\d+[a-zA-Z]?)'            # -382 or -29B
     )
-    
-    foreach ($pattern in $patterns) {
-        if ($Hostname -match $pattern) {
-            $buildingCode = $Matches[1]
-            if ($buildingCode -match '^\d+[a-zA-Z]?$') {
-                $buildingCode = "B$buildingCode"
-            }
-            Write-Verbose "Extracted building code: $buildingCode"
-            return $buildingCode
-        }
-    }
-    
-    Write-Warning "Could not extract building code from: $Hostname"
-    return $null
+
+    return Get-BuildingCode -Label 'Hostname' -InputString $Hostname -Patterns $patterns
 }
 
 function Get-LocationPathByBuilding {
