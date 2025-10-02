@@ -359,37 +359,37 @@ function Set-DefaultAuthenticationSettings {
         $Device | Add-Member -MemberType NoteProperty -Name 'PasswordEncrypted:Boolean(true|false)' -Value $true -Force
     }
 
-    # --- Rebuild in ordered form: inject PasswordEncrypted *immediately after* the Shared Secret ---
-    $ordered = [ordered]@{}
-    $inserted = $false
-    $target = 'Authentication:Shared Secret:String(128)'
+    $passwordProperty = 'PasswordEncrypted:Boolean(true|false)'
+    $targetProperty   = 'Authentication:Shared Secret:String(128)'
+    $fallbackProperty = 'Authentication:Protocol:String(6)'
 
-    foreach ($p in $Device.PSObject.Properties) {
-        $ordered[$p.Name] = $p.Value
+    # Capture existing property order (excluding PasswordEncrypted so it can be reinserted deterministically)
+    $propertyOrder = New-Object System.Collections.Generic.List[string]
 
-        if ($p.Name -eq $target) {
-            $ordered['PasswordEncrypted:Boolean(true|false)'] = $Device.'PasswordEncrypted:Boolean(true|false)'
-            $inserted = $true
+    foreach ($property in $Device.PSObject.Properties) {
+        if ($property.Name -ne $passwordProperty) {
+            [void]$propertyOrder.Add($property.Name)
         }
     }
 
-    # Fallback if target property is missing: place after Protocol, otherwise append
-    if (-not $inserted) {
-        $rebuilt = [ordered]@{}
-        $anchor = 'Authentication:Protocol:String(6)'
-        foreach ($k in $ordered.Keys) {
-            $rebuilt[$k] = $ordered[$k]
-            if ($k -eq $anchor) {
-                $rebuilt['PasswordEncrypted:Boolean(true|false)'] = $Device.'PasswordEncrypted:Boolean(true|false)'
-            }
+    $insertIndex = $propertyOrder.IndexOf($targetProperty)
+
+    if ($insertIndex -ge 0) {
+        $insertIndex++
+    } else {
+        $insertIndex = $propertyOrder.IndexOf($fallbackProperty)
+        if ($insertIndex -ge 0) {
+            $insertIndex++
         }
-        if (-not $rebuilt.Contains('PasswordEncrypted:Boolean(true|false)')) {
-            $rebuilt['PasswordEncrypted:Boolean(true|false)'] = $Device.'PasswordEncrypted:Boolean(true|false)'
-        }
-        $ordered = $rebuilt
     }
 
-    return [PSCustomObject]$ordered
+    if ($insertIndex -ge 0) {
+        $propertyOrder.Insert($insertIndex, $passwordProperty)
+    } else {
+        [void]$propertyOrder.Add($passwordProperty)
+    }
+
+    return $Device | Select-Object -Property $propertyOrder
 }
 
 #endregion
