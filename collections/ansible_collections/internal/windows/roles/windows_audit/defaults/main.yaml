@@ -1,0 +1,18 @@
+---
+# Defaults for windows role
+local_report_path: "./reports"
+startup_delay: 5
+skip_startup_delay: true
+remote_scripts_path: "{{ ansible_env.TEMP }}\\Scripts"
+update_log_directory: "{{ ansible_env.TEMP }}\\Logs"
+
+# Update settings
+force_update: true
+allow_reboot: false
+enforce_preference: "Immediate"
+update_priority: "Immediate"
+timeout_minutes: 30
+
+excluded_apps:
+  - "USAF - MDE - DeviceTagging"
+  - "Intel(R)_Chipset Device Software_*"

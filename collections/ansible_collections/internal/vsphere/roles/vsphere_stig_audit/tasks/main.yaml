@@ -1,0 +1,56 @@
+---
+# collections/ansible_collections/internal/stig/roles/vsphere/tasks/main.yaml
+# STIG AUDIT ORCHESTRATOR: vSphere Virtual Machines
+# -----------------------------------------------------------------------------
+
+- name: "VSphere | Load STIG Policies"
+  ansible.builtin.include_vars:
+    file: defaults/main.yaml
+  tags: ['stig', 'security']
+
+# STEP 0: Path Locking (Prevents the "File Not Found" error in Common role)
+- name: "VSphere | Set Absolute Path for Skeleton"
+  ansible.builtin.set_fact:
+    _vsphere_cklb_skeleton_absolute_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_vms_V1R4.json"
+  tags: ['always']
+
+# STEP 1: DISCOVERY
+- name: "VSphere | Discover VM Configuration"
+  ansible.builtin.include_tasks: discover.yaml
+  tags: ['stig', 'security']
+
+# STEP 2: LOGIC ENGINE
+- name: "VSphere | Calculate Compliance"
+  ansible.builtin.include_tasks: check.yaml
+  vars:
+    stig_exclusions: "{{ exclusion_list | default([]) }}"
+  tags: ['stig', 'security']
+
+# STEP 3: CONSOLE SUMMARY
+- name: "VSphere | Console Summary"
+  ansible.builtin.debug:
+    msg:
+      - "STIG Audit Complete"
+      - "VMs Audited: {{ vsphere_stig_vm_full_audit | default([]) | length }}"
+      - "Violations Found: {{ vsphere_stig_vm_violations | default([]) | length }}"
+  when: not (vcenter_config_quiet_mode | default(false))
+  tags: ['stig', 'security']
+
+# STEP 4: GENERALIZED REPORTING
+- name: "VSphere | Generate Reports and Artifacts"
+  ansible.builtin.include_role:
+    name: internal.stig.common
+    tasks_from: stig_finalize
+  vars:
+    # Data Mapping
+    violations: "{{ vsphere_stig_vm_violations }}"
+    full_audit: "{{ vsphere_stig_vm_full_audit }}"
+
+    # Export Configuration
+    report_prefix: "vsphere_vm_stig"
+    export_headers: ["VM Name", "STIG ID", "Control", "Status", "Details"]
+    export_keys: ["vm_name", "id", "control", "status", "details"]
+
+    # Use the Pre-calculated Fact we set in Step 0
+    cklb_skeleton_path: "{{ _vsphere_cklb_skeleton_absolute_path }}"
+  tags: ['stig', 'security', 'reporting']

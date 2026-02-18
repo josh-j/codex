@@ -1,0 +1,96 @@
+---
+# roles/vsphere/tasks/vms/check.yaml
+# Explicit checks for VM Compliance (Backups, Tags, Owners)
+
+# 1. BACKUP CHECKS
+# -----------------------------------------------------------------------------
+- name: "Check: VMs Never Backed Up"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    # Filter out vCLS system VMs to prevent false positives
+    # !TODO: Use variable for strings to filter
+    _targets: >-
+      {{ vcenter.vms.never_backed_up
+         | rejectattr('name', 'search', 'vCLS')
+         | rejectattr('name', 'search', 'VCSA') | list }}
+
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "backup"
+    ops_alert_message: "{{ _targets | length }} VMs have never been backed up"
+    ops_alert_details:
+      count: "{{ _targets | length }}"
+    ops_alert_affected_items: "{{ _targets }}"
+  when: _targets | length > 0
+
+- name: "Check: VMs with Overdue Backups"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    _targets: "{{ vcenter.vms.with_overdue_backup }}"
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "backup"
+    ops_alert_message: "{{ _targets | length }} VMs have overdue backups"
+    ops_alert_details:
+      count: "{{ _targets | length }}"
+    ops_alert_affected_items: "{{ _targets }}"
+  when: _targets | length > 0
+
+# 2. CONFIGURATION CHECKS
+# -----------------------------------------------------------------------------
+- name: "Check: VMs Missing Backup Tags"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    # Exclude vCLS (Cluster Services) which cannot be tagged
+    _targets: >-
+      {{ vcenter.vms.without_backup_tags
+         | rejectattr('name', 'search', 'vCLS')
+         | rejectattr('name', 'search', 'VCSA') | list }}
+
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "configuration"
+    ops_alert_message: "{{ _targets | length }} VMs missing backup schedule tags"
+    ops_alert_details:
+      count: "{{ _targets | length }}"
+    ops_alert_affected_items: "{{ _targets }}"
+  when: _targets | length > 0
+
+- name: "Check: VMs Missing Owner Email"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    # Exclude vCLS system VMs
+    _targets: >-
+      {{ vcenter.vms.without_owner_email
+         | rejectattr('name', 'search', 'vCLS')
+         | rejectattr('name', 'search', 'VCSA') | list }}
+
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "configuration"
+    ops_alert_message: "{{ _targets | length }} VMs missing 'Owner Email' attribute"
+    ops_alert_details:
+      count: "{{ _targets | length }}"
+    ops_alert_affected_items: "{{ _targets }}"
+  when: _targets | length > 0
+
+# 3. CAPACITY CHECKS
+# -----------------------------------------------------------------------------
+- name: "Check: High Powered-Off Ratio"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "capacity"
+    ops_alert_message: "High powered-off VM ratio: {{ vcenter.vms.metrics.powered_off_pct }}%"
+    ops_alert_details:
+      powered_off: "{{ vcenter.vms.metrics.powered_off }}"
+      total: "{{ vcenter.vms.metrics.total }}"
+      threshold: "{{ vcenter.config.powered_off_ratio_warning_pct | default(20) }}%"
+  when:
+    - vcenter.vms.metrics.powered_off_pct | float > vcenter.config.powered_off_ratio_warning_pct | default(20) | float

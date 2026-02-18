@@ -1,0 +1,105 @@
+{#── Helper Macros for Markdown ──#}
+{% macro safe(val, default='N/A') -%}
+{{ val if val is defined and val is not none and val != '' else default }}
+{%- endmacro %}
+
+{% macro health_badge(status) -%}
+{%- set s = (status | default('unknown') | string | lower) -%}
+{%- if s in ['green','ok','healthy'] -%}🟢 {{ status | default('UNK') | upper }}
+{%- elif s in ['red','critical'] -%}🔴 {{ status | default('UNK') | upper }}
+{%- else -%}🟠 {{ status | default('UNK') | upper }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro bool_badge(val, true_text='YES', false_text='NO', invert=False) -%}
+{% if invert %}
+{{ '🔴 ' + true_text if val else '🟢 ' + false_text }}
+{% else %}
+{{ '🟢 ' + true_text if val else '🔴 ' + false_text }}
+{% endif %}
+{%- endmacro %}
+
+{#── Data Extraction (all precomputed in tasks) ──#}
+{% set alarms = report.data.alarms | default([]) %}
+{% set alerts = report.data.alerts | default([]) %}
+{% set vc_infra = report.data.vcenter_infra | default([]) %}
+{% set clusters = report.data.cluster_capacity | default([]) %}
+{% set unisphere = report.data.unisphere | default([]) %}
+{% set backups = report.data.backups | default([]) %}
+{% set ucs = report.data.ucs | default([]) %}
+
+{#── Totals (new schema) ──#}
+{% set grand_total_critical = (report.totals.critical | default(0) | int) %}
+{% set grand_total_warning  = (report.totals.warning  | default(0) | int) %}
+
+{# counts are nested under report.counts.{alerts,alarms} in the new model #}
+{% set alarms_critical = (report.counts.alarms.critical | default(0) | int) %}
+{% set alarms_warning  = (report.counts.alarms.warning  | default(0) | int) %}
+{% set alerts_critical = (report.counts.alerts.critical | default(0) | int) %}
+{% set alerts_warning  = (report.counts.alerts.warning  | default(0) | int) %}
+
+# Daily Operations Report
+
+**Date:** {{ safe(report.meta.date, safe(date, lookup('pipe', 'date +%Y-%m-%d'))) }}
+**Day:** {{ safe(report.meta.day,  safe(day,  lookup('pipe', 'date +%A'))) }}
+**Generated:** {{ lookup('pipe', 'date "+%H:%M:%S %Z"') }}
+**Run ID:** {{ safe(report.meta.run_id, ops.check.id | default('N/A')) }}
+
+## Executive Summary
+
+| Critical Issues | Warnings | Reports Generated | Sites Audited |
+| :---: | :---: | :---: | :---: |
+| {{ '🔴 ' if grand_total_critical > 0 else '🟢 ' }}{{ grand_total_critical }} | {{ '🟠 ' if grand_total_warning > 0 else '🟢 ' }}{{ grand_total_warning }} | {{ report.counts.reports_generated | default(0) }} | {{ report.counts.sites_audited | default(0) }} |
+
+### System Status Overview
+
+| Category | Sites Checked | Critical | Warning | Status |
+|:---|:---:|:---:|:---:|:---|
+| **vCenter Alarms** | {{ (groups['vcenters'] | default([])) | length }} | {{ alarms_critical }} | {{ alarms_warning }} | {{ '✅ OK' if (alarms_critical == 0 and alarms_warning == 0) else '⚠️ ATTENTION' }} |
+| **Ops Alerts** | All | {{ alerts_critical }} | {{ alerts_warning }} | {{ '✅ OK' if (alerts_critical == 0 and alerts_warning == 0) else '⚠️ ATTENTION' }} |
+| **Unity Arrays** | {{ unisphere | length }} | - | - | {{ '✅ OK' if unisphere | length > 0 else '❓ NO DATA' }} |
+| **Data Domain** | {{ backups | length }} | - | - | {{ '✅ OK' if backups | length > 0 else '❓ NO DATA' }} |
+| **UCS Fabrics** | {{ ucs | length }} | - | - | {{ '✅ OK' if ucs | length > 0 else '❓ NO DATA' }} |
+
+## vCenter Infrastructure Health
+
+| Site | Version | Overall Health | DB Health | Storage | Backup Enabled | SSH |
+|:---|:---|:---:|:---:|:---:|:---:|:---:|
+{% for row in vc_infra %}
+| **{{ row.site }}** | {{ row.version }} | {{ health_badge(row.health_overall) }} | {{ health_badge(row.health_database) }} | {{ health_badge(row.health_storage) }} | {{ bool_badge(row.backup_enabled) }} | {{ bool_badge(row.ssh_enabled, 'OPEN', 'SECURE', invert=True) }} |
+{% endfor %}
+
+## Cluster Capacity & Compliance
+
+| Site | Cluster | Hosts | CPU Use | Mem Use | HA | DRS |
+|:---|:---|:---:|:---:|:---:|:---:|:---:|
+{% for row in clusters | sort(attribute='mem_pct', reverse=true) %}
+| {{ row.site }} | **{{ row.cluster }}** | {{ row.hosts }} | {{ '⚠️ ' if (row.cpu_pct | float > 80) else '' }}{{ row.cpu_pct | round(1) }}% | {{ '⚠️ ' if (row.mem_pct | float > 80) else '' }}{{ row.mem_pct | round(1) }}% | {{ bool_badge(row.ha, 'ON', 'OFF') }} | {{ bool_badge(row.drs, 'ON', 'OFF') }} |
+{% endfor %}
+
+## vCenter Active Alarms
+
+{% if alarms | length > 0 %}
+| Severity | Site | Alarm Name | Entity | Status | Time |
+|:---|:---|:---|:---|:---|:---|
+{% for a in alarms | sort(attribute='severity') %}
+| {{ '🔴' if a.severity == 'critical' else ('🟠' if a.severity == 'warning' else '🔵') }} {{ a.severity | upper }} | **{{ a.site }}** | {{ a.alarm_name }} | {{ a.entity }} | {{ a.status | upper }} | {{ a.time }} |
+{% endfor %}
+{% else %}
+✅ *No active alarms detected across any vCenter.*
+{% endif %}
+
+## Operational Alerts
+
+{% if alerts | length > 0 %}
+| Severity | Site | Category | Message |
+|:---|:---|:---|:---|
+{% for al in alerts | sort(attribute='severity') %}
+| {{ '🔴' if al.severity == 'CRITICAL' else ('🟠' if al.severity == 'WARNING' else '🔵') }} {{ al.severity }} | **{{ al.site }}** | {{ al.category | upper }} | {{ al.message }} |
+{% endfor %}
+{% else %}
+✅ *No operational alerts detected.*
+{% endif %}
+
+---
+*Detailed reports saved to: `{{ report_share_path | default('\\\\reports') }}`* *Run ID: {{ safe(report.meta.run_id, ops.check.id | default('N/A')) }}*

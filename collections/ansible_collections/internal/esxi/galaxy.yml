@@ -1,0 +1,7 @@
+# collections/ansible_collections/internal/esxi/galaxy.yml
+namespace: internal
+name: esxi
+version: 0.0.1
+readme: README.md
+authors:
+  - Internal

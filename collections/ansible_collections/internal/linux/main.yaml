@@ -1,0 +1,75 @@
+# roles/ubuntu/tasks/main.yaml
+# Main Entry Point for Ubuntu Operations
+# SEQUENCE: Init -> Discovery -> Checks (Audit) -> Maintenance (Fix) -> Export
+
+- name: Ubuntu Operations Wrapper
+  block:
+    # 1. INIT
+    # -------------------------------------------------------------------------
+    - name: Initialize Ubuntu Namespace
+      ansible.builtin.import_tasks: init/main.yaml
+      tags: ['always']
+
+    # 2. DISCOVERY (Read-Only)
+    # -------------------------------------------------------------------------
+    - name: Discovery - System, Updates, & Security
+      ansible.builtin.include_tasks: "{{ discovery_item }}"
+      loop:
+        - system/discover.yaml
+        - updates/discover.yaml
+        - security/discover.yaml
+      loop_control:
+        loop_var: discovery_item
+      tags: ['discovery']
+
+    # 3. CHECKS (Logic & Alerts & Audits)
+    # -------------------------------------------------------------------------
+    - name: Checks - Health, Patching, & Security Audit
+      ansible.builtin.include_tasks: "{{ check_item }}"
+      loop:
+        - system/check.yaml
+        - updates/check.yaml
+        - security/check.yaml
+      loop_control:
+        loop_var: check_item
+      tags: ['checks']
+
+    # 4. MAINTENANCE (Active Changes)
+    # -------------------------------------------------------------------------
+    - name: Maintenance - Patching, Hardening & Reboot
+      ansible.builtin.include_tasks: "{{ maintain_item }}"
+      loop:
+        - security/maintain.yaml
+        - updates/maintain.yaml
+      loop_control:
+        loop_var: maintain_item
+      tags: ['maintenance']
+      when: ubuntu.config.enable_maintenance | default(false) | bool
+
+  # RESCUE: Only runs if something in the 'block' above FAILED
+  rescue:
+    - name: Log Ubuntu Failure
+      ansible.builtin.debug:
+        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
+      # This registers a variable we can check in the summary report if needed
+      register: _ubuntu_task_failure
+
+  # ALWAYS: Runs no matter what (Success OR Failure)
+  # This guarantees reports are generated even if a check crashes.
+  always:
+    # 5. SUMMARY & EXPORT
+    # -------------------------------------------------------------------------
+    - name: Calculate Summary Metrics
+      ansible.builtin.include_tasks: summary/calculate.yaml
+      tags: ['always', 'summary']
+
+    - name: Export - Reports & Fleet Summary
+      ansible.builtin.include_tasks: "{{ export_item }}"
+      loop:
+        - system/export.yaml
+        - updates/export.yaml
+        - security/export.yaml
+        - summary/export.yaml
+      loop_control:
+        loop_var: export_item
+      tags: ['always', 'export']

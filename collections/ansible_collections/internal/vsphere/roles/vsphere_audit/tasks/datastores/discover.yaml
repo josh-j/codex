@@ -1,0 +1,109 @@
+---
+# roles/vsphere/tasks/datastores/discover.yaml
+# Collects Datastore info, normalizes capacity metrics, and calculates totals.
+#
+# Fixes:
+# - ansible-lint jinja[spacing] (normalized spacing)
+# - ansible-lint jinja[invalid] for math on tagged strings:
+#   force numeric types before division by using | float / | int and a float constant
+
+- name: Datastore discovery and metrics
+  block:
+    - name: Get datastore info from vCenter
+      community.vmware.vmware_datastore_info:
+        hostname: "{{ vcenter.connection.hostname }}"
+        username: "{{ vcenter.connection.username }}"
+        password: "{{ vcenter.connection.password }}"
+        validate_certs: "{{ vcenter.config.validate_certs }}"
+        datacenter: "{{ vcenter.datacenter.name | default(omit) }}"
+      register: _datastores_raw
+      delegate_to: localhost
+      retries: 3
+      delay: 2
+      until: _datastores_raw is succeeded
+      changed_when: false
+
+    - name: Datastores | Init thresholds + accumulator
+      ansible.builtin.set_fact:
+        _crit_pct: "{{ (vcenter.config.datastore_free_critical_pct | default(10)) | int }}"
+        _warn_pct: "{{ (vcenter.config.datastore_free_warning_pct | default(15)) | int }}"
+        _gb_div: 1073741824.0
+        _ds_list: []
+      changed_when: false
+
+    - name: Datastores | Build normalized datastore rows
+      ansible.builtin.set_fact:
+        _ds_list: "{{ _ds_list + [_row] }}"
+      vars:
+        # Bytes (int)
+        cap_b: "{{ (ds.capacity | default(0)) | int }}"
+        free_b: "{{ (ds.freeSpace | default(0)) | int }}"
+
+        # Prevent div-by-zero deterministically (cap_safe >= 1)
+        cap_safe: "{{ ([cap_b, 1] | max) | int }}"
+
+        # Derived metrics (force float math to avoid _AnsibleTaggedStr issues)
+        capacity_gb: "{{ ((cap_b | float) / (_gb_div | float)) | round(1) }}"
+        free_gb: "{{ ((free_b | float) / (_gb_div | float)) | round(1) }}"
+        free_pct: "{{ ((free_b | float / cap_safe | float) * 100.0) | round(1) if cap_safe | float != 0 else 0 }}"
+        used_pct: "{{ (100.0 - (free_pct | float)) | round(1) }}"
+
+        status: >-
+          {{ 'CRITICAL' if (free_pct | float) < _crit_pct
+             else ('WARNING' if (free_pct | float) < _warn_pct else 'OK') }}
+
+        _row:
+          datastore: "{{ ds.datastore | default(ds.url, true) | default('', true) }}"
+          name: "{{ ds.name | default('') }}"
+          type: "{{ ds.type | default('') }}"
+          capacity: "{{ cap_b }}"
+          free_space: "{{ free_b }}"
+          accessible: "{{ ds.accessible | default(true) }}"
+          maintenance_mode: "{{ ds.maintenanceMode | default('unknown') }}"
+          provisioned: "{{ (ds.provisioned | default(0)) | int }}"
+          uncommitted: "{{ (ds.uncommitted | default(0)) | int }}"
+          capacity_gb: "{{ capacity_gb }}"
+          free_gb: "{{ free_gb }}"
+          free_pct: "{{ free_pct }}"
+          used_pct: "{{ used_pct }}"
+          status: "{{ status }}"
+          vcenter: "{{ inventory_hostname }}"
+      loop: "{{ _datastores_raw.datastores | default([]) }}"
+      loop_control:
+        loop_var: ds
+        label: "{{ ds.name | default('unknown') }}"
+      changed_when: false
+
+    - name: Datastores | Set vcenter.datastores.list once
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'datastores': {'list': _ds_list}}, recursive=true) }}"
+      changed_when: false
+
+    - name: Calculate datastore metrics
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'datastores': {'metrics': ds_metrics}}, recursive=true) }}"
+      vars:
+        _list: "{{ vcenter.datastores.list | default([]) }}"
+        ds_metrics:
+          total: "{{ _list | length }}"
+          critical_count: "{{ _list | selectattr('status', 'equalto', 'CRITICAL') | list | length }}"
+          warning_count: "{{ _list | selectattr('status', 'equalto', 'WARNING') | list | length }}"
+          problem_count: "{{ _list | selectattr('status', 'in', ['WARNING', 'CRITICAL']) | list | length }}"
+          total_capacity_gb: "{{ (_list | map(attribute='capacity_gb') | map('float') | list | sum) | round(1) }}"
+          total_free_gb: "{{ (_list | map(attribute='free_gb') | map('float') | list | sum) | round(1) }}"
+      changed_when: false
+
+    - name: Log datastore summary
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: "Datastores: {{ vcenter.datastores.metrics.total }} Total, {{ vcenter.datastores.metrics.problem_count }} Issues"
+
+  rescue:
+    - name: Log datastore collection failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Failed to gather datastore info: {{ ansible_failed_result.msg | default('Unknown error') }}"

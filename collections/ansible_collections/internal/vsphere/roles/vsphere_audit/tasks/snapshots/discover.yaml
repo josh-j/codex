@@ -1,0 +1,107 @@
+---
+# roles/vsphere/tasks/snapshots/discover.yaml
+# Collects Snapshot info, calculates ages, and identifies large/old snapshots.
+
+- name: Snapshot discovery and analysis
+  block:
+    - name: Compute run epoch once (shared)
+      ansible.builtin.set_fact:
+        ops_run_epoch: "{{ lookup('ansible.builtin.pipe', 'date +%s') | int }}"
+      run_once: true
+      delegate_to: localhost
+      delegate_facts: true
+      changed_when: false
+
+    - name: Bind run epoch to each host
+      ansible.builtin.set_fact:
+        _current_epoch: "{{ hostvars['localhost'].ops_run_epoch | int }}"
+      changed_when: false
+
+    # 1. OPTIMIZATION: Create a Lookup Map for Owner Emails
+    - name: Initialize VM Owner Map
+      ansible.builtin.set_fact:
+        _vm_owner_map: {}
+
+    - name: Build VM Owner Map
+      ansible.builtin.set_fact:
+        _vm_owner_map: "{{ _vm_owner_map | combine({item.name: item.owner_email}) }}"
+      loop: "{{ vcenter.vms.list | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Gather all snapshots from vCenter
+      community.vmware.vmware_all_snapshots_info:
+        hostname: "{{ vcenter.connection.hostname }}"
+        username: "{{ vcenter.connection.username }}"
+        password: "{{ vcenter.connection.password }}"
+        validate_certs: "{{ vcenter.config.validate_certs }}"
+        datacenter: "{{ vcenter.datacenter.name | default(omit) }}"
+      register: _snapshots_raw
+      delegate_to: localhost
+      failed_when: false
+
+    - name: Filter and enrich aged snapshots
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'snapshots': {'aged': vcenter.snapshots.aged | default([]) + [snapshot_enriched]}}, recursive=true) }}"
+      vars:
+        threshold_days: "{{ vcenter.config.snapshot_age_warning_days }}"
+        creation_time: "{{ item.creation_time | default('') }}"
+        # Clean T and Z format: 2023-01-01T12:00:00.000000Z -> 2023-01-01 12:00:00
+        creation_clean: "{{ creation_time | regex_replace('^\\s*(\\d{4}-\\d{2}-\\d{2})T(\\d{2}:\\d{2}:\\d{2}).*$', '\\1 \\2') }}"
+        is_valid_date: "{{ (creation_clean | regex_search('^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$')) is not none }}"
+        creation_epoch: "{{ (creation_clean | to_datetime('%Y-%m-%d %H:%M:%S')).strftime('%s') | int if is_valid_date else 0 }}"
+        age_days: "{{ ((_current_epoch | int - creation_epoch | int) / 86400) | int }}"
+
+        # 2. RELIABLE LOOKUP: Use the map we created
+        owner_email: "{{ _vm_owner_map.get(item.vm_name, '') }}"
+
+        snapshot_enriched:
+          vm_name: "{{ item.vm_name | default('unknown') }}"
+          snapshot_name: "{{ item.name | default('unnamed') | urldecode }}"
+          description: "{{ item.description | default('') }}"
+          state: "{{ item.state | default('unknown') }}"
+          quiesced: "{{ item.quiesced | default(false) }}"
+          created: "{{ creation_time }}"
+          created_date: "{{ creation_clean }}"
+          age_days: "{{ age_days }}"
+          size_gb: "{{ (item.size_gb | default(0)) | float }}"
+          vcenter: "{{ inventory_hostname }}"
+          datacenter: "{{ vcenter.datacenter.name | default('N/A') }}"
+          owner_email: "{{ owner_email }}"
+
+      loop: "{{ _snapshots_raw.vmware_all_snapshots_info | default([]) }}"
+      loop_control:
+        label: "{{ item.vm_name | default('unknown') }}"
+      when:
+        - _snapshots_raw is success
+        - is_valid_date
+        - age_days | int >= threshold_days | int
+
+    - name: Calculate snapshot metrics
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'snapshots': {'metrics': snapshot_metrics}}, recursive=true) }}"
+      vars:
+        snapshot_metrics:
+          total_aged: "{{ vcenter.snapshots.aged | default([]) | length }}"
+          total_size_gb: "{{ vcenter.snapshots.aged | default([]) | map(attribute='size_gb') | sum }}"
+          large_snapshots: "{{ vcenter.snapshots.aged | default([]) | selectattr('size_gb', '>', vcenter.config.snapshot_size_warning_gb) | list }}"
+
+    - name: Log snapshot summary
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: "Found {{ vcenter.snapshots.metrics.total_aged }} aged snapshots ({{ vcenter.snapshots.metrics.total_size_gb | round(1) }} GB total)"
+
+  rescue:
+    - name: Log snapshot collection failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Snapshot collection failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+  always:
+    - name: Ensure snapshots namespace exists
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'snapshots': {'aged': vcenter.snapshots.aged | default([])}}, recursive=true) }}"

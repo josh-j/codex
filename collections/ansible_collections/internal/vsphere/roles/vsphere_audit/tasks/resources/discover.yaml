@@ -1,0 +1,71 @@
+---
+# roles/vsphere/tasks/resources/discover.yaml
+# Calculates aggregate resource metrics (Global Sums)
+
+- name: Calculate global resource aggregates
+  ansible.builtin.set_fact:
+    vcenter: "{{ vcenter | combine({'resources': resource_metrics}, recursive=true) }}"
+  vars:
+    # 1. Sum up metrics from all clusters
+    _clusters: "{{ vcenter.clusters.by_name | default({}) | dict2items }}"
+
+    # We define these as strings/numbers here, but they are treated as strings by reference below
+    cpu_cap: "{{ _clusters | map(attribute='value.resource_summary.cpuCapacityMHz') | map('int') | sum }}"
+    cpu_used: "{{ _clusters | map(attribute='value.resource_summary.cpuUsedMHz') | map('int') | sum }}"
+
+    mem_cap: "{{ _clusters | map(attribute='value.resource_summary.memCapacityMB') | map('int') | sum }}"
+    mem_used: "{{ _clusters | map(attribute='value.resource_summary.memUsedMB') | map('int') | sum }}"
+
+    store_cap: "{{ _clusters | map(attribute='value.resource_summary.storageCapacityMB') | map('int') | sum }}"
+    store_used: "{{ _clusters | map(attribute='value.resource_summary.storageUsedMB') | map('int') | sum }}"
+
+    # 2. Aggregated Counters
+    ha_disabled: "{{ _clusters | selectattr('value.compliance.ha_enabled', 'defined') | selectattr('value.compliance.ha_enabled', 'equalto', false) | list | length }}"
+    drs_disabled: "{{ _clusters | selectattr('value.compliance.drs_enabled', 'defined') | selectattr('value.compliance.drs_enabled', 'equalto', false) | list | length }}"
+
+    # FIX: Added 'selectattr defined' to prevent crash if maintenance_mode key is missing
+    host_maint: "{{ vcenter.hosts.list | default([]) | selectattr('maintenance_mode', 'defined') | selectattr('maintenance_mode', 'equalto', true) | list | length }}"
+
+    # 3. Calculate Percentages (Explicit | int casting to satisfy linter)
+    cpu_pct: >-
+      {{ ((cpu_used | int / cpu_cap | int) * 100) | round(1) if (cpu_cap | int) > 0 else 0 }}
+    mem_pct: >-
+      {{ ((mem_used | int / mem_cap | int) * 100) | round(1) if (mem_cap | int) > 0 else 0 }}
+    store_pct: >-
+      {{ ((store_used | int / store_cap | int) * 100) | round(1) if (store_cap | int) > 0 else 0 }}
+
+    # 4. Final Structure
+    resource_metrics:
+      clusters:
+        total: "{{ _clusters | length }}"
+        ha_disabled_count: "{{ ha_disabled }}"
+        drs_disabled_count: "{{ drs_disabled }}"
+      hosts:
+        total: "{{ vcenter.hosts.list | default([]) | length }}"
+        maintenance_count: "{{ host_maint }}"
+      cpu:
+        capacity_mhz: "{{ cpu_cap }}"
+        used_mhz: "{{ cpu_used }}"
+        usage_pct: "{{ cpu_pct }}"
+      memory:
+        capacity_mb: "{{ mem_cap }}"
+        used_mb: "{{ mem_used }}"
+        capacity_gb: "{{ (mem_cap | int / 1024) | round(1) }}"
+        used_gb: "{{ (mem_used | int / 1024) | round(1) }}"
+        usage_pct: "{{ mem_pct }}"
+      storage:
+        capacity_mb: "{{ store_cap }}"
+        used_mb: "{{ store_used }}"
+        capacity_gb: "{{ (store_cap | int / 1024) | round(1) }}"
+        used_gb: "{{ (store_used | int / 1024) | round(1) }}"
+        usage_pct: "{{ store_pct }}"
+
+- name: Log resource summary
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: logging/info
+  vars:
+    ops_log_message: >-
+      Resources: CPU {{ vcenter.resources.cpu.usage_pct }}%,
+      Mem {{ vcenter.resources.memory.usage_pct }}%,
+      Storage {{ vcenter.resources.storage.usage_pct }}%

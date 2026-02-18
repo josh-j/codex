@@ -1,0 +1,77 @@
+---
+# roles/vsphere/tasks/summary/calculate.yaml
+# Logic: Aggregate alert counts and populate vcenter.summary
+
+- name: Generate summary metrics
+  block:
+    - name: Calculate alert severity counts from ops.alerts
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'summary': summary_data}, recursive=true) }}"
+      vars:
+        # DEFENSIVE: Ensure ops.alerts is a list
+        all_alerts: "{{ ops.alerts | default([]) }}"
+        summary_data:
+          alerts:
+            total: "{{ all_alerts | length }}"
+            critical_count: "{{ all_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
+            warning_count: "{{ all_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
+            info_count: "{{ all_alerts | selectattr('severity', 'equalto', 'INFO') | list | length }}"
+            by_category:
+              backup: "{{ all_alerts | selectattr('category', 'equalto', 'backup') | list | length }}"
+              capacity: "{{ all_alerts | selectattr('category', 'equalto', 'capacity') | list | length }}"
+              configuration: "{{ all_alerts | selectattr('category', 'equalto', 'configuration') | list | length }}"
+              connectivity: "{{ all_alerts | selectattr('category', 'equalto', 'connectivity') | list | length }}"
+              snapshots: "{{ all_alerts | selectattr('category', 'equalto', 'snapshots') | list | length }}"
+              alarms: "{{ all_alerts | selectattr('category', 'equalto', 'alarms') | list | length }}"
+              infrastructure: "{{ all_alerts | selectattr('category', 'equalto', 'infrastructure') | list | length }}"
+              security: "{{ all_alerts | selectattr('category', 'equalto', 'security') | list | length }}"
+          checks_completed:
+            - about
+            - appliance
+            - datacenters
+            - clusters
+            - hosts
+            - datastores
+            - vms
+            - snapshots
+            - alarms
+
+    - name: Log summary metrics
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: >-
+          Summary: {{ vcenter.summary.alerts.total }} alerts
+          ({{ vcenter.summary.alerts.critical_count }}C/
+          {{ vcenter.summary.alerts.warning_count }}W/
+          {{ vcenter.summary.alerts.info_count }}I)
+
+  rescue:
+    - name: Log summary generation failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/warn
+      vars:
+        ops_log_message: "Failed to generate summary metrics"
+
+    - name: Set empty summary
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'summary': empty_summary}, recursive=true) }}"
+      vars:
+        empty_summary:
+          alerts:
+            total: 0
+            critical_count: 0
+            warning_count: 0
+            info_count: 0
+            by_category:
+              backup: 0
+              capacity: 0
+              configuration: 0
+              connectivity: 0
+              snapshots: 0
+              alarms: 0
+              infrastructure: 0
+              security: 0
+          checks_completed: []

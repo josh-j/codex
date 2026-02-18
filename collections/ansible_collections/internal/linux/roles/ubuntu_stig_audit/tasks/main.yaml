@@ -1,0 +1,23 @@
+# Main Entry Point for Ubuntu Operations
+# SEQUENCE: Init -> Discovery -> Checks (Audit) -> Maintenance (Fix) -> Export
+
+- name: Ubuntu Operations Wrapper
+  block:
+    - name: Checks - Health, Patching, & Security Audit
+      ansible.builtin.include_tasks: check.yaml
+      tags: ['checks']
+
+  # RESCUE: Only runs if something in the 'block' above FAILED
+  rescue:
+    - name: Log Ubuntu Failure
+      ansible.builtin.debug:
+        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
+      # This registers a variable we can check in the summary report if needed
+      register: _ubuntu_task_failure
+
+  # ALWAYS: Runs no matter what (Success OR Failure)
+  # This guarantees reports are generated even if a check crashes.
+  always:
+    - name: Export - Reports & Fleet Summary
+      ansible.builtin.include_tasks: export.yaml
+      tags: ['always', 'export']

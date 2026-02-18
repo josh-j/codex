@@ -1,0 +1,4 @@
+---
+# roles/ubuntu/handlers/main.yaml
+- name: Import STIG Handlers
+  ansible.builtin.import_tasks: stig_handlers.yaml

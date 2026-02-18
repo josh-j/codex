@@ -1,0 +1,47 @@
+---
+- name: "DEBUG | Confirm Role Entry"
+  ansible.builtin.debug:
+    msg: "Role 'internal.stig.esxi' has started on {{ inventory_hostname }}"
+
+- name: "ESXi | Load STIG Policies"
+  ansible.builtin.include_vars:
+    file: defaults/main.yaml
+
+- name: "ESXi | Set Absolute Path for Skeleton"
+  ansible.builtin.set_fact:
+    _esxi_cklb_skeleton_absolute_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_esxi_V1R4.json"
+
+# -------------------------------------------------------------------------
+# 1. API DISCOVERY (PowerCLI via vCenter)
+# -------------------------------------------------------------------------
+- name: "ESXi | Discover Host Configuration (API)"
+  ansible.builtin.include_tasks: discover.yaml
+
+# -------------------------------------------------------------------------
+# 2. SSH DEEP AUDIT (Root Shell Toggle)
+# -------------------------------------------------------------------------
+# Connection details are handled INSIDE this file to prevent 'localhost' errors
+- name: "ESXi | Deep Audit (SSH Toggle)"
+  ansible.builtin.include_tasks: audit_ssh.yaml
+
+# -------------------------------------------------------------------------
+# 3. COMPLIANCE CALCULATION
+# -------------------------------------------------------------------------
+# Uses variables collected from BOTH steps above (API + SSH)
+- name: "ESXi | Calculate Compliance"
+  ansible.builtin.include_tasks: check.yaml
+
+# -------------------------------------------------------------------------
+# 4. REPORTING
+# -------------------------------------------------------------------------
+- name: "ESXi | Generate Reports"
+  ansible.builtin.include_role:
+    name: internal.stig.common
+    tasks_from: stig_finalize
+  vars:
+    violations: "{{ esxi_stig_violations }}"
+    full_audit: "{{ esxi_stig_full_audit }}"
+    report_prefix: "esxi_host_stig"
+    export_headers: ["Host Name", "STIG ID", "Control", "Status", "Details"]
+    export_keys: ["name", "id", "control", "status", "details"]
+    cklb_skeleton_path: "{{ _esxi_cklb_skeleton_absolute_path }}"

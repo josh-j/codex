@@ -1,0 +1,23 @@
+---
+# roles/ubuntu/init/main.yaml
+- name: Check OS Family
+  ansible.builtin.fail:
+    msg: "This role is for Ubuntu only. Found: {{ ansible_facts['distribution'] }}"
+  when: ansible_facts['distribution'] != 'Ubuntu'
+
+- name: Initialize Ubuntu Namespace
+  ansible.builtin.set_fact:
+    ubuntu: "{{ ubuntu | default({}) | combine(structure, recursive=true) }}"
+  vars:
+    structure:
+      system:
+        hostname: "{{ inventory_hostname }}"
+        ip: "{{ ansible_facts['default_ipv4']['address'] | default('N/A') }}"
+        kernel: "{{ ansible_facts['kernel'] }}"
+      updates:
+        pending_count: 0
+        reboot_pending: false
+      security:
+        users: []
+        ssh_compliant: false
+

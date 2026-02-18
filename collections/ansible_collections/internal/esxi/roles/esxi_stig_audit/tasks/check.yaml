@@ -1,0 +1,27 @@
+---
+# collections/ansible_collections/internal/stig/roles/esxi/tasks/check.yaml
+
+# 1. Capture the correct template path while we are still in the ESXi role context
+- name: "ESXi | Set Logic Template Path"
+  ansible.builtin.set_fact:
+    # This locks in the path to: .../roles/esxi/templates/esxi_logic.j2
+    _esxi_logic_path: "{{ role_path }}/templates/esxi_logic.j2"
+
+# 2. Run the Audit Engine
+- name: "ESXi | Run Generalized Audit Engine"
+  ansible.builtin.include_role:
+    name: internal.stig.common
+    tasks_from: audit_orchestrator
+  vars:
+    raw_discovery_data: "{{ esxi_host.stig_facts | default([]) }}"
+
+    # Pass the pre-calculated variable (which contains the correct ESXi path)
+    audit_logic_template: "{{ _esxi_logic_path }}"
+
+    stig_filter: "{{ esxi_host_filter | default('') }}"
+    stig_exclusions: "{{ esxi_exclusions | default([]) }}"
+
+- name: "ESXi | Map Results to Local Variables"
+  ansible.builtin.set_fact:
+    esxi_stig_full_audit: "{{ audit_full_list }}"
+    esxi_stig_violations: "{{ audit_violations }}"

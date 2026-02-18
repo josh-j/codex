@@ -1,0 +1,59 @@
+---
+# roles/vsphere/tasks/resources/check.yaml
+# Explicit checks for Global Resource Usage (Aggregated)
+
+# ========================================================================
+# CPU GLOBAL CHECKS
+# ========================================================================
+- name: "Check: Critical Global CPU Usage"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "capacity"
+    ops_alert_message: "Total vCenter CPU usage is Critical ({{ vcenter.resources.cpu.usage_pct }}%)"
+    ops_alert_details:
+      usage_pct: "{{ vcenter.resources.cpu.usage_pct }}"
+      threshold: "{{ vcenter.config.cpu_critical_pct }}"
+  when: vcenter.resources.cpu.usage_pct | float > vcenter.config.cpu_critical_pct | float
+
+- name: "Check: High Global CPU Usage"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "capacity"
+    ops_alert_message: "Total vCenter CPU usage is High ({{ vcenter.resources.cpu.usage_pct }}%)"
+  when:
+    - vcenter.resources.cpu.usage_pct | float > vcenter.config.cpu_warning_pct | float
+    - vcenter.resources.cpu.usage_pct | float <= vcenter.config.cpu_critical_pct | float
+
+# ========================================================================
+# MEMORY GLOBAL CHECKS
+# ========================================================================
+- name: "Check: Critical Global Memory Usage"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "capacity"
+    ops_alert_message: "Total vCenter Memory usage is Critical ({{ vcenter.resources.memory.usage_pct }}%)"
+    ops_alert_details:
+      usage_pct: "{{ vcenter.resources.memory.usage_pct }}"
+      threshold: "{{ vcenter.config.memory_critical_pct }}"
+  when: vcenter.resources.memory.usage_pct | float > vcenter.config.memory_critical_pct | float
+
+- name: "Check: High Global Memory Usage"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "capacity"
+    ops_alert_message: "Total vCenter Memory usage is High ({{ vcenter.resources.memory.usage_pct }}%)"
+  when:
+    - vcenter.resources.memory.usage_pct | float > vcenter.config.memory_warning_pct | float
+    - vcenter.resources.memory.usage_pct | float <= vcenter.config.memory_critical_pct | float

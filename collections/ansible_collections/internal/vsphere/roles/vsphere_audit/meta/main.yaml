@@ -1,0 +1,11 @@
+---
+# roles/vsphere/meta/main.yaml
+# Role dependencies
+dependencies:
+  - role: common
+
+# Collections required by this role
+collections:
+  - ansible.builtin
+  - community.vmware
+  - community.general

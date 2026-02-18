@@ -1,0 +1,32 @@
+---
+# inventory/group_vars/all/00_global.yaml
+ops_config:
+  debug_mode: true
+  dry_run_mode: false
+
+  report_directory: /srv/samba/reports
+
+  email:
+    enabled: false
+    smtp:
+      server: 
+      port: 25
+    from: ansible-ncs
+    recipients:
+      - ansible-ncs
+
+  schedule:
+    day_matrix:
+      monday:    [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
+      tuesday:   [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
+      wednesday: [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
+      thursday:  [vcenter, unisphere, backup_unisphere, ucs_fi, snow, patch]
+      friday:    [vcenter, unisphere, backup_unisphere, ucs_fi, snow, weekly]
+      saturday:  []
+      sunday:    []
+
+  logging:
+    export_to_file: true
+    file_path: ../logs/ncs.log
+    max_size_mb: 100
+    backup_count: 5

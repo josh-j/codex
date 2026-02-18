@@ -1,0 +1,24 @@
+# inventory/group_vars/all/ubuntu.yaml
+ubuntu:
+  config:
+    # General
+    export_csv: true
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Inherit Global Report Directory
+    report_directory: "{{ ops.config.report_directory }}"
+
+    # Thresholds
+    disk_warning_pct: 90
+    mem_warning_pct: 95
+    updates_critical_threshold: 50
+    load_warning_threshold: 15
+
+    # Toggles
+    enable_maintenance: false         # Whether to execute maintain.yaml files
+    enable_stig_audit: true          # Runs STIGs without applying them and generates a report
+    enable_stig_hardening: false      # Applies STIGs
+    enable_password_rotation: false
+    enable_upgrade_reboots: true     # Reboots is reboot is pending (after upgrades)
+
+

@@ -1,0 +1,92 @@
+---
+# collections/ansible_collections/internal/stig/playbooks/site.yaml
+- name: Apply STIG Compliance (All Platforms)
+  hosts: all
+  gather_facts: false # Safety: Don't SSH into vCenters or ESXi initially
+
+  vars:
+    # 1. Global Report Base (Centralized Storage)
+    ops_report_base: "/srv/samba/reports"
+
+    # 2. Credential Bridge (Vital for mixed Inventory sources)
+    # Allows host_vars to override, but falls back to Ansible connection user
+    vcenter_username: "{{ hostvars[inventory_hostname]['vcenter_username'] | default(ansible_user) | default(ansible_ssh_user) }}"
+    vcenter_password: "{{ hostvars[inventory_hostname]['vcenter_password'] | default(ansible_password) | default(ansible_ssh_pass) }}"
+
+  pre_tasks:
+    # -------------------------------------------------------------------------
+    # PREP: Run ID & Dynamic Paths (Delegated to Localhost)
+    # -------------------------------------------------------------------------
+    - name: "PREP | Generate Global Run ID"
+      ansible.builtin.set_fact:
+        global_run_id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+      run_once: true
+      delegate_to: localhost
+      tags: ['always']
+
+    - name: "PREP | Set Reporting Paths"
+      ansible.builtin.set_fact:
+        ops_report_output_dir: "{{ ops_report_base }}/Site_Audit/{{ global_run_id }}"
+      run_once: true
+      delegate_to: localhost
+      tags: ['always']
+
+    - name: "PREP | Create Report Directory"
+      ansible.builtin.file:
+        path: "{{ ops_report_output_dir }}"
+        state: directory
+        mode: '0755'
+      run_once: true
+      delegate_to: localhost
+      tags: ['always']
+
+    # -------------------------------------------------------------------------
+    # PREP: Safe Fact Gathering (Prevents Kerberos/SSH Errors)
+    # -------------------------------------------------------------------------
+    - name: "PREP | Gather Facts (Linux Only)"
+      ansible.builtin.setup:
+      # Logic: ONLY run on Linux. Explicitly SKIP vCenters and ESXi.
+      when:
+        - "'vcenters' not in group_names"
+        - "'esxi' not in group_names"
+        - "'linux_servers' in group_names"
+      # CRITICAL: Do NOT use 'always'. Only run when Linux tags are active.
+      tags: ['linux', 'ubuntu']
+
+  tasks:
+    # -------------------------------------------------------
+    # 1. VCENTER (API - Runs Locally)
+    # -------------------------------------------------------
+    - name: Apply vCenter STIGs
+      ansible.builtin.include_role:
+        name: internal.stig.vsphere
+      vars:
+        ansible_connection: local
+      when: "'vcenters' in group_names"
+      tags: ['vsphere', 'vmware', 'stig']
+
+    # -------------------------------------------------------
+    # 2. ESXi HOSTS (API - Runs Locally via Delegation)
+    # -------------------------------------------------------
+    - name: Apply ESXi STIGs
+      ansible.builtin.include_role:
+        name: internal.stig.esxi
+        # [FIX] Force tags to inherit so tasks inside the role actually run
+        apply:
+          tags: ['esxi', 'vmware', 'stig']
+      vars:
+        # Defaults to 'ALL' if not defined in host_vars
+        target_cluster: "{{ cluster_name | default('ALL') }}"
+      when: "'esxi' in group_names"
+      tags: ['esxi', 'vmware', 'stig']
+
+    # -------------------------------------------------------
+    # 3. LINUX / UBUNTU (SSH - Runs on Target)
+    # -------------------------------------------------------
+    - name: Apply Ubuntu STIGs
+      ansible.builtin.include_role:
+        name: internal.stig.ubuntu
+      when:
+        - "'linux_servers' in group_names"
+        - ansible_distribution | default('') == 'Ubuntu'
+      tags: ['ubuntu', 'linux', 'stig']

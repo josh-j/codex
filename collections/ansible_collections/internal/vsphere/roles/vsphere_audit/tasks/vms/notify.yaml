@@ -1,0 +1,64 @@
+---
+# roles/vsphere/tasks/vms/notify.yaml
+# Action: Orchestrates email notifications to VM owners
+
+# 1. GATEKEEPING
+# -----------------------------------------------------------------------------
+- name: Check notification schedule
+  ansible.builtin.set_fact:
+    _run_notifications: >-
+      {{
+        vcenter.config.enable_email_notifications | default(false) | bool and
+        (
+          (run_day | default(lookup('pipe', 'date +%A') | lower))
+          in (vcenter.config.owner_notification_days | default(['tuesday', 'thursday']))
+        )
+      }}
+
+- name: Log notification skip
+  ansible.builtin.debug:
+    msg: "Skipping notifications: Not enabled or wrong day (Today: {{ run_day | default('unknown') }})"
+  when: not _run_notifications
+
+# 2. IDENTIFY RECIPIENTS (VERIFIED ONLY)
+# -----------------------------------------------------------------------------
+- name: Calculate recipient lists
+  ansible.builtin.set_fact:
+    # 1. Find everyone who owns a VM
+    _discovered_owners: >-
+      {{
+        vcenter.vms.list
+        | map(attribute='owner_email')
+        | select('defined')
+        | select('search', '@')
+        | unique
+        | list
+      }}
+    # 2. Get the Allowlist (Default to empty list for safety)
+    _allowed_emails: "{{ vcenter.config.notification_allowlist | default([]) }}"
+
+- name: Filter for verified owners
+  ansible.builtin.set_fact:
+    # 3. INTERSECT: Only keep discovered owners that are ALSO in the allowlist
+    _vm_owners: "{{ _discovered_owners | intersect(_allowed_emails) }}"
+  when: _run_notifications
+
+- name: Log recipient filtering
+  ansible.builtin.debug:
+    msg:
+      - "Discovered {{ _discovered_owners | length }} potential owners."
+      - "Allowlist contains {{ _allowed_emails | length }} verified emails."
+      - "Final Recipient List: {{ _vm_owners | length }} users."
+  when: _run_notifications
+
+# 3. EXECUTION LOOP
+# -----------------------------------------------------------------------------
+- name: Process notifications for each verified owner
+  # Best Practice: Use relative path for tasks inside the same role
+  ansible.builtin.include_tasks: notify_loop.yaml
+  loop: "{{ _vm_owners }}"
+  loop_control:
+    loop_var: owner_email
+  when:
+    - _run_notifications
+    - _vm_owners | length > 0

@@ -1,0 +1,42 @@
+---
+# inventory/group_vars/all/vcenter.yaml
+vcenter:
+  config:
+    # Role-specific toggles
+    validate_certs: false
+    export_csv: true
+
+    # Optional: allow per-role debug override (global is ops_config.debug_mode)
+    debug_mode: false
+
+    # Interpreter (if needed for localhost delegated tasks)
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Thresholds
+    snapshot_age_warning_days: 7
+    snapshot_size_warning_gb: 100
+
+    datastore_free_warning_pct: 15
+    datastore_free_critical_pct: 10
+
+    cpu_warning_pct: 80
+    cpu_critical_pct: 90
+    memory_warning_pct: 80
+    memory_critical_pct: 90
+
+    powered_off_ratio_warning_pct: 20
+    backup_grace_period_days: 1
+
+    backup_schedules:
+      daily: 1
+      weekly: 7
+      monthly: 30
+
+    # Report settings (decouple from ops.config merge order)
+    report_directory: "{{ ops_config.report_directory }}"
+
+    # Notifications (leave disabled unless you actively use them)
+    enable_email_notifications: false
+    smtp:
+      host: "{{ ops_config.email.smtp.server | default('') }}"
+      port: "{{ ops_config.email.smtp.port | default(25) }}"

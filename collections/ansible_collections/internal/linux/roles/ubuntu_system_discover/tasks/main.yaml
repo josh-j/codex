@@ -1,0 +1,15 @@
+
+- name: Ubuntu Discover Wrapper
+  block:
+    - name: Discovery - System, Updates, & Security
+      ansible.builtin.include_tasks: discover.yaml
+      tags: ['discovery']
+
+
+  # RESCUE: Only runs if something in the 'block' above FAILED
+  rescue:
+    - name: Log Ubuntu Failure
+      ansible.builtin.debug:
+        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
+      # This registers a variable we can check in the summary report if needed
+      register: _ubuntu_task_failure

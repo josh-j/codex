@@ -1,0 +1,187 @@
+---
+# roles/common/tasks/reporting/export_csv.yaml
+# CSV Report Generator Utility
+#
+# Guarantees:
+# - Stable run identifier across all hosts if ops.check.run_id/id is set.
+# - Always writes a CSV (at minimum: headers) so ops.reports[].path is valid.
+# - Safe with gather_facts: false (controller-side date fallback).
+# - Safe value rendering: list -> "a; b", dict -> JSON, scalars -> string.
+
+# -----------------------------------------------------------------------------
+# 0) VALIDATION
+# -----------------------------------------------------------------------------
+- name: CSV | Validate required inputs
+  ansible.builtin.assert:
+    that:
+      - ops_csv_report_name is defined
+      - ops_csv_headers is defined
+      - ops_csv_headers is iterable
+      - ops_csv_headers | length > 0
+    fail_msg: "export_csv missing required vars: ops_csv_report_name/ops_csv_headers"
+    quiet: true
+
+# -----------------------------------------------------------------------------
+# 1) CONTEXT + PATHS
+# -----------------------------------------------------------------------------
+- name: CSV | Compute context + run identifier + base paths
+  ansible.builtin.set_fact:
+    _csv_context_role: >-
+      {{
+        ops_csv_context
+        | default(
+            (ansible_parent_role_names | default([ansible_role_name])) | first,
+            true
+          )
+      }}
+
+    _csv_run_identifier: >-
+      {{
+        ops_csv_run_id
+        | default((ops.check | default({})).run_id, true)
+        | default((ops.check | default({})).id, true)
+        | default(lookup('pipe', 'date +%Y-%m-%d_%H%M%S'), true)
+      }}
+
+    _csv_name_suffix: "{{ '_global' if inventory_hostname == 'localhost' else '_' ~ inventory_hostname }}"
+
+    _report_root: >-
+      {{
+        (ops.config | default({})).report_directory
+        | default('/srv/samba/reports', true)
+      }}
+  changed_when: false
+
+- name: CSV | Compute derived output paths
+  ansible.builtin.set_fact:
+    _csv_output_dir: "{{ _report_root }}/Split/{{ _csv_context_role }}/{{ _csv_run_identifier }}/{{ inventory_hostname }}"
+    _csv_filename: "{{ ops_csv_report_name }}{{ _csv_name_suffix }}.csv"
+    # Compute directly (do not reference vars defined in this same task)
+    _csv_file_path: "{{ _report_root }}/Split/{{ _csv_context_role }}/{{ _csv_run_identifier }}/{{ inventory_hostname }}/{{ ops_csv_report_name }}{{ _csv_name_suffix }}.csv"
+  changed_when: false
+
+# -----------------------------------------------------------------------------
+# 2) DIRECTORY SAFETY
+# -----------------------------------------------------------------------------
+- name: CSV | Ensure host-specific directory exists
+  ansible.builtin.file:
+    path: "{{ _csv_output_dir }}"
+    state: directory
+    mode: "0775"
+  delegate_to: localhost
+  become: false
+
+# -----------------------------------------------------------------------------
+# 3) DATA PREPARATION (safe normalize + safe sort)
+# -----------------------------------------------------------------------------
+- name: CSV | Normalize input into a list of rows
+  ansible.builtin.set_fact:
+    _csv_raw_data: >-
+      {%- set d = ops_csv_data | default([]) -%}
+      {{ [d] if d is mapping else (d | list) }}
+  changed_when: false
+
+
+
+- name: CSV | Determine if safe to sort
+  ansible.builtin.set_fact:
+    _csv_can_sort: >-
+      {{
+        (ops_csv_sort_by is defined)
+        and (_csv_raw_data | length > 0)
+        and (( _csv_raw_data | select('mapping') | list | length ) == (_csv_raw_data | length))
+        and (
+          (_csv_raw_data | selectattr(ops_csv_sort_by, 'defined') | list | length)
+          == (_csv_raw_data | length)
+        )
+      }}
+  changed_when: false
+
+- name: CSV | Build final data (sorted if possible/requested)
+  ansible.builtin.set_fact:
+    _csv_final_data: >-
+      {{
+        (_csv_raw_data | sort(attribute=ops_csv_sort_by) | list)
+        if _csv_can_sort
+        else _csv_raw_data
+      }}
+  changed_when: false
+
+# -----------------------------------------------------------------------------
+# 4) FAST FILE WRITING (always write at least headers)
+# -----------------------------------------------------------------------------
+- name: CSV | Write CSV to disk (header-only if empty)
+  ansible.builtin.copy:
+    dest: "{{ _csv_file_path }}"
+    mode: "0664"
+    content: |
+      {{ ops_csv_headers | join(',') }}
+      {% for item in _csv_final_data %}
+      {%- set row = [] -%}
+      {%- for i in range(ops_csv_headers | length) -%}
+        {%- set header = ops_csv_headers[i] -%}
+        {%- if ops_csv_keys is defined and (ops_csv_keys | length) > i -%}
+          {%- set key = ops_csv_keys[i] -%}
+        {%- else -%}
+          {%- set key = header
+              | lower
+              | replace(' ', '_')
+              | replace('(', '')
+              | replace(')', '')
+              | replace('%', 'pct')
+          -%}
+        {%- endif -%}
+
+        {# Safe access: item may not be a mapping in edge cases #}
+        {%- set val = (item.get(key) if (item is mapping) else '') | default('') -%}
+
+        {# Serialize containers safely #}
+        {%- if val is mapping -%}
+          {%- set val_str = val | to_json -%}
+        {%- elif val is iterable and val is not string -%}
+          {%- set val_str = val | join('; ') -%}
+        {%- else -%}
+          {%- set val_str = val | string -%}
+        {%- endif -%}
+
+        {%- set clean_val = val_str | replace('\n', ' ') | replace('\r', '') -%}
+
+        {# RFC4180-ish quoting: quote if comma or quote present #}
+        {%- if (',' in clean_val) or ('"' in clean_val) -%}
+          {%- set _ = row.append('"' ~ (clean_val | replace('"', '""')) ~ '"') -%}
+        {%- else -%}
+          {%- set _ = row.append(clean_val) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ row | join(',') }}
+      {% endfor %}
+  delegate_to: localhost
+  become: false
+
+# -----------------------------------------------------------------------------
+# 5) REGISTRATION
+# -----------------------------------------------------------------------------
+- name: CSV | Register report in global state
+  ansible.builtin.set_fact:
+    ops: >-
+      {{
+        (ops | default({})) | combine({
+          'reports': (ops.reports | default([])) + [{
+            'name': ops_csv_report_name,
+            'site': inventory_hostname,
+            'path': _csv_file_path,
+            'row_count': (_csv_final_data | length),
+            'timestamp': (
+              (ops.check | default({})).timestamp
+              | default(lookup('pipe', 'date -Iseconds'), true)
+            )
+          }]
+        }, recursive=true)
+      }}
+
+- name: CSV | Log export success
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: logging/info
+  vars:
+    ops_log_message: "Exported {{ _csv_final_data | length }} rows to {{ _csv_filename }}"

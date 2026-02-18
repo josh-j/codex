@@ -1,0 +1,77 @@
+---
+# collections/ansible_collections/internal/stig/roles/esxi/defaults/main.yaml
+# Configuration for ESXi 7.0/8.0 STIG Audit
+
+# ==============================================================================
+# 1. SITE-SPECIFIC CONFIGURATION
+# ==============================================================================
+esxi_stig_syslog_server: "udp://192.168.1.50:514"
+esxi_stig_ntp_servers: ["10.10.10.1", "10.10.10.2"]
+esxi_stig_allowed_ip_ranges: ["192.168.1.0/24", "10.0.0.0/8"]
+esxi_admin_group: "ESX Admins"
+
+# ==============================================================================
+# 2. ADVANCED SYSTEM SETTINGS (Logic Engine Loop)
+# ==============================================================================
+esxi_stig_settings:
+  # --- Security & Access ---
+  - { id: "ESXI-70-000002", key: "DCUI.Access", value: "root", name: "DCUI Access" }
+  - { id: "ESXI-70-000005", key: "Security.AccountLockFailures", value: "3", name: "Account Lockout" }
+  - { id: "ESXI-70-000006", key: "Security.AccountUnlockTime", value: "900", name: "Account Unlock Time" }
+  - { id: "ESXI-70-000031", key: "Security.PasswordQualityControl", value: "similar=deny retry=3 min=disabled,disabled,disabled,disabled,15", name: "Password Complexity" }
+  - { id: "ESXI-70-000032", key: "Security.PasswordHistory", value: "5", name: "Password History" }
+  - { id: "ESXI-70-000091", key: "Security.PasswordMaxDays", value: "90", name: "Password Max Age" }
+
+  # --- User Interface & Timeouts ---
+  - { id: "ESXI-70-000041", key: "UserVars.ESXiShellInteractiveTimeOut", value: "120", name: "Shell Interactive Timeout" }
+  - { id: "ESXI-70-000042", key: "UserVars.ESXiShellTimeOut", value: "600", name: "Shell Timeout" }
+  - { id: "ESXI-70-000043", key: "UserVars.DcuiTimeOut", value: "120", name: "DCUI Timeout" }
+  - { id: "ESXI-70-000088", key: "Config.HostAgent.vmacore.soap.sessionTimeout", value: "30", name: "SOAP Timeout" }
+  - { id: "ESXI-70-000089", key: "UserVars.HostClientSessionTimeout", value: "600", name: "Host Client Timeout" }
+  - { id: "ESXI-70-000079", key: "UserVars.SuppressShellWarning", value: "0", name: "Shell Warnings" } # 0 = False (Do not suppress)
+  - { id: "ESXI-70-000081", key: "UserVars.SuppressHyperthreadWarning", value: "0", name: "Hyperthread Warnings" }
+
+  # --- Logging & Auditing ---
+  - { id: "ESXI-70-000004", key: "Syslog.global.logHost", value: "{{ esxi_stig_syslog_server }}", name: "Remote Syslog" }
+  # [ADDED] Required for ESXI-70-000055
+  - { id: "ESXI-70-000045", key: "Syslog.global.logDir", value: "[] /scratch/log", name: "Persistent Log Dir" }
+  - { id: "ESXI-70-000030", key: "Config.HostAgent.log.level", value: "info", name: "Log Level" }
+  - { id: "ESXI-70-000086", key: "Syslog.global.logCheckSSLCerts", value: "true", name: "Syslog SSL Verify" }
+
+  # --- Network & Security ---
+  # [ADDED] Required for ESXI-70-000007
+  - { id: "ESXI-70-000007", key: "Annotations.WelcomeMessage", value: "You are accessing a U.S. Government (USG) Information System", name: "DoD Banner" }
+
+  - { id: "ESXI-70-000034", key: "Config.HostAgent.plugins.solo.enableMob", value: "false", name: "MOB Disabled" }
+  - { id: "ESXI-70-000039", key: "Config.HostAgent.plugins.hostsvc.esxAdminsGroup", value: "{{ esxi_admin_group }}", name: "ESX Admins Group" }
+  - { id: "ESXI-70-000055", key: "Mem.ShareForceSalting", value: "2", name: "TPS Salting" }
+  - { id: "ESXI-70-000058", key: "Net.BlockGuestBPDU", value: "1", name: "Block Guest BPDU" }
+  - { id: "ESXI-70-000062", key: "Net.DVFilterBindIpAddress", value: "", name: "DVFilter IP Bind" }
+  - { id: "ESXI-70-000074", key: "UserVars.ESXiVPsDisabledProtocols", value: "sslv3,tlsv1,tlsv1.1", name: "Disabled Protocols" }
+  - { id: "ESXI-70-000080", key: "VMkernel.Boot.execInstalledOnly", value: "true", name: "Exec Installed Only" }
+  - { id: "ESXI-70-000087", key: "Mem.MemEagerZero", value: "1", name: "Memory Eager Zero" }
+
+# ==============================================================================
+# 3. SERVICE & SYSTEM IDs
+# ==============================================================================
+esxi_stig_service_ids:
+  ssh: "ESXI-70-000035"
+  shell: "ESXI-70-000036"
+  slpd: "ESXI-70-000083"
+
+esxi_stig_system_ids:
+  ntp: "ESXI-70-000046"
+  fips: "ESXI-70-000010"
+  firewall: "ESXI-70-000057"
+  acceptance: "ESXI-70-000047"
+  tpm: "ESXI-70-000094"
+  secure_boot: "ESXI-70-000095"
+
+# ==============================================================================
+# 4. SSH CONFIGURATION (Reference Only)
+# ==============================================================================
+# These are handled by 'audit_ssh.yaml' but kept here for documentation
+esxi_stig_ssh_settings:
+  - { id: "ESXI-70-000009", key: "Banner", value: "/etc/issue" }
+  - { id: "ESXI-70-000026", key: "ClientAliveCountMax", value: "3" }
+  - { id: "ESXI-70-000027", key: "ClientAliveInterval", value: "200" }

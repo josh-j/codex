@@ -1,0 +1,543 @@
+{% set res = [] %}
+
+{# ================================================================= #}
+{#  API / POWERCLI AUDIT CHECKS (Top Half)                           #}
+{# ================================================================= #}
+
+{# 1. Safely Extract API Data #}
+{% set name = item.get('name', 'Unknown') %}
+{% set ver = item.get('version', '0.0') %}
+{% set build = item.get('build', '0') %}
+{% set adv = item.get('advanced_settings', {}) %}
+{% set svcs = item.get('services', {}) %}
+{% set net = item.get('network', {}) %}
+{% set vswitches = net.get('vswitches', []) %}
+{% set sys = item.get('system', {}) %}
+
+{# ----------------------------------------------------------------- #}
+{# HARDWARE & BOOT SECURITY (TPM / Secure Boot)                      #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000094: TPM Encryption #}
+{% if sys.get('crypto_mode') == 'TPM' %}
+    {% set _ = res.append({"id": "ESXI-70-000094", "status": "PASSED", "details": "TPM Encryption Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000094", "status": "FAILED", "details": "Encryption Mode: " ~ sys.get('crypto_mode', 'None')}) %}
+{% endif %}
+
+{# ESXI-70-000095: Secure Boot Enforcement #}
+{% if sys.get('secure_boot_required')|string|lower == 'true' %}
+    {% set _ = res.append({"id": "ESXI-70-000095", "status": "PASSED", "details": "Secure Boot Enforced"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000095", "status": "FAILED", "details": "Secure Boot not enforced"}) %}
+{% endif %}
+
+{# ESXI-70-000047: Acceptance Level #}
+{% if sys.get('acceptance_level') == 'PartnerSupported' or sys.get('acceptance_level') == 'VMwareAccepted' %}
+    {% set _ = res.append({"id": "ESXI-70-000047", "status": "PASSED", "details": "Acceptance Level: " ~ sys.get('acceptance_level')}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000047", "status": "FAILED", "details": "Invalid Level: " ~ sys.get('acceptance_level')}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# AUTHENTICATION & AD                                               #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000037 & 39: Active Directory #}
+{# We check if the ESX Admins group is configured as a proxy for AD join status #}
+{% set ad_group = adv.get('Config.HostAgent.plugins.hostsvc.esxAdminsGroup', '') %}
+{% if ad_group|length > 0 and ad_group != 'root' %}
+    {% set _ = res.append({"id": "ESXI-70-000039", "status": "PASSED", "details": "AD Group Configured: " ~ ad_group}) %}
+    {% set _ = res.append({"id": "ESXI-70-000037", "status": "PASSED", "details": "Host appears joined to AD (Admin group present)"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000039", "status": "FAILED", "details": "ESX Admins group not set"}) %}
+    {% set _ = res.append({"id": "ESXI-70-000037", "status": "FAILED", "details": "AD Join not detected"}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# STORAGE & iSCSI                                                   #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000054: iSCSI CHAP #}
+{# Logic: If no iSCSI is found, it's N/A (Pass). If found, must be 'Required'. #}
+{# This data would need to be in the 'storage' block of discovery. #}
+{# Assuming 'storage' dict exists in your discovery script output #}
+{% set iscsi_check = item.get('storage', {}).get('iscsi_chap') %}
+{% if iscsi_check == 'Required' or iscsi_check is undefined %}
+    {% set _ = res.append({"id": "ESXI-70-000054", "status": "PASSED", "details": "CHAP is Required or iSCSI not used"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000054", "status": "FAILED", "details": "CHAP Level: " ~ iscsi_check}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# WARNINGS & FIREWALL                                               #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000081: Hyperthreading Warning #}
+{# '0' means warnings are NOT suppressed (Good) #}
+{% if adv.get('UserVars.SuppressHyperthreadWarning')|int == 0 %}
+    {% set _ = res.append({"id": "ESXI-70-000081", "status": "PASSED", "details": "HT Warnings Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000081", "status": "FAILED", "details": "HT Warnings Suppressed"}) %}
+{% endif %}
+
+{# ESXI-70-000056: Firewall Restrictions #}
+{# Checking if Incoming/Outgoing is restricted (True = Restricted, False = Any/All) #}
+{# Requires 'network.fw_incoming_enabled' from discovery #}
+{% if net.get('fw_incoming_enabled') == true %}
+    {% set _ = res.append({"id": "ESXI-70-000056", "status": "PASSED", "details": "Firewall restricts incoming"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000056", "status": "FAILED", "details": "Firewall allows all incoming"}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# ACCESS & LOCKDOWN (Existing checks retained below)                #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000001: Lockdown Mode #}
+{% if item.get('lockdown_mode', 'disabled') != 'disabled' %}
+    {% set _ = res.append({"id": "ESXI-70-000001", "status": "PASSED", "details": "Lockdown Mode is Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000001", "status": "FAILED", "details": "Lockdown Mode is Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000002: DCUI Access #}
+{% set dcui_users = adv.get('DCUI.Access', '') %}
+{% if dcui_users == 'root' or dcui_users == '' %}
+    {% set _ = res.append({"id": "ESXI-70-000002", "status": "PASSED", "details": "DCUI Access limited to root"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000002", "status": "FAILED", "details": "DCUI Access includes: " ~ dcui_users}) %}
+{% endif %}
+
+{# ESXI-70-000003: Lockdown Exceptions #}
+{% if item.get('lockdown_exceptions', []) | length == 0 %}
+    {% set _ = res.append({"id": "ESXI-70-000003", "status": "PASSED", "details": "No lockdown exceptions found"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000003", "status": "FAILED", "details": "Lockdown exceptions found: " ~ item.get('lockdown_exceptions')}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# LOGGING & AUDITING                                                #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000004: Remote Logging #}
+{% if adv.get('Syslog.global.logHost', '') | length > 0 %}
+    {% set _ = res.append({"id": "ESXI-70-000004", "status": "PASSED", "details": "Remote log host configured"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000004", "status": "FAILED", "details": "No remote log host defined"}) %}
+{% endif %}
+
+{# ESXI-70-000030: Log Level #}
+{% if adv.get('Config.HostAgent.log.level', '') == 'info' %}
+    {% set _ = res.append({"id": "ESXI-70-000030", "status": "PASSED", "details": "Log level is info"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000030", "status": "FAILED", "details": "Log level: " ~ adv.get('Config.HostAgent.log.level')}) %}
+{% endif %}
+
+{# ESXI-70-000045: Persistent Logging #}
+{% if adv.get('Syslog.global.logDir') != '[] /scratch/log' %}
+    {% set _ = res.append({"id": "ESXI-70-000045", "status": "PASSED", "details": "Persistent logging configured"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000045", "status": "FAILED", "details": "Logging to scratch (non-persistent)"}) %}
+{% endif %}
+
+{# ESXI-70-000086: SSL Syslog #}
+{% if adv.get('Syslog.global.logCheckSSLCerts')|string|lower == 'true' %}
+    {% set _ = res.append({"id": "ESXI-70-000086", "status": "PASSED", "details": "Syslog SSL Cert Check Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000086", "status": "FAILED", "details": "Syslog SSL Cert Check Disabled"}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# ACCOUNT POLICY                                                    #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000005: Lockout Failures #}
+{% if adv.get('Security.AccountLockFailures')|int == 3 %}
+    {% set _ = res.append({"id": "ESXI-70-000005", "status": "PASSED", "details": "Max failures set to 3"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000005", "status": "FAILED", "details": "Max failures: " ~ adv.get('Security.AccountLockFailures')}) %}
+{% endif %}
+
+{# ESXI-70-000006: Unlock Time #}
+{% if adv.get('Security.AccountUnlockTime')|int == 900 %}
+    {% set _ = res.append({"id": "ESXI-70-000006", "status": "PASSED", "details": "Unlock time set to 900s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000006", "status": "FAILED", "details": "Unlock time: " ~ adv.get('Security.AccountUnlockTime')}) %}
+{% endif %}
+
+{# ESXI-70-000031 & 32: Password Quality & History #}
+{% set pwd_qual = adv.get('Security.PasswordQualityControl', '') %}
+{% if 'retry=3' in pwd_qual and 'min=disabled' in pwd_qual %}
+    {% set _ = res.append({"id": "ESXI-70-000031", "status": "PASSED", "details": "Password complexity compliant"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000031", "status": "FAILED", "details": "Complexity: " ~ pwd_qual}) %}
+{% endif %}
+
+{% if adv.get('Security.PasswordHistory')|int == 5 %}
+    {% set _ = res.append({"id": "ESXI-70-000032", "status": "PASSED", "details": "Password history 5"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000032", "status": "FAILED", "details": "Password history: " ~ adv.get('Security.PasswordHistory')}) %}
+{% endif %}
+
+{# ESXI-70-000091: Max Password Days #}
+{% if adv.get('Security.PasswordMaxDays')|int == 90 %}
+    {% set _ = res.append({"id": "ESXI-70-000091", "status": "PASSED", "details": "Max days 90"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000091", "status": "FAILED", "details": "Max days: " ~ adv.get('Security.PasswordMaxDays')}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# TIMEOUTS                                                          #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000041: Shell Interactive Timeout #}
+{% if adv.get('UserVars.ESXiShellInteractiveTimeOut')|int == 120 %}
+    {% set _ = res.append({"id": "ESXI-70-000041", "status": "PASSED", "details": "Shell Interactive Timeout 120s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000041", "status": "FAILED", "details": "Timeout: " ~ adv.get('UserVars.ESXiShellInteractiveTimeOut')}) %}
+{% endif %}
+
+{# ESXI-70-000042: Shell Timeout #}
+{% if adv.get('UserVars.ESXiShellTimeOut')|int == 600 %}
+    {% set _ = res.append({"id": "ESXI-70-000042", "status": "PASSED", "details": "Shell Timeout 600s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000042", "status": "FAILED", "details": "Timeout: " ~ adv.get('UserVars.ESXiShellTimeOut')}) %}
+{% endif %}
+
+{# ESXI-70-000043: DCUI Timeout #}
+{% if adv.get('UserVars.DcuiTimeOut')|int == 120 %}
+    {% set _ = res.append({"id": "ESXI-70-000043", "status": "PASSED", "details": "DCUI Timeout 120s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000043", "status": "FAILED", "details": "Timeout: " ~ adv.get('UserVars.DcuiTimeOut')}) %}
+{% endif %}
+
+{# ESXI-70-000088: vSphere API Timeout #}
+{% if adv.get('Config.HostAgent.vmacore.soap.sessionTimeout')|int == 30 %}
+    {% set _ = res.append({"id": "ESXI-70-000088", "status": "PASSED", "details": "API Timeout 30s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000088", "status": "FAILED", "details": "Timeout: " ~ adv.get('Config.HostAgent.vmacore.soap.sessionTimeout')}) %}
+{% endif %}
+
+{# ESXI-70-000089: Host Client Timeout #}
+{% if adv.get('UserVars.HostClientSessionTimeout')|int == 600 %}
+    {% set _ = res.append({"id": "ESXI-70-000089", "status": "PASSED", "details": "Host Client Timeout 600s"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000089", "status": "FAILED", "details": "Timeout: " ~ adv.get('UserVars.HostClientSessionTimeout')}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# SERVICES & PROTOCOLS                                              #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000034: MOB Disabled #}
+{% if adv.get('Config.HostAgent.plugins.solo.enableMob')|string|lower == 'false' %}
+    {% set _ = res.append({"id": "ESXI-70-000034", "status": "PASSED", "details": "MOB Disabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000034", "status": "FAILED", "details": "MOB Enabled"}) %}
+{% endif %}
+
+{# ESXI-70-000035: SSH Disabled #}
+{% if svcs.get('TSM-SSH', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000035", "status": "PASSED", "details": "SSH Service Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000035", "status": "FAILED", "details": "SSH Service Running"}) %}
+{% endif %}
+
+{# ESXI-70-000036: ESXi Shell Disabled #}
+{% if svcs.get('TSM', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000036", "status": "PASSED", "details": "ESXi Shell Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000036", "status": "FAILED", "details": "ESXi Shell Running"}) %}
+{% endif %}
+
+{# ESXI-70-000046: NTP Configured #}
+{% if svcs.get('ntpd', {}).get('running') == true and svcs.get('ntpd', {}).get('policy') == 'on' %}
+    {% set _ = res.append({"id": "ESXI-70-000046", "status": "PASSED", "details": "NTP Running and Policy On"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000046", "status": "FAILED", "details": "NTP not running or incorrect policy"}) %}
+{% endif %}
+
+{# ESXI-70-000053: SNMP #}
+{# Note: This is usually checked via SSH (esxcli) in the bottom half, but logic placeholder here #}
+
+{# ESXI-70-000083: SLP Disabled #}
+{% if svcs.get('slpd', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000083", "status": "PASSED", "details": "SLP Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000083", "status": "FAILED", "details": "SLP Running"}) %}
+{% endif %}
+
+{# ESXI-70-000097: CIM Watchdog Disabled #}
+{% if svcs.get('sfcbd-watchdog', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000097", "status": "PASSED", "details": "CIM Watchdog Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000097", "status": "FAILED", "details": "CIM Watchdog Running"}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# NETWORKING & VSWITCHES                                            #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000058: Block Guest BPDU #}
+{% if adv.get('Net.BlockGuestBPDU')|int == 1 %}
+    {% set _ = res.append({"id": "ESXI-70-000058", "status": "PASSED", "details": "Guest BPDU Blocked"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000058", "status": "FAILED", "details": "Guest BPDU Allowed"}) %}
+{% endif %}
+
+{# ESXI-70-000062: dvFilter IP #}
+{% if adv.get('Net.DVFilterBindIpAddress', '') == '' %}
+    {% set _ = res.append({"id": "ESXI-70-000062", "status": "PASSED", "details": "dvFilter IP restricted"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000062", "status": "FAILED", "details": "dvFilter IP set: " ~ adv.get('Net.DVFilterBindIpAddress')}) %}
+{% endif %}
+
+{# ESXI-70-000059, 60, 61: vSwitch Security Policies #}
+{# Iterate over all found vSwitches #}
+{% set secure_vswitch = true %}
+{% for vs in vswitches %}
+    {% if vs.get('forged_transmits') == true or vs.get('mac_changes') == true or vs.get('promiscuous') == true %}
+        {% set secure_vswitch = false %}
+    {% endif %}
+{% endfor %}
+
+{% if secure_vswitch %}
+    {% set _ = res.append({"id": "ESXI-70-000059", "status": "PASSED", "details": "Forged Transmits Disabled on all"}) %}
+    {% set _ = res.append({"id": "ESXI-70-000060", "status": "PASSED", "details": "MAC Changes Disabled on all"}) %}
+    {% set _ = res.append({"id": "ESXI-70-000061", "status": "PASSED", "details": "Promiscuous Mode Disabled on all"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000059", "status": "FAILED", "details": "Check vSwitch security policies"}) %}
+    {% set _ = res.append({"id": "ESXI-70-000060", "status": "FAILED", "details": "Check vSwitch security policies"}) %}
+    {% set _ = res.append({"id": "ESXI-70-000061", "status": "FAILED", "details": "Check vSwitch security policies"}) %}
+{% endif %}
+
+{# ----------------------------------------------------------------- #}
+{# MISC SECURITY                                                     #}
+{# ----------------------------------------------------------------- #}
+
+{# ESXI-70-000007: DoD Banner #}
+{% if "USG-authorized use only" in adv.get('Annotations.WelcomeMessage', '') %}
+    {% set _ = res.append({"id": "ESXI-70-000007", "status": "PASSED", "details": "Banner present"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000007", "status": "FAILED", "details": "Banner missing/incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000055: Salted Sharing #}
+{% if adv.get('Mem.ShareForceSalting')|int == 2 %}
+    {% set _ = res.append({"id": "ESXI-70-000055", "status": "PASSED", "details": "Salting Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000055", "status": "FAILED", "details": "Salting Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000074: TLS Versions #}
+{# Checking if TLS1.0 and 1.1 are disabled in the string #}
+{% set tls = adv.get('UserVars.ESXiVPsDisabledProtocols', '') %}
+{% if 'tlsv1,' in tls and 'tlsv1.1' in tls %}
+    {% set _ = res.append({"id": "ESXI-70-000074", "status": "PASSED", "details": "TLS 1.0/1.1 Disabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000074", "status": "FAILED", "details": "Insecure protocols: " ~ tls}) %}
+{% endif %}
+
+{# ESXI-70-000087: Eager Zero #}
+{% if adv.get('Mem.MemEagerZero')|int == 1 %}
+    {% set _ = res.append({"id": "ESXI-70-000087", "status": "PASSED", "details": "Eager Zero Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000087", "status": "FAILED", "details": "Eager Zero Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000079: Shell Warnings #}
+{% if adv.get('UserVars.SuppressShellWarning')|string|lower == 'false' %}
+    {% set _ = res.append({"id": "ESXI-70-000079", "status": "PASSED", "details": "Shell Warnings Active"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000079", "status": "FAILED", "details": "Shell Warnings Suppressed"}) %}
+{% endif %}
+
+{# ================================================================= #}
+{#  SSH / ROOT SHELL AUDIT CHECKS (Bottom Half)                      #}
+{# ================================================================= #}
+
+{# 1. Safely Load Data #}
+{% set ssh = ssh_audit_results | default({}) %}
+{% set issue_banner = ssh.get('banner_content', '') %}
+{% set banner_expect = ssh.get('banner_expected', 'EXPECTED_BANNER_NOT_LOADED') %}
+{% set sshd_conf = ssh.get('sshd_config', '') %}
+
+{# ESXI-70-000008: Banner Text Exact Match #}
+{# (Comparing exact strings, regex not needed here) #}
+{% if issue_banner == banner_expect %}
+    {% set _ = res.append({"id": "ESXI-70-000008", "status": "PASSED", "details": "Banner matches approved DoD text exactly"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000008", "status": "FAILED", "details": "Banner text mismatch. Actual length: " ~ issue_banner|length}) %}
+{% endif %}
+
+{# ESXI-70-000009: SSHD Banner Directive #}
+{# Match 'Banner /etc/issue' at start of a line #}
+{% if sshd_conf is search('(?im)^Banner\s+/etc/issue') %}
+    {% set _ = res.append({"id": "ESXI-70-000009", "status": "PASSED", "details": "SSHD Banner configured"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000009", "status": "FAILED", "details": "Banner directive missing/commented in sshd_config"}) %}
+{% endif %}
+
+{# ESXI-70-000010: FIPS SSH #}
+{% if ssh.get('fips_ssh') == 'true' %}
+    {% set _ = res.append({"id": "ESXI-70-000010", "status": "PASSED", "details": "SSH FIPS Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000010", "status": "FAILED", "details": "SSH FIPS Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000012: IgnoreRhosts #}
+{% if sshd_conf is search('(?im)^IgnoreRhosts\s+yes') %}
+    {% set _ = res.append({"id": "ESXI-70-000012", "status": "PASSED", "details": "IgnoreRhosts yes"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000012", "status": "FAILED", "details": "IgnoreRhosts incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000013: HostbasedAuthentication #}
+{% if sshd_conf is search('(?im)^HostbasedAuthentication\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000013", "status": "PASSED", "details": "HostbasedAuthentication no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000013", "status": "FAILED", "details": "HostbasedAuthentication incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000014: PermitRootLogin #}
+{% if sshd_conf is search('(?im)^PermitRootLogin\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000014", "status": "PASSED", "details": "PermitRootLogin no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000014", "status": "FAILED", "details": "PermitRootLogin allowed"}) %}
+{% endif %}
+
+{# ESXI-70-000015: PermitEmptyPasswords #}
+{% if sshd_conf is search('(?im)^PermitEmptyPasswords\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000015", "status": "PASSED", "details": "PermitEmptyPasswords no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000015", "status": "FAILED", "details": "Empty passwords permitted"}) %}
+{% endif %}
+
+{# ESXI-70-000016: PermitUserEnvironment #}
+{% if sshd_conf is search('(?im)^PermitUserEnvironment\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000016", "status": "PASSED", "details": "PermitUserEnvironment no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000016", "status": "FAILED", "details": "User environment permitted"}) %}
+{% endif %}
+
+{# ESXI-70-000020: StrictModes #}
+{% if sshd_conf is search('(?im)^StrictModes\s+yes') %}
+    {% set _ = res.append({"id": "ESXI-70-000020", "status": "PASSED", "details": "StrictModes yes"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000020", "status": "FAILED", "details": "StrictModes incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000021: Compression #}
+{% if sshd_conf is search('(?im)^Compression\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000021", "status": "PASSED", "details": "Compression no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000021", "status": "FAILED", "details": "Compression enabled or commented out"}) %}
+{% endif %}
+
+{# ESXI-70-000022: GatewayPorts #}
+{% if sshd_conf is search('(?im)^GatewayPorts\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000022", "status": "PASSED", "details": "GatewayPorts no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000022", "status": "FAILED", "details": "GatewayPorts enabled"}) %}
+{% endif %}
+
+{# ESXI-70-000023: X11Forwarding #}
+{% if sshd_conf is search('(?im)^X11Forwarding\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000023", "status": "PASSED", "details": "X11Forwarding no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000023", "status": "FAILED", "details": "X11Forwarding enabled"}) %}
+{% endif %}
+
+{# ESXI-70-000025: PermitTunnel #}
+{% if sshd_conf is search('(?im)^PermitTunnel\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000025", "status": "PASSED", "details": "PermitTunnel no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000025", "status": "FAILED", "details": "Tunnels permitted"}) %}
+{% endif %}
+
+{# ESXI-70-000026: ClientAliveCountMax #}
+{% if sshd_conf is search('(?im)^ClientAliveCountMax\s+3') %}
+    {% set _ = res.append({"id": "ESXI-70-000026", "status": "PASSED", "details": "ClientAliveCountMax 3"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000026", "status": "FAILED", "details": "ClientAliveCountMax incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000027: ClientAliveInterval #}
+{% if sshd_conf is search('(?im)^ClientAliveInterval\s+200') %}
+    {% set _ = res.append({"id": "ESXI-70-000027", "status": "PASSED", "details": "ClientAliveInterval 200"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000027", "status": "FAILED", "details": "ClientAliveInterval incorrect"}) %}
+{% endif %}
+
+{# ESXI-70-000053: SNMP #}
+{% if ssh.get('snmp_enable') == 'false' %}
+    {% set _ = res.append({"id": "ESXI-70-000053", "status": "PASSED", "details": "SNMP Disabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000053", "status": "FAILED", "details": "SNMP Enabled"}) %}
+{% endif %}
+
+{# ESXI-70-000057: Firewall Default #}
+{% if ssh.get('firewall_default')|upper == 'DROP' %}
+    {% set _ = res.append({"id": "ESXI-70-000057", "status": "PASSED", "details": "Default Action: Drop"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000057", "status": "FAILED", "details": "Default Action: " ~ ssh.get('firewall_default', 'Pass')}) %}
+{% endif %}
+
+{# ESXI-70-000076: Secure Boot #}
+{% if "Enabled" in ssh.get('secure_boot', '') %}
+    {% set _ = res.append({"id": "ESXI-70-000076", "status": "PASSED", "details": "Secure Boot Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000076", "status": "FAILED", "details": "Secure Boot: " ~ ssh.get('secure_boot', 'Unknown')}) %}
+{% endif %}
+
+{# ESXI-70-000082: AllowTcpForwarding #}
+{% if sshd_conf is search('(?im)^AllowTcpForwarding\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000082", "status": "PASSED", "details": "AllowTcpForwarding no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000082", "status": "FAILED", "details": "AllowTcpForwarding enabled"}) %}
+{% endif %}
+
+{# ESXI-70-000084: Audit Logging #}
+{% if ssh.get('audit_local') == 'enabled' and ssh.get('audit_remote') == 'enabled' %}
+    {% set _ = res.append({"id": "ESXI-70-000084", "status": "PASSED", "details": "Audit records enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000084", "status": "FAILED", "details": "Audit logging disabled or partial"}) %}
+{% endif %}
+
+{# ESXI-70-000085: Syslog X509 #}
+{% if ssh.get('syslog_x509') == 'true' %}
+    {% set _ = res.append({"id": "ESXI-70-000085", "status": "PASSED", "details": "Strict X509 Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000085", "status": "FAILED", "details": "Strict X509 Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000090: FIPS Proxy #}
+{% if ssh.get('fips_proxy') == 'true' %}
+    {% set _ = res.append({"id": "ESXI-70-000090", "status": "PASSED", "details": "rhttpproxy FIPS Enabled"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000090", "status": "FAILED", "details": "rhttpproxy FIPS Disabled"}) %}
+{% endif %}
+
+{# ESXI-70-000092: VM Settings Override #}
+{% if ssh.get('vmware_settings')|length == 0 %}
+    {% set _ = res.append({"id": "ESXI-70-000092", "status": "PASSED", "details": "/etc/vmware/settings is empty"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000092", "status": "FAILED", "details": "Overrides found in /etc/vmware/settings"}) %}
+{% endif %}
+
+{# ESXI-70-000093: VMX Log Override #}
+{% if ssh.get('vmx_log_override')|length > 0 %}
+    {% set _ = res.append({"id": "ESXI-70-000093", "status": "FAILED", "details": "Found vmx.log override in /etc/vmware/config"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000093", "status": "PASSED", "details": "No vmx.log overrides found"}) %}
+{% endif %}
+
+{# ESXI-70-00274: SSH Ciphers #}
+{% if sshd_conf is search('(?im)^Ciphers\s+aes256-gcm@openssh.com') %}
+    {% set _ = res.append({"id": "ESXI-70-00274", "status": "PASSED", "details": "FIPS Ciphers configured"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-00274", "status": "FAILED", "details": "Cipher list incorrect"}) %}
+{% endif %}
+
+{{ res | to_json }}

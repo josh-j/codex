@@ -1,0 +1,67 @@
+# ConfigMgr Application Updates Report
+
+**Hostname:** {{ inventory_hostname }}
+**Date:** {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+**Total Applications Found:** {{ total_apps }}
+**Applications to Update:** {{ apps_to_update | length }}
+**Excluded Applications:** {{ excluded_app_names | length }}
+**Successful Updates:** {{ successful_updates | length }}
+**Failed Updates:** {{ failed_updates | length }}
+
+---
+
+## Update Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Force Update | {{ force_update | default(false) }} |
+| Allow Reboot | {{ allow_reboot | default(false) }} |
+| Priority | {{ update_priority | default('Normal') }} |
+| Timeout (minutes) | {{ timeout_minutes | default(30) }} |
+| Exclusion Patterns | {{ excluded_apps | join(', ') if excluded_apps | length > 0 else 'None' }} |
+
+---
+
+## Successful Updates
+
+| Application Name | Version | Publisher | Status |
+|------------------|---------|-----------|--------|
+{% for result in successful_updates %}
+{% set app = apps_to_update[loop.index0] %}
+| {{ app.Name }} | {{ app.Version }} | {{ app.Publisher }} | ✓ Success |
+{% endfor %}
+
+{% if successful_updates | length == 0 %}
+*No successful updates*
+{% endif %}
+
+---
+
+## Failed Updates
+
+| Application Name | Version | Publisher | Error |
+|------------------|---------|-----------|-------|
+{% for result in failed_updates %}
+{% set app = apps_to_update[loop.index0] %}
+| {{ app.Name }} | {{ app.Version }} | {{ app.Publisher }} | {{ result.msg | default('Unknown error') }} |
+{% endfor %}
+
+{% if failed_updates | length == 0 %}
+*No failed updates*
+{% endif %}
+
+---
+
+## Excluded Applications
+
+{% if excluded_app_names | length > 0 %}
+| Application Name |
+|------------------|
+{% for app_name in excluded_app_names %}
+| {{ app_name }} |
+{% endfor %}
+{% else %}
+*No applications excluded*
+{% endif %}
+
+---

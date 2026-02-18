@@ -1,0 +1,16 @@
+# inventory/group_vars/all/ucs.yaml
+ucs:
+  config:
+    # Fault severity levels to report
+    report_fault_severities:
+      - critical
+      - major
+      - warning
+
+    # Fault age threshold (hours) - ignore old faults
+    fault_age_threshold_hours: 168  # 7 days
+
+    # Report settings
+    # INHERIT GLOBAL ROOT
+    report_directory: "{{ ops.config.report_directory }}"
+    export_csv: true

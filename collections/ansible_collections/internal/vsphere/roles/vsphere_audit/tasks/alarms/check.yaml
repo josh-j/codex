@@ -1,0 +1,33 @@
+
+---
+# roles/vsphere/tasks/alarms/check.yaml
+# Explicit checks for Active vCenter Alarms
+
+- name: "Check: Critical Alarms Active"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "CRITICAL"
+    ops_alert_category: "alarms"
+    ops_alert_message: "{{ vcenter.alarms.metrics.critical_count }} critical alarm(s) active in vCenter"
+    ops_alert_details:
+      critical_count: "{{ vcenter.alarms.metrics.critical_count }}"
+      warning_count: "{{ vcenter.alarms.metrics.warning_count }}"
+    ops_alert_affected_items: "{{ vcenter.alarms.by_severity.critical }}"
+  when: vcenter.alarms.metrics.critical_count | default(0) | int > 0
+
+- name: "Check: Warning Alarms Active"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "alarms"
+    ops_alert_message: "{{ vcenter.alarms.metrics.warning_count }} warning alarm(s) active in vCenter"
+    ops_alert_details:
+      warning_count: "{{ vcenter.alarms.metrics.warning_count }}"
+    ops_alert_affected_items: "{{ vcenter.alarms.by_severity.warning }}"
+  when:
+    - vcenter.alarms.metrics.warning_count | default(0) | int > 0
+    - vcenter.alarms.metrics.critical_count | default(0) | int == 0

@@ -1,0 +1,33 @@
+---
+# roles/vsphere/tasks/resources/export.yaml
+# Export global aggregate resource metrics to CSV
+
+- name: Export global resource summary
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "global_resources"
+    ops_csv_headers:
+      [
+        "vCenter", "Total Clusters", "Total Hosts",
+        "Global CPU (%)", "Global Memory (%)", "Global Storage (%)",
+        "Hosts in Maintenance", "Clusters w/o HA", "Clusters w/o DRS"
+      ]
+    ops_csv_keys:
+      [
+        "vcenter", "clusters", "hosts",
+        "cpu_usage_pct", "memory_usage_pct", "storage_usage_pct",
+        "maintenance_mode_hosts", "ha_disabled", "drs_disabled"
+      ]
+    ops_csv_data:
+      - vcenter: "{{ inventory_hostname }}"
+        clusters: "{{ vcenter.resources.clusters.total }}"
+        hosts: "{{ vcenter.resources.hosts.total }}"
+        cpu_usage_pct: "{{ vcenter.resources.cpu.usage_pct }}"
+        memory_usage_pct: "{{ vcenter.resources.memory.usage_pct }}"
+        storage_usage_pct: "{{ vcenter.resources.storage.usage_pct }}"
+        maintenance_mode_hosts: "{{ vcenter.resources.hosts.maintenance_count }}"
+        ha_disabled: "{{ vcenter.resources.clusters.ha_disabled_count }}"
+        drs_disabled: "{{ vcenter.resources.clusters.drs_disabled_count }}"
+  when: vcenter.config.export_csv

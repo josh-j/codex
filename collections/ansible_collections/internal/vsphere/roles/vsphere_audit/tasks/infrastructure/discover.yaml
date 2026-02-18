@@ -1,0 +1,288 @@
+---
+# roles/vsphere/tasks/infrastructure/discover.yaml
+# Discovery: vCenter Appliance Health, Backup, Datacenters, Clusters, and Hosts
+
+# Common safety var for all VMware calls in this file
+- name: Set common discovery vars
+  ansible.builtin.set_fact:
+    _vc_validate_certs: "{{ (vcenter.config | default({})).get('validate_certs', false) | bool }}"
+  changed_when: false
+
+# ========================================================================
+# 1. VCENTER APPLIANCE HEALTH & CONFIGURATION
+# ========================================================================
+- name: VCenter appliance deep discovery
+  block:
+    - name: Gather full vCenter appliance info
+      vmware.vmware.appliance_info:
+        hostname: "{{ vcenter.connection.hostname }}"
+        username: "{{ vcenter.connection.username }}"
+        password: "{{ vcenter.connection.password }}"
+        validate_certs: "{{ _vc_validate_certs }}"
+        properties: [all]
+      register: _appliance_raw
+      delegate_to: localhost
+      retries: 3
+      delay: 2
+      until: _appliance_raw is succeeded
+
+    - name: Normalize Appliance Health & Config
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'appliance': appliance_data}, recursive=true) }}"
+      vars:
+        _summ: "{{ _appliance_raw.appliance.summary | default({}) }}"
+        _health: "{{ _summ.health | default({}) }}"
+        _access: "{{ _appliance_raw.appliance.access | default({}) }}"
+        _time: "{{ _appliance_raw.appliance.time | default({}) }}"
+        appliance_data:
+          info:
+            product: "{{ _summ.product | default('VMware vCenter Server') }}"
+            version: "{{ _summ.version | default('unknown') }}"
+            build: "{{ _summ.build_number | default('unknown') }}"
+            uptime_days: "{{ (_summ.uptime | default(0) | float / 86400) | round(1) }}"
+          health:
+            overall: "{{ _health.overall | default('unknown') }}"
+            cpu: "{{ _health.cpu | default('unknown') }}"
+            memory: "{{ _health.memory | default('unknown') }}"
+            database: "{{ _health.database | default('unknown') }}"
+            storage: "{{ _health.storage | default('unknown') }}"
+            swap: "{{ _health.swap | default('unknown') }}"
+          config:
+            ssh_enabled: "{{ _access.ssh | default(false) }}"
+            shell_enabled: "{{ (_access.shell | default({})).enabled | default(false) }}"
+            ntp_servers: "{{ (_time.time_sync | default({})).servers | default([]) }}"
+            timezone: "{{ _time.time_zone | default('unknown') }}"
+          backup: {}
+
+    - name: Set 'about' shortcut
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'about': (vcenter.appliance.info | default({}))}, recursive=true) }}"
+      changed_when: false
+
+    - name: Log Appliance Health
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: >-
+          vCenter {{ (vcenter.appliance.info | default({})).version | default('unknown') }}
+          Health: {{ (vcenter.appliance.health | default({})).overall | default('unknown') | upper }}
+          (DB: {{ (vcenter.appliance.health | default({})).database | default('unknown') }},
+           Storage: {{ (vcenter.appliance.health | default({})).storage | default('unknown') }})
+
+    # --- VCSA BACKUP DISCOVERY ---
+    - name: Get VCSA Backup Configuration
+      vmware.vmware.vcsa_backup_schedule_info:
+        hostname: "{{ vcenter.connection.hostname }}"
+        username: "{{ vcenter.connection.username }}"
+        password: "{{ vcenter.connection.password }}"
+        validate_certs: "{{ _vc_validate_certs }}"
+      register: _vcsa_backup_info
+      delegate_to: localhost
+      failed_when: false
+      changed_when: false
+
+    - name: Normalize VCSA Backup Info
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'appliance': {'backup': vcsa_backup_data}}, recursive=true) }}"
+      vars:
+        schedules: "{{ _vcsa_backup_info.schedules | default([]) }}"
+        enabled_schedule: "{{ schedules | selectattr('enabled', 'equalto', true) | list | first | default({}) }}"
+        vcsa_backup_data:
+          configured: "{{ schedules | length > 0 }}"
+          enabled: "{{ enabled_schedule.enabled | default(false) }}"
+          location: "{{ enabled_schedule.location | default('Not Configured') }}"
+          recurrence: >-
+            {{
+              (enabled_schedule.schedule.days_of_week | default([])) | join(', ')
+              if enabled_schedule.schedule is defined else 'None'
+            }}
+
+  rescue:
+    - name: Log appliance info failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Failed to gather appliance info: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+# ========================================================================
+# 2. DATACENTERS (REST - avoids community.vmware dependency)
+# ========================================================================
+- name: Datacenter discovery
+  block:
+    - name: Get datacenter info from vCenter (REST)
+      vmware.vmware_rest.vcenter_datacenter_info:
+        vcenter_hostname: "{{ vcenter.connection.hostname }}"
+        vcenter_username: "{{ vcenter.connection.username }}"
+        vcenter_password: "{{ vcenter.connection.password }}"
+        vcenter_validate_certs: "{{ _vc_validate_certs }}"
+      register: _datacenters_raw
+      delegate_to: localhost
+      retries: 3
+      delay: 2
+      until: _datacenters_raw is succeeded
+
+    - name: Store datacenter list + names + metrics
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'datacenters': _dc_block}, recursive=true) }}"
+      vars:
+        _dc_list: "{{ _datacenters_raw.value | default([]) }}"
+        _dc_names: "{{ _dc_list | map(attribute='name') | list }}"
+        _dc_block:
+          list: "{{ _dc_list }}"
+          names: "{{ _dc_names }}"
+          metrics:
+            total: "{{ _dc_list | length }}"
+
+    - name: Set target datacenter (default to first)
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'datacenter': {'name': _target}}, recursive=true) }}"
+      vars:
+        _target: "{{ (vcenter.datacenters.names | default([]) | first) | default('') }}"
+      when:
+        - (vcenter.datacenter.name | default('')) == ''
+        - (vcenter.datacenters.names | default([])) | length > 0
+
+    - name: Log datacenter discovery
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: >-
+          Found {{ vcenter.datacenters.metrics.total | default(0) }} datacenter(s):
+          {{ (vcenter.datacenters.names | default([])) | join(', ') }}
+
+  rescue:
+    - name: Log datacenter discovery failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Failed to gather datacenter info: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+# ========================================================================
+# 3. CLUSTERS (Enhanced Metrics)
+# ========================================================================
+- name: Cluster collection - gather cluster data from all datacenters
+  block:
+    - name: Initialize empty cluster collection
+      ansible.builtin.set_fact:
+        _all_clusters: {}
+      changed_when: false
+
+    - name: Get cluster info for each datacenter
+      vmware.vmware.cluster_info:
+        hostname: "{{ vcenter.connection.hostname }}"
+        username: "{{ vcenter.connection.username }}"
+        password: "{{ vcenter.connection.password }}"
+        validate_certs: "{{ _vc_validate_certs }}"
+        datacenter: "{{ item }}"
+      register: _clusters_per_dc
+      delegate_to: localhost
+      failed_when: false
+      retries: 3
+      delay: 2
+      loop: "{{ vcenter.datacenters.names | default([]) }}"
+      when: (vcenter.datacenters.names | default([])) | length > 0
+
+    - name: Consolidate clusters
+      ansible.builtin.set_fact:
+        _all_clusters: "{{ _all_clusters | combine(item.clusters | default({}), recursive=true) }}"
+      loop: "{{ _clusters_per_dc.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item | default('unknown-dc') }}"
+      when:
+        - item is mapping
+        - item.clusters is defined
+
+    - name: Enrich cluster data (metrics & config)
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'clusters': {'by_name': _enriched_clusters}}, recursive=true) }}"
+      vars:
+        _enriched_clusters: >-
+          {%- set result = {} -%}
+          {%- for name, data in _all_clusters.items() -%}
+            {%- set res = data.resource_summary | default({}) -%}
+            {%- set cpu_cap = (res.cpuCapacityMHz | default(1) | int) -%}
+            {%- set mem_cap = (res.memCapacityMB | default(1) | int) -%}
+            {%- set cpu_cap = 1 if cpu_cap == 0 else cpu_cap -%}
+            {%- set mem_cap = 1 if mem_cap == 0 else mem_cap -%}
+            {%- set enriched = data | combine({
+              'utilization': {
+                'cpu_used_mhz': (res.cpuUsedMHz | default(0)),
+                'cpu_total_mhz': cpu_cap,
+                'mem_used_mb': (res.memUsedMB | default(0)),
+                'mem_total_mb': mem_cap,
+                'cpu_pct': (((res.cpuUsedMHz | default(0) | int) / cpu_cap) * 100) | round(1),
+                'mem_pct': (((res.memUsedMB  | default(0) | int) / mem_cap) * 100) | round(1)
+              },
+              'compliance': {
+                'ha_enabled': (data.ha_enabled | default(false)),
+                'drs_enabled': (data.drs_enabled | default(false)),
+                'vsan_enabled': (data.vsan_enabled | default(false))
+              }
+            }, recursive=true) -%}
+            {%- set _ = result.update({name: enriched}) -%}
+          {%- endfor -%}
+          {{ result }}
+
+  rescue:
+    - name: Log cluster discovery failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Failed to gather cluster info: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+# ========================================================================
+# 4. HOSTS (Derived)
+# ========================================================================
+- name: Host extraction - extract and index hosts from cluster data
+  block:
+    - name: Extract hosts from all clusters (Jinja2 transform)
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'hosts': {'list': _extracted_hosts}}, recursive=true) }}"
+      vars:
+        _extracted_hosts: >-
+          {%- set results = [] -%}
+          {%- for cname, cdata in (vcenter.clusters.by_name | default({})).items() -%}
+            {%- for h in (cdata.hosts | default([])) -%}
+              {%- set _ = results.append(h | combine({
+                'cluster': cname,
+                'datacenter': (cdata.datacenter | default('unknown'))
+              })) -%}
+            {%- endfor -%}
+          {%- endfor -%}
+          {{ results }}
+
+    - name: Index hosts by name
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'hosts': {'by_name': _hosts_indexed}}, recursive=true) }}"
+      vars:
+        _hosts_indexed: >-
+          {%- set res = {} -%}
+          {%- for h in (vcenter.hosts.list | default([])) -%}
+            {%- if h is mapping and h.name is defined -%}
+              {%- set _ = res.update({h.name: h}) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ res }}
+
+    - name: Log infrastructure summary
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/info
+      vars:
+        ops_log_message: >-
+          Infrastructure: {{ (vcenter.datacenters.list | default([])) | length }} DCs,
+          {{ (vcenter.clusters.by_name | default({})) | length }} Clusters,
+          {{ (vcenter.hosts.list | default([])) | length }} Hosts
+
+  rescue:
+    - name: Log host extraction failure
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Failed to derive hosts from clusters: {{ ansible_failed_result.msg | default('Unknown error') }}"

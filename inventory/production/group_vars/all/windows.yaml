@@ -1,0 +1,14 @@
+# inventory/group_vars/all/windows.yaml
+windows:
+  config:
+    # Application inventory settings
+    include_system_apps: false
+
+    # Update compliance thresholds (days)
+    update_age_warning_days: 30
+    update_age_critical_days: 90
+
+    # Report settings
+    # INHERIT GLOBAL ROOT
+    report_directory: "{{ ops.config.report_directory }}"
+    export_csv: true

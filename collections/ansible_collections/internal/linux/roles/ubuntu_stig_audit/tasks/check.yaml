@@ -1,0 +1,30 @@
+# roles/ubuntu/tasks/security/check.yaml
+# Security Checks & Audits
+# PURPOSE: Runs STIG rules in "Check Mode" (Simulation)
+
+- name: "STIG Audit (Read-Only)"
+  # LOGIC: Only run audit if auditing is ON, AND hardening is OFF.
+  # If hardening is enabled, we skip this to avoid running the heavy STIG logic twice.
+  when:
+    - ubuntu.config.enable_stig_audit | default(false) | bool
+    - not (ubuntu.config.enable_stig_hardening | default(false) | bool)
+  tags: ['check', 'security', 'stig']
+  block:
+    - name: Load STIG Variables
+      ansible.builtin.include_vars:
+        file: "{{ role_path }}/defaults/stig_vars.yaml"
+
+    - name: Execute STIG Audit
+      ansible.builtin.include_tasks: stig/ubuntu2404.yaml
+      args:
+        apply:
+          check_mode: true  # Forces simulation (Read-Only)
+      # LINT FIX: We intentionally ignore errors here because we WANT
+      # failed tasks (violations) to be recorded, but we don't want
+      # the playbook to stop. 'failed_when: false' would mark them as passed.
+      ignore_errors: true  # noqa: ignore-errors
+
+    # ADDED: This flag tells security/export.yaml that there is data to export.
+    - name: Flag STIG Audit as Complete
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true

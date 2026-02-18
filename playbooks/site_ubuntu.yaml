@@ -1,0 +1,49 @@
+# playbooks/site_ubuntu.yaml
+# ==============================================================================
+# PLAY 1: INFRASTRUCTURE OPERATIONS
+# ==============================================================================
+- name: Ubuntu Infrastructure Operations
+  hosts: ubuntu_servers
+  gather_facts: true
+  become: true
+
+  # 1. INITIALIZATION: Reporting Paths & Run IDs
+  # =========================================================================
+  vars:
+    # Define base path (Matches your other playbooks)
+    ops_report_base: "/srv/samba/reports"
+
+  pre_tasks:
+    # 1. Generate Global ID (Run Once)
+    - name: Set Global Run ID
+      ansible.builtin.set_fact:
+        global_run_id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+      run_once: true
+      tags: ['always']
+
+    # 2. Set Reporting Paths (CRITICAL for CSV/CKL generation)
+    - name: Set Reporting Paths and Ops Namespace
+      ansible.builtin.set_fact:
+        # Tells roles where to save files
+        ops_report_output_dir: "{{ ops_report_base }}/Ubuntu_Ops/{{ global_run_id }}"
+
+        # Initialize 'ops' namespace to prevent errors in common roles
+        ops:
+          check:
+            id: "{{ global_run_id }}"
+            date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+      tags: ['always']
+
+    # 3. Create the Report Directory
+    - name: Create Report Directory
+      ansible.builtin.file:
+        path: "{{ ops_report_output_dir }}"
+        state: directory
+        mode: '0755'
+      run_once: true
+      tags: ['always']
+  # =========================================================================
+
+  roles:
+    - role: common
+    - role: ubuntu

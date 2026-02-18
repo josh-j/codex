@@ -1,0 +1,5 @@
+---
+- name: Log ERROR message
+  ansible.builtin.include_tasks: main.yaml
+  vars:
+    ops_log_level: "error"

@@ -1,0 +1,263 @@
+---
+# roles/common/tasks/reporting/aggregate.yaml
+# Aggregates results from all hosts into a single report model (localhost).
+# Task file only (no play-level keys).
+
+# -----------------------------------------------------------------------------
+# Base collections (alerts/reports) across all hosts
+# -----------------------------------------------------------------------------
+- name: Aggregate | Collect all alerts and reports from all sites
+  ansible.builtin.set_fact:
+    all_alerts: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('all', []) | default([])) -%}
+        {%- set o = hostvars[h].ops | default({}) -%}
+        {%- for a in (o.alerts | default([])) -%}
+          {%- set _ = out.append(a | combine({'site': (a.site | default(h))})) -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+    all_reports: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('all', []) | default([])) -%}
+        {%- set o = hostvars[h].ops | default({}) -%}
+        {%- for r in (o.reports | default([])) -%}
+          {%- set _ = out.append(r | combine({'site': (r.site | default(h))})) -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+# -----------------------------------------------------------------------------
+# vCenter Summaries
+# -----------------------------------------------------------------------------
+- name: Aggregate | Build vCenter summaries
+  ansible.builtin.set_fact:
+    vcenter_summaries: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('vcenters', []) | default([])) -%}
+        {%- set o = (hostvars[h].ops | default({})) -%}
+        {%- set al = (o.alerts | default([])) -%}
+        {%- set rp = (o.reports | default([])) -%}
+        {%- set vc = (hostvars[h].vcenter | default({})) -%}
+        {%- set conn = (vc.connection | default({})) -%}
+        {%- set row_counts = (rp | map(attribute='row_count') | map('default', 0) | map('int') | list) -%}
+        {%- set _ = out.append({
+          'site': h,
+          'hostname': (conn.hostname | default(h)),
+          'run_id': ((o.check | default({})).id | default('N/A')),
+          'check_timestamp': ((o.check | default({})).timestamp | default('N/A')),
+          'alerts_total': (al | length),
+          'alerts_critical': (al | selectattr('severity','equalto','CRITICAL') | list | length),
+          'alerts_warning': (al | selectattr('severity','equalto','WARNING') | list | length),
+          'alerts_info': (al | selectattr('severity','equalto','INFO') | list | length),
+          'reports_generated': (rp | length),
+          'reports_total_rows': (row_counts | sum)
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+# -----------------------------------------------------------------------------
+# Storage / Backup / UCS summaries
+# -----------------------------------------------------------------------------
+- name: Aggregate | Build Unity (SA) summaries
+  ansible.builtin.set_fact:
+    unity_summaries: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('sa', []) | default([])) -%}
+        {%- set o = (hostvars[h].ops | default({})) -%}
+        {%- set al = (o.alerts | default([])) -%}
+        {%- set rp = (o.reports | default([])) -%}
+        {%- set _ = out.append({
+          'site': h,
+          'check_timestamp': ((o.check | default({})).timestamp | default('N/A')),
+          'alerts_total': (al | length),
+          'alerts_critical': (al | selectattr('severity','equalto','CRITICAL') | list | length),
+          'reports_generated': (rp | length)
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Aggregate | Build Data Domain (DD) summaries
+  ansible.builtin.set_fact:
+    datadomain_summaries: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('dd', []) | default([])) -%}
+        {%- set o = (hostvars[h].ops | default({})) -%}
+        {%- set al = (o.alerts | default([])) -%}
+        {%- set rp = (o.reports | default([])) -%}
+        {%- set _ = out.append({
+          'site': h,
+          'check_timestamp': ((o.check | default({})).timestamp | default('N/A')),
+          'alerts_total': (al | length),
+          'alerts_critical': (al | selectattr('severity','equalto','CRITICAL') | list | length),
+          'reports_generated': (rp | length)
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Aggregate | Build UCS summaries
+  ansible.builtin.set_fact:
+    ucs_summaries: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('ucsm', []) | default([])) -%}
+        {%- set o = (hostvars[h].ops | default({})) -%}
+        {%- set al = (o.alerts | default([])) -%}
+        {%- set rp = (o.reports | default([])) -%}
+        {%- set _ = out.append({
+          'site': h,
+          'check_timestamp': ((o.check | default({})).timestamp | default('N/A')),
+          'alerts_total': (al | length),
+          'alerts_critical': (al | selectattr('severity','equalto','CRITICAL') | list | length),
+          'reports_generated': (rp | length)
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+# -----------------------------------------------------------------------------
+# vCenter Alarms (moved out of templates)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Collect global vCenter alarms (tag with site)
+  ansible.builtin.set_fact:
+    global_alarms: >-
+      {%- set out = [] -%}
+      {%- for h in (groups.get('vcenters', []) | default([])) -%}
+        {%- set raw = hostvars[h].vcenter.alarms.list | default([]) -%}
+        {%- for a in (raw | select('mapping') | list) -%}
+          {%- set _ = out.append(a | combine({'site': h})) -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+# -----------------------------------------------------------------------------
+# Counts / Totals (moved out of templates)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Compute report counts and totals
+  ansible.builtin.set_fact:
+    report_counts:
+      alarms:
+        critical: "{{ (global_alarms | default([]) | selectattr('severity', 'equalto', 'critical') | list | length) }}"
+        warning:  "{{ (global_alarms | default([]) | selectattr('severity', 'equalto', 'warning') | list | length) }}"
+      alerts:
+        critical: "{{ (all_alerts | default([]) | selectattr('severity', 'equalto', 'CRITICAL') | list | length) }}"
+        warning:  "{{ (all_alerts | default([]) | selectattr('severity', 'equalto', 'WARNING') | list | length) }}"
+        info:     "{{ (all_alerts | default([]) | selectattr('severity', 'equalto', 'INFO') | list | length) }}"
+      reports_generated: "{{ all_reports | default([]) | length }}"
+      sites_audited: "{{ groups.get('all', []) | length }}"
+    report_totals:
+      critical: >-
+        {{
+          (global_alarms | default([]) | selectattr('severity', 'equalto', 'critical') | list | length)
+          + (all_alerts   | default([]) | selectattr('severity', 'equalto', 'CRITICAL') | list | length)
+        }}
+      warning: >-
+        {{
+          (global_alarms | default([]) | selectattr('severity',' equalto', 'warning') | list | length)
+          + (all_alerts   | default([]) | selectattr('severity', 'equalto', 'WARNING') | list | length)
+        }}
+
+# -----------------------------------------------------------------------------
+# Build a single report model (templates consume this)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Assemble report model
+  ansible.builtin.set_fact:
+    report:
+      meta:
+        date: "{{ ops.check.date | default(lookup('pipe', 'date +%Y-%m-%d')) }}"
+        day: "{{ day | default(lookup('pipe', 'date +%A')) }}"
+        generated: "{{ generated_time | default(lookup('pipe', 'date \"+%H:%M:%S %Z\"')) }}"
+        run_id: "{{ ops.check.id | default('N/A') }}"
+      data:
+        vcenters: "{{ vcenter_summaries | default([]) }}"
+        unisphere: "{{ unity_summaries | default([]) }}"
+        backups: "{{ datadomain_summaries | default([]) }}"
+        ucs: "{{ ucs_summaries | default([]) }}"
+        alerts: "{{ all_alerts | default([]) }}"
+        alarms: "{{ global_alarms | default([]) }}"
+        reports: "{{ all_reports | default([]) }}"
+      counts: "{{ report_counts }}"
+      totals: "{{ report_totals }}"
+
+# -----------------------------------------------------------------------------
+# Update ops on localhost so playbook/templates can just use ops.*
+# -----------------------------------------------------------------------------
+- name: Aggregate | Update ops with aggregated results and overall status
+  ansible.builtin.set_fact:
+    ops: "{{ (ops | default({})) | combine(_ops_patch, recursive=true) }}"
+  vars:
+    _issues_total: "{{ (report_totals.critical | int) + (report_totals.warning | int) }}"
+    _ops_patch:
+      alerts: "{{ all_alerts | default([]) }}"
+      reports: "{{ all_reports | default([]) }}"
+      overall:
+        status: "{{ 'OK' if (_issues_total | int) == 0 else 'Issues' }}"
+        issues: "{{ _issues_total }}"
+        summary: "{{ 'No issues detected' if (_issues_total | int) == 0 else 'Issues detected during checks' }}"
+
+# -----------------------------------------------------------------------------
+# Debug (guarded)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Display check completion summary
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════╗
+      ║      Daily Ops Checks Complete                           ║
+      ╚══════════════════════════════════════════════════════════╝
+
+      Sites Checked:
+        - vCenter sites: {{ vcenter_summaries | default([]) | length }}
+        - Unity unisphere: {{ unity_summaries | default([]) | length }}
+        - Data Domain unisphere: {{ datadomain_summaries | default([]) | length }}
+        - UCS fabrics: {{ ucs_summaries | default([]) | length }}
+
+      Global Alert Summary:
+        - Total alerts: {{ (all_alerts | default([])) | length }}
+        - CRITICAL: {{ report_counts.alerts.critical | default(0) }}
+        - WARNING: {{ report_counts.alerts.warning | default(0) }}
+        - INFO: {{ report_counts.alerts.info | default(0) }}
+
+      vCenter Alarms:
+        - CRITICAL: {{ report_counts.alarms.critical | default(0) }}
+        - WARNING: {{ report_counts.alarms.warning | default(0) }}
+
+      Reports Generated: {{ report_counts.reports_generated | default(0) }}
+  when: (ops.config.debug_mode | default(false)) | bool
+
+- name: Aggregate | Display critical alerts if any
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  CRITICAL ALERTS DETECTED ({{ report_counts.alerts.critical }})
+
+      {% for alert in all_alerts | default([]) | selectattr('severity', 'equalto', 'CRITICAL') %}
+      [{{ alert.site }}] {{ alert.category }}: {{ alert.message }}
+      {% endfor %}
+  when:
+    - (ops.config.debug_mode | default(false)) | bool
+    - report_counts.alerts.critical | default(0) | int > 0
+
+# -----------------------------------------------------------------------------
+# Export Global CSV (unchanged)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Export aggregated alerts CSV
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "global_alert_summary"
+    ops_csv_headers:
+      - "Timestamp"
+      - "Site"
+      - "Check Role"
+      - "Severity"
+      - "Category"
+      - "Message"
+      - "Affected Items"
+    ops_csv_keys:
+      - "timestamp"
+      - "site"
+      - "check_role"
+      - "severity"
+      - "category"
+      - "message"
+      - "affected_items_count"
+    ops_csv_data: "{{ all_alerts | default([]) }}"
+  when: all_alerts | default([]) | length > 0

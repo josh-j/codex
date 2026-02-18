@@ -1,0 +1,39 @@
+# roles/ubuntu/tasks/summary/export.yaml
+# Export the "Master Inventory & Health" report
+
+- name: Export Executive Summary Row
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "ubuntu_fleet_summary"
+    ops_csv_headers:
+      [
+        "Hostname", "IP Address", "OS Kernel", "Uptime (Days)",
+        "Overall Health", "Pending Updates", "Reboot Req",
+        "Failed Svcs", "Security Status"  # <--- ADDED
+      ]
+    ops_csv_keys:
+      [
+        "hostname", "ip", "kernel", "uptime",
+        "health", "updates", "reboot",
+        "failed_svcs", "sec_status"       # <--- ADDED
+      ]
+
+    # Construct the master row
+    ops_csv_data:
+      - hostname: "{{ inventory_hostname }}"
+        ip: "{{ ubuntu.system.ip | default('N/A') }}"
+        kernel: "{{ ubuntu.system.kernel | default('N/A') }}"
+        uptime: "{{ ubuntu.system.uptime_days | default(0) }}"
+
+        # Aggregated Data from calculate.yaml
+        health: "{{ ubuntu.summary.health }}"
+        updates: "{{ ubuntu.updates.pending_count }}"
+        reboot: "{{ ubuntu.updates.reboot_pending }}"
+        failed_svcs: "{{ ubuntu.system.services.failed_count }}"
+
+        # Security Status (Calculated from Shadow/Password Locking)
+        sec_status: "{{ ubuntu.summary.security_status | default('UNKNOWN') }}"
+
+  when: ubuntu.config.export_csv | default(true) | bool

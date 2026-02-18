@@ -1,0 +1,7 @@
+# collections/ansible_collections/internal/stig/galaxy.yml
+namespace: internal
+name: stig
+version: 0.0.1
+readme: README.md
+authors:
+  - Internal

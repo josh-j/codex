@@ -1,0 +1,18 @@
+---
+# Ensure ubuntu.system.* exists before checks/exports.
+- name: Ensure system metrics are discovered
+  ansible.builtin.include_role:
+    name: ubuntu_system_discover
+    apply:
+      tags: [system, discover]
+  tags: [system, discover]
+  # apply is required if you want tags to affect tasks inside the included role
+  # :contentReference[oaicite:2]{index=2}
+
+- name: Run Ubuntu System Checks
+  ansible.builtin.import_tasks: check.yaml
+  tags: [system, check]
+
+- name: Export Ubuntu Check Results
+  ansible.builtin.import_tasks: export.yaml
+  tags: [system, export]

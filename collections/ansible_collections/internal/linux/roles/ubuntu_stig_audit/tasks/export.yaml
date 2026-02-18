@@ -1,0 +1,16 @@
+# ========================================================================
+- name: Export STIG Compliance Report
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/stig.yaml
+  vars:
+    # PATH: Point to where your callback plugin saves the JSON.
+    stig_artifact_file: "{{ playbook_dir }}/../.artifacts/xccdf-results_failures.json"
+
+    # GROUPING: Force STIG report into the SAME folder as the CSVs above.
+    # Uses the variable calculated by the previous export tasks.
+    stig_destination_folder: "{{ _csv_output_dir | default('') }}"
+
+  # LOGIC FIX: Rely ONLY on the flag set by check.yaml or maintain.yaml.
+  # This ensures we report if we Audited OR Hardened.
+  when: _stig_audit_ran | default(false)

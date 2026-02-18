@@ -1,0 +1,228 @@
+---
+# playbooks/site_health.yaml
+# Shared run context via add_host() (no delegate_facts, no set_stats).
+# Result: all hosts + localhost aggregator read hostvars['__ops_run__'].ops_ctx
+
+# ───────────────────────────────────────
+# 1) WORKER PLAY
+# ───────────────────────────────────────
+- name: Daily Ops Checks (sites)
+  hosts: all
+  gather_facts: false
+  strategy: linear
+
+  pre_tasks:
+    # ops_config is the static configuration and ops is the dynamic configuration
+    - name: Bind ops_config into ops.config
+      ansible.builtin.set_fact:
+        ops: >-
+          {{
+            (ops | default({}))
+            | combine(
+                {
+                  'config': (ops_config | default({}))
+                            | combine((ops.config | default({})), recursive=true)
+                },
+                recursive=true
+              )
+          }}
+      tags: ['always']
+
+    - name: Build shared ops context (single run id for all hosts/plays)
+      ansible.builtin.add_host:
+        name: "__ops_run__"
+        ops_ctx:
+          run_id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+          day_name: "{{ lookup('pipe', 'date +%A') }}"
+          timestamp: "{{ lookup('pipe', 'date \"+%Y-%m-%dT%H:%M:%S%z\"') }}"
+          run_day_key: "{{ lookup('pipe', 'date +%A') | lower }}"
+          today_tasks: >-
+            {{
+              (ops_config.schedule.day_matrix | default({}))
+              .get((lookup('pipe', 'date +%A') | lower), [])
+            }}
+      run_once: true
+      tags: ['always']
+
+
+    - name: Apply shared context to each host
+      ansible.builtin.set_fact:
+        # Used by export_csv.yaml (alert generator already prefers global_run_id first)
+        global_run_id: "{{ _ctx.run_id }}"
+        today_tasks: "{{ _ctx.today_tasks | default([]) }}"
+        ops: >-
+          {{
+            (ops | default({}))
+            | combine(
+                {
+                  'check': {
+                    'id': _ctx.run_id,
+                    'run_id': _ctx.run_id,
+                    'date': _ctx.date,
+                    'timestamp': _ctx.timestamp,
+                    'site': inventory_hostname
+                  },
+                  'alerts': (ops.alerts | default([])),
+                  'reports': (ops.reports | default([])),
+                  'overall': (ops.overall | default({'status':'Unknown','issues':0,'summary':''}))
+                },
+                recursive=true
+              )
+          }}
+      vars:
+        _ctx: "{{ hostvars['__ops_run__'].ops_ctx | default({}) }}"
+
+      tags: ['always']
+
+    - name: Debug context (debug mode only)
+      ansible.builtin.debug:
+        msg: "Host={{ inventory_hostname }} RunID={{ ops.check.id }} Tasks={{ today_tasks }}"
+      when: (ops.config.debug_mode | default(false)) | bool
+      tags: ['always']
+
+  roles:
+    - role: vsphere
+      when:
+        - "'vcenters' in group_names"
+        - "'vcenter' in (today_tasks | default([]))"
+
+    - role: unity
+      when:
+        - "'sa' in group_names"
+        - "'unisphere' in (today_tasks | default([]))"
+
+    - role: datadomain
+      when:
+        - "'dd' in group_names"
+        - "'backup_unisphere' in (today_tasks | default([]))"
+
+    - role: ucs
+      when:
+        - "'ucsm' in group_names"
+        - "'ucs_fi' in (today_tasks | default([]))"
+
+# ───────────────────────────────────────
+# 2) AGGREGATOR PLAY
+# ───────────────────────────────────────
+- name: Aggregate Check Results
+  hosts: localhost
+  gather_facts: true
+
+  vars:
+    _ctx: "{{ hostvars['__ops_run__'].ops_ctx | default({}) }}"
+    _run_id: "{{ _ctx.run_id | default(lookup('pipe', 'date +%Y-%m-%d_%H%M%S')) }}"
+    _date: "{{ _ctx.date | default(lookup('pipe', 'date +%Y-%m-%d')) }}"
+    _ts: "{{ _ctx.timestamp | default(lookup('pipe', 'date \"+%Y-%m-%dT%H:%M:%S%z\"')) }}"
+    today_tasks: "{{ _ctx.today_tasks | default([]) }}"
+
+    ops_report_base: "{{ ops_config.report_directory | default('/srv/samba/reports') }}"
+    ops_report_dir: "{{ ops_report_base }}/Summary"
+
+  tasks:
+    - name: Bind ops_config into ops.config (localhost)
+      ansible.builtin.set_fact:
+        ops: >-
+          {{
+            (ops | default({}))
+            | combine(
+                {
+                  'config': (ops_config | default({}))
+                            | combine((ops.config | default({})), recursive=true)
+                },
+                recursive=true
+              )
+          }}
+
+    - name: Initialize aggregator ops structure (guarantee template keys)
+      ansible.builtin.set_fact:
+        ops: >-
+          {{
+            (ops | default({}))
+            | combine(
+                {
+                  'check': {
+                    'id': _run_id,
+                    'run_id': _run_id,
+                    'date': _date,
+                    'timestamp': _ts,
+                    'site': 'localhost'
+                  },
+                  'alerts': (ops.alerts | default([])),
+                  'reports': (ops.reports | default([])),
+                  'overall': (ops.overall | default({'status':'Unknown','issues':0,'summary':''}))
+                },
+                recursive=true
+              )
+          }}
+
+    - name: Aggregate site data
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: reporting/aggregate.yaml
+
+    - name: Ensure output directory
+      ansible.builtin.file:
+        path: "{{ ops_report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Render reports (Markdown & HTML)
+      ansible.builtin.template:
+        src: "../roles/common/templates/{{ item.src }}"
+        dest: "{{ ops_report_dir }}/ops-report-{{ _run_id }}.{{ item.ext }}"
+        mode: "0644"
+      loop:
+        - { src: "site_health_report.md.j2",   ext: "md" }
+        - { src: "site_health_report.html.j2", ext: "html" }
+      vars:
+        date: "{{ _date }}"
+        day: "{{ _ctx.day_name | default(lookup('pipe', 'date +%A')) }}"
+        include_patch: "{{ 'patch' in (today_tasks | default([])) }}"
+        include_weekly: "{{ 'weekly' in (today_tasks | default([])) }}"
+        report_share_path: "{{ ops.config.report_share_path | default('\\\\132.25.179.150\\reports') }}"
+
+
+
+    # ───────────────────────────────────────
+    # 5) email notification (disabled)
+    # ───────────────────────────────────────
+    # - name: find combined csv reports to attach
+    #   ansible.builtin.find:
+    #     paths: "{{ ops_report_base }}/combined/{{ _run_id }}"
+    #     patterns: "*.csv"
+    #     file_type: file
+    #   register: _csv_attachments
+    #   when: ops.config.email.enabled | default(false) | bool
+    #
+    # - name: email operations report
+    #   community.general.mail:
+    #     host: "{{ ops.config.email.smtp.server }}"
+    #     port: "{{ ops.config.email.smtp.port | default(25) }}"
+    #     subject: "ops report - {{ _date }} - {{ (today_tasks | default(['ad-hoc'])) | join(', ') | title }}"
+    #     from: "{{ ops.config.email.from | default('ansible@example.com') }}"
+    #     to: "{{ ops.config.email.recipients | default([]) }}"
+    #     attach: >-
+    #       {{
+    #         [
+    #           ops_report_dir ~ '/ops-report-' ~ _run_id ~ '.html',
+    #           ops_report_dir ~ '/ops-report-' ~ _run_id ~ '.md'
+    #         ]
+    #         + (
+    #           (_csv_attachments.files | default([]))
+    #           | map(attribute='path')
+    #           | list
+    #         )
+    #       }}
+    #     subtype: html
+    #     body: |
+    #       <h3>daily operations check complete</h3>
+    #       <p>run id: {{ _run_id }}</p>
+    #       <p>tasks: {{ (today_tasks | default(['ad-hoc'])) | join(', ') }}</p>
+    #       <p>attached: html dashboard, markdown source, and csv data.</p>
+    #       <p><a href="{{ ops.config.report_share_path | default('#') }}">view report archive</a></p>
+    #   delegate_to: localhost
+    #   when:
+    #     - ops.config.email.enabled | default(false) | bool
+    #     - not (ops.config.dry_run_mode | default(false) | bool)
+    #   ignore_errors: true

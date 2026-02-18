@@ -1,0 +1,28 @@
+---
+# collections/ansible_collections/internal/stig/roles/common/tasks/discovery_parser.yaml
+
+- name: "DISCOVERY | Parse Results"
+  ansible.builtin.set_fact:
+    # [FIX] Use regex_search to extract the JSON block, ignoring any PowerCLI warnings above it
+    # '(?s)' enables DOTALL mode so . matches newlines
+    # '\{.*' matches from the first open brace to the end of the string
+    _discovery_json: "{{ script_result.stdout | regex_search('(?s)\\{.*') | from_json }}"
+  when:
+    - script_result.rc == 0
+    - script_result.stdout | trim | length > 0
+
+- name: "DISCOVERY | Map Data to Namespace"
+  ansible.builtin.set_fact:
+    # Use lookup('vars', ...) instead of vars[...]
+    "{{ generic_namespace }}": >-
+      {{
+        lookup('vars', generic_namespace, default={})
+        | combine({'stig_facts': _discovery_json[json_data_key] | default([])}, recursive=True)
+      }}
+  when: _discovery_json.success | default(false)
+
+- name: "DISCOVERY | Handle Failure"
+  ansible.builtin.set_fact:
+    "{{ generic_namespace }}": >-
+      {{ lookup('vars', generic_namespace, default={}) | combine({'stig_facts': []}, recursive=True) }}
+  when: not _discovery_json.success | default(false) or script_result.rc != 0

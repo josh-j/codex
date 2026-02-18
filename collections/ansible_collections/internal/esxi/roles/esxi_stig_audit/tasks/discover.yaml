@@ -1,0 +1,23 @@
+---
+- name: "ESXi | Execute PowerCLI Discovery (via vCenter)"
+  ansible.builtin.shell:
+    cmd: >
+      pwsh -Command "& '{{ role_path }}/files/get_esxi_facts.ps1'
+      -vcenter '{{ vcenter_hostname }}'
+      -vcuser '{{ vcenter_username }}'
+      -vcpass '{{ vcenter_password }}'
+      -target_host '{{ inventory_hostname }}'"
+  register: _esxi_script_result
+  delegate_to: localhost
+  no_log: false # Revert to true for production safety
+  failed_when: false # Handled by the parser logic
+  changed_when: false # <---  Tells Ansible this is a read-only task
+
+- name: "ESXi | Process Discovery Results"
+  ansible.builtin.include_role:
+    name: internal.stig.common
+    tasks_from: discovery_parser
+  vars:
+    script_result: "{{ _esxi_script_result }}"
+    generic_namespace: "esxi_host"
+    json_data_key: "hosts"

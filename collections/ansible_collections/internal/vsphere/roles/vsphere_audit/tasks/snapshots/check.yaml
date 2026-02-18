@@ -1,0 +1,41 @@
+---
+# roles/vsphere/tasks/snapshots/check.yaml
+# Explicit checks for Aged and Large Snapshots
+
+# ========================================================================
+# SNAPSHOT ALERTS
+# ========================================================================
+
+- name: "Check: Aged Snapshot Summary"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    # CHANGED: Bumping to WARNING so it appears in the "Global Alert Summary" table
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "snapshots"
+    ops_alert_message: "{{ vcenter.snapshots.metrics.total_aged }} snapshots older than {{ vcenter.config.snapshot_age_warning_days }} days ({{ vcenter.snapshots.metrics.total_size_gb | round(1) }} GB)"
+    ops_alert_details:
+      threshold_days: "{{ vcenter.config.snapshot_age_warning_days }}"
+      total_size_gb: "{{ vcenter.snapshots.metrics.total_size_gb }}"
+      total_count: "{{ vcenter.snapshots.metrics.total_aged }}"
+    ops_alert_affected_items: "{{ vcenter.snapshots.aged }}"
+  when: vcenter.snapshots.metrics.total_aged | default(0) | int > 0
+
+- name: "Check: Large Snapshots"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/alert
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "snapshots"
+    ops_alert_message: "VM {{ item.vm_name }} has large snapshot {{ item.snapshot_name }} ({{ item.size_gb }} GB)"
+    ops_alert_details:
+      vm: "{{ item.vm_name }}"
+      snapshot: "{{ item.snapshot_name }}"
+      size_gb: "{{ item.size_gb }}"
+      age_days: "{{ item.age_days }}"
+      threshold_gb: "{{ vcenter.config.snapshot_size_warning_gb }}"
+  loop: "{{ vcenter.snapshots.metrics.large_snapshots | default([]) }}"
+  loop_control:
+    label: "{{ item.vm_name }}"

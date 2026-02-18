@@ -1,0 +1,178 @@
+<style>
+    /* Shared CSS for consistency */
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f4f6f9; }
+    h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
+    h2 { color: #34495e; margin-top: 40px; border-left: 5px solid #3498db; padding-left: 15px; background: #fff; padding: 10px 15px; border-radius: 0 5px 5px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    h3 { color: #7f8c8d; margin-top: 5px; font-weight: 400; font-size: 1em; }
+
+    /* Cards */
+    .summary-box { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+    .card { background: #fff; border-top: 4px solid #bdc3c7; padding: 15px; border-radius: 8px; flex: 1; min-width: 150px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .card-number { font-size: 2em; font-weight: 700; color: #2c3e50; }
+    .card-label { text-transform: uppercase; font-size: 0.75em; color: #95a5a6; font-weight: 600; letter-spacing: 0.5px; }
+
+    /* Card Colors */
+    .card.alert { border-color: #e74c3c; } .card.alert .card-number { color: #e74c3c; }
+    .card.warn { border-color: #f39c12; } .card.warn .card-number { color: #f39c12; }
+    .card.success { border-color: #2ecc71; } .card.success .card-number { color: #2ecc71; }
+
+    /* Tables */
+    table { border-collapse: collapse; width: 100%; margin-bottom: 25px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); font-size: 0.9em; }
+    th { background-color: #2c3e50; color: #ffffff; text-align: left; padding: 12px 15px; font-weight: 600; }
+    td { padding: 10px 15px; border-bottom: 1px solid #eee; }
+    tr:last-of-type td { border-bottom: 2px solid #3498db; }
+
+    /* Badges */
+    .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; text-transform: uppercase; }
+    .critical { color: #c0392b; background-color: #fadbd8; }
+    .warning { color: #d35400; background-color: #fdebd0; }
+    .ok { color: #27ae60; background-color: #d5f5e3; }
+    .info { color: #2980b9; background-color: #d6eaf8; }
+    .neutral { color: #7f8c8d; background-color: #ecf0f1; }
+</style>
+
+{#── Logic & Calculations ──#}
+{% set cpu_pct = vcenter.resources.cpu.usage_pct | default(0) | float %}
+{% set mem_pct = vcenter.resources.memory.usage_pct | default(0) | float %}
+{% set alert_count = ops.alerts | default([]) | length %}
+{% set alarm_crit = vcenter.alarms.list | selectattr('severity', 'equalto', 'critical') | list | length %}
+{% set alarm_warn = vcenter.alarms.list | selectattr('severity', 'equalto', 'warning') | list | length %}
+{% set health = vcenter.appliance.health.overall | default('unknown') %}
+
+{#══════════════════════════════════════════════════════════════════════════════
+  HEADER
+══════════════════════════════════════════════════════════════════════════════#}
+# {{ inventory_hostname | upper }}
+### **System:** {{ vcenter.appliance.info.product | default('vCenter Server') }} | **Version:** {{ vcenter.appliance.info.version | default('Unknown') }} | **Uptime:** {{ vcenter.appliance.info.uptime_days | default(0) }} Days
+
+{#══════════════════════════════════════════════════════════════════════════════
+  INFRASTRUCTURE HEALTH (NEW)
+══════════════════════════════════════════════════════════════════════════════#}
+## 🏥 Appliance Health
+
+<div class="summary-box">
+  <div class="card {{ 'alert' if health | lower != 'green' else 'success' }}">
+    <div class="card-number">{{ health | upper }}</div>
+    <div class="card-label">Overall Health</div>
+  </div>
+  <div class="card {{ 'alert' if vcenter.appliance.health.database | lower != 'green' else 'success' }}">
+    <div class="card-number">{{ vcenter.appliance.health.database | default('UNK') | upper }}</div>
+    <div class="card-label">Database</div>
+  </div>
+  <div class="card {{ 'alert' if vcenter.appliance.health.storage | lower != 'green' else 'success' }}">
+    <div class="card-number">{{ vcenter.appliance.health.storage | default('UNK') | upper }}</div>
+    <div class="card-label">Storage</div>
+  </div>
+  <div class="card {{ 'alert' if vcenter.appliance.config.ssh_enabled | default(false) else 'success' }}">
+    <div class="card-number" style="font-size: 1.5em; padding-top: 10px;">
+        {{ 'ENABLED' if vcenter.appliance.config.ssh_enabled | default(false) else 'DISABLED' }}
+    </div>
+    <div class="card-label">SSH Access</div>
+  </div>
+   <div class="card {{ 'success' if vcenter.appliance.backup.enabled | default(false) else 'alert' }}">
+    <div class="card-number" style="font-size: 1.5em; padding-top: 10px;">
+        {{ 'ACTIVE' if vcenter.appliance.backup.enabled | default(false) else 'MISSING' }}
+    </div>
+    <div class="card-label">File Backup</div>
+  </div>
+</div>
+
+{#══════════════════════════════════════════════════════════════════════════════
+  RESOURCE OVERVIEW
+══════════════════════════════════════════════════════════════════════════════#}
+## 📊 Resource Usage
+
+<div class="summary-box">
+  <div class="card {{ 'alert' if cpu_pct > 90 else ('warn' if cpu_pct > 75 else 'success') }}">
+    <div class="card-number">{{ cpu_pct }}%</div>
+    <div class="card-label">Global CPU</div>
+  </div>
+  <div class="card {{ 'alert' if mem_pct > 90 else ('warn' if mem_pct > 80 else 'success') }}">
+    <div class="card-number">{{ mem_pct }}%</div>
+    <div class="card-label">Global Mem</div>
+  </div>
+  <div class="card">
+    <div class="card-number">{{ vcenter.vms.list | default([]) | length }}</div>
+    <div class="card-label">Total VMs</div>
+  </div>
+  <div class="card {{ 'warn' if vcenter.snapshots.aged | default([]) | length > 0 }}">
+    <div class="card-number">{{ vcenter.snapshots.aged | default([]) | length }}</div>
+    <div class="card-label">Aged Snaps</div>
+  </div>
+</div>
+
+{#══════════════════════════════════════════════════════════════════════════════
+  CLUSTER DETAILS (NEW)
+══════════════════════════════════════════════════════════════════════════════#}
+## 🏢 Cluster Compliance
+
+<table>
+  <thead>
+    <tr>
+      <th>Cluster Name</th>
+      <th>Hosts</th>
+      <th>CPU Load</th>
+      <th>Mem Load</th>
+      <th>HA Status</th>
+      <th>DRS Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for name, data in vcenter.clusters.by_name.items() %}
+    <tr>
+      <td><strong>{{ name }}</strong></td>
+      <td>{{ data.hosts | length }}</td>
+      <td>
+        <span class="badge {{ 'warning' if data.utilization.cpu_pct | float > 80 else 'neutral' }}">
+            {{ data.utilization.cpu_pct }}%
+        </span>
+      </td>
+      <td>
+        <span class="badge {{ 'warning' if data.utilization.mem_pct | float > 80 else 'neutral' }}">
+            {{ data.utilization.mem_pct }}%
+        </span>
+      </td>
+      <td>
+        <span class="badge {{ 'ok' if data.compliance.ha_enabled else 'critical' }}">
+            {{ 'ENABLED' if data.compliance.ha_enabled else 'DISABLED' }}
+        </span>
+      </td>
+      <td>
+         <span class="badge {{ 'ok' if data.compliance.drs_enabled else 'critical' }}">
+            {{ 'ENABLED' if data.compliance.drs_enabled else 'DISABLED' }}
+        </span>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{#══════════════════════════════════════════════════════════════════════════════
+  OPS ALERTS
+══════════════════════════════════════════════════════════════════════════════#}
+## 🚨 Active Ops Alerts
+
+{% if ops.alerts | default([]) | length > 0 %}
+| Severity | Category | Message |
+|:---|:---|:---|
+{% for alert in ops.alerts | sort(attribute='severity') %}
+| <span class="badge {{ 'critical' if alert.severity == 'CRITICAL' else ('warning' if alert.severity == 'WARNING' else 'info') }}">{{ alert.severity }}</span> | {{ alert.category | upper }} | {{ alert.message }} |
+{% endfor %}
+{% else %}
+✅ *No automation alerts generated.*
+{% endif %}
+
+{#══════════════════════════════════════════════════════════════════════════════
+  VCENTER ALARMS
+══════════════════════════════════════════════════════════════════════════════#}
+## 🔔 vCenter Alarms
+
+{% if vcenter.alarms.list | default([]) | length > 0 %}
+| Severity | Name | Entity | Status | Time |
+|:---|:---|:---|:---|:---|
+{% for alarm in vcenter.alarms.list | sort(attribute='severity') %}
+| <span class="badge {{ 'critical' if alarm.severity == 'critical' else ('warning' if alarm.severity == 'warning' else 'info') }}">{{ alarm.severity | upper }}</span> | {{ alarm.alarm_name }} | {{ alarm.entity }} | {{ alarm.status | upper }} | {{ alarm.time }} |
+{% endfor %}
+{% else %}
+✅ *No active alarms detected.*
+{% endif %}

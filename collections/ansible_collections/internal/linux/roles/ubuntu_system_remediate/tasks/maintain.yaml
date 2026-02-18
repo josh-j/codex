@@ -1,0 +1,98 @@
+# roles/ubuntu/tasks/security/maintain.yaml
+# Security Maintenance & Hardening
+
+# 0. SAFETY NET: VM SNAPSHOT
+# -----------------------------------------------------------------------------
+- name: "Safety | Request Pre-Hardening Snapshot"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: safeguarding/create_snapshot.yaml
+  vars:
+    snapshot_prefix: "Ansible_Pre_Hardening"
+    snapshot_desc: "Created by Ansible before applying STIG hardening"
+  # Only run if we are actually planning to harden
+  when: ubuntu.config.enable_stig_hardening | default(false) | bool
+
+# 1. STANDARD SECURITY OPS
+# -----------------------------------------------------------------------------
+- name: Rotate User Passwords
+  ansible.builtin.user:
+    name: root
+    password: "{{ vault_ubuntu_root_password | password_hash('sha512') }}"
+  become: true
+  when: ubuntu.config.enable_password_rotation | default(false) | bool
+  tags: ['security', 'hardening', 'passwords']
+
+# 2. DOD STIG ENFORCEMENT
+# -----------------------------------------------------------------------------
+- name: Apply Cyber.mil STIG Hardening
+  # This only runs if the tasks above succeeded
+  when: ubuntu.config.enable_stig_hardening | default(false) | bool
+  tags: ['security', 'stig', 'hardening']
+  block:
+    - name: Load STIG Variables
+      ansible.builtin.include_vars:
+        file: "{{ role_path }}/defaults/stig_vars.yaml"
+
+    - name: Execute STIG Implementation
+      ansible.builtin.include_tasks: stig/ubuntu2404.yaml
+
+    # ADDED: Essential for the Export task to know data exists
+    - name: Flag STIG Hardening as Complete
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true
+
+# Maintenance: Apply patches and handle reboots
+
+# 0. SAFETY NET: VM SNAPSHOT
+# -----------------------------------------------------------------------------
+- name: "Safety | Request Pre-Patching Snapshot"
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: safeguarding/create_snapshot.yaml
+  vars:
+    snapshot_prefix: "Ansible_Pre_Patch"
+    snapshot_desc: "Created by Ansible before system dist-upgrade"
+  # No extra 'when' needed here; if this file is included, we are patching.
+  # The common task handles the "Is this a VM?" check internally.
+
+# 1. APPLY UPDATES
+# -----------------------------------------------------------------------------
+- name: Perform System Upgrade (Dist-Upgrade)
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: yes
+    lock_timeout: 600
+    autoremove: yes
+    purge: yes
+  become: true
+  register: _patch_result
+  notify: Post-Patch Cleanup
+
+- name: Log Patching Result
+  ansible.builtin.debug:
+    msg:
+      - "Changed: {{ _patch_result.changed }}"
+      - "Stdout: {{ _patch_result.stdout_lines | default(['No output']) | last }}"
+
+# 2. RE-EVALUATE REBOOT STATUS
+# -----------------------------------------------------------------------------
+# Critical: The upgrade above might have just installed a new kernel.
+- name: Check if reboot is required (Post-Patch)
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _post_patch_reboot
+
+# 3. EXECUTE REBOOT
+# -----------------------------------------------------------------------------
+- name: Reboot if required
+  ansible.builtin.reboot:
+    msg: "Rebooting for updates initiated by Ansible Ops"
+    pre_reboot_delay: 10
+    post_reboot_delay: 30
+    connect_timeout: 300
+  become: true
+  when:
+    # Reboot if it was pending BEFORE OR if it is pending NOW
+    - (ubuntu.updates.reboot_pending | bool) or (_post_patch_reboot.stat.exists)
+    - ubuntu.config.allow_automatic_reboot | default(false) | bool

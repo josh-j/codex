@@ -1,0 +1,198 @@
+---
+# roles/vsphere/tasks/infrastructure/export.yaml
+# Export Infrastructure Inventory (Appliance, Clusters, Hosts, Datastores) to CSV
+#
+# Notes:
+# - Guards against missing vcenter.config / missing sub-keys
+# - Avoids creating empty CSV “reports” (only exports when there’s data)
+# - Fixes header/key mismatch: you export backup *location*, not “Last Backup”
+
+- name: Export | Determine whether CSV export is enabled
+  ansible.builtin.set_fact:
+    _vc_export_csv: "{{ (vcenter.config | default({})).get('export_csv', false) | bool }}"
+  changed_when: false
+
+# ========================================================================
+# 1. APPLIANCE HEALTH REPORT
+# ========================================================================
+- name: Export | Appliance Health Report
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "infrastructure_appliance"
+    ops_csv_headers:
+      - "vCenter"
+      - "Version"
+      - "Build"
+      - "Health"
+      - "DB Health"
+      - "SSH Enabled"
+      - "Backup Configured"
+      - "Backup Location"
+      - "Uptime (Days)"
+    ops_csv_keys:
+      - "vcenter"
+      - "version"
+      - "build"
+      - "health_overall"
+      - "health_db"
+      - "ssh"
+      - "backup_configured"
+      - "backup_location"
+      - "uptime"
+    ops_csv_data:
+      - vcenter: "{{ inventory_hostname }}"
+        version: "{{ (vcenter.appliance.info | default({})).version | default('') }}"
+        build: "{{ (vcenter.appliance.info | default({})).build | default('') }}"
+        health_overall: "{{ (vcenter.appliance.health | default({})).overall | default('unknown') }}"
+        health_db: "{{ (vcenter.appliance.health | default({})).database | default('unknown') }}"
+        ssh: "{{ (vcenter.appliance.config | default({})).ssh_enabled | default(false) }}"
+        backup_configured: "{{ (vcenter.appliance.backup | default({})).configured | default(false) }}"
+        backup_location: "{{ (vcenter.appliance.backup | default({})).location | default('') }}"
+        uptime: "{{ (vcenter.appliance.info | default({})).uptime_days | default(0) }}"
+  when:
+    - _vc_export_csv
+    - vcenter.appliance is defined
+
+# ========================================================================
+# 2. CLUSTER CAPACITY REPORT
+# ========================================================================
+- name: Export | Prepare Cluster Data for CSV
+  ansible.builtin.set_fact:
+    _cluster_csv_data: >-
+      {%- set out = [] -%}
+      {%- for it in (vcenter.clusters.by_name | default({}) | dict2items) -%}
+        {%- set c = it.value | default({}) -%}
+        {%- set util = c.utilization | default({}) -%}
+        {%- set comp = c.compliance | default({}) -%}
+        {%- set _ = out.append({
+          'vcenter': inventory_hostname,
+          'name': it.key,
+          'hosts': (c.hosts | default([]) | length),
+          'cpu_pct': (util.cpu_pct | default(0)),
+          'mem_pct': (util.mem_pct | default(0)),
+          'cpu_used': (util.cpu_used_mhz | default(0)),
+          'mem_used': (util.mem_used_mb | default(0)),
+          'ha': (comp.ha_enabled | default(false)),
+          'drs': (comp.drs_enabled | default(false))
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+  changed_when: false
+
+- name: Export | Cluster Capacity Report
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "infrastructure_clusters"
+    ops_csv_headers:
+      - "vCenter"
+      - "Cluster"
+      - "Hosts"
+      - "CPU Use (%)"
+      - "Mem Use (%)"
+      - "CPU Used (MHz)"
+      - "Mem Used (MB)"
+      - "HA Enabled"
+      - "DRS Enabled"
+    ops_csv_keys:
+      - "vcenter"
+      - "name"
+      - "hosts"
+      - "cpu_pct"
+      - "mem_pct"
+      - "cpu_used"
+      - "mem_used"
+      - "ha"
+      - "drs"
+    ops_csv_data: "{{ _cluster_csv_data }}"
+    ops_csv_sort_by: "mem_pct"
+  when:
+    - _vc_export_csv
+    - (_cluster_csv_data | default([])) | length > 0
+
+# ========================================================================
+# 3. HOST INVENTORY REPORT
+# ========================================================================
+- name: Export | Prepare Host Inventory Data (safe flatten)
+  ansible.builtin.set_fact:
+    _host_csv_data: >-
+      {{
+        (vcenter.hosts.list | default([]))
+        | select('mapping')
+        | map('combine', {'vcenter': inventory_hostname})
+        | list
+      }}
+  changed_when: false
+
+- name: Export | Host Inventory Report
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "infrastructure_hosts"
+    ops_csv_headers:
+      - "vCenter"
+      - "Host Name"
+      - "Cluster"
+      - "Connection State"
+      - "Power State"
+      - "Version"
+      - "Model"
+    ops_csv_keys:
+      - "vcenter"
+      - "name"
+      - "cluster"
+      - "connection_state"
+      - "power_state"
+      - "version"
+      - "hardware_model"
+    ops_csv_data: "{{ _host_csv_data }}"
+    ops_csv_sort_by: "name"
+  when:
+    - _vc_export_csv
+    - (_host_csv_data | default([])) | length > 0
+
+# ========================================================================
+# 4. DATASTORE CAPACITY REPORT
+# ========================================================================
+- name: Export | Prepare Datastore Capacity Data (safe)
+  ansible.builtin.set_fact:
+    _ds_csv_data: "{{ (vcenter.datastores.list | default([])) | select('mapping') | list }}"
+  changed_when: false
+
+- name: Export | Datastore Capacity Report
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: reporting/export_csv
+  vars:
+    ops_csv_report_name: "infrastructure_datastores"
+    ops_csv_headers:
+      - "vCenter"
+      - "Datastore"
+      - "Type"
+      - "Capacity (GB)"
+      - "Free (GB)"
+      - "Free (%)"
+      - "Used (%)"
+      - "Status"
+      - "Accessible"
+      - "Maintenance Mode"
+    ops_csv_keys:
+      - "vcenter"
+      - "name"
+      - "type"
+      - "capacity_gb"
+      - "free_gb"
+      - "free_pct"
+      - "used_pct"
+      - "status"
+      - "accessible"
+      - "maintenance_mode"
+    ops_csv_data: "{{ _ds_csv_data }}"
+    ops_csv_sort_by: "free_pct"
+  when:
+    - _vc_export_csv
+    - (_ds_csv_data | default([])) | length > 0

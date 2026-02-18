@@ -1,0 +1,30 @@
+---
+# roles/common/defaults/main.yaml
+# STRUCTURAL DEFAULTS ONLY
+#
+# Purpose:
+# - Provide an always-present ops.* skeleton so templates/tasks never explode on missing keys.
+# - Keep ALL environment configuration in group_vars/all/00_global.yaml (ops_config).
+#
+# Notes:
+# - These defaults must remain free of host/site-specific or time-specific values.
+# - Runtime population happens in the playbook (or a single common init task).
+
+ops:
+  check:
+    id: ""        # e.g. 2026-02-12_142806
+    run_id: ""    # same as id (kept for compatibility)
+    date: ""      # YYYY-MM-DD
+    timestamp: "" # ISO-ish string (you decide format)
+    site: ""      # inventory_hostname / logical site label
+
+  overall:
+    status: "Unknown"
+    issues: 0
+    summary: ""
+
+  alerts: []
+  reports: []
+
+  # Populated by binding ops_config -> ops.config at runtime
+  config: {}
