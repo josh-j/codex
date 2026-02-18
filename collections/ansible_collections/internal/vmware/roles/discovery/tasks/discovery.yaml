@@ -1,0 +1,31 @@
+---
+# internal.vmware.audit : discovery.yaml
+# Aggregates all discovery tasks.
+
+- name: Discovery | Appliance Health
+  ansible.builtin.include_tasks: discovery/appliance_health.yaml
+  tags: ['discovery', 'infrastructure']
+
+- name: Discovery | Appliance Backup
+  ansible.builtin.include_tasks: discovery/appliance_backup.yaml
+  tags: ['discovery', 'infrastructure']
+
+- name: Discovery | Datacenters
+  ansible.builtin.include_tasks: discovery/datacenter.yaml
+  tags: ['discovery', 'infrastructure']
+
+- name: Discovery | Compute (Clusters & Hosts)
+  ansible.builtin.include_tasks: discovery/compute.yaml
+  tags: ['discovery', 'infrastructure']
+
+- name: Discovery | Storage (Datastores)
+  ansible.builtin.include_tasks: discovery/storage.yaml
+  tags: ['discovery', 'storage']
+
+- name: Discovery | Workload (VMs)
+  ansible.builtin.include_tasks: discovery/workload.yaml
+  tags: ['discovery', 'workload']
+
+- name: Discovery | Alarms
+  ansible.builtin.include_tasks: discovery/alarms.yaml
+  tags: ['discovery', 'alarms']

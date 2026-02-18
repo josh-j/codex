@@ -6,16 +6,12 @@
   # LOGIC: Only run audit if auditing is ON, AND hardening is OFF.
   # If hardening is enabled, we skip this to avoid running the heavy STIG logic twice.
   when:
-    - ubuntu.config.enable_stig_audit | default(false) | bool
-    - not (ubuntu.config.enable_stig_hardening | default(false) | bool)
+    - ubuntu_ctx.config.enable_stig_audit | default(false) | bool
+    - not (ubuntu_ctx.config.enable_stig_hardening | default(false) | bool)
   tags: ['check', 'security', 'stig']
   block:
-    - name: Load STIG Variables
-      ansible.builtin.include_vars:
-        file: "{{ role_path }}/defaults/stig_vars.yaml"
-
     - name: Execute STIG Audit
-      ansible.builtin.include_tasks: stig/ubuntu2404.yaml
+      ansible.builtin.include_tasks: ubuntu2404.yaml
       args:
         apply:
           check_mode: true  # Forces simulation (Read-Only)

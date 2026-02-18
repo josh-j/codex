@@ -14,5 +14,5 @@ unity:
 
     # Report settings
     # INHERIT GLOBAL ROOT
-    report_directory: "{{ ops.config.report_directory }}"
+    report_directory: "{{ ncs_config.report_directory }}"
     export_csv: true

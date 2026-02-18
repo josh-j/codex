@@ -1,0 +1,19 @@
+{% set res = [] %}
+{% set ssh = item.get('ssh', {}) %}
+{% set sshd_conf = ssh.get('sshd_config', '') %}
+
+{# ESXI-70-000009: SSHD Banner Directive #}
+{% if sshd_conf is search('(?im)^Banner\s+/etc/issue') %}
+    {% set _ = res.append({"id": "ESXI-70-000009", "status": "PASSED", "details": "SSHD Banner configured"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000009", "status": "FAILED", "details": "Banner directive missing/commented in sshd_config"}) %}
+{% endif %}
+
+{# ESXI-70-000014: PermitRootLogin #}
+{% if sshd_conf is search('(?im)^PermitRootLogin\s+no') %}
+    {% set _ = res.append({"id": "ESXI-70-000014", "status": "PASSED", "details": "PermitRootLogin no"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000014", "status": "FAILED", "details": "PermitRootLogin allowed"}) %}
+{% endif %}
+
+{{ res | to_json }}

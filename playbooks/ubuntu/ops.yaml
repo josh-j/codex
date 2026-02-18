@@ -1,0 +1,16 @@
+---
+# playbooks/plays/audit_ubuntu.yaml
+# Perform deep system audit for Ubuntu Linux infrastructure.
+
+- name: Ubuntu System Audit
+  hosts: ubuntu_servers
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+  roles:
+    - role: internal.core.stig
+    - role: internal.linux.ubuntu_system_audit

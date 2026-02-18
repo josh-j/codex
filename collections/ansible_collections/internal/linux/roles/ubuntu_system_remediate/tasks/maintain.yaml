@@ -11,7 +11,7 @@
     snapshot_prefix: "Ansible_Pre_Hardening"
     snapshot_desc: "Created by Ansible before applying STIG hardening"
   # Only run if we are actually planning to harden
-  when: ubuntu.config.enable_stig_hardening | default(false) | bool
+  when: ubuntu_ctx.config.enable_stig_hardening | default(false) | bool
 
 # 1. STANDARD SECURITY OPS
 # -----------------------------------------------------------------------------
@@ -20,22 +20,22 @@
     name: root
     password: "{{ vault_ubuntu_root_password | password_hash('sha512') }}"
   become: true
-  when: ubuntu.config.enable_password_rotation | default(false) | bool
+  when: ubuntu_ctx.config.enable_password_rotation | default(false) | bool
   tags: ['security', 'hardening', 'passwords']
 
 # 2. DOD STIG ENFORCEMENT
 # -----------------------------------------------------------------------------
 - name: Apply Cyber.mil STIG Hardening
   # This only runs if the tasks above succeeded
-  when: ubuntu.config.enable_stig_hardening | default(false) | bool
+  when: ubuntu_ctx.config.enable_stig_hardening | default(false) | bool
   tags: ['security', 'stig', 'hardening']
   block:
-    - name: Load STIG Variables
-      ansible.builtin.include_vars:
-        file: "{{ role_path }}/defaults/stig_vars.yaml"
-
-    - name: Execute STIG Implementation
-      ansible.builtin.include_tasks: stig/ubuntu2404.yaml
+    - name: Execute STIG Implementation (Role)
+      ansible.builtin.include_role:
+        name: internal.linux.ubuntu_stig_audit
+        apply:
+          # We run in normal mode (write changes)
+          check_mode: false
 
     # ADDED: Essential for the Export task to know data exists
     - name: Flag STIG Hardening as Complete
@@ -94,5 +94,5 @@
   become: true
   when:
     # Reboot if it was pending BEFORE OR if it is pending NOW
-    - (ubuntu.updates.reboot_pending | bool) or (_post_patch_reboot.stat.exists)
-    - ubuntu.config.allow_automatic_reboot | default(false) | bool
+    - (ubuntu_ctx.updates.reboot_pending | bool) or (_post_patch_reboot.stat.exists)
+    - ubuntu_ctx.config.allow_automatic_reboot | default(false) | bool

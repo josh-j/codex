@@ -1,22 +1,29 @@
 ---
-ppdm:
-  url: "https://ppdm-{{ inventory_hostname }}:8443"
-  credential: "ppdm_{{ inventory_hostname }}"
+# inventory/production/group_vars/sites.yaml
+# Site-specific connection parameters and credential mapping.
+
+# Canonical VMware Connection Info
+vmware_hostname: "vc-{{ inventory_hostname }}.local"
+
+# Legacy/Alternative mappings (if used by specific roles)
 vcenter:
-  url: "https://vc-{{ inventory_hostname }}.local"
+  url: "https://{{ vmware_hostname }}"
   credential: "vc_{{ inventory_hostname }}"
+
 unisphere:
   - {
     type: "unity",
     url: "https://unity-{{ inventory_hostname }}/api",
     credential: "unity_{{ inventory_hostname }}",
   }
+
 backup_unisphere:
   - {
     type: "ddve",
     url: "https://dd-{{ inventory_hostname }}",
     credential: "dd_{{ inventory_hostname }}",
   }
+
 ucs_fi:
   url: "ucs-{{ inventory_hostname }}"
   credential: "ucs_{{ inventory_hostname }}"

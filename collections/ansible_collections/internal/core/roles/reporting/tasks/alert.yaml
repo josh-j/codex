@@ -3,8 +3,8 @@
 # Standardized alert emitter (Unified Schema)
 #
 # Backwards-compatible:
-# - Legacy single-alert vars: ops_alert_severity/category/message/(details/affected_items)
-# - New batch mode: ops_alerts: [ {severity, category, message, details?, affected_items?, ...}, ... ]
+# - Legacy single-alert vars: ncs_alert_severity/category/message/(details/affected_items)
+# - New batch mode: ncs_alerts: [ {severity, category, message, details?, affected_items?, ...}, ... ]
 #
 # Optional per-alert overrides in batch mode:
 # - site, check_role, timestamp
@@ -21,15 +21,15 @@
   ansible.builtin.set_fact:
     _alerts_in: >-
       {{
-        ops_alerts
-        if (ops_alerts is defined)
+        ncs_alerts
+        if (ncs_alerts is defined)
         else
         [ {
-            'severity': (ops_alert_severity | default('')),
-            'category': (ops_alert_category | default('')),
-            'message':  (ops_alert_message  | default('')),
-            'details': (ops_alert_details | default({})),
-            'affected_items': (ops_alert_affected_items | default([]))
+            'severity': (ncs_alert_severity | default('')),
+            'category': (ncs_alert_category | default('')),
+            'message':  (ncs_alert_message  | default('')),
+            'details': (ncs_alert_details | default({})),
+            'affected_items': (ncs_alert_affected_items | default([]))
           } ]
       }}
 
@@ -62,9 +62,8 @@
   ansible.builtin.set_fact:
     _alert_default_ts: >-
       {{
-        ops.check.timestamp
-        | default(ansible_facts['date_time']['iso8601']
-        | default(lookup('pipe','date --iso-8601=seconds')))
+        run_ctx.timestamp
+        | default(ncs.check.timestamp)
       }}
 
 - name: Build alert objects
@@ -87,15 +86,15 @@
       {{ out }}
 
 # -----------------------------------------------------------------------------
-# 3) Append to ops.alerts (single set_fact)
+# 3) Append to ncs.alerts (single set_fact)
 # -----------------------------------------------------------------------------
-- name: Append alerts to ops.alerts list
+- name: Append alerts to ncs.alerts list
   ansible.builtin.set_fact:
-    ops: >-
+    ncs: >-
       {{
-        (ops | default({}))
+        (ncs | default({}))
         | combine({
-            'alerts': ((ops.alerts | default([])) + _generated_alerts)
+            'alerts': ((ncs.alerts | default([])) + _generated_alerts)
           }, recursive=true)
       }}
 
@@ -111,8 +110,8 @@
       CRITICAL: "error"
       WARNING: "warn"
       INFO: "info"
-    ops_log_message: "[{{ item.category | upper }}] {{ item.message }}"
-    ops_log_context:
+    ncs_log_message: "[{{ item.category | upper }}] {{ item.message }}"
+    ncs_log_context:
       count: >-
         {%- if (item.affected_items | default([])) | length > 0 -%}
           {{ (item.affected_items | length) }}

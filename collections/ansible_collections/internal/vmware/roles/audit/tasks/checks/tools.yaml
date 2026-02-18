@@ -1,0 +1,26 @@
+---
+# VM Tools Check
+- name: Get VM Tools info from vCenter
+  community.vmware.vmware_vm_info:
+    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
+    username: "{{ vmware_ctx.discovery.connection.username }}"
+    password: "{{ vmware_ctx.discovery.connection.password }}"
+    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    vm_type: vm
+  register: _vm_tools_raw
+  delegate_to: localhost
+
+- name: Analyze VM Tools Status
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "configuration"
+    ncs_alert_message: "VM {{ item.guest_name }} has VMware Tools issue (Status: {{ item.guest_tools_status }})"
+  loop: "{{ _vm_tools_raw.virtual_machines | default([]) }}"
+  loop_control:
+    label: "{{ item.guest_name }}"
+  when: 
+    - item.power_state == 'poweredOn'
+    - item.guest_tools_status not in ['toolsOk', 'toolsOld']

@@ -1,0 +1,16 @@
+---
+# playbooks/infrastructure/vmware.yaml
+# Perform deep health and compliance audit for VMware Infrastructure.
+
+- name: VMware Operations Audit
+  hosts: vcenters
+  gather_facts: false
+  strategy: linear
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+  roles:
+    - role: internal.vmware.audit
+      when: "'vmware' in (ansible_stats.run_ctx.tasks | default([]))"

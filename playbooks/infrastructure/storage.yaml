@@ -1,0 +1,22 @@
+---
+# playbooks/infrastructure/storage.yaml
+# Perform health checks for Dell Unity and Data Domain storage arrays.
+
+- name: Storage Operations Audit
+  hosts: sa:dd
+  gather_facts: false
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+  roles:
+    - role: internal.storage.unity
+      when: 
+        - "'sa' in group_names"
+        - "'unisphere' in (ansible_stats.run_ctx.tasks | default([]))"
+
+    - role: internal.storage.datadomain
+      when: 
+        - "'dd' in group_names"
+        - "'backup_unisphere' in (ansible_stats.run_ctx.tasks | default([]))"

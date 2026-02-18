@@ -1,0 +1,102 @@
+---
+# Discover VMs and Workload
+- name: Get VM info from vCenter API
+  community.vmware.vmware_vm_info:
+    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
+    username: "{{ vmware_ctx.discovery.connection.username }}"
+    password: "{{ vmware_ctx.discovery.connection.password }}"
+    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    vm_type: vm
+    show_attribute: true
+    show_tag: true
+  register: _vms_raw
+  delegate_to: localhost
+  retries: 3
+  delay: 2
+  until: _vms_raw is succeeded
+
+- name: Normalize VMs to list with enriched data
+  ansible.builtin.set_fact:
+    _temp_vms_list: "{{ _temp_vms_list | default([]) + [vm_normalized] }}"
+  vars:
+    _attrs: "{{ item.attributes | default({}) }}"
+    raw_email: "{{ _attrs.get('Owner Email', '') or _attrs.get('OwnerEmail', '') or _attrs.get('owner_email', '') or _attrs.get('Owner_Email', '') or '' }}"
+    vm_normalized:
+      name: "{{ item.guest_name }}"
+      uuid: "{{ item.uuid }}"
+      power_state: "{{ item.power_state | upper }}"
+      guest_os: "{{ item.guest_fullname | default('Unknown') }}"
+      cluster: "{{ item.cluster | default('N/A') }}"
+      datacenter: "{{ item.datacenter | default('N/A') }}"
+      tags: "{{ item.tags | default([]) }}"
+      backup_info: "{{ _attrs.get('Last Dell PowerProtect Backup', '') }}"
+      backup_schedule: "{{ (item.tags | default([]) | selectattr('category_name', 'equalto', 'Backup Schedule') | list | first | default({'name': 'None'})).name }}"
+      owner_email: "{{ raw_email | trim }}"
+      vcenter: "{{ inventory_hostname }}"
+  loop: "{{ _vms_raw.virtual_machines | default([]) }}"
+  loop_control:
+    label: "{{ item.guest_name | default('unknown') }}"
+  when: item.guest_name is defined
+
+- name: Analyze backup status
+  ansible.builtin.set_fact:
+    _temp_backup_analysis: "{{ _temp_backup_analysis | default([]) + [vm_status] }}"
+  vars:
+    _curr_ep: "{{ (run_ctx.timestamp | default(now().isoformat()) | to_datetime('%Y-%m-%dT%H:%M:%S%z')).strftime('%s') | int }}"
+    backup_info: "{{ item.backup_info }}"
+    has_backup: "{{ backup_info != '' and 'EndTime=' in backup_info }}"
+    backup_timestamp_str: "{{ backup_info.split('EndTime=')[1].split(',')[0] if has_backup else '' }}"
+    backup_epoch: "{{ (backup_timestamp_str | to_datetime('%Y-%m-%dT%H:%M:%SZ')).strftime('%s') | int if backup_timestamp_str != '' else 0 }}"
+    days_since_backup: "{{ ((_curr_ep | int - backup_epoch | int) / 86400) | int if backup_epoch | int > 0 else 9999 }}"
+    expected_frequency: "{{ (vmware_ctx.config.backup_schedules | default({})).get(item.backup_schedule | lower, 0) }}"
+    backup_overdue: "{{ expected_frequency | int > 0 and days_since_backup | int > (expected_frequency | int + (vmware_ctx.config.backup_grace_period_days | default(0) | int)) }}"
+    vm_status:
+      vcenter: "{{ item.vcenter }}"
+      name: "{{ item.name }}"
+      datacenter: "{{ item.datacenter }}"
+      cluster: "{{ item.cluster }}"
+      power_state: "{{ item.power_state }}"
+      backup_schedule: "{{ item.backup_schedule }}"
+      has_backup: "{{ has_backup }}"
+      last_backup_date: "{{ backup_timestamp_str }}"
+      days_since_backup: "{{ days_since_backup }}"
+      expected_frequency: "{{ expected_frequency }}"
+      backup_overdue: "{{ backup_overdue }}"
+      owner_email: "{{ item.owner_email }}"
+  loop: "{{ _temp_vms_list | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Sync vmware_ctx workload
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
+      {{
+        vmware_ctx | internal.core.recursive_combine({
+          'inventory': {
+            'vms': {
+              'list': (_temp_vms_list | default([])),
+              'backup_analysis': (_temp_backup_analysis | default([])),
+              'never_backed_up': (_temp_backup_analysis | default([]) | selectattr('has_backup', 'equalto', false) | selectattr('backup_schedule', 'ne', 'None') | selectattr('backup_schedule', 'ne', 'No Backup') | list),
+              'with_overdue_backup': (_temp_backup_analysis | default([]) | selectattr('backup_overdue', 'equalto', true) | list),
+              'without_backup_tags': (_temp_backup_analysis | default([]) | selectattr('backup_schedule', 'eq', 'None') | list),
+              'without_owner_email': (_temp_vms_list | default([]) | selectattr('owner_email', 'equalto', '') | list),
+              'metrics': {
+                'total': (_temp_vms_list | default([]) | length),
+                'powered_off': (_temp_vms_list | default([]) | selectattr('power_state', 'equalto', 'POWEREDOFF') | list | length),
+                'powered_off_pct': (((_temp_vms_list | default([]) | selectattr('power_state', 'equalto', 'POWEREDOFF') | list | length) / ([(_temp_vms_list | default([]) | length), 1] | max)) * 100) | round(1)
+              }
+            }
+          }
+        })
+      }}
+  changed_when: false
+
+- name: Log VM Summary
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: logging/info
+  vars:
+    ncs_log_message: >-
+      Analyzed {{ vmware_ctx.inventory.vms.metrics.total }} VMs:
+      {{ vmware_ctx.inventory.vms.never_backed_up | length }} Never Backed Up,
+      {{ vmware_ctx.inventory.vms.with_overdue_backup | length }} Overdue

@@ -10,26 +10,26 @@
     name: internal.core.reporting
     tasks_from: export_csv.yaml
   vars:
-    ops_csv_report_name: "system_capacity_disks"
-    ops_csv_headers:
+    ncs_csv_report_name: "system_capacity_disks"
+    ncs_csv_headers:
       [
         "Hostname", "Mount Point", "Device", "FSType",
         "Total (GB)", "Free (GB)", "Used %"
       ]
-    ops_csv_keys:
+    ncs_csv_keys:
       [
         "hostname", "mount", "device", "fstype",
         "total_gb", "free_gb", "used_pct"
       ]
     # Flatten the list: Add hostname to every disk object
-    ops_csv_data: >-
+    ncs_csv_data: >-
       {{
-        ubuntu.system.disks
+        ubuntu_ctx.system.disks
         | map('combine', {'hostname': inventory_hostname})
         | list
       }}
-    ops_csv_sort_by: "used_pct"
-  when: ubuntu.config.export_csv | default(true) | bool
+    ncs_csv_sort_by: "used_pct"
+  when: ubuntu_ctx.config.export_csv | default(true) | bool
 
 # ========================================================================
 # 2. SYSTEM HEALTH SUMMARY
@@ -39,27 +39,27 @@
     name: internal.core.reporting
     tasks_from: export_csv.yaml
   vars:
-    ops_csv_report_name: "system_health_summary"
-    ops_csv_headers:
+    ncs_csv_report_name: "system_health_summary"
+    ncs_csv_headers:
       [
         "Hostname", "Uptime (Days)", "Kernel", "Load (15m)",
         "Mem Used %", "Swap Used %", "Failed Services"
       ]
-    ops_csv_keys:
+    ncs_csv_keys:
       [
         "hostname", "uptime_days", "kernel", "load_avg",
         "mem_pct", "swap_pct", "failed_svcs"
       ]
     # Create a single summary row for this host
-    ops_csv_data:
+    ncs_csv_data:
       - hostname: "{{ inventory_hostname }}"
-        uptime_days: "{{ ubuntu.system.uptime_days }}"
-        kernel: "{{ ubuntu.system.kernel }}"
-        load_avg: "{{ ubuntu.system.load_avg }}"
-        mem_pct: "{{ ubuntu.system.memory.used_pct }}"
-        swap_pct: "{{ ubuntu.system.swap.used_pct }}"
-        failed_svcs: "{{ ubuntu.system.services.failed_count }}"
-  when: ubuntu.config.export_csv | default(true) | bool
+        uptime_days: "{{ ubuntu_ctx.system.uptime_days }}"
+        kernel: "{{ ubuntu_ctx.system.kernel }}"
+        load_avg: "{{ ubuntu_ctx.system.load_avg }}"
+        mem_pct: "{{ ubuntu_ctx.system.memory.used_pct }}"
+        swap_pct: "{{ ubuntu_ctx.system.swap.used_pct }}"
+        failed_svcs: "{{ ubuntu_ctx.system.services.failed_count }}"
+  when: ubuntu_ctx.config.export_csv | default(true) | bool
 
 
 # ========================================================================
@@ -70,28 +70,28 @@
     name: internal.core.reporting
     tasks_from: export_csv.yaml
   vars:
-    ops_csv_report_name: "security_users"
-    ops_csv_headers:
+    ncs_csv_report_name: "security_users"
+    ncs_csv_headers:
       [
         "Hostname", "User", "UID", "GID", "Shell",
         "Home Directory", "Password Age (Days)", "Account Locked"
       ]
-    ops_csv_keys:
+    ncs_csv_keys:
       [
         "hostname", "name", "uid", "gid", "shell",
         "home", "password_age_days", "is_locked"
       ]
     # Filter: Only export users with a shell (humans/services), exclude nologin/false
-    ops_csv_data: >-
+    ncs_csv_data: >-
       {{
-        ubuntu.security.users
+        ubuntu_ctx.security.users
         | rejectattr('shell', 'search', 'nologin')
         | rejectattr('shell', 'search', 'false')
         | map('combine', {'hostname': inventory_hostname})
         | list
       }}
-    ops_csv_sort_by: "name"
-  when: ubuntu.config.export_csv | default(true) | bool
+    ncs_csv_sort_by: "name"
+  when: ubuntu_ctx.config.export_csv | default(true) | bool
 
 # ========================================================================
 # 4. CONFIGURATION COMPLIANCE REPORT
@@ -101,26 +101,26 @@
     name: internal.core.reporting
     tasks_from: export_csv.yaml
   vars:
-    ops_csv_report_name: "security_config"
-    ops_csv_headers:
+    ncs_csv_report_name: "security_config"
+    ncs_csv_headers:
       [
         "Hostname", "SSH Protocol", "SSH Root Login", "SSH Empty Passwords",
         "Shadow Perms", "World Writable Files"
       ]
-    ops_csv_keys:
+    ncs_csv_keys:
       [
         "hostname", "ssh_proto", "ssh_root", "ssh_empty",
         "shadow_mode", "writable_count"
       ]
     # Construct a single-row summary for this host
-    ops_csv_data:
+    ncs_csv_data:
       - hostname: "{{ inventory_hostname }}"
-        ssh_proto: "{{ ubuntu.security.ssh_config['protocol'] | default('2') }}"
-        ssh_root: "{{ ubuntu.security.ssh_config['permitrootlogin'] | default('unknown') }}"
-        ssh_empty: "{{ ubuntu.security.ssh_config['permitemptypasswords'] | default('unknown') }}"
-        shadow_mode: "{{ ubuntu.security.file_stats['/etc/shadow'].mode | default('MISSING') }}"
-        writable_count: "{{ ubuntu.security.world_writable_files | length }}"
-  when: ubuntu.config.export_csv | default(true) | bool
+        ssh_proto: "{{ ubuntu_ctx.security.ssh_config['protocol'] | default('2') }}"
+        ssh_root: "{{ ubuntu_ctx.security.ssh_config['permitrootlogin'] | default('unknown') }}"
+        ssh_empty: "{{ ubuntu_ctx.security.ssh_config['permitemptypasswords'] | default('unknown') }}"
+        shadow_mode: "{{ ubuntu_ctx.security.file_stats['/etc/shadow'].mode | default('MISSING') }}"
+        writable_count: "{{ ubuntu_ctx.security.world_writable_files | length }}"
+  when: ubuntu_ctx.config.export_csv | default(true) | bool
 
 # ========================================================================
 # 5. Export patching compliance data
@@ -130,16 +130,16 @@
     name: internal.core.reporting
     tasks_from: export_csv.yaml
   vars:
-    ops_csv_report_name: "patch_compliance"
-    ops_csv_headers:
+    ncs_csv_report_name: "patch_compliance"
+    ncs_csv_headers:
       ["Hostname", "Pending Updates", "Reboot Required", "Security Status"]
-    ops_csv_keys:
+    ncs_csv_keys:
       ["hostname", "pending", "reboot", "status"]
 
-    ops_csv_data:
+    ncs_csv_data:
       - hostname: "{{ inventory_hostname }}"
-        pending: "{{ ubuntu.updates.pending_count }}"
-        reboot: "{{ ubuntu.updates.reboot_pending }}"
-        status: "{{ 'Non-Compliant' if ubuntu.updates.pending_count | int > 0 else 'Compliant' }}"
-  when: ubuntu.config.export_csv | default(true) | bool
+        pending: "{{ ubuntu_ctx.updates.pending_count }}"
+        reboot: "{{ ubuntu_ctx.updates.reboot_pending }}"
+        status: "{{ 'Non-Compliant' if ubuntu_ctx.updates.pending_count | int > 0 else 'Compliant' }}"
+  when: ubuntu_ctx.config.export_csv | default(true) | bool
 

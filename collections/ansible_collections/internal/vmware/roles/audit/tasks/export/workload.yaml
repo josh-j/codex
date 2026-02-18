@@ -1,0 +1,40 @@
+---
+# Export Workload CSVs
+- name: Export VMs never backed up
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv
+  vars:
+    _vms: "{{ vmware_ctx.inventory.vms | default({}) }}"
+    ncs_csv_report_name: "vms_never_backup"
+    ncs_csv_headers: ["Site", "VM Name", "Power State", "Backup Schedule", "Cluster", "Owner Email"]
+    ncs_csv_keys: ["vcenter", "name", "power_state", "backup_schedule", "cluster", "owner_email"]
+    ncs_csv_data: >-
+      {{ _vms.never_backed_up | default([])
+          | rejectattr('name', 'search', 'vCLS')
+          | rejectattr('name', 'search', 'VCSA') | list }}
+    ncs_csv_sort_by: "name"
+
+- name: Export VMs with overdue backups
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv
+  vars:
+    _vms: "{{ vmware_ctx.inventory.vms | default({}) }}"
+    ncs_csv_report_name: "vms_overdue_backup"
+    ncs_csv_headers: ["Site", "VM Name", "Last Backup", "Days Since", "Expected", "Owner Email"]
+    ncs_csv_keys: ["vcenter", "name", "last_backup_date", "days_since_backup", "expected_frequency", "owner_email"]
+    ncs_csv_data: "{{ _vms.with_overdue_backup | default([]) | list }}"
+    ncs_csv_sort_by: "days_since_backup"
+
+- name: Export Full VM Inventory (Audit)
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv
+  vars:
+    _vms: "{{ vmware_ctx.inventory.vms | default({}) }}"
+    ncs_csv_report_name: "vms_inventory_full"
+    ncs_csv_headers: ["Site", "VM Name", "UUID", "Cluster", "Datacenter", "Power", "OS", "Owner", "Backup Tag"]
+    ncs_csv_keys: ["vcenter", "name", "uuid", "cluster", "datacenter", "power_state", "guest_os", "owner_email", "backup_schedule"]
+    ncs_csv_data: "{{ _vms.list | default([]) }}"
+    ncs_csv_sort_by: "name"

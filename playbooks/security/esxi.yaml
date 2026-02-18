@@ -1,0 +1,18 @@
+---
+# playbooks/security/esxi.yaml
+# Perform STIG compliance audit for ESXi Hosts.
+
+- name: ESXi Security Audit
+  hosts: esxi
+  gather_facts: false
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+  tasks:
+    - name: Audit ESXi Hosts (Consolidated)
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+        tasks_from: esxi.yaml
+      tags: ["esxi", "stig"]

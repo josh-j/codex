@@ -2,4 +2,4 @@
 - name: Log INFO message
   ansible.builtin.include_tasks: main.yaml
   vars:
-    ops_log_level: "info"
+    ncs_log_level: "info"

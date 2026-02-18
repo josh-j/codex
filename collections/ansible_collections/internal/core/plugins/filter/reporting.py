@@ -3,33 +3,24 @@ __metaclass__ = type
 
 import datetime
 
-def validate_ops_data(ops, host):
-    """
-    Validates the ops data structure for a given host.
-    Ensures required keys exist.
-    """
-    if not isinstance(ops, dict):
-        return {'valid': False, 'error': f'Ops data for {host} is not a dictionary'}
-    
-    # Basic validation logic - can be expanded
-    required_keys = ['check', 'alerts', 'reports']
-    missing = [k for k in required_keys if k not in ops]
-    
-    if missing:
-        return {'valid': False, 'error': f'Ops data for {host} missing keys: {", ".join(missing)}'}
-    
-    return {'valid': True, 'data': ops}
-
 def aggregate_report_data(hostvars, groups):
     """
     Aggregates results from all hosts into a single report model.
     Replaces the heavy Jinja2 logic in aggregate.yaml.
     """
+    def _parse_day(date_str):
+        if not date_str:
+            return None
+        try:
+            return datetime.datetime.strptime(date_str, '%Y-%m-%d').strftime('%A')
+        except Exception:
+            return None
+
     report = {
         'meta': {
-            'date': datetime.datetime.now().strftime('%Y-%m-%d'),
-            'day': datetime.datetime.now().strftime('%A'),
-            'generated': datetime.datetime.now().strftime('%H:%M:%S %Z'),
+            'date': 'N/A',
+            'day': 'N/A',
+            'generated': 'N/A',
             'run_id': 'N/A'
         },
         'data': {
@@ -56,15 +47,19 @@ def aggregate_report_data(hostvars, groups):
     all_hosts = groups.get('all', [])
     for host in all_hosts:
         h_vars = hostvars.get(host, {})
-        ops = h_vars.get('ops', {})
+        ncs = h_vars.get('ncs', {})
         
         # Meta from first host found
-        if report['meta']['run_id'] == 'N/A' and 'check' in ops:
-            report['meta']['run_id'] = ops['check'].get('id', 'N/A')
-            report['meta']['date'] = ops['check'].get('date', report['meta']['date'])
+        if report['meta']['run_id'] == 'N/A' and 'check' in ncs:
+            report['meta']['run_id'] = ncs['check'].get('id', 'N/A')
+            report['meta']['date'] = ncs['check'].get('date', report['meta']['date'])
+            report['meta']['generated'] = ncs['check'].get('timestamp', report['meta']['generated'])
+            day = _parse_day(report['meta']['date'])
+            if day:
+                report['meta']['day'] = day
 
         # Aggregate Alerts
-        for alert in ops.get('alerts', []):
+        for alert in ncs.get('alerts', []):
             alert_copy = alert.copy()
             alert_copy['site'] = alert.get('site', host)
             report['data']['alerts'].append(alert_copy)
@@ -78,7 +73,7 @@ def aggregate_report_data(hostvars, groups):
                 report['counts']['alerts']['info'] += 1
 
         # Aggregate Reports
-        for rep in ops.get('reports', []):
+        for rep in ncs.get('reports', []):
             rep_copy = rep.copy()
             rep_copy['site'] = rep.get('site', host)
             report['data']['reports'].append(rep_copy)
@@ -87,7 +82,7 @@ def aggregate_report_data(hostvars, groups):
     vcenters = groups.get('vcenters', [])
     for host in vcenters:
         h_vars = hostvars.get(host, {})
-        ops = h_vars.get('ops', {})
+        ncs = h_vars.get('ncs', {})
         vc = h_vars.get('vcenter', {})
         conn = vc.get('connection', {})
         appliance = vc.get('appliance', {})
@@ -143,15 +138,15 @@ def aggregate_report_data(hostvars, groups):
     for group_name, report_key in mapping:
         for host in groups.get(group_name, []):
             h_vars = hostvars.get(host, {})
-            ops = h_vars.get('ops', {})
-            alerts = ops.get('alerts', [])
+            ncs = h_vars.get('ncs', {})
+            alerts = ncs.get('alerts', [])
             
             report['data'][report_key].append({
                 'site': host,
-                'check_timestamp': ops.get('check', {}).get('timestamp', 'N/A'),
+                'check_timestamp': ncs.get('check', {}).get('timestamp', 'N/A'),
                 'alerts_total': len(alerts),
                 'alerts_critical': len([a for a in alerts if a.get('severity') == 'CRITICAL']),
-                'reports_generated': len(ops.get('reports', []))
+                'reports_generated': len(ncs.get('reports', []))
             })
 
     # 4. Final Totals
@@ -164,6 +159,5 @@ def aggregate_report_data(hostvars, groups):
 class FilterModule(object):
     def filters(self):
         return {
-            'aggregate_report_data': aggregate_report_data,
-            'validate_ops_data': validate_ops_data
+            'aggregate_report_data': aggregate_report_data
         }

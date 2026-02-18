@@ -1,22 +1,21 @@
 ---
-# Initialize the 'ops' dictionary for this platform.
+# Initialize the 'ncs' and domain namespaces for this platform.
 
-- name: "[{{ starter_platform_name }}] Initialize host results"
-  ansible.builtin.set_fact:
-    ops: "{{ ops | default({}) | combine(_starter_initial_ops, recursive=True) }}"
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: sync_ctx
   vars:
-    _starter_initial_ops:
-      check:
-        id: "{{ hostvars['localhost'].run_ctx.run_id | default('MANUAL-' + now().strftime('%Y%m%d%H%M%S')) }}"
-        date: "{{ hostvars['localhost'].run_ctx.run_day | default(now().strftime('%Y-%m-%d')) }}"
-        site: "{{ inventory_hostname }}"
-      alerts: []
-      reports: []
-      overall:
-        status: "OK"
-        issues: 0
-      # Namespaced data for this platform
-      "{{ starter_platform_name }}":
-        discovered_at: "{{ now() }}"
-        status: "INITIALIZING"
-        facts: {}
+    ncs_domain_ctx_name: "{{ starter_platform_name }}_ctx"
+
+- name: Initialize Domain Structure
+  ansible.builtin.set_fact:
+    "{{ starter_platform_name }}_ctx": >-
+      {{
+        lookup('vars', starter_platform_name + '_ctx')
+        | internal.core.recursive_combine({
+          'status': 'INITIALIZING',
+          'facts': {}
+        })
+      }}
+  changed_when: false

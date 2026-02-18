@@ -1,0 +1,19 @@
+---
+# internal.windows.windows_audit : main
+# Main entry point for Windows auditing and updates.
+
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.windows.common
+    tasks_from: sync_ctx
+
+- name: Windows Audit Orchestrator
+  block:
+    - name: Run Application Checks
+      ansible.builtin.include_tasks: checks/applications.yaml
+      tags: ['audit', 'applications']
+
+    - name: Run ConfigMgr Updates
+      ansible.builtin.include_tasks: updates/configmgr.yaml
+      when: windows_ctx.config.force_update | default(false) | bool
+      tags: ['update', 'configmgr']

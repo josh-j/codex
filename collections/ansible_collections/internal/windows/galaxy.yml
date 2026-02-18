@@ -1,4 +1,4 @@
-# collections/ansible_collections/internal/stig/galaxy.yml
+# collections/ansible_collections/internal/windows/galaxy.yml
 namespace: internal
 name: windows
 version: 0.0.1

@@ -1,0 +1,10 @@
+---
+# Audit ESXi VIBs
+- name: Run VIBs STIG Audit
+  ansible.builtin.include_role:
+    name: internal.core.stig
+    tasks_from: audit_orchestrator
+  vars:
+    raw_discovery_data: "{{ esxi_ctx.stig_facts | default([]) }}"
+    audit_logic_template: "{{ role_path }}/templates/vibs_logic.j2"
+    report_prefix: "esxi_vibs_stig"

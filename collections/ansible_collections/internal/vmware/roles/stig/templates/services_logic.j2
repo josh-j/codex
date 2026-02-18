@@ -1,0 +1,32 @@
+{% set res = [] %}
+{% set svcs = item.get('services', {}) %}
+
+{# ESXI-70-000035: SSH Disabled #}
+{% if svcs.get('TSM-SSH', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000035", "status": "PASSED", "details": "SSH Service Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000035", "status": "FAILED", "details": "SSH Service Running"}) %}
+{% endif %}
+
+{# ESXI-70-000036: ESXi Shell Disabled #}
+{% if svcs.get('TSM', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000036", "status": "PASSED", "details": "ESXi Shell Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000036", "status": "FAILED", "details": "ESXi Shell Running"}) %}
+{% endif %}
+
+{# ESXI-70-000046: NTP Configured #}
+{% if svcs.get('ntpd', {}).get('running') == true and svcs.get('ntpd', {}).get('policy') == 'on' %}
+    {% set _ = res.append({"id": "ESXI-70-000046", "status": "PASSED", "details": "NTP Running and Policy On"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000046", "status": "FAILED", "details": "NTP not running or incorrect policy"}) %}
+{% endif %}
+
+{# ESXI-70-000083: SLP Disabled #}
+{% if svcs.get('slpd', {}).get('running') == false %}
+    {% set _ = res.append({"id": "ESXI-70-000083", "status": "PASSED", "details": "SLP Stopped"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000083", "status": "FAILED", "details": "SLP Running"}) %}
+{% endif %}
+
+{{ res | to_json }}

@@ -1,8 +1,0 @@
-namespace: internal
-name: vsphere
-version: 1.0.0
-readme: README.md
-authors:
-  - Codex Automation Team
-description: vSphere infrastructure health and STIG audit collection
-license: MIT

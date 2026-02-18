@@ -1,11 +1,18 @@
 ---
 # applications.yaml - Windows Installed Apps Check
 
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.windows.common
+    tasks_from: sync_ctx
+
 - name: Windows installed applications inventory
   block:
     - name: Initialize Windows namespace
       ansible.builtin.set_fact:
-        windows:
+        windows_ctx: "{{ windows_ctx | internal.core.recursive_combine(structure) }}"
+      vars:
+        structure:
           config:
             startup_delay: "{{ startup_delay | default(0) }}"
             skip_startup_delay: "{{ skip_startup_delay | default(false) }}"
@@ -20,8 +27,8 @@
             metrics: {}
 
     - name: Add startup delay
-      ansible.windows.win_shell: Start-Sleep -Seconds {{ windows.config.startup_delay }}
-      when: not windows.config.skip_startup_delay | bool
+      ansible.windows.win_shell: Start-Sleep -Seconds {{ windows_ctx.config.startup_delay }}
+      when: not windows_ctx.config.skip_startup_delay | bool
 
     - name: Check if CCMExec service is running
       ansible.windows.win_service:
@@ -30,37 +37,37 @@
 
     - name: Store CCMExec status
       ansible.builtin.set_fact:
-        windows: "{{ windows | combine({'services': {'ccmexec_running': _ccm_service.state == 'running'}}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | combine({'services': {'ccmexec_running': _ccm_service.state == 'running'}}, recursive=true) }}"
 
     - name: Fail if CCMExec is not running
       ansible.builtin.fail:
         msg: "ConfigMgr client service (CCMExec) is not running"
-      when: not windows.services.ccmexec_running
+      when: not windows_ctx.services.ccmexec_running
 
     - name: Ensure scripts directory exists
       ansible.windows.win_file:
-        path: "{{ windows.config.remote_scripts_path }}"
+        path: "{{ windows_ctx.config.remote_scripts_path }}"
         state: directory
 
     - name: Copy Get-ConfigMgrApplications.ps1 script
       ansible.windows.win_copy:
-        src: "{{ playbook_dir }}/files/Get-ConfigMgrApplications.ps1"
-        dest: "{{ windows.config.remote_scripts_path }}\\Get-ConfigMgrApplications.ps1"
+        src: Get-ConfigMgrApplications.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Get-ConfigMgrApplications.ps1"
 
     - name: Copy Get-InstalledApplications.ps1 script
       ansible.windows.win_copy:
-        src: "{{ playbook_dir }}/files/Get-InstalledApplications.ps1"
-        dest: "{{ windows.config.remote_scripts_path }}\\Get-InstalledApplications.ps1"
+        src: Get-InstalledApplications.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Get-InstalledApplications.ps1"
 
     - name: Get ConfigMgr applications
       ansible.windows.win_powershell:
         script: |
-          & "{{ windows.config.remote_scripts_path }}\Get-ConfigMgrApplications.ps1" -ExcludedPatterns @()
+          & "{{ windows_ctx.config.remote_scripts_path }}\Get-ConfigMgrApplications.ps1" -ExcludedPatterns @()
       register: _configmgr_apps_result
 
     - name: Parse ConfigMgr applications
       ansible.builtin.set_fact:
-        windows: "{{ windows | combine({'applications': apps_data}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | combine({'applications': apps_data}, recursive=true) }}"
       vars:
         filtered_data: "{{ _configmgr_apps_result.output[0] | from_json }}"
         apps_data:
@@ -69,30 +76,30 @@
     - name: Get installed applications
       ansible.windows.win_powershell:
         script: |
-          & "{{ windows.config.remote_scripts_path }}\Get-InstalledApplications.ps1"
+          & "{{ windows_ctx.config.remote_scripts_path }}\Get-InstalledApplications.ps1"
       register: _installed_apps_result
 
     - name: Parse installed applications
       ansible.builtin.set_fact:
-        windows: "{{ windows | combine({'applications': apps_data}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | combine({'applications': apps_data}, recursive=true) }}"
       vars:
         apps_data:
           installed_apps: "{{ _installed_apps_result.output[0] | from_json if _installed_apps_result.output is defined and _installed_apps_result.output | length > 0 else [] }}"
 
     - name: Calculate application metrics
       ansible.builtin.set_fact:
-        windows: "{{ windows | combine({'applications': {'metrics': app_metrics}}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | combine({'applications': {'metrics': app_metrics}}, recursive=true) }}"
       vars:
         app_metrics:
-          configmgr_count: "{{ windows.applications.configmgr_apps | length }}"
-          installed_count: "{{ windows.applications.installed_apps | length }}"
+          configmgr_count: "{{ windows_ctx.applications.configmgr_apps | length }}"
+          installed_count: "{{ windows_ctx.applications.installed_apps | length }}"
 
     - name: Log application inventory summary
       ansible.builtin.include_role:
         name: internal.core.common
         tasks_from: logging/info
       vars:
-        ops_log_message: "Applications: {{ windows.applications.metrics.configmgr_count }} ConfigMgr apps, {{ windows.applications.metrics.installed_count }} installed apps"
+        ncs_log_message: "Applications: {{ windows_ctx.applications.metrics.configmgr_count }} ConfigMgr apps, {{ windows_ctx.applications.metrics.installed_count }} installed apps"
 
     # ========================================================================
     # REPORTS
@@ -100,16 +107,9 @@
 
     - name: Ensure local report directory exists
       ansible.builtin.file:
-        path: "{{ windows.config.local_report_path }}"
+        path: "{{ windows_ctx.config.local_report_path }}"
         state: directory
         mode: "0755"
-      delegate_to: localhost
-
-    - name: Generate installed applications report
-      ansible.builtin.template:
-        src: installed_applications_report.md.j2
-        dest: "{{ windows.config.local_report_path }}/{{ inventory_hostname }}_installed_applications_{{ ansible_date_time.date }}.md"
-        mode: "0644"
       delegate_to: localhost
 
     - name: Export ConfigMgr apps to CSV
@@ -117,14 +117,14 @@
         name: internal.core.reporting
         tasks_from: export_csv.yaml
       vars:
-        ops_csv_report_name: "windows_configmgr_apps"
-        ops_csv_headers:
+        ncs_csv_report_name: "windows_configmgr_apps"
+        ncs_csv_headers:
           ["Server", "App Name", "Version", "Publisher", "Install State"]
-        ops_csv_data: "{{ windows.applications.configmgr_apps }}"
-        ops_csv_sort_by: "App Name"
+        ncs_csv_data: "{{ windows_ctx.applications.configmgr_apps }}"
+        ncs_csv_sort_by: "App Name"
       when:
-        - windows.config.export_csv
-        - windows.applications.metrics.configmgr_count | int > 0
+        - windows_ctx.config.export_csv
+        - windows_ctx.applications.metrics.configmgr_count | int > 0
 
   rescue:
     - name: Log application check failure
@@ -132,11 +132,11 @@
         name: internal.core.common
         tasks_from: logging/error
       vars:
-        ops_log_message: "Windows application check failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
+        ncs_log_message: "Windows application check failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
 
     - name: Set empty application data
       ansible.builtin.set_fact:
-        windows: "{{ windows | combine({'applications': empty_apps}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | combine({'applications': empty_apps}, recursive=true) }}"
       vars:
         empty_apps:
           configmgr_apps: []
@@ -144,3 +144,8 @@
           metrics:
             configmgr_count: 0
             installed_count: 0
+
+- name: Finalize Windows Context
+  ansible.builtin.set_fact:
+    windows: "{{ windows_ctx }}"
+  changed_when: false

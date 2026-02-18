@@ -1,11 +1,15 @@
 ---
-# Export local findings to a report file if needed.
+# Export audit results for {{ starter_platform_name }}
 
-- name: "[{{ starter_platform_name }}] Register report metadata"
-  ansible.builtin.set_fact:
-    ops: "{{ ops | combine({'reports': ops.reports + [report_item]}, recursive=True) }}"
+- name: "[{{ starter_platform_name }}] Sample Export"
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
-    report_item:
-      name: "{{ starter_platform_name }}_summary"
-      path: "/tmp/{{ inventory_hostname }}_{{ starter_platform_name }}.json"
-      type: "json"
+    ncs_csv_report_name: "{{ starter_platform_name }}_summary"
+    ncs_csv_headers: ["Site", "Status"]
+    ncs_csv_keys: ["site", "status"]
+    ncs_csv_data:
+      - site: "{{ inventory_hostname }}"
+        status: "{{ lookup('vars', starter_platform_name + '_ctx').status }}"
+  when: false # Disabled by default in template

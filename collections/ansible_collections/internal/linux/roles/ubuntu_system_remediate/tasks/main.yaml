@@ -3,7 +3,7 @@
     - name: Maintenance - Patching, Hardening & Reboot
       ansible.builtin.include_tasks: maintain.yaml
       tags: ['maintenance']
-      when: ubuntu.config.enable_maintenance | default(false) | bool
+      when: ubuntu_ctx.config.enable_maintenance | default(false) | bool
 
   # RESCUE: Only runs if something in the 'block' above FAILED
   rescue:

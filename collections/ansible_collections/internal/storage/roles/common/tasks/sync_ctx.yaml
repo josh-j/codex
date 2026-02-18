@@ -1,0 +1,10 @@
+---
+# internal.storage.common : sync_ctx
+# Standardizes context binding for Storage infrastructure audits.
+
+- name: Sync Storage Context
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: sync_ctx
+  vars:
+    ncs_domain_ctx_name: "storage_ctx"

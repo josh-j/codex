@@ -40,10 +40,10 @@
 
 # Daily Operations Report
 
-**Date:** {{ safe(report.meta.date, safe(date, lookup('pipe', 'date +%Y-%m-%d'))) }}
-**Day:** {{ safe(report.meta.day,  safe(day,  lookup('pipe', 'date +%A'))) }}
-**Generated:** {{ lookup('pipe', 'date "+%H:%M:%S %Z"') }}
-**Run ID:** {{ safe(report.meta.run_id, ops.check.id | default('N/A')) }}
+**Date:** {{ safe(report.meta.date, safe(date)) }}
+**Day:** {{ safe(report.meta.day,  safe(day)) }}
+**Generated:** {{ safe(report.meta.generated, 'N/A') }}
+**Run ID:** {{ safe(report.meta.run_id, ncs.check.id | default('N/A')) }}
 
 ## Executive Summary
 
@@ -102,4 +102,4 @@
 {% endif %}
 
 ---
-*Detailed reports saved to: `{{ report_share_path | default('\\\\reports') }}`* *Run ID: {{ safe(report.meta.run_id, ops.check.id | default('N/A')) }}*
+*Detailed reports saved to: `{{ report_share_path | default('\\\\reports') }}`* *Run ID: {{ safe(report.meta.run_id, ncs.check.id | default('N/A')) }}*

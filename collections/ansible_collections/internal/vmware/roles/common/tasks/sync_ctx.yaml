@@ -1,0 +1,11 @@
+---
+# internal.vmware.common : sync_ctx
+# VMware-specific wrapper for the core sync_ctx pattern.
+
+- name: Sync VMware Context
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: sync_ctx
+  vars:
+    ncs_domain_ctx_name: "vmware_ctx"
+

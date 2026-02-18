@@ -1,0 +1,32 @@
+---
+# Alarm Audits
+- name: "Check: Critical Alarms Active"
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
+    ncs_alert_severity: "CRITICAL"
+    ncs_alert_category: "alarms"
+    ncs_alert_message: "{{ _alarms.metrics.critical_count | default(0) }} critical alarm(s) active in vCenter"
+    ncs_alert_details:
+      critical_count: "{{ _alarms.metrics.critical_count | default(0) }}"
+      warning_count: "{{ _alarms.metrics.warning_count | default(0) }}"
+    ncs_alert_affected_items: "{{ _alarms.by_severity.critical | default([]) }}"
+  when: (_alarms.metrics.critical_count | default(0) | int) > 0
+
+- name: "Check: Warning Alarms Active"
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "alarms"
+    ncs_alert_message: "{{ _alarms.metrics.warning_count | default(0) }} warning alarm(s) active in vCenter"
+    ncs_alert_details:
+      warning_count: "{{ _alarms.metrics.warning_count | default(0) }}"
+    ncs_alert_affected_items: "{{ _alarms.by_severity.warning | default([]) }}"
+  when:
+    - (_alarms.metrics.warning_count | default(0) | int) > 0
+    - (_alarms.metrics.critical_count | default(0) | int) == 0

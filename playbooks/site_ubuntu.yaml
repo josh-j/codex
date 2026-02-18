@@ -1,56 +1,6 @@
-# playbooks/site_ubuntu.yaml
-# Ubuntu System Audit and Reporting Playbook
+---
+# playbooks/site_ubuntu.yaml (Legacy Wrapper)
+# Redirects to: audit_ubuntu.yaml
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1) INITIALIZATION PLAY (localhost)
-# ─────────────────────────────────────────────────────────────────────────────
-- name: Initialize Ubuntu Audit
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Generate Global Run ID and Metadata
-      ansible.builtin.set_fact:
-        run_ctx:
-          id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
-          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
-          timestamp: '{{ lookup(''pipe'', ''date "+%Y-%m-%dT%H:%M:%S%z"'') }}'
-          report_base: "{{ ops_config.report_directory | default('/srv/samba/reports') }}"
-      tags: ["always"]
-
-    - name: Set Output Directory
-      ansible.builtin.set_fact:
-        run_ctx: "{{ run_ctx | combine({'output_dir': run_ctx.report_base + '/Ubuntu_Ops/' + run_ctx.id}) }}"
-      tags: ["always"]
-
-    - name: Create Report Directory
-      ansible.builtin.file:
-        path: "{{ run_ctx.output_dir }}"
-        state: directory
-        mode: "0755"
-      tags: ["always"]
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 2) AUDIT PLAY
-# ─────────────────────────────────────────────────────────────────────────────
-- name: Ubuntu Infrastructure Operations
-  hosts: ubuntu_servers
-  gather_facts: true
-  become: true
-
-  pre_tasks:
-    - name: Apply Run Context
-      ansible.builtin.set_fact:
-        global_run_id: "{{ _ctx.id }}"
-        ops_report_output_dir: "{{ _ctx.output_dir }}"
-        ops:
-          check:
-            id: "{{ _ctx.id }}"
-            date: "{{ _ctx.date }}"
-            timestamp: "{{ _ctx.timestamp }}"
-      vars:
-        _ctx: "{{ hostvars['localhost'].run_ctx }}"
-      tags: ["always"]
-
-  roles:
-    - role: internal.stig.common
-    - role: internal.linux.ubuntu_system_audit
+- name: Ubuntu System Audit
+  ansible.builtin.import_playbook: audit_ubuntu.yaml

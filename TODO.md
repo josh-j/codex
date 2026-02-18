@@ -5,7 +5,7 @@
 1.  **Standardized State Management**:
     *   Removed `__ops_run__` dummy host pattern.
     *   Implemented standard `Initialize -> Execute -> Aggregate` three-play structure.
-    *   Use `hostvars['localhost'].run_ctx` for global state sharing.
+    *   Use `ansible.builtin.set_stats` to publish `run_ctx` for global state sharing.
 2.  **Decoupled Scheduling**:
     *   Removed `lookup('pipe', 'date ...')` from pre-tasks and inventory.
     *   Centralized run metadata generation in a single initialization play.

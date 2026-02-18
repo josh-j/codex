@@ -8,38 +8,46 @@
 #     name: internal.core.reporting
 #     tasks_from: report.yaml
 #   vars:
-#     ops_report_name: "my_audit_name"
-#     ops_report_row_count: 42
+#     ncs_report_name: "my_audit_name"
+#     ncs_report_row_count: 42
+#     ncs_report_path: "/path/to/report.ext"   # optional
 
 - name: Report | Validate required fields
   ansible.builtin.assert:
     that:
-      - ops_report_name is defined
-      - ops_report_name | string | length > 0
-    fail_msg: "Report registration requires 'ops_report_name'."
+      - ncs_report_name is defined
+      - ncs_report_name | string | length > 0
+    fail_msg: "Report registration requires 'ncs_report_name'."
     quiet: true
 
 - name: Report | Compute defaults
   ansible.builtin.set_fact:
     _report_ts: >-
       {{
-        ops.check.timestamp
-        | default(ansible_facts['date_time']['iso8601']
-        | default(lookup('pipe','date --iso-8601=seconds')))
+        run_ctx.timestamp
+        | default(ncs.check.timestamp)
       }}
 
-- name: Report | Register in ops.reports
+- name: Report | Build report item
   ansible.builtin.set_fact:
-    ops: >-
+    _report_item: >-
       {{
-        (ops | default({}))
+        {
+          'name': ncs_report_name,
+          'row_count': (ncs_report_row_count | default(0) | int),
+          'site': inventory_hostname,
+          'timestamp': _report_ts
+        }
+        | combine( {'path': ncs_report_path} if ncs_report_path is defined else {} )
+      }}
+
+- name: Report | Register in ncs.reports
+  ansible.builtin.set_fact:
+    ncs: >-
+      {{
+        (ncs | default({}))
         | combine({
-            'reports': ((ops.reports | default([])) + [{
-              'name': ops_report_name,
-              'row_count': (ops_report_row_count | default(0) | int),
-              'site': (inventory_hostname),
-              'timestamp': _report_ts
-            }])
+            'reports': ((ncs.reports | default([])) + [_report_item])
           }, recursive=true)
       }}
 
@@ -48,4 +56,4 @@
     name: internal.core.common
     tasks_from: logging/info
   vars:
-    ops_log_message: "Generated report: {{ ops_report_name }} ({{ ops_report_row_count | default(0) }} rows)"
+    ncs_log_message: "Generated report: {{ ncs_report_name }} ({{ ncs_report_row_count | default(0) }} rows)"

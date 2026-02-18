@@ -1,0 +1,6 @@
+---
+# internal.stig.common : main
+# Standard entry point for STIG common utilities.
+
+- name: Initialize Context
+  ansible.builtin.include_tasks: sync_ctx.yaml

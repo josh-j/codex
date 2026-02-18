@@ -1,0 +1,23 @@
+---
+# playbooks/plays/stig_audit_linux.yaml
+# Perform STIG compliance audit for Ubuntu Linux servers.
+
+- name: Linux Security Audit
+  hosts: linux_servers
+  gather_facts: false
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+    - name: Gather Distribution Facts
+      ansible.builtin.setup:
+        filter: "ansible_distribution*"
+      tags: ["linux", "stig"]
+
+  tasks:
+    - name: Audit Linux STIGs
+      ansible.builtin.include_role:
+        name: internal.linux.ubuntu_stig_audit
+      when: ansible_distribution == 'Ubuntu'
+      tags: ["linux", "stig"]

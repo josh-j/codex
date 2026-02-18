@@ -11,19 +11,19 @@
     tasks_from: alert.yaml
   vars:
     # 1. Define Threshold (Default: 90%)
-    _threshold: "{{ ubuntu.config.disk_warning_pct | default(90) | int }}"
+    _threshold: "{{ ubuntu_ctx.config.disk_warning_pct | default(90) | int }}"
 
     # 2. Filter Disks exceeding threshold
     _full_disks: >-
-      {{ ubuntu.system.disks
+      {{ ubuntu_ctx.system.disks
          | selectattr('used_pct', 'gt', _threshold)
          | list }}
 
     # 3. Alert Parameters
-    ops_alert_severity: "{{ 'CRITICAL' if _full_disks | map(attribute='used_pct') | max | float > 95 else 'WARNING' }}"
-    ops_alert_category: "capacity"
-    ops_alert_message: "{{ _full_disks | length }} filesystems are nearly full (>{{ _threshold }}%)"
-    ops_alert_details:
+    ncs_alert_severity: "{{ 'CRITICAL' if _full_disks | map(attribute='used_pct') | max | float > 95 else 'WARNING' }}"
+    ncs_alert_category: "capacity"
+    ncs_alert_message: "{{ _full_disks | length }} filesystems are nearly full (>{{ _threshold }}%)"
+    ncs_alert_details:
       mounts: "{{ _full_disks | map(attribute='mount') | list }}"
       details: "{{ _full_disks }}"
 
@@ -37,15 +37,15 @@
     name: internal.core.reporting
     tasks_from: alert.yaml
   vars:
-    _threshold: "{{ ubuntu.config.mem_warning_pct | default(95) | int }}"
-    _current: "{{ ubuntu.system.memory.used_pct | float }}"
+    _threshold: "{{ ubuntu_ctx.config.mem_warning_pct | default(95) | int }}"
+    _current: "{{ ubuntu_ctx.system.memory.used_pct | float }}"
 
-    ops_alert_severity: "WARNING"
-    ops_alert_category: "capacity"
-    ops_alert_message: "High Memory Usage: {{ _current }}%"
-    ops_alert_details:
-      total_mb: "{{ ubuntu.system.memory.total_mb }}"
-      free_mb: "{{ ubuntu.system.memory.free_mb }}"
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "capacity"
+    ncs_alert_message: "High Memory Usage: {{ _current }}%"
+    ncs_alert_details:
+      total_mb: "{{ ubuntu_ctx.system.memory.total_mb }}"
+      free_mb: "{{ ubuntu_ctx.system.memory.free_mb }}"
   when: _current > _threshold
 
 - name: "Check: High Swap Usage"
@@ -53,14 +53,14 @@
     name: internal.core.reporting
     tasks_from: alert.yaml
   vars:
-    _threshold: "{{ ubuntu.config.swap_warning_pct | default(80) | int }}"
-    _current: "{{ ubuntu.system.swap.used_pct | float }}"
+    _threshold: "{{ ubuntu_ctx.config.swap_warning_pct | default(80) | int }}"
+    _current: "{{ ubuntu_ctx.system.swap.used_pct | float }}"
 
-    ops_alert_severity: "WARNING"
-    ops_alert_category: "performance"
-    ops_alert_message: "High Swap Usage: {{ _current }}%"
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "performance"
+    ncs_alert_message: "High Swap Usage: {{ _current }}%"
   when:
-    - ubuntu.system.swap.total_mb | int > 0
+    - ubuntu_ctx.system.swap.total_mb | int > 0
     - _current > _threshold
 
 # ========================================================================
@@ -71,12 +71,12 @@
     name: internal.core.reporting
     tasks_from: alert.yaml
   vars:
-    _failed: "{{ ubuntu.system.services.failed_list }}"
+    _failed: "{{ ubuntu_ctx.system.services.failed_list }}"
 
-    ops_alert_severity: "CRITICAL"
-    ops_alert_category: "availability"
-    ops_alert_message: "{{ _failed | length }} systemd services are in a failed state"
-    ops_alert_details:
+    ncs_alert_severity: "CRITICAL"
+    ncs_alert_category: "availability"
+    ncs_alert_message: "{{ _failed | length }} systemd services are in a failed state"
+    ncs_alert_details:
       failed_services: "{{ _failed }}"
   when: _failed | length > 0
 
@@ -90,12 +90,12 @@
   vars:
     # Simple threshold: Load > 4x Core count is usually bad.
     # For simplicity here, we default to a flat number (e.g., 20) or user config.
-    _threshold: "{{ ubuntu.config.load_warning_threshold | default(20) | int }}"
-    _current: "{{ ubuntu.system.load_avg | float }}"
+    _threshold: "{{ ubuntu_ctx.config.load_warning_threshold | default(20) | int }}"
+    _current: "{{ ubuntu_ctx.system.load_avg | float }}"
 
-    ops_alert_severity: "WARNING"
-    ops_alert_category: "performance"
-    ops_alert_message: "High System Load (15m): {{ _current }}"
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "performance"
+    ncs_alert_message: "High System Load (15m): {{ _current }}"
   when: _current > _threshold
 
 - name: "Check: Long Uptime (>1 Year)"
@@ -104,11 +104,11 @@
     tasks_from: alert.yaml
   vars:
     _threshold: 365
-    _current: "{{ ubuntu.system.uptime_days | int }}"
+    _current: "{{ ubuntu_ctx.system.uptime_days | int }}"
 
-    ops_alert_severity: "WARNING"
-    ops_alert_category: "maintenance"
-    ops_alert_message: "Server has not been rebooted in over a year ({{ _current }} days)"
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "maintenance"
+    ncs_alert_message: "Server has not been rebooted in over a year ({{ _current }} days)"
   when: _current > _threshold
 
 # ========================================================================
@@ -119,16 +119,16 @@
     name: internal.core.reporting
     tasks_from: alert.yaml
   vars:
-    _count: "{{ ubuntu.updates.pending_count | int }}"
+    _count: "{{ ubuntu_ctx.updates.pending_count | int }}"
     # Configurable threshold (Default: 50)
-    _crit_threshold: "{{ ubuntu.config.updates_critical_threshold | default(50) | int }}"
+    _crit_threshold: "{{ ubuntu_ctx.config.updates_critical_threshold | default(50) | int }}"
 
-    ops_alert_severity: "{{ 'CRITICAL' if _count > _crit_threshold else 'WARNING' }}"
-    ops_alert_category: "patching"
-    ops_alert_message: "{{ _count }} packages require updates"
-    ops_alert_details:
+    ncs_alert_severity: "{{ 'CRITICAL' if _count > _crit_threshold else 'WARNING' }}"
+    ncs_alert_category: "patching"
+    ncs_alert_message: "{{ _count }} packages require updates"
+    ncs_alert_details:
       count: "{{ _count }}"
-      reboot_pending: "{{ ubuntu.updates.reboot_pending }}"
+      reboot_pending: "{{ ubuntu_ctx.updates.reboot_pending }}"
   when: _count > 0
 
 - name: "Check: Reboot Pending"
@@ -136,10 +136,10 @@
     name: internal.core.reporting
     tasks_from: alert.yaml
   vars:
-    ops_alert_severity: "WARNING"
-    ops_alert_category: "patching"
-    ops_alert_message: "Server requires reboot to apply updates"
-    ops_alert_details:
+    ncs_alert_severity: "WARNING"
+    ncs_alert_category: "patching"
+    ncs_alert_message: "Server requires reboot to apply updates"
+    ncs_alert_details:
       pending_since: "Unknown" # apt doesn't easily track *when* the flag was set
-  when: ubuntu.updates.reboot_pending | bool
+  when: ubuntu_ctx.updates.reboot_pending | bool
 

@@ -1,10 +1,14 @@
 ---
-# Initialize Ubuntu Namespace structure if not already present.
-# This ensures that even if discovery is skipped, the audit/export tasks don't crash.
+# Initialize Ubuntu Namespace structure.
 
-- name: Initialize Ubuntu Namespace
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.linux.common
+    tasks_from: sync_ctx
+
+- name: Initialize Ubuntu Structure
   ansible.builtin.set_fact:
-    ubuntu: "{{ ubuntu | default({}) | internal.core.recursive_combine(structure) }}"
+    ubuntu_ctx: "{{ ubuntu_ctx | internal.core.recursive_combine(structure) }}"
   vars:
     structure:
       config:
@@ -26,3 +30,8 @@
         ssh_config: {}
         file_stats: {}
         world_writable_files: []
+
+- name: Sync back to legacy namespace
+  ansible.builtin.set_fact:
+    ubuntu: "{{ ubuntu_ctx }}"
+  changed_when: false

@@ -1,0 +1,55 @@
+---
+# internal.vmware.audit : main.yaml
+# Main entry point for the VMware Audit logic.
+#
+# Usage:
+#   - role: internal.vmware.audit
+
+- name: VMware health audit
+  block:
+    # ========================================================================
+    # 2) CHECKS PHASE (Logic & Alerts)
+    # ========================================================================
+    - name: Phase 2 | Checks
+      ansible.builtin.include_tasks: checks.yaml
+      tags: ['checks']
+
+    # ========================================================================
+    # 3) SUMMARY / METRICS (Barrier)
+    # ========================================================================
+    - name: Phase 3 | Summary
+      ansible.builtin.include_tasks: summary.yaml
+      tags: ['summary']
+
+    # ========================================================================
+    # 3.5) NOTIFICATIONS
+    # ========================================================================
+    - name: Phase 3.5 | Notify
+      ansible.builtin.include_tasks: notify/workload.yaml
+      tags: ['notify']
+
+    # ========================================================================
+    # 4) EXPORT PHASE (Passive I/O)
+    # ========================================================================
+    - name: Phase 4 | Export
+      ansible.builtin.include_tasks: export.yaml
+      tags: ['export']
+
+  rescue:
+    - name: Log VMware health audit failure
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/error
+      vars:
+        ncs_log_message: >-
+          VMware health audit failed for {{ inventory_hostname }}:
+          {{ ansible_failed_result.msg | default('unknown error') }}
+
+    - name: Mark checks failed
+      ansible.builtin.set_fact:
+        vmware_ctx: >-
+          {{
+            vmware_ctx | default({}) | internal.core.recursive_combine({
+              'checks_failed': true
+            })
+          }}

@@ -24,11 +24,13 @@ It utilizes a centralized reporting engine that aggregates data from multiple si
 The project is organized into modular **Ansible Collections** located in `collections/ansible_collections/internal/`. All logic follows a standard three-play lifecycle (Initialize -> Execute -> Aggregate).
 
 ### Core Collections
-- **`internal.core`**: Centralized reporting engine, common utilities, and logging.
-- **`internal.stig`**: STIG compliance auditing, CKLB generation.
+- **`internal.core`**: Centralized reporting engine, common utilities, logging, and **STIG compliance shared logic**.
 - **`internal.linux`**: Ubuntu system discovery, auditing, and STIG compliance.
-- **`internal.vsphere`**: vCenter infrastructure health monitoring and VM STIG audits.
-- **`internal.esxi`**: ESXi host STIG auditing and SSH configuration checks.
+- **`internal.vmware`**: Unified VMware automation including:
+    - **Discovery:** Inventory and appliance health.
+    - **Audit:** Health checks, configuration compliance, and reporting.
+    - **Remediation:** Configuration fixes (e.g., HA/DRS).
+    - **STIG:** ESXi and VM Guest compliance.
 - **`internal.windows`**: Windows Server application and security auditing.
 - **`internal.storage`**: Dell Unity and Data Domain health monitoring.
 - **`internal.compute`**: Cisco UCS Fabric Interconnect status checks.
@@ -63,7 +65,7 @@ The project expects a Python virtual environment and a vault password file.
 ## Development Conventions
 
 - **Shared Context:** Uses a global `run_ctx` (Run ID, timestamp, run-day) created at the start of a run on `localhost` and shared via `hostvars['localhost']`.
-- **Reporting Logic:** Most reporting tasks are delegated to the `common` role in the `internal.stig` collection.
-- **Tags:** Use tags (`vsphere`, `esxi`, `linux`, `stig`) to target specific platforms or audit types.
+- **Reporting Logic:** STIG reporting tasks are delegated to the `stig` role in the `internal.core` collection.
+- **Tags:** Use tags (`vmware`, `esxi`, `linux`, `stig`) to target specific platforms or audit types.
 - **Credentials:** Credential bridging logic in playbooks ensures compatibility across different inventory sources.
 - **Vault:** Sensitive data is protected using Ansible Vault; a `.vaultpass` file is required in the parent directory or configured in `ansible.cfg`.

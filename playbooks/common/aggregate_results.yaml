@@ -1,0 +1,46 @@
+---
+# playbooks/plays/aggregate_results.yaml
+# Aggregates results from all plays and renders the final dashboards.
+
+- name: Aggregate Audit Results
+  hosts: localhost
+  gather_facts: true
+
+  vars:
+    _ctx: "{{ ansible_stats.run_ctx | default(run_ctx) }}"
+    today_tasks: "{{ _ctx.tasks }}"
+    ncs_report_base: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    ncs_report_dir: "{{ ncs_report_base }}/Summary"
+
+  tasks:
+    - name: Initialize aggregator ops structure
+      ansible.builtin.set_fact:
+        ncs: >-
+          {{
+            ops | default({}) | internal.core.recursive_combine({
+              'config': (ncs_config | default({})),
+              'check': {
+                'id': _ctx.id,
+                'run_id': _ctx.id,
+                'date': _ctx.date,
+                'timestamp': _ctx.timestamp,
+                'site': 'localhost'
+              }
+            })
+          }}
+
+    - name: Aggregate site data
+      ansible.builtin.import_role:
+        name: internal.core.reporting
+        tasks_from: aggregate.yaml
+
+    - name: Ensure output directory
+      ansible.builtin.file:
+        path: "{{ ncs_report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Render reports (Markdown & HTML)
+      ansible.builtin.import_role:
+        name: internal.core.reporting
+        tasks_from: render.yaml

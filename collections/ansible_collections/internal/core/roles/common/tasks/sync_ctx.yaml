@@ -1,0 +1,49 @@
+---
+# internal.core.common : sync_ctx
+# Standardizes global context binding across all platforms.
+#
+# Parameters:
+#   ncs_domain_ctx_name: (Optional) Name of the domain-specific context variable (e.g., 'vmware_ctx')
+
+- name: "[Core] Sync Global Context"
+  ansible.builtin.set_fact:
+    # 1. Recover run_ctx from stats if missing (ensures check-mode stability)
+    run_ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
+    
+    # 2. Initialize/Update standardized 'ncs' structure
+    ncs: >-
+      {{
+        ncs | default({}) | internal.core.recursive_combine({
+          'config': (ncs_config | default({})),
+          'check': {
+            'id': (_ctx.id | default('MANUAL')),
+            'date': (_ctx.date | default('N/A')),
+            'timestamp': (_ctx.timestamp | default('N/A')),
+            'site': inventory_hostname
+          }
+        })
+      }}
+  vars:
+    _ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
+  changed_when: false
+  no_log: true
+
+- name: "[Core] Sync Domain Context"
+  ansible.builtin.set_fact:
+    # Dynamically initialize domain-specific context if provided
+    "{{ ncs_domain_ctx_name }}": >-
+      {{
+        lookup('vars', ncs_domain_ctx_name, default={}) | internal.core.recursive_combine({
+          'run': {
+            'id': (_ctx.id | default('MANUAL')),
+            'site': inventory_hostname
+          }
+        })
+      }}
+  vars:
+    _ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
+  when:
+    - ncs_domain_ctx_name is defined
+    - ncs_domain_ctx_name | string | length > 0
+  changed_when: false
+  no_log: true

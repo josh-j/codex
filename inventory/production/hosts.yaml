@@ -1,0 +1,40 @@
+---
+# inventory/production/hosts.yaml
+# Define your data center sites and infrastructure targets here.
+
+sites:
+  hosts:
+    site1:
+      ansible_host: 10.10.10.10
+    site2:
+      ansible_host: 10.10.20.10
+
+vcenters:
+  children:
+    sites:
+
+esxi:
+  hosts:
+    esxi-01.site1.local:
+    esxi-02.site1.local:
+
+sa:
+  children:
+    sites:
+
+dd:
+  children:
+    sites:
+
+ucsm:
+  children:
+    sites:
+
+linux_servers:
+  hosts:
+    ubuntu-svc-01:
+    ubuntu-svc-02:
+
+ubuntu_servers:
+  children:
+    linux_servers:

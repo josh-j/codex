@@ -15,12 +15,12 @@
       community.vmware.vmware_vm_info:
         hostname: >-
           {{
-            vcenter_host
+            vmware_hostname
             | regex_replace('^https?://', '')
             | regex_replace('/.*$', '')
           }}
-        username: "{{ vcenter_username | default(vault_vcenters_user) }}"
-        password: "{{ vcenter_password | default(vault_vcenters_password) }}"
+        username: "{{ vmware_username | default(vault_vcenters_user) }}"
+        password: "{{ vmware_password | default(vault_vcenters_password) }}"
         validate_certs: false
         vm_name: "{{ inventory_hostname }}"
       register: vm_discovery
@@ -35,12 +35,12 @@
       vmware.vmware.vm_snapshot:
         hostname: >-
           {{
-            vcenter_host
+            vmware_hostname
             | regex_replace('^https?://', '')
             | regex_replace('/.*$', '')
           }}
-        username: "{{ vcenter_username | default(vault_vcenters_user) }}"
-        password: "{{ vcenter_password | default(vault_vcenters_password) }}"
+        username: "{{ vmware_username | default(vault_vcenters_user) }}"
+        password: "{{ vmware_password | default(vault_vcenters_password) }}"
         validate_certs: false
         # Use dynamically discovered location
         datacenter: "{{ vm_datacenter }}"

@@ -58,7 +58,7 @@
 
 - name: Log System Health
   ansible.builtin.debug:
-    msg: "System Load: {{ ubuntu.system.load_avg }} | Mem Used: {{ ubuntu.system.memory.used_pct }}% | Failed Services: {{ ubuntu.system.services.failed_count }}"
+    msg: "System Load: {{ ubuntu_ctx.system.load_avg }} | Mem Used: {{ ubuntu_ctx.system.memory.used_pct }}% | Failed Services: {{ ubuntu_ctx.system.services.failed_count }}"
 
 - name: Normalize Security Data
   ansible.builtin.set_fact:

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STIG Report - {{ inventory_hostname }}</title>
+    <style>
+/* roles/common/templates/report_styles.css */
+:root {
+  --primary-color: #2c3e50;
+  --success-color: #27ae60;
+  --danger-color: #c0392b;
+  --fixed-color: #2980b9;
+  --light-gray: #ecf0f1;
+  --border-radius: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f4f6f8;
+  color: #333;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  padding: 40px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  border-bottom: 2px solid var(--light-gray);
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--primary-color);
+}
+
+.meta {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.status-banner {
+  padding: 20px;
+  border-radius: var(--border-radius);
+  text-align: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.5rem;
+  margin-bottom: 30px;
+}
+
+/* Metrics Section */
+.metrics-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  flex: 1;
+  padding: 20px;
+  background: #ecf0f1;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.metric-val {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.metric-label {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.val-fixed {
+  color: var(--fixed-color);
+}
+
+.val-failed {
+  color: var(--danger-color);
+}
+
+/* Table Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  table-layout: fixed;
+}
+
+th {
+  text-align: left;
+  background: var(--primary-color);
+  color: white;
+  padding: 12px;
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.col-id {
+  width: 130px;
+  font-weight: bold;
+  font-family: monospace;
+}
+
+.col-status {
+  width: 120px;
+}
+
+.col-sev {
+  width: 80px;
+}
+
+/* Badges */
+.badge {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: white;
+  text-transform: uppercase;
+  font-weight: bold;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.status-fixed-badge {
+  background-color: var(--fixed-color);
+}
+
+.status-failed-badge {
+  background-color: var(--danger-color);
+}
+
+/* Severity Text */
+.sev-high {
+  color: #c0392b;
+  font-weight: bold;
+}
+
+.sev-medium {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.sev-low {
+  color: #7f8c8d;
+}
+
+/* Technical Details Box */
+.details-box {
+  background-color: #fafafa;
+  border: 1px solid #eee;
+  padding: 15px;
+  margin-top: 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.details-box pre {
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;
+  font-family: monospace;
+  color: #444;
+  overflow-x: auto;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-top: 5px;
+  padding: 0;
+  text-align: left;
+}
+
+.toggle-btn:hover {
+  text-decoration: underline;
+}
+    </style>
+    <script>
+        function toggleDetails(id) {
+            var x = document.getElementById(id);
+            if (x.style.display === "block") { x.style.display = "none"; } else { x.style.display = "block"; }
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>STIG Remediation Report</h1>
+            <div class="meta">Host: <strong>{{ inventory_hostname }}</strong></div>
+        </div>
+        <div class="meta">Generated: {{ timestamp | default('N/A') }}</div>
+    </div>
+
+    {# Calculate Counts #}
+    {% set count_failed = _failures | selectattr('status', 'equalto', 'failed') | list | length %}
+    {% set count_fixed = _failures | selectattr('status', 'equalto', 'fixed') | list | length %}
+
+    <div class="metrics-row">
+        <div class="metric-card">
+            <h3 class="metric-val val-fixed">{{ count_fixed }}</h3>
+            <p class="metric-label">Rules Remediated</p>
+        </div>
+        <div class="metric-card">
+            <h3 class="metric-val val-failed">{{ count_failed }}</h3>
+            <p class="metric-label">Rules Failed</p>
+        </div>
+    </div>
+
+    {% if _failures | length > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id">Rule ID</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-sev">Sev</th>
+                    <th>Details & Remediation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in _failures %}
+                <tr>
+                    <td class="col-id">{{ rule.id }}</td>
+                    <td>
+                        {% if rule.status == 'fixed' %}
+                            <span class="badge status-fixed-badge">REMEDIATED</span>
+                        {% else %}
+                            <span class="badge status-failed-badge">FAILED</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="sev-{{ rule.severity }}">{{ rule.severity | upper }}</span>
+                    </td>
+                    <td>
+                        <div style="font-weight: bold; margin-bottom: 5px;">{{ rule.title }}</div>
+
+                        {% if rule.status == 'fixed' %}
+                            <div style="color: #27ae60; font-size: 0.9rem; margin-bottom: 5px;">
+                                ✅ Automatically fixed by Ansible.
+                            </div>
+                        {% else %}
+                            <div style="color: #c0392b; font-size: 0.9rem; margin-bottom: 5px;">
+                                ❌ Could not apply fix automatically. Manual intervention required.
+                            </div>
+                        {% endif %}
+
+                        <button class="toggle-btn" onclick="toggleDetails('d-{{ rule.id }}')">▶ View Technical Details</button>
+                        <div id="d-{{ rule.id }}" class="details-box">
+                            <strong>CHECK CONTENT:</strong>
+                            <pre>{{ rule.checktext | default('No check text') | trim }}</pre>
+
+                            <strong>REMEDIATION COMMAND:</strong>
+                            <pre>{{ rule.fixtext | default('No fix text') | trim }}</pre>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+            <p>No actions were taken. System is fully compliant.</p>
+        </div>
+    {% endif %}
+</div>
+</body>
+</html>

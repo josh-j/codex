@@ -1,0 +1,41 @@
+---
+# internal.vmware.stig : esxi.yaml
+# Entry point for ESXi Host Audits.
+
+- name: Initialize Context
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: sync_ctx
+  vars:
+    ncs_domain_ctx_name: "esxi_ctx"
+
+- name: Phase 1 | Discovery (Hybrid SSH/API)
+  ansible.builtin.include_tasks: esxi/discovery.yaml
+  tags: ['discovery', 'esxi', 'stig']
+
+- name: Phase 2 | Audits
+  block:
+    - name: Audit | SSH
+      ansible.builtin.include_tasks: esxi/checks/ssh.yaml
+      tags: ['audit', 'ssh']
+
+    - name: Audit | Kernel
+      ansible.builtin.include_tasks: esxi/checks/kernel.yaml
+      tags: ['audit', 'kernel']
+
+    - name: Audit | Services
+      ansible.builtin.include_tasks: esxi/checks/services.yaml
+      tags: ['audit', 'services']
+
+    - name: Audit | VIBs
+      ansible.builtin.include_tasks: esxi/checks/vibs.yaml
+      tags: ['audit', 'vibs']
+
+    - name: Audit | Syslog
+      ansible.builtin.include_tasks: esxi/checks/syslog.yaml
+      tags: ['audit', 'syslog']
+
+    - name: Audit | Hardware
+      ansible.builtin.include_tasks: esxi/checks/hardware.yaml
+      tags: ['audit', 'hardware']
+  tags: ['audit', 'esxi', 'stig']

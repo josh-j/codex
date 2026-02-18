@@ -1,6 +1,11 @@
 ---
 # collections/ansible_collections/internal/compute/roles/ucs/tasks/main.yaml
 
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.compute.common
+    tasks_from: sync_ctx
+
 - name: UCS | Perform health checks
   block:
     - name: UCS | Check connectivity (ICMP)
@@ -16,9 +21,9 @@
         name: internal.core.reporting
         tasks_from: alert.yaml
       vars:
-        ops_alert_severity: "{{ 'INFO' if _ucs_reachability is success else 'CRITICAL' }}"
-        ops_alert_category: "COMPUTE_CONNECTIVITY"
-        ops_alert_message: "UCS Fabric Interconnect {{ ucs_fi.url }} is {{ 'reachable' if _ucs_reachability is success else 'UNREACHABLE' }}"
+        ncs_alert_severity: "{{ 'INFO' if _ucs_reachability is success else 'CRITICAL' }}"
+        ncs_alert_category: "COMPUTE_CONNECTIVITY"
+        ncs_alert_message: "UCS Fabric Interconnect {{ ucs_fi.url }} is {{ 'reachable' if _ucs_reachability is success else 'UNREACHABLE' }}"
       when:
         - ucs_fi is defined
         - ucs_fi.url is defined
@@ -29,7 +34,7 @@
         name: internal.core.reporting
         tasks_from: report.yaml
       vars:
-        ops_report_name: 'ucs_health_check'
+        ncs_report_name: 'ucs_health_check'
       when:
         - ucs_fi is defined
         - not ansible_check_mode
@@ -40,4 +45,4 @@
         name: internal.core.common
         tasks_from: logging/error
       vars:
-        ops_log_message: "UCS checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"
+        ncs_log_message: "UCS checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"

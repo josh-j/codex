@@ -1,0 +1,53 @@
+---
+# Discover Datastores
+- name: Get datastore info from vCenter
+  community.vmware.vmware_datastore_info:
+    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
+    username: "{{ vmware_ctx.discovery.connection.username }}"
+    password: "{{ vmware_ctx.discovery.connection.password }}"
+    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    datacenter: "{{ vmware_ctx.discovery.datacenter.name | default(omit) }}"
+  register: _datastores_raw
+  delegate_to: localhost
+  retries: 3
+  delay: 2
+  until: _datastores_raw is succeeded
+  changed_when: false
+
+- name: Normalize and Store Datastores
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
+      {{
+        vmware_ctx | internal.core.recursive_combine({
+          'inventory': {
+            'datastores': {
+              'list': _ds_list,
+              'metrics': {
+                'total': (_ds_list | length)
+              }
+            }
+          }
+        })
+      }}
+  vars:
+    _gb_div: 1073741824.0
+    _ds_list: >-
+      {%- set results = [] -%}
+      {%- for ds in (_datastores_raw.datastores | default([])) -%}
+        {%- set cap_b = (ds.capacity | default(0)) | int -%}
+        {%- set free_b = (ds.freeSpace | default(0)) | int -%}
+        {%- set cap_safe = ([cap_b, 1] | max) | int -%}
+        {%- set free_pct = ((free_b | float / cap_safe | float) * 100.0) | round(1) -%}
+        {%- set _ = results.append({
+          'name': ds.name | default(''),
+          'type': ds.type | default(''),
+          'capacity_gb': ((cap_b | float) / _gb_div) | round(1),
+          'free_gb': ((free_b | float) / _gb_div) | round(1),
+          'free_pct': free_pct,
+          'used_pct': (100.0 - free_pct) | round(1),
+          'accessible': ds.accessible | default(true),
+          'maintenance_mode': ds.maintenanceMode | default('unknown')
+        }) -%}
+      {%- endfor -%}
+      {{ results }}
+  changed_when: false

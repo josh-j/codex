@@ -1,0 +1,32 @@
+---
+# internal.vmware.audit : export.yaml
+# Aggregates all export tasks.
+# Can be included directly by the orchestrator.
+
+- name: Export | Infrastructure
+  ansible.builtin.include_tasks: export/infrastructure.yaml
+  tags: ['export', 'infrastructure']
+
+- name: Export | Global Resources
+  ansible.builtin.include_tasks: export/resources.yaml
+  tags: ['export', 'capacity']
+
+- name: Export | Storage
+  ansible.builtin.include_tasks: export/storage.yaml
+  tags: ['export', 'storage']
+
+- name: Export | Workload & Backups
+  ansible.builtin.include_tasks: export/workload.yaml
+  tags: ['export', 'workload']
+
+- name: Export | Snapshots
+  ansible.builtin.include_tasks: export/snapshots.yaml
+  tags: ['export', 'snapshots']
+
+- name: Export | Alarms
+  ansible.builtin.include_tasks: export/alarms.yaml
+  tags: ['export', 'alarms']
+
+- name: Export | Executive Summary
+  ansible.builtin.include_tasks: export/summary.yaml
+  tags: ['export', 'summary']

@@ -1,6 +1,11 @@
 ---
 # collections/ansible_collections/internal/storage/roles/datadomain/tasks/main.yaml
 
+- name: Initialize Role Context
+  ansible.builtin.include_role:
+    name: internal.storage.common
+    tasks_from: sync_ctx
+
 - name: Data Domain | Perform health checks
   block:
     - name: Data Domain | Check API connectivity
@@ -18,9 +23,9 @@
         name: internal.core.reporting
         tasks_from: alert.yaml
       vars:
-        ops_alert_severity: "{{ 'INFO' if item.status == 200 or item.status == 401 else 'CRITICAL' }}"
-        ops_alert_category: "BACKUP_CONNECTIVITY"
-        ops_alert_message: "Data Domain API at {{ item.item.url }} is {{ 'reachable' if item.status == 200 or item.status == 401 else 'UNREACHABLE' }}"
+        ncs_alert_severity: "{{ 'INFO' if item.status == 200 or item.status == 401 else 'CRITICAL' }}"
+        ncs_alert_category: "BACKUP_CONNECTIVITY"
+        ncs_alert_message: "Data Domain API at {{ item.item.url }} is {{ 'reachable' if item.status == 200 or item.status == 401 else 'UNREACHABLE' }}"
       loop: "{{ _dd_reachability.results }}"
       when: not ansible_check_mode
 
@@ -29,7 +34,7 @@
         name: internal.core.reporting
         tasks_from: report.yaml
       vars:
-        ops_report_name: 'datadomain_health_check'
+        ncs_report_name: 'datadomain_health_check'
       when: not ansible_check_mode
 
   rescue:
@@ -38,4 +43,4 @@
         name: internal.core.common
         tasks_from: logging/error
       vars:
-        ops_log_message: "Data Domain checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"
+        ncs_log_message: "Data Domain checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"

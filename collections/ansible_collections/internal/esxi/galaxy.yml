@@ -1,8 +1,0 @@
-namespace: internal
-name: esxi
-version: 1.0.0
-readme: README.md
-authors:
-  - Codex Automation Team
-description: ESXi STIG audit collection
-license: MIT

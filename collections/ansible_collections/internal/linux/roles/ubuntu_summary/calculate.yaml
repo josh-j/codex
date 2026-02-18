@@ -6,17 +6,17 @@
     ubuntu: "{{ ubuntu | combine({'summary': summary_data}, recursive=true) }}"
   vars:
     # 1. PULL METRICS FROM DOMAINS
-    _pending_patches: "{{ ubuntu.updates.pending_count | default(0) }}"
-    _failed_services: "{{ ubuntu.system.services.failed_count | default(0) }}"
+    _pending_patches: "{{ ubuntu_ctx.updates.pending_count | default(0) }}"
+    _failed_services: "{{ ubuntu_ctx.system.services.failed_count | default(0) }}"
 
     # Define Thresholds
-    _disk_threshold: "{{ ubuntu.config.disk_warning_pct | default(90) }}"
-    _patch_limit: "{{ ubuntu.config.updates_critical_threshold | default(50) }}"
+    _disk_threshold: "{{ ubuntu_ctx.config.disk_warning_pct | default(90) }}"
+    _patch_limit: "{{ ubuntu_ctx.config.updates_critical_threshold | default(50) }}"
 
-    _disk_issues: "{{ ubuntu.system.disks | default([]) | selectattr('used_pct', 'gt', _disk_threshold | int) | list | length }}"
+    _disk_issues: "{{ ubuntu_ctx.system.disks | default([]) | selectattr('used_pct', 'gt', _disk_threshold | int) | list | length }}"
 
     # Safe access to shadow_entries
-    _root_shadow: "{{ ubuntu.security.shadow_entries['root'][0] | default('!') }}"
+    _root_shadow: "{{ ubuntu_ctx.security.shadow_entries['root'][0] | default('!') }}"
     _security_issues: "{{ _root_shadow not in ['!', '*'] }}"
 
     # 2. DETERMINE STATUS BADGES

@@ -12,7 +12,7 @@
 
 - name: "[{{ starter_platform_name }}] Normalize facts into ops structure"
   ansible.builtin.set_fact:
-    ops: "{{ ops | combine(normalized_data, recursive=True) }}"
+    ncs: "{{ ops | combine(normalized_data, recursive=True) }}"
   vars:
     normalized_data:
       "{{ starter_platform_name }}":

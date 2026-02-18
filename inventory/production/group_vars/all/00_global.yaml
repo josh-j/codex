@@ -1,19 +1,19 @@
 ---
 # inventory/group_vars/all/00_global.yaml
-ops_config:
+ncs_config:
   debug_mode: true
   dry_run_mode: false
 
   # Scheduling Defaults
   # Can be overridden via CLI: -e ops_run_day_override=friday
-  run_day: "{{ ops_run_day_override | default(lookup('pipe', 'date +%A') | lower) }}"
+  run_day: "{{ ops_run_day_override | default('') }}"
 
   report_directory: /srv/samba/reports
 
   email:
     enabled: false
     smtp:
-      server: 
+      server: smtp.example.com
       port: 25
     from: ansible-ncs
     recipients:
@@ -21,11 +21,11 @@ ops_config:
 
   schedule:
     day_matrix:
-      monday:    [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
-      tuesday:   [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
-      wednesday: [vcenter, unisphere, backup_unisphere, ucs_fi, snow]
-      thursday:  [vcenter, unisphere, backup_unisphere, ucs_fi, snow, patch]
-      friday:    [vcenter, unisphere, backup_unisphere, ucs_fi, snow, weekly]
+      monday:    [vmware, unisphere, backup_unisphere, ucs_fi, snow]
+      tuesday:   [vmware, unisphere, backup_unisphere, ucs_fi, snow]
+      wednesday: [vmware, unisphere, backup_unisphere, ucs_fi, snow]
+      thursday:  [vmware, unisphere, backup_unisphere, ucs_fi, snow, patch]
+      friday:    [vmware, unisphere, backup_unisphere, ucs_fi, snow, weekly]
       saturday:  []
       sunday:    []
 

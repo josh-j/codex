@@ -99,7 +99,7 @@
 
 - name: Log Patching Status
   ansible.builtin.debug:
-    msg: "Updates Pending: {{ ubuntu.updates.pending_count }} | Reboot Required: {{ ubuntu.updates.reboot_pending }}"
+    msg: "Updates Pending: {{ ubuntu_ctx.updates.pending_count }} | Reboot Required: {{ ubuntu_ctx.updates.reboot_pending }}"
 
 - name: Normalize Discovered Data
   ansible.builtin.include_tasks: normalize.yaml

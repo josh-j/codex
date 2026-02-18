@@ -1,0 +1,66 @@
+---
+# internal.vmware.audit : summary.yaml
+# Alert aggregation and summary metrics.
+
+- name: Generate summary metrics
+  block:
+    - name: Calculate alert severity counts from ncs.alerts
+      ansible.builtin.set_fact:
+        _vmw_summary: "{{ summary_data }}"
+      vars:
+        all_alerts: "{{ ncs.alerts | default([]) }}"
+        summary_data:
+          alerts:
+            total: "{{ all_alerts | length }}"
+            critical_count: "{{ all_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
+            warning_count: "{{ all_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
+            info_count: "{{ all_alerts | selectattr('severity', 'equalto', 'INFO') | list | length }}"
+            by_category:
+              backup: "{{ all_alerts | selectattr('category', 'equalto', 'backup') | list | length }}"
+              capacity: "{{ all_alerts | selectattr('category', 'equalto', 'capacity') | list | length }}"
+              configuration: "{{ all_alerts | selectattr('category', 'equalto', 'configuration') | list | length }}"
+              connectivity: "{{ all_alerts | selectattr('category', 'equalto', 'connectivity') | list | length }}"
+              snapshots: "{{ all_alerts | selectattr('category', 'equalto', 'snapshots') | list | length }}"
+              alarms: "{{ all_alerts | selectattr('category', 'equalto', 'alarms') | list | length }}"
+              infrastructure: "{{ all_alerts | selectattr('category', 'equalto', 'infrastructure') | list | length }}"
+              security: "{{ all_alerts | selectattr('category', 'equalto', 'security') | list | length }}"
+          checks_completed: [about, appliance, datacenters, clusters, hosts, datastores, vms, snapshots, alarms]
+
+    - name: Log summary metrics
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/info
+      vars:
+        ncs_log_message: >-
+          Summary: {{ _vmw_summary.alerts.total }} alerts
+          ({{ _vmw_summary.alerts.critical_count }}C/
+          {{ _vmw_summary.alerts.warning_count }}W/
+          {{ _vmw_summary.alerts.info_count }}I)
+
+  rescue:
+    - name: Set empty summary
+      ansible.builtin.set_fact:
+        _vmw_summary: "{{ empty_summary }}"
+      vars:
+        empty_summary:
+          alerts: { total: 0, critical_count: 0, warning_count: 0, info_count: 0, by_category: {} }
+          checks_completed: []
+
+- name: Sync vmware_ctx alerts/summary
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
+      {{
+        vmware_ctx | internal.core.recursive_combine({
+          'alerts': (ncs.alerts | default([])),
+          'summary': (_vmw_summary | default({}))
+        })
+      }}
+    # Bind legacy 'vcenter' var for backward compatibility with templates
+    vcenter: >-
+      {{
+        vmware_ctx | internal.core.recursive_combine({
+          'alerts': (ncs.alerts | default([])),
+          'summary': (_vmw_summary | default({}))
+        })
+      }}
+  changed_when: false

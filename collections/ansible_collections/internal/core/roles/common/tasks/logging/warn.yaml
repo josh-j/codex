@@ -2,4 +2,4 @@
 - name: Log WARNING message
   ansible.builtin.include_tasks: main.yaml
   vars:
-    ops_log_level: "warning"
+    ncs_log_level: "warning"

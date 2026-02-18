@@ -1,0 +1,58 @@
+---
+# Host Health & Infrastructure Checks
+- name: Infrastructure checks | emit alerts
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    ncs_alert_severity: "{{ item.severity }}"
+    ncs_alert_category: "{{ item.category }}"
+    ncs_alert_message: "{{ item.message }}"
+    ncs_alert_details: "{{ item.details | default({}) }}"
+    _dc_metrics: "{{ vmware_ctx.discovery.datacenters.metrics | default({'total': 0}) }}"
+    _appliance: "{{ vmware_ctx.health.appliance | default({}) }}"
+  loop:
+    # 1) Inventory sanity
+    - severity: CRITICAL
+      category: configuration
+      message: "No datacenters found in vCenter inventory."
+      details:
+        expected: "At least 1"
+        found: "{{ _dc_metrics.total | default(0) }}"
+      when: "{{ (_dc_metrics.total | default(0) | int) == 0 }}"
+
+    # 2) Appliance health
+    - severity: CRITICAL
+      category: infrastructure
+      message: "vCenter Appliance Health is {{ _appliance.health.overall | default('unknown') | upper }}"
+      details:
+        overall: "{{ _appliance.health.overall | default('unknown') }}"
+        database: "{{ _appliance.health.database | default('unknown') }}"
+        storage: "{{ _appliance.health.storage | default('unknown') }}"
+        swap: "{{ _appliance.health.swap | default('unknown') }}"
+      when: "{{ (_appliance.health.overall | default('unknown') | lower) != 'green' }}"
+
+    - severity: WARNING
+      category: security
+      message: "SSH is currently enabled on vCenter Appliance."
+      details:
+        ssh_enabled: true
+        recommendation: "Disable SSH via VAMI (port 5480) unless actively troubleshooting."
+      when: "{{ _appliance.config.ssh_enabled | default(false) | bool }}"
+
+    # 3) Backups
+    - severity: CRITICAL
+      category: backup
+      message: "vCenter File-Based Backup is NOT configured or disabled."
+      details:
+        configured: "{{ _appliance.backup.configured | default(false) }}"
+        enabled: "{{ _appliance.backup.enabled | default(false) }}"
+        location: "{{ _appliance.backup.location | default('Not Configured') }}"
+      when: >-
+        {{
+          (_appliance.backup.enabled is defined)
+          and not (_appliance.backup.enabled | default(false) | bool)
+        }}
+  when: item.when | bool
+  loop_control:
+    label: "{{ item.severity }} {{ item.category }}"

@@ -1,0 +1,80 @@
+---
+# internal.esxi.host_discovery - Gather SSH and API facts from ESXi host
+
+- name: API Discovery (vCenter / PowerCLI)
+  block:
+    - name: Get host facts via PowerCLI script
+      ansible.builtin.script:
+        cmd: >-
+          {{ role_path }}/files/get_esxi_facts.ps1
+          -vcenter "{{ vmware_hostname }}"
+          -vcuser "{{ vmware_username }}"
+          -vcpass "{{ vmware_password }}"
+          -target_host "{{ inventory_hostname }}"
+      register: _host_api_raw
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Parse API facts
+      ansible.builtin.set_fact:
+        _esxi_api_facts: "{{ (_host_api_raw.stdout | from_json).hosts[0] | default({}) }}"
+      when: _host_api_raw.stdout | trim | length > 0
+
+- name: SSH Discovery (Direct)
+  block:
+    - name: Enable SSH Service
+      community.vmware.vmware_host_service_manager:
+        hostname: "{{ vmware_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: false
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: present
+      delegate_to: localhost
+      register: _ssh_enable
+
+    - name: Gather SSH Facts
+      ansible.builtin.raw: |
+        echo "===SSHD==="; cat /etc/ssh/sshd_config
+        echo "===ISSUE==="; cat /etc/issue
+        echo "===FIREWALL==="; esxcli network firewall get
+      register: _ssh_raw
+      vars:
+        ansible_connection: ssh
+        ansible_user: "root"
+        ansible_password: "{{ vault_esxi_root_password }}"
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+    - name: Set SSH facts
+      ansible.builtin.set_fact:
+        _esxi_ssh_facts:
+          sshd_config: "{{ _ssh_raw.stdout | regex_search('===SSHD===\\r?\\n([\\s\\S]*?)(?=\\r?\\n===)', '\\1') | default('', true) }}"
+          banner_content: "{{ _ssh_raw.stdout | regex_search('===ISSUE===\\r?\\n([\\s\\S]*$)', '\\1') | default('', true) | trim }}"
+
+  always:
+    - name: Disable SSH Service
+      community.vmware.vmware_host_service_manager:
+        hostname: "{{ vmware_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: false
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: absent
+      delegate_to: localhost
+      when: _ssh_enable is success
+
+- name: Sync host facts to esxi_ctx
+  ansible.builtin.set_fact:
+    esxi_ctx: >-
+      {{
+        esxi_ctx | internal.core.recursive_combine({
+          'stig_facts': [
+            (_esxi_api_facts | default({})) | combine({
+              'ssh': (_esxi_ssh_facts | default({}))
+            }, recursive=true)
+          ]
+        })
+      }}
+  changed_when: false

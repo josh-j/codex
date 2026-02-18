@@ -1,0 +1,16 @@
+---
+# playbooks/plays/setup_host_ctx.yaml
+# Common pre-task to bind context across all audit plays.
+
+- name: Sync environment context
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: sync_ctx
+  tags: [always]
+
+- name: Bind Export Path
+  ansible.builtin.set_fact:
+    ncs_report_output_dir: "{{ run_ctx.output_dir }}"
+  when:
+    - run_ctx.output_dir is defined
+  tags: [always]

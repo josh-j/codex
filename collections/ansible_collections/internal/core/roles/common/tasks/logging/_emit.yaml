@@ -1,30 +1,30 @@
 ---
 # roles/common/tasks/logging/_emit.yaml
 # Shared log emitter. Expects:
-#   ops_log_level: DEBUG|INFO|WARN|ERROR
-#   ops_log_message: string
-#   ops_log_context: dict (optional)
+#   ncs_log_level: DEBUG|INFO|WARN|ERROR
+#   ncs_log_message: string
+#   ncs_log_context: dict (optional)
 
 - name: Build log line
   ansible.builtin.set_fact:
-    _log_ts: "{{ ops.check.timestamp | default(ansible_facts.date_time.iso8601 | default('unknown')) }}"
+    _log_ts: "{{ ncs.check.timestamp | default(ansible_facts.date_time.iso8601 | default('unknown')) }}"
     _log_site: "{{ inventory_hostname }}"
-    _log_ctx_json: "{{ (ops_log_context | default({})) | to_json }}"
-    _log_line: "{{ _log_ts }} {{ _log_site }} {{ ops_log_level }} {{ ops_log_message }} {{ _log_ctx_json }}"
+    _log_ctx_json: "{{ (ncs_log_context | default({})) | to_json }}"
+    _log_line: "{{ _log_ts }} {{ _log_site }} {{ ncs_log_level }} {{ ncs_log_message }} {{ _log_ctx_json }}"
   no_log: true  # context sometimes contains sensitive fields
 
 - name: Console log (debug module)
   ansible.builtin.debug:
     msg: "{{ _log_line }}"
-  when: (ops.config.debug_mode | default(false)) | bool
+  when: (ncs.config.debug_mode | default(false)) | bool
 
 - name: Append to controller log file (serialized)
   ansible.builtin.lineinfile:
-    path: "{{ ops.config.logging.file_path | default(playbook_dir ~ '/../logs/ncs.log') }}"
+    path: "{{ ncs.config.logging.file_path | default(playbook_dir ~ '/../logs/ncs.log') }}"
     create: true
     mode: "0664"
     line: "{{ _log_line }}"
     insertafter: EOF
   delegate_to: localhost
   throttle: 1
-  when: (ops.config.logging.export_to_file | default(false)) | bool
+  when: (ncs.config.logging.export_to_file | default(false)) | bool

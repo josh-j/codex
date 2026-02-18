@@ -1,0 +1,15 @@
+---
+# playbooks/infrastructure/compute.yaml
+# Perform health checks for Cisco UCS Fabric Interconnects.
+
+- name: Compute Operations Audit
+  hosts: ucsm
+  gather_facts: false
+
+  pre_tasks:
+    - name: Setup Role Context
+      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
+
+  roles:
+    - role: internal.compute.ucs
+      when: "'ucs_fi' in (ansible_stats.run_ctx.tasks | default([]))"

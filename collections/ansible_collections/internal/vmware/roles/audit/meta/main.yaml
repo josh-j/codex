@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Codex Automation Team
+  description: VMware Health Audit and Reporting
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: VMware
+      versions:
+        - all
+dependencies:
+  - role: internal.vmware.discovery

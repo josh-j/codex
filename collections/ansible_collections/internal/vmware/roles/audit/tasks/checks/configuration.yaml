@@ -1,0 +1,55 @@
+---
+# Host Configuration Checks
+- name: Cluster checks | Configuration (HA/DRS)
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    ncs_alert_severity: WARNING
+    ncs_alert_category: configuration
+    ncs_alert_message: "Cluster '{{ item.key }}' has HA or DRS disabled."
+    ncs_alert_details:
+      cluster: "{{ item.key }}"
+      ha_enabled: "{{ item.value.compliance.ha_enabled | default(false) }}"
+      drs_enabled: "{{ item.value.compliance.drs_enabled | default(false) }}"
+  loop: "{{ vmware_ctx.inventory.clusters.by_name | default({}) | dict2items }}"
+  when: >-
+    (item.value.compliance is defined)
+    and (
+      not (item.value.compliance.ha_enabled | default(false) | bool)
+      or not (item.value.compliance.drs_enabled | default(false) | bool)
+    )
+  loop_control:
+    label: "WARNING configuration {{ item.key }}"
+
+- name: Cluster checks | Memory Capacity
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    ncs_alert_severity: WARNING
+    ncs_alert_category: capacity
+    ncs_alert_message: "Cluster '{{ item.key }}' Memory is high ({{ item.value.utilization.mem_pct | default(0) }}%)"
+    ncs_alert_details:
+      cluster: "{{ item.key }}"
+      usage_pct: "{{ item.value.utilization.mem_pct | default(0) }}"
+  loop: "{{ vmware_ctx.inventory.clusters.by_name | default({}) | dict2items }}"
+  when: "(item.value.utilization.mem_pct | default(0) | float) > 90.0"
+  loop_control:
+    label: "WARNING capacity {{ item.key }} (Mem)"
+
+- name: Cluster checks | CPU Capacity
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert
+  vars:
+    ncs_alert_severity: WARNING
+    ncs_alert_category: capacity
+    ncs_alert_message: "Cluster '{{ item.key }}' CPU is high ({{ item.value.utilization.cpu_pct | default(0) }}%)"
+    ncs_alert_details:
+      cluster: "{{ item.key }}"
+      usage_pct: "{{ item.value.utilization.cpu_pct | default(0) }}"
+  loop: "{{ vmware_ctx.inventory.clusters.by_name | default({}) | dict2items }}"
+  when: "(item.value.utilization.cpu_pct | default(0) | float) > 90.0"
+  loop_control:
+    label: "WARNING capacity {{ item.key }} (CPU)"

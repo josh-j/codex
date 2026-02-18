@@ -1,0 +1,14 @@
+---
+# Export VM Snapshot Inventory
+- name: Export snapshots to CSV
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv
+  vars:
+    _snapshots: "{{ vmware_ctx.inventory.snapshots | default({}) }}"
+    ncs_csv_report_name: "vcenter_snapshots"
+    ncs_csv_headers: ["vCenter", "VM Name", "Snapshot Name", "Created", "Age (Days)"]
+    ncs_csv_keys: ["vcenter", "vm_name", "snapshot_name", "created", "age_days"]
+    ncs_csv_data: "{{ _snapshots.aged | default([]) }}"
+    ncs_csv_sort_by: "age_days"
+  when: (_snapshots.metrics.total_aged | default(0) | int > 0)

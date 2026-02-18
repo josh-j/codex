@@ -1,0 +1,68 @@
+---
+# Datastore Usage Checks
+- name: Datastore Capacity Alerts
+  block:
+    - name: "Check: Datastore Critical Capacity"
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert
+      vars:
+        _cfg: "{{ vmware_ctx.config | default({}) }}"
+        _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+        ncs_alert_severity: "CRITICAL"
+        ncs_alert_category: "capacity"
+        ncs_alert_message: "Datastore {{ item.name }} critically low ({{ item.free_pct }}% free)"
+        ncs_alert_details:
+          datastore: "{{ item.name }}"
+          free_pct: "{{ item.free_pct }}"
+          threshold_pct: "{{ _cfg.datastore_free_critical_pct | default(10) }}"
+      loop: "{{ _ds | selectattr('free_pct', 'lt', (_cfg.datastore_free_critical_pct | default(10) | float)) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Check: Datastore Low Capacity"
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert
+      vars:
+        _cfg: "{{ vmware_ctx.config | default({}) }}"
+        _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+        ncs_alert_severity: "WARNING"
+        ncs_alert_category: "capacity"
+        ncs_alert_message: "Datastore {{ item.name }} low ({{ item.free_pct }}% free)"
+        ncs_alert_details:
+          datastore: "{{ item.name }}"
+          free_pct: "{{ item.free_pct }}"
+          threshold_pct: "{{ _cfg.datastore_free_warning_pct | default(15) }}"
+      loop: "{{ _ds | selectattr('free_pct', 'lt', (_cfg.datastore_free_warning_pct | default(15) | float)) | selectattr('free_pct', 'ge', (_cfg.datastore_free_critical_pct | default(10) | float)) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: Datastore Connectivity and Mode Alerts
+  block:
+    - name: "Check: Datastore Maintenance Mode"
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert
+      vars:
+        _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+        ncs_alert_severity: "WARNING"
+        ncs_alert_category: "configuration"
+        ncs_alert_message: "Datastore {{ item.name }} in maintenance mode ({{ item.maintenance_mode }})"
+      loop: "{{ _ds | rejectattr('maintenance_mode', 'equalto', 'normal') | rejectattr('maintenance_mode', 'equalto', 'Normal') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Check: Datastore Inaccessible"
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert
+      vars:
+        _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+        ncs_alert_severity: "CRITICAL"
+        ncs_alert_category: "connectivity"
+        ncs_alert_message: "Datastore {{ item.name }} is inaccessible"
+      loop: "{{ _ds | selectattr('accessible', 'equalto', false) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+  when: (vmware_ctx.inventory.datastores.list | default([])) | length > 0

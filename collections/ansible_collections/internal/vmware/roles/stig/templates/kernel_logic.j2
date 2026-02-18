@@ -1,0 +1,23 @@
+{% set res = [] %}
+{% set adv = item.get('config', {}).get('option_value', []) %}
+
+{# Helper function to get advanced setting value #}
+{% macro get_adv(name, settings) %}
+  {% set val = 'unknown' %}
+  {% for s in settings %}
+    {% if s.key == name %}
+      {% set val = s.value %}
+    {% endif %}
+  {% endfor %}
+  {{ val }}
+{% endmacro %}
+
+{# ESXI-70-000058: Block Guest BPDU #}
+{% set bpdu = get_adv('Net.BlockGuestBPDU', adv) | trim %}
+{% if bpdu == '1' %}
+    {% set _ = res.append({"id": "ESXI-70-000058", "status": "PASSED", "details": "Guest BPDU Blocked"}) %}
+{% else %}
+    {% set _ = res.append({"id": "ESXI-70-000058", "status": "FAILED", "details": "Guest BPDU Allowed: " ~ bpdu}) %}
+{% endif %}
+
+{{ res | to_json }}

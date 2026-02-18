@@ -1,0 +1,24 @@
+---
+# collections/ansible_collections/internal/stig/roles/vsphere/tasks/discover.yaml
+
+- name: "VSphere | Execute Python Discovery"
+  ansible.builtin.script: >-
+    {{ role_path }}/files/get_vm_stig_facts.py
+    '{{ ansible_host | default(inventory_hostname) }}'
+    '{{ vmware_username | default(ansible_user) | default(ansible_ssh_user) }}'
+    '{{ vmware_password | default(ansible_password) | default(ansible_ssh_pass) }}'
+    '{{ stig_vm_filter | default("") }}'
+  register: _vm_script_result
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true
+
+- name: "VSphere | Process Discovery Results"
+  ansible.builtin.include_role:
+    name: internal.core.stig
+    tasks_from: discovery_parser
+  vars:
+    script_result: "{{ _vm_script_result }}"
+    generic_namespace: "vsphere_ctx"
+    json_data_key: "vms"

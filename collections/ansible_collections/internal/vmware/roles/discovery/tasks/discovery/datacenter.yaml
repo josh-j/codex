@@ -1,0 +1,29 @@
+---
+# Discover vCenter Datacenters
+- name: Get datacenter info from vCenter (REST)
+  vmware.vmware_rest.vcenter_datacenter_info:
+    vcenter_hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
+    vcenter_username: "{{ vmware_ctx.discovery.connection.username }}"
+    vcenter_password: "{{ vmware_ctx.discovery.connection.password }}"
+    vcenter_validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+  register: _datacenters_raw
+  delegate_to: localhost
+
+- name: Sync vmware_ctx datacenters
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
+      {{
+        vmware_ctx | internal.core.recursive_combine({
+          'discovery': {
+            'datacenters': {
+              'list': (_datacenters_raw.value | default([])),
+              'names': (_datacenters_raw.value | default([]) | map(attribute='name') | list),
+              'metrics': { 'total': (_datacenters_raw.value | default([]) | length) }
+            },
+            'datacenter': {
+              'name': ((_datacenters_raw.value | default([]) | map(attribute='name') | list | first) | default(''))
+            }
+          }
+        })
+      }}
+  changed_when: false
