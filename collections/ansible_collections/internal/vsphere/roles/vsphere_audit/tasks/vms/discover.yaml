@@ -38,7 +38,7 @@
 
 - name: Normalize VMs to list with enriched data
   ansible.builtin.set_fact:
-    vcenter: "{{ vcenter | combine({'vms': {'list': vcenter.vms.list | default([]) + [vm_normalized]}}, recursive=true) }}"
+    _temp_vms_list: "{{ _temp_vms_list | default([]) + [vm_normalized] }}"
   vars:
     owner_tags: "{{ item.tags | default([]) | selectattr('category_name', 'equalto', 'Owner') | list }}"
     backup_tags: "{{ item.tags | default([]) | selectattr('category_name', 'equalto', 'Backup Schedule') | list }}"
@@ -72,6 +72,10 @@
   when:
     - item.guest_name is defined
 
+- name: Update vcenter VM list
+  ansible.builtin.set_fact:
+    vcenter: "{{ vcenter | combine({'vms': {'list': _temp_vms_list | default([])}}, recursive=true) }}"
+
 # DEBUG: Verify normalized list
 - name: DEBUG - Check normalized VM count and sample
   ansible.builtin.debug:
@@ -99,7 +103,7 @@
 
 - name: Analyze backup status for each VM
   ansible.builtin.set_fact:
-    vcenter: "{{ vcenter | combine({'vms': {'backup_analysis': vcenter.vms.backup_analysis | default([]) + [vm_status]}}, recursive=true) }}"
+    _temp_backup_analysis: "{{ _temp_backup_analysis | default([]) + [vm_status] }}"
   vars:
     backup_info: "{{ item.backup_info }}"
     has_backup: "{{ backup_info != '' and 'EndTime=' in backup_info }}"
@@ -124,6 +128,10 @@
   loop: "{{ vcenter.vms.list | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
+
+- name: Update vcenter backup analysis
+  ansible.builtin.set_fact:
+    vcenter: "{{ vcenter | combine({'vms': {'backup_analysis': _temp_backup_analysis | default([])}}, recursive=true) }}"
 
 # ========================================================================
 # 4. FILTERING & METRICS
@@ -168,7 +176,7 @@
 
 - name: Log VM Summary
   ansible.builtin.include_role:
-    name: common
+    name: internal.core.common
     tasks_from: logging/info
   vars:
     ops_log_message: >-

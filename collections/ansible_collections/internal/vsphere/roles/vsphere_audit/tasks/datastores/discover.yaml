@@ -95,7 +95,7 @@
 
     - name: Log datastore summary
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: "Datastores: {{ vcenter.datastores.metrics.total }} Total, {{ vcenter.datastores.metrics.problem_count }} Issues"
@@ -103,7 +103,7 @@
   rescue:
     - name: Log datastore collection failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Failed to gather datastore info: {{ ansible_failed_result.msg | default('Unknown error') }}"

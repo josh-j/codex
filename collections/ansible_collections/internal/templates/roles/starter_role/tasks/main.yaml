@@ -1,0 +1,29 @@
+---
+# Main entry point for the {{ starter_platform_name }} role
+
+- name: "[{{ starter_platform_name }}] Start execution"
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: logging/info.yaml
+  vars:
+    msg: "Starting audit for {{ starter_platform_name }}"
+
+- name: "[{{ starter_platform_name }}] Phase 1: Initialize"
+  ansible.builtin.include_tasks: init.yaml
+
+- name: "[{{ starter_platform_name }}] Phase 2: Discovery"
+  ansible.builtin.include_tasks: discover.yaml
+  when: not (starter_skip_discovery | default(false))
+
+- name: "[{{ starter_platform_name }}] Phase 3: Audit & Check"
+  ansible.builtin.include_tasks: check.yaml
+
+- name: "[{{ starter_platform_name }}] Phase 4: Data Export"
+  ansible.builtin.include_tasks: export.yaml
+
+- name: "[{{ starter_platform_name }}] Audit complete"
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: logging/info.yaml
+  vars:
+    msg: "Audit complete for {{ starter_platform_name }}. Found {{ ops.overall.issues | default(0) }} issues."

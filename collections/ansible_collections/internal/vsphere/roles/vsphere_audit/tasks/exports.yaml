@@ -1,0 +1,31 @@
+---
+# roles/vsphere/tasks/exports.yaml
+# Orchestrates the export phase for all vCenter domains.
+
+- name: Export - Infrastructure
+  ansible.builtin.import_tasks: infrastructure/export.yaml
+  tags: ['export', 'infrastructure']
+
+- name: Export - Resources
+  ansible.builtin.import_tasks: resources/export.yaml
+  tags: ['export', 'resources']
+
+- name: Export - Datastores
+  ansible.builtin.import_tasks: datastores/export.yaml
+  tags: ['export', 'datastores']
+
+- name: Export - VMs
+  ansible.builtin.import_tasks: vms/export.yaml
+  tags: ['export', 'vms']
+
+- name: Export - Snapshots
+  ansible.builtin.import_tasks: snapshots/export.yaml
+  tags: ['export', 'snapshots']
+
+- name: Export - Alarms
+  ansible.builtin.import_tasks: alarms/export.yaml
+  tags: ['export', 'alarms']
+
+- name: Export - Summary
+  ansible.builtin.import_tasks: summary/export.yaml
+  tags: ['export', 'summary']

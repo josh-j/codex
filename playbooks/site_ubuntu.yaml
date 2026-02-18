@@ -1,49 +1,56 @@
 # playbooks/site_ubuntu.yaml
-# ==============================================================================
-# PLAY 1: INFRASTRUCTURE OPERATIONS
-# ==============================================================================
+# Ubuntu System Audit and Reporting Playbook
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) INITIALIZATION PLAY (localhost)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Initialize Ubuntu Audit
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Generate Global Run ID and Metadata
+      ansible.builtin.set_fact:
+        run_ctx:
+          id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+          timestamp: '{{ lookup(''pipe'', ''date "+%Y-%m-%dT%H:%M:%S%z"'') }}'
+          report_base: "{{ ops_config.report_directory | default('/srv/samba/reports') }}"
+      tags: ["always"]
+
+    - name: Set Output Directory
+      ansible.builtin.set_fact:
+        run_ctx: "{{ run_ctx | combine({'output_dir': run_ctx.report_base + '/Ubuntu_Ops/' + run_ctx.id}) }}"
+      tags: ["always"]
+
+    - name: Create Report Directory
+      ansible.builtin.file:
+        path: "{{ run_ctx.output_dir }}"
+        state: directory
+        mode: "0755"
+      tags: ["always"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) AUDIT PLAY
+# ─────────────────────────────────────────────────────────────────────────────
 - name: Ubuntu Infrastructure Operations
   hosts: ubuntu_servers
   gather_facts: true
   become: true
 
-  # 1. INITIALIZATION: Reporting Paths & Run IDs
-  # =========================================================================
-  vars:
-    # Define base path (Matches your other playbooks)
-    ops_report_base: "/srv/samba/reports"
-
   pre_tasks:
-    # 1. Generate Global ID (Run Once)
-    - name: Set Global Run ID
+    - name: Apply Run Context
       ansible.builtin.set_fact:
-        global_run_id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
-      run_once: true
-      tags: ['always']
-
-    # 2. Set Reporting Paths (CRITICAL for CSV/CKL generation)
-    - name: Set Reporting Paths and Ops Namespace
-      ansible.builtin.set_fact:
-        # Tells roles where to save files
-        ops_report_output_dir: "{{ ops_report_base }}/Ubuntu_Ops/{{ global_run_id }}"
-
-        # Initialize 'ops' namespace to prevent errors in common roles
+        global_run_id: "{{ _ctx.id }}"
+        ops_report_output_dir: "{{ _ctx.output_dir }}"
         ops:
           check:
-            id: "{{ global_run_id }}"
-            date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
-      tags: ['always']
-
-    # 3. Create the Report Directory
-    - name: Create Report Directory
-      ansible.builtin.file:
-        path: "{{ ops_report_output_dir }}"
-        state: directory
-        mode: '0755'
-      run_once: true
-      tags: ['always']
-  # =========================================================================
+            id: "{{ _ctx.id }}"
+            date: "{{ _ctx.date }}"
+            timestamp: "{{ _ctx.timestamp }}"
+      vars:
+        _ctx: "{{ hostvars['localhost'].run_ctx }}"
+      tags: ["always"]
 
   roles:
-    - role: common
-    - role: ubuntu
+    - role: internal.stig.common
+    - role: internal.linux.ubuntu_system_audit

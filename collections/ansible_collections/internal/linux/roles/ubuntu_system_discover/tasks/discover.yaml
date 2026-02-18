@@ -14,11 +14,10 @@
       - 'network'
 
 - name: Check for Failed Systemd Services
-  # We use command because the systemd module cannot 'list' all failed units
   ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain
   register: _failed_services_raw
   changed_when: false
-  # IGNORE LINT: Intentional use of command to list units
+  check_mode: false
   tags: [skip_ansible_lint]
 
 - name: Collect User Database (getent)
@@ -30,13 +29,15 @@
   register: _shadow_raw
   become: true
   changed_when: false
-  no_log: true # PROTECT HASHES
+  no_log: true
+  check_mode: false
 
 - name: Collect Running SSH Configuration
   ansible.builtin.command: sshd -T
   register: _sshd_raw
   become: true
   changed_when: false
+  check_mode: false
 
 - name: Check permissions of critical files
   ansible.builtin.stat:
@@ -46,6 +47,7 @@
     - /etc/shadow
     - /etc/passwd
     - /etc/ssh/sshd_config
+  check_mode: false
 
 - name: Scan for world-writable files (Time Limited)
   ansible.builtin.command: find /etc /var -xdev -type f -perm -0002 -print
@@ -55,6 +57,7 @@
   failed_when: _world_writable_raw.rc is defined and _world_writable_raw.rc != 0
   async: 10
   poll: 1
+  check_mode: false
 
 # 1. UPDATE CACHE
 - name: Update apt cache (Force Refresh)
@@ -63,40 +66,41 @@
     cache_valid_time: 0
   changed_when: false
   become: true
+  # Note: This will be skipped in check_mode by default, which is fine as it's a side effect.
 
-# 2. CHECK REBOOT STATUS (Moved up for cleaner logic flow)
+# 2. CHECK REBOOT STATUS
 - name: Check if reboot is required
   ansible.builtin.stat:
     path: /var/run/reboot-required
   register: _reboot_stat
+  check_mode: false
 
 # 3. CHECK UPDATES
 - name: Check for upgradable packages (Dry Run)
-  # -s = simulate. Returns the plan without modifying the system.
   ansible.builtin.command: apt-get -s upgrade
   register: _apt_simulate
   changed_when: false
-  # Prevent failure if apt lock is held by auto-updates
   failed_when: _apt_simulate.rc != 0 and 'Could not get lock' not in _apt_simulate.stderr
-  # FIX: Tell linter this command usage is intentional
+  check_mode: false
   tags: [skip_ansible_lint]
 
 # 4. NORMALIZE DATA
 - name: Parse and store update metrics
   ansible.builtin.set_fact:
-    ubuntu: "{{ ubuntu | combine({'updates': update_data}, recursive=true) }}"
+    ubuntu: "{{ ubuntu | internal.core.recursive_combine({'updates': update_data}) }}"
   vars:
-    # Robust extraction: Find the line "X upgraded, Y newly installed..."
-    # 'default' prevents crashes if apt output is non-standard
-    _summary_line: "{{ _apt_simulate.stdout_lines | select('search', 'upgraded,') | list | last | default('0') }}"
+    _summary_line: "{{ (_apt_simulate.stdout_lines | default([])) | select('search', 'upgraded,') | list | last | default('0') }}"
     _count_raw: "{{ _summary_line.split()[0] | default('0') }}"
 
     update_data:
       pending_count: "{{ _count_raw | int }}"
-      reboot_pending: "{{ _reboot_stat.stat.exists }}"
-      # Optional: Capture the raw summary string for detailed logging later
+      reboot_pending: "{{ _reboot_stat.stat.exists | default(false) }}"
       last_check_output: "{{ _summary_line }}"
 
 - name: Log Patching Status
   ansible.builtin.debug:
     msg: "Updates Pending: {{ ubuntu.updates.pending_count }} | Reboot Required: {{ ubuntu.updates.reboot_pending }}"
+
+- name: Normalize Discovered Data
+  ansible.builtin.include_tasks: normalize.yaml
+  tags: [discovery, normalize]

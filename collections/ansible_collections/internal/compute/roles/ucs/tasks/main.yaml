@@ -1,0 +1,43 @@
+---
+# collections/ansible_collections/internal/compute/roles/ucs/tasks/main.yaml
+
+- name: UCS | Perform health checks
+  block:
+    - name: UCS | Check connectivity (ICMP)
+      ansible.builtin.wait_for:
+        host: "{{ ucs_fi.url }}"
+        port: 443
+        timeout: 5
+      register: _ucs_reachability
+      when: ucs_fi is defined and ucs_fi.url is defined
+
+    - name: UCS | Emit connectivity alert
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert.yaml
+      vars:
+        ops_alert_severity: "{{ 'INFO' if _ucs_reachability is success else 'CRITICAL' }}"
+        ops_alert_category: "COMPUTE_CONNECTIVITY"
+        ops_alert_message: "UCS Fabric Interconnect {{ ucs_fi.url }} is {{ 'reachable' if _ucs_reachability is success else 'UNREACHABLE' }}"
+      when:
+        - ucs_fi is defined
+        - ucs_fi.url is defined
+        - not ansible_check_mode
+
+    - name: UCS | Record report generation
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: report.yaml
+      vars:
+        ops_report_name: 'ucs_health_check'
+      when:
+        - ucs_fi is defined
+        - not ansible_check_mode
+
+  rescue:
+    - name: UCS | Log failure
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "UCS checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"

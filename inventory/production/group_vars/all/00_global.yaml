@@ -4,6 +4,10 @@ ops_config:
   debug_mode: true
   dry_run_mode: false
 
+  # Scheduling Defaults
+  # Can be overridden via CLI: -e ops_run_day_override=friday
+  run_day: "{{ ops_run_day_override | default(lookup('pipe', 'date +%A') | lower) }}"
+
   report_directory: /srv/samba/reports
 
   email:

@@ -1,7 +1,7 @@
 # ========================================================================
 - name: Export STIG Compliance Report
   ansible.builtin.include_role:
-    name: common
+    name: internal.stig.common
     tasks_from: reporting/stig.yaml
   vars:
     # PATH: Point to where your callback plugin saves the JSON.

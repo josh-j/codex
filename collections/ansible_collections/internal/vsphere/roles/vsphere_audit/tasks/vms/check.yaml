@@ -6,8 +6,8 @@
 # -----------------------------------------------------------------------------
 - name: "Check: VMs Never Backed Up"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     # Filter out vCLS system VMs to prevent false positives
     # !TODO: Use variable for strings to filter
@@ -26,8 +26,8 @@
 
 - name: "Check: VMs with Overdue Backups"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     _targets: "{{ vcenter.vms.with_overdue_backup }}"
     ops_alert_severity: "CRITICAL"
@@ -42,8 +42,8 @@
 # -----------------------------------------------------------------------------
 - name: "Check: VMs Missing Backup Tags"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     # Exclude vCLS (Cluster Services) which cannot be tagged
     _targets: >-
@@ -61,8 +61,8 @@
 
 - name: "Check: VMs Missing Owner Email"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     # Exclude vCLS system VMs
     _targets: >-
@@ -82,8 +82,8 @@
 # -----------------------------------------------------------------------------
 - name: "Check: High Powered-Off Ratio"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "WARNING"
     ops_alert_category: "capacity"

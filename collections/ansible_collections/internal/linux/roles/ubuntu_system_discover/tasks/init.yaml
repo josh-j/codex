@@ -1,0 +1,28 @@
+---
+# Initialize Ubuntu Namespace structure if not already present.
+# This ensures that even if discovery is skipped, the audit/export tasks don't crash.
+
+- name: Initialize Ubuntu Namespace
+  ansible.builtin.set_fact:
+    ubuntu: "{{ ubuntu | default({}) | internal.core.recursive_combine(structure) }}"
+  vars:
+    structure:
+      config:
+        export_csv: "{{ ubuntu_export_csv | default(true) }}"
+      system:
+        hostname: "{{ inventory_hostname }}"
+        ip: "{{ ansible_facts['default_ipv4']['address'] | default('N/A') }}"
+        kernel: "{{ ansible_facts['kernel'] | default('unknown') }}"
+        uptime_days: 0
+        memory: { used_pct: 0, total_mb: 0, free_mb: 0 }
+        swap: { used_pct: 0, total_mb: 0 }
+        services: { failed_count: 0, failed_list: [] }
+        disks: []
+      updates:
+        pending_count: 0
+        reboot_pending: false
+      security:
+        users: []
+        ssh_config: {}
+        file_stats: {}
+        world_writable_files: []

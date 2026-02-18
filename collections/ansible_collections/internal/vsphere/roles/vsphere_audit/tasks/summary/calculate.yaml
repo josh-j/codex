@@ -38,7 +38,7 @@
 
     - name: Log summary metrics
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: >-
@@ -50,7 +50,7 @@
   rescue:
     - name: Log summary generation failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/warn
       vars:
         ops_log_message: "Failed to generate summary metrics"

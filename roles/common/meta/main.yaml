@@ -1,8 +1,0 @@
----
-# roles/common/meta/main.yaml
-# Role dependencies
-dependencies: []
-# Collections required by this role
-collections:
-  - ansible.builtin
-  - community.general

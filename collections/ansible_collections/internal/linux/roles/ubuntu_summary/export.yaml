@@ -3,8 +3,8 @@
 
 - name: Export Executive Summary Row
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "ubuntu_fleet_summary"
     ops_csv_headers:

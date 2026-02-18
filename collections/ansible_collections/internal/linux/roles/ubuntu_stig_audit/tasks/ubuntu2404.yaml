@@ -62,209 +62,47 @@
     state: "{{ ubuntu2404STIG_stigrule_270653_rsyslog_State }}"
     update_cache: yes
   when: ubuntu2404STIG_stigrule_270653_Manage
-# R-270653 UBTU-24-100200
-- name: check if rsyslog.service is installed
-  shell: ! systemctl list-unit-files | grep "^rsyslog.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270653_rsyslog_enable
-  service:
-    name: rsyslog.service
-    enabled: "{{ ubuntu2404STIG_stigrule_270653_rsyslog_enable_Enabled }}"
+# R-270653, R-270657, R-270660, R-270663, R-270666, R-270712, R-270746
+- name: populate service facts
+  ansible.builtin.service_facts:
+
+- name: manage stig services
+  ansible.builtin.service:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default(omit) }}"
+    enabled: "{{ item.enabled | default(omit) }}"
+    masked: "{{ item.masked | default(omit) }}"
+  loop:
+    - name: rsyslog.service
+      state: "{{ ubuntu2404STIG_stigrule_270653_rsyslog_start_State }}"
+      enabled: "{{ ubuntu2404STIG_stigrule_270653_rsyslog_enable_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270653_Manage }}"
+    - name: auditd.service
+      state: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_State }}"
+      enabled: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270657_Manage }}"
+    - name: apparmor.service
+      state: "{{ ubuntu2404STIG_stigrule_270660_apparmor_start_State }}"
+      enabled: "{{ ubuntu2404STIG_stigrule_270660_apparmor_enable_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270660_Manage }}"
+    - name: sssd.service
+      state: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_State }}"
+      enabled: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270663_Manage }}"
+    - name: ssh.service
+      state: "{{ ubuntu2404STIG_stigrule_270666_ssh_start_State }}"
+      enabled: "{{ ubuntu2404STIG_stigrule_270666_ssh_active_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270666_Manage }}"
+    - name: ctrl-alt-del.target
+      enabled: "{{ ubuntu2404STIG_stigrule_270712_ctrl_alt_del_target_disable_Enabled }}"
+      masked: "{{ ubuntu2404STIG_stigrule_270712_ctrl_alt_del_target_mask_Masked }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270712_Manage }}"
+    - name: kdump-tools.service
+      enabled: "{{ ubuntu2404STIG_stigrule_270746_kdump_tools_disable_Enabled }}"
+      manage: "{{ ubuntu2404STIG_stigrule_270746_Manage }}"
   when:
-    - ubuntu2404STIG_stigrule_270653_Manage
-    - result.rc == 0
-# R-270653 UBTU-24-100200
-- name: check if rsyslog.service is installed
-  shell: ! systemctl list-unit-files | grep "^rsyslog.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270653_rsyslog_start
-  service:
-    name: rsyslog.service
-    state: "{{ ubuntu2404STIG_stigrule_270653_rsyslog_start_State }}"
-  when:
-    - ubuntu2404STIG_stigrule_270653_Manage
-    - result.rc == 0
-# R-270654 UBTU-24-100300
-- name: stigrule_270654_ufw
-  apt:
-    name: ufw
-    state: "{{ ubuntu2404STIG_stigrule_270654_ufw_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270654_Manage
-# R-270656 UBTU-24-100400
-- name: stigrule_270656_auditd
-  apt:
-    name: auditd
-    state: "{{ ubuntu2404STIG_stigrule_270656_auditd_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270656_Manage
-# R-270657 UBTU-24-100410
-- name: check if auditd.service is installed
-  shell: ! systemctl list-unit-files | grep "^auditd.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270657_auditd_enable
-  service:
-    name: auditd.service
-    enabled: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_Enabled }}"
-  when:
-    - ubuntu2404STIG_stigrule_270657_Manage
-    - result.rc == 0
-# R-270657 UBTU-24-100410
-- name: check if auditd.service is installed
-  shell: ! systemctl list-unit-files | grep "^auditd.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270657_auditd_enable
-  service:
-    name: auditd.service
-    state: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_State }}"
-  when:
-    - ubuntu2404STIG_stigrule_270657_Manage
-    - result.rc == 0
-# R-270659 UBTU-24-100500
-- name: stigrule_270659_apparmor
-  apt:
-    name: apparmor
-    state: "{{ ubuntu2404STIG_stigrule_270659_apparmor_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270659_Manage
-# R-270660 UBTU-24-100510
-- name: check if apparmor.service is installed
-  shell: ! systemctl list-unit-files | grep "^apparmor.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270660_apparmor_enable
-  service:
-    name: apparmor.service
-    enabled: "{{ ubuntu2404STIG_stigrule_270660_apparmor_enable_Enabled }}"
-  when:
-    - ubuntu2404STIG_stigrule_270660_Manage
-    - result.rc == 0
-# R-270660 UBTU-24-100510
-- name: check if apparmor.service is installed
-  shell: ! systemctl list-unit-files | grep "^apparmor.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270660_apparmor_start
-  service:
-    name: apparmor.service
-    state: "{{ ubuntu2404STIG_stigrule_270660_apparmor_start_State }}"
-  when:
-    - ubuntu2404STIG_stigrule_270660_Manage
-    - result.rc == 0
-# R-270661 UBTU-24-100600
-- name: stigrule_270661_libpam_pwquality
-  apt:
-    name: libpam-pwquality
-    state: "{{ ubuntu2404STIG_stigrule_270661_libpam_pwquality_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270661_Manage
-# R-270661 UBTU-24-100600
-- name: stigrule_270661_sssd
-  apt:
-    name: sssd
-    state: "{{ ubuntu2404STIG_stigrule_270661_sssd_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270661_Manage
-# R-270661 UBTU-24-100600
-- name: stigrule_270661_libpam_sss
-  apt:
-    name: libpam-sss
-    state: "{{ ubuntu2404STIG_stigrule_270661_libpam_sss_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270661_Manage
-# R-270661 UBTU-24-100600
-- name: stigrule_270661_libnss_sss
-  apt:
-    name: libnss-sss
-    state: "{{ ubuntu2404STIG_stigrule_270661_libnss_sss_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270661_Manage
-# R-270663 UBTU-24-100660
-- name: check if sssd.service is installed
-  shell: ! systemctl list-unit-files | grep "^sssd.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270663_sssd_enable
-  service:
-    name: sssd.service
-    enabled: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_Enabled }}"
-  when:
-    - ubuntu2404STIG_stigrule_270663_Manage
-    - result.rc == 0
-# R-270663 UBTU-24-100660
-- name: check if sssd.service is installed
-  shell: ! systemctl list-unit-files | grep "^sssd.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270663_sssd_enable
-  service:
-    name: sssd.service
-    state: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_State }}"
-  when:
-    - ubuntu2404STIG_stigrule_270663_Manage
-    - result.rc == 0
-# R-270664 UBTU-24-100700
-- name: stigrule_270664_chrony
-  apt:
-    name: chrony
-    state: "{{ ubuntu2404STIG_stigrule_270664_chrony_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270664_Manage
-# R-270665 UBTU-24-100800
-- name: stigrule_270665_ssh
-  apt:
-    name: ssh
-    state: "{{ ubuntu2404STIG_stigrule_270665_ssh_State }}"
-    update_cache: yes
-  when: ubuntu2404STIG_stigrule_270665_Manage
-# R-270666 UBTU-24-100810
-- name: check if ssh.service is installed
-  shell: ! systemctl list-unit-files | grep "^ssh.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270666_ssh_active
-  service:
-    name: ssh.service
-    enabled: "{{ ubuntu2404STIG_stigrule_270666_ssh_active_Enabled }}"
-  when:
-    - ubuntu2404STIG_stigrule_270666_Manage
-    - result.rc == 0
-# R-270666 UBTU-24-100810
-- name: check if ssh.service is installed
-  shell: ! systemctl list-unit-files | grep "^ssh.service[ \t]\+"
-  changed_when: False
-  check_mode: no
-  register: result
-  failed_when: result.rc > 1
-- name: stigrule_270666_ssh_start
-  service:
-    name: ssh.service
-    state: "{{ ubuntu2404STIG_stigrule_270666_ssh_start_State }}"
-  when:
-    - ubuntu2404STIG_stigrule_270666_Manage
-    - result.rc == 0
+    - item.manage | bool
+    - item.name in ansible_facts.services
 # R-270667 UBTU-24-100820
 - name: stigrule_270667_Ciphers
   lineinfile:

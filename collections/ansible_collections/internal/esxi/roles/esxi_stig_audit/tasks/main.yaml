@@ -1,38 +1,44 @@
 ---
-- name: "DEBUG | Confirm Role Entry"
-  ansible.builtin.debug:
-    msg: "Role 'internal.stig.esxi' has started on {{ inventory_hostname }}"
+# ==============================================================================
+# ESXi STIG Audit Role
+# Orchestrates: Init -> Discovery (API+SSH) -> Check -> Report
+# ==============================================================================
 
-- name: "ESXi | Load STIG Policies"
-  ansible.builtin.include_vars:
-    file: defaults/main.yaml
+- name: "ESXi | Initialize Role"
+  ansible.builtin.include_tasks: init.yaml
+  tags: [always]
 
 - name: "ESXi | Set Absolute Path for Skeleton"
   ansible.builtin.set_fact:
     _esxi_cklb_skeleton_absolute_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_esxi_V1R4.json"
+  tags: [always]
 
 # -------------------------------------------------------------------------
-# 1. API DISCOVERY (PowerCLI via vCenter)
+# 1. DISCOVERY PHASE
 # -------------------------------------------------------------------------
-- name: "ESXi | Discover Host Configuration (API)"
-  ansible.builtin.include_tasks: discover.yaml
+- name: Discovery Wrapper
+  block:
+    # 1a. API DISCOVERY (PowerCLI via vCenter)
+    - name: "ESXi | Discover Host Configuration (API)"
+      ansible.builtin.include_tasks: discover.yaml
+      tags: ['discovery', 'api']
+
+    # 1b. SSH DEEP AUDIT (Root Shell Toggle)
+    - name: "ESXi | Deep Audit (SSH Toggle)"
+      ansible.builtin.include_tasks: audit_ssh.yaml
+      tags: ['discovery', 'ssh']
+  when: not (esxi_skip_discovery | default(false) | bool)
+  tags: ['discovery']
 
 # -------------------------------------------------------------------------
-# 2. SSH DEEP AUDIT (Root Shell Toggle)
+# 2. COMPLIANCE CALCULATION
 # -------------------------------------------------------------------------
-# Connection details are handled INSIDE this file to prevent 'localhost' errors
-- name: "ESXi | Deep Audit (SSH Toggle)"
-  ansible.builtin.include_tasks: audit_ssh.yaml
-
-# -------------------------------------------------------------------------
-# 3. COMPLIANCE CALCULATION
-# -------------------------------------------------------------------------
-# Uses variables collected from BOTH steps above (API + SSH)
 - name: "ESXi | Calculate Compliance"
   ansible.builtin.include_tasks: check.yaml
+  tags: ['check']
 
 # -------------------------------------------------------------------------
-# 4. REPORTING
+# 3. REPORTING
 # -------------------------------------------------------------------------
 - name: "ESXi | Generate Reports"
   ansible.builtin.include_role:
@@ -45,3 +51,4 @@
     export_headers: ["Host Name", "STIG ID", "Control", "Status", "Details"]
     export_keys: ["name", "id", "control", "status", "details"]
     cklb_skeleton_path: "{{ _esxi_cklb_skeleton_absolute_path }}"
+  tags: ['export']

@@ -21,7 +21,7 @@ galaxy_info:
 
 # Role dependencies
 dependencies:
-  - role: common
+  - role: internal.core.common
 
 # Collections required by this role
 collections:

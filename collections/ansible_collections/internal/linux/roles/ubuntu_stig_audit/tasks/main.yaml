@@ -4,7 +4,7 @@
 - name: Ubuntu Operations Wrapper
   block:
     - name: Checks - Health, Patching, & Security Audit
-      ansible.builtin.include_tasks: check.yaml
+      ansible.builtin.import_tasks: check.yaml
       tags: ['checks']
 
   # RESCUE: Only runs if something in the 'block' above FAILED
@@ -19,5 +19,5 @@
   # This guarantees reports are generated even if a check crashes.
   always:
     - name: Export - Reports & Fleet Summary
-      ansible.builtin.include_tasks: export.yaml
+      ansible.builtin.import_tasks: export.yaml
       tags: ['always', 'export']

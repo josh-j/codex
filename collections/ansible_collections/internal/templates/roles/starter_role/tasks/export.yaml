@@ -1,0 +1,11 @@
+---
+# Export local findings to a report file if needed.
+
+- name: "[{{ starter_platform_name }}] Register report metadata"
+  ansible.builtin.set_fact:
+    ops: "{{ ops | combine({'reports': ops.reports + [report_item]}, recursive=True) }}"
+  vars:
+    report_item:
+      name: "{{ starter_platform_name }}_summary"
+      path: "/tmp/{{ inventory_hostname }}_{{ starter_platform_name }}.json"
+      type: "json"

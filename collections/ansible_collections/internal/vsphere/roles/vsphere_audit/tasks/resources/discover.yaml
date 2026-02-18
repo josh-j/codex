@@ -62,7 +62,7 @@
 
 - name: Log resource summary
   ansible.builtin.include_role:
-    name: common
+    name: internal.core.common
     tasks_from: logging/info
   vars:
     ops_log_message: >-

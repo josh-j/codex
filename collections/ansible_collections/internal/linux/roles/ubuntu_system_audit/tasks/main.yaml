@@ -1,18 +1,33 @@
 ---
-# Ensure ubuntu.system.* exists before checks/exports.
-- name: Ensure system metrics are discovered
+# ==============================================================================
+# Role: ubuntu_system_audit
+# Decoupled Discovery -> Check -> Export
+# ==============================================================================
+
+# 1. DISCOVERY & INITIALIZATION
+# This role always runs 'init.yaml' inside ubuntu_system_discover to ensure
+# the 'ubuntu' namespace is defined even if actual discovery is skipped.
+- name: Initialize and Discover System Metrics
   ansible.builtin.include_role:
     name: ubuntu_system_discover
+    public: true # Ensure facts set in discover role are available here
     apply:
       tags: [system, discover]
+  vars:
+    # Allow overriding discovery via CLI: -e ubuntu_skip_discovery=true
+    ubuntu_skip_discovery: "{{ ubuntu_skip_discovery | default(false) }}"
   tags: [system, discover]
-  # apply is required if you want tags to affect tasks inside the included role
-  # :contentReference[oaicite:2]{index=2}
 
+# 2. AUDIT CHECKS
+# Analyzes the collected facts and generates alerts.
 - name: Run Ubuntu System Checks
   ansible.builtin.import_tasks: check.yaml
+  when: not (ubuntu_skip_checks | default(false) | bool)
   tags: [system, check]
 
+# 3. EXPORT RESULTS
+# Renders the results to CSV/Files.
 - name: Export Ubuntu Check Results
   ansible.builtin.import_tasks: export.yaml
+  when: not (ubuntu_skip_export | default(false) | bool)
   tags: [system, export]

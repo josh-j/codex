@@ -17,8 +17,8 @@
 # ========================================================================
 - name: Export | Appliance Health Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "infrastructure_appliance"
     ops_csv_headers:
@@ -83,8 +83,8 @@
 
 - name: Export | Cluster Capacity Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "infrastructure_clusters"
     ops_csv_headers:
@@ -129,8 +129,8 @@
 
 - name: Export | Host Inventory Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "infrastructure_hosts"
     ops_csv_headers:
@@ -165,8 +165,8 @@
 
 - name: Export | Datastore Capacity Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "infrastructure_datastores"
     ops_csv_headers:

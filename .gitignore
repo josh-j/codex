@@ -1,0 +1,15 @@
+# Ansible
+*.retry
+.vaultpass
+
+# Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Logs & Reports
+logs/*.log
+/srv/samba/reports/
+
+# OS specific
+.DS_Store

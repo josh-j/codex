@@ -1,0 +1,10 @@
+---
+# collections/ansible_collections/internal/storage/roles/unity/defaults/main.yaml
+unity:
+  config:
+    capacity_warning_pct: 85
+    capacity_critical_pct: 90
+    subscription_warning_pct: 100
+    subscription_critical_pct: 120
+    alert_age_threshold_hours: 24
+    export_csv: true

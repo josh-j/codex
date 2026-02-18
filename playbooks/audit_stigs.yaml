@@ -1,92 +1,82 @@
 ---
 # playbooks/audit_stigs.yaml
+# STIG Compliance Audit Playbook
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) INITIALIZATION PLAY (localhost)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Initialize STIG Audit
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Generate Global Run ID and Metadata
+      ansible.builtin.set_fact:
+        run_ctx:
+          id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+          date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+          timestamp: '{{ lookup(''pipe'', ''date "+%Y-%m-%dT%H:%M:%S%z"'') }}'
+          report_base: "{{ ops_config.report_directory | default('/srv/samba/reports') }}"
+      tags: ["always"]
+
+    - name: Set Output Directory
+      ansible.builtin.set_fact:
+        run_ctx: "{{ run_ctx | combine({'output_dir': run_ctx.report_base + '/AdHoc/STIG_' + run_ctx.id}) }}"
+      tags: ["always"]
+
+    - name: Create Report Directory
+      ansible.builtin.file:
+        path: "{{ run_ctx.output_dir }}"
+        state: directory
+        mode: "0755"
+      tags: ["always"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) AUDIT PLAY
+# ─────────────────────────────────────────────────────────────────────────────
 - name: Apply Security Baselines (STIG Audit)
   hosts: all
-  gather_facts: false # Safety: Don't SSH into vCenters or ESXi initially
-
-  vars:
-    # 1. Global Reporting Path
-    ops_report_base: "/srv/samba/reports"
-
-    # 2. Credential Bridge
-    # Ensures 'vcenter_username' resolves correctly even if defined differently in host_vars
-    vcenter_username: "{{ hostvars[inventory_hostname]['vcenter_username'] | default(ansible_user) | default(ansible_ssh_user) }}"
-    vcenter_password: "{{ hostvars[inventory_hostname]['vcenter_password'] | default(ansible_password) | default(ansible_ssh_pass) }}"
+  gather_facts: false
 
   pre_tasks:
-    # -------------------------------------------------------------------------
-    # PREP: Run ID & Dynamic Paths (Delegated to Localhost)
-    # -------------------------------------------------------------------------
-    - name: "PREP | Generate Global Run ID"
+    - name: Apply Run Context
       ansible.builtin.set_fact:
-        global_run_id: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
-      run_once: true
-      delegate_to: localhost
-      tags: ['always']
+        global_run_id: "{{ _ctx.id }}"
+        ops_report_output_dir: "{{ _ctx.output_dir }}"
+      vars:
+        _ctx: "{{ hostvars['localhost'].run_ctx }}"
+      tags: ["always"]
 
-    - name: "PREP | Set Reporting Paths"
-      ansible.builtin.set_fact:
-        ops_report_output_dir: "{{ ops_report_base }}/AdHoc/STIG_{{ global_run_id }}"
-      run_once: true
-      delegate_to: localhost
-      tags: ['always']
-
-    - name: "PREP | Create Report Directory"
-      ansible.builtin.file:
-        path: "{{ ops_report_output_dir }}"
-        state: directory
-        mode: '0755'
-      run_once: true
-      delegate_to: localhost
-      tags: ['always']
-
-    # -------------------------------------------------------------------------
-    # PREP: Fact Gathering (Targeted)
-    # -------------------------------------------------------------------------
-    - name: "PREP | Gather Facts (Linux Only)"
+    - name: Gather Facts (Linux Only)
       ansible.builtin.setup:
-      # Logic: ONLY run on linux_servers. Explicitly SKIP vCenters and ESXi.
       when:
         - "'vcenters' not in group_names"
         - "'esxi' not in group_names"
         - "'linux_servers' in group_names"
-      # FIX: Removed 'always' tag so '--tags esxi' skips this entirely
-      tags: ['linux']
+      tags: ["linux"]
 
   tasks:
-    # -------------------------------------------------------
-    # 1. VCENTER (Read-Only Audit)
-    # -------------------------------------------------------
     - name: Audit vCenter STIGs
       ansible.builtin.include_role:
-        name: internal.stig.vsphere
+        name: internal.vsphere.vsphere_stig_audit
       vars:
         ansible_connection: local
       when: "'vcenters' in group_names"
-      tags: ['vsphere', 'stig']
+      tags: ["vsphere", "stig"]
 
-    # -------------------------------------------------------
-    # 2. ESXi HOSTS (Read-Only Audit)
-    # -------------------------------------------------------
     - name: Audit ESXi Hosts
       ansible.builtin.include_role:
-        name: internal.stig.esxi
+        name: internal.esxi.esxi_stig_audit
         apply:
-          tags: ['esxi', 'stig'] # <--- FORCE TAGS ON INNER TASKS
+          tags: ["esxi", "stig"]
       vars:
         target_cluster: "ALL"
-      when:
-        - "'esxi' in group_names"
-      tags: ['esxi', 'stig']
+      when: "'esxi' in group_names"
+      tags: ["esxi", "stig"]
 
-    # -------------------------------------------------------
-    # 3. LINUX (Read-Only Audit)
-    # -------------------------------------------------------
     - name: Audit Linux STIGs
       ansible.builtin.include_role:
-        name: internal.stig.ubuntu
+        name: internal.linux.ubuntu_stig_audit
       when:
         - "'linux_servers' in group_names"
-        # Only runs if facts were successfully gathered above
         - ansible_distribution | default('') == 'Ubuntu'
-      tags: ['linux', 'stig']
+      tags: ["linux", "stig"]

@@ -1,0 +1,53 @@
+---
+- name: Converge
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Inject mock data for other hosts
+      ansible.builtin.set_fact:
+        mock_hostvars:
+          site-a-vcenter:
+            vcenter:
+              connection: { hostname: "vc-a.example.com" }
+              alarms:
+                list:
+                  - { severity: "critical", name: "Datastore full" }
+            ops:
+              check: { id: "test-run", date: "2026-02-18", timestamp: "2026-02-18T10:00:00Z" }
+              alerts:
+                - { severity: "CRITICAL", category: "Storage", message: "Disk failing" }
+              reports:
+                - { name: "VM Audit", row_count: 50 }
+          site-b-unity:
+            ops:
+              check: { id: "test-run", timestamp: "2026-02-18T10:05:00Z" }
+              alerts:
+                - { severity: "WARNING", category: "Hardware", message: "Power supply degraded" }
+
+    - name: Simulate group structure
+      ansible.builtin.set_fact:
+        mock_groups:
+          all: ["site-a-vcenter", "site-b-unity"]
+          vcenters: ["site-a-vcenter"]
+          sa: ["site-b-unity"]
+
+    - name: Run Aggregation Task
+      ansible.builtin.include_role:
+        name: internal.stig.common
+        tasks_from: reporting/aggregate.yaml
+      vars:
+        # Override the global hostvars/groups with our mocks
+        hostvars: "{{ mock_hostvars }}"
+        groups: "{{ mock_groups }}"
+        ops:
+          config:
+            debug_mode: true
+            report_directory: "/tmp/molecule_reports"
+
+    - name: Run Render Task
+      ansible.builtin.include_role:
+        name: internal.stig.common
+        tasks_from: reporting/render.yaml
+      vars:
+        ops_report_dir: "/tmp/molecule_reports/Summary"

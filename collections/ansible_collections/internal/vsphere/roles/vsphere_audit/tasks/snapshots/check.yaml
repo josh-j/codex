@@ -8,8 +8,8 @@
 
 - name: "Check: Aged Snapshot Summary"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     # CHANGED: Bumping to WARNING so it appears in the "Global Alert Summary" table
     ops_alert_severity: "WARNING"
@@ -24,8 +24,8 @@
 
 - name: "Check: Large Snapshots"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "WARNING"
     ops_alert_category: "snapshots"

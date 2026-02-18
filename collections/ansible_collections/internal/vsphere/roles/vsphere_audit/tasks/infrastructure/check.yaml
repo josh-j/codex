@@ -7,8 +7,8 @@
 # -----------------------------------------------------------------------------
 - name: VCenter checks | emit alerts
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "{{ item.severity }}"
     ops_alert_category: "{{ item.category }}"
@@ -71,8 +71,8 @@
 
 - name: Cluster checks | Configuration (HA/DRS)
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: WARNING
     ops_alert_category: configuration
@@ -93,8 +93,8 @@
 
 - name: Cluster checks | Memory Capacity
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: WARNING
     ops_alert_category: capacity
@@ -111,8 +111,8 @@
 
 - name: Cluster checks | CPU Capacity
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: WARNING
     ops_alert_category: capacity

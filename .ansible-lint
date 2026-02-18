@@ -1,0 +1,16 @@
+---
+profile: production
+exclude_paths:
+  - .venv/
+  - logs/
+  - inventory/production/vault.yaml
+skip_list:
+  - yaml[line-length]
+  - name[secondary]
+  - jinja[spacing]
+warn_list:
+  - experimental
+# Specific to this project's migration
+mock_modules:
+  - community.vmware.vmware_guest_facts
+  - dellemc.unity.unity_gather_facts

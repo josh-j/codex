@@ -1,1 +1,3 @@
 vcenter_hostname: "test"
+vcenter_username: "{{ ansible_user | default(ansible_ssh_user) }}"
+vcenter_password: "{{ ansible_password | default(ansible_ssh_pass) }}"

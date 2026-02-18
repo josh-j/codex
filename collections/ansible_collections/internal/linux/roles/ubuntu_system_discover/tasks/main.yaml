@@ -1,15 +1,22 @@
+---
+- name: Check OS Family
+  ansible.builtin.fail:
+    msg: "This role is for Ubuntu only. Found: {{ ansible_facts['distribution'] }}"
+  when: ansible_facts['distribution'] != 'Ubuntu'
+  tags: [always]
+
+- name: Initialize Ubuntu Namespace
+  ansible.builtin.include_tasks: init.yaml
+  tags: [always]
 
 - name: Ubuntu Discover Wrapper
   block:
     - name: Discovery - System, Updates, & Security
       ansible.builtin.include_tasks: discover.yaml
+      when: not (ubuntu_skip_discovery | default(false) | bool)
       tags: ['discovery']
-
-
-  # RESCUE: Only runs if something in the 'block' above FAILED
   rescue:
     - name: Log Ubuntu Failure
       ansible.builtin.debug:
-        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
-      # This registers a variable we can check in the summary report if needed
+        msg: "Ubuntu discovery failed on {{ inventory_hostname }}. Report will use initialized defaults."
       register: _ubuntu_task_failure

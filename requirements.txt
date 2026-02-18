@@ -1,0 +1,4 @@
+ansible
+pyVmomi
+pyVim
+aiohttp

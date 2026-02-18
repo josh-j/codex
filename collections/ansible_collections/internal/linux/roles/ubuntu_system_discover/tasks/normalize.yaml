@@ -1,14 +1,17 @@
+---
+# roles/ubuntu/tasks/system/normalize.yaml
+# Normalizes raw command outputs into the structured 'ubuntu' namespace.
 
 - name: Normalize System Data
   ansible.builtin.set_fact:
-    ubuntu: "{{ ubuntu | combine({'system': system_data}, recursive=true) }}"
+    ubuntu: "{{ ubuntu | internal.core.recursive_combine({'system': system_data}) }}"
   vars:
     # 1. DISK USAGE
     _disk_list: >-
       {%- set results = [] -%}
-      {%- for mount in ansible_facts['mounts'] -%}
+      {%- for mount in ansible_facts['mounts'] | default([]) -%}
         {%- if 'loop' not in mount.device and 'tmpfs' not in mount.device -%}
-          {%- set pct = (mount.size_total - mount.size_available) / mount.size_total * 100 -%}
+          {%- set pct = (mount.size_total - mount.size_available) / mount.size_total * 100 if mount.size_total > 0 else 0 -%}
           {%- set disk = {
               'mount': mount.mount,
               'device': mount.device,
@@ -33,10 +36,10 @@
 
     # 3. STRUCTURE DATA
     system_data:
-      hostname: "{{ ansible_facts['hostname'] }}"
-      uptime_days: "{{ (ansible_facts['uptime_seconds'] / 86400) | int }}"
-      kernel: "{{ ansible_facts['kernel'] }}"
-      load_avg: "{{ ansible_facts['loadavg']['15m'] }}"
+      hostname: "{{ ansible_facts['hostname'] | default(inventory_hostname) }}"
+      uptime_days: "{{ ((ansible_facts['uptime_seconds'] | default(0)) / 86400) | int }}"
+      kernel: "{{ ansible_facts['kernel'] | default('unknown') }}"
+      load_avg: "{{ (ansible_facts['loadavg'] | default({'15m': 0}))['15m'] }}"
 
       memory:
         total_mb: "{{ _mem_total }}"
@@ -50,31 +53,31 @@
       disks: "{{ _disk_list }}"
 
       services:
-        failed_list: "{{ _failed_services_raw.stdout_lines }}"
-        failed_count: "{{ _failed_services_raw.stdout_lines | length }}"
+        failed_list: "{{ _failed_services_raw.stdout_lines | default([]) }}"
+        failed_count: "{{ (_failed_services_raw.stdout_lines | default([])) | length }}"
 
 - name: Log System Health
   ansible.builtin.debug:
     msg: "System Load: {{ ubuntu.system.load_avg }} | Mem Used: {{ ubuntu.system.memory.used_pct }}% | Failed Services: {{ ubuntu.system.services.failed_count }}"
 
-
 - name: Normalize Security Data
   ansible.builtin.set_fact:
-    ubuntu: "{{ ubuntu | combine({'security': security_data}, recursive=true) }}"
+    ubuntu: "{{ ubuntu | internal.core.recursive_combine({'security': security_data}) }}"
   vars:
     # 1. PARSE SSH CONFIG
     _ssh_config_dict: >-
       {{
-         _sshd_raw.stdout_lines
+         (_sshd_raw.stdout_lines | default([]))
          | map('split', ' ')
          | map('list')
+         | select('count', 2)
          | items2dict(key_name=0, value_name=1)
       }}
 
     # 2. PARSE SHADOW FILE
     _shadow_dict: >-
       {%- set res = {} -%}
-      {%- for line in _shadow_raw.stdout_lines -%}
+      {%- for line in (_shadow_raw.stdout_lines | default([])) -%}
         {%- set parts = line.split(':') -%}
         {%- if parts | length > 1 -%}
           {%- set _ = res.update({parts[0]: parts[1:]}) -%}
@@ -83,20 +86,14 @@
       {{ res }}
 
     # 3. CALCULATE PASSWORD AGING
-    # Use ansible_facts['date_time'] instead of top-level facts
-    _current_epoch_days: "{{ (ansible_facts['date_time']['epoch'] | int / 86400) | int }}"
+    _current_epoch_days: "{{ ((ansible_facts['date_time'] | default({'epoch': 0}))['epoch'] | int / 86400) | int }}"
 
     _users_list: >-
       {%- set results = [] -%}
-      {%- for user, info in ansible_facts['getent_passwd'].items() -%}
+      {%- for user, info in (ansible_facts['getent_passwd'] | default({})).items() -%}
         {%- set shadow_entry = _shadow_dict.get(user, []) -%}
-
-        {# Shadow field 2 is 'Last Change' (index 1 in our list) #}
         {%- set last_change = shadow_entry[1] | default(0) | int -%}
-
-        {# Casting inside logic to avoid jinja[invalid] string vs int comparison errors #}
         {%- set age = (_current_epoch_days | int - last_change) if last_change > 0 else -1 -%}
-
         {%- set user_data = {
             'name': user,
             'uid': info[1],
@@ -104,8 +101,7 @@
             'home': info[4],
             'shell': info[5],
             'last_change_days': last_change,
-            'password_age_days': age,
-            'shadow_info': shadow_entry
+            'password_age_days': age
         } -%}
         {%- set _ = results.append(user_data) -%}
       {%- endfor -%}
@@ -119,12 +115,11 @@
 
       file_stats: >-
         {%- set fstats = {} -%}
-        {%- for res in _file_stats_raw.results -%}
-          {%- if res.stat.exists -%}
+        {%- for res in (_file_stats_raw.results | default([])) -%}
+          {%- if res.stat is defined and res.stat.exists -%}
             {%- set _ = fstats.update({res.item: res.stat}) -%}
           {%- endif -%}
         {%- endfor -%}
         {{ fstats }}
 
       world_writable_files: "{{ _world_writable_raw.stdout_lines | default([]) }}"
-

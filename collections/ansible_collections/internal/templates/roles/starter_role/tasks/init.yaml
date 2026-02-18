@@ -1,0 +1,22 @@
+---
+# Initialize the 'ops' dictionary for this platform.
+
+- name: "[{{ starter_platform_name }}] Initialize host results"
+  ansible.builtin.set_fact:
+    ops: "{{ ops | default({}) | combine(_starter_initial_ops, recursive=True) }}"
+  vars:
+    _starter_initial_ops:
+      check:
+        id: "{{ hostvars['localhost'].run_ctx.run_id | default('MANUAL-' + now().strftime('%Y%m%d%H%M%S')) }}"
+        date: "{{ hostvars['localhost'].run_ctx.run_day | default(now().strftime('%Y-%m-%d')) }}"
+        site: "{{ inventory_hostname }}"
+      alerts: []
+      reports: []
+      overall:
+        status: "OK"
+        issues: 0
+      # Namespaced data for this platform
+      "{{ starter_platform_name }}":
+        discovered_at: "{{ now() }}"
+        status: "INITIALIZING"
+        facts: {}

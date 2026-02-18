@@ -91,7 +91,7 @@
 
     - name: Log update summary
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: >-
@@ -214,8 +214,8 @@
 
     - name: Export apps to update to CSV
       ansible.builtin.include_role:
-        name: common
-        tasks_from: reporting/export_csv
+        name: internal.core.reporting
+        tasks_from: export_csv.yaml
       vars:
         ops_csv_report_name: "configmgr_apps_to_update"
         ops_csv_headers:
@@ -248,7 +248,7 @@
   rescue:
     - name: Log ConfigMgr update failure
       ansible.builtin.include_role:
-          name: common
+          name: internal.core.common
           tasks_from: logging/error
       vars:
         ops_log_message: "ConfigMgr update process failed: {{ ansible_failed_result.msg | default('Unknown error') }}"

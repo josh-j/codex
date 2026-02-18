@@ -61,7 +61,7 @@
 
     - name: Log Appliance Health
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: >-
@@ -101,7 +101,7 @@
   rescue:
     - name: Log appliance info failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Failed to gather appliance info: {{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -146,7 +146,7 @@
 
     - name: Log datacenter discovery
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: >-
@@ -156,7 +156,7 @@
   rescue:
     - name: Log datacenter discovery failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Failed to gather datacenter info: {{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -230,7 +230,7 @@
   rescue:
     - name: Log cluster discovery failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Failed to gather cluster info: {{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -271,7 +271,7 @@
 
     - name: Log infrastructure summary
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: >-
@@ -282,7 +282,7 @@
   rescue:
     - name: Log host extraction failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Failed to derive hosts from clusters: {{ ansible_failed_result.msg | default('Unknown error') }}"

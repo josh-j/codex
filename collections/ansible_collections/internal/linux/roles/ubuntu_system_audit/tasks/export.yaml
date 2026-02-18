@@ -7,8 +7,8 @@
 # ========================================================================
 - name: Export Disk Capacity Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "system_capacity_disks"
     ops_csv_headers:
@@ -36,8 +36,8 @@
 # ========================================================================
 - name: Export System Health Summary
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "system_health_summary"
     ops_csv_headers:
@@ -67,8 +67,8 @@
 # ========================================================================
 - name: Export User Audit Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "security_users"
     ops_csv_headers:
@@ -98,8 +98,8 @@
 # ========================================================================
 - name: Export Security Configuration Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "security_config"
     ops_csv_headers:
@@ -127,8 +127,8 @@
 # ========================================================================
 - name: Export Patch Compliance Report
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
   vars:
     ops_csv_report_name: "patch_compliance"
     ops_csv_headers:

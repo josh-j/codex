@@ -2,6 +2,8 @@
 # roles/vsphere/defaults/main.yml
 # Structural defaults only (no secrets)
 
+vsphere_skip_discovery: false
+
 vcenter:
   config: {}     # ensures (vcenter.config | default({})) works everywhere
 

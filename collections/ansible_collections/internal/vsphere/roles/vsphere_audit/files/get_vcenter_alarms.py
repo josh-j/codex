@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # roles/vsphere/files/get_vcenter_alarms.py
 import json
+import os
 import ssl
 import sys
 
@@ -9,6 +10,9 @@ from pyVim.connect import Disconnect, SmartConnect
 
 def get_triggered_alarms(host, user, password):
     """Get all triggered alarms from vCenter"""
+    if not password:
+        return {"success": False, "error": "Password not provided via VC_PASSWORD", "alarms": [], "count": 0}
+
     context = ssl._create_unverified_context()
 
     try:
@@ -53,13 +57,14 @@ def get_triggered_alarms(host, user, password):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 3:
         print(
             json.dumps(
-                {"success": False, "error": "Usage: script.py <host> <user> <password>"}
+                {"success": False, "error": "Usage: script.py <host> <user> (password via VC_PASSWORD env)"}
             )
         )
         sys.exit(1)
 
-    result = get_triggered_alarms(sys.argv[1], sys.argv[2], sys.argv[3])
+    password = os.environ.get("VC_PASSWORD")
+    result = get_triggered_alarms(sys.argv[1], sys.argv[2], password)
     print(json.dumps(result))

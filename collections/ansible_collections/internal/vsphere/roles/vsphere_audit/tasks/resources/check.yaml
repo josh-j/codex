@@ -7,8 +7,8 @@
 # ========================================================================
 - name: "Check: Critical Global CPU Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "CRITICAL"
     ops_alert_category: "capacity"
@@ -20,8 +20,8 @@
 
 - name: "Check: High Global CPU Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "WARNING"
     ops_alert_category: "capacity"
@@ -35,8 +35,8 @@
 # ========================================================================
 - name: "Check: Critical Global Memory Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "CRITICAL"
     ops_alert_category: "capacity"
@@ -48,8 +48,8 @@
 
 - name: "Check: High Global Memory Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert
   vars:
     ops_alert_severity: "WARNING"
     ops_alert_category: "capacity"

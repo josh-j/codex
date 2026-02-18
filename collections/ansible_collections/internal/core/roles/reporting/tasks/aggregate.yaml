@@ -1,0 +1,93 @@
+---
+# roles/common/tasks/reporting/aggregate.yaml
+# Aggregates results from all hosts into a single report model (localhost).
+# Replaces heavy Jinja2 logic with internal.stig.aggregate_report_data filter.
+
+- name: Aggregate | Generate unified report model
+  ansible.builtin.set_fact:
+    report: "{{ hostvars | internal.core.aggregate_report_data(groups) }}"
+
+# -----------------------------------------------------------------------------
+# Update ops on localhost so playbook/templates can just use ops.*
+# -----------------------------------------------------------------------------
+- name: Aggregate | Update ops with aggregated results and overall status
+  ansible.builtin.set_fact:
+    ops: "{{ (ops | default({})) | combine(_ops_patch, recursive=true) }}"
+  vars:
+    _issues_total: "{{ report.totals.critical | int + report.totals.warning | int }}"
+    _ops_patch:
+      alerts: "{{ report.data.alerts }}"
+      reports: "{{ report.data.reports }}"
+      overall:
+        status: "{{ 'OK' if (_issues_total | int) == 0 else 'Issues' }}"
+        issues: "{{ _issues_total }}"
+        summary: "{{ 'No issues detected' if (_issues_total | int) == 0 else 'Issues detected during checks' }}"
+
+# -----------------------------------------------------------------------------
+# Debug (guarded)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Display check completion summary
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════╗
+      ║      Daily Ops Checks Complete                           ║
+      ╚══════════════════════════════════════════════════════════╝
+
+      Sites Checked:
+        - vCenter sites: {{ report.data.vcenters | length }}
+        - Unity unisphere: {{ report.data.unisphere | length }}
+        - Data Domain unisphere: {{ report.data.backups | length }}
+        - UCS fabrics: {{ report.data.ucs | length }}
+
+      Global Alert Summary:
+        - Total alerts: {{ report.data.alerts | length }}
+        - CRITICAL: {{ report.counts.alerts.critical }}
+        - WARNING: {{ report.counts.alerts.warning }}
+        - INFO: {{ report.counts.alerts.info }}
+
+      vCenter Alarms:
+        - CRITICAL: {{ report.counts.alarms.critical }}
+        - WARNING: {{ report.counts.alarms.warning }}
+
+      Reports Generated: {{ report.counts.reports_generated }}
+  when: (ops.config.debug_mode | default(false)) | bool
+
+- name: Aggregate | Display critical alerts if any
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  CRITICAL ALERTS DETECTED ({{ report.counts.alerts.critical }})
+
+      {% for alert in report.data.alerts | selectattr('severity', 'equalto', 'CRITICAL') %}
+      [{{ alert.site }}] {{ alert.category }}: {{ alert.message }}
+      {% endfor %}
+  when:
+    - (ops.config.debug_mode | default(false)) | bool
+    - report.counts.alerts.critical | default(0) | int > 0
+
+# -----------------------------------------------------------------------------
+# Export Global CSV (unchanged)
+# -----------------------------------------------------------------------------
+- name: Aggregate | Export aggregated alerts CSV
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: export_csv.yaml
+  vars:
+    ops_csv_report_name: "global_alert_summary"
+    ops_csv_headers:
+      - "Timestamp"
+      - "Site"
+      - "Check Role"
+      - "Severity"
+      - "Category"
+      - "Message"
+      - "Affected Items"
+    ops_csv_keys:
+      - "timestamp"
+      - "site"
+      - "check_role"
+      - "severity"
+      - "category"
+      - "message"
+      - "affected_items_count"
+    ops_csv_data: "{{ report.data.alerts }}"
+  when: report.data.alerts | length > 0

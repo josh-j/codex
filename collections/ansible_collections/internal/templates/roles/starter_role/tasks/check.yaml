@@ -1,0 +1,14 @@
+---
+# Perform audits against the discovered facts.
+
+- name: "[{{ starter_platform_name }}] Sample Check: Uptime verification"
+  ansible.builtin.include_role:
+    name: internal.core.reporting
+    tasks_from: alert.yaml
+  vars:
+    ops_alert_severity: "WARNING"
+    ops_alert_category: "performance"
+    ops_alert_message: "System was recently rebooted"
+    ops_alert_details:
+      uptime: "{{ ops[starter_platform_name].facts.uptime }}"
+  when: "ops[starter_platform_name].facts.uptime == '0 days'"

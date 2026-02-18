@@ -1,0 +1,126 @@
+---
+# roles/common/tasks/reporting/alert.yaml
+# Standardized alert emitter (Unified Schema)
+#
+# Backwards-compatible:
+# - Legacy single-alert vars: ops_alert_severity/category/message/(details/affected_items)
+# - New batch mode: ops_alerts: [ {severity, category, message, details?, affected_items?, ...}, ... ]
+#
+# Optional per-alert overrides in batch mode:
+# - site, check_role, timestamp
+#
+# IMPORTANT FIX:
+# - Avoid Jinja `ternary()` here because its arguments are evaluated eagerly.
+#   That can explode in batch mode when legacy vars aren't defined.
+#   Use a Jinja conditional expression (short-circuits) + defaults so validation catches issues cleanly.
+
+# -----------------------------------------------------------------------------
+# 0) Normalize input into a list: _alerts_in
+# -----------------------------------------------------------------------------
+- name: Normalize alert input (single vs batch)
+  ansible.builtin.set_fact:
+    _alerts_in: >-
+      {{
+        ops_alerts
+        if (ops_alerts is defined)
+        else
+        [ {
+            'severity': (ops_alert_severity | default('')),
+            'category': (ops_alert_category | default('')),
+            'message':  (ops_alert_message  | default('')),
+            'details': (ops_alert_details | default({})),
+            'affected_items': (ops_alert_affected_items | default([]))
+          } ]
+      }}
+
+# -----------------------------------------------------------------------------
+# 1) Validate alerts
+# -----------------------------------------------------------------------------
+- name: Validate alert parameters
+  ansible.builtin.assert:
+    that:
+      - item.severity is defined
+      - item.severity in ['CRITICAL', 'WARNING', 'INFO']
+      - item.category is defined
+      - item.category | string | length > 0
+      - item.message is defined
+      - item.message | string | length > 0
+    fail_msg: >-
+      Alert generation missing required fields.
+      Got severity={{ item.severity | default('NONE') }},
+      category={{ item.category | default('NONE') }},
+      message_defined={{ item.message is defined }}
+    quiet: true
+  loop: "{{ _alerts_in }}"
+  loop_control:
+    label: "{{ item.severity | default('NONE') }} {{ item.category | default('NONE') }}"
+
+# -----------------------------------------------------------------------------
+# 2) Build normalized alert objects (list)
+# -----------------------------------------------------------------------------
+- name: Compute default timestamp once
+  ansible.builtin.set_fact:
+    _alert_default_ts: >-
+      {{
+        ops.check.timestamp
+        | default(ansible_facts['date_time']['iso8601']
+        | default(lookup('pipe','date --iso-8601=seconds')))
+      }}
+
+- name: Build alert objects
+  ansible.builtin.set_fact:
+    _generated_alerts: >-
+      {%- set out = [] -%}
+      {%- for a in _alerts_in -%}
+        {%- set _ = out.append({
+          'timestamp': (a.timestamp | default(_alert_default_ts)),
+          'site': (a.site | default(inventory_hostname)),
+          'check_role': (a.check_role | default(ansible_role_name | default('unknown'))),
+          'severity': a.severity,
+          'category': a.category,
+          'message': a.message,
+          'details': (a.details | default({})),
+          'affected_items_count': ((a.affected_items | default([])) | length),
+          'affected_items': (a.affected_items | default([]))
+        }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+# -----------------------------------------------------------------------------
+# 3) Append to ops.alerts (single set_fact)
+# -----------------------------------------------------------------------------
+- name: Append alerts to ops.alerts list
+  ansible.builtin.set_fact:
+    ops: >-
+      {{
+        (ops | default({}))
+        | combine({
+            'alerts': ((ops.alerts | default([])) + _generated_alerts)
+          }, recursive=true)
+      }}
+
+# -----------------------------------------------------------------------------
+# 4) Logging dispatch (one log per emitted alert)
+# -----------------------------------------------------------------------------
+- name: Log alert generation
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: "logging/{{ _sev_map[item.severity] }}"
+  vars:
+    _sev_map:
+      CRITICAL: "error"
+      WARNING: "warn"
+      INFO: "info"
+    ops_log_message: "[{{ item.category | upper }}] {{ item.message }}"
+    ops_log_context:
+      count: >-
+        {%- if (item.affected_items | default([])) | length > 0 -%}
+          {{ (item.affected_items | length) }}
+        {%- elif item.details is defined and (item.details.count is defined) -%}
+          {{ item.details.count }}
+        {%- else -%}
+          0
+        {%- endif -%}
+  loop: "{{ _generated_alerts }}"
+  loop_control:
+    label: "{{ item.severity }} {{ item.category }}"

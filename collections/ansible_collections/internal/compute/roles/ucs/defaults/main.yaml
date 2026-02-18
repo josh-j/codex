@@ -1,0 +1,10 @@
+---
+# collections/ansible_collections/internal/compute/roles/ucs/defaults/main.yaml
+ucs:
+  config:
+    report_fault_severities:
+      - critical
+      - major
+      - warning
+    fault_age_threshold_hours: 168
+    export_csv: true

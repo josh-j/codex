@@ -11,7 +11,8 @@
   delegate_to: localhost
   no_log: false # Revert to true for production safety
   failed_when: false # Handled by the parser logic
-  changed_when: false # <---  Tells Ansible this is a read-only task
+  changed_when: false
+  check_mode: false
 
 - name: "ESXi | Process Discovery Results"
   ansible.builtin.include_role:

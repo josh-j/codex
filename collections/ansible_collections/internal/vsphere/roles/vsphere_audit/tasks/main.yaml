@@ -8,144 +8,48 @@
     # ========================================================================
     # 1) INITIALIZATION
     # ========================================================================
-    # NOTE:
-    # - ops.* is already initialized at the playbook level (shared run_id/timestamp).
-    # - vCenter init now lives in roles/vsphere/tasks/init/main.yaml.
-    #   It overlays connection metadata, performs reachability, and end_host on failure.
-    - name: Init vCenter (namespace + reachability gate)
+    - name: Init | vCenter defaults & reachability
       ansible.builtin.import_tasks: init/main.yaml
-      tags: ['always']
+      tags: [always]
 
-    # Optional: if you want to skip all work when init marked failure (extra safety)
-    - name: Stop if init marked vCenter checks failed
+    - name: Init | Stop if vCenter checks marked failed
       ansible.builtin.meta: end_host
       when: vcenter.checks_failed | default(false) | bool
-      tags: ['always']
+      tags: [always]
 
     # ========================================================================
     # 2) DISCOVERY PHASE (Read-only)
     # ========================================================================
-    - name: Discovery - Infrastructure (appliance, DCs, clusters, hosts)
-      ansible.builtin.import_tasks: infrastructure/discover.yaml
-      tags: ['discovery', 'infrastructure']
-
-    - name: Discovery - Resources (CPU/RAM)
-      ansible.builtin.import_tasks: resources/discover.yaml
-      tags: ['discovery', 'resources']
-
-    - name: Discovery - Datastores
-      ansible.builtin.import_tasks: datastores/discover.yaml
-      tags: ['discovery', 'datastores']
-
-    - name: Discovery - VMs
-      ansible.builtin.import_tasks: vms/discover.yaml
-      tags: ['discovery', 'vms', 'snapshots']
-
-    - name: Discovery - Snapshots
-      ansible.builtin.import_tasks: snapshots/discover.yaml
-      tags: ['discovery', 'snapshots']
-
-    - name: Discovery - Alarms
-      ansible.builtin.import_tasks: alarms/discover.yaml
-      tags: ['discovery', 'alarms']
+    - name: Phase 2 | Discovery
+      ansible.builtin.import_tasks: discovery.yaml
+      when: not (vsphere_skip_discovery | default(false) | bool)
+      tags: ['discovery']
 
     # ========================================================================
     # 3) CHECKS PHASE (Logic & Alerts)
     # ========================================================================
-    - name: Checks - Infrastructure
-      ansible.builtin.import_tasks: infrastructure/check.yaml
-      tags: ['checks', 'infrastructure']
-
-    - name: Checks - Resources
-      ansible.builtin.import_tasks: resources/check.yaml
-      tags: ['checks', 'resources']
-
-    - name: Checks - Datastores
-      ansible.builtin.import_tasks: datastores/check.yaml
-      tags: ['checks', 'datastores']
-
-    - name: Checks - VMs
-      ansible.builtin.import_tasks: vms/check.yaml
-      tags: ['checks', 'vms']
-
-    - name: Checks - Snapshots
-      ansible.builtin.import_tasks: snapshots/check.yaml
-      tags: ['checks', 'snapshots']
-
-    - name: Checks - Alarms
-      ansible.builtin.import_tasks: alarms/check.yaml
-      tags: ['checks', 'alarms']
+    - name: Phase 3 | Checks
+      ansible.builtin.import_tasks: checks.yaml
+      tags: ['checks']
 
     # ========================================================================
-    # 4) MAINTENANCE PHASE (Mutation) - Optional
+    # 4) SUMMARY / METRICS (Barrier)
     # ========================================================================
-    # Keep these commented unless you actively use maintenance. If you re-enable,
-    # prefer using vcenter.config.enable_maintenance AND a tag gate.
-    #
-    # - name: Maintenance - Infrastructure
-    #   ansible.builtin.import_tasks: infrastructure/maintain.yaml
-    #   tags: ['maintenance', 'infrastructure']
-    #   when: (vcenter.config.enable_maintenance | default(false) | bool)
-    #
-    # - name: Maintenance - Datastores
-    #   ansible.builtin.import_tasks: datastores/maintain.yaml
-    #   tags: ['maintenance', 'datastores']
-    #   when: (vcenter.config.enable_maintenance | default(false) | bool)
-    #
-    # - name: Maintenance - VMs
-    #   ansible.builtin.import_tasks: vms/maintain.yaml
-    #   tags: ['maintenance', 'vms']
-    #   when: (vcenter.config.enable_maintenance | default(false) | bool)
-
-    # ========================================================================
-    # 5) SUMMARY / METRICS (Barrier)
-    # ========================================================================
-    - name: Calculate summary metrics
+    - name: Phase 4 | Summary
       ansible.builtin.import_tasks: summary/calculate.yaml
       tags: ['summary']
 
     # ========================================================================
-    # 6) EXPORT PHASE (Passive I/O)
+    # 5) EXPORT PHASE (Passive I/O)
     # ========================================================================
-    - name: Export - Infrastructure
-      ansible.builtin.import_tasks: infrastructure/export.yaml
-      tags: ['export', 'infrastructure']
-
-    - name: Export - Resources
-      ansible.builtin.import_tasks: resources/export.yaml
-      tags: ['export', 'resources']
-
-    - name: Export - Datastores
-      ansible.builtin.import_tasks: datastores/export.yaml
-      tags: ['export', 'datastores']
-
-    - name: Export - VMs
-      ansible.builtin.import_tasks: vms/export.yaml
-      tags: ['export', 'vms']
-
-    - name: Export - Snapshots
-      ansible.builtin.import_tasks: snapshots/export.yaml
-      tags: ['export', 'snapshots']
-
-    - name: Export - Alarms
-      ansible.builtin.import_tasks: alarms/export.yaml
-      tags: ['export', 'alarms']
-
-    - name: Export - Summary
-      ansible.builtin.import_tasks: summary/export.yaml
-      tags: ['export', 'summary']
-
-    # ========================================================================
-    # 7) ACTIONS (Optional) - Future
-    # ========================================================================
-    # - name: Notify - VM owners
-    #   ansible.builtin.import_tasks: vms/notify.yaml
-    #   tags: ['actions', 'email']
+    - name: Phase 5 | Export
+      ansible.builtin.import_tasks: exports.yaml
+      tags: ['export']
 
   rescue:
     - name: Log vCenter checks failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: >-

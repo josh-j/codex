@@ -1,0 +1,18 @@
+namespace: internal
+name: core
+version: 1.0.0
+readme: README.md
+authors:
+  - Codex Team
+description: Core operational logic, reporting, and utilities for Codex automation.
+license: MIT
+tags:
+  - core
+  - reporting
+  - utils
+dependencies: {}
+repository: http://example.com/repository
+documentation: http://example.com/docs
+homepage: http://example.com
+issues: http://example.com/issues
+build_ignore: []

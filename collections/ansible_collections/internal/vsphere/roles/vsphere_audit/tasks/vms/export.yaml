@@ -11,8 +11,8 @@
 # 1. NEVER BACKED UP
 - name: Export VMs never backed up
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_never_backup"
     ops_csv_headers: ["Site", "VM Name", "Power State", "Backup Schedule", "Cluster", "Owner Email"]
@@ -28,8 +28,8 @@
 # 2. OVERDUE BACKUPS
 - name: Export VMs with overdue backups
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_overdue_backup"
     ops_csv_headers: ["Site", "VM Name", "Last Backup", "Days Since", "Expected", "Owner Email"]
@@ -41,8 +41,8 @@
 # 3. MISSING TAGS
 - name: Export VMs without backup tags
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_no_backup_tags"
     ops_csv_headers: ["Site", "VM Name", "Power State", "Cluster", "Owner Email"]
@@ -58,8 +58,8 @@
 # 4. MISSING OWNER
 - name: Export VMs without owner email
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_no_owner_email"
     ops_csv_headers: ["Site", "VM Name", "Power State", "Cluster"]
@@ -75,8 +75,8 @@
 # 5. POWERED OFF
 - name: Export powered-off VMs inventory
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_powered_off"
     ops_csv_headers: ["Site", "VM Name", "Guest OS", "Cluster", "Owner Email"]
@@ -88,8 +88,8 @@
 # 6. FULL INVENTORY (BONUS)
 - name: Export Full VM Inventory (Audit)
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vms_inventory_full"
     ops_csv_headers: ["Site", "VM Name", "UUID", "Cluster", "Datacenter", "Power", "OS", "Owner", "Backup Tag"]

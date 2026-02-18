@@ -2,6 +2,8 @@
 # collections/ansible_collections/internal/stig/roles/esxi/defaults/main.yaml
 # Configuration for ESXi 7.0/8.0 STIG Audit
 
+esxi_skip_discovery: false
+
 # ==============================================================================
 # 1. SITE-SPECIFIC CONFIGURATION
 # ==============================================================================

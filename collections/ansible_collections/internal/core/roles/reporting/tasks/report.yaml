@@ -1,0 +1,51 @@
+---
+# roles/common/tasks/reporting/report.yaml
+# Standardized report registration (Unified Schema)
+#
+# Usage:
+# - name: Register health report
+#   include_role:
+#     name: internal.core.reporting
+#     tasks_from: report.yaml
+#   vars:
+#     ops_report_name: "my_audit_name"
+#     ops_report_row_count: 42
+
+- name: Report | Validate required fields
+  ansible.builtin.assert:
+    that:
+      - ops_report_name is defined
+      - ops_report_name | string | length > 0
+    fail_msg: "Report registration requires 'ops_report_name'."
+    quiet: true
+
+- name: Report | Compute defaults
+  ansible.builtin.set_fact:
+    _report_ts: >-
+      {{
+        ops.check.timestamp
+        | default(ansible_facts['date_time']['iso8601']
+        | default(lookup('pipe','date --iso-8601=seconds')))
+      }}
+
+- name: Report | Register in ops.reports
+  ansible.builtin.set_fact:
+    ops: >-
+      {{
+        (ops | default({}))
+        | combine({
+            'reports': ((ops.reports | default([])) + [{
+              'name': ops_report_name,
+              'row_count': (ops_report_row_count | default(0) | int),
+              'site': (inventory_hostname),
+              'timestamp': _report_ts
+            }])
+          }, recursive=true)
+      }}
+
+- name: Report | Log registration
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: logging/info
+  vars:
+    ops_log_message: "Generated report: {{ ops_report_name }} ({{ ops_report_row_count | default(0) }} rows)"

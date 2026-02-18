@@ -4,8 +4,8 @@
 
 - name: Export global resource summary
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "global_resources"
     ops_csv_headers:

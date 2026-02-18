@@ -1,0 +1,59 @@
+image: python:3.11
+
+stages:
+  - lint
+  - syntax
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  ANSIBLE_FORCE_COLOR: "true"
+  PY_COLORS: "1"
+
+cache:
+  paths:
+    - .cache/pip
+
+before_script:
+  - python -m pip install --upgrade pip
+  - pip install ansible-core ansible-lint yamllint molecule
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) LINT STAGE
+# ─────────────────────────────────────────────────────────────────────────────
+yaml_lint:
+  stage: lint
+  script:
+    - yamllint .
+
+ansible_lint:
+  stage: lint
+  script:
+    - ansible-lint
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) SYNTAX STAGE
+# ─────────────────────────────────────────────────────────────────────────────
+playbook_syntax:
+  stage: syntax
+  script:
+    - echo "dummy_password" > .vaultpass
+    - |
+      for playbook in playbooks/*.yaml; do
+        echo "Checking syntax for $playbook..."
+        ansible-playbook -i inventory/production --syntax-check "$playbook"
+      done
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3) TEST STAGE (Molecule)
+# ─────────────────────────────────────────────────────────────────────────────
+molecule_common:
+  stage: test
+  script:
+    - cd collections/ansible_collections/internal/stig/roles/common
+    - molecule test
+  artifacts:
+    paths:
+      - /tmp/molecule_reports/
+    when: always
+    expire_in: 1 week

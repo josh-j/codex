@@ -1,0 +1,18 @@
+---
+# roles/common/tasks/reporting/render.yaml
+# Render site health reports (Markdown & HTML)
+
+- name: Reporting | Render site health reports
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ ops_report_dir }}/ops-report-{{ _ctx.id }}.{{ item.ext }}"
+    mode: "0644"
+  loop:
+    - { src: "site_health_report.md.j2",   ext: "md" }
+    - { src: "site_health_report.html.j2", ext: "html" }
+  vars:
+    date: "{{ _ctx.date }}"
+    day: "{{ _ctx.day | default(lookup('pipe', 'date +%A')) }}"
+    include_patch: "{{ 'patch' in (today_tasks | default([])) }}"
+    include_weekly: "{{ 'weekly' in (today_tasks | default([])) }}"
+    report_share_path: "{{ ops.config.report_share_path | default('#') }}"

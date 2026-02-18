@@ -1,0 +1,27 @@
+---
+# roles/vsphere/tasks/discovery.yaml
+# Orchestrates the discovery phase for all vCenter domains.
+
+- name: Discovery - Infrastructure
+  ansible.builtin.import_tasks: infrastructure/discover.yaml
+  tags: ['discovery', 'infrastructure']
+
+- name: Discovery - Resources
+  ansible.builtin.import_tasks: resources/discover.yaml
+  tags: ['discovery', 'resources']
+
+- name: Discovery - Datastores
+  ansible.builtin.import_tasks: datastores/discover.yaml
+  tags: ['discovery', 'datastores']
+
+- name: Discovery - VMs
+  ansible.builtin.import_tasks: vms/discover.yaml
+  tags: ['discovery', 'vms']
+
+- name: Discovery - Snapshots
+  ansible.builtin.import_tasks: snapshots/discover.yaml
+  tags: ['discovery', 'snapshots']
+
+- name: Discovery - Alarms
+  ansible.builtin.import_tasks: alarms/discover.yaml
+  tags: ['discovery', 'alarms']

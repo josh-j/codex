@@ -1,0 +1,41 @@
+---
+# collections/ansible_collections/internal/storage/roles/unity/tasks/main.yaml
+
+- name: Unity | Perform health checks
+  block:
+    - name: Unity | Check API connectivity
+      ansible.builtin.uri:
+        url: "{{ item.url }}"
+        method: GET
+        validate_certs: false
+        status_code: [200, 401] # 401 is acceptable if we're just checking reachability without auth here
+      loop: "{{ unisphere | default([]) }}"
+      register: _unity_reachability
+      when: item.type == 'unity'
+
+    - name: Unity | Emit connectivity alert
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: alert.yaml
+      vars:
+        ops_alert_severity: "{{ 'INFO' if item.status == 200 or item.status == 401 else 'CRITICAL' }}"
+        ops_alert_category: "STORAGE_CONNECTIVITY"
+        ops_alert_message: "Unity API at {{ item.item.url }} is {{ 'reachable' if item.status == 200 or item.status == 401 else 'UNREACHABLE' }}"
+      loop: "{{ _unity_reachability.results }}"
+      when: not ansible_check_mode
+
+    - name: Unity | Record report generation
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: report.yaml
+      vars:
+        ops_report_name: 'unity_health_check'
+      when: not ansible_check_mode
+
+  rescue:
+    - name: Unity | Log failure
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/error
+      vars:
+        ops_log_message: "Unity checks failed for {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('unknown error') }}"

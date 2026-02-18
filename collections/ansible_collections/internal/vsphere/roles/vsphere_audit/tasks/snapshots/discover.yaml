@@ -17,17 +17,15 @@
         _current_epoch: "{{ hostvars['localhost'].ops_run_epoch | int }}"
       changed_when: false
 
-    # 1. OPTIMIZATION: Create a Lookup Map for Owner Emails
-    - name: Initialize VM Owner Map
-      ansible.builtin.set_fact:
-        _vm_owner_map: {}
-
+    # 1. OPTIMIZATION: Create a Lookup Map for Owner Emails (Single Shot)
     - name: Build VM Owner Map
       ansible.builtin.set_fact:
-        _vm_owner_map: "{{ _vm_owner_map | combine({item.name: item.owner_email}) }}"
-      loop: "{{ vcenter.vms.list | default([]) }}"
-      loop_control:
-        label: "{{ item.name }}"
+        _vm_owner_map: >-
+          {%- set res = {} -%}
+          {%- for vm in (vcenter.vms.list | default([])) -%}
+            {%- set _ = res.update({vm.name: vm.owner_email}) -%}
+          {%- endfor -%}
+          {{ res }}
 
     - name: Gather all snapshots from vCenter
       community.vmware.vmware_all_snapshots_info:
@@ -42,7 +40,7 @@
 
     - name: Filter and enrich aged snapshots
       ansible.builtin.set_fact:
-        vcenter: "{{ vcenter | combine({'snapshots': {'aged': vcenter.snapshots.aged | default([]) + [snapshot_enriched]}}, recursive=true) }}"
+        _temp_aged_snapshots: "{{ _temp_aged_snapshots | default([]) + [snapshot_enriched] }}"
       vars:
         threshold_days: "{{ vcenter.config.snapshot_age_warning_days }}"
         creation_time: "{{ item.creation_time | default('') }}"
@@ -77,6 +75,10 @@
         - is_valid_date
         - age_days | int >= threshold_days | int
 
+    - name: Update vcenter snapshots list
+      ansible.builtin.set_fact:
+        vcenter: "{{ vcenter | combine({'snapshots': {'aged': _temp_aged_snapshots | default([])}}, recursive=true) }}"
+
     - name: Calculate snapshot metrics
       ansible.builtin.set_fact:
         vcenter: "{{ vcenter | combine({'snapshots': {'metrics': snapshot_metrics}}, recursive=true) }}"
@@ -88,7 +90,7 @@
 
     - name: Log snapshot summary
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: "Found {{ vcenter.snapshots.metrics.total_aged }} aged snapshots ({{ vcenter.snapshots.metrics.total_size_gb | round(1) }} GB total)"
@@ -96,7 +98,7 @@
   rescue:
     - name: Log snapshot collection failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Snapshot collection failed: {{ ansible_failed_result.msg | default('Unknown error') }}"

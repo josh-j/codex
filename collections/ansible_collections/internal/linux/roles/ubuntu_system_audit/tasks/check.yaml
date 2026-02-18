@@ -7,8 +7,8 @@
 # ========================================================================
 - name: "Check: High Disk Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     # 1. Define Threshold (Default: 90%)
     _threshold: "{{ ubuntu.config.disk_warning_pct | default(90) | int }}"
@@ -34,8 +34,8 @@
 # ========================================================================
 - name: "Check: High Memory Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     _threshold: "{{ ubuntu.config.mem_warning_pct | default(95) | int }}"
     _current: "{{ ubuntu.system.memory.used_pct | float }}"
@@ -50,8 +50,8 @@
 
 - name: "Check: High Swap Usage"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     _threshold: "{{ ubuntu.config.swap_warning_pct | default(80) | int }}"
     _current: "{{ ubuntu.system.swap.used_pct | float }}"
@@ -68,8 +68,8 @@
 # ========================================================================
 - name: "Check: Failed System Services"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     _failed: "{{ ubuntu.system.services.failed_list }}"
 
@@ -85,8 +85,8 @@
 # ========================================================================
 - name: "Check: High System Load (15m)"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     # Simple threshold: Load > 4x Core count is usually bad.
     # For simplicity here, we default to a flat number (e.g., 20) or user config.
@@ -100,8 +100,8 @@
 
 - name: "Check: Long Uptime (>1 Year)"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     _threshold: 365
     _current: "{{ ubuntu.system.uptime_days | int }}"
@@ -116,8 +116,8 @@
 # ========================================================================
 - name: "Check: Pending OS Updates"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     _count: "{{ ubuntu.updates.pending_count | int }}"
     # Configurable threshold (Default: 50)
@@ -133,8 +133,8 @@
 
 - name: "Check: Reboot Pending"
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/alert
+    name: internal.core.reporting
+    tasks_from: alert.yaml
   vars:
     ops_alert_severity: "WARNING"
     ops_alert_category: "patching"

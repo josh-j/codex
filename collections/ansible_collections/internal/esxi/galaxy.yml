@@ -1,7 +1,8 @@
-# collections/ansible_collections/internal/esxi/galaxy.yml
 namespace: internal
 name: esxi
-version: 0.0.1
+version: 1.0.0
 readme: README.md
 authors:
-  - Internal
+  - Codex Automation Team
+description: ESXi STIG audit collection
+license: MIT

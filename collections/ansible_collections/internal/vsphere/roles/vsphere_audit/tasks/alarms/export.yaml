@@ -3,8 +3,8 @@
 
 - name: Export active alarms to CSV
   ansible.builtin.include_role:
-    name: common
-    tasks_from: reporting/export_csv
+    name: internal.core.reporting
+    tasks_from: export_csv
   vars:
     ops_csv_report_name: "vcenter_active_alarms"
     ops_csv_headers:

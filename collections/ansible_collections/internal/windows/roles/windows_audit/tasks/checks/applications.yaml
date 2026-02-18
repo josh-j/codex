@@ -89,7 +89,7 @@
 
     - name: Log application inventory summary
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/info
       vars:
         ops_log_message: "Applications: {{ windows.applications.metrics.configmgr_count }} ConfigMgr apps, {{ windows.applications.metrics.installed_count }} installed apps"
@@ -114,8 +114,8 @@
 
     - name: Export ConfigMgr apps to CSV
       ansible.builtin.include_role:
-        name: common
-        tasks_from: reporting/export_csv
+        name: internal.core.reporting
+        tasks_from: export_csv.yaml
       vars:
         ops_csv_report_name: "windows_configmgr_apps"
         ops_csv_headers:
@@ -129,7 +129,7 @@
   rescue:
     - name: Log application check failure
       ansible.builtin.include_role:
-        name: common
+        name: internal.core.common
         tasks_from: logging/error
       vars:
         ops_log_message: "Windows application check failed: {{ ansible_failed_result.msg | default('Unknown error') }}"

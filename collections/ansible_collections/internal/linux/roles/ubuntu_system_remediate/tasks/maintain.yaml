@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 - name: "Safety | Request Pre-Hardening Snapshot"
   ansible.builtin.include_role:
-    name: common
+    name: internal.core.common
     tasks_from: safeguarding/create_snapshot.yaml
   vars:
     snapshot_prefix: "Ansible_Pre_Hardening"
@@ -48,7 +48,7 @@
 # -----------------------------------------------------------------------------
 - name: "Safety | Request Pre-Patching Snapshot"
   ansible.builtin.include_role:
-    name: common
+    name: internal.core.common
     tasks_from: safeguarding/create_snapshot.yaml
   vars:
     snapshot_prefix: "Ansible_Pre_Patch"

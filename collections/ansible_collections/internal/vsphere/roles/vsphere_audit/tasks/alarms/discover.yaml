@@ -10,7 +10,8 @@
           {{ role_path }}/files/get_vcenter_alarms.py
           {{ vcenter.connection.hostname }}
           {{ vcenter.connection.username }}
-          {{ vcenter.connection.password }}
+      environment:
+        VC_PASSWORD: "{{ vcenter.connection.password }}"
       register: _alarms_script_result
       delegate_to: localhost
       failed_when: false
