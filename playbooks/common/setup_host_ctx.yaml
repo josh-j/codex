@@ -1,10 +1,10 @@
 ---
-# playbooks/plays/setup_host_ctx.yaml
-# Common pre-task to bind context across all audit plays.
+# playbooks/common/setup_host_ctx.yaml
+# Platform-agnostic pre-task to bind ncs + run_ctx across all audit plays.
 
 - name: Sync environment context
   ansible.builtin.include_role:
-    name: internal.vmware.common
+    name: internal.core.common
     tasks_from: sync_ctx
   tags: [always]
 

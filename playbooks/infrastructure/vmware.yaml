@@ -11,6 +11,12 @@
     - name: Setup Role Context
       ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
 
+    - name: Bind VMware Domain Context
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: sync_ctx
+      tags: [always]
+
   roles:
     - role: internal.vmware.audit
       when: "'vmware' in (ansible_stats.run_ctx.tasks | default([]))"
