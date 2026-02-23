@@ -1,0 +1,12 @@
+---
+# playbooks/audit_infrastructure.yaml
+# MASTER ORCHESTRATOR: Daily Data Center Health and Compliance Audit
+
+- name: "Phase 1: Initialize Run"
+  ansible.builtin.import_playbook: common/init_infrastructure.yaml
+
+- name: "Phase 2a: VMware Audit"
+  ansible.builtin.import_playbook: infrastructure/vmware.yaml
+
+- name: "Phase 3: Generate Reports"
+  ansible.builtin.import_playbook: common/aggregate_results.yaml

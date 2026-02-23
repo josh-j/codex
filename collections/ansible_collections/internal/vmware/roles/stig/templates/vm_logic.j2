@@ -1,0 +1,157 @@
+{#
+  vm_logic.j2 — VM STIG compliance evaluation template
+  =====================================================
+  Called once per VM by checks.yaml via lookup('template', ...).
+  'item' is a single VM dict from vsphere_ctx.stig_facts.
+
+  Output schema matches the canonical STIG report format:
+    id:        str - rule identifier
+    title:     str - rule title
+    status:    str - 'failed' | 'pass'
+    severity:  str - 'high' | 'medium' | 'low'
+    checktext: str - finding details
+    fixtext:   str - always '' (vmware checks have no automated fix)
+
+  To add a new advanced setting check: add an entry to vsphere_stig_vm_settings in defaults/main.yaml.
+  To add a new hardware/attribute check: add a block in section 2 or 3 following the existing pattern.
+#}
+{% set res = [] %}
+{% set _config = item.advanced_settings | default({}) %}
+{% set _hw     = item.hardware | default({}) %}
+
+{# --- 1. ADVANCED SETTINGS --- #}
+{% for rule in vsphere_stig_vm_settings | default([]) %}
+  {% set ns = namespace(status='pass', checktext='Value matches expected') %}
+  {% set current = _config.get(rule.key, 'MISSING') %}
+
+  {% if rule.value == 'ABSENT' %}
+    {% if current != 'MISSING' and current | string | lower == 'true' %}
+      {% set ns.status    = 'failed' %}
+      {% set ns.checktext = 'Key is TRUE (should be absent or false)' %}
+    {% else %}
+      {% set ns.checktext = 'Key is absent or false' %}
+    {% endif %}
+  {% else %}
+    {% if current | string | lower != rule.value | string | lower %}
+      {% set ns.status    = 'failed' %}
+      {% set ns.checktext = "Expected '" ~ rule.value ~ "', found '" ~ current ~ "'" %}
+    {% endif %}
+  {% endif %}
+
+  {% set _ = res.append({
+    "id":       rule.id,
+    "title":    rule.title,
+    "status":   ns.status,
+    "severity": rule.severity | default('medium'),
+    "checktext": ns.checktext,
+    "fixtext":  ""
+  }) %}
+{% endfor %}
+
+{# --- 2. HARDWARE CHECKS --- #}
+{% set _hw_ids = vsphere_stig_vm_hardware_ids %}
+
+{# Floppy [000008] #}
+{% set _floppy_active = _hw.floppies | selectattr('connected', 'equalto', true) | list
+                      + _hw.floppies | selectattr('start_connected', 'equalto', true) | list %}
+{% set _ = res.append({
+  "id":        _hw_ids.floppy.id,
+  "title":     _hw_ids.floppy.title,
+  "status":    'failed' if _floppy_active | length > 0 else 'pass',
+  "severity":  _hw_ids.floppy.severity,
+  "checktext": 'Floppy drive is connected' if _floppy_active | length > 0 else 'No floppy drives connected',
+  "fixtext":   ""
+}) %}
+
+{# CD-ROM [000009] #}
+{% set _cdrom_host = _hw.cdroms | selectattr('backing', 'equalto', 'host_device') | list %}
+{% set _ = res.append({
+  "id":        _hw_ids.cdrom.id,
+  "title":     _hw_ids.cdrom.title,
+  "status":    'failed' if _cdrom_host | length > 0 else 'pass',
+  "severity":  _hw_ids.cdrom.severity,
+  "checktext": 'CD-ROM attached to host device' if _cdrom_host | length > 0 else 'No host device CD-ROM backing',
+  "fixtext":   ""
+}) %}
+
+{# Parallel Ports [000010] #}
+{% set _ = res.append({
+  "id":        _hw_ids.parallel.id,
+  "title":     _hw_ids.parallel.title,
+  "status":    'failed' if _hw.parallel_ports | length > 0 else 'pass',
+  "severity":  _hw_ids.parallel.severity,
+  "checktext": 'Parallel ports present: ' ~ (_hw.parallel_ports | map(attribute='label') | join(', '))
+               if _hw.parallel_ports | length > 0 else 'No parallel ports',
+  "fixtext":   ""
+}) %}
+
+{# Serial Ports [000011] #}
+{% set _ = res.append({
+  "id":        _hw_ids.serial.id,
+  "title":     _hw_ids.serial.title,
+  "status":    'failed' if _hw.serial_ports | length > 0 else 'pass',
+  "severity":  _hw_ids.serial.severity,
+  "checktext": 'Serial ports present: ' ~ (_hw.serial_ports | map(attribute='label') | join(', '))
+               if _hw.serial_ports | length > 0 else 'No serial ports',
+  "fixtext":   ""
+}) %}
+
+{# USB Controllers [000012] #}
+{% set _ = res.append({
+  "id":        _hw_ids.usb.id,
+  "title":     _hw_ids.usb.title,
+  "status":    'failed' if _hw.usb_present | default(false) else 'pass',
+  "severity":  _hw_ids.usb.severity,
+  "checktext": 'USB controller present' if _hw.usb_present | default(false) else 'No USB controllers',
+  "fixtext":   ""
+}) %}
+
+{# Disk Persistence [000006] #}
+{% set _np_disks = _hw.disks | default([]) | selectattr('disk_mode', 'equalto', 'independent_nonpersistent') | list %}
+{% set _ = res.append({
+  "id":        _hw_ids.persistence.id,
+  "title":     _hw_ids.persistence.title,
+  "status":    'failed' if _np_disks | length > 0 else 'pass',
+  "severity":  _hw_ids.persistence.severity,
+  "checktext": 'Non-persistent disks: ' ~ (_np_disks | map(attribute='label') | join(', '))
+               if _np_disks | length > 0 else 'All disks are persistent',
+  "fixtext":   ""
+}) %}
+
+{# --- 3. VM ATTRIBUTE CHECKS --- #}
+{% set _attrs = vsphere_stig_vm_attributes %}
+
+{# vMotion Encryption [000024] #}
+{% set _vmotion = item.vmotion_encryption | default('disabled') %}
+{% set _ = res.append({
+  "id":        _attrs.vmotion_encryption.id,
+  "title":     _attrs.vmotion_encryption.title,
+  "status":    'failed' if _vmotion == 'disabled' else 'pass',
+  "severity":  _attrs.vmotion_encryption.severity,
+  "checktext": 'vMotion encryption disabled' if _vmotion == 'disabled' else 'vMotion encryption: ' ~ _vmotion,
+  "fixtext":   ""
+}) %}
+
+{# Logging [000025] #}
+{% set _logging = item.logging_enabled | default(true) | bool %}
+{% set _ = res.append({
+  "id":        _attrs.logging.id,
+  "title":     _attrs.logging.title,
+  "status":    'pass' if _logging else 'failed',
+  "severity":  _attrs.logging.severity,
+  "checktext": 'Logging enabled' if _logging else 'Logging disabled',
+  "fixtext":   ""
+}) %}
+
+{# FT Encryption [000029] #}
+{% set _ft = item.ft_encryption | default('ftEncryptionDisabled') %}
+{% set _ = res.append({
+  "id":        _attrs.ft_encryption.id,
+  "title":     _attrs.ft_encryption.title,
+  "status":    'pass' if _ft in _attrs.ft_encryption.required else 'failed',
+  "severity":  _attrs.ft_encryption.severity,
+  "checktext": 'FT encryption: ' ~ _ft,
+  "fixtext":   ""
+}) %}
+
+{{ res | to_json }}

@@ -1,70 +1,48 @@
 ---
 # internal.vmware.audit : notify/loop.yaml
-# Per-owner notification loop
-# Filters global issues down to a specific user and sends email.
+#
+# Per-owner notification loop.
+# Filters global VM and snapshot issues down to a specific owner and sends email.
 
-- name: Bind VMware context for notifications
+- name: "Filter and compile issues for {{ owner_email }}"
   ansible.builtin.set_fact:
-    _vms: "{{ vmware_ctx.inventory.vms | default({}) }}"
-    _snapshots: "{{ vmware_ctx.inventory.snapshots | default({}) }}"
-  changed_when: false
-
-- name: "Filter data for {{ owner_email }}"
-  ansible.builtin.set_fact:
-    # 1. Identify which VMs belong to this user
     _my_vm_names: >-
       {{
-         _vms.list
-         | selectattr('owner_email', 'equalto', owner_email)
-         | map(attribute='name')
-         | list
+        vmware_ctx.inventory.vms.list | default([])
+        | selectattr('owner_email', 'equalto', owner_email)
+        | map(attribute='name')
+        | list
       }}
-
-- name: "Compile issues for {{ owner_email }}"
-  ansible.builtin.set_fact:
-    # 2. Filter the Global Issue Lists against the User's VM Names
     my_issues:
-      no_backup: >-
-        {{ _vms.never_backed_up | selectattr('name', 'in', _my_vm_names) | list }}
+      no_backup:       "{{ vmware_ctx.inventory.vms.never_backed_up      | default([]) | selectattr('name', 'in', _my_vm_names) | list }}"
+      no_backup_tags:  "{{ vmware_ctx.inventory.vms.without_backup_tags  | default([]) | selectattr('name', 'in', _my_vm_names) | list }}"
+      overdue_backup:  "{{ vmware_ctx.inventory.vms.with_overdue_backup  | default([]) | selectattr('name', 'in', _my_vm_names) | list }}"
+      aged_snapshots:  "{{ vmware_ctx.inventory.snapshots.aged           | default([]) | selectattr('vm_name', 'in', _my_vm_names) | list }}"
+      powered_off:     >-
+        {{
+          vmware_ctx.inventory.vms.list | default([])
+          | selectattr('owner_email', 'equalto', owner_email)
+          | selectattr('power_state', 'equalto', 'POWEREDOFF')
+          | list
+        }}
 
-      no_backup_tags: >-
-        {{ _vms.without_backup_tags | selectattr('name', 'in', _my_vm_names) | list }}
-
-      overdue_backup: >-
-        {{ _vms.with_overdue_backup | selectattr('name', 'in', _my_vm_names) | list }}
-
-      aged_snapshots: >-
-        {{ _snapshots.aged | selectattr('vm_name', 'in', _my_vm_names) | list }}
-
-      powered_off: >-
-        {{ _vms.list
-           | selectattr('owner_email', 'equalto', owner_email)
-           | selectattr('power_state', 'equalto', 'POWEREDOFF')
-           | list }}
-
-# Email delivery (uncomment and configure SMTP to enable)
-# - name: Attempt email delivery
-#   block:
-#     - name: "Send Email to {{ owner_email }}"
-#       community.general.mail:
-#         host: "{{ ncs.config.smtp.host }}"
-#         port: "{{ ncs.config.smtp.port }}"
-#         from: "{{ ncs.config.owner_notification_from }}"
-#         to: "{{ owner_email }}"
-#         subject: "Action Required: Compliance Report for {{ inventory_hostname }}"
-#         subtype: html
-#         body: "{{ lookup('template', 'owner_notification_email.html.j2') }}"
-#       vars:
-#         issues: "{{ my_issues }}"
-#         vm_count: "{{ _my_vm_names | length }}"
-#       when:
-#         - (my_issues.no_backup | length > 0) or
-#           (my_issues.no_backup_tags | length > 0) or
-#           (my_issues.overdue_backup | length > 0) or
-#           (my_issues.aged_snapshots | length > 0)
-#       delegate_to: localhost
-#
-#   rescue:
-#     - name: Log email delivery failure
-#       ansible.builtin.debug:
-#         msg: "WARNING: Failed to send notification to {{ owner_email }}. Check SMTP settings or email address."
+# - name: "Send notification to {{ owner_email }}"
+#   when: >-
+#     {{
+#       my_issues.no_backup      | length > 0 or
+#       my_issues.no_backup_tags | length > 0 or
+#       my_issues.overdue_backup | length > 0 or
+#       my_issues.aged_snapshots | length > 0
+#     }}
+#   community.general.mail:
+#     host:    "{{ ncs_config.email.smtp.server }}"
+#     port:    "{{ ncs_config.email.smtp.port }}"
+#     from:    "{{ vmware_notification_from | default('noreply@' + inventory_hostname) }}"
+#     to:      "{{ owner_email }}"
+#     subject: "Action Required: Compliance Report for {{ inventory_hostname }}"
+#     subtype: html
+#     body:    "{{ lookup('template', 'owner_notification_email.html.j2') }}"
+#   vars:
+#     issues:   "{{ my_issues }}"
+#     vm_count: "{{ _my_vm_names | length }}"
+#   delegate_to: localhost

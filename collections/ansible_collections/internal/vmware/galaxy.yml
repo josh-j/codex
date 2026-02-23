@@ -1,8 +1,10 @@
+---
+# collections/ansible_collections/internal/vmware/galaxy.yml
 namespace: internal
 name: vmware
 version: 1.0.0
 readme: README.md
 authors:
-  - Codex Automation Team
+  - NCS
 description: VMware stack composable capabilities (vCenter, ESXi, etc.)
 license: MIT

@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/stig/tasks/esxi/checks/ssh.yaml
 # Audit ESXi SSH Configuration
 - name: Run SSH STIG Audit
   ansible.builtin.include_role:

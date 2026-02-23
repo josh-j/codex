@@ -1,15 +1,6 @@
 {% set res = [] %}
 
-{# Helper function to get advanced setting value #}
-{% macro get_adv(name, settings) %}
-  {% set val = 'unknown' %}
-  {% for s in settings %}
-    {% if s.key == name %}
-      {% set val = s.value %}
-    {% endif %}
-  {% endfor %}
-  {{ val }}
-{% endmacro %}
+{% from 'macros/adv_settings.j2' import get_adv %}
 
 {% set adv = item.get('config', {}).get('option_value', []) %}
 

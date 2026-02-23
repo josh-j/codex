@@ -1,141 +1,189 @@
 ---
-# collections/ansible_collections/internal/stig/roles/vsphere/defaults/main.yaml
-# Default STIG Policies for vSphere 7.0/8.0 VMs
+# internal.vmware.stig : defaults/main.yaml
+# STIG policy definitions for vSphere 7.0/8.0 VMs.
+#
+# To add a new advanced setting check, add an entry to vsphere_stig_vm_settings.
+# To change expected values for hardware or attribute checks, edit sections 2-3.
+# The template (vm_logic.j2) reads all values from here — no hardcoding in logic.
 
-# =============================================================================
-# 0. ROLE CONFIGURATION & PATHS
-# =============================================================================
+# --- Role behaviour ---
 vmware_config_quiet_mode: false
 vmware_config_debug_mode: false
-vmware_config_export_csv: true
 vmware_config_export_cklb: true
 
-# The skeleton file used for high-fidelity .cklb generation
+# --- CKLB skeleton ---
 vsphere_stig_skeleton_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_vms_V1R4.json"
 
 # =============================================================================
-# 1. ADVANCED CONFIGURATION (VMX / ExtraConfig)
+# 1. ADVANCED SETTINGS (VMX / ExtraConfig)
 # =============================================================================
-# Checks against 'config.extraConfig'
+# Evaluated automatically in vm_logic.j2 — add entries here to add new checks.
+# value: "ABSENT" means the key must not be present or must not be true.
+# defaults/main.yaml - vsphere_stig_vm_settings entries get severity added
 vsphere_stig_vm_settings:
-  # Copy/Paste/Drag-and-Drop
-  - id: "VMCH-70-000001"
-    key: "isolation.tools.copy.disable"
-    value: "TRUE"
-    name: "Isolation Tools Copy"
-    title: "Copy operations must be disabled"
+  - {
+      id: "VMCH-70-000001",
+      key: "isolation.tools.copy.disable",
+      value: "TRUE",
+      severity: "high",
+      title: "Copy operations must be disabled",
+    }
+  - {
+      id: "VMCH-70-000002",
+      key: "isolation.tools.dnd.disable",
+      value: "TRUE",
+      severity: "high",
+      title: "Drag and drop operations must be disabled",
+    }
+  - {
+      id: "VMCH-70-000003",
+      key: "isolation.tools.paste.disable",
+      value: "TRUE",
+      severity: "high",
+      title: "Paste operations must be disabled",
+    }
+  - {
+      id: "VMCH-70-000004",
+      key: "isolation.tools.diskShrink.disable",
+      value: "TRUE",
+      severity: "medium",
+      title: "Virtual disk shrinking must be disabled",
+    }
+  - {
+      id: "VMCH-70-000005",
+      key: "isolation.tools.diskWiper.disable",
+      value: "TRUE",
+      severity: "medium",
+      title: "Virtual disk wiping must be disabled",
+    }
+  - {
+      id: "VMCH-70-000007",
+      key: "isolation.tools.hgfsServerSet.disable",
+      value: "TRUE",
+      severity: "medium",
+      title: "HGFS file transfers must be disabled",
+    }
+  - {
+      id: "VMCH-70-000013",
+      key: "RemoteDisplay.maxConnections",
+      value: "1",
+      severity: "high",
+      title: "Console connection sharing must be limited",
+    }
+  - {
+      id: "VMCH-70-000015",
+      key: "tools.setinfo.sizeLimit",
+      value: "1048576",
+      severity: "medium",
+      title: "Informational messages to VMX file must be limited",
+    }
+  - {
+      id: "VMCH-70-000016",
+      key: "isolation.device.connectable.disable",
+      value: "TRUE",
+      severity: "medium",
+      title: "Unauthorized connection of devices must be prevented",
+    }
+  - {
+      id: "VMCH-70-000017",
+      key: "tools.guestlib.enableHostInfo",
+      value: "FALSE",
+      severity: "medium",
+      title: "Guest info gathering must be disabled",
+    }
+  - {
+      id: "VMCH-70-000018",
+      key: "sched.mem.pshare.salt",
+      value: "ABSENT",
+      severity: "medium",
+      title: "Shared salt values must be disabled",
+    }
+  - {
+      id: "VMCH-70-000022",
+      key: "tools.guest.desktop.autolock",
+      value: "TRUE",
+      severity: "medium",
+      title: "Guest OS must lock when console closes",
+    }
+  - {
+      id: "VMCH-70-000023",
+      key: "mks.enable3d",
+      value: "FALSE",
+      severity: "medium",
+      title: "3D features must be disabled",
+    }
+  - {
+      id: "VMCH-70-000026",
+      key: "vmx.log.rotateSize",
+      value: "2048000",
+      severity: "medium",
+      title: "Log rotation size must be configured",
+    }
+  - {
+      id: "VMCH-70-000027",
+      key: "vmx.log.keepOld",
+      value: "10",
+      severity: "medium",
+      title: "Log retention must be configured",
+    }
 
-  - id: "VMCH-70-000002"
-    key: "isolation.tools.dnd.disable"
-    value: "TRUE"
-    name: "Isolation Tools DnD"
-    title: "Drag and drop operations must be disabled"
-
-  - id: "VMCH-70-000003"
-    key: "isolation.tools.paste.disable"
-    value: "TRUE"
-    name: "Isolation Tools Paste"
-    title: "Paste operations must be disabled"
-
-  # Disk Isolation
-  - id: "VMCH-70-000004"
-    key: "isolation.tools.diskShrink.disable"
-    value: "TRUE"
-    name: "Isolation Tools Disk Shrink"
-    title: "Virtual disk shrinking must be disabled"
-
-  - id: "VMCH-70-000005"
-    key: "isolation.tools.diskWiper.disable"
-    value: "TRUE"
-    name: "Isolation Tools Disk Wiper"
-    title: "Virtual disk wiping must be disabled"
-
-  - id: "VMCH-70-000007"
-    key: "isolation.tools.hgfsServerSet.disable"
-    value: "TRUE"
-    name: "Isolation Tools HGFS"
-    title: "HGFS file transfers must be disabled"
-
-  # Connection Limits
-  - id: "VMCH-70-000013"
-    key: "RemoteDisplay.maxConnections"
-    value: "1"
-    name: "Remote Display Connections"
-    title: "Console connection sharing must be limited"
-
-  # Information Leakage
-  - id: "VMCH-70-000015"
-    key: "tools.setinfo.sizeLimit"
-    value: "1048576"
-    name: "Tools SetInfo Size Limit"
-    title: "Informational messages to VMX file must be limited"
-
-  - id: "VMCH-70-000016"
-    key: "isolation.device.connectable.disable"
-    value: "TRUE"
-    name: "Device Connectable Disable"
-    title: "Unauthorized connection of devices must be prevented"
-
-  - id: "VMCH-70-000017"
-    key: "tools.guestlib.enableHostInfo"
-    value: "FALSE"
-    name: "GuestLib Host Info"
-    title: "Guest info gathering must be disabled"
-
-  # Memory Sharing (Salt)
-  - id: "VMCH-70-000018"
-    key: "sched.mem.pshare.salt"
-    value: "ABSENT"  # Special flag handled in vm_logic.j2
-    name: "Memory PShare Salt"
-    title: "Shared salt values must be disabled"
-
-  # Locking & UI
-  - id: "VMCH-70-000022"
-    key: "tools.guest.desktop.autolock"
-    value: "TRUE"
-    name: "Guest Desktop Autolock"
-    title: "Guest OS must lock when console closes"
-
-  - id: "VMCH-70-000023"
-    key: "mks.enable3d"
-    value: "FALSE"
-    name: "MKS Enable 3D"
-    title: "3D features must be disabled"
-
-  # Logging Configuration
-  - id: "VMCH-70-000026"
-    key: "vmx.log.rotateSize"
-    value: "2048000"
-    name: "VMX Log Rotate Size"
-    title: "Log rotation size must be configured"
-
-  - id: "VMCH-70-000027"
-    key: "vmx.log.keepOld"
-    value: "10"
-    name: "VMX Log Keep Old"
-    title: "Log retention must be configured"
-
-
-# =============================================================================
-# 2. HARDWARE RESTRICTIONS
-# =============================================================================
-# These are used as descriptive labels in the audit lists
 vsphere_stig_vm_hardware_ids:
-  floppy: "VMCH-70-000008"
-  cdrom: "VMCH-70-000009"
-  parallel: "VMCH-70-000010"
-  serial: "VMCH-70-000011"
-  usb: "VMCH-70-000012"
-  persistence: "VMCH-70-000006"
+  floppy:
+    {
+      id: "VMCH-70-000008",
+      severity: "medium",
+      title: "Floppy drives must be disconnected",
+    }
+  cdrom:
+    {
+      id: "VMCH-70-000009",
+      severity: "medium",
+      title: "CD-ROM drives must not use host device backing",
+    }
+  parallel:
+    {
+      id: "VMCH-70-000010",
+      severity: "medium",
+      title: "Parallel ports must not be present",
+    }
+  serial:
+    {
+      id: "VMCH-70-000011",
+      severity: "medium",
+      title: "Serial ports must not be present",
+    }
+  usb:
+    {
+      id: "VMCH-70-000012",
+      severity: "medium",
+      title: "USB controllers must not be present",
+    }
+  persistence:
+    {
+      id: "VMCH-70-000006",
+      severity: "high",
+      title: "Virtual disks must be set to persistent mode",
+    }
 
-# =============================================================================
-# 3. VM ATTRIBUTES (Top-Level Config)
-# =============================================================================
-# vMotion Encryption [VMCH-70-000024]
-vsphere_stig_vmotion_encryption: "opportunistic"
-
-# FT Encryption [VMCH-70-000029]
-vsphere_stig_ft_encryption: "ftEncryptionOpportunistic"
-
-# Enable Logging [VMCH-70-000025]
-vsphere_stig_logging_required: true
+vsphere_stig_vm_attributes:
+  vmotion_encryption:
+    {
+      id: "VMCH-70-000024",
+      severity: "medium",
+      title: "vMotion must use encryption",
+      required: "opportunistic",
+    }
+  logging:
+    {
+      id: "VMCH-70-000025",
+      severity: "medium",
+      title: "Guest logging must be enabled",
+      required: true,
+    }
+  ft_encryption:
+    {
+      id: "VMCH-70-000029",
+      severity: "medium",
+      title: "FT must use encryption",
+      required: ["ftEncryptionOpportunistic", "ftEncryptionRequired"],
+    }

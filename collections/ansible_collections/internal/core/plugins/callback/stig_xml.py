@@ -7,16 +7,12 @@ import os
 import platform
 import re
 import sys
+import xml.etree.ElementTree as ET
+from time import gmtime, strftime
 
-try:
-    import xml.dom.minidom
-    import xml.etree.ElementTree as ET
-    from time import gmtime, strftime
+from ansible.plugins.callback import CallbackBase
 
-    from ansible.plugins.callback import CallbackBase
-except ImportError as e:
-    sys.stderr.write("[DEBUG] STIG_XML Import Error: {}\n".format(str(e)))
-    raise
+XCCDF_NS = "http://checklists.nist.gov/xccdf/1.1"
 
 
 class CallbackModule(CallbackBase):
@@ -25,233 +21,198 @@ class CallbackModule(CallbackBase):
     CALLBACK_NAME = "stig_xml"
     CALLBACK_NEEDS_WHITELIST = True
 
-    def _get_STIG_path(self):
-        cwd = os.path.abspath(".")
-        for dirpath, dirs, files in os.walk(cwd):
-            if os.path.sep + "files" in dirpath and len(files) > 0:
-                for f in files:
-                    if (
-                        f.endswith(".xml")
-                        and "xccdf" in f.lower()
-                        and "results" not in f.lower()
-                    ):
-                        return os.path.join(dirpath, f)
-        return None
+    # -------------------------------------------------------------------------
+    # Init
+    # -------------------------------------------------------------------------
 
     def __init__(self):
-        try:
-            super(CallbackModule, self).__init__()
-            # Stores status by Number: {'270645': 'pass' | 'fixed' | 'failed'}
-            self.rules = {}
-            self.rule_details = {}
+        super().__init__()
+        self.rules = {}  # {rule_num: 'pass' | 'fixed' | 'failed'}
+        self.rule_details = {}  # {rule_num: {title, severity, fixtext, checktext, full_id}}
 
-            self.stig_path = os.environ.get("STIG_PATH") or self._get_STIG_path()
-
-            if self.stig_path is None:
-                self.disabled = True
-                return
-
-            self.disabled = False
-            self._parse_stig_xml()
-
-            # --- ARTIFACTS PATH ---
-            base_dir = os.environ.get(
-                "ARTIFACT_DIR", os.path.join(os.getcwd(), ".artifacts")
-            )
-
-            if not os.path.exists(base_dir):
-                try:
-                    os.makedirs(base_dir)
-                except OSError:
-                    base_dir = os.getcwd()
-
-            self.XML_path = os.environ.get("XML_PATH") or os.path.join(
-                base_dir, "xccdf-results.xml"
-            )
-            self.JSON_path = self.XML_path.replace(".xml", "_failures.json")
-
-            # Init XML
-            STIG_name = os.path.basename(self.stig_path)
-            ET.register_namespace("", "http://checklists.nist.gov/xccdf/1.1")
-
-            self.tr = ET.Element("{http://checklists.nist.gov/xccdf/1.1}TestResult")
-            self.tr.set(
-                "id",
-                "xccdf_mil.disa.stig_testresult_scap_mil.disa_comp_{}".format(
-                    STIG_name
-                ),
-            )
-            self.tr.set("end-time", strftime("%Y-%m-%dT%H:%M:%S", gmtime()))
-
-            bm = ET.SubElement(
-                self.tr, "{http://checklists.nist.gov/xccdf/1.1}benchmark"
-            )
-            bm.set(
-                "href",
-                "xccdf_mil.disa.stig_testresult_scap_mil.disa_comp_{}".format(
-                    STIG_name
-                ),
-            )
-
-            tg = ET.SubElement(self.tr, "{http://checklists.nist.gov/xccdf/1.1}target")
-            tg.text = platform.node()
-
-            self._dump_json()
-
-        except Exception as e:
-            sys.stderr.write(
-                "[CRITICAL ERROR] Plugin Init Crashed: {}\n".format(str(e))
-            )
+        self.stig_path = os.environ.get("STIG_PATH") or self._find_stig_xml()
+        if self.stig_path is None:
             self.disabled = True
+            return
 
-    def _extract_number(self, text):
+        self.disabled = False
+        self._parse_stig_xml()
+
+        artifact_dir = os.environ.get(
+            "ARTIFACT_DIR", os.path.join(os.getcwd(), ".artifacts")
+        )
+        os.makedirs(artifact_dir, exist_ok=True)
+
+        self.xml_path = os.environ.get(
+            "XML_PATH", os.path.join(artifact_dir, "xccdf-results.xml")
+        )
+        self.json_path = self.xml_path.replace(".xml", "_failures.json")
+
+        self._init_xml()
+        self._dump_json()
+
+    def _find_stig_xml(self):
+        """Walk cwd looking for an XCCDF XML file under a files/ directory."""
+        for dirpath, _, files in os.walk(os.path.abspath(".")):
+            if os.path.sep + "files" not in dirpath:
+                continue
+            for f in files:
+                if (
+                    f.endswith(".xml")
+                    and "xccdf" in f.lower()
+                    and "results" not in f.lower()
+                ):
+                    return os.path.join(dirpath, f)
+        return None
+
+    def _init_xml(self):
+        stig_name = os.path.basename(self.stig_path)
+        result_id = f"xccdf_mil.disa.stig_testresult_scap_mil.disa_comp_{stig_name}"
+
+        ET.register_namespace("", XCCDF_NS)
+        self.tr = ET.Element(f"{{{XCCDF_NS}}}TestResult")
+        self.tr.set("id", result_id)
+        self.tr.set("end-time", strftime("%Y-%m-%dT%H:%M:%S", gmtime()))
+
+        bm = ET.SubElement(self.tr, f"{{{XCCDF_NS}}}benchmark")
+        bm.set("href", result_id)
+
+        tg = ET.SubElement(self.tr, f"{{{XCCDF_NS}}}target")
+        tg.text = platform.node()
+
+    # -------------------------------------------------------------------------
+    # STIG XML parsing
+    # -------------------------------------------------------------------------
+
+    def _parse_stig_xml(self):
+        try:
+            root = ET.parse(self.stig_path).getroot()
+        except (ET.ParseError, FileNotFoundError) as e:
+            sys.stderr.write(f"[stig_xml] XML parse error: {e}\n")
+            return
+
+        for elem in root.iter():
+            if not (elem.tag.endswith("Group") or elem.tag.endswith("Rule")):
+                continue
+
+            rule_num = self._extract_rule_number(elem.get("id"))
+            if not rule_num or (
+                rule_num in self.rule_details and elem.tag.endswith("Group")
+            ):
+                continue
+
+            # For Group elements, use the child Rule for details
+            target = elem
+            if elem.tag.endswith("Group"):
+                for child in elem:
+                    if child.tag.endswith("Rule"):
+                        target = child
+                        break
+
+            checktext = "Check details not found"
+            for child in target.iter():
+                if child.tag.endswith("check-content"):
+                    checktext = child.text or checktext
+                    break
+
+            self.rule_details[rule_num] = {
+                "full_id": elem.get("id"),
+                "title": self._child_text(target, "title") or "No Title",
+                "severity": target.get("severity") or "medium",
+                "fixtext": self._child_text(target, "fixtext") or "No Fix Text",
+                "checktext": checktext,
+            }
+
+    @staticmethod
+    def _child_text(parent, tag_suffix):
+        for child in parent:
+            if child.tag.endswith(tag_suffix):
+                return child.text
+        return None
+
+    @staticmethod
+    def _extract_rule_number(text):
         if not text:
             return None
         m = re.search(r"(?:V-|SV-|stigrule_)?(\d+)", text)
         return m.group(1) if m else None
 
-    def _parse_stig_xml(self):
-        try:
-            tree = ET.parse(self.stig_path)
-            root = tree.getroot()
-
-            def find_child_text(parent, tag_suffix):
-                for child in parent:
-                    if child.tag.endswith(tag_suffix):
-                        return child.text
-                return None
-
-            for elem in root.iter():
-                if elem.tag.endswith("Group") or elem.tag.endswith("Rule"):
-                    raw_id = elem.get("id")
-                    rule_num = self._extract_number(raw_id)
-
-                    if not rule_num:
-                        continue
-                    if rule_num in self.rule_details and elem.tag.endswith("Group"):
-                        continue
-
-                    target_elem = elem
-                    if elem.tag.endswith("Group"):
-                        for child in elem:
-                            if child.tag.endswith("Rule"):
-                                target_elem = child
-                                break
-
-                    title = find_child_text(target_elem, "title") or "No Title"
-                    severity = target_elem.get("severity") or "medium"
-                    fixtext = find_child_text(target_elem, "fixtext") or "No Fix Text"
-
-                    checktext = "Check details not found"
-                    for child in target_elem.iter():
-                        if child.tag.endswith("check-content"):
-                            checktext = child.text
-                            break
-
-                    self.rule_details[rule_num] = {
-                        "title": title,
-                        "severity": severity,
-                        "fixtext": fixtext,
-                        "checktext": checktext,
-                        "full_id": raw_id,
-                    }
-
-        except Exception as e:
-            sys.stderr.write("[DEBUG] XML Parse Error: {}\n".format(str(e)))
+    # -------------------------------------------------------------------------
+    # Output
+    # -------------------------------------------------------------------------
 
     def _dump_json(self):
-        """Dumps 'fixed' and 'failed' items to JSON."""
+        """Writes failed and fixed rules to JSON artifact."""
+        report = []
+        for rule_num, status in self.rules.items():
+            if status not in ("fixed", "failed"):
+                continue
+            d = self.rule_details.get(rule_num, {})
+            report.append(
+                {
+                    "id": d.get("full_id", f"SV-{rule_num}"),
+                    "status": status,
+                    "title": d.get("title", "Unknown Rule"),
+                    "severity": d.get("severity", "medium"),
+                    "fixtext": d.get("fixtext", ""),
+                    "checktext": d.get("checktext", ""),
+                }
+            )
         try:
-            report_list = []
+            with open(self.json_path, "w") as f:
+                json.dump(report, f, indent=2)
+        except OSError as e:
+            sys.stderr.write(f"[stig_xml] Failed to write JSON: {e}\n")
 
-            for rule_num, status in self.rules.items():
-                # We want to report on FIXED and FAILED items (skip PASS)
-                if status in ["fixed", "failed"]:
-                    details = self.rule_details.get(
-                        rule_num,
-                        {
-                            "title": "Unknown Rule ID",
-                            "severity": "medium",
-                            "fixtext": "Details not found.",
-                            "checktext": "",
-                            "full_id": "SV-{}".format(rule_num),
-                        },
-                    )
+    def _dump_xml(self):
+        """Writes XCCDF TestResult XML. Safe to call once only."""
+        for rule_num, status in self.rules.items():
+            d = self.rule_details.get(rule_num, {})
+            full_id = d.get("full_id", f"SV-{rule_num}")
 
-                    report_list.append(
-                        {
-                            "id": details.get("full_id", "SV-{}".format(rule_num)),
-                            "status": status,  # <--- NEW FIELD: 'fixed' or 'failed'
-                            "title": details["title"],
-                            "severity": details["severity"],
-                            "fixtext": details["fixtext"],
-                            "checktext": details["checktext"],
-                        }
-                    )
+            rr = ET.SubElement(self.tr, f"{{{XCCDF_NS}}}rule-result")
+            rr.set("idref", full_id)
+            rs = ET.SubElement(rr, f"{{{XCCDF_NS}}}result")
+            rs.text = "fail" if status == "failed" else "pass"
 
-            with open(self.JSON_path, "w") as jf:
-                json.dump(report_list, jf, indent=2)
+        try:
+            with open(self.xml_path, "wb") as f:
+                f.write(ET.tostring(self.tr))
+        except OSError as e:
+            sys.stderr.write(f"[stig_xml] Failed to write XML: {e}\n")
+        finally:
+            self._xml_written = True
 
-        except Exception:
-            pass
+    # -------------------------------------------------------------------------
+    # Ansible callback hooks
+    # -------------------------------------------------------------------------
 
     def v2_runner_on_ok(self, result):
         if getattr(self, "disabled", True):
             return
-
-        name = result._task.get_name()
-        rule_num = self._extract_number(name)
-
-        if rule_num:
-            # If Changed=True, it was FIXED (Remediated)
-            # If Changed=False, it was PASS (Already compliant)
-            status = "fixed" if result.is_changed() else "pass"
-
-            # Priority: If it failed before, keep it failed. Else update.
-            current = self.rules.get(rule_num, "pass")
-            if current != "failed":
-                self.rules[rule_num] = status
-                if status == "fixed":
-                    self._dump_json()
+        rule_num = self._extract_rule_number(result._task.get_name())
+        if not rule_num:
+            return
+        # Don't downgrade a previous failure
+        if self.rules.get(rule_num) == "failed":
+            return
+        status = "fixed" if result.is_changed() else "pass"
+        self.rules[rule_num] = status
+        if status == "fixed":
+            self._dump_json()
 
     def v2_runner_on_failed(self, result, ignore_errors=False):
         if getattr(self, "disabled", True):
             return
-
-        name = result._task.get_name()
-        rule_num = self._extract_number(name)
-
-        if rule_num:
-            self.rules[rule_num] = "failed"
-            self._dump_json()
+        rule_num = self._extract_rule_number(result._task.get_name())
+        if not rule_num:
+            return
+        self.rules[rule_num] = "failed"
+        self._dump_json()
 
     def v2_playbook_on_stats(self, stats):
         if getattr(self, "disabled", True):
             return
         self._dump_json()
-
-        # XML Generation (Simplified)
-        try:
-            for rule_num, status in self.rules.items():
-                # Map internal status to XCCDF result string
-                # fixed -> pass (because it is now compliant)
-                # failed -> fail
-                xccdf_res = "fail" if status == "failed" else "pass"
-
-                details = self.rule_details.get(rule_num, {})
-                full_id = details.get("full_id", "SV-{}".format(rule_num))
-
-                rr = ET.SubElement(
-                    self.tr, "{http://checklists.nist.gov/xccdf/1.1}rule-result"
-                )
-                rr.set("idref", full_id)
-                rs = ET.SubElement(rr, "{http://checklists.nist.gov/xccdf/1.1}result")
-                rs.text = xccdf_res
-
-            with open(self.XML_path, "wb") as f:
-                out = ET.tostring(self.tr)
-                xml.dom.minidom.parseString(out).toprettyxml()
-                f.write(out)
-
-        except Exception:
-            pass
+        if not getattr(self, "_xml_written", False):
+            self._dump_xml()

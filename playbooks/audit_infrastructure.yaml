@@ -1,6 +1,8 @@
 ---
 # playbooks/audit_infrastructure.yaml
-# MASTER ORCHESTRATOR: Daily Data Center Health and Compliance Audit
+#
+# Master orchestrator for daily data center health and compliance audit.
+# Plays run in order: init → domain audits (parallel-friendly) → aggregate.
 
 - name: "Phase 1: Initialize Run"
   ansible.builtin.import_playbook: common/init_infrastructure.yaml

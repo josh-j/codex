@@ -1,45 +1,52 @@
 ---
-# roles/ubuntu/tasks/system/discover.yaml
-# Collects system health metrics (Disk, Memory, Services, Uptime)
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_discover/tasks/discover.yaml
+#
+# Collects system data from the host and builds the ubuntu_ctx variable.
+# Everything downstream (audit, export) reads from ubuntu_ctx - nothing else.
+#
+# Two sections:
+#   1. COLLECTION - run commands and gather facts from the host
+#   2. NORMALIZE  - shape the raw results into a single clean structure
 
 # ========================================================================
-# 1. COLLECTION
+# COLLECTION
+# Gather raw data from the host. Each task registers a variable
+# that is used in the normalize step below.
 # ========================================================================
 
-- name: Gather System Facts (Hardware/Network)
+- name: Gather system facts (hardware, disks, network)
   ansible.builtin.setup:
     gather_subset:
-      - 'hardware'
-      - 'mounts'
-      - 'network'
+      - hardware
+      - mounts
+      - network
 
-- name: Check for Failed Systemd Services
+- name: Get list of failed systemd services
   ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain
   register: _failed_services_raw
   changed_when: false
   check_mode: false
-  tags: [skip_ansible_lint]
 
-- name: Collect User Database (getent)
+- name: Get user accounts from /etc/passwd
   ansible.builtin.getent:
     database: passwd
 
-- name: Read /etc/shadow (for password aging/locking)
+- name: Get password aging data from /etc/shadow
   ansible.builtin.command: cat /etc/shadow
   register: _shadow_raw
   become: true
   changed_when: false
-  no_log: true
+  no_log: true # contains password hashes
   check_mode: false
 
-- name: Collect Running SSH Configuration
+- name: Get active SSH server configuration
   ansible.builtin.command: sshd -T
   register: _sshd_raw
   become: true
   changed_when: false
   check_mode: false
 
-- name: Check permissions of critical files
+- name: Get permissions of sensitive files
   ansible.builtin.stat:
     path: "{{ item }}"
   register: _file_stats_raw
@@ -49,58 +56,164 @@
     - /etc/ssh/sshd_config
   check_mode: false
 
-- name: Scan for world-writable files (Time Limited)
+- name: Find world-writable files in /etc and /var
   ansible.builtin.command: find /etc /var -xdev -type f -perm -0002 -print
   register: _world_writable_raw
   become: true
   changed_when: false
   failed_when: _world_writable_raw.rc is defined and _world_writable_raw.rc != 0
-  async: 10
+  async: 10 # time-limited - find can run indefinitely on large filesystems
   poll: 1
   check_mode: false
 
-# 1. UPDATE CACHE
-- name: Update apt cache (Force Refresh)
+- name: Refresh apt package cache
   ansible.builtin.apt:
-    update_cache: yes
+    update_cache: true
     cache_valid_time: 0
   changed_when: false
   become: true
-  # Note: This will be skipped in check_mode by default, which is fine as it's a side effect.
 
-# 2. CHECK REBOOT STATUS
-- name: Check if reboot is required
+- name: Check if a reboot is required to apply updates
   ansible.builtin.stat:
-    path: /var/run/reboot-required
+    path: /var/run/reboot-required # created by apt when a reboot is needed
   register: _reboot_stat
   check_mode: false
 
-# 3. CHECK UPDATES
-- name: Check for upgradable packages (Dry Run)
-  ansible.builtin.command: apt-get -s upgrade
+- name: Check how many packages have available updates
+  ansible.builtin.command: apt-get -s upgrade # -s = simulate, no changes made
   register: _apt_simulate
   changed_when: false
   failed_when: _apt_simulate.rc != 0 and 'Could not get lock' not in _apt_simulate.stderr
   check_mode: false
-  tags: [skip_ansible_lint]
 
-# 4. NORMALIZE DATA
-- name: Parse and store update metrics
+# ========================================================================
+# NORMALIZE
+# Take all the raw collected data and build a single structured variable.
+# After this task, everything downstream uses ubuntu_ctx and nothing else.
+# ========================================================================
+
+- name: Build ubuntu_ctx from collected data
   ansible.builtin.set_fact:
-    ubuntu: "{{ ubuntu | internal.core.recursive_combine({'updates': update_data}) }}"
-  vars:
-    _summary_line: "{{ (_apt_simulate.stdout_lines | default([])) | select('search', 'upgraded,') | list | last | default('0') }}"
-    _count_raw: "{{ _summary_line.split()[0] | default('0') }}"
+    ubuntu_ctx:
+      system:
+        hostname: "{{ ansible_facts['hostname'] | default(inventory_hostname) }}"
+        ip: "{{ ansible_facts['default_ipv4']['address'] | default('N/A') }}"
+        kernel: "{{ ansible_facts['kernel'] | default('unknown') }}"
+        uptime_days: "{{ ((ansible_facts['uptime_seconds'] | default(0)) / 86400) | int }}"
+        load_avg: "{{ (ansible_facts['loadavg'] | default({'15m': 0}))['15m'] }}"
 
-    update_data:
-      pending_count: "{{ _count_raw | int }}"
-      reboot_pending: "{{ _reboot_stat.stat.exists | default(false) }}"
-      last_check_output: "{{ _summary_line }}"
+        memory:
+          total_mb: "{{ ansible_facts['memtotal_mb'] | default(0) }}"
+          free_mb: "{{ ansible_facts['memfree_mb'] | default(0) }}"
+          used_pct: >-
+            {{
+              ((ansible_facts['memtotal_mb'] - ansible_facts['memfree_mb'])
+              / ansible_facts['memtotal_mb'] * 100) | round(1)
+              if ansible_facts['memtotal_mb'] | default(0) | int > 0
+              else 0
+            }}
 
-- name: Log Patching Status
+        swap:
+          total_mb: "{{ ansible_facts['swaptotal_mb'] | default(0) }}"
+          used_pct: >-
+            {{
+              ((ansible_facts['swaptotal_mb'] - ansible_facts['swapfree_mb'])
+              / ansible_facts['swaptotal_mb'] * 100) | round(1)
+              if ansible_facts['swaptotal_mb'] | default(0) | int > 0
+              else 0
+            }}
+
+        services:
+          failed_count: "{{ _failed_services_raw.stdout_lines | length }}"
+          failed_list: "{{ _failed_services_raw.stdout_lines }}"
+
+        # Excludes loop devices and tmpfs - those are not real disks
+        disks: >-
+          {%- set results = [] -%}
+          {%- for mount in ansible_facts['mounts'] | default([]) -%}
+            {%- if 'loop' not in mount.device and 'tmpfs' not in mount.device -%}
+              {%- set pct = (mount.size_total - mount.size_available) / mount.size_total * 100
+                            if mount.size_total > 0 else 0 -%}
+              {%- set _ = results.append({
+                'mount':    mount.mount,
+                'device':   mount.device,
+                'fstype':   mount.fstype,
+                'total_gb': (mount.size_total / 1073741824) | round(1),
+                'free_gb':  (mount.size_available / 1073741824) | round(1),
+                'used_pct': pct | round(1)
+              }) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ results }}
+
+      updates:
+        # Parse the summary line from apt-get -s upgrade output e.g. "5 upgraded, 0 newly installed"
+        pending_count: >-
+          {{
+            (_apt_simulate.stdout_lines | select('search', 'upgraded,') | list | last | default('0 upgraded'))
+            .split()[0] | int
+          }}
+        reboot_pending: "{{ _reboot_stat.stat.exists | default(false) }}"
+
+      security:
+        # sshd -T outputs one setting per line as "key value"
+        ssh_config: >-
+          {{
+            (_sshd_raw.stdout_lines | default([]))
+            | map('split', ' ', 1)
+            | selectattr('length', 'equalto', 2)
+            | items2dict(key_name=0, value_name=1)
+          }}
+
+        # Shadow file fields: username:password:last_change:min:max:warn:inactive:expire
+        shadow_entries: >-
+          {%- set res = {} -%}
+          {%- for line in (_shadow_raw.stdout_lines | default([])) -%}
+            {%- set parts = line.split(':') -%}
+            {%- if parts | length > 1 -%}
+              {%- set _ = res.update({parts[0]: parts[1:]}) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ res }}
+
+        # Combines passwd and shadow to get user details and password age
+        users: >-
+          {%- set results = [] -%}
+          {%- set epoch_days = (ansible_facts['date_time']['epoch'] | int / 86400) | int -%}
+          {%- for user, info in (ansible_facts['getent_passwd'] | default({})).items() -%}
+            {%- set shadow = (_shadow_raw.stdout_lines | default([]))
+                             | select('match', '^' ~ user ~ ':')
+                             | list | first | default('') -%}
+            {%- set parts = shadow.split(':') -%}
+            {%- set last_change = parts[2] | default(0) | int -%}
+            {%- set _ = results.append({
+              'name':              user,
+              'uid':               info[1],
+              'gid':               info[2],
+              'home':              info[4],
+              'shell':             info[5],
+              'password_age_days': (epoch_days - last_change) if last_change > 0 else -1
+            }) -%}
+          {%- endfor -%}
+          {{ results }}
+
+        # Keyed by file path for easy lookup e.g. ubuntu_ctx.security.file_stats['/etc/shadow'].mode
+        file_stats: >-
+          {%- set fstats = {} -%}
+          {%- for res in (_file_stats_raw.results | default([])) -%}
+            {%- if res.stat is defined and res.stat.exists -%}
+              {%- set _ = fstats.update({res.item: res.stat}) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ fstats }}
+
+        world_writable_files: "{{ _world_writable_raw.stdout_lines | default([]) }}"
+
+- name: Log discovery summary
   ansible.builtin.debug:
-    msg: "Updates Pending: {{ ubuntu_ctx.updates.pending_count }} | Reboot Required: {{ ubuntu_ctx.updates.reboot_pending }}"
-
-- name: Normalize Discovered Data
-  ansible.builtin.include_tasks: normalize.yaml
-  tags: [discovery, normalize]
+    msg: >-
+      {{ inventory_hostname }} |
+      Load: {{ ubuntu_ctx.system.load_avg }} |
+      Mem: {{ ubuntu_ctx.system.memory.used_pct }}% |
+      Updates: {{ ubuntu_ctx.updates.pending_count }} |
+      Failed services: {{ ubuntu_ctx.system.services.failed_count }}

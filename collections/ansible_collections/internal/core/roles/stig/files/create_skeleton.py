@@ -1,81 +1,98 @@
+#!/usr/bin/env python3
+# internal.core.stig : files/create_skeleton.py
+#
+# Parses a DISA STIG XCCDF XML file and generates a CKLB skeleton JSON.
+# Usage: python3 create_skeleton.py <path_to_STIG.xml> [output_path]
+
 import json
 import sys
+import uuid
 import xml.etree.ElementTree as ET
 
-# Usage: python3 create_skeleton.py <path_to_STIG.xml>
-# Output: cklb_skeleton_vsphere7_vms_V1R4.json
+NS = {"xccdf": "http://checklists.nist.gov/xccdf/1.1"}
+
+
+def text(element, path):
+    """Safe text extraction from an XML element."""
+    found = element.find(path, NS)
+    return found.text.strip() if found is not None and found.text else ""
 
 
 def parse_xccdf(xml_path):
-    tree = ET.parse(xml_path)
+    try:
+        tree = ET.parse(xml_path)
+    except (ET.ParseError, FileNotFoundError) as e:
+        print(f"Error reading {xml_path}: {e}")
+        sys.exit(1)
+
     root = tree.getroot()
-    ns = {"xccdf": "http://checklists.nist.gov/xccdf/1.1"}
+    rules = []
 
-    rules_list = []
-
-    # Iterate through all Groups (Rules are inside Groups in STIG XML)
-    for group in root.findall(".//xccdf:Group", ns):
-        rule = group.find("./xccdf:Rule", ns)
+    for group in root.findall(".//xccdf:Group", NS):
+        rule = group.find("./xccdf:Rule", NS)
         if rule is None:
             continue
 
-        rule_id = rule.get("id")  # SV-XXXX
-        version = rule.find("./xccdf:version", ns).text  # VMCH-70-XXXX
-        title = rule.find("./xccdf:title", ns).text
-
-        # Extract Fix Text & Discussion
-        fix = rule.find(".//xccdf:fixtext", ns)
-        fix_text = fix.text if fix is not None else ""
-
-        desc = rule.find(".//xccdf:description", ns)
-        discussion = desc.text if desc is not None else ""
-
-        check = rule.find(".//xccdf:check-content", ns)
-        check_text = check.text if check is not None else ""
-
-        # Minimal CCIs
-        ident = rule.find(".//xccdf:ident", ns)
-        cci = ident.text if ident is not None else ""
-
-        rules_list.append(
+        ident = rule.find(".//xccdf:ident", NS)
+        rules.append(
             {
-                "rule_id": rule_id,
-                "rule_version": version,
-                "severity": rule.get("severity"),
-                "group_title": group.find("./xccdf:title", ns).text,
-                "rule_title": title,
-                "fix_text": fix_text,
-                "check_content": check_text,
-                "discussion": discussion,
-                "ccis": [cci],
+                "rule_id": rule.get("id", ""),
+                "rule_version": text(rule, "./xccdf:version"),
+                "severity": rule.get("severity", ""),
+                "group_title": text(group, "./xccdf:title"),
+                "rule_title": text(rule, "./xccdf:title"),
+                "fix_text": text(rule, ".//xccdf:fixtext"),
+                "check_content": text(rule, ".//xccdf:check-content"),
+                "discussion": text(rule, ".//xccdf:description"),
+                "ccis": [ident.text.strip()]
+                if ident is not None and ident.text
+                else [],
             }
         )
 
-    skeleton = {
-        "title": "VMware vSphere 7.0 Virtual Machine",
-        "id": "U_VMware_vSphere_7.0_VM_V1R3_STIG",
+    return rules
+
+
+def build_skeleton(rules, title, stig_id, release_info):
+    return {
+        "title": title,
+        "id": stig_id,
         "cklb_version": "1.0",
         "stigs": [
             {
-                "stig_name": "VMware vSphere 7.0 VM Security Technical Implementation Guide",
-                "display_name": "VMware vSphere 7.0 VM",
-                "stig_id": "U_VMware_vSphere_7.0_VM_V1R3_STIG",
-                "release_info": "Release: 1 Benchmark Date: 2023",
+                "stig_name": f"{title} Security Technical Implementation Guide",
+                "display_name": title,
+                "stig_id": stig_id,
+                "release_info": release_info,
                 "version": "1",
-                "uuid": "auto-generated-uuid",
-                "size": len(rules_list),
-                "rules": rules_list,
+                "uuid": str(uuid.uuid4()),
+                "size": len(rules),
+                "rules": rules,
             }
         ],
     }
 
-    with open("cklb_skeleton_vsphere7_vms_V1R4.json", "w") as f:
-        json.dump(skeleton, f, indent=2)
-    print("Skeleton generated successfully.")
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 create_skeleton.py <path_to_STIG.xml>")
-    else:
-        parse_xccdf(sys.argv[1])
+        print("Usage: python3 create_skeleton.py <path_to_STIG.xml> [output_path]")
+        sys.exit(1)
+
+    xml_path = sys.argv[1]
+    output_path = sys.argv[2] if len(sys.argv) > 2 else "cklb_skeleton.json"
+
+    rules = parse_xccdf(xml_path)
+    skeleton = build_skeleton(
+        rules=rules,
+        title="VMware vSphere 7.0 Virtual Machine",
+        stig_id="U_VMware_vSphere_7.0_VM_V1R3_STIG",
+        release_info="Release: 1 Benchmark Date: 2023",
+    )
+
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(skeleton, f, indent=2)
+        print(f"Skeleton written to {output_path} ({len(rules)} rules)")
+    except OSError as e:
+        print(f"Error writing {output_path}: {e}")
+        sys.exit(1)

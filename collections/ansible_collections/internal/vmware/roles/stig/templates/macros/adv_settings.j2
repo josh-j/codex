@@ -1,0 +1,8 @@
+{# collections/ansible_collections/internal/vmware/roles/stig/templates/macros/adv_settings.j2 #}
+{% macro get_adv(name, settings) %}
+{%- set val = 'unknown' -%}
+{%- for s in settings -%}
+  {%- if s.key == name -%}{%- set val = s.value -%}{%- endif -%}
+{%- endfor -%}
+{{ val }}
+{% endmacro %}

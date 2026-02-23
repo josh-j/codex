@@ -1,16 +1,7 @@
+{% from 'macros/adv_settings.j2' import get_adv %}
 {% set res = [] %}
 {% set adv = item.get('config', {}).get('option_value', []) %}
 
-{# Helper function to get advanced setting value #}
-{% macro get_adv(name, settings) %}
-  {% set val = 'unknown' %}
-  {% for s in settings %}
-    {% if s.key == name %}
-      {% set val = s.value %}
-    {% endif %}
-  {% endfor %}
-  {{ val }}
-{% endmacro %}
 
 {# ESXI-70-000058: Block Guest BPDU #}
 {% set bpdu = get_adv('Net.BlockGuestBPDU', adv) | trim %}

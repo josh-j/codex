@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/stig/tasks/esxi/checks/kernel.yaml
 # Audit ESXi Kernel Settings
 - name: Run Kernel STIG Audit
   ansible.builtin.include_role:

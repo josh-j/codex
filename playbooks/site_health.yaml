@@ -1,6 +1,0 @@
----
-# playbooks/site_health.yaml (Legacy Wrapper)
-# Redirects to the new granular orchestrator: audit_infrastructure.yaml
-
-- name: Daily Data Center Health Audit
-  ansible.builtin.import_playbook: audit_infrastructure.yaml

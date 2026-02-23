@@ -1,0 +1,77 @@
+---
+# roles/discovery/defaults/main.yaml
+#
+# Full vmware_ctx structure with empty defaults.
+# Ensures the variable always exists with a known shape before any task runs.
+#
+# Credentials and config are NOT stored here - they live as flat vars:
+#   vmware_username, vmware_password, vmware_validate_certs (group_vars/vcenters.yaml)
+#   vmware_* thresholds and toggles (group_vars/all/vmware.yaml)
+#
+# vmware_alerts is ephemeral per-run state initialized in audit/main.yaml.
+# vmware_ctx.alerts is the final stored copy after summary.yaml runs.
+
+vmware_ctx:
+  checks_failed: false
+  check:
+    started_at: ""
+    date: ""
+    site: ""
+  discovery:
+    datacenters:
+      list: []
+      names: []
+      metrics:
+        total: 0
+    datacenter:
+      name: ""
+  health:
+    appliance:
+      info: {}
+      health: {}
+      config: {}
+      backup: {}
+    alarms:
+      list: []
+      by_severity:
+        critical: []
+        warning: []
+      metrics:
+        total: 0
+        critical_count: 0
+        warning_count: 0
+  inventory:
+    clusters:
+      by_name: {}
+    hosts:
+      list: []
+      by_name: {}
+    datastores:
+      list: []
+      metrics:
+        total: 0
+    vms:
+      list: []
+      backup_analysis: []
+      never_backed_up: []
+      with_overdue_backup: []
+      without_backup_tags: []
+      without_owner_email: []
+      metrics:
+        total: 0
+        powered_off: 0
+        powered_off_pct: 0
+    snapshots:
+      aged: []
+      metrics:
+        total_aged: 0
+        total_size_gb: 0
+        large_snapshots: []
+  alerts: []
+  summary:
+    alerts:
+      total: 0
+      critical_count: 0
+      warning_count: 0
+      info_count: 0
+      by_category: {}

@@ -1,23 +1,28 @@
 ---
-# Discover Clusters and Hosts
+# internal.vmware.discovery : discovery/compute.yaml
+#
+# Discovers clusters and hosts for each datacenter.
+# Stores results in _temp_clusters and _temp_hosts for assembly in discovery.yaml.
+
 - name: Get cluster info for each datacenter
   vmware.vmware.cluster_info:
-    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
-    username: "{{ vmware_ctx.discovery.connection.username }}"
-    password: "{{ vmware_ctx.discovery.connection.password }}"
-    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     datacenter: "{{ item }}"
   register: _clusters_per_dc
   delegate_to: localhost
+  no_log: true
   failed_when: false
   retries: 3
   delay: 2
   loop: "{{ vmware_ctx.discovery.datacenters.names | default([]) }}"
   when: (vmware_ctx.discovery.datacenters.names | default([])) | length > 0
 
-- name: Consolidate and Enrich clusters
+- name: Consolidate and enrich cluster data
   ansible.builtin.set_fact:
-    _vmw_clusters: "{{ {'by_name': _enriched_clusters} }}"
+    _temp_clusters: "{{ {'by_name': _enriched_clusters, 'list': _enriched_clusters | dict2items | map(attribute='value') | list} }}"
   vars:
     _raw_results: "{{ _clusters_per_dc.results | default([]) }}"
     _consolidated: >-
@@ -31,60 +36,51 @@
     _enriched_clusters: >-
       {%- set result = {} -%}
       {%- for name, data in _consolidated.items() -%}
-        {%- set res = data.resource_summary | default({}) -%}
-        {%- set cpu_cap = (res.cpuCapacityMHz | default(1) | int) -%}
-        {%- set mem_cap = (res.memCapacityMB | default(1) | int) -%}
-        {%- set cpu_cap = 1 if cpu_cap == 0 else cpu_cap -%}
-        {%- set mem_cap = 1 if mem_cap == 0 else mem_cap -%}
+        {%- set res     = data.resource_summary | default({}) -%}
+        {%- set cpu_cap = [res.cpuCapacityMHz | default(0) | int, 1] | max -%}
+        {%- set mem_cap = [res.memCapacityMB  | default(0) | int, 1] | max -%}
         {%- set enriched = data | combine({
           'utilization': {
-            'cpu_used_mhz': (res.cpuUsedMHz | default(0)),
+            'cpu_used_mhz': res.cpuUsedMHz | default(0),
             'cpu_total_mhz': cpu_cap,
-            'mem_used_mb': (res.memUsedMB | default(0)),
+            'mem_used_mb':  res.memUsedMB  | default(0),
             'mem_total_mb': mem_cap,
             'cpu_pct': (((res.cpuUsedMHz | default(0) | int) / cpu_cap) * 100) | round(1),
             'mem_pct': (((res.memUsedMB  | default(0) | int) / mem_cap) * 100) | round(1)
           },
           'compliance': {
-            'ha_enabled': (data.ha_enabled | default(false)),
-            'drs_enabled': (data.drs_enabled | default(false)),
-            'vsan_enabled': (data.vsan_enabled | default(false))
+            'ha_enabled':   data.ha_enabled   | default(false),
+            'drs_enabled':  data.drs_enabled  | default(false),
+            'vsan_enabled': data.vsan_enabled | default(false)
           }
         }, recursive=true) -%}
         {%- set _ = result.update({name: enriched}) -%}
       {%- endfor -%}
       {{ result }}
+  changed_when: false
 
-- name: Extract and Sync Compute Inventory
+- name: Build host inventory from cluster data
   ansible.builtin.set_fact:
-    vmware_ctx: >-
-      {{
-        vmware_ctx | internal.core.recursive_combine({
-          'inventory': {
-            'clusters': (_vmw_clusters | default({})),
-            'hosts': {
-              'list': _hosts_list,
-              'by_name': _hosts_map
-            }
-          }
-        })
-      }}
+    _temp_hosts: "{{ host_data }}"
   vars:
     _hosts_list: >-
       {%- set results = [] -%}
-      {%- for cname, cdata in (_vmw_clusters.by_name | default({})).items() -%}
+      {%- for cname, cdata in (_temp_clusters.by_name | default({})).items() -%}
         {%- for h in (cdata.hosts | default([])) -%}
           {%- set _ = results.append(h | combine({
-            'cluster': cname,
-            'datacenter': (cdata.datacenter | default('unknown'))
+            'cluster':    cname,
+            'datacenter': cdata.datacenter | default('unknown')
           })) -%}
         {%- endfor -%}
       {%- endfor -%}
       {{ results }}
     _hosts_map: >-
       {%- set result = {} -%}
-      {%- for h in (_hosts_list | default([])) -%}
-        {%- set _ = result.update({(h.name | default('unknown')): h}) -%}
+      {%- for h in _hosts_list -%}
+        {%- set _ = result.update({h.name | default('unknown'): h}) -%}
       {%- endfor -%}
       {{ result }}
+    host_data:
+      list: "{{ _hosts_list }}"
+      by_name: "{{ _hosts_map }}"
   changed_when: false

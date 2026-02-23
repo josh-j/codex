@@ -7,9 +7,9 @@
 
 - name: "[Core] Sync Global Context"
   ansible.builtin.set_fact:
-    # 1. Recover run_ctx from stats if missing (ensures check-mode stability)
-    run_ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
-    
+    # 1. Recover run_ctx from localhost if missing (ensures check-mode stability)
+    run_ctx: "{{ run_ctx | default(hostvars['localhost']['run_ctx'] | default({})) }}"
+
     # 2. Initialize/Update standardized 'ncs' structure
     ncs: >-
       {{
@@ -24,7 +24,7 @@
         })
       }}
   vars:
-    _ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
+    _ctx: "{{ run_ctx | default(hostvars['localhost']['run_ctx'] | default({})) }}"
   changed_when: false
   no_log: true
 
@@ -41,7 +41,7 @@
         })
       }}
   vars:
-    _ctx: "{{ run_ctx | default(ansible_stats.run_ctx | default({})) }}"
+    _ctx: "{{ run_ctx | default(hostvars['localhost']['run_ctx'] | default({})) }}"
   when:
     - ncs_domain_ctx_name is defined
     - ncs_domain_ctx_name | string | length > 0

@@ -1,14 +1,16 @@
-- name: Ubuntu System Remediation Wrapper
-  block:
-    - name: Maintenance - Patching, Hardening & Reboot
-      ansible.builtin.include_tasks: maintain.yaml
-      tags: ['maintenance']
-      when: ubuntu_ctx.config.enable_maintenance | default(false) | bool
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_remediate/tasks/main.yaml
+#
+# Runs remediation tasks against the host - patching, hardening, and reboots.
+# All actions are off by default and must be explicitly enabled via vars.
+# Requires: ubuntu_ctx (from ubuntu_system_discover)
 
-  # RESCUE: Only runs if something in the 'block' above FAILED
+- name: Run remediation tasks
+  block:
+    - name: Apply patches, hardening, and handle reboots
+      ansible.builtin.include_tasks: maintain.yaml
+      when: ubuntu_enable_maintenance | default(false) | bool
   rescue:
-    - name: Log Ubuntu Failure
+    - name: Log remediation failure
       ansible.builtin.debug:
-        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
-      # This registers a variable we can check in the summary report if needed
-      register: _ubuntu_task_failure
+        msg: "Remediation failed on {{ inventory_hostname }} - check output above for details."

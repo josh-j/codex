@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-# roles/vsphere/files/get_vcenter_alarms.py
+# collections/ansible_collections/internal/vmware/roles/discovery/files/get_vcenter_alarms.py
+#
+# Collects all triggered alarms from vCenter via PyVmomi.
+# Password is passed via VC_PASSWORD environment variable - never as an argument.
+#
+# Usage: get_vcenter_alarms.py <host> <user>
+# Output: JSON to stdout - {"success": bool, "alarms": [...], "count": int}
+
 import json
 import os
 import ssl
@@ -9,62 +16,69 @@ from pyVim.connect import Disconnect, SmartConnect
 
 
 def get_triggered_alarms(host, user, password):
-    """Get all triggered alarms from vCenter"""
     if not password:
-        return {"success": False, "error": "Password not provided via VC_PASSWORD", "alarms": [], "count": 0}
+        return {
+            "success": False,
+            "error": "Password not provided via VC_PASSWORD",
+            "alarms": [],
+            "count": 0,
+        }
 
     context = ssl._create_unverified_context()
 
     try:
         si = SmartConnect(host=host, user=user, pwd=password, sslContext=context)
+    except Exception as e:
+        return {"success": False, "error": str(e), "alarms": [], "count": 0}
 
+    try:
         content = si.RetrieveContent()
-        triggered_alarms = content.rootFolder.triggeredAlarmState
+        triggered = content.rootFolder.triggeredAlarmState
 
         alarms = []
-        for alarm_state in triggered_alarms:
+        for state in triggered:
             try:
-                # Key names aligned with Ansible templates
-                alarm_info = {
-                    "alarm_name": alarm_state.alarm.info.name
-                    if alarm_state.alarm and alarm_state.alarm.info
-                    else "Unknown",
-                    "description": alarm_state.alarm.info.description
-                    if alarm_state.alarm and alarm_state.alarm.info
-                    else "",
-                    "entity": alarm_state.entity.name
-                    if hasattr(alarm_state.entity, "name")
-                    else str(alarm_state.entity),
-                    "entity_type": type(alarm_state.entity).__name__,
-                    "status": alarm_state.overallStatus,
-                    "severity": "critical"
-                    if alarm_state.overallStatus == "red"
-                    else (
-                        "warning" if alarm_state.overallStatus == "yellow" else "info"
-                    ),
-                    "time": str(alarm_state.time) if alarm_state.time else "",
-                    "acknowledged": alarm_state.acknowledged,
-                }
-                alarms.append(alarm_info)
+                has_info = state.alarm and state.alarm.info
+                status = state.overallStatus
+
+                alarms.append(
+                    {
+                        "alarm_name": state.alarm.info.name if has_info else "Unknown",
+                        "description": state.alarm.info.description if has_info else "",
+                        "entity": state.entity.name
+                        if hasattr(state.entity, "name")
+                        else str(state.entity),
+                        "entity_type": type(state.entity).__name__,
+                        "status": status,
+                        "severity": "critical"
+                        if status == "red"
+                        else ("warning" if status == "yellow" else "info"),
+                        "time": str(state.time) if state.time else "",
+                        "acknowledged": state.acknowledged,
+                    }
+                )
             except Exception:
                 continue
 
-        Disconnect(si)
         return {"success": True, "alarms": alarms, "count": len(alarms)}
 
-    except Exception as e:
-        return {"success": False, "error": str(e), "alarms": [], "count": 0}
+    finally:
+        Disconnect(si)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(
             json.dumps(
-                {"success": False, "error": "Usage: script.py <host> <user> (password via VC_PASSWORD env)"}
+                {
+                    "success": False,
+                    "error": "Usage: get_vcenter_alarms.py <host> <user>  (password via VC_PASSWORD)",
+                }
             )
         )
         sys.exit(1)
 
-    password = os.environ.get("VC_PASSWORD")
-    result = get_triggered_alarms(sys.argv[1], sys.argv[2], password)
+    result = get_triggered_alarms(
+        sys.argv[1], sys.argv[2], os.environ.get("VC_PASSWORD")
+    )
     print(json.dumps(result))

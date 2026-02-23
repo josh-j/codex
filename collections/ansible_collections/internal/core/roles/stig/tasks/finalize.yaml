@@ -1,0 +1,50 @@
+---
+# internal.core.stig : tasks/finalize.yaml
+#
+# Generic STIG report export. Called from collection-level finalize tasks.
+# Expects: audit_full_list, audit_violations, stig_target_type, run_ctx, ncs_config
+
+- name: "STIG | Summary"
+  tags: [stig, reporting]
+  when: not (stig_quiet_mode | default(false) | bool)
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} | {{ stig_target_type | upper }} STIG |
+      {{ audit_full_list | default([]) | length }} checks |
+      {{ audit_violations | default([]) | length }} violation(s)
+
+- name: "STIG | Export audit results to YAML"
+  tags: [stig, reporting]
+  ansible.builtin.copy:
+    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.yaml"
+    mode: "0664"
+    content: >-
+      {{
+        {
+          'host':        inventory_hostname,
+          'target_type': stig_target_type,
+          'checked_at':  run_ctx.timestamp | default(''),
+          'summary': {
+            'total':      audit_full_list  | default([]) | length,
+            'violations': audit_violations | default([]) | length,
+            'passed':     audit_full_list  | default([]) | selectattr('status', 'equalto', 'pass') | list | length
+          },
+          'violations': audit_violations | default([]),
+          'full_audit': audit_full_list  | default([])
+        } | to_nice_yaml
+      }}
+  delegate_to: localhost
+  become: false
+
+- name: "STIG | Render HTML report"
+  tags: [stig, reporting]
+  when: audit_full_list | default([]) | length > 0
+  ansible.builtin.template:
+    src: "stig_report.html.j2"
+    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.html"
+    mode: "0664"
+  vars:
+    timestamp: "{{ run_ctx.timestamp | default('') }}"
+    report_data: "{{ audit_violations  | default([]) }}"
+  delegate_to: localhost
+  become: false

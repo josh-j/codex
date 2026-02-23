@@ -1,0 +1,62 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_summary/tasks/main.yaml
+#
+# Summarizes audit results into a single health status and writes
+# one row to the fleet summary report.
+# Requires: ubuntu_ctx (from ubuntu_system_discover)
+#           ubuntu_alerts (from ubuntu_system_audit)
+
+- name: Calculate overall health status
+  ansible.builtin.set_fact:
+    ubuntu_summary:
+      # Overall rollup - worst severity wins
+      health: >-
+        {{
+          'CRITICAL' if ubuntu_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length > 0
+          else 'WARNING' if ubuntu_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length > 0
+          else 'HEALTHY'
+        }}
+
+      # Domain-level statuses - useful for dashboards and per-area reporting
+      patch_status: >-
+        {{
+          'CRITICAL' if ubuntu_alerts | selectattr('category', 'equalto', 'patching')
+                                      | selectattr('severity', 'equalto', 'CRITICAL')
+                                      | list | length > 0
+          else 'WARNING' if ubuntu_alerts | selectattr('category', 'equalto', 'patching')
+                                          | list | length > 0
+          else 'OK'
+        }}
+      system_status: >-
+        {{
+          'CRITICAL' if ubuntu_alerts | selectattr('category', 'in', ['capacity', 'availability', 'performance'])
+                                      | selectattr('severity', 'equalto', 'CRITICAL')
+                                      | list | length > 0
+          else 'WARNING' if ubuntu_alerts | selectattr('category', 'in', ['capacity', 'availability', 'performance'])
+                                          | list | length > 0
+          else 'OK'
+        }}
+      security_status: >-
+        {{
+          'CRITICAL' if ubuntu_alerts | selectattr('category', 'equalto', 'security')
+                                      | selectattr('severity', 'equalto', 'CRITICAL')
+                                      | list | length > 0
+          else 'WARNING' if ubuntu_alerts | selectattr('category', 'equalto', 'security')
+                                          | list | length > 0
+          else 'OK'
+        }}
+
+      # Counts for quick reference
+      critical_count: "{{ ubuntu_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
+      warning_count: "{{ ubuntu_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
+      alert_count: "{{ ubuntu_alerts | length }}"
+
+- name: Export fleet summary row
+  ansible.builtin.copy:
+    dest: "{{ ubuntu_report_dir | default('/srv/samba/reports') }}/{{ inventory_hostname }}/fleet_summary.csv"
+    mode: "0664"
+    content: |
+      Hostname,IP,Kernel,Uptime (Days),Health,Patch Status,System Status,Security Status,Critical,Warnings,Pending Updates,Reboot Required,Failed Services
+      {{ inventory_hostname }},{{ ubuntu_ctx.system.ip }},{{ ubuntu_ctx.system.kernel }},{{ ubuntu_ctx.system.uptime_days }},{{ ubuntu_summary.health }},{{ ubuntu_summary.patch_status }},{{ ubuntu_summary.system_status }},{{ ubuntu_summary.security_status }},{{ ubuntu_summary.critical_count }},{{ ubuntu_summary.warning_count }},{{ ubuntu_ctx.updates.pending_count }},{{ ubuntu_ctx.updates.reboot_pending }},{{ ubuntu_ctx.system.services.failed_count }}
+  delegate_to: localhost
+  become: false

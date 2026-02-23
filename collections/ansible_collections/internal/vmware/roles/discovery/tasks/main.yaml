@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/discovery/tasks/main.yaml
 # internal.vmware.discovery : main.yaml
 # Foundation role: Connects to vCenter and collects all inventory data.
 

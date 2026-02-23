@@ -1,16 +1,37 @@
-# ========================================================================
-- name: Export STIG Compliance Report
-  ansible.builtin.include_role:
-    name: internal.core.stig
-    tasks_from: reporting/stig.yaml
-  vars:
-    # PATH: Point to where your callback plugin saves the JSON.
-    stig_artifact_file: "{{ playbook_dir }}/../.artifacts/xccdf-results_failures.json"
+---
+# internal.linux.ubuntu_stig_audit : tasks/export.yaml
+#
+# Loads callback plugin artifact, normalizes to canonical schema,
+# and delegates to internal.core.stig finalize.
 
-    # GROUPING: Force STIG report into the SAME folder as the CSVs above.
-    # Uses the variable calculated by the previous export tasks.
-    stig_destination_folder: "{{ _csv_output_dir | default(ncs_report_output_dir | default('')) }}"
-
-  # LOGIC FIX: Rely ONLY on the flag set by check.yaml or maintain.yaml.
-  # This ensures we report if we Audited OR Hardened.
+- name: "Ubuntu STIG | Load callback artifact"
   when: _stig_audit_ran | default(false)
+  block:
+    - name: "Ubuntu STIG | Check artifact exists"
+      ansible.builtin.stat:
+        path: "{{ ubuntu_stig_artifact_file }}"
+      register: _artifact_stat
+      delegate_to: localhost
+      become: false
+
+    - name: "Ubuntu STIG | Read artifact"
+      ansible.builtin.slurp:
+        src: "{{ ubuntu_stig_artifact_file }}"
+      register: _artifact_raw
+      delegate_to: localhost
+      become: false
+      when: _artifact_stat.stat.exists
+
+    - name: "Ubuntu STIG | Normalize artifact to canonical schema"
+      ansible.builtin.set_fact:
+        audit_full_list: "{{ _artifact_raw.content | b64decode | from_json }}"
+        audit_violations: "{{ _artifact_raw.content | b64decode | from_json | selectattr('status', 'equalto', 'failed') | list }}"
+      when: _artifact_stat.stat.exists
+
+    - name: "Ubuntu STIG | Export reports"
+      ansible.builtin.include_role:
+        name: internal.core.stig
+        tasks_from: finalize.yaml
+      vars:
+        stig_target_type: ubuntu
+        stig_quiet_mode: "{{ ubuntu_stig_quiet_mode | default(false) }}"

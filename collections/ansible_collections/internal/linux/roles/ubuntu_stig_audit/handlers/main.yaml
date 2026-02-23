@@ -1,4 +1,52 @@
 ---
-# roles/ubuntu/handlers/main.yaml
-- name: Import STIG Handlers
-  ansible.builtin.import_tasks: stig_handlers.yaml
+# collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/handlers/main.yaml
+# Handlers for DISA STIG compliance on Ubuntu
+
+- name: dconf_update # noqa: name[casing] no-changed-when ignore-errors
+  ansible.builtin.command: dconf update
+  ignore_errors: true # Ignores error if dconf is not installed (headless servers)
+
+- name: auditd_restart # noqa: name[casing] ignore-errors
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
+  ignore_errors: true # Often fails in containers
+
+- name: ssh_restart # noqa: name[casing]
+  ansible.builtin.service:
+    # UBUNTU FIX: The service name is 'ssh', not 'sshd'
+    name: ssh
+    state: restarted
+
+- name: rsyslog_restart # noqa: name[casing]
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+
+- name: sysctl_load_settings # noqa: name[casing] no-changed-when
+  ansible.builtin.command: sysctl --system
+
+- name: daemon_reload # noqa: name[casing]
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: networkmanager_reload # noqa: name[casing] ignore-errors
+  ansible.builtin.service:
+    name: NetworkManager
+    state: reloaded
+  ignore_errors: true # Ignores if using netplan/systemd-networkd instead
+
+- name: logind_restart # noqa: name[casing]
+  ansible.builtin.service:
+    name: systemd-logind
+    state: restarted
+
+- name: with_faillock_enable # noqa: name[casing] no-changed-when ignore-errors
+  # NOTE: 'authselect' is RHEL/CentOS specific.
+  # Ubuntu uses pam-auth-update. We ignore errors to prevent crashing.
+  ansible.builtin.command: authselect enable-feature with-faillock
+  ignore_errors: true
+
+- name: do_reboot # noqa: name[casing]
+  ansible.builtin.reboot:
+    pre_reboot_delay: 60

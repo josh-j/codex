@@ -1,57 +1,50 @@
 ---
 # internal.vmware.audit : notify/workload.yaml
-# Owner notification workflow
+#
+# Owner notification workflow — sends per-owner VM issue summaries.
+# Gated by vmware_enable_email_notifications and vmware_owner_notification_days.
 
 # 1. GATEKEEPING
-# -----------------------------------------------------------------------------
 - name: Check notification schedule
   ansible.builtin.set_fact:
     _run_notifications: >-
       {{
-        (vmware_ctx.config | default({})).enable_email_notifications | default(false) | bool and
-        (
-          (run_ctx.day | default(''))
-          in ((vmware_ctx.config | default({})).owner_notification_days | default(['tuesday', 'thursday']))
-        )
+        vmware_enable_email_notifications | default(false) | bool and
+        run_ctx.day | default('') in vmware_owner_notification_days | default(['tuesday', 'thursday'])
       }}
 
 - name: Log notification skip
-  ansible.builtin.debug:
-    msg: "Skipping notifications: Not enabled or wrong day (Today: {{ run_ctx.day | default('unknown') }})"
   when: not _run_notifications
+  ansible.builtin.debug:
+    msg: "Skipping notifications: not enabled or not a notification day (today: {{ run_ctx.day | default('unknown') }})"
 
-# 2. IDENTIFY RECIPIENTS (VERIFIED ONLY)
-# -----------------------------------------------------------------------------
-- name: Calculate recipient lists
+# 2. IDENTIFY RECIPIENTS
+- name: Calculate verified recipient list
+  when: _run_notifications
   ansible.builtin.set_fact:
-    _discovered_owners: >-
+    _vm_owners: >-
       {{
-        (vmware_ctx.inventory.vms.list | default([]))
+        _discovered
+        if ('*' in vmware_notification_allowlist | default([]))
+        else (_discovered | intersect(vmware_notification_allowlist | default([])))
+      }}
+  vars:
+    _discovered: >-
+      {{
+        vmware_ctx.inventory.vms.list | default([])
         | map(attribute='owner_email')
         | select('defined')
         | select('search', '@')
         | unique
         | list
       }}
-    _allowed_emails: "{{ (vmware_ctx.config | default({})).notification_allowlist | default([]) }}"
-
-- name: Filter for verified owners
-  ansible.builtin.set_fact:
-    _vm_owners: >-
-      {{
-        _discovered_owners
-        if ('*' in _allowed_emails)
-        else (_discovered_owners | intersect(_allowed_emails))
-      }}
-  when: _run_notifications
 
 # 3. EXECUTION LOOP
-# -----------------------------------------------------------------------------
 - name: Process notifications for each verified owner
+  when:
+    - _run_notifications
+    - _vm_owners | length > 0
   ansible.builtin.include_tasks: notify/loop.yaml
   loop: "{{ _vm_owners }}"
   loop_control:
     loop_var: owner_email
-  when:
-    - _run_notifications
-    - _vm_owners | length > 0

@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/stig/tasks/esxi/checks/vibs.yaml
 # Audit ESXi VIBs
 - name: Run VIBs STIG Audit
   ansible.builtin.include_role:

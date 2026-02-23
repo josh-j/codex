@@ -1,7 +1,4 @@
----
-# playbooks/audit_ubuntu.yaml
-# MASTER ORCHESTRATOR: Ubuntu System Audit
-
+# playbooks/ubuntu_ops_audit.yaml
 - name: "Phase 1: Initialize"
   ansible.builtin.import_playbook: common/init_ubuntu.yaml
 

@@ -1,38 +1,35 @@
 ---
-# Discover VCSA Backup Configuration
-- name: Get VCSA Backup Configuration
+# internal.vmware.discovery : discovery/appliance_backup.yaml
+#
+# Discovers VCSA file-based backup schedule configuration.
+# Stores result in _temp_appliance_backup for merge into _temp_appliance
+# after appliance_health.yaml runs.
+
+- name: Get VCSA backup schedule
   vmware.vmware.vcsa_backup_schedule_info:
-    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
-    username: "{{ vmware_ctx.discovery.connection.username }}"
-    password: "{{ vmware_ctx.discovery.connection.password }}"
-    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   register: _vcsa_backup_info
   delegate_to: localhost
   failed_when: false
   changed_when: false
+  no_log: true
 
-- name: Sync vmware_ctx backup health
+- name: Normalize backup schedule data
   ansible.builtin.set_fact:
-    vmware_ctx: >-
-      {{
-        vmware_ctx | internal.core.recursive_combine({
-          'health': {
-            'appliance': {
-              'backup': vcsa_backup_data
-            }
-          }
-        })
-      }}
+    _temp_appliance_backup: "{{ backup_data }}"
   vars:
-    schedules: "{{ _vcsa_backup_info.schedules | default([]) }}"
-    enabled_schedule: "{{ schedules | selectattr('enabled', 'equalto', true) | list | first | default({}) }}"
-    vcsa_backup_data:
-      configured: "{{ schedules | length > 0 }}"
-      enabled: "{{ enabled_schedule.enabled | default(false) }}"
-      location: "{{ enabled_schedule.location | default('Not Configured') }}"
+    _schedules: "{{ _vcsa_backup_info.schedules | default([]) }}"
+    _enabled: "{{ _schedules | selectattr('enabled', 'equalto', true) | list | first | default({}) }}"
+    backup_data:
+      configured: "{{ _schedules | length > 0 }}"
+      enabled: "{{ _enabled.enabled | default(false) }}"
+      location: "{{ _enabled.location | default('Not Configured') }}"
       recurrence: >-
         {{
-          (enabled_schedule.schedule.days_of_week | default([])) | join(', ')
-          if enabled_schedule.schedule is defined else 'None'
+          (_enabled.schedule.days_of_week | default([])) | join(', ')
+          if _enabled.schedule is defined else 'None'
         }}
   changed_when: false

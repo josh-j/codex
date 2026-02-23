@@ -1,64 +1,69 @@
 ---
-# Discover vCenter Appliance Health
-- name: Gather full vCenter appliance info
+# internal.vmware.discovery : discovery/appliance_health.yaml
+#
+# Discovers vCenter appliance health, version, and configuration.
+# Merges _temp_appliance_backup (set by appliance_backup.yaml) into
+# the final _temp_appliance structure.
+#
+# Run order matters: appliance_backup.yaml must run before this file
+# so _temp_appliance_backup is available for the merge.
+
+- name: Preflight | Verify vSphere Automation SDK is installed
+  ansible.builtin.command:
+    cmd: >-
+      {{ ansible_playbook_python }} -c
+      'from vmware.vapi.vsphere.client import create_vsphere_client; print("ok")'
+  delegate_to: localhost
+  changed_when: false
+
+- name: Gather vCenter appliance info
   vmware.vmware.appliance_info:
-    hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
-    username: "{{ vmware_ctx.discovery.connection.username }}"
-    password: "{{ vmware_ctx.discovery.connection.password }}"
-    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     properties: [all]
   register: _appliance_raw
   delegate_to: localhost
+  no_log: true
   retries: 3
   delay: 2
   until: _appliance_raw is succeeded
 
-- name: Normalize Appliance Health & Config
+- name: Normalize appliance data
   ansible.builtin.set_fact:
-    _vmw_appliance: "{{ appliance_data }}"
+    _temp_appliance: "{{ appliance_data }}"
   vars:
     _summ: "{{ _appliance_raw.appliance.summary | default({}) }}"
     _health: "{{ _summ.health | default({}) }}"
     _access: "{{ _appliance_raw.appliance.access | default({}) }}"
-    _time: "{{ _appliance_raw.appliance.time | default({}) }}"
+    _time: "{{ _appliance_raw.appliance.time   | default({}) }}"
     appliance_data:
       info:
-        product: "{{ _summ.product | default('VMware vCenter Server') }}"
-        version: "{{ _summ.version | default('unknown') }}"
+        product: "{{ _summ.product      | default('VMware vCenter Server') }}"
+        version: "{{ _summ.version      | default('unknown') }}"
         build: "{{ _summ.build_number | default('unknown') }}"
         uptime_days: "{{ (_summ.uptime | default(0) | float / 86400) | round(1) }}"
       health:
-        overall: "{{ _health.overall | default('unknown') }}"
-        cpu: "{{ _health.cpu | default('unknown') }}"
-        memory: "{{ _health.memory | default('unknown') }}"
+        overall: "{{ _health.overall  | default('unknown') }}"
+        cpu: "{{ _health.cpu      | default('unknown') }}"
+        memory: "{{ _health.memory   | default('unknown') }}"
         database: "{{ _health.database | default('unknown') }}"
-        storage: "{{ _health.storage | default('unknown') }}"
-        swap: "{{ _health.swap | default('unknown') }}"
+        storage: "{{ _health.storage  | default('unknown') }}"
+        swap: "{{ _health.swap     | default('unknown') }}"
       config:
         ssh_enabled: "{{ _access.ssh | default(false) }}"
         shell_enabled: "{{ (_access.shell | default({})).enabled | default(false) }}"
         ntp_servers: "{{ (_time.time_sync | default({})).servers | default([]) }}"
         timezone: "{{ _time.time_zone | default('unknown') }}"
-
-- name: Sync vmware_ctx health
-  ansible.builtin.set_fact:
-    vmware_ctx: >-
-      {{
-        vmware_ctx | internal.core.recursive_combine({
-          'health': {
-            'appliance': (_vmw_appliance | default({}))
-          }
-        })
-      }}
+      backup: "{{ _temp_appliance_backup | default({}) }}"
   changed_when: false
 
-- name: Log Appliance Health
-  ansible.builtin.include_role:
-    name: internal.core.common
-    tasks_from: logging/info
-  vars:
-    ncs_log_message: >-
-      vCenter {{ (_vmw_appliance.info | default({})).version | default('unknown') }}
-      Health: {{ (_vmw_appliance.health | default({})).overall | default('unknown') | upper }}
-      (DB: {{ (_vmw_appliance.health | default({})).database | default('unknown') }},
-        Storage: {{ (_vmw_appliance.health | default({})).storage | default('unknown') }})
+- name: Log appliance health
+  ansible.builtin.debug:
+    msg: >-
+      vCenter {{ _temp_appliance.info.version }} health:
+      {{ _temp_appliance.health.overall | upper }}
+      (DB: {{ _temp_appliance.health.database }},
+      Storage: {{ _temp_appliance.health.storage }},
+      Backup: {{ _temp_appliance.backup.enabled | default(false) }})

@@ -1,0 +1,42 @@
+---
+# collections/ansible_collections/internal/vmware/roles/audit/defaults/main.yaml
+#
+# Default values for the vmware.audit role.
+#
+# Credentials and connection are NOT defined here. They live as flat vars:
+#   vmware_username, vmware_password, vmware_validate_certs  (group_vars/vcenters.yaml)
+#
+# Thresholds and toggles below can be overridden at group_vars, host_vars,
+# or play level.
+
+# --- Notifications ---
+vmware_enable_email_notifications: false
+vmware_owner_notification_days:
+  - tuesday
+  - thursday
+vmware_notification_allowlist: []
+vmware_notification_from: ""
+
+# --- Capacity Thresholds ---
+vmware_cpu_critical_pct: 90
+vmware_cpu_warning_pct: 80
+
+vmware_memory_critical_pct: 90
+vmware_memory_warning_pct: 80
+
+vmware_cluster_cpu_warning_pct: 90
+vmware_cluster_mem_warning_pct: 90
+
+vmware_datastore_free_critical_pct: 10
+vmware_datastore_free_warning_pct: 15
+
+# --- Snapshot Thresholds ---
+vmware_snapshot_age_warning_days: 7
+vmware_snapshot_size_warning_gb: 100
+
+# --- Update Thresholds (if applicable) ---
+vmware_updates_critical_threshold: 50
+# --- Runtime State (set by init.yaml, not user-configured) ---
+# _vcenter_hostname  - set once from vmware_hostname / ansible_host / inventory_hostname
+# vmware_alerts      - accumulated during checks phase, starts as []
+# vmware_ctx         - audit state, assembled during discovery phase

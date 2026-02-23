@@ -1,31 +1,71 @@
 ---
-# internal.vmware.audit : discovery.yaml
-# Aggregates all discovery tasks.
+# internal.vmware.discovery : discovery.yaml
+#
+# Orchestrates all discovery sub-tasks. Each sub-task stores collected data
+# into _temp_* vars. vmware_ctx is assembled once at the end from all results.
+#
+# Snapshots are NOT collected here - they require per-VM API calls and run
+# during the checks phase (checks/snapshots.yaml). The empty snapshot
+# structure comes from roles/discovery/defaults/main.yaml.
 
 - name: Discovery | Appliance Health
   ansible.builtin.include_tasks: discovery/appliance_health.yaml
-  tags: ['discovery', 'infrastructure']
+  tags: [discovery, infrastructure]
 
 - name: Discovery | Appliance Backup
   ansible.builtin.include_tasks: discovery/appliance_backup.yaml
-  tags: ['discovery', 'infrastructure']
+  tags: [discovery, infrastructure]
 
 - name: Discovery | Datacenters
   ansible.builtin.include_tasks: discovery/datacenter.yaml
-  tags: ['discovery', 'infrastructure']
+  tags: [discovery, infrastructure]
 
 - name: Discovery | Compute (Clusters & Hosts)
   ansible.builtin.include_tasks: discovery/compute.yaml
-  tags: ['discovery', 'infrastructure']
+  tags: [discovery, infrastructure]
 
 - name: Discovery | Storage (Datastores)
   ansible.builtin.include_tasks: discovery/storage.yaml
-  tags: ['discovery', 'storage']
+  tags: [discovery, storage]
 
 - name: Discovery | Workload (VMs)
   ansible.builtin.include_tasks: discovery/workload.yaml
-  tags: ['discovery', 'workload']
+  tags: [discovery, workload]
 
 - name: Discovery | Alarms
   ansible.builtin.include_tasks: discovery/alarms.yaml
-  tags: ['discovery', 'alarms']
+  tags: [discovery, alarms]
+
+- name: Assemble vmware_ctx from discovery results
+  ansible.builtin.set_fact:
+    vmware_ctx: "{{ vmware_ctx | combine(_discovery_data, recursive=true) }}"
+  vars:
+    _discovery_data:
+      discovery:
+        datacenters: "{{ _temp_datacenters | default({}) }}"
+        datacenter: "{{ _temp_datacenter  | default({}) }}"
+      health:
+        appliance: "{{ _temp_appliance | default({}) }}"
+        alarms: "{{ _temp_alarms    | default({}) }}"
+      inventory:
+        clusters: "{{ _temp_clusters   | default({}) }}"
+        hosts: "{{ _temp_hosts      | default({}) }}"
+        datastores: "{{ _temp_datastores | default({}) }}"
+        vms: "{{ _temp_vms        | default({}) }}"
+  changed_when: false
+
+- name: Export discovery snapshot to YAML
+  ansible.builtin.copy:
+    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}_discovery.yaml"
+    mode: "0664"
+    content: >-
+      {{
+        {
+          'discovery':  vmware_ctx.discovery,
+          'health':     vmware_ctx.health,
+          'inventory':  vmware_ctx.inventory
+        } | to_nice_yaml
+      }}
+  delegate_to: localhost
+  become: false
+  changed_when: false

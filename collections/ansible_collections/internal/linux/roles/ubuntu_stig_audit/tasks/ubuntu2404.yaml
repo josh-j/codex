@@ -1,3 +1,5 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/tasks/ubuntu2404.yaml
 # ansible-lint: skip-file
 - name: populate package facts
   package_facts:

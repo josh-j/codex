@@ -1,22 +1,15 @@
 ---
 # playbooks/infrastructure/vmware.yaml
-# Perform deep health and compliance audit for VMware Infrastructure.
+#
+# Deep health and compliance audit for VMware infrastructure.
+# Runs against all vCenter hosts defined in the [vcenters] inventory group.
+#
+# Scheduling: runs when 'vmware' is in run_ctx.tasks.
+# Override: ansible-playbook infrastructure/vmware.yaml -e ops_run_day_override=monday
 
 - name: VMware Operations Audit
   hosts: vcenters
   gather_facts: false
-  strategy: linear
-
-  pre_tasks:
-    - name: Setup Role Context
-      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
-
-    - name: Bind VMware Domain Context
-      ansible.builtin.include_role:
-        name: internal.vmware.common
-        tasks_from: sync_ctx
-      tags: [always]
-
   roles:
     - role: internal.vmware.audit
-      when: "'vmware' in (ansible_stats.run_ctx.tasks | default([]))"
+      when: "'vmware' in (run_ctx.tasks | default([]))"

@@ -55,15 +55,58 @@
 
 # 3. DATA PREPARATION
 # -----------------------------------------------------------------------------
-- name: Sort CSV data
+# 3. DATA PREPARATION
+# -----------------------------------------------------------------------------
+- name: Normalize CSV data to list
   ansible.builtin.set_fact:
-    _csv_final_data: "{{ ncs_csv_data | sort(attribute=ncs_csv_sort_by | default('name')) | list }}"
-  when: ncs_csv_data is defined and ncs_csv_data | length > 0
+    _csv_data_list: >-
+      {%- set d = ncs_csv_data | default([]) -%}
+      {%- if d is mapping -%}
+      {{ [d] }}
+      {%- else -%}
+      {{ d | list }}
+      {%- endif -%}
+
+- name: Determine sort key
+  ansible.builtin.set_fact:
+    _csv_sort_key: >-
+      {{
+        ncs_csv_sort_by
+        | default(
+            (ncs_csv_keys[0]) if (ncs_csv_keys is defined and (ncs_csv_keys | length > 0))
+            else (
+              (ncs_csv_headers[0]
+                | lower
+                | replace(' ', '_')
+                | replace('(', '')
+                | replace(')', '')
+                | replace('%', 'pct')
+              ) if (ncs_csv_headers is defined and (ncs_csv_headers | length > 0))
+              else 'name'
+            )
+          )
+      }}
+
+- name: Sort CSV data (tolerate missing sort key)
+  ansible.builtin.set_fact:
+    _csv_final_data: >-
+      {%- set k = _csv_sort_key -%}
+      {%- set fixed = [] -%}
+      {%- for item in (_csv_data_list | default([])) -%}
+        {%- if item is mapping -%}
+          {%- set _ = fixed.append(item if (k in item) else (item | combine({k: ''}))) -%}
+        {%- else -%}
+          {%- set _ = fixed.append({k: item | string, 'value': item}) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ fixed | sort(attribute=k) | list }}
+  when: _csv_data_list | length > 0
 
 - name: Use empty data if undefined
   ansible.builtin.set_fact:
     _csv_final_data: []
-  when: ncs_csv_data is undefined or ncs_csv_data | length == 0
+  when: _csv_data_list | length == 0
+
 
 # 4. FAST FILE WRITING
 # -----------------------------------------------------------------------------

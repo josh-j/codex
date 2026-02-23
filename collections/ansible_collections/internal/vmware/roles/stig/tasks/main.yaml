@@ -1,0 +1,17 @@
+---
+# internal.vmware.stig : tasks/main.yaml
+#
+# Unified entry point for all vmware STIG audits.
+# Dispatches to vm/ or esxi/ pipeline based on stig_target_type.
+#
+# Required vars:
+#   stig_target_type: vm | esxi
+
+- name: Set vCenter hostname
+  tags: [always]
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../../common/tasks/init_vcenter.yaml"
+
+- name: "STIG | Dispatch to {{ stig_target_type | upper }} handler"
+  tags: [stig, security]
+  ansible.builtin.include_tasks: "{{ stig_target_type }}/main.yaml"

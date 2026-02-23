@@ -1,73 +1,62 @@
 ---
-# Discover Active Alarms
-- name: Execute alarm collection script (PyVmomi)
+# internal.vmware.discovery : discovery/alarms.yaml
+#
+# Collects active vCenter alarms via PyVmomi script.
+# Stores normalized alarm data in _temp_alarms for assembly in discovery.yaml.
+
+- name: Execute alarm collection script
   ansible.builtin.script:
     cmd: >-
       {{ role_path }}/files/get_vcenter_alarms.py
-      {{ vmware_ctx.discovery.connection.hostname }}
-      {{ vmware_ctx.discovery.connection.username }}
+      {{ _vcenter_hostname }}
+      {{ vmware_username }}
   environment:
-    VC_PASSWORD: "{{ vmware_ctx.discovery.connection.password }}"
+    VC_PASSWORD: "{{ vmware_password }}"
   register: _alarms_script_result
   delegate_to: localhost
   failed_when: false
   changed_when: false
   no_log: true
 
-- name: Parse alarm results from script
+- name: Parse and store alarm results
   ansible.builtin.set_fact:
-    _alarms_parsed: "{{ (_alarms_script_result.get('stdout', '') | trim) | from_json }}"
-  when:
-    - _alarms_script_result is mapping
-    - (_alarms_script_result.get('rc', 1) | int) == 0
-    - (_alarms_script_result.get('stdout', '') | trim | length) > 0
-  changed_when: false
-
-- name: Store alarms in vmware_ctx namespace
-  ansible.builtin.set_fact:
-    vmware_ctx: >-
-      {{
-        vmware_ctx | internal.core.recursive_combine({
-          'health': {
-            'alarms': alarms_data
-          }
-        })
-      }}
+    _temp_alarms: "{{ alarm_data }}"
   vars:
-    _raw_list: "{{ (_alarms_parsed.alarms | default([])) if (_alarms_parsed is mapping) else [] }}"
-    alarms_list: >-
+    _succeeded: >-
+      {{
+        _alarms_script_result is mapping and
+        (_alarms_script_result.get('rc', 1) | int) == 0 and
+        (_alarms_script_result.get('stdout', '') | trim | length) > 0
+      }}
+    _parsed: >-
+      {{
+        (_alarms_script_result.get('stdout', '') | trim | from_json)
+        if _succeeded else {'alarms': []}
+      }}
+    # Script already normalizes severity from overallStatus - no re-mapping needed.
+    # We add site/vcenter fields and standardize field names here.
+    _alarm_list: >-
       {%- set res = [] -%}
-      {%- for item in _raw_list -%}
-        {%- set status_val = item.status | default(item.overallStatus | default('unknown')) -%}
-        {%- if item.severity is defined -%}
-          {%- set sev_val = item.severity -%}
-        {%- elif (status_val | string | lower) == 'red' -%}
-          {%- set sev_val = 'critical' -%}
-        {%- elif (status_val | string | lower) == 'yellow' -%}
-          {%- set sev_val = 'warning' -%}
-        {%- else -%}
-          {%- set sev_val = 'info' -%}
-        {%- endif -%}
+      {%- for item in (_parsed.alarms | default([])) -%}
         {%- set _ = res.append({
-          'site': inventory_hostname,
-          'vcenter': inventory_hostname,
-          'alarm_name': (item.alarm_name | default(item.name | default('unknown'))),
-          'entity': (item.entity_name | default(item.entityName | default('unknown'))),
-          'description': (item.alarm_description | default(item.description | default(''))),
-          'severity': (sev_val | string | lower),
-          'status': status_val,
-          'time': (item.time | default(item.timestamp | default('')))
+          'site':        inventory_hostname,
+          'vcenter':     inventory_hostname,
+          'alarm_name':  item.alarm_name  | default('unknown'),
+          'entity':      item.entity      | default('unknown'),
+          'description': item.description | default(''),
+          'severity':    item.severity    | default('info') | lower,
+          'status':      item.status      | default('unknown'),
+          'time':        item.time        | default('')
         }) -%}
       {%- endfor -%}
       {{ res }}
-    alarms_data:
-      list: "{{ alarms_list }}"
+    alarm_data:
+      list: "{{ _alarm_list }}"
       by_severity:
-        critical: "{{ alarms_list | selectattr('severity', 'equalto', 'critical') | list }}"
-        warning: "{{ alarms_list | selectattr('severity', 'equalto', 'warning') | list }}"
+        critical: "{{ _alarm_list | selectattr('severity', 'equalto', 'critical') | list }}"
+        warning:  "{{ _alarm_list | selectattr('severity', 'equalto', 'warning')  | list }}"
       metrics:
-        total: "{{ alarms_list | length }}"
-        critical_count: "{{ alarms_list | selectattr('severity', 'equalto', 'critical') | list | length }}"
-        warning_count: "{{ alarms_list | selectattr('severity', 'equalto', 'warning') | list | length }}"
-  when: _alarms_parsed is defined
+        total:          "{{ _alarm_list | length }}"
+        critical_count: "{{ _alarm_list | selectattr('severity', 'equalto', 'critical') | list | length }}"
+        warning_count:  "{{ _alarm_list | selectattr('severity', 'equalto', 'warning')  | list | length }}"
   changed_when: false

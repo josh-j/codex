@@ -1,45 +1,37 @@
 ---
-# internal.vmware.audit : init.yaml
-# vCenter connection initialization and reachability check.
+# internal.vmware.discovery : init.yaml
+#
+# Sets _vcenter_hostname for use by all discovery module calls.
+# Builds vmware_ctx as pure audit state - no connection metadata or credentials.
+# Stops host processing if vCenter is unreachable.
 
-- name: Init | Build vmware_ctx config/connection
+- name: Set vCenter target hostname
   ansible.builtin.set_fact:
-    vmware_ctx: >-
+    _vcenter_hostname: >-
       {{
-        vmware_ctx | default({}) | internal.core.recursive_combine({
-          'config': (vmware_ctx.config | default(vmware_config | default({}))),
-          'discovery': {
-            'connection': {
-              'hostname': (
-                (vmware_hostname | default(ansible_host) | default(inventory_hostname))
-                | regex_replace('^https?://', '')
-                | regex_replace('/.*$', '')
-              ),
-              'port': 443,
-              'username': (vmware_username | default(ansible_user) | default(ansible_ssh_user)),
-              'password': (vmware_password | default(ansible_password) | default(ansible_ssh_pass)),
-              'reachable': (vmware_ctx.discovery.connection.reachable | default(false)),
-              'http_status': (vmware_ctx.discovery.connection.http_status | default('N/A'))
-            }
-          },
-          'check': {
-            'started_at': (ncs.check.timestamp | default('')),
-            'date': (ncs.check.date | default('')),
-            'site': inventory_hostname
-          },
-          'checks_failed': (vmware_ctx.checks_failed | default(false))
-        })
+        (vmware_hostname | default(ansible_host) | default(inventory_hostname))
+        | regex_replace('^https?://', '')
+        | regex_replace('/.*$', '')
       }}
-  no_log: true
   tags: [always]
 
-- name: Init | Check vCenter session endpoint (reachability)
+- name: Build vmware_ctx
+  ansible.builtin.set_fact:
+    vmware_ctx:
+      checks_failed: false
+      check:
+        started_at: "{{ run_ctx.timestamp | default('') }}"
+        date: "{{ run_ctx.date | default('') }}"
+        site: "{{ inventory_hostname }}"
+  tags: [always]
+
+- name: Check vCenter reachability
   ansible.builtin.uri:
-    url: "https://{{ vmware_ctx.discovery.connection.hostname }}/rest/com/vmware/cis/session"
+    url: "https://{{ _vcenter_hostname }}/rest/com/vmware/cis/session"
     method: POST
-    user: "{{ vmware_ctx.discovery.connection.username }}"
-    password: "{{ vmware_ctx.discovery.connection.password }}"
-    validate_certs: "{{ (vmware_ctx.config | default({})).get('validate_certs', false) | bool }}"
+    user: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     force_basic_auth: true
     status_code: [200, 503]
     timeout: 15
@@ -53,57 +45,32 @@
   check_mode: false
   tags: [always]
 
-- name: Init | Update reachability status
-  ansible.builtin.set_fact:
-    vmware_ctx: >-
-      {{
-        vmware_ctx | default({}) | internal.core.recursive_combine({
-          'discovery': {
-            'connection': {
-              'reachable': ((_vc_api.status | default(0)) in [200, 503]),
-              'http_status': (_vc_api.status | default('N/A'))
-            }
-          }
-        })
-      }}
-  no_log: true
-  tags: [always]
-
-- name: Init | Handle unreachable vCenter (alert + stop host)
+- name: Handle unreachable vCenter
   when:
-    - not (vmware_ctx.discovery.connection.reachable | default(false) | bool)
+    - (_vc_api.status | default(0)) not in [200, 503]
     - not ansible_check_mode
   block:
     - name: Log connectivity failure
-      ansible.builtin.include_role:
-        name: internal.core.common
-        tasks_from: logging/error
-      vars:
-        ncs_log_message: >-
-          Failed to connect to vCenter {{ vmware_ctx.discovery.connection.hostname }}
-          (HTTP {{ vmware_ctx.discovery.connection.http_status }})
+      ansible.builtin.debug:
+        msg: >-
+          CRITICAL: vCenter {{ _vcenter_hostname }} unreachable
+          (HTTP {{ _vc_api.status | default('no response') }})
 
-    - name: Emit CRITICAL alert
-      ansible.builtin.include_role:
-        name: internal.core.reporting
-        tasks_from: alert
-      vars:
-        ncs_alert_severity: "CRITICAL"
-        ncs_alert_category: "connectivity"
-        ncs_alert_message: "vCenter {{ vmware_ctx.discovery.connection.hostname }} is unreachable"
-        ncs_alert_details:
-          hostname: "{{ vmware_ctx.discovery.connection.hostname }}"
-          status: "{{ vmware_ctx.discovery.connection.http_status }}"
-          msg: "{{ _vc_api.msg | default('Connection timed out/refused') }}"
-
-    - name: Mark vCenter checks failed for this host
+    - name: Build connectivity alert
       ansible.builtin.set_fact:
-        vmware_ctx: >-
-          {{
-            vmware_ctx | default({}) | internal.core.recursive_combine({
-              'checks_failed': true
-            })
-          }}
+        vmware_alerts: "{{ vmware_alerts | default([]) + [connectivity_alert] }}"
+      vars:
+        connectivity_alert:
+          severity: CRITICAL
+          category: connectivity
+          message: "vCenter {{ _vcenter_hostname }} is unreachable"
+          detail:
+            hostname: "{{ _vcenter_hostname }}"
+            http_status: "{{ _vc_api.status | default('no response') }}"
+
+    - name: Mark host checks failed
+      ansible.builtin.set_fact:
+        vmware_ctx: "{{ vmware_ctx | combine({'checks_failed': true}) }}"
 
     - name: Stop processing this host
       ansible.builtin.meta: end_host

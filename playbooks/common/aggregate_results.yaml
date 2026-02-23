@@ -1,46 +1,46 @@
----
-# playbooks/plays/aggregate_results.yaml
-# Aggregates results from all plays and renders the final dashboards.
-
 - name: Aggregate Audit Results
   hosts: localhost
-  gather_facts: true
-
+  gather_facts: false
   vars:
-    _ctx: "{{ ansible_stats.run_ctx | default(run_ctx) }}"
-    today_tasks: "{{ _ctx.tasks }}"
-    ncs_report_base: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-    ncs_report_dir: "{{ ncs_report_base }}/Summary"
-
+    _report_base: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _summary_dir: "{{ _report_base }}/Summary/{{ run_ctx.id }}"
+    _combined: "{{ _summary_dir }}/all_hosts.yaml"
   tasks:
-    - name: Initialize aggregator ops structure
-      ansible.builtin.set_fact:
-        ncs: >-
-          {{
-            ops | default({}) | internal.core.recursive_combine({
-              'config': (ncs_config | default({})),
-              'check': {
-                'id': _ctx.id,
-                'run_id': _ctx.id,
-                'date': _ctx.date,
-                'timestamp': _ctx.timestamp,
-                'site': 'localhost'
-              }
-            })
-          }}
-
-    - name: Aggregate site data
-      ansible.builtin.import_role:
-        name: internal.core.reporting
-        tasks_from: aggregate.yaml
-
-    - name: Ensure output directory
+    - name: Ensure summary directory exists
       ansible.builtin.file:
-        path: "{{ ncs_report_dir }}"
+        path: "{{ _summary_dir }}"
         state: directory
         mode: "0755"
 
-    - name: Render reports (Markdown & HTML)
-      ansible.builtin.import_role:
-        name: internal.core.reporting
-        tasks_from: render.yaml
+    - name: Aggregate per-host YAML reports
+      ansible.builtin.script:
+        cmd: "{{ playbook_dir }}/../scripts/aggregate_yaml_reports.py {{ _report_base }} {{ _combined }}"
+      register: _aggregate_result
+
+    - name: Load combined host data
+      ansible.builtin.set_fact:
+        _all_host_data: "{{ lookup('file', _combined) | from_yaml }}"
+
+    - name: Render HTML dashboard
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/site_health_report.html.j2"
+        dest: "{{ _summary_dir }}/dashboard.html"
+        mode: "0644"
+      vars:
+        all_hosts: "{{ _all_host_data | default({}) }}"
+        report_date: "{{ run_ctx.date }}"
+        report_id: "{{ run_ctx.id }}"
+
+    - name: Render Markdown summary
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/site_health_report.md.j2"
+        dest: "{{ _summary_dir }}/dashboard.md"
+        mode: "0644"
+      vars:
+        all_hosts: "{{ _all_host_data | default({}) }}"
+        report_date: "{{ run_ctx.date }}"
+        report_id: "{{ run_ctx.id }}"
+
+    - name: Display report location
+      ansible.builtin.debug:
+        msg: "Reports written to {{ _summary_dir }}"

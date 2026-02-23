@@ -1,26 +1,26 @@
-# roles/ubuntu/tasks/security/check.yaml
-# Security Checks & Audits
-# PURPOSE: Runs STIG rules in "Check Mode" (Simulation)
+---
+# internal.linux.ubuntu_stig_audit : tasks/check.yaml
+#
+# Runs DISA STIG rules in check_mode (read-only simulation).
+# Skipped if hardening is enabled to avoid running the logic twice.
+#
+# Toggles:
+#   ubuntu_stig_enable_audit:    true  - runs compliance checks
+#   ubuntu_stig_enable_hardening: false - if true, skips audit
 
-- name: "STIG Audit (Read-Only)"
-  # LOGIC: Only run audit if auditing is ON, AND hardening is OFF.
-  # If hardening is enabled, we skip this to avoid running the heavy STIG logic twice.
+- name: "Ubuntu STIG | Evaluate compliance (read-only)"
+  tags: [stig, security, audit]
   when:
-    - ubuntu_ctx.config.enable_stig_audit | default(false) | bool
-    - not (ubuntu_ctx.config.enable_stig_hardening | default(false) | bool)
-  tags: ['check', 'security', 'stig']
+    - ubuntu_stig_enable_audit    | default(false) | bool
+    - not (ubuntu_stig_enable_hardening | default(false) | bool)
   block:
-    - name: Execute STIG Audit
+    - name: "Ubuntu STIG | Execute STIG rules"
       ansible.builtin.include_tasks: ubuntu2404.yaml
       args:
         apply:
-          check_mode: true  # Forces simulation (Read-Only)
-      # LINT FIX: We intentionally ignore errors here because we WANT
-      # failed tasks (violations) to be recorded, but we don't want
-      # the playbook to stop. 'failed_when: false' would mark them as passed.
-      ignore_errors: true  # noqa: ignore-errors
+          check_mode: true
+      ignore_errors: true # noqa: ignore-errors
 
-    # ADDED: This flag tells security/export.yaml that there is data to export.
-    - name: Flag STIG Audit as Complete
+    - name: "Ubuntu STIG | Flag audit as complete"
       ansible.builtin.set_fact:
         _stig_audit_ran: true

@@ -1,32 +1,25 @@
 ---
 # internal.vmware.audit : export.yaml
-# Aggregates all export tasks.
-# Can be included directly by the orchestrator.
+#
+# Writes a single per-host YAML file containing all audit data.
+# Consumed by aggregate_yaml_reports.py during the aggregation phase.
 
-- name: Export | Infrastructure
-  ansible.builtin.include_tasks: export/infrastructure.yaml
-  tags: ['export', 'infrastructure']
-
-- name: Export | Global Resources
-  ansible.builtin.include_tasks: export/resources.yaml
-  tags: ['export', 'capacity']
-
-- name: Export | Storage
-  ansible.builtin.include_tasks: export/storage.yaml
-  tags: ['export', 'storage']
-
-- name: Export | Workload & Backups
-  ansible.builtin.include_tasks: export/workload.yaml
-  tags: ['export', 'workload']
-
-- name: Export | Snapshots
-  ansible.builtin.include_tasks: export/snapshots.yaml
-  tags: ['export', 'snapshots']
-
-- name: Export | Alarms
-  ansible.builtin.include_tasks: export/alarms.yaml
-  tags: ['export', 'alarms']
-
-- name: Export | Executive Summary
-  ansible.builtin.include_tasks: export/summary.yaml
-  tags: ['export', 'summary']
+- name: Export host audit data
+  ansible.builtin.copy:
+    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}.yaml"
+    mode: "0664"
+    content: >-
+      {{
+        {
+          'host':       inventory_hostname,
+          'site':       vmware_ctx.check.site       | default(''),
+          'checked_at': vmware_ctx.check.started_at | default(''),
+          'discovery':  vmware_ctx.discovery,
+          'health':     vmware_ctx.health,
+          'inventory':  vmware_ctx.inventory,
+          'alerts':     vmware_alerts | default([]),
+          'summary':    _vmw_summary  | default({})
+        } | to_nice_yaml
+      }}
+  delegate_to: localhost
+  become: false

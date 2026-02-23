@@ -1,24 +1,34 @@
 ---
-# collections/ansible_collections/internal/stig/roles/vsphere/tasks/discover.yaml
+# internal.vmware.stig : vm/discovery.yaml
+#
+# Collects VM STIG facts via pyVmomi. Stores results in vsphere_ctx.stig_facts.
 
-- name: "VSphere | Execute Python Discovery"
+- name: "VM STIG | Execute discovery script"
+  tags: [stig, discovery]
   ansible.builtin.script: >-
     {{ role_path }}/files/get_vm_stig_facts.py
-    '{{ ansible_host | default(inventory_hostname) }}'
-    '{{ vmware_username | default(ansible_user) | default(ansible_ssh_user) }}'
-    '{{ vmware_password | default(ansible_password) | default(ansible_ssh_pass) }}'
+    '{{ _vcenter_hostname }}'
+    '{{ vmware_username }}'
+    '{{ vmware_password }}'
     '{{ stig_vm_filter | default("") }}'
   register: _vm_script_result
   delegate_to: localhost
-  failed_when: false
-  changed_when: false
   no_log: true
+  changed_when: false
+  failed_when: _vm_script_result.rc != 0
 
-- name: "VSphere | Process Discovery Results"
-  ansible.builtin.include_role:
-    name: internal.core.stig
-    tasks_from: discovery_parser
+- name: "VM STIG | Parse discovery results"
+  tags: [stig, discovery]
+  ansible.builtin.set_fact:
+    vsphere_ctx: >-
+      {{
+        vsphere_ctx | default({}) | combine({
+          'stig_facts': _parsed.vms | default([])
+        }, recursive=true)
+      }}
   vars:
-    script_result: "{{ _vm_script_result }}"
-    generic_namespace: "vsphere_ctx"
-    json_data_key: "vms"
+    _parsed: "{{ _vm_script_result.stdout | regex_search('(?s)\\{.*') | from_json }}"
+  when:
+    - _vm_script_result.rc == 0
+    - _vm_script_result.stdout | trim | length > 0
+    - (_vm_script_result.stdout | regex_search('(?s)\\{.*') | from_json).success | default(false)

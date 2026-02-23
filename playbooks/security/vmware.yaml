@@ -1,20 +1,20 @@
 ---
-# playbooks/plays/stig_audit_vmware.yaml
-# Perform STIG compliance audit for VMware/vSphere components.
+# playbooks/security/vmware.yaml
+#
+# STIG compliance audit for VMware vSphere VM guests.
+# Runs on-demand, not part of the daily schedule.
+#
+# Usage:
+#   ansible-playbook playbooks/security/vmware.yaml
+#   ansible-playbook playbooks/security/vmware.yaml -e "stig_vm_filter=vm-name"
 
-- name: VMware Security Audit
+- name: VMware STIG Audit
   hosts: vcenters
   gather_facts: false
-
-  pre_tasks:
-    - name: Setup Role Context
-      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
-
   tasks:
-    - name: Audit vCenter Guest STIGs
+    - name: Audit vSphere VM STIGs
       ansible.builtin.include_role:
         name: internal.vmware.stig
-        tasks_from: vm.yaml
       vars:
-        ansible_connection: local
-      tags: ["vsphere", "stig"]
+        stig_target_type: vm
+      tags: [vsphere, stig]

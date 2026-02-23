@@ -1,21 +1,10 @@
----
 # playbooks/ubuntu/ops.yaml
-# Perform deep system audit for Ubuntu Linux infrastructure.
-
 - name: Ubuntu System Audit
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
-  gather_facts: true
-
-  pre_tasks:
-    - name: Setup Role Context
-      ansible.builtin.import_tasks: ../common/setup_host_ctx.yaml
-
-    - name: Bind Linux Domain Context
-      ansible.builtin.include_role:
-        name: internal.linux.common
-        tasks_from: sync_ctx
-      tags: [always]
-
+  gather_facts: false # discover role handles this explicitly
   roles:
-    - role: internal.core.stig
+    - role: internal.linux.ubuntu_system_discover
     - role: internal.linux.ubuntu_system_audit
+    - role: internal.linux.ubuntu_system_remediate
+      when: ubuntu_enable_maintenance | bool
+    - role: internal.linux.ubuntu_summary

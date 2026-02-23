@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/stig/tasks/esxi/checks/syslog.yaml
 # Audit ESXi Syslog
 - name: Run Syslog STIG Audit
   ansible.builtin.include_role:

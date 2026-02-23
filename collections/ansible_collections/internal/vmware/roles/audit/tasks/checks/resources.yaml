@@ -1,44 +1,24 @@
 ---
-# Global Resource Checks
-- name: Calculate global resource aggregates
+# internal.vmware.audit : checks/resources.yaml
+#
+# Aggregates CPU and memory usage across all clusters fleet-wide.
+# Uses threshold_alert for tiered CRITICAL/WARNING evaluation.
+
+- name: Evaluate global resource alerts
   ansible.builtin.set_fact:
-    vmware_ctx: >-
+    vmware_alerts: >-
       {{
-        vmware_ctx | internal.core.recursive_combine({
-          'resources': resource_metrics
-        })
+        vmware_alerts | default([])
+        + (_cpu_pct | internal.core.threshold_alert('capacity', _cpu_msg, vmware_cpu_critical_pct    | default(90), vmware_cpu_warning_pct    | default(80)))
+        + (_mem_pct | internal.core.threshold_alert('capacity', _mem_msg, vmware_memory_critical_pct | default(90), vmware_memory_warning_pct | default(80)))
       }}
   vars:
     _clusters: "{{ vmware_ctx.inventory.clusters.by_name | default({}) | dict2items }}"
-    cpu_cap: "{{ _clusters | map(attribute='value.resource_summary.cpuCapacityMHz') | map('int') | sum }}"
-    cpu_used: "{{ _clusters | map(attribute='value.resource_summary.cpuUsedMHz') | map('int') | sum }}"
-    mem_cap: "{{ _clusters | map(attribute='value.resource_summary.memCapacityMB') | map('int') | sum }}"
-    mem_used: "{{ _clusters | map(attribute='value.resource_summary.memUsedMB') | map('int') | sum }}"
-    cpu_pct: "{{ ((cpu_used | int / cpu_cap | int) * 100) | round(1) if (cpu_cap | int) > 0 else 0 }}"
-    mem_pct: "{{ ((mem_used | int / mem_cap | int) * 100) | round(1) if (mem_cap | int) > 0 else 0 }}"
-    resource_metrics:
-      cpu:
-        usage_pct: "{{ cpu_pct }}"
-      memory:
-        usage_pct: "{{ mem_pct }}"
-  changed_when: false
-
-- name: Global Resource Alerts
-  ansible.builtin.include_role:
-    name: internal.core.reporting
-    tasks_from: alert
-  vars:
-    _cfg: "{{ vmware_ctx.config | default({}) }}"
-    ncs_alert_severity: "{{ item.severity }}"
-    ncs_alert_category: "capacity"
-    ncs_alert_message: "{{ item.message }}"
-  loop:
-    - severity: "CRITICAL"
-      message: "Total vCenter CPU usage is Critical ({{ vmware_ctx.resources.cpu.usage_pct }}%)"
-      when: "{{ vmware_ctx.resources.cpu.usage_pct | float > _cfg.cpu_critical_pct | default(95) | float }}"
-    - severity: "CRITICAL"
-      message: "Total vCenter Memory usage is Critical ({{ vmware_ctx.resources.memory.usage_pct }}%)"
-      when: "{{ vmware_ctx.resources.memory.usage_pct | float > _cfg.memory_critical_pct | default(95) | float }}"
-  when: item.when | bool
-  loop_control:
-    label: "{{ item.severity }} {{ item.message }}"
+    _cpu_cap: "{{ _clusters | map(attribute='value.resource_summary.cpuCapacityMHz') | map('int') | sum }}"
+    _cpu_used: "{{ _clusters | map(attribute='value.resource_summary.cpuUsedMHz')     | map('int') | sum }}"
+    _mem_cap: "{{ _clusters | map(attribute='value.resource_summary.memCapacityMB')  | map('int') | sum }}"
+    _mem_used: "{{ _clusters | map(attribute='value.resource_summary.memUsedMB')      | map('int') | sum }}"
+    _cpu_pct: "{{ ((_cpu_used | int / [_cpu_cap | int, 1] | max) * 100) | round(1) }}"
+    _mem_pct: "{{ ((_mem_used | int / [_mem_cap | int, 1] | max) * 100) | round(1) }}"
+    _cpu_msg: "Total vCenter CPU usage is {{ 'critical' if _cpu_pct | float > vmware_cpu_critical_pct | default(90) | float else 'high' }} ({{ _cpu_pct }}%)"
+    _mem_msg: "Total vCenter memory usage is {{ 'critical' if _mem_pct | float > vmware_memory_critical_pct | default(90) | float else 'high' }} ({{ _mem_pct }}%)"

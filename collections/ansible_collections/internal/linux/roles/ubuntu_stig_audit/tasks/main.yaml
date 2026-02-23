@@ -1,23 +1,19 @@
-# Main Entry Point for Ubuntu Operations
-# SEQUENCE: Init -> Discovery -> Checks (Audit) -> Maintenance (Fix) -> Export
+---
+# internal.linux.ubuntu_stig_audit : tasks/main.yaml
 
-- name: Ubuntu Operations Wrapper
+- name: Ubuntu STIG Audit
   block:
-    - name: Checks - Health, Patching, & Security Audit
+    - name: "Ubuntu STIG | Run audit"
+      tags: [checks, stig, security]
       ansible.builtin.import_tasks: check.yaml
-      tags: ['checks']
 
-  # RESCUE: Only runs if something in the 'block' above FAILED
   rescue:
-    - name: Log Ubuntu Failure
+    - name: "Ubuntu STIG | Log failure"
       ansible.builtin.debug:
-        msg: "Ubuntu tasks failed on {{ inventory_hostname }}. Report will indicate failure."
-      # This registers a variable we can check in the summary report if needed
+        msg: "Ubuntu STIG audit failed on {{ inventory_hostname }} — export will indicate failure."
       register: _ubuntu_task_failure
 
-  # ALWAYS: Runs no matter what (Success OR Failure)
-  # This guarantees reports are generated even if a check crashes.
   always:
-    - name: Export - Reports & Fleet Summary
+    - name: "Ubuntu STIG | Export results"
+      tags: [always, export]
       ansible.builtin.import_tasks: export.yaml
-      tags: ['always', 'export']

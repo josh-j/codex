@@ -1,6 +1,0 @@
----
-# playbooks/site_ubuntu.yaml (Legacy Wrapper)
-# Redirects to: audit_ubuntu.yaml
-
-- name: Ubuntu System Audit
-  ansible.builtin.import_playbook: audit_ubuntu.yaml

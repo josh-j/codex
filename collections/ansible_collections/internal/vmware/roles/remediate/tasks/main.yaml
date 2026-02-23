@@ -1,4 +1,5 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/remediate/tasks/main.yaml
 # internal.vmware.remediate : main.yaml
 # Remediation entry point.
 # Relies on internal.vmware.discovery to populate vmware_ctx.

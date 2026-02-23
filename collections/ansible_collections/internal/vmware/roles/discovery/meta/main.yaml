@@ -1,6 +1,7 @@
 ---
+# collections/ansible_collections/internal/vmware/roles/discovery/meta/main.yaml
 galaxy_info:
-  author: Codex Automation Team
+  author: NCS
   description: VMware vCenter Inventory and Discovery
   license: MIT
   min_ansible_version: "2.9"

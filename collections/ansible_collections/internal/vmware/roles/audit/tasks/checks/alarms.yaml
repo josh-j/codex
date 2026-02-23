@@ -1,32 +1,29 @@
 ---
-# Alarm Audits
-- name: "Check: Critical Alarms Active"
-  ansible.builtin.include_role:
-    name: internal.core.reporting
-    tasks_from: alert
-  vars:
-    _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
-    ncs_alert_severity: "CRITICAL"
-    ncs_alert_category: "alarms"
-    ncs_alert_message: "{{ _alarms.metrics.critical_count | default(0) }} critical alarm(s) active in vCenter"
-    ncs_alert_details:
-      critical_count: "{{ _alarms.metrics.critical_count | default(0) }}"
-      warning_count: "{{ _alarms.metrics.warning_count | default(0) }}"
-    ncs_alert_affected_items: "{{ _alarms.by_severity.critical | default([]) }}"
-  when: (_alarms.metrics.critical_count | default(0) | int) > 0
+# internal.vmware.audit : checks/alarms.yaml
+#
+# Evaluates active vCenter alarms and appends to vmware_alerts.
 
-- name: "Check: Warning Alarms Active"
-  ansible.builtin.include_role:
-    name: internal.core.reporting
-    tasks_from: alert
+- name: Evaluate alarm alerts
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_alerts | default([]) + (checks | internal.core.build_alerts) }}"
   vars:
     _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
-    ncs_alert_severity: "WARNING"
-    ncs_alert_category: "alarms"
-    ncs_alert_message: "{{ _alarms.metrics.warning_count | default(0) }} warning alarm(s) active in vCenter"
-    ncs_alert_details:
-      warning_count: "{{ _alarms.metrics.warning_count | default(0) }}"
-    ncs_alert_affected_items: "{{ _alarms.by_severity.warning | default([]) }}"
-  when:
-    - (_alarms.metrics.warning_count | default(0) | int) > 0
-    - (_alarms.metrics.critical_count | default(0) | int) == 0
+    _critical_count: "{{ _alarms.metrics.critical_count | default(0) | int }}"
+    _warning_count: "{{ _alarms.metrics.warning_count  | default(0) | int }}"
+    checks:
+      - condition: "{{ _critical_count | int > 0 }}"
+        severity: CRITICAL
+        category: alarms
+        message: "{{ _critical_count }} critical alarm(s) active in vCenter"
+        detail:
+          critical_count: "{{ _critical_count }}"
+          warning_count: "{{ _warning_count }}"
+        affected_items: "{{ _alarms.by_severity.critical | default([]) }}"
+
+      - condition: "{{ _warning_count | int > 0 and _critical_count | int == 0 }}"
+        severity: WARNING
+        category: alarms
+        message: "{{ _warning_count }} warning alarm(s) active in vCenter"
+        detail:
+          warning_count: "{{ _warning_count }}"
+        affected_items: "{{ _alarms.by_severity.warning | default([]) }}"

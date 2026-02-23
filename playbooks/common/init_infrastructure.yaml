@@ -1,12 +1,15 @@
 ---
 # playbooks/common/init_infrastructure.yaml
-# Initialize shared run context and scheduling metadata.
+#
+# Initializes run_ctx for the infrastructure audit orchestrator.
+# Scheduling is disabled here - each domain play gates itself via
+# "'domain' in run_ctx.tasks" using the day_matrix in ncs_config.
 
 - name: Initialize Run Context
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Initialize run context
+    - name: Build run context
       ansible.builtin.import_tasks: tasks/init_run_ctx.yaml
       vars:
-        init_enable_scheduling: true
+        init_enable_scheduling: false

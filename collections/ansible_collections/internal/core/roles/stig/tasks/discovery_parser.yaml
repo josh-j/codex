@@ -1,28 +1,40 @@
 ---
-# collections/ansible_collections/internal/stig/roles/common/tasks/discovery_parser.yaml
+# internal.core.stig : tasks/discovery_parser.yaml
+#
+# Parses JSON output from a discovery script into a named namespace var.
+# Handles PowerCLI/script noise by extracting only the JSON block.
+#
+# Required vars:
+#   script_result:     register result from ansible.builtin.script
+#   generic_namespace: str  - var name to store results in (e.g. 'vsphere_ctx')
+#   json_data_key:     str  - key in parsed JSON containing the data list
 
-- name: "DISCOVERY | Parse Results"
+- name: "DISCOVERY | Parse script output"
   ansible.builtin.set_fact:
-    # [FIX] Use regex_search to extract the JSON block, ignoring any PowerCLI warnings above it
-    # '(?s)' enables DOTALL mode so . matches newlines
-    # '\{.*' matches from the first open brace to the end of the string
     _discovery_json: "{{ script_result.stdout | regex_search('(?s)\\{.*') | from_json }}"
   when:
     - script_result.rc == 0
     - script_result.stdout | trim | length > 0
 
-- name: "DISCOVERY | Map Data to Namespace"
+- name: "DISCOVERY | Store facts in namespace"
   ansible.builtin.set_fact:
-    # Use lookup('vars', ...) instead of vars[...]
     "{{ generic_namespace }}": >-
       {{
         lookup('vars', generic_namespace, default={})
-        | combine({'stig_facts': _discovery_json[json_data_key] | default([])}, recursive=True)
+        | combine({'stig_facts': _discovery_json[json_data_key] | default([])}, recursive=true)
       }}
-  when: _discovery_json.success | default(false)
+  when:
+    - _discovery_json is defined
+    - _discovery_json.success | default(false)
 
-- name: "DISCOVERY | Handle Failure"
+- name: "DISCOVERY | Store empty facts on failure"
   ansible.builtin.set_fact:
     "{{ generic_namespace }}": >-
-      {{ lookup('vars', generic_namespace, default={}) | combine({'stig_facts': []}, recursive=True) }}
-  when: not _discovery_json.success | default(false) or script_result.rc != 0
+      {{
+        lookup('vars', generic_namespace, default={})
+        | combine({'stig_facts': []}, recursive=true)
+      }}
+  when: >-
+    _discovery_json is not defined or
+    not (_discovery_json.success | default(false)) or
+    script_result.rc != 0
