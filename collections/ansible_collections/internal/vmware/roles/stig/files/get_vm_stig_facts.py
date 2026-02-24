@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# collections/ansible_collections/internal/stig/roles/vsphere/files/get_vm_stig_facts.py
+# collections/ansible_collections/internal/vmware/roles/stig/files/get_vm_stig_facts.py
 # NOTE: Only retrieves information -- no mutations/side-effects
 import json
 import logging

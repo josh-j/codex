@@ -3,7 +3,8 @@
 
 - name: Phase 3 | VMware Fleet & Node Report Generation
   vars:
-    _scripts_dir: "{{ playbook_dir.split('/playbooks')[0] }}/playbooks/scripts"
+    _playbooks_root: "{{ playbook_dir | dirname }}"
+    _scripts_dir: "{{ _playbooks_root }}/scripts"
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _vmware_report_dir: "{{ _reports_root }}/platform/vmware"
     _vmware_reporting_skip_keys: >-
