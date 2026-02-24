@@ -17,7 +17,7 @@
 {% set vmware_platform = platforms.get('vmware', {}) %}
 {% set security = site.get('security', {}) %}
 {% set stig_fleet = security.get('stig_fleet', {}) %}
-{% set stig_rows = stig_fleet.get('rows', []) %}
+{% set stig_fleet_rows = stig_fleet.get('rows', []) %}
 {% set compute = site.get('compute', {}) %}
 {% set compute_nodes = compute.get('nodes', []) %}
 
@@ -89,10 +89,10 @@
                         <tr>
                             <td><strong>Linux & Ubuntu Environment</strong></td>
                             <td>{{ linux_platform.get('asset_count', 0) }} {{ linux_platform.get('asset_label', 'Nodes') }}</td>
-                            {% set _badge = (linux_platform.get('health', 'OK')) | internal.core.status_badge_meta %}
+                            {% set _badge = (linux_platform.get('status', {}).get('raw', 'OK')) | internal.core.status_badge_meta %}
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
-                                <a href="{{ linux_platform.get('link', 'platform/ubuntu/ubuntu_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                <a href="{{ linux_platform.get('links', {}).get('fleet_dashboard', 'platform/ubuntu/ubuntu_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View Linux Fleet ↗
                                 </a>
                             </td>
@@ -100,10 +100,10 @@
                         <tr>
                             <td><strong>VMware vCenter Environment</strong></td>
                             <td>{{ vmware_platform.get('asset_count', 0) }} {{ vmware_platform.get('asset_label', 'Clusters') }}</td>
-                            {% set _badge = (vmware_platform.get('health', 'OK')) | internal.core.status_badge_meta %}
+                            {% set _badge = (vmware_platform.get('status', {}).get('raw', 'OK')) | internal.core.status_badge_meta %}
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
-                                <a href="{{ vmware_platform.get('link', 'platform/vmware/vmware_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                <a href="{{ vmware_platform.get('links', {}).get('fleet_dashboard', 'platform/vmware/vmware_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View VMware Fleet ↗
                                 </a>
                             </td>
@@ -115,11 +115,11 @@
 
         <section id="security" class="tab-content">
             <h2 class="sub-title">STIG Compliance Audit</h2>
-            {% for entry in stig_rows %}
+            {% for entry in stig_fleet_rows %}
             <div class="compliance-entry">
                 <div class="entry-header">
                     <h3>{{ entry.host }} <span class="text-muted" style="font-size: 0.85rem;">({{ entry.audit_type }})</span></h3>
-                    {% set _badge = (entry.health | default('UNKNOWN')) | internal.core.status_badge_meta %}
+                    {% set _badge = (entry.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
                     <span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span>
                 </div>
                 <div class="finding-grid">

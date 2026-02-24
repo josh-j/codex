@@ -116,9 +116,11 @@ class StigReportViewModelTests(unittest.TestCase):
         self.assertEqual(len(view["rows"]), 2)
         self.assertTrue(any(r["platform"] == "linux" for r in view["rows"]))
         self.assertTrue(any(r["platform"] == "vmware" for r in view["rows"]))
+        row = next(r for r in view["rows"] if r["platform"] == "linux")
+        self.assertEqual(row["status"]["raw"], "WARNING")
+        self.assertIn("node_report_latest", row["links"])
         self.assertGreaterEqual(len(view["findings_index"]["top_findings"]), 1)
 
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -62,11 +62,17 @@ class SiteReportViewModelTests(unittest.TestCase):
         self.assertEqual(view["totals"]["warning"], 1)
         self.assertEqual(view["platforms"]["linux"]["asset_count"], 1)
         self.assertEqual(view["platforms"]["vmware"]["asset_count"], 1)
+        self.assertEqual(view["platforms"]["linux"]["status"]["raw"], "CRITICAL")
+        self.assertEqual(view["platforms"]["vmware"]["status"]["raw"], "OK")
+        self.assertIn("fleet_dashboard", view["platforms"]["linux"]["links"])
+        self.assertIn("fleet_dashboard", view["platforms"]["vmware"]["links"])
         self.assertIn("stig_fleet", view["security"])
         self.assertEqual(len(view["security"]["stig_fleet"]["rows"]), 1)
         self.assertEqual(len(view["security"]["stig_fleet"]["rows"][0]["findings"]), 1)
-        self.assertEqual(len(view["security"]["stig_entries"]), 1)
+        self.assertEqual(view["security"]["stig_fleet"]["rows"][0]["status"]["raw"], "WARNING")
         self.assertEqual(len(view["compute"]["nodes"]), 1)
+        self.assertEqual(view["compute"]["nodes"][0]["status"]["raw"], "OK")
+        self.assertIn("fleet_dashboard", view["compute"]["nodes"][0]["links"])
 
 
 if __name__ == "__main__":

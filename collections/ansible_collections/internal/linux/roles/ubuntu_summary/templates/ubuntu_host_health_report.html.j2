@@ -14,7 +14,7 @@
 <body>
 <div class="app-layout">
     <main class="content">
-        {% set _host_badge = (node.get('health', 'UNKNOWN')) | internal.core.status_badge_meta(true) %}
+        {% set _host_badge = (node.get('status', {}).get('raw', 'UNKNOWN')) | internal.core.status_badge_meta(true) %}
         {% set sys_facts = node.get('sys_facts', {}) %}
         {% set alerts = node.get('alerts', []) %}
         <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">

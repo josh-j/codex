@@ -383,7 +383,7 @@ def build_linux_fleet_view(
             rows.append(
                 {
                     "name": hostname,
-                    "health": _status_from_health(linux_audit.get("health")),
+                    "status": {"raw": _status_from_health(linux_audit.get("health"))},
                     "distribution": linux_audit.get("distribution", "Ubuntu"),
                     "distribution_version": linux_audit.get("distribution_version", ""),
                     "summary": {
@@ -420,16 +420,6 @@ def build_linux_fleet_view(
         report_date=report_date,
         report_id=report_id,
     )
-    stig_rows = [
-        {
-            "name": row.get("host"),
-            "health": row.get("health"),
-            "open_findings": row.get("findings_open", 0),
-            "audit_type": row.get("audit_type"),
-            "findings": list(row.get("findings") or []),
-        }
-        for row in stig_fleet.get("rows", [])
-    ]
 
     return {
         "meta": {
@@ -448,7 +438,6 @@ def build_linux_fleet_view(
         "rows": rows,
         "active_alerts": active_alerts,
         "stig_fleet": stig_fleet,
-        "stig_rows": stig_rows,
     }
 
 
@@ -472,7 +461,7 @@ def build_linux_node_view(
         },
         "node": {
             "name": str(hostname),
-            "health": _status_from_health(linux_audit.get("health")),
+            "status": {"raw": _status_from_health(linux_audit.get("health"))},
             "distribution": linux_audit.get("distribution", "Linux"),
             "distribution_version": linux_audit.get("distribution_version", ""),
             "alerts": list(linux_audit.get("alerts") or []),
@@ -525,8 +514,9 @@ def build_site_dashboard_view(
                 compute_nodes.append(
                     {
                         "host": hostname,
-                        "status": status,
+                        "status": {"raw": status},
                         "clusters": clusters,
+                        "links": {"fleet_dashboard": "platform/vmware/vmware_health_report.html"},
                     }
                 )
                 for _ in range(vm_alerts["critical"]):
@@ -559,27 +549,24 @@ def build_site_dashboard_view(
             "linux": {
                 "asset_count": linux_count,
                 "asset_label": "Nodes",
-                "health": "CRITICAL" if any(a["audit_type"] == "system" and a["severity"] == "CRITICAL" for a in all_alerts) else "OK",
-                "link": "platform/ubuntu/ubuntu_health_report.html",
+                "status": {
+                    "raw": (
+                        "CRITICAL"
+                        if any(a["audit_type"] == "system" and a["severity"] == "CRITICAL" for a in all_alerts)
+                        else "OK"
+                    )
+                },
+                "links": {"fleet_dashboard": "platform/ubuntu/ubuntu_health_report.html"},
             },
             "vmware": {
                 "asset_count": vmware_count,
                 "asset_label": "Clusters",
-                "health": "CRITICAL" if c_alarms_critical > 0 else "OK",
-                "link": "platform/vmware/vmware_health_report.html",
+                "status": {"raw": "CRITICAL" if c_alarms_critical > 0 else "OK"},
+                "links": {"fleet_dashboard": "platform/vmware/vmware_health_report.html"},
             },
         },
         "security": {
             "stig_fleet": stig_fleet,
-            "stig_entries": [
-                {
-                    "host": row.get("host"),
-                    "audit_type": row.get("audit_type"),
-                    "health": row.get("health"),
-                    "alerts": list(row.get("findings") or []),
-                }
-                for row in stig_fleet.get("rows", [])
-            ],
         },
         "compute": {
             "nodes": compute_nodes,
@@ -824,11 +811,13 @@ def build_stig_fleet_view(
                     "host": hostname,
                     "platform": platform_name,
                     "audit_type": str(audit_type),
-                    "health": target["status"]["raw"],
+                    "status": dict(target.get("status") or {}),
                     "findings_open": open_count,
                     "critical": crit,
                     "warning": warn,
-                    "link": "%s/%s/health_report.html" % (link_base, hostname),
+                    "links": {
+                        "node_report_latest": "%s/%s/health_report.html" % (link_base, hostname),
+                    },
                     "findings": [f for f in findings if f.get("status") == "open"],
                 }
             )
