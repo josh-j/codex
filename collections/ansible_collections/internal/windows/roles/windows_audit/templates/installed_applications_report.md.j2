@@ -12,24 +12,24 @@
 | Application Name | Installed Version | Available Version | Publisher | Status |
 |------------------|-------------------|-------------------|-----------|--------|
 {% for cm_app in cm_apps %}
-{% set installed_app = None %}
-{% set cm_app_keywords = cm_app.Name | lower | regex_replace('[^a-z0-9 ]', '') | split(' ') | reject('in', ['server', 'client', 'the', 'and', 'or']) | list %}
-{% for app in installed_apps_list %}
-{% set app_keywords = app.DisplayName | lower | regex_replace('[^a-z0-9 ]', '') | split(' ') %}
-{% set match_count = 0 %}
-{% for keyword in cm_app_keywords %}
-{% if keyword | length > 3 and keyword in app_keywords %}
-{% set match_count = match_count + 1 %}
-{% endif %}
-{% endfor %}
-{% if match_count >= 2 or (match_count >= 1 and cm_app_keywords | length <= 2) %}
-{% set installed_app = app %}
-{% endif %}
-{% endfor %}
-{% set installed_version = installed_app.DisplayVersion if installed_app else "Not Installed" %}
-{% set available_version = cm_app.Version if cm_app.Version else "N/A" %}
-{% set status = "✓ Installed" if cm_app.InstallState == "Installed" else "⚠ Available" %}
-| {{ cm_app.Name }} | {{ installed_version }} | {{ available_version }} | {{ cm_app.Publisher }} | {{ status }} |
+     {% set installed_app = None %}
+     {% set cm_app_keywords = cm_app.Name | lower | regex_replace('[^a-z0-9 ]', '') | split(' ') | reject('in', ['server', 'client', 'the', 'and', 'or']) | list %}
+     {% for app in installed_apps_list %}
+         {% set app_keywords = app.DisplayName | lower | regex_replace('[^a-z0-9 ]', '') | split(' ') %}
+         {% set match_count = 0 %}
+         {% for keyword in cm_app_keywords %}
+             {% if keyword | length > 3 and keyword in app_keywords %}
+                 {% set match_count = match_count + 1 %}
+             {% endif %}
+         {% endfor %}
+         {% if match_count >= 2 or (match_count >= 1 and cm_app_keywords | length <= 2) %}
+             {% set installed_app = app %}
+         {% endif %}
+     {% endfor %}
+     {% set installed_version = installed_app.DisplayVersion if installed_app else "Not Installed" %}
+     {% set available_version = cm_app.Version if cm_app.Version else "N/A" %}
+     {% set status = "✓ Installed" if cm_app.InstallState == "Installed" else "⚠ Available" %}
+| {{ cm_app.name }} | {{ installed_version }} | {{ available_version }} | {{ cm_app.publisher }} | {{ status }} |
 {% endfor %}
 
 ---
@@ -39,7 +39,7 @@
 | Application Name | Version | Publisher | Install Date |
 |------------------|---------|-----------|--------------|
 {% for app in installed_apps_list | sort(attribute='DisplayName') %}
-| {{ app.DisplayName }} | {{ app.DisplayVersion | default('N/A') }} | {{ app.Publisher | default('N/A') }} | {{ app.InstallDate | default('N/A') }} |
+| {{ app.displayname }} | {{ app.displayversion | default('n/a') }} | {{ app.publisher | default('n/a') }} | {{ app.installdate | default('n/a') }} |
 {% endfor %}
 
 ---
@@ -54,9 +54,9 @@
 | Application Name | Version | Publisher |
 |------------------|---------|-----------|
 {% for cm_app in cm_apps %}
-{% if cm_app.InstallState != "Installed" %}
-| {{ cm_app.Name }} | {{ cm_app.Version | default('N/A') }} | {{ cm_app.Publisher }} |
-{% endif %}
+     {% if cm_app.InstallState != "Installed" %}
+| {{ cm_app.name }} | {{ cm_app.version | default('n/a') }} | {{ cm_app.publisher }} |
+     {% endif %}
 {% endfor %}
 
 ---

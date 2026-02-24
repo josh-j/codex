@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2017-18, Ansible Project
@@ -8,8 +7,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -271,19 +268,24 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, TaskError, vmware_argument_spec, wait_for_task,
-    find_dvspg_by_name, find_dvs_by_name, get_all_objs
+    PyVmomi,
+    TaskError,
+    find_dvs_by_name,
+    find_dvspg_by_name,
+    get_all_objs,
+    vmware_argument_spec,
+    wait_for_task,
 )
-from ansible.module_utils._text import to_native
 
 
 class PyVmomiHelper(PyVmomi):
     """Class to manage VMkernel configuration of an ESXi host system"""
 
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         if self.params['network']:
             self.network_type = self.params['network'].get('type')
             self.ip_address = self.params['network'].get('ip_address', None)
@@ -331,14 +333,14 @@ class PyVmomiHelper(PyVmomi):
                 vswitch_name=self.vswitch_name
             )
             if not self.port_group_obj:
-                module.fail_json(msg="Portgroup '%s' not found on vSS '%s'" % (self.port_group_name, self.vswitch_name))
+                module.fail_json(msg=f"Portgroup '{self.port_group_name}' not found on vSS '{self.vswitch_name}'")
         elif self.vds_name:
             self.dv_switch_obj = find_dvs_by_name(self.content, self.vds_name)
             if not self.dv_switch_obj:
-                module.fail_json(msg="vDS '%s' not found" % self.vds_name)
+                module.fail_json(msg=f"vDS '{self.vds_name}' not found")
             self.port_group_obj = find_dvspg_by_name(self.dv_switch_obj, self.port_group_name)
             if not self.port_group_obj:
-                module.fail_json(msg="Portgroup '%s' not found on vDS '%s'" % (self.port_group_name, self.vds_name))
+                module.fail_json(msg=f"Portgroup '{self.port_group_name}' not found on vDS '{self.vds_name}'")
 
         # find VMkernel Adapter
         if self.device:
@@ -467,13 +469,11 @@ class PyVmomiHelper(PyVmomi):
             results['device'] = vmk_device
         except vim.fault.NotFound as not_found:
             self.module.fail_json(
-                msg="Failed to find vmk to delete due to %s" %
-                to_native(not_found.msg)
+                msg=f"Failed to find vmk to delete due to {to_native(not_found.msg)}"
             )
         except vim.fault.HostConfigFault as host_config_fault:
             self.module.fail_json(
-                msg="Failed to delete vmk due host config issues : %s" %
-                to_native(host_config_fault.msg)
+                msg=f"Failed to delete vmk due host config issues : {to_native(host_config_fault.msg)}"
             )
 
         self.module.exit_json(**results)
@@ -672,23 +672,20 @@ class PyVmomiHelper(PyVmomi):
                         self.esxi_host_obj.configManager.networkSystem.UpdateVirtualNic(self.vnic.device, vnic_config)
                 except vim.fault.NotFound as not_found:
                     self.module.fail_json(
-                        msg="Failed to update vmk as virtual network adapter cannot be found %s" %
-                        to_native(not_found.msg)
+                        msg=f"Failed to update vmk as virtual network adapter cannot be found {to_native(not_found.msg)}"
                     )
                 except vim.fault.HostConfigFault as host_config_fault:
                     self.module.fail_json(
-                        msg="Failed to update vmk due to host config issues : %s" %
-                        to_native(host_config_fault.msg)
+                        msg=f"Failed to update vmk due to host config issues : {to_native(host_config_fault.msg)}"
                     )
                 except vim.fault.InvalidState as invalid_state:
                     self.module.fail_json(
-                        msg="Failed to update vmk as ipv6 address is specified in an ipv4 only system : %s" %
-                        to_native(invalid_state.msg)
+                        msg=f"Failed to update vmk as ipv6 address is specified in an ipv4 only system : {to_native(invalid_state.msg)}"
                     )
                 except vmodl.fault.InvalidArgument as invalid_arg:
                     self.module.fail_json(
                         msg="Failed to update vmk as IP address or Subnet Mask in the IP configuration"
-                        "are invalid or PortGroup does not exist : %s" % to_native(invalid_arg.msg)
+                        f"are invalid or PortGroup does not exist : {to_native(invalid_arg.msg)}"
                     )
 
             if changed_services:
@@ -798,7 +795,7 @@ class PyVmomiHelper(PyVmomi):
         vsan_config.networkInfo = vsan_system_config.networkInfo
         current_vsan_vnics = [portConfig.device for portConfig in vsan_system_config.networkInfo.port]
         changed = False
-        result = "%s NIC %s (currently enabled NICs: %s) : " % ("Enable" if enable_vsan else "Disable", self.vnic.device, current_vsan_vnics)
+        result = "{} NIC {} (currently enabled NICs: {}) : ".format("Enable" if enable_vsan else "Disable", self.vnic.device, current_vsan_vnics)
         if not enable_vsan:
             if self.vnic.device in current_vsan_vnics:
                 vsan_config.networkInfo.port = list(filter(lambda portConfig: portConfig.device != self.vnic.device, vsan_config.networkInfo.port))
@@ -825,7 +822,7 @@ class PyVmomiHelper(PyVmomi):
                     result += "Failed"
             except TaskError as task_err:
                 self.module.fail_json(
-                    msg="Failed to set service type to vsan for %s : %s" % (self.vnic.device, to_native(task_err))
+                    msg=f"Failed to set service type to vsan for {self.vnic.device} : {to_native(task_err)}"
                 )
         if self.module.check_mode:
             result += "Dry-run"
@@ -894,23 +891,20 @@ class PyVmomiHelper(PyVmomi):
             results['services'] = self.create_enabled_services_string()
         except vim.fault.AlreadyExists as already_exists:
             self.module.fail_json(
-                msg="Failed to add vmk as portgroup already has a virtual network adapter %s" %
-                to_native(already_exists.msg)
+                msg=f"Failed to add vmk as portgroup already has a virtual network adapter {to_native(already_exists.msg)}"
             )
         except vim.fault.HostConfigFault as host_config_fault:
             self.module.fail_json(
-                msg="Failed to add vmk due to host config issues : %s" %
-                to_native(host_config_fault.msg)
+                msg=f"Failed to add vmk due to host config issues : {to_native(host_config_fault.msg)}"
             )
         except vim.fault.InvalidState as invalid_state:
             self.module.fail_json(
-                msg="Failed to add vmk as ipv6 address is specified in an ipv4 only system : %s" %
-                to_native(invalid_state.msg)
+                msg=f"Failed to add vmk as ipv6 address is specified in an ipv4 only system : {to_native(invalid_state.msg)}"
             )
         except vmodl.fault.InvalidArgument as invalid_arg:
             self.module.fail_json(
                 msg="Failed to add vmk as IP address or Subnet Mask in the IP configuration "
-                "are invalid or PortGroup does not exist : %s" % to_native(invalid_arg.msg)
+                f"are invalid or PortGroup does not exist : {to_native(invalid_arg.msg)}"
             )
 
         # do service type configuration
@@ -966,8 +960,7 @@ class PyVmomiHelper(PyVmomi):
                     vnic_manager.DeselectVnicForNicType(service_type, vmk.device)
         except vmodl.fault.InvalidArgument as invalid_arg:
             self.module.fail_json(
-                msg="Failed to %s VMK service type '%s' on '%s' due to : %s" %
-                (operation, service_type, vmk.device, to_native(invalid_arg.msg))
+                msg=f"Failed to {operation} VMK service type '{service_type}' on '{vmk.device}' due to : {to_native(invalid_arg.msg)}"
             )
 
     def get_all_vmks_by_service_type(self):
@@ -1006,13 +999,11 @@ class PyVmomiHelper(PyVmomi):
             query = self.esxi_host_obj.configManager.virtualNicManager.QueryNetConfig(service_type)
         except vim.fault.HostConfigFault as config_fault:
             self.module.fail_json(
-                msg="Failed to get all VMKs for service type %s due to host config fault : %s" %
-                (service_type, to_native(config_fault.msg))
+                msg=f"Failed to get all VMKs for service type {service_type} due to host config fault : {to_native(config_fault.msg)}"
             )
         except vmodl.fault.InvalidArgument as invalid_argument:
             self.module.fail_json(
-                msg="Failed to get all VMKs for service type %s due to invalid arguments : %s" %
-                (service_type, to_native(invalid_argument.msg))
+                msg=f"Failed to get all VMKs for service type {service_type} due to invalid arguments : {to_native(invalid_argument.msg)}"
             )
 
         if not query.selectedVnic:

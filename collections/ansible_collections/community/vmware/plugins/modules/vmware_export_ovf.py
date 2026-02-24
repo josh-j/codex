@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Diane Wang <dianew@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -104,17 +101,19 @@ instance:
     sample: None
 '''
 
-import os
 import hashlib
-from time import sleep
+import os
 from threading import Thread
-from ansible.module_utils.urls import open_url
+from time import sleep
+
+from ansible.module_utils._text import to_bytes, to_text
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils._text import to_text, to_bytes
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
+from ansible.module_utils.urls import open_url
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
+
 try:
-    from pyVmomi import vim
     from pyVim import connect
+    from pyVmomi import vim
 except ImportError:
     pass
 
@@ -153,7 +152,7 @@ class LeaseProgressUpdater(Thread):
 
 class VMwareExportVmOvf(PyVmomi):
     def __init__(self, module):
-        super(VMwareExportVmOvf, self).__init__(module)
+        super().__init__(module)
         self.mf_file = ''
         self.ovf_dir = ''
         # set read device content chunk size to 2 MB
@@ -169,8 +168,7 @@ class VMwareExportVmOvf(PyVmomi):
             try:
                 os.makedirs(self.ovf_dir)
             except OSError as err:
-                self.module.fail_json(msg='Exception caught when create folder %s, with error %s'
-                                          % (self.ovf_dir, to_text(err)))
+                self.module.fail_json(msg=f'Exception caught when create folder {self.ovf_dir}, with error {to_text(err)}')
         self.mf_file = os.path.join(self.ovf_dir, vm_obj.name + '.mf')
 
     def download_device_files(self, headers, temp_target_disk, device_url, lease_updater, total_bytes_written,
@@ -186,11 +184,11 @@ class VMwareExportVmOvf(PyVmomi):
                 except Exception as err:
                     lease_updater.httpNfcLease.HttpNfcLeaseAbort()
                     lease_updater.stop()
-                    self.module.fail_json(msg='Exception caught when getting %s, %s' % (device_url, to_text(err)))
+                    self.module.fail_json(msg=f'Exception caught when getting {device_url}, {to_text(err)}')
                 if not response:
                     lease_updater.httpNfcLease.HttpNfcLeaseAbort()
                     lease_updater.stop()
-                    self.module.fail_json(msg='Getting %s failed' % device_url)
+                    self.module.fail_json(msg=f'Getting {device_url} failed')
                 if response.getcode() >= 400:
                     lease_updater.httpNfcLease.HttpNfcLeaseAbort()
                     lease_updater.stop()
@@ -280,7 +278,7 @@ class VMwareExportVmOvf(PyVmomi):
                     continue
                 if http_nfc_lease.state == vim.HttpNfcLease.State.error:
                     lease_updater.stop()
-                    self.module.fail_json(msg='Get HTTP NFC lease error %s.' % http_nfc_lease.state.error[0].fault)
+                    self.module.fail_json(msg=f'Get HTTP NFC lease error {http_nfc_lease.state.error[0].fault}.')
 
             # generate ovf file
             ovf_manager = self.content.ovfManager
@@ -296,7 +294,7 @@ class VMwareExportVmOvf(PyVmomi):
             if vm_descriptor_result.error:
                 http_nfc_lease.HttpNfcLeaseAbort()
                 lease_updater.stop()
-                self.module.fail_json(msg='Create VM descriptor file error %s.' % vm_descriptor_result.error)
+                self.module.fail_json(msg=f'Create VM descriptor file error {vm_descriptor_result.error}.')
             else:
                 vm_descriptor = vm_descriptor_result.ovfDescriptor
                 ovf_descriptor_path = os.path.join(self.ovf_dir, ovf_descriptor_name + '.ovf')
@@ -315,7 +313,7 @@ class VMwareExportVmOvf(PyVmomi):
             kwargs = {
                 'changed': False,
                 'failed': True,
-                'msg': "get exception: %s" % to_text(err),
+                'msg': f"get exception: {to_text(err)}",
             }
             http_nfc_lease.HttpNfcLeaseAbort()
             lease_updater.stop()

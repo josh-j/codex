@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # This module is also sponsored by E.T.A.I. (www.etai.fr)
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -280,19 +277,24 @@ snapshot_results:
 '''
 
 import time
+
 try:
     from pyVmomi import vim
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, list_snapshots, vmware_argument_spec
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    list_snapshots,
+    vmware_argument_spec,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
     @staticmethod
     def wait_for_task(task):
@@ -331,7 +333,7 @@ class PyVmomiHelper(PyVmomi):
             if snap_obj:
                 # Snapshot already exists, do not anything.
                 self.module.exit_json(changed=False,
-                                      msg="Snapshot named [%(snapshot_name)s] already exists and is current." % self.module.params)
+                                      msg="Snapshot named [{snapshot_name}] already exists and is current.".format(**self.module.params))
         # Check if Virtual Machine provides capabilities for Quiesce and Memory Snapshots
         if vm.capability.quiescedSnapshotsSupported:
             quiesce = self.module.params['quiesce']
@@ -346,16 +348,16 @@ class PyVmomiHelper(PyVmomi):
                                      quiesce)
         except vim.fault.RestrictedVersion as exc:
             self.module.fail_json(msg="Failed to take snapshot due to VMware Licence"
-                                      " restriction : %s" % to_native(exc.msg))
+                                      f" restriction : {to_native(exc.msg)}")
         except Exception as exc:
             self.module.fail_json(msg="Failed to create snapshot of virtual machine"
-                                      " %s due to %s" % (self.module.params['name'], to_native(exc)))
+                                      " {} due to {}".format(self.module.params['name'], to_native(exc)))
         return task
 
     def rename_snapshot(self, vm):
         if vm.snapshot is None:
             vm_id = self.module.params.get('uuid') or self.module.params.get('name') or self.params.get('moid')
-            self.module.fail_json(msg="virtual machine - %s doesn't have any snapshots" % vm_id)
+            self.module.fail_json(msg=f"virtual machine - {vm_id} doesn't have any snapshots")
 
         snap_obj = self.get_snapshots_by_name_recursively(vm.snapshot.rootSnapshotList,
                                                           self.module.params["snapshot_name"])
@@ -372,18 +374,17 @@ class PyVmomiHelper(PyVmomi):
         else:
             vm_id = self.module.params.get('uuid') or self.module.params.get('name') or self.params.get('moid')
             self.module.exit_json(
-                msg="Couldn't find any snapshots with specified name: %s on VM: %s" %
-                    (self.module.params["snapshot_name"], vm_id))
+                msg="Couldn't find any snapshots with specified name: {} on VM: {}".format(self.module.params["snapshot_name"], vm_id))
         return task
 
     def remove_or_revert_snapshot(self, vm):
         if vm.snapshot is None:
             vm_name = (self.module.params.get('uuid') or self.module.params.get('name'))
             if self.module.params.get('state') == 'revert':
-                self.module.fail_json(msg="virtual machine - %s does not"
-                                          " have any snapshots to revert to." % vm_name)
-            self.module.exit_json(msg="virtual machine - %s doesn't have any"
-                                      " snapshots to remove." % vm_name)
+                self.module.fail_json(msg=f"virtual machine - {vm_name} does not"
+                                          " have any snapshots to revert to.")
+            self.module.exit_json(msg=f"virtual machine - {vm_name} doesn't have any"
+                                      " snapshots to remove.")
 
         if self.module.params["snapshot_name"]:
             snap_obj = self.get_snapshots_by_name_recursively(vm.snapshot.rootSnapshotList,
@@ -404,7 +405,7 @@ class PyVmomiHelper(PyVmomi):
         else:
             vm_id = self.module.params.get('uuid') or self.module.params.get('name') or self.params.get('moid')
             self.module.exit_json(msg="Couldn't find any snapshots with"
-                                      " specified name: %s on VM: %s" % (self.module.params["snapshot_name"], vm_id))
+                                      " specified name: {} on VM: {}".format(self.module.params["snapshot_name"], vm_id))
 
         return task
 
@@ -479,10 +480,10 @@ def main():
 
     if not vm:
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg="Unable to manage snapshots for non-existing VM %s" % vm_id)
+        module.fail_json(msg=f"Unable to manage snapshots for non-existing VM {vm_id}")
 
     if not (module.params['snapshot_name'] or module.params['snapshot_id']) and module.params['state'] != 'remove_all':
-        module.fail_json(msg="snapshot_name param is required when state is '%(state)s'" % module.params)
+        module.fail_json(msg="snapshot_name param is required when state is '{state}'".format(**module.params))
 
     result = pyv.apply_snapshot_op(vm)
 

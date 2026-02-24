@@ -6,15 +6,17 @@ from urllib.parse import unquote
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        safe_list,
         to_float,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "reporting_primitives.py"
     _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     to_float = _mod.to_float
+    safe_list = _mod.safe_list
 
 
 def enrich_snapshots(snapshots, owner_map=None):
@@ -32,10 +34,12 @@ def enrich_snapshots(snapshots, owner_map=None):
     Returns:
         list of enriched snapshot dicts
     """
-    owner_map = owner_map or {}
+    owner_map = dict(owner_map or {})
     results = []
 
-    for snap in snapshots:
+    for snap in safe_list(snapshots):
+        if not isinstance(snap, dict):
+            continue
         vm_name = snap.get("vm_name", "unknown")
         results.append(
             {

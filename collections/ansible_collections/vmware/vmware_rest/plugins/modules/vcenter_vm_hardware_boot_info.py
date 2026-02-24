@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 # Copyright: (c) 2021, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 # template: header.j2
@@ -211,7 +210,7 @@ async def entry_point(module, session):
 
 
 async def _info(params, session):
-    payload_format = list(PAYLOAD_FORMAT.values())[0]
+    payload_format = next(iter(PAYLOAD_FORMAT.values()))
     _in_query_parameters = payload_format["query"].keys()
     _url = ("https://{vcenter_hostname}" "/api/vcenter/vm/{vm}/hardware/boot").format(
         **params

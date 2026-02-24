@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -111,14 +108,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareServiceManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareServiceManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.options = self.params.get('options', dict())
@@ -185,10 +182,10 @@ class VmwareServiceManager(PyVmomi):
                 if service.key == service_name:
                     return service.running, service.policy
 
-        msg = "Failed to find '%s' service on host system '%s'" % (service_name, host.name)
+        msg = f"Failed to find '{service_name}' service on host system '{host.name}'"
         cluster_name = self.params.get('cluster_name', None)
         if cluster_name:
-            msg += " located on cluster '%s'" % cluster_name
+            msg += f" located on cluster '{cluster_name}'"
         msg += ", please check if you have specified a valid ESXi service name."
         self.module.fail_json(msg=msg)
 

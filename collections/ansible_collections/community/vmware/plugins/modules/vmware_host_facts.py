@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Wei Gao <gaowei3@qq.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -220,14 +217,14 @@ ansible_facts:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.common.text.formatters import bytes_to_human
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
-    vmware_argument_spec,
+    ansible_date_time_facts,
     find_obj,
-    ansible_date_time_facts
+    vmware_argument_spec,
 )
 
 try:
@@ -240,7 +237,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_clien
 
 class VMwareHostFactManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostFactManager, self).__init__(module)
+        super().__init__(module)
         esxi_host_name = self.params.get('esxi_hostname', None)
         if self.is_vcenter():
             if esxi_host_name is None:
@@ -302,7 +299,7 @@ class VMwareHostFactManager(PyVmomi):
                 'vsan_health': 'NA',
             }
         except Exception as err:
-            self.module.fail_json(msg="Unable to query VSAN status due to %s" % to_native(err))
+            self.module.fail_json(msg=f"Unable to query VSAN status due to {to_native(err)}")
 
         return {
             'vsan_cluster_uuid': status.uuid,

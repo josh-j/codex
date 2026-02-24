@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (C) 2022, Red Hat
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
@@ -37,7 +34,6 @@ def run_module():
 
 
 def main():
-    from ansible_collections.cloud.common.plugins.module_utils import turbo_demo
 
     run_module()
 

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, Ansible Project
 # Copyright: (c) 2020, Dustin Scott <sdustin@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -109,14 +106,14 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware_spbm import SPBM
 from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
+from ansible_collections.community.vmware.plugins.module_utils.vmware_spbm import SPBM
 
 
 class VmwareStoragePolicyManager(SPBM):
     def __init__(self, module):
-        super(VmwareStoragePolicyManager, self).__init__(module)
+        super().__init__(module)
         self.rest_client = VmwareRestClient(module)
 
     #
@@ -315,12 +312,12 @@ class VmwareStoragePolicyManager(SPBM):
             # ensure if the category exists
             category_result = self.rest_client.get_category_by_name(self.params.get('tag_category'))
             if category_result is None:
-                self.module.fail_json(msg="%s is not found in vCenter Server tag categories" % self.params.get('tag_category'))
+                self.module.fail_json(msg="{} is not found in vCenter Server tag categories".format(self.params.get('tag_category')))
 
             # ensure if the tag exists
             tag_result = self.rest_client.get_tag_by_category_name(self.params.get('tag_name'), self.params.get('tag_category'))
             if tag_result is None:
-                self.module.fail_json(msg="%s is not found in vCenter Server tags" % self.params.get('tag_name'))
+                self.module.fail_json(msg="{} is not found in vCenter Server tags".format(self.params.get('tag_name')))
 
             # loop through and update the first match
             for policy in policies:

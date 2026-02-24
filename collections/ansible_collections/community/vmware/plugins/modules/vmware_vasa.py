@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Pure Storage, Inc.
 # Author(s): Eugenio Grosso, <eugenio.grosso@purestorage.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -88,18 +85,15 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import (
-    SMS,
-    TaskError,
-    wait_for_sms_task)
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
+from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import SMS, TaskError, wait_for_sms_task
 
 
 class VMwareVASA(SMS):
     def __init__(self, module):
-        super(VMwareVASA, self).__init__(module)
+        super().__init__(module)
         self.vasa_name = module.params['vasa_name']
         self.vasa_url = module.params['vasa_url']
         self.vasa_username = module.params['vasa_username']
@@ -176,10 +170,10 @@ class VMwareVASA(SMS):
             self.module.exit_json(changed=changed, result=result)
         except TaskError as task_err:
             self.module.fail_json(msg="Failed to register VASA provider"
-                                      " due to task exception %s" % to_native(task_err))
+                                      f" due to task exception {to_native(task_err)}")
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to register VASA"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
     def state_unregister_vasa(self):
         """
@@ -195,7 +189,7 @@ class VMwareVASA(SMS):
             self.module.exit_json(changed=changed, result=result)
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to unregister VASA"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
     def state_exit_unchanged(self):
         """
@@ -218,9 +212,8 @@ class VMwareVASA(SMS):
                 provider_info = provider.QueryProviderInfo()
                 if provider_info.name == self.vasa_name:
                     if provider_info.url != self.vasa_url:
-                        raise Exception("VASA provider '%s' URL '%s' "
-                                        "is inconsistent  with task parameter '%s'"
-                                        % (self.vasa_name, provider_info.url, self.vasa_url))
+                        raise Exception(f"VASA provider '{self.vasa_name}' URL '{provider_info.url}' "
+                                        f"is inconsistent  with task parameter '{self.vasa_url}'")
                     self.vasa_provider_info = provider_info
                     break
             if self.vasa_provider_info is None:
@@ -228,7 +221,7 @@ class VMwareVASA(SMS):
             return 'present'
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to check configuration"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
 
 def main():

@@ -121,7 +121,7 @@ def build_site_dashboard_view(
             },
             "vmware": {
                 "asset_count": vmware_count,
-                "asset_label": "Clusters",
+                "asset_label": "vCenters",
                 "status": {"raw": vmware_status},
                 "links": {"fleet_dashboard": "platform/vmware/vmware_health_report.html"},
             },

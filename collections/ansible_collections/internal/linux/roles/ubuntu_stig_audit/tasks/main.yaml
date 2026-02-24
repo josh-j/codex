@@ -5,6 +5,9 @@
 # Phase 0 | Preconditions / Input Validation
 # =============================================================================
 
+- name: "Ubuntu STIG | Phase 0 | Gather service facts"
+  ansible.builtin.service_facts:
+
 - name: "Ubuntu STIG | Phase 0 | Validate discovery data exists"
   ansible.builtin.include_role:
     name: internal.core.common

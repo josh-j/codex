@@ -4,6 +4,10 @@ name: core
 version: 1.0.0
 readme: README.md
 authors:
-  - NCS Operations
-description: Core utilities, plugins, and filters for NCS Ansible automation.
-license: "license"
+  - Codex Team
+description: Core utilities, plugins, and filters for Ansible reporting.
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - monitoring
+repository: https://github.com/example/codex

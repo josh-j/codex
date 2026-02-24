@@ -17,5 +17,3 @@
     mode: "{{ ncs_reporting_template_mode | default('0644') }}"
   loop: "{{ (ncs_reporting_hosts_map | default({})) | dict2items }}"
   when: item.key not in (ncs_reporting_skip_keys | default('' | internal.core.report_skip_keys))
-
-

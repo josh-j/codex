@@ -1,14 +1,10 @@
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import json
 import unittest
-
 from unittest import mock
 
 from ansible.module_utils import basic
 from ansible.module_utils._text import to_bytes
-
 from ansible_collections.community.vmware.plugins.modules import vmware_host_sriov
 
 
@@ -55,7 +51,7 @@ def get_bin_path(self, arg, required=False):
         return "/usr/bin/my_command"
     else:
         if required:
-            fail_json(msg="%r not found !" % arg)
+            fail_json(msg=f"{arg!r} not found !")
 
 
 data_sanitize_params = [

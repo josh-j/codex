@@ -1,8 +1,13 @@
 ---
-# collections/ansible_collections/internal/linux/galaxy.yml
 namespace: internal
 name: linux
-version: 0.0.1
+version: 1.0.0
 readme: README.md
 authors:
-  - Internal
+  - Codex Team
+description: Linux auditing and reporting roles.
+license: ["GPL-3.0-or-later"]
+tags:
+  - linux
+  - security
+repository: https://github.com/example/codex

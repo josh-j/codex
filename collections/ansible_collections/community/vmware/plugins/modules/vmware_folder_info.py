@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, David Hewitt <davidmhewitt@gmail.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -131,29 +128,29 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareFolderInfoManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareFolderInfoManager, self).__init__(module)
+        super().__init__(module)
         self.dc_name = self.params['datacenter']
 
     def gather_folder_info(self):
         datacenter = self.find_datacenter_by_name(self.dc_name)
         if datacenter is None:
-            self.module.fail_json(msg="Failed to find the datacenter %s" % self.dc_name)
+            self.module.fail_json(msg=f"Failed to find the datacenter {self.dc_name}")
 
         folder_trees = {}
-        folder_trees['vmFolders'] = self.build_folder_tree(datacenter.vmFolder, "/%s/vm" % self.dc_name)
-        folder_trees['hostFolders'] = self.build_folder_tree(datacenter.hostFolder, "/%s/host" % self.dc_name)
-        folder_trees['networkFolders'] = self.build_folder_tree(datacenter.networkFolder, "/%s/network" % self.dc_name)
-        folder_trees['datastoreFolders'] = self.build_folder_tree(datacenter.datastoreFolder, "/%s/datastore" % self.dc_name)
+        folder_trees['vmFolders'] = self.build_folder_tree(datacenter.vmFolder, f"/{self.dc_name}/vm")
+        folder_trees['hostFolders'] = self.build_folder_tree(datacenter.hostFolder, f"/{self.dc_name}/host")
+        folder_trees['networkFolders'] = self.build_folder_tree(datacenter.networkFolder, f"/{self.dc_name}/network")
+        folder_trees['datastoreFolders'] = self.build_folder_tree(datacenter.datastoreFolder, f"/{self.dc_name}/datastore")
 
-        flat_folder_info = self.build_flat_folder_tree(datacenter.vmFolder, '/%s/vm' % self.dc_name)
-        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.hostFolder, "/%s/host" % self.dc_name))
-        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.networkFolder, "/%s/network" % self.dc_name))
-        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.datastoreFolder, "/%s/datastore" % self.dc_name))
+        flat_folder_info = self.build_flat_folder_tree(datacenter.vmFolder, f'/{self.dc_name}/vm')
+        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.hostFolder, f"/{self.dc_name}/host"))
+        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.networkFolder, f"/{self.dc_name}/network"))
+        flat_folder_info.extend(self.build_flat_folder_tree(datacenter.datastoreFolder, f"/{self.dc_name}/datastore"))
 
         self.module.exit_json(
             changed=False,
@@ -179,7 +176,7 @@ class VmwareFolderInfoManager(PyVmomi):
                 if child == folder:
                     continue
                 if isinstance(child, vim.Folder):
-                    ret.extend(self.build_flat_folder_tree(child, "%s/%s" % (path, child.name)))
+                    ret.extend(self.build_flat_folder_tree(child, f"{path}/{child.name}"))
         return ret
 
     def build_folder_tree(self, folder, path):
@@ -198,7 +195,7 @@ class VmwareFolderInfoManager(PyVmomi):
                 if child == folder:
                     continue
                 if isinstance(child, vim.Folder):
-                    ctree = self.build_folder_tree(child, "%s/%s" % (path, child.name))
+                    ctree = self.build_folder_tree(child, f"{path}/{child.name}")
                     tree['subfolders'][child.name] = dict.copy(ctree)
         return tree
 

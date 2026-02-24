@@ -1,14 +1,11 @@
 #!/usr/bin/python
-#  -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Diane Wang <dianew@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
@@ -153,7 +150,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import (
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
     def _gather_vgpu_profile_facts(self, vm_obj):
         """
@@ -225,7 +222,7 @@ class PyVmomiHelper(PyVmomi):
                 failed = True
                 self.module.fail_json(
                     msg="Failed to delete vGPU profile"
-                    " '%s' from vm %s." % (vgpu_prfl, vm_obj.name),
+                    f" '{vgpu_prfl}' from vm {vm_obj.name}.",
                     detail=exc.msg,
                 )
         return changed, failed
@@ -242,7 +239,7 @@ class PyVmomiHelper(PyVmomi):
         vgpu_profile_name = self._get_vgpu_profiles_name(vm_obj, vgpu_prfl)
         if vgpu_profile_name is None:
             self.module.fail_json(
-                msg="vGPU Profile '%s'" " does not exist." % vgpu_prfl
+                msg=f"vGPU Profile '{vgpu_prfl}'" " does not exist."
             )
 
         changed, failed = self._add_vgpu_profile_to_vm(
@@ -286,7 +283,7 @@ class PyVmomiHelper(PyVmomi):
                 failed = True
                 self.module.fail_json(
                     msg="Failed to add vGPU Profile"
-                    " '%s' to vm %s." % (vgpu_prfl, vm_obj.name),
+                    f" '{vgpu_prfl}' to vm {vm_obj.name}.",
                     detail=exc.msg,
                 )
         else:
@@ -368,7 +365,7 @@ def main():
             or module.params.get("moid")
         )
         module.fail_json(
-            msg="Unable to manage vGPU profile for non-existing VM %s" % vm_id
+            msg=f"Unable to manage vGPU profile for non-existing VM {vm_id}"
         )
 
     if module.params["state"] == "present":

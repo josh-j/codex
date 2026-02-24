@@ -17,6 +17,8 @@ def parse_iso_epoch(raw):
 
     # Normalise common variations to a format strptime can handle or fromisoformat
     clean = raw.strip().replace(" ", "T")
+    if clean.endswith("Z"):
+        clean = clean[:-1] + "+00:00"
 
     try:
         # try fromisoformat first (Python 3.7+)

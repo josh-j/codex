@@ -1,8 +1,17 @@
 """Reusable reporting/alert primitives shared across collection plugins."""
 
 
+def safe_list(value):
+    if isinstance(value, str):
+        return []
+    try:
+        return list(value or [])
+    except (TypeError, ValueError):
+        return []
+
+
 def as_list(value):
-    return list(value or [])
+    return safe_list(value)
 
 
 def to_int(value, default=0):

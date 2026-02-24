@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2016, IBM Corp
 # Author(s): Andreas Nafpliotis <nafpliot@de.ibm.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -72,7 +69,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 class VMwareLocalUserManager(PyVmomi):
 
     def __init__(self, module):
-        super(VMwareLocalUserManager, self).__init__(module)
+        super().__init__(module)
         self.local_user_name = self.module.params['local_user_name']
         self.local_user_password = self.module.params['local_user_password']
         self.local_user_description = self.module.params['local_user_description']
@@ -80,9 +77,9 @@ class VMwareLocalUserManager(PyVmomi):
 
         if self.is_vcenter():
             self.module.fail_json(msg="Failed to get local account manager settings "
-                                      "from ESXi server: %s" % self.module.params['hostname'],
-                                  details="It seems that %s is a vCenter server instead of an "
-                                          "ESXi server" % self.module.params['hostname'])
+                                      "from ESXi server: {}".format(self.module.params['hostname']),
+                                  details="It seems that {} is a vCenter server instead of an "
+                                          "ESXi server".format(self.module.params['hostname']))
 
     def process_state(self):
         try:

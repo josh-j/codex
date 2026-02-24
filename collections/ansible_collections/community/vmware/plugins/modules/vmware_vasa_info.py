@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Pure Storage, Inc.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -62,13 +59,13 @@ vasa_providers:
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import SMS
 from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
+from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import SMS
 
 
 class SMSClient(SMS):
     def __init__(self, module):
-        super(SMSClient, self).__init__(module)
+        super().__init__(module)
 
     def get_vasa_provider_info(self):
         self.get_sms_connection()

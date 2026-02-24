@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -69,9 +66,13 @@ folders:
 '''
 
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_vm_by_id
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_vm_by_id,
+    vmware_argument_spec,
+)
 
 try:
     from pyVmomi import vim
@@ -81,7 +82,7 @@ except ImportError:
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.name = self.params['name']
         self.uuid = self.params['uuid']
         self.use_instance_uuid = self.params['use_instance_uuid']
@@ -96,7 +97,7 @@ class PyVmomiHelper(PyVmomi):
             else:
                 vm_obj = find_vm_by_id(self.content, vm_id=self.uuid, vm_id_type="uuid")
             if vm_obj is None:
-                self.module.fail_json(msg="Failed to find the virtual machine with UUID : %s" % self.uuid)
+                self.module.fail_json(msg=f"Failed to find the virtual machine with UUID : {self.uuid}")
             vms = [vm_obj]
 
         elif self.name:
@@ -134,7 +135,7 @@ def main():
         try:
             module.exit_json(folders=folders)
         except Exception as exc:
-            module.fail_json(msg="Folder enumeration failed with exception %s" % to_native(exc))
+            module.fail_json(msg=f"Folder enumeration failed with exception {to_native(exc)}")
     else:
         module.fail_json(msg="Unable to find folders for virtual machine %s" % (
             module.params.get('name')

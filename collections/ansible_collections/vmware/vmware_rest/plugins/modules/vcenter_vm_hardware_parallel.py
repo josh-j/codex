@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 # Copyright: (c) 2021, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 # template: header.j2
@@ -407,7 +406,7 @@ async def _create(params, session):
             if isinstance(_json, str):  # 7.0.2 and greater
                 _id = _json  # TODO: fetch the object
             elif isinstance(_json, dict) and "value" not in _json:
-                _id = list(_json["value"].values())[0]
+                _id = next(iter(_json["value"].values()))
             elif isinstance(_json, dict) and "value" in _json:
                 _id = _json["value"]
             _json_device_info = await get_device_info(session, _url, _id)

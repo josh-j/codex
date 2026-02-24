@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -187,10 +184,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, TaskError, find_dvs_by_name, vmware_argument_spec, wait_for_task
+    PyVmomi,
+    TaskError,
+    find_dvs_by_name,
+    vmware_argument_spec,
+    wait_for_task,
 )
 
 
@@ -198,7 +199,7 @@ class VMwareDvSwitchUplinkPortgroup(PyVmomi):
     """Class to manage a uplink portgroup on a Distributed Virtual Switch"""
 
     def __init__(self, module):
-        super(VMwareDvSwitchUplinkPortgroup, self).__init__(module)
+        super().__init__(module)
         self.switch_name = self.module.params['switch']
         self.uplink_pg_name = self.params['name']
         self.uplink_pg_description = self.params['description']
@@ -215,7 +216,7 @@ class VMwareDvSwitchUplinkPortgroup(PyVmomi):
         self.lacp_mode = self.params['lacp'].get('mode')
         self.dvs = find_dvs_by_name(self.content, self.switch_name)
         if self.dvs is None:
-            self.module.fail_json(msg="Failed to find DVS %s" % self.switch_name)
+            self.module.fail_json(msg=f"Failed to find DVS {self.switch_name}")
         self.support_mode = self.dvs.config.lacpApiVersion
 
     def ensure(self):
@@ -413,7 +414,7 @@ class VMwareDvSwitchUplinkPortgroup(PyVmomi):
                     task = self.dvs.config.uplinkPortgroup[0].ReconfigureDVPortgroup_Task(uplink_pg_spec)
                     wait_for_task(task)
                 except TaskError as invalid_argument:
-                    self.module.fail_json(msg="Failed to update uplink portgroup : %s" % to_native(invalid_argument))
+                    self.module.fail_json(msg=f"Failed to update uplink portgroup : {to_native(invalid_argument)}")
         else:
             message = "Uplink portgroup already configured properly"
         results['changed'] = changed

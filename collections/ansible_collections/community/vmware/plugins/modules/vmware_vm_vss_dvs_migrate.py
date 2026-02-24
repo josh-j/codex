@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -52,11 +49,15 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    HAS_PYVMOMI, connect_to_api, get_all_objs,
-    vmware_argument_spec, wait_for_task)
+    HAS_PYVMOMI,
+    connect_to_api,
+    get_all_objs,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
-class VMwareVmVssDvsMigrate(object):
+class VMwareVmVssDvsMigrate:
     def __init__(self, module):
         self.module = module
         self.content = connect_to_api(module)
@@ -121,7 +122,7 @@ class VMwareVmVssDvsMigrate(object):
             self.vm = self.find_vm_by_name()
 
             if self.vm is None:
-                self.module.fail_json(msg="A virtual machine with name %s does not exist" % self.vm_name)
+                self.module.fail_json(msg=f"A virtual machine with name {self.vm_name} does not exist")
             for device in self.vm.config.hardware.device:
                 if isinstance(device, vim.vm.device.VirtualEthernetCard):
                     if isinstance(device.backing, vim.vm.device.VirtualEthernetCard.DistributedVirtualPortBackingInfo):

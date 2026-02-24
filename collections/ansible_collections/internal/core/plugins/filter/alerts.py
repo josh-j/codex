@@ -23,18 +23,21 @@
 
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
         canonical_severity,
+        safe_list,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "reporting_primitives.py"
     _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     canonical_severity = _mod.canonical_severity
+    safe_list = _mod.safe_list
 
 DOCUMENTATION = """
   name: build_alerts
@@ -114,14 +117,11 @@ def build_alerts(checks):
 
     Also preserves optional enrichment fields (e.g., affected_items) if present.
     """
+    checks = safe_list(checks)
     if not checks:
         return []
 
     alerts = []
-    # Defensive: callers sometimes pass a single mapping; accept it.
-    if isinstance(checks, dict):
-        checks = [checks]
-
     for check in checks:
         if not isinstance(check, dict):
             continue
@@ -191,11 +191,12 @@ def health_rollup(alerts):
     Returns overall health status based on the highest severity in a list of alerts.
     Returns: 'CRITICAL', 'WARNING', or 'HEALTHY'
     """
+    alerts = safe_list(alerts)
     if not alerts:
         return "HEALTHY"
 
     severities = set()
-    for a in alerts or []:
+    for a in alerts:
         if isinstance(a, dict):
             severities.add(canonical_severity(a.get("severity", "INFO")))
 
@@ -211,8 +212,8 @@ def summarize_alerts(alerts):
     Returns a summary dict tallying alert counts by severity and category.
     Eliminates complex Jinja2 loops in roles.
     """
-    alerts = alerts or []
-    summary = {
+    alerts = safe_list(alerts)
+    summary: dict[str, Any] = {
         "total": len(alerts),
         "critical_count": 0,
         "warning_count": 0,

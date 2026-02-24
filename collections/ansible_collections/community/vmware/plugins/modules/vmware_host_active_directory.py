@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -102,16 +99,21 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, TaskError, vmware_argument_spec, wait_for_task
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VmwareHostAdAuthentication(PyVmomi):
     """Manage Active Directory Authentication for an ESXi host system"""
 
     def __init__(self, module):
-        super(VmwareHostAdAuthentication, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name')
         esxi_host_name = self.params.get('esxi_hostname')
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -184,7 +186,7 @@ class VmwareHostAdAuthentication(PyVmomi):
                                 wait_for_task(task)
                             except TaskError as task_err:
                                 self.module.fail_json(
-                                    msg="Failed to join domain : %s" % to_native(task_err)
+                                    msg=f"Failed to join domain : {to_native(task_err)}"
                                 )
                             changed = results['result'][host.name]['changed'] = True
                             results['result'][host.name]['ad_state_previous'] = "absent"
@@ -194,50 +196,44 @@ class VmwareHostAdAuthentication(PyVmomi):
                             results['result'][host.name]['membership_state'] = active_directory_info.domainMembershipStatus
                         except vim.fault.InvalidState as invalid_state:
                             self.module.fail_json(
-                                msg="The host has already joined a domain : %s" % to_native(invalid_state.msg)
+                                msg=f"The host has already joined a domain : {to_native(invalid_state.msg)}"
                             )
                         except vim.fault.HostConfigFault as host_fault:
                             self.module.fail_json(
-                                msg="The host configuration prevents the join operation from succeeding : %s" %
-                                to_native(host_fault.msg)
+                                msg=f"The host configuration prevents the join operation from succeeding : {to_native(host_fault.msg)}"
                             )
                         except vim.fault.InvalidLogin as invalid_login:
                             self.module.fail_json(
-                                msg="Credentials aren't valid : %s" % to_native(invalid_login.msg)
+                                msg=f"Credentials aren't valid : {to_native(invalid_login.msg)}"
                             )
                         except vim.fault.TaskInProgress as task_in_progress:
                             self.module.fail_json(
-                                msg="The ActiveDirectoryAuthentication object is busy : %s" %
-                                to_native(task_in_progress.msg)
+                                msg=f"The ActiveDirectoryAuthentication object is busy : {to_native(task_in_progress.msg)}"
                             )
                         except vim.fault.BlockedByFirewall as blocked_by_firewall:
                             self.module.fail_json(
-                                msg="Ports needed by the join operation are blocked by the firewall : %s" %
-                                to_native(blocked_by_firewall.msg)
+                                msg=f"Ports needed by the join operation are blocked by the firewall : {to_native(blocked_by_firewall.msg)}"
                             )
                         except vim.fault.DomainNotFound as not_found:
                             self.module.fail_json(
-                                msg="The domain controller can't be reached : %s" % to_native(not_found.msg)
+                                msg=f"The domain controller can't be reached : {to_native(not_found.msg)}"
                             )
                         except vim.fault.NoPermissionOnAD as no_permission:
                             self.module.fail_json(
-                                msg="The specified user has no right to add hosts to the domain : %s" %
-                                to_native(no_permission.msg)
+                                msg=f"The specified user has no right to add hosts to the domain : {to_native(no_permission.msg)}"
                             )
                         except vim.fault.InvalidHostName as invalid_host:
                             self.module.fail_json(
-                                msg="The domain part of the host's FQDN doesn't match the domain being joined : %s" %
-                                to_native(invalid_host.msg)
+                                msg=f"The domain part of the host's FQDN doesn't match the domain being joined : {to_native(invalid_host.msg)}"
                             )
                         except vim.fault.ClockSkew as clock_skew:
                             self.module.fail_json(
                                 msg="The clocks of the host and the domain controller differ by more "
-                                "than the allowed amount of time : %s" % to_native(clock_skew.msg)
+                                f"than the allowed amount of time : {to_native(clock_skew.msg)}"
                             )
                         except vim.fault.ActiveDirectoryFault as ad_fault:
                             self.module.fail_json(
-                                msg="An error occurred during AD join : %s" %
-                                to_native(ad_fault.msg)
+                                msg=f"An error occurred during AD join : {to_native(ad_fault.msg)}"
                             )
             elif desired_state == 'absent':
                 # Don't do anything not joined to any AD domain
@@ -251,8 +247,7 @@ class VmwareHostAdAuthentication(PyVmomi):
                         changed = results['result'][host.name]['changed'] = True
                         results['result'][host.name]['ad_state_previous'] = "present"
                         results['result'][host.name]['ad_state_current'] = "absent"
-                        results['result'][host.name]['msg'] = "Host would leave the AD domain '%s'" % \
-                            active_directory_info.joinedDomain
+                        results['result'][host.name]['msg'] = f"Host would leave the AD domain '{active_directory_info.joinedDomain}'"
                     else:
                         ad_authentication = self.get_ad_auth_object(host)
                         try:
@@ -261,37 +256,33 @@ class VmwareHostAdAuthentication(PyVmomi):
                                 wait_for_task(task)
                             except TaskError as task_err:
                                 self.module.fail_json(
-                                    msg="Failed to join domain : %s" % to_native(task_err)
+                                    msg=f"Failed to join domain : {to_native(task_err)}"
                                 )
                             changed = results['result'][host.name]['changed'] = True
                             results['result'][host.name]['ad_state_previous'] = "present"
                             results['result'][host.name]['ad_state_current'] = "absent"
-                            results['result'][host.name]['msg'] = "Host left the AD domain '%s'" % \
-                                active_directory_info.joinedDomain
+                            results['result'][host.name]['msg'] = f"Host left the AD domain '{active_directory_info.joinedDomain}'"
                         except vim.fault.InvalidState as invalid_state:
                             self.module.fail_json(
                                 msg="The host is not in a domain or there are active permissions for "
-                                "Active Directory users : %s" % to_native(invalid_state.msg)
+                                f"Active Directory users : {to_native(invalid_state.msg)}"
                             )
                         except vim.fault.AuthMinimumAdminPermission as admin_permission:
                             self.module.fail_json(
                                 msg="This change would leave the system with no Administrator permission "
-                                "on the root node : %s" % to_native(admin_permission.msg)
+                                f"on the root node : {to_native(admin_permission.msg)}"
                             )
                         except vim.fault.TaskInProgress as task_in_progress:
                             self.module.fail_json(
-                                msg="The ActiveDirectoryAuthentication object is busy : %s" %
-                                to_native(task_in_progress.msg)
+                                msg=f"The ActiveDirectoryAuthentication object is busy : {to_native(task_in_progress.msg)}"
                             )
                         except vim.fault.NonADUserRequired as non_ad_user:
                             self.module.fail_json(
-                                msg="Only non Active Directory users can initiate the leave domain operation : %s" %
-                                to_native(non_ad_user.msg)
+                                msg=f"Only non Active Directory users can initiate the leave domain operation : {to_native(non_ad_user.msg)}"
                             )
                         except vim.fault.ActiveDirectoryFault as ad_fault:
                             self.module.fail_json(
-                                msg="An error occurred during AD leave : %s" %
-                                to_native(ad_fault.msg)
+                                msg=f"An error occurred during AD leave : {to_native(ad_fault.msg)}"
                             )
 
             host_change_list.append(changed)

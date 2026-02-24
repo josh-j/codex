@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2017, Ansible Project
@@ -8,8 +7,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -262,16 +259,16 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VMwareHostPortGroup(PyVmomi):
     """Manage portgroup"""
 
     def __init__(self, module):
-        super(VMwareHostPortGroup, self).__init__(module)
+        super().__init__(module)
         self.switch_object = None
         self.portgroup_object = None
         hosts = self.params['hosts']
@@ -292,7 +289,7 @@ class VMwareHostPortGroup(PyVmomi):
             if self.ts_enabled is True:
                 for value in ['average_bandwidth', 'peak_bandwidth', 'burst_size']:
                     if not self.params['traffic_shaping'].get(value):
-                        self.module.fail_json(msg="traffic_shaping.%s is a required parameter if traffic_shaping is enabled." % value)
+                        self.module.fail_json(msg=f"traffic_shaping.{value} is a required parameter if traffic_shaping is enabled.")
                 self.ts_average_bandwidth = self.params['traffic_shaping'].get('average_bandwidth')
                 self.ts_peak_bandwidth = self.params['traffic_shaping'].get('peak_bandwidth')
                 self.ts_burst_size = self.params['traffic_shaping'].get('burst_size')
@@ -334,7 +331,7 @@ class VMwareHostPortGroup(PyVmomi):
             results['result'][host.name] = dict()
             switch_state = self.check_if_vswitch_exists(host_system=host)
             if switch_state == 'absent':
-                self.module.fail_json(msg="The vSwitch '%s' doesn't exist on host '%s'" % (self.switch, host.name))
+                self.module.fail_json(msg=f"The vSwitch '{self.switch}' doesn't exist on host '{host.name}'")
             portgroup_state = self.check_if_portgroup_exists(host_system=host)
             if self.state == 'present' and portgroup_state == 'present':
                 changed, host_results = self.update_host_port_group(
@@ -386,7 +383,7 @@ class VMwareHostPortGroup(PyVmomi):
         for portgroup in portgroups:
             if portgroup.spec.name == portgroup_name and portgroup.spec.vswitchName != vswitch_name:
                 # portgroup names are unique; there can be only one portgroup with the same name per host
-                self.module.fail_json(msg="The portgroup already exists on vSwitch '%s'" % portgroup.spec.vswitchName)
+                self.module.fail_json(msg=f"The portgroup already exists on vSwitch '{portgroup.spec.vswitchName}'")
             if portgroup.spec.name == portgroup_name and portgroup.spec.vswitchName == vswitch_name:
                 return portgroup
         return None
@@ -435,15 +432,15 @@ class VMwareHostPortGroup(PyVmomi):
                 host_results['msg'] = "Port Group removed"
             except vim.fault.NotFound as not_found:
                 self.module.fail_json(
-                    msg="Failed to remove Portgroup as it was not found: %s" % to_native(not_found.msg)
+                    msg=f"Failed to remove Portgroup as it was not found: {to_native(not_found.msg)}"
                 )
             except vim.fault.ResourceInUse as resource_in_use:
                 self.module.fail_json(
-                    msg="Failed to remove Portgroup as it is in use: %s" % to_native(resource_in_use.msg)
+                    msg=f"Failed to remove Portgroup as it is in use: {to_native(resource_in_use.msg)}"
                 )
             except vim.fault.HostConfigFault as host_config_fault:
                 self.module.fail_json(
-                    msg="Failed to remove Portgroup due to configuration failures: %s" % to_native(host_config_fault.msg)
+                    msg=f"Failed to remove Portgroup due to configuration failures: {to_native(host_config_fault.msg)}"
                 )
         host_results['changed'] = True
         host_results['portgroup'] = self.portgroup
@@ -474,21 +471,19 @@ class VMwareHostPortGroup(PyVmomi):
                 host_results['msg'] = "Port Group added"
             except vim.fault.AlreadyExists as already_exists:
                 self.module.fail_json(
-                    msg="Failed to add Portgroup as it already exists: %s" % to_native(already_exists.msg)
+                    msg=f"Failed to add Portgroup as it already exists: {to_native(already_exists.msg)}"
                 )
             except vim.fault.NotFound as not_found:
                 self.module.fail_json(
-                    msg="Failed to add Portgroup as vSwitch was not found: %s" % to_native(not_found.msg)
+                    msg=f"Failed to add Portgroup as vSwitch was not found: {to_native(not_found.msg)}"
                 )
             except vim.fault.HostConfigFault as host_config_fault:
                 self.module.fail_json(
-                    msg="Failed to add Portgroup due to host system configuration failure : %s" %
-                    to_native(host_config_fault.msg)
+                    msg=f"Failed to add Portgroup due to host system configuration failure : {to_native(host_config_fault.msg)}"
                 )
             except vmodl.fault.InvalidArgument as invalid_argument:
                 self.module.fail_json(
-                    msg="Failed to add Portgroup as VLAN id was not correct as per specifications: %s" %
-                    to_native(invalid_argument.msg)
+                    msg=f"Failed to add Portgroup as VLAN id was not correct as per specifications: {to_native(invalid_argument.msg)}"
                 )
         host_results['changed'] = True
         host_results['portgroup'] = self.portgroup
@@ -819,24 +814,20 @@ class VMwareHostPortGroup(PyVmomi):
                     )
                 except vim.fault.AlreadyExists as already_exists:
                     self.module.fail_json(
-                        msg="Failed to update Portgroup as it would conflict with an existing port group: %s" %
-                        to_native(already_exists.msg)
+                        msg=f"Failed to update Portgroup as it would conflict with an existing port group: {to_native(already_exists.msg)}"
                     )
                 except vim.fault.NotFound as not_found:
                     self.module.fail_json(
-                        msg="Failed to update Portgroup as vSwitch was not found: %s" %
-                        to_native(not_found.msg)
+                        msg=f"Failed to update Portgroup as vSwitch was not found: {to_native(not_found.msg)}"
                     )
                 except vim.fault.HostConfigFault as host_config_fault:
                     self.module.fail_json(
-                        msg="Failed to update Portgroup due to host system configuration failure : %s" %
-                        to_native(host_config_fault.msg)
+                        msg=f"Failed to update Portgroup due to host system configuration failure : {to_native(host_config_fault.msg)}"
                     )
                 except vmodl.fault.InvalidArgument as invalid_argument:
                     self.module.fail_json(
-                        msg="Failed to update Port Group '%s', this can be due to either of following :"
-                        " 1. VLAN id was not correct as per specifications, 2. Network policy is invalid : %s" %
-                        (self.portgroup, to_native(invalid_argument.msg))
+                        msg=f"Failed to update Port Group '{self.portgroup}', this can be due to either of following :"
+                        f" 1. VLAN id was not correct as per specifications, 2. Network policy is invalid : {to_native(invalid_argument.msg)}"
                     )
         else:
             message = "Port Group already configured properly"
@@ -935,12 +926,12 @@ class VMwareHostPortGroup(PyVmomi):
         for active_nic in self.teaming_failover_order_active:
             if active_nic not in self.switch_object.spec.bridge.nicDevice:
                 self.module.fail_json(
-                    msg="NIC '%s' (active) is not configured on vSwitch '%s'" % (active_nic, self.switch)
+                    msg=f"NIC '{active_nic}' (active) is not configured on vSwitch '{self.switch}'"
                 )
         for standby_nic in self.teaming_failover_order_standby:
             if standby_nic not in self.switch_object.spec.bridge.nicDevice:
                 self.module.fail_json(
-                    msg="NIC '%s' (standby) is not configured on vSwitch '%s'" % (standby_nic, self.switch)
+                    msg=f"NIC '{standby_nic}' (standby) is not configured on vSwitch '{self.switch}'"
                 )
         nic_order = vim.host.NetworkPolicy.NicOrderPolicy()
         nic_order.activeNic = self.teaming_failover_order_active

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, Pavan Bidkar <pbidkar@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -154,15 +151,15 @@ vm_deploy_info:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
+from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 HAS_VAUTOMATION_PYTHON_SDK = False
 try:
-    from com.vmware.vcenter.vm_template_client import LibraryItems
     from com.vmware.vapi.std.errors_client import Error
+    from com.vmware.vcenter.vm_template_client import LibraryItems
     HAS_VAUTOMATION_PYTHON_SDK = True
 except ImportError:
     pass
@@ -171,7 +168,7 @@ except ImportError:
 class VmwareContentDeployTemplate(VmwareRestClient):
     def __init__(self, module):
         """Constructor."""
-        super(VmwareContentDeployTemplate, self).__init__(module)
+        super().__init__(module)
 
         # Initialize member variables
         self.module = module
@@ -210,7 +207,7 @@ class VmwareContentDeployTemplate(VmwareRestClient):
         vm = self._pyv.get_vm()
         if vm:
             self.result['vm_deploy_info'] = dict(
-                msg="Virtual Machine '%s' already Exists." % self.vm_name,
+                msg=f"Virtual Machine '{self.vm_name}' already Exists.",
                 vm_id=vm._moId,
             )
             self._fail(msg="Virtual Machine deployment failed")
@@ -219,13 +216,13 @@ class VmwareContentDeployTemplate(VmwareRestClient):
         # Find the datacenter by the given datacenter name
         self._datacenter_id = self.get_datacenter_by_name(self.datacenter)
         if not self._datacenter_id:
-            self._fail(msg="Failed to find the datacenter %s" % self.datacenter)
+            self._fail(msg=f"Failed to find the datacenter {self.datacenter}")
 
         # Find the datastore by the given datastore name
         if self.datastore:
             self._datastore_id = self.get_datastore_by_name(self.datacenter, self.datastore)
             if not self._datastore_id:
-                self._fail(msg="Failed to find the datastore %s" % self.datastore)
+                self._fail(msg=f"Failed to find the datastore {self.datastore}")
 
         # Find the datastore by the given datastore cluster name
         if self.datastore_cluster and not self._datastore_id:
@@ -234,7 +231,7 @@ class VmwareContentDeployTemplate(VmwareRestClient):
                 self.datastore = self._pyv.get_recommended_datastore(dsc)
                 self._datastore_id = self.get_datastore_by_name(self.datacenter, self.datastore)
             else:
-                self._fail(msg="Failed to find the datastore cluster %s" % self.datastore_cluster)
+                self._fail(msg=f"Failed to find the datastore cluster {self.datastore_cluster}")
 
         if not self._datastore_id:
             self._fail(msg="Failed to find the datastore using either datastore or datastore cluster")
@@ -245,11 +242,11 @@ class VmwareContentDeployTemplate(VmwareRestClient):
                 self.template, self.library
             )
             if not self._library_item_id:
-                self._fail(msg="Failed to find the library Item %s in content library %s" % (self.template, self.library))
+                self._fail(msg=f"Failed to find the library Item {self.template} in content library {self.library}")
         else:
             self._library_item_id = self.get_library_item_by_name(self.template)
             if not self._library_item_id:
-                self._fail(msg="Failed to find the library Item %s" % self.template)
+                self._fail(msg=f"Failed to find the library Item {self.template}")
 
         # Find the folder by the given FQPN folder name
         # The FQPN is I(datacenter)/I(folder type)/folder name/... for
@@ -258,19 +255,19 @@ class VmwareContentDeployTemplate(VmwareRestClient):
         if folder_obj:
             self._folder_id = folder_obj._moId
         if not self._folder_id:
-            self._fail(msg="Failed to find the folder %s" % self.folder)
+            self._fail(msg=f"Failed to find the folder {self.folder}")
 
         # Find the Host by the given name
         if self.host:
             self._host_id = self.get_host_by_name(self.datacenter, self.host)
             if not self._host_id:
-                self._fail(msg="Failed to find the Host %s" % self.host)
+                self._fail(msg=f"Failed to find the Host {self.host}")
 
         # Find the Cluster by the given Cluster name
         if self.cluster:
             self._cluster_id = self.get_cluster_by_name(self.datacenter, self.cluster)
             if not self._cluster_id:
-                self._fail(msg="Failed to find the Cluster %s" % self.cluster)
+                self._fail(msg=f"Failed to find the Cluster {self.cluster}")
             cluster_obj = self.api_client.vcenter.Cluster.get(self._cluster_id)
             self._resourcepool_id = cluster_obj.resource_pool
 
@@ -278,7 +275,7 @@ class VmwareContentDeployTemplate(VmwareRestClient):
         if self.resourcepool:
             self._resourcepool_id = self.get_resource_pool_by_name(self.datacenter, self.resourcepool, self.cluster, self.host)
             if not self._resourcepool_id:
-                self._fail(msg="Failed to find the resource_pool %s" % self.resourcepool)
+                self._fail(msg=f"Failed to find the resource_pool {self.resourcepool}")
 
         # Create VM placement specs
         self.placement_spec = LibraryItems.DeployPlacementSpec(folder=self._folder_id)
@@ -305,9 +302,9 @@ class VmwareContentDeployTemplate(VmwareRestClient):
         try:
             vm_id = self._template_service.deploy(self._library_item_id, self.deploy_spec)
         except Error as error:
-            self._fail(msg="%s" % self.get_error_message(error))
+            self._fail(msg=f"{self.get_error_message(error)}")
         except Exception as err:
-            self._fail(msg="%s" % to_native(err))
+            self._fail(msg=f"{to_native(err)}")
 
         if not vm_id:
             self.result['vm_deploy_info'] = dict(
@@ -317,7 +314,7 @@ class VmwareContentDeployTemplate(VmwareRestClient):
             self._fail(msg="Virtual Machine deployment failed")
         self.result['changed'] = True
         self.result['vm_deploy_info'] = dict(
-            msg="Deployed Virtual Machine '%s'." % self.vm_name,
+            msg=f"Deployed Virtual Machine '{self.vm_name}'.",
             vm_id=vm_id,
         )
         self._exit()
@@ -451,7 +448,7 @@ def main():
         result.update(
             vm_name=module.params['name'],
             changed=False,
-            desired_operation="State '%s' is not implemented" % module.params['state']
+            desired_operation="State '{}' is not implemented".format(module.params['state'])
         )
         module.fail_json(**result)
 

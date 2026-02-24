@@ -4,8 +4,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -119,14 +117,18 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_hostsystem_by_name
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_hostsystem_by_name,
+    vmware_argument_spec,
+)
 
 
 class VcenterLicenseMgr(PyVmomi):
     def __init__(self, module):
-        super(VcenterLicenseMgr, self).__init__(module)
+        super().__init__(module)
 
     def find_key(self, licenses, license):
         for item in licenses:
@@ -178,8 +180,8 @@ def main():
 
     pyv = VcenterLicenseMgr(module)
     if not pyv.is_vcenter():
-        module.fail_json(msg="vcenter_license is meant for vCenter, hostname %s "
-                             "is not vCenter server." % module.params.get('hostname'))
+        module.fail_json(msg="vcenter_license is meant for vCenter, hostname {} "
+                             "is not vCenter server.".format(module.params.get('hostname')))
 
     lm = pyv.content.licenseManager
 
@@ -205,7 +207,7 @@ def main():
             if datacenter:
                 datacenter_obj = pyv.find_datacenter_by_name(datacenter)
                 if not datacenter_obj:
-                    module.fail_json(msg="Unable to find the datacenter %(datacenter)s" % module.params)
+                    module.fail_json(msg="Unable to find the datacenter {datacenter}".format(**module.params))
 
             cluster = module.params['cluster_name']
             # if cluster_name parameter is provided then search the cluster object in vcenter
@@ -221,11 +223,11 @@ def main():
             elif module.params['esxi_hostname']:
                 esxi_host = find_hostsystem_by_name(pyv.content, module.params['esxi_hostname'])
                 if esxi_host is None:
-                    module.fail_json(msg='Cannot find the specified ESXi host "%s".' % module.params['esxi_hostname'])
+                    module.fail_json(msg='Cannot find the specified ESXi host "{}".'.format(module.params['esxi_hostname']))
                 entityId = esxi_host._moId
                 # e.g., key.editionKey is "esx.enterprisePlus.cpuPackage", not sure all keys are in this format
                 if 'esx' not in key.editionKey:
-                    module.warn('License key "%s" edition "%s" is not suitable for ESXi server' % (license, key.editionKey))
+                    module.warn(f'License key "{license}" edition "{key.editionKey}" is not suitable for ESXi server')
             # backward compatibility - check if it's is a vCenter licence key
             elif pyv.content.about.name in key.name or 'vCenter Server' in key.name:
                 entityId = pyv.content.about.instanceUuid
@@ -235,17 +237,17 @@ def main():
                 try:
                     assigned_license = lam.QueryAssignedLicenses(entityId=entityId)
                 except Exception as e:
-                    module.fail_json(msg='Could not query vCenter "%s" assigned license info due to %s.' % (entityId, to_native(e)))
+                    module.fail_json(msg=f'Could not query vCenter "{entityId}" assigned license info due to {to_native(e)}.')
 
                 if not assigned_license or (len(assigned_license) != 0 and assigned_license[0].assignedLicense.licenseKey != license):
                     try:
                         lam.UpdateAssignedLicense(entity=entityId, licenseKey=license)
                     except Exception:
-                        module.fail_json(msg='Could not assign "%s" (%s) to vCenter.' % (license, key.name))
+                        module.fail_json(msg=f'Could not assign "{license}" ({key.name}) to vCenter.')
                     result['changed'] = True
                 result['licenses'] = pyv.list_keys(lm.licenses)
         else:
-            module.fail_json(msg='License "%s" is not existing or can not be added' % license)
+            module.fail_json(msg=f'License "{license}" is not existing or can not be added')
         if module._diff:
             result['diff']['after'] = '\n'.join(result['licenses']) + '\n'
 
@@ -254,7 +256,7 @@ def main():
         # Check if key is in use
         key = pyv.find_key(lm.licenses, license)
         if key.used > 0:
-            module.fail_json(msg='Cannot remove key "%s", still in use %s time(s).' % (license, key.used))
+            module.fail_json(msg=f'Cannot remove key "{license}", still in use {key.used} time(s).')
 
         result['changed'] = True
         if module.check_mode:

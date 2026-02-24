@@ -163,7 +163,7 @@
                     <thead><tr><th>Rule ID</th><th>Severity</th><th>Affected Hosts</th><th>Title</th></tr></thead>
                     <tbody>
                         {% for finding in stig_top_findings %}
-                        {% set _badge = (finding.severity | default('INFO')) | internal.core.status_badge_meta %}
+     {% set _badge = (finding.severity | default('INFO')) | internal.core.status_badge_meta %}
                         <tr>
                             <td><code>{{ finding.rule_id }}</code></td>
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
@@ -180,21 +180,21 @@
             <div class="compliance-entry">
                 <div class="entry-header">
                     <h3>{{ entry.host }} <span class="text-muted" style="font-size: 0.85rem;">({{ entry.audit_type }})</span></h3>
-                    {% set _badge = (entry.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
+     {% set _badge = (entry.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
                     <span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span>
                 </div>
                 <div class="finding-grid">
-                    {% for finding in (entry.findings | default([])) %}
+     {% for finding in (entry.findings | default([])) %}
                     <div class="finding-card {{ finding.severity | lower }}">
                         <span class="finding-id">{{ finding.rule_id | default('V-RULE') }}</span>
                         <p>{{ finding.message }}</p>
                     </div>
-                    {% else %}
+     {% else %}
                     <div class="finding-card info">
                         <span class="finding-id">OK</span>
                         <p>No open STIG findings.</p>
                     </div>
-                    {% endfor %}
+     {% endfor %}
                 </div>
             </div>
             {% else %}
@@ -211,7 +211,7 @@
                     <div class="vcenter-node">
                         <h3>vCenter: {{ node.host }}</h3>
                         <div class="resource-flex">
-                            {% for cluster in (node.clusters | default([])) %}
+     {% for cluster in (node.clusters | default([])) %}
                                 <div class="cluster-card">
                                     <label>{{ cluster.name }}</label>
                                     <div class="metric">
@@ -223,7 +223,7 @@
                                         <div class="mini-bar"><div class="fill" style="width: {{ cluster.utilization.mem_pct }}%;"></div></div>
                                     </div>
                                 </div>
-                            {% endfor %}
+     {% endfor %}
                         </div>
                     </div>
                 {% endfor %}
@@ -243,7 +243,7 @@
                     </thead>
                     <tbody>
                         {% for item in alert_queue %}
-                        {% set _badge = (item.severity | default('UNKNOWN')) | internal.core.status_badge_meta %}
+     {% set _badge = (item.severity | default('UNKNOWN')) | internal.core.status_badge_meta %}
                         <tr>
                             <td>{{ item.host | default('unknown') }}</td>
                             <td>{{ item.audit_type | default('unknown') }}</td>

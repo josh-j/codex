@@ -2,9 +2,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 import asyncio
@@ -156,7 +154,7 @@ class Lookup:
                 object_type = object_type.replace("_", "-")
         except KeyError:
             raise AnsibleLookupError(
-                "object_type must be one of [%s]." % ", ".join(list(INVENTORY.keys()))
+                "object_type must be one of [{}].".format(", ".join(list(INVENTORY.keys())))
             )
 
         return (
@@ -176,8 +174,8 @@ class Lookup:
 
         if (
             not result
-            or object_name_decoded
-            and object_name_decoded not in result[0].values()
+            or (object_name_decoded
+            and object_name_decoded not in result[0].values())
         ):
             return ""
 
@@ -187,10 +185,9 @@ class Lookup:
         result = _filter_result(result)
         if result and len(result) > 1:
             raise AnsibleLookupError(
-                "More than one object available: [%s]."
-                % ", ".join(
+                "More than one object available: [{}].".format(", ".join(
                     list(f"{item['name']} => {item[object_type]}" for item in result)
-                )
+                ))
             )
         try:
             object_moid = result[0][object_type]

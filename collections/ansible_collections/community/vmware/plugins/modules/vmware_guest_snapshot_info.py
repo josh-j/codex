@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -117,12 +114,16 @@ guest_snapshots:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, list_snapshots, vmware_argument_spec
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    list_snapshots,
+    vmware_argument_spec,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
     @staticmethod
     def gather_guest_snapshot_info(vm_obj=None):
@@ -173,7 +174,7 @@ def main():
         # If UUID is set, get_vm select UUID, show error message accordingly.
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
         module.fail_json(msg="Unable to gather information about snapshots for"
-                             " non-existing VM ['%s']" % vm_id)
+                             f" non-existing VM ['{vm_id}']")
 
     results = dict(changed=False, guest_snapshots=pyv.gather_guest_snapshot_info(vm_obj=vm))
     module.exit_json(**results)

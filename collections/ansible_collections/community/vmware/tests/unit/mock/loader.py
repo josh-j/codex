@@ -16,14 +16,12 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
 # Make coding more python3-ish
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 import os
 
 from ansible.errors import AnsibleParserError
-from ansible.parsing.dataloader import DataLoader
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.parsing.dataloader import DataLoader
 
 
 class DictDataLoader(DataLoader):
@@ -32,7 +30,7 @@ class DictDataLoader(DataLoader):
         file_mapping = {} if file_mapping is None else file_mapping
         assert type(file_mapping) == dict
 
-        super(DictDataLoader, self).__init__()
+        super().__init__()
 
         self._file_mapping = file_mapping
         self._build_known_directories()
@@ -51,7 +49,7 @@ class DictDataLoader(DataLoader):
         if path in self._file_mapping:
             return (to_bytes(self._file_mapping[path]), False)
         else:
-            raise AnsibleParserError("file not found: %s" % path)
+            raise AnsibleParserError(f"file not found: {path}")
 
     def path_exists(self, path):
         path = to_text(path)

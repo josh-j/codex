@@ -3,9 +3,9 @@
 
 {# ESXI-70-000047: Acceptance Level #}
 {% if sys.get('acceptance_level') == 'PartnerSupported' or sys.get('acceptance_level') == 'VMwareAccepted' %}
-    {% set _ = res.append({"id": "ESXI-70-000047", "status": "PASSED", "details": "Acceptance Level: " ~ sys.get('acceptance_level')}) %}
+     {% set _ = res.append({"id": "ESXI-70-000047", "status": "PASSED", "details": "Acceptance Level: " ~ sys.get('acceptance_level')}) %}
 {% else %}
-    {% set _ = res.append({"id": "ESXI-70-000047", "status": "FAILED", "details": "Invalid Level: " ~ sys.get('acceptance_level')}) %}
+     {% set _ = res.append({"id": "ESXI-70-000047", "status": "FAILED", "details": "Invalid Level: " ~ sys.get('acceptance_level')}) %}
 {% endif %}
 
 {{ res | to_json }}

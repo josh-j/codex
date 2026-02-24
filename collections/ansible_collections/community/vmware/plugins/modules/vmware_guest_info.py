@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # This module is also sponsored by E.T.A.I. (www.etai.fr)
 # Copyright (C) 2018 James E. King III (@jeking3) <jking@apache.org>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -236,12 +233,13 @@ instance:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
+
 try:
-    from com.vmware.vapi.std_client import DynamicID  # noqa: F401
+    from com.vmware.vapi.std_client import DynamicID
     HAS_VSPHERE = True
 except ImportError:
     HAS_VSPHERE = False
@@ -249,7 +247,7 @@ except ImportError:
 
 class VmwareTag(VmwareRestClient):
     def __init__(self, module):
-        super(VmwareTag, self).__init__(module)
+        super().__init__(module)
         self.tag_service = self.api_client.tagging.Tag
         self.tag_association_svc = self.api_client.tagging.TagAssociation
 
@@ -310,10 +308,10 @@ def main():
                 instance.update(tags=tags)
             module.exit_json(instance=instance)
         except Exception as exc:
-            module.fail_json(msg="Information gathering failed with exception %s" % to_text(exc))
+            module.fail_json(msg=f"Information gathering failed with exception {to_text(exc)}")
     else:
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg="Unable to gather information for non-existing VM %s" % vm_id)
+        module.fail_json(msg=f"Unable to gather information for non-existing VM {vm_id}")
 
 
 if __name__ == '__main__':

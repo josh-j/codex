@@ -67,23 +67,33 @@ def normalize_stig_results(audit_full_list, stig_target_type=""):
             continue
 
         normalized = dict(item)
-        normalized["status"] = _row_status(item)
+        status = _row_status(item)
+        rule_id = _row_rule_id(item)
+        title = _row_title(item)
+        description = _row_description(item)
+        raw_sev = _row_severity(item)
+
+        normalized["status"] = status
+        normalized["rule_id"] = rule_id
+        normalized["title"] = title
+        normalized["description"] = description
+        normalized["severity"] = raw_sev
+
         full_audit.append(normalized)
 
-        if normalized["status"] != "failed":
+        if status != "failed":
             continue
 
         violations.append(normalized)
 
-        raw_sev = _row_severity(item)
         alerts.append(
             {
                 "severity": _severity_to_alert(raw_sev),
                 "category": "security_compliance",
-                "message": "STIG Violation: " + _row_title(item),
+                "message": "STIG Violation: " + title,
                 "detail": {
-                    "rule_id": _row_rule_id(item),
-                    "description": _row_description(item),
+                    "rule_id": rule_id,
+                    "description": description,
                     "original_severity": str(raw_sev).upper(),
                     "target_type": str(stig_target_type or ""),
                 },

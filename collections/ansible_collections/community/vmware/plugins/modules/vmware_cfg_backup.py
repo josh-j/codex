@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, IBM Corp
 # Author(s): Andreas Nafpliotis <nafpliot@de.ibm.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -80,21 +77,27 @@ dest_file:
 '''
 
 import os
+
 try:
     from pyVmomi import vim
 except ImportError:
     pass
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, get_all_objs, wait_for_task, PyVmomi
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.urls import open_url
-from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.six.moves.urllib.error import HTTPError
+from ansible.module_utils.urls import open_url
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    get_all_objs,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VMwareConfigurationBackup(PyVmomi):
     def __init__(self, module):
-        super(VMwareConfigurationBackup, self).__init__(module)
+        super().__init__(module)
         self.state = self.module.params['state']
         self.dest = self.module.params['dest']
         self.src = self.module.params['src']
@@ -114,10 +117,10 @@ class VMwareConfigurationBackup(PyVmomi):
             if host_system_obj:
                 return host_system_obj
             else:
-                self.module.fail_json(msg="Failed to find ESXi %s" % self.esxi_hostname)
+                self.module.fail_json(msg=f"Failed to find ESXi {self.esxi_hostname}")
 
         host_system = get_all_objs(self.content, [vim.HostSystem])
-        return list(host_system)[0]
+        return next(iter(host_system))
 
     def process_state(self):
         if self.state == 'saved':
@@ -131,7 +134,7 @@ class VMwareConfigurationBackup(PyVmomi):
 
     def load_configuration(self):
         if not os.path.isfile(self.src):
-            self.module.fail_json(msg="Source file {0} does not exist".format(self.src))
+            self.module.fail_json(msg=f"Source file {self.src} does not exist")
 
         url = self.host.configManager.firmwareSystem.QueryFirmwareConfigUploadURL()
         url = url.replace('*', self.cfg_hurl)
@@ -188,10 +191,10 @@ class VMwareConfigurationBackup(PyVmomi):
             with open(self.dest, "wb") as file:
                 file.write(request.read())
             self.module.exit_json(changed=True, dest_file=self.dest)
-        except IOError as e:
-            error_msg = "Failed to save %s " % url
-            error_msg += "to %s. Ensure that the dest path exists and is writable. " % self.dest
-            error_msg += "Details: %s" % to_native(e)
+        except OSError as e:
+            error_msg = f"Failed to save {url} "
+            error_msg += f"to {self.dest}. Ensure that the dest path exists and is writable. "
+            error_msg += f"Details: {to_native(e)}"
             self.module.fail_json(msg=error_msg)
         except Exception as e:
             self.module.fail_json(msg=to_native(e))
@@ -199,17 +202,17 @@ class VMwareConfigurationBackup(PyVmomi):
     def enter_maintenance(self):
         try:
             task = self.host.EnterMaintenanceMode_Task(timeout=15)
-            success, result = wait_for_task(task)
+            _success, _result = wait_for_task(task)
         except Exception as e:
             self.module.fail_json(msg="Failed to enter maintenance mode."
-                                      " Ensure that there are no powered on machines on the host. %s" % to_native(e))
+                                      f" Ensure that there are no powered on machines on the host. {to_native(e)}")
 
     def exit_maintenance(self):
         try:
             task = self.host.ExitMaintenanceMode_Task(timeout=15)
-            success, result = wait_for_task(task)
+            _success, _result = wait_for_task(task)
         except Exception as generic_exc:
-            self.module.fail_json(msg="Failed to exit maintenance mode due to %s" % to_native(generic_exc))
+            self.module.fail_json(msg=f"Failed to exit maintenance mode due to {to_native(generic_exc)}")
 
 
 def main():

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, CrySyS Lab <www.crysys.hu>
@@ -7,9 +6,7 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -217,13 +214,17 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    vmware_argument_spec, PyVmomi, find_dvs_by_name,
-    find_vm_by_name, wait_for_task)
+    PyVmomi,
+    find_dvs_by_name,
+    find_vm_by_name,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VMwareVspanSession(PyVmomi):
     def __init__(self, module):
-        super(VMwareVspanSession, self).__init__(module)
+        super().__init__(module)
         self.switch = module.params['switch']
         self.name = module.params['name']
         self.session_type = module.params['session_type']
@@ -240,7 +241,7 @@ class VMwareVspanSession(PyVmomi):
         self.sampling_rate = module.params['sampling_rate']
         self.dv_switch = find_dvs_by_name(self.content, self.switch)
         if self.dv_switch is None:
-            self.module.fail_json(msg="There is no dvSwitch with the name: {0:s}.".format(self.switch))
+            self.module.fail_json(msg=f"There is no dvSwitch with the name: {self.switch:s}.")
         self.operation = None
         self.modified_ports = dict()
         self.deleted_session = None
@@ -293,7 +294,7 @@ class VMwareVspanSession(PyVmomi):
         """
         vm = find_vm_by_name(self.content, vm_name)
         if vm is None:
-            self.module.fail_json(msg="There is no VM with the name: {0:s}.".format(vm_name))
+            self.module.fail_json(msg=f"There is no VM with the name: {vm_name:s}.")
         for hardware in vm.config.hardware.device:
             if isinstance(hardware, vim.vm.device.VirtualVmxnet3):
                 if hardware.deviceInfo.label == nic_label:
@@ -308,24 +309,21 @@ class VMwareVspanSession(PyVmomi):
                 self.source_port_transmitted = port
             else:
                 self.module.fail_json(
-                    msg="No port could be found for VM: {0:s} NIC: {1:s}".format(self.source_vm_transmitted_name,
-                                                                                 self.source_vm_transmitted_nic_label))
+                    msg=f"No port could be found for VM: {self.source_vm_transmitted_name:s} NIC: {self.source_vm_transmitted_nic_label:s}")
         if hasattr(self, 'source_vm_received_name') and hasattr(self, 'source_vm_received_nic_label'):
             port = self.get_vm_port(self.source_vm_received_name, self.source_vm_received_nic_label)
             if port is not None:
                 self.source_port_received = port
             else:
                 self.module.fail_json(
-                    msg="No port could be found for VM: {0:s} NIC: {1:s}".format(self.source_vm_received_name,
-                                                                                 self.source_vm_received_nic_label))
+                    msg=f"No port could be found for VM: {self.source_vm_received_name:s} NIC: {self.source_vm_received_nic_label:s}")
         if hasattr(self, 'destination_vm_name') and hasattr(self, 'destination_vm_nic_label'):
             port = self.get_vm_port(self.destination_vm_name, self.destination_vm_nic_label)
             if port is not None:
                 self.destination_port = port
             else:
                 self.module.fail_json(
-                    msg="No port could be found for VM: {0:s} NIC: {1:s}".format(self.destination_vm_name,
-                                                                                 self.destination_vm_nic_label))
+                    msg=f"No port could be found for VM: {self.destination_vm_name:s} NIC: {self.destination_vm_nic_label:s}")
 
     def process_operation(self):
         """Calls the create or delete function based on the operation"""
@@ -387,21 +385,21 @@ class VMwareVspanSession(PyVmomi):
                 for port in session_ports:
                     if vspan_session.name == self.name:
                         ports_of_selected_session.append(port)
-                    elif not (port in ports):
+                    elif port not in ports:
                         ports.append(port)
             if vspan_session.sourcePortTransmitted is not None:
                 session_ports = vspan_session.sourcePortTransmitted.portKey
                 for port in session_ports:
                     if vspan_session.name == self.name:
                         ports_of_selected_session.append(port)
-                    elif not (port in ports):
+                    elif port not in ports:
                         ports.append(port)
             if vspan_session.destinationPort is not None:
                 session_ports = vspan_session.destinationPort.portKey
                 for port in session_ports:
                     if vspan_session.name == self.name:
                         ports_of_selected_session.append(port)
-                    elif not (port in ports):
+                    elif port not in ports:
                         ports.append(port)
         promiscuous_ports = []
         if ports:
@@ -463,7 +461,7 @@ class VMwareVspanSession(PyVmomi):
         results = dict(changed=False, result="")
         mirror_session = self.find_session_by_name()
         if mirror_session is None:
-            results['result'] = "There is no VSpanSession with the name: {0:s}.".format(self.name)
+            results['result'] = f"There is no VSpanSession with the name: {self.name:s}."
             return results
         promiscuous_ports = self.turn_off_promiscuous()
         session_key = mirror_session.key
@@ -494,7 +492,7 @@ class VMwareVspanSession(PyVmomi):
         if self.source_port_transmitted is not None:
             port = vim.dvs.VmwareDistributedVirtualSwitch.VspanPorts(portKey=str(self.source_port_transmitted))
             if not self.dv_switch.FetchDVPorts(vim.dvs.PortCriteria(portKey=port.portKey)):
-                self.module.fail_json(msg="Couldn't find port: {0:s}".format(self.source_port_transmitted))
+                self.module.fail_json(msg=f"Couldn't find port: {self.source_port_transmitted:s}")
             session.sourcePortTransmitted = port
 
     def check_source_port_received(self, session):
@@ -504,12 +502,12 @@ class VMwareVspanSession(PyVmomi):
         if self.session_type == 'remoteMirrorDest':
             port = vim.dvs.VmwareDistributedVirtualSwitch.VspanPorts(vlans=[int(self.source_port_received)])
             if int(self.source_port_received) not in self.dv_switch.QueryUsedVlanIdInDvs():
-                self.module.fail_json(msg="Couldn't find vlan: {0:s}".format(self.source_port_received))
+                self.module.fail_json(msg=f"Couldn't find vlan: {self.source_port_received:s}")
             session.sourcePortReceived = port
         else:
             port = vim.dvs.VmwareDistributedVirtualSwitch.VspanPorts(portKey=str(self.source_port_received))
             if not self.dv_switch.FetchDVPorts(vim.dvs.PortCriteria(portKey=port.portKey)):
-                self.module.fail_json(msg="Couldn't find port: {0:s}".format(self.source_port_received))
+                self.module.fail_json(msg=f"Couldn't find port: {self.source_port_received:s}")
             session.sourcePortReceived = port
 
     def check_destination_port(self, session):
@@ -525,12 +523,12 @@ class VMwareVspanSession(PyVmomi):
         if self.session_type == 'remoteMirrorDest':
             port = vim.dvs.VmwareDistributedVirtualSwitch.VspanPorts(portKey=str(self.destination_port))
             if not self.dv_switch.FetchDVPorts(vim.dvs.PortCriteria(portKey=port.portKey)):
-                self.module.fail_json(msg="Couldn't find port: {0:s}".format(self.destination_port))
+                self.module.fail_json(msg=f"Couldn't find port: {self.destination_port:s}")
             session.destinationPort = port
         if self.session_type == 'dvPortMirror':
             port = vim.dvs.VmwareDistributedVirtualSwitch.VspanPorts(portKey=str(self.destination_port))
             if not self.dv_switch.FetchDVPorts(vim.dvs.PortCriteria(portKey=port.portKey)):
-                self.module.fail_json(msg="Couldn't find port: {0:s}".format(self.destination_port))
+                self.module.fail_json(msg=f"Couldn't find port: {self.destination_port:s}")
             session.destinationPort = port
 
     def check_self_properties(self, session):
@@ -589,7 +587,7 @@ class VMwareVspanSession(PyVmomi):
         results = dict(changed=False, result="")
         promiscous_ports = self.turn_off_promiscuous()
         if not self.check_if_session_name_is_free():
-            self.module.fail_json(msg="There is another VSpan Session with the name: {0:s}.".format(self.name))
+            self.module.fail_json(msg=f"There is another VSpan Session with the name: {self.name:s}.")
         # Locate the ports, we want to use
         dv_ports = None
         ports = [str(self.source_port_received), str(self.source_port_transmitted), str(self.destination_port)]

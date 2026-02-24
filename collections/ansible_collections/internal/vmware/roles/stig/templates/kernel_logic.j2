@@ -6,9 +6,9 @@
 {# ESXI-70-000058: Block Guest BPDU #}
 {% set bpdu = get_adv('Net.BlockGuestBPDU', adv) | trim %}
 {% if bpdu == '1' %}
-    {% set _ = res.append({"id": "ESXI-70-000058", "status": "PASSED", "details": "Guest BPDU Blocked"}) %}
+     {% set _ = res.append({"id": "ESXI-70-000058", "status": "PASSED", "details": "Guest BPDU Blocked"}) %}
 {% else %}
-    {% set _ = res.append({"id": "ESXI-70-000058", "status": "FAILED", "details": "Guest BPDU Allowed: " ~ bpdu}) %}
+     {% set _ = res.append({"id": "ESXI-70-000058", "status": "FAILED", "details": "Guest BPDU Allowed: " ~ bpdu}) %}
 {% endif %}
 
 {{ res | to_json }}

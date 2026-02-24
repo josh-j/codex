@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, Anusha Hegde <anushah@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -195,17 +192,18 @@ vm_info:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
-    find_hostsystem_by_name,
+    connect_to_api,
     find_datastore_by_name,
     find_folder_by_name,
-    find_vm_by_name,
-    connect_to_api,
-    vmware_argument_spec,
-    gather_vm_facts,
+    find_hostsystem_by_name,
     find_obj,
     find_resource_pool_by_name,
+    find_vm_by_name,
+    gather_vm_facts,
+    vmware_argument_spec,
     wait_for_task,
 )
+
 try:
     from pyVmomi import vim
 except ImportError:
@@ -214,7 +212,7 @@ except ImportError:
 
 class CrossVCCloneManager(PyVmomi):
     def __init__(self, module):
-        super(CrossVCCloneManager, self).__init__(module)
+        super().__init__(module)
         self.config_spec = vim.vm.ConfigSpec()
         self.clone_spec = vim.vm.CloneSpec()
         self.relocate_spec = vim.vm.RelocateSpec()
@@ -275,7 +273,7 @@ class CrossVCCloneManager(PyVmomi):
         self.vm_obj = self.get_vm()
         if self.vm_obj is None:
             vm_id = self.vm_uuid or self.vm_name or self.moid
-            self.module.fail_json(msg="Failed to find the VM/template with %s" % vm_id)
+            self.module.fail_json(msg=f"Failed to find the VM/template with {vm_id}")
 
         # connect to destination VC
         self.destination_content = connect_to_api(

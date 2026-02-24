@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
@@ -105,12 +102,12 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_obj
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_obj, vmware_argument_spec
 
 
 class VmwareCustomAttributesInfo(PyVmomi):
     def __init__(self, module):
-        super(VmwareCustomAttributesInfo, self).__init__(module)
+        super().__init__(module)
 
         if not self.is_vcenter():
             self.module.fail_json(msg="You have to connect to a vCenter server!")
@@ -139,7 +136,7 @@ class VmwareCustomAttributesInfo(PyVmomi):
         elif self.moid:
             obj = self.find_obj_by_moid(self.object_type, self.moid)
         if not obj:
-            self.module.fail_json(msg="can't find the object: %s" % self.object_name if self.object_name else self.moid)
+            self.module.fail_json(msg=f"can't find the object: {self.object_name}" if self.object_name else self.moid)
 
         custom_attributes = []
         available_fields = {}

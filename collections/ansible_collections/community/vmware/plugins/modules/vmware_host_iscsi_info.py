@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 module: vmware_host_iscsi_info
@@ -120,13 +117,14 @@ except ImportError:
     pass
 
 import re
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
+
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostiScsiInfo(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostiScsiInfo, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = self.params['esxi_hostname']
 
     def get_iscsi_config(self):
@@ -195,7 +193,7 @@ class VMwareHostiScsiInfo(PyVmomi):
     def execute(self):
         self.host_obj = self.find_hostsystem_by_name(self.esxi_hostname)
         if not self.host_obj:
-            self.module.fail_json(msg="Cannot find the specified ESXi host: %s" % self.esxi_hostname)
+            self.module.fail_json(msg=f"Cannot find the specified ESXi host: {self.esxi_hostname}")
 
         self.get_iscsi_config()
         self.module.exit_json(changed=False, iscsi_properties=self.existing_system_iscsi_config, detected_iscsi_drives=self.detected_iscsi_drives)

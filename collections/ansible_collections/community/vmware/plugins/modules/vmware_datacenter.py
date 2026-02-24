@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -65,14 +62,19 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_datacenter_by_name, vmware_argument_spec, wait_for_task
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_datacenter_by_name,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VmwareDatacenterManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareDatacenterManager, self).__init__(module)
+        super().__init__(module)
         self.datacenter_name = self.params.get('datacenter_name')
         self.datacenter_obj = self.get_datacenter()
 
@@ -90,13 +92,11 @@ class VmwareDatacenterManager(PyVmomi):
             datacenter_obj = find_datacenter_by_name(self.content, self.datacenter_name)
             return datacenter_obj
         except (vmodl.MethodFault, vmodl.RuntimeFault) as runtime_fault:
-            self.module.fail_json(msg="Failed to get datacenter '%s'"
-                                      " due to : %s" % (self.datacenter_name,
-                                                        to_native(runtime_fault.msg)))
+            self.module.fail_json(msg=f"Failed to get datacenter '{self.datacenter_name}'"
+                                      f" due to : {to_native(runtime_fault.msg)}")
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to get datacenter"
-                                      " '%s' due to generic error: %s" % (self.datacenter_name,
-                                                                          to_native(generic_exc)))
+                                      f" '{self.datacenter_name}' due to generic error: {to_native(generic_exc)}")
 
     def create_datacenter(self):
         folder = self.content.rootFolder
@@ -109,22 +109,18 @@ class VmwareDatacenterManager(PyVmomi):
         except vim.fault.DuplicateName:
             self.module.exit_json(changed=changed)
         except vim.fault.InvalidName as invalid_name:
-            self.module.fail_json(msg="Specified datacenter name '%s' is an"
-                                      " invalid name : %s" % (self.datacenter_name,
-                                                              to_native(invalid_name.msg)))
+            self.module.fail_json(msg=f"Specified datacenter name '{self.datacenter_name}' is an"
+                                      f" invalid name : {to_native(invalid_name.msg)}")
         except vmodl.fault.NotSupported as not_supported:
             # This should never happen
-            self.module.fail_json(msg="Trying to create a datacenter '%s' on"
-                                      " an incorrect folder object : %s" % (self.datacenter_name,
-                                                                            to_native(not_supported.msg)))
+            self.module.fail_json(msg=f"Trying to create a datacenter '{self.datacenter_name}' on"
+                                      f" an incorrect folder object : {to_native(not_supported.msg)}")
         except (vmodl.RuntimeFault, vmodl.MethodFault) as runtime_fault:
             self.module.fail_json(msg="Failed to create a datacenter"
-                                      " '%s' due to : %s" % (self.datacenter_name,
-                                                             to_native(runtime_fault.msg)))
+                                      f" '{self.datacenter_name}' due to : {to_native(runtime_fault.msg)}")
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to create a datacenter"
-                                      " '%s' due to generic error: %s" % (self.datacenter_name,
-                                                                          to_native(generic_exc)))
+                                      f" '{self.datacenter_name}' due to generic error: {to_native(generic_exc)}")
 
     def destroy_datacenter(self):
         results = dict(changed=False)
@@ -137,12 +133,10 @@ class VmwareDatacenterManager(PyVmomi):
             self.module.exit_json(**results)
         except (vim.fault.VimFault, vmodl.RuntimeFault, vmodl.MethodFault) as runtime_fault:
             self.module.fail_json(msg="Failed to delete a datacenter"
-                                      " '%s' due to : %s" % (self.datacenter_name,
-                                                             to_native(runtime_fault.msg)))
+                                      f" '{self.datacenter_name}' due to : {to_native(runtime_fault.msg)}")
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to delete a datacenter"
-                                      " '%s' due to generic error: %s" % (self.datacenter_name,
-                                                                          to_native(generic_exc)))
+                                      f" '{self.datacenter_name}' due to generic error: {to_native(generic_exc)}")
 
 
 def main():

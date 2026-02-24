@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, Pavan Bidkar <pbidkar@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -91,7 +88,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_clien
 class VmwareContentLibInfo(VmwareRestClient):
     def __init__(self, module):
         """Constructor."""
-        super(VmwareContentLibInfo, self).__init__(module)
+        super().__init__(module)
         self.content_service = self.api_client
         self.local_content_libraries = self.content_service.content.LocalLibrary.list()
         if self.local_content_libraries is None:
@@ -124,14 +121,14 @@ class VmwareContentLibInfo(VmwareRestClient):
                     user_name=lib_details.publish_info.user_name
                 )
             except Exception as e:
-                self.module.fail_json(exists=False, msg="%s" % self.get_error_message(e))
+                self.module.fail_json(exists=False, msg=f"{self.get_error_message(e)}")
         elif library_id in self.subscribed_content_libraries:
             try:
                 lib_details = self.content_service.content.SubscribedLibrary.get(library_id)
             except Exception as e:
-                self.module.fail_json(exists=False, msg="%s" % self.get_error_message(e))
+                self.module.fail_json(exists=False, msg=f"{self.get_error_message(e)}")
         else:
-            self.module.fail_json(exists=False, msg="Library %s not found." % library_id)
+            self.module.fail_json(exists=False, msg=f"Library {library_id} not found.")
 
         self.library_info.append(
             dict(

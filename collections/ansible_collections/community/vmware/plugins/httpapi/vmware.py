@@ -4,8 +4,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 DOCUMENTATION = '''
 ---
@@ -19,11 +17,11 @@ description:
 
 import json
 
-from ansible.module_utils.basic import to_text
 from ansible.errors import AnsibleConnectionFailure
+from ansible.module_utils.basic import to_text
+from ansible.module_utils.connection import ConnectionError
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.plugins.httpapi import HttpApiBase
-from ansible.module_utils.connection import ConnectionError
 
 BASE_HEADERS = {
     'Content-Type': 'application/json',
@@ -44,13 +42,13 @@ class HttpApi(HttpApiBase):
             raise ConnectionError(response_data)
 
         if not response_data.get('value'):
-            raise ConnectionError('Server returned response without token info during connection authentication: %s' % response)
+            raise ConnectionError(f'Server returned response without token info during connection authentication: {response}')
 
-        self.connection._session_uid = "vmware-api-session-id:%s" % response_data['value']
+        self.connection._session_uid = "vmware-api-session-id:{}".format(response_data['value'])
         self.connection._token = response_data['value']
 
     def logout(self):
-        response, dummy = self.send_request('/rest/com/vmware/cis/session', None, method='DELETE')
+        _response, _dummy = self.send_request('/rest/com/vmware/cis/session', None, method='DELETE')
 
     def get_session_uid(self):
         return self.connection._session_uid
@@ -73,7 +71,7 @@ class HttpApi(HttpApiBase):
             return e.code, json.loads(e.read())
 
     def _display_request(self, method='POST'):
-        self.connection.queue_message('vvvv', 'Web Services: %s %s' % (method, self.connection._url))
+        self.connection.queue_message('vvvv', f'Web Services: {method} {self.connection._url}')
 
     def _get_response_value(self, response_data):
         return to_text(response_data.getvalue())
@@ -83,4 +81,4 @@ class HttpApi(HttpApiBase):
             return json.loads(response_text) if response_text else {}
         # JSONDecodeError only available on Python 3.5+
         except ValueError:
-            raise ConnectionError('Invalid JSON response: %s' % response_text)
+            raise ConnectionError(f'Invalid JSON response: {response_text}')

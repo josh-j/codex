@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Davis Phillips davis.phillips@gmail.com
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -197,15 +194,23 @@ except ImportError:
     HAS_PYVMOMI = False
 
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import get_all_objs, vmware_argument_spec, find_datacenter_by_name, \
-    find_cluster_by_name, find_object_by_name, wait_for_task, find_resource_pool_by_name, PyVmomi
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_cluster_by_name,
+    find_datacenter_by_name,
+    find_object_by_name,
+    find_resource_pool_by_name,
+    get_all_objs,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VMwareResourcePool(PyVmomi):
 
     def __init__(self, module):
-        super(VMwareResourcePool, self).__init__(module)
+        super().__init__(module)
         self.datacenter = module.params['datacenter']
         self.resource_pool = module.params['resource_pool']
         self.hostname = module.params['hostname']
@@ -229,22 +234,22 @@ class VMwareResourcePool(PyVmomi):
 
         self.dc_obj = find_datacenter_by_name(self.content, self.datacenter)
         if self.dc_obj is None:
-            self.module.fail_json(msg="Unable to find datacenter with name %s" % self.datacenter)
+            self.module.fail_json(msg=f"Unable to find datacenter with name {self.datacenter}")
 
         if module.params['cluster']:
             self.compute_resource_obj = find_cluster_by_name(self.content, module.params['cluster'], datacenter=self.dc_obj)
             if self.compute_resource_obj is None:
-                self.module.fail_json(msg="Unable to find cluster with name %s" % module.params['cluster'])
+                self.module.fail_json(msg="Unable to find cluster with name {}".format(module.params['cluster']))
 
         if module.params['esxi_hostname']:
             self.compute_resource_obj = find_object_by_name(self.content, module.params['esxi_hostname'], [vim.ComputeResource], folder=self.dc_obj.hostFolder)
             if self.compute_resource_obj is None:
-                self.module.fail_json(msg="Unable to find host with name %s" % module.params['esxi_hostname'])
+                self.module.fail_json(msg="Unable to find host with name {}".format(module.params['esxi_hostname']))
 
         if module.params['parent_resource_pool']:
             self.compute_resource_obj = find_resource_pool_by_name(self.content, module.params['parent_resource_pool'])
             if self.compute_resource_obj is None:
-                self.module.fail_json(msg="Unable to find resource pool with name %s" % module.params['parent_resource_pool'])
+                self.module.fail_json(msg="Unable to find resource pool with name {}".format(module.params['parent_resource_pool']))
 
     def select_resource_pool(self):
         pool_obj = None
@@ -404,18 +409,16 @@ class VMwareResourcePool(PyVmomi):
 
     def state_remove_rp(self):
         changed = True
-        result = None
         if self.module.check_mode:
             self.module.exit_json(changed=changed)
 
         resource_pool_config = self.generate_rp_config_return_value(True)
         try:
             task = self.resource_pool_obj.Destroy()
-            success, result = wait_for_task(task)
+            _success, _result = wait_for_task(task)
 
         except Exception:
-            self.module.fail_json(msg="Failed to remove resource pool '%s' '%s'" % (
-                self.resource_pool, self.resource_pool))
+            self.module.fail_json(msg=f"Failed to remove resource pool '{self.resource_pool}' '{self.resource_pool}'")
         self.module.exit_json(changed=changed, resource_pool_config=resource_pool_config)
 
     def state_add_rp(self):

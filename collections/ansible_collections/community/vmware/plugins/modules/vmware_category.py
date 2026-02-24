@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -173,7 +170,7 @@ except ImportError:
 
 class VmwareCategory(VmwareRestClient):
     def __init__(self, module):
-        super(VmwareCategory, self).__init__(module)
+        super().__init__(module)
         self.category_service = self.api_client.tagging.Category
         self.global_categories = dict()
         self.category_name = self.params.get('category_name')
@@ -209,7 +206,7 @@ class VmwareCategory(VmwareRestClient):
         associable_object_types = self.params.get('associable_object_types')
 
         def append_namespace(object_name):
-            return '%s:%s' % (XMLNS_VMODL_BASE, object_name)
+            return f'{XMLNS_VMODL_BASE}:{object_name}'
 
         associable_data = {
             # With Namespace
@@ -261,13 +258,13 @@ class VmwareCategory(VmwareRestClient):
         try:
             category_id = self.category_service.create(category_spec)
         except Error as error:
-            self.module.fail_json(msg="%s" % self.get_error_message(error))
+            self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         msg = "No category created"
         changed = False
         if category_id:
             changed = True
-            msg = "Category '%s' created." % category_spec.name
+            msg = f"Category '{category_spec.name}' created."
 
         self.module.exit_json(changed=changed,
                               category_results=dict(msg=msg, category_id=category_id))
@@ -280,7 +277,7 @@ class VmwareCategory(VmwareRestClient):
         """Update category."""
         category_id = self.global_categories[self.category_name]['category_id']
         changed = False
-        results = dict(msg="Category %s is unchanged." % self.category_name,
+        results = dict(msg=f"Category {self.category_name} is unchanged.",
                        category_id=category_id)
 
         category_update_spec = self.category_service.UpdateSpec()
@@ -289,18 +286,18 @@ class VmwareCategory(VmwareRestClient):
         new_cat_desc = self.params.get('category_description')
         if new_cat_desc and new_cat_desc != old_cat_desc:
             category_update_spec.description = new_cat_desc
-            results['msg'] = 'Category %s updated.' % self.category_name
+            results['msg'] = f'Category {self.category_name} updated.'
             change_list.append(True)
 
         new_cat_name = self.params.get('new_category_name')
         if new_cat_name in self.global_categories:
-            self.module.fail_json(msg="Unable to rename %s as %s already"
-                                      " exists in configuration." % (self.category_name, new_cat_name))
+            self.module.fail_json(msg=f"Unable to rename {self.category_name} as {new_cat_name} already"
+                                      " exists in configuration.")
         old_cat_name = self.global_categories[self.category_name]['category_name']
 
         if new_cat_name and new_cat_name != old_cat_name:
             category_update_spec.name = new_cat_name
-            results['msg'] = 'Category %s updated.' % self.category_name
+            results['msg'] = f'Category {self.category_name} updated.'
             change_list.append(True)
 
         if any(change_list):
@@ -308,7 +305,7 @@ class VmwareCategory(VmwareRestClient):
                 self.category_service.update(category_id, category_update_spec)
                 changed = True
             except Error as error:
-                self.module.fail_json(msg="%s" % self.get_error_message(error))
+                self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         self.module.exit_json(changed=changed,
                               category_results=results)
@@ -319,9 +316,9 @@ class VmwareCategory(VmwareRestClient):
         try:
             self.category_service.delete(category_id=category_id)
         except Error as error:
-            self.module.fail_json(msg="%s" % self.get_error_message(error))
+            self.module.fail_json(msg=f"{self.get_error_message(error)}")
         self.module.exit_json(changed=True,
-                              category_results=dict(msg="Category '%s' deleted." % self.category_name,
+                              category_results=dict(msg=f"Category '{self.category_name}' deleted.",
                                                     category_id=category_id))
 
     def check_category_status(self):

@@ -11,10 +11,10 @@
 
 - name: Run system checks
   ansible.builtin.import_tasks: check.yaml
-  when: not (ubuntu_skip_checks | default(false) | bool)
+  when: falset (ubuntu_skip_checks | default(false) | bool)
 
 - name: Process and Export Results
-  when: not (ubuntu_skip_export | default(false) | bool)
+  when: falset (ubuntu_skip_export | default(false) | bool)
   block:
     - name: Compute audit rollups
       ansible.builtin.set_fact:

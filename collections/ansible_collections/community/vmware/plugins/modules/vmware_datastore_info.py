@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Tim Rightnour <thegarbledone@gmail.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -173,10 +170,11 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
-    vmware_argument_spec,
-    get_all_objs,
     find_cluster_by_name,
-    get_parent_datacenter)
+    get_all_objs,
+    get_parent_datacenter,
+    vmware_argument_spec,
+)
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 
@@ -184,7 +182,7 @@ class VMwareHostDatastore(PyVmomi):
     """ This class populates the datastore list """
 
     def __init__(self, module):
-        super(VMwareHostDatastore, self).__init__(module)
+        super().__init__(module)
         self.gather_nfs_mount_info = self.module.params['gather_nfs_mount_info']
         self.gather_vmfs_mount_info = self.module.params['gather_vmfs_mount_info']
         self.schema = self.module.params['schema']
@@ -196,7 +194,7 @@ class VMwareHostDatastore(PyVmomi):
         """ Get all datastores of specified ESXi host """
         esxi = self.find_hostsystem_by_name(esxi_host)
         if esxi is None:
-            self.module.fail_json(msg="Failed to find ESXi hostname %s " % esxi_host)
+            self.module.fail_json(msg=f"Failed to find ESXi hostname {esxi_host} ")
         storage_system = esxi.configManager.storageSystem
         host_file_sys_vol_mount_info = storage_system.fileSystemVolumeInfo.mountInfo
         for host_mount_info in host_file_sys_vol_mount_info:
@@ -255,14 +253,14 @@ class VMwareHostDatastore(PyVmomi):
                     temp_ds.update({'tags': self.vmware_client.get_tags_for_datastore(datastore._moId)})
                 if self.module.params['name']:
                     if datastore.name == self.module.params['name']:
-                        datastores.extend(([temp_ds]))
+                        datastores.extend([temp_ds])
                 else:
-                    datastores.extend(([temp_ds]))
+                    datastores.extend([temp_ds])
 
         return datastores
 
 
-class PyVmomiCache(object):
+class PyVmomiCache:
     """ This class caches references to objects which are requested multiples times but not modified """
 
     def __init__(self, content, dc_name=None):
@@ -277,7 +275,7 @@ class PyVmomiCache(object):
         if confine_to_datacenter:
             if hasattr(objects, 'items'):
                 # resource pools come back as a dictionary
-                for k, v in tuple(objects.items()):
+                for k, _v in tuple(objects.items()):
                     parent_dc = get_parent_datacenter(k)
                     if parent_dc.name != self.dc_name:
                         del objects[k]
@@ -292,7 +290,7 @@ class PyVmomiHelper(PyVmomi):
     """ This class gets datastores """
 
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.cache = PyVmomiCache(self.content, dc_name=self.params['datacenter'])
 
     def lookup_datastore(self, confine_to_datacenter):
@@ -304,7 +302,7 @@ class PyVmomiHelper(PyVmomi):
         """ Get datastore(s) per cluster """
         cluster = find_cluster_by_name(self.content, self.params['cluster'])
         if not cluster:
-            self.module.fail_json(msg='Failed to find cluster "%(cluster)s"' % self.params)
+            self.module.fail_json(msg='Failed to find cluster "{cluster}"'.format(**self.params))
         c_dc = cluster.datastore
         return c_dc
 

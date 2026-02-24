@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Simplified BSD License (see LICENSES/BSD-2-Clause.txt or https://opensource.org/licenses/BSD-2-Clause)
 # SPDX-License-Identifier: BSD-2-Clause
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 try:
-    from pyVmomi import pbm
     from pyVim.connect import SoapStubAdapter
+    from pyVmomi import pbm
 except ImportError:
     pass
 
@@ -18,7 +15,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class SPBM(PyVmomi):
     def __init__(self, module):
-        super(SPBM, self).__init__(module)
+        super().__init__(module)
         self.spbm_content = None
         self.spbm_si = None
         self.version = "pbm.version.version2"

@@ -22,8 +22,8 @@ except ImportError:
         / "report_aggregation.py"
     )
     _spec = importlib.util.spec_from_file_location("internal_core_report_aggregation", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     load_all_reports = _mod.load_all_reports
     write_output = _mod.write_output

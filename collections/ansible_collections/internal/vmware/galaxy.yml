@@ -6,4 +6,8 @@ readme: README.md
 authors:
   - Codex Team
 description: VMware automation and auditing roles.
-license: "license"
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - security
+repository: https://github.com/example/codex

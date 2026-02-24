@@ -1,14 +1,11 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Tim Rightnour <thegarbledone@gmail.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -90,18 +87,19 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
+    TaskError,
     vmware_argument_spec,
     wait_for_task,
-    TaskError)
+)
 
 
 class VMwareDatastore(PyVmomi):
     def __init__(self, module):
-        super(VMwareDatastore, self).__init__(module)
+        super().__init__(module)
 
         if self.module.params.get('congestion_threshold_percentage') not in range(50, 101):
             self.module.fail_json(msg="Congestion Threshold should be between 50% and 100%.")
@@ -110,14 +108,14 @@ class VMwareDatastore(PyVmomi):
         if self.datacenter_name:
             self.datacenter = self.find_datacenter_by_name(self.datacenter_name)
             if self.datacenter is None:
-                self.module.fail_json(msg="Datacenter %s does not exist." % self.datacenter_name)
+                self.module.fail_json(msg=f"Datacenter {self.datacenter_name} does not exist.")
         else:
             self.datacenter = None
 
         self.datastore_name = self.module.params.get('name')
         self.datastore = self.find_datastore_by_name(self.datastore_name, self.datacenter)
         if self.datastore is None:
-            self.module.fail_json(msg="Datastore %s does not exist." % self.name)
+            self.module.fail_json(msg=f"Datastore {self.name} does not exist.")
 
         self.storageResourceManager = self.content.storageResourceManager
 
@@ -206,7 +204,7 @@ class VMwareDatastore(PyVmomi):
 
                 try:
                     task = self.storageResourceManager.ConfigureDatastoreIORM_Task(self.datastore, config_spec)
-                    changed, result = wait_for_task(task)
+                    changed, _result = wait_for_task(task)
                 except TaskError as generic_exc:
                     self.module.fail_json(msg=to_native(generic_exc))
                 except Exception as task_e:

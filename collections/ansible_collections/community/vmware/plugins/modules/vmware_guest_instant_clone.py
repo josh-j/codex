@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, Ansible Project
 # Copyright: (c) 2021, Anant Chopra <chopraan@vmware.com>
@@ -7,8 +6,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Make coding more python3-ish
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -267,19 +264,19 @@ vm_info:
 '''
 
 import time
+
 from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     TaskError,
-    find_vm_by_name,
-    find_vm_by_id,
     connect_to_api,
-    vmware_argument_spec,
     find_obj,
+    find_vm_by_id,
+    find_vm_by_name,
+    set_vm_power_state,
+    vmware_argument_spec,
     wait_for_task,
-    set_vm_power_state
 )
 
 try:
@@ -335,7 +332,7 @@ class VmwareGuestInstantClone(PyVmomi):
         # clone the vm on  VC
         if self.vm_obj is None:
             vm_id = self.parent_vm or self.uuid or self.moid
-            self.module.fail_json(msg="Failed to find the VM/template with %s" % vm_id)
+            self.module.fail_json(msg=f"Failed to find the VM/template with {vm_id}")
         try:
             task = self.vm_obj.InstantClone_Task(spec=self.instant_clone_spec)
             wait_for_task(task)
@@ -432,10 +429,10 @@ class VmwareGuestInstantClone(PyVmomi):
 
         use_instance_uuid = self.params.get('use_instance_uuid') or False
 
-        if 'parent_vm' in self.params and self.params['parent_vm']:
+        if self.params.get('parent_vm'):
             self.vm_obj = find_vm_by_name(content=self.destination_content, vm_name=self.parent_vm)
 
-        elif 'uuid' in self.params and self.params['uuid']:
+        elif self.params.get('uuid'):
             if not use_instance_uuid:
                 self.vm_obj = find_vm_by_id(content=self.destination_content, vm_id=self.params['uuid'], vm_id_type="uuid")
             elif use_instance_uuid:
@@ -443,12 +440,12 @@ class VmwareGuestInstantClone(PyVmomi):
                                             vm_id=self.params['uuid'],
                                             vm_id_type="instance_uuid")
 
-        elif 'moid' in self.params and self.params['moid']:
+        elif self.params.get('moid'):
             self.vm_obj = vim.VirtualMachine(self.params['moid'], self.si._stub)
 
         if self.vm_obj is None:
             vm_id = self.parent_vm or self.uuid or self.moid
-            self.module.fail_json(msg="Failed to find the VM/template with %s" % vm_id)
+            self.module.fail_json(msg=f"Failed to find the VM/template with {vm_id}")
 
         vm = find_vm_by_name(content=self.destination_content, vm_name=self.params['name'])
         if vm:

@@ -11,13 +11,14 @@ try:
         _safe_pct,
         _severity_for_pct,
         _status_from_health,
+        safe_list,
         to_int,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parent / "report_view_models_common.py"
     _spec = importlib.util.spec_from_file_location("internal_core_report_view_models_common", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _count_alerts = _mod._count_alerts
     _iter_hosts = _mod._iter_hosts
@@ -25,6 +26,7 @@ except ImportError:
     _safe_pct = _mod._safe_pct
     _severity_for_pct = _mod._severity_for_pct
     _status_from_health = _mod._status_from_health
+    safe_list = _mod.safe_list
     to_int = _mod.to_int
 
 
@@ -50,7 +52,7 @@ def _coerce_vmware_bundle(bundle):
             discovery = bundle
 
     vcenter_health = dict(audit.get("vcenter_health") or bundle.get("vcenter_health") or {})
-    alerts = list(audit.get("alerts") or vcenter_health.get("alerts") or bundle.get("alerts") or [])
+    alerts = safe_list(audit.get("alerts") or vcenter_health.get("alerts") or bundle.get("alerts"))
 
     return {
         "discovery": discovery,
@@ -186,7 +188,7 @@ def build_vmware_fleet_view(
                 "vcenter_health": vcenter_health,
             }
         )
-        for alert in list(bundle_view.get("alerts") or []):
+        for alert in safe_list(bundle_view.get("alerts")):
             if not isinstance(alert, dict):
                 continue
             counts = _count_alerts([alert])

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -290,14 +287,14 @@ except ImportError:
     except ImportError:
         pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareHostTcpipStack(PyVmomi):
     def __init__(self, module):
-        super(VmwareHostTcpipStack, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = self.params['esxi_hostname']
         self.default = self.params['default']
         self.provisioning = self.params['provisioning']
@@ -536,7 +533,7 @@ class VmwareHostTcpipStack(PyVmomi):
         # The host name is unique in vCenter, so find the host from the whole.
         self.host_obj = self.find_hostsystem_by_name(self.esxi_hostname)
         if self.host_obj is None:
-            self.module.fail_json(msg="Cannot find the specified ESXi host: %s" % self.params['esxi_hostname'])
+            self.module.fail_json(msg="Cannot find the specified ESXi host: {}".format(self.params['esxi_hostname']))
 
         self.check_enabled_net_stack_instance()
         self.get_net_stack_instance_config()
@@ -547,14 +544,14 @@ class VmwareHostTcpipStack(PyVmomi):
                 try:
                     self.host_obj.configManager.networkSystem.UpdateNetworkConfig(self.new_net_stack_instance_configs, 'modify')
                 except vim.fault.PlatformConfigFault as e:
-                    self.module.fail_json(msg="cannot modify tcpip stack config: %s" % to_text(e.faultMessage[0].message))
+                    self.module.fail_json(msg=f"cannot modify tcpip stack config: {to_text(e.faultMessage[0].message)}")
                 except Exception as e:
-                    self.module.fail_json(msg="cannot modify tcpip stack config: %s" % to_text(e.msg))
+                    self.module.fail_json(msg=f"cannot modify tcpip stack config: {to_text(e.msg)}")
 
         # Make a warning for the item if it isn't supported by ESXi when specified item.
         for key, value in self.enabled_net_stack_instance.items():
             if self.params[key] and value is False:
-                self.module.warn("%s isn't supported in %s" % (key, self.params['esxi_hostname']))
+                self.module.warn("{} isn't supported in {}".format(key, self.params['esxi_hostname']))
 
         # Make the return value for the result.
         result = dict(

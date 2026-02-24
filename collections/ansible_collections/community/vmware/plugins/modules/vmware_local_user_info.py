@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -66,21 +63,21 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VMwareUserInfoManager(PyVmomi):
     """Class to manage local user info"""
 
     def __init__(self, module):
-        super(VMwareUserInfoManager, self).__init__(module)
+        super().__init__(module)
 
         if self.is_vcenter():
             self.module.fail_json(
                 msg="Failed to get local account manager settings.",
-                details="It seems that '%s' is a vCenter server instead of an ESXi server" % self.module.params['hostname']
+                details="It seems that '{}' is a vCenter server instead of an ESXi server".format(self.module.params['hostname'])
             )
 
     def gather_user_info(self):
@@ -109,7 +106,7 @@ class VMwareUserInfoManager(PyVmomi):
                     )
                 except vmodl.fault.ManagedObjectNotFound as not_found:
                     self.module.fail_json(
-                        msg="The entity doesn't exist: %s" % to_native(not_found)
+                        msg=f"The entity doesn't exist: {to_native(not_found)}"
                     )
                 for permission in permissions:
                     if permission.principal == user.principal:

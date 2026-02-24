@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2022, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 module: vmware_host_user_manager
@@ -112,14 +109,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareHostUserManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareHostUserManager, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = module.params["esxi_hostname"]
         self.user_name = module.params["user_name"]
         self.user_password = module.params["user_password"]
@@ -165,7 +162,7 @@ class VmwareHostUserManager(PyVmomi):
         try:
             self.host_obj.configManager.accountManager.CreateUser(user_spec)
         except Exception as e:
-            self.module.fail_json(msg="Failed to add a new user: %s" % to_text(e.msg))
+            self.module.fail_json(msg=f"Failed to add a new user: {to_text(e.msg)}")
 
     def update_user(self):
         """
@@ -182,7 +179,7 @@ class VmwareHostUserManager(PyVmomi):
         try:
             self.host_obj.configManager.accountManager.UpdateUser(user_spec)
         except Exception as e:
-            self.module.fail_json(msg="Failed to update a new password: %s" % to_text(e))
+            self.module.fail_json(msg=f"Failed to update a new password: {to_text(e)}")
 
     def remove_user(self):
         """
@@ -191,13 +188,13 @@ class VmwareHostUserManager(PyVmomi):
         try:
             self.host_obj.configManager.accountManager.RemoveUser(self.user_name)
         except Exception as e:
-            self.module.fail_json(msg="Failed to remove a user: %s" % to_text(e.msg))
+            self.module.fail_json(msg=f"Failed to remove a user: {to_text(e.msg)}")
 
     def execute(self):
         # The host name is unique in vCenter, so find the host from the whole.
         self.host_obj = self.find_hostsystem_by_name(self.esxi_hostname)
         if self.host_obj is None:
-            self.module.fail_json(msg="Cannot find the specified ESXi host: %s" % self.params['esxi_hostname'])
+            self.module.fail_json(msg="Cannot find the specified ESXi host: {}".format(self.params['esxi_hostname']))
 
         # Search the specified user
         user_account = self.search_user()

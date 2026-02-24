@@ -3,8 +3,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
     author:
@@ -207,11 +205,11 @@ ansible_shell_type: powershell
 '''
 
 import re
+import traceback
 from os.path import exists, getsize
 from socket import gaierror
 from ssl import SSLError
 from time import sleep
-import traceback
 
 REQUESTS_IMP_ERR = None
 PYVMOMI_IMP_ERR = None
@@ -232,10 +230,10 @@ except ImportError:
     except ImportError:
         HAS_URLLIB3 = False
 
-from ansible.errors import AnsibleError, AnsibleFileNotFound, AnsibleConnectionFailure
+from ansible.errors import AnsibleConnectionFailure, AnsibleError, AnsibleFileNotFound
 from ansible.module_utils._text import to_bytes, to_native
-from ansible.plugins.connection import ConnectionBase
 from ansible.module_utils.basic import missing_required_lib
+from ansible.plugins.connection import ConnectionBase
 
 try:
     from pyVim.connect import Disconnect, SmartConnect
@@ -284,7 +282,7 @@ class Connection(ConnectionBase):
 
     def __init__(self, *args, **kwargs):
         """init."""
-        super(Connection, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if hasattr(self, "_shell") and self._shell.SHELL_FAMILY == "powershell":
             self.module_implementation_preferences = (".ps1", ".exe", "")
             self.become_methods = ["runas"]
@@ -311,9 +309,9 @@ class Connection(ConnectionBase):
         except SSLError:
             raise AnsibleError("SSL Error: Certificate verification failed.")
         except (gaierror):
-            raise AnsibleError("Connection Error: Unable to connect to '%s'." % to_native(connection_kwargs["host"]))
+            raise AnsibleError("Connection Error: Unable to connect to '{}'.".format(to_native(connection_kwargs["host"])))
         except vim.fault.InvalidLogin as e:
-            raise AnsibleError("Connection Login Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"Connection Login Error: {to_native(e.msg)}")
 
     def _establish_vm(self, check_vm_credentials=True):
         searchIndex = self._si.content.searchIndex
@@ -321,11 +319,11 @@ class Connection(ConnectionBase):
         if self.get_option("vm_path") is not None:
             self.vm = searchIndex.FindByInventoryPath(self.get_option("vm_path"))
             if self.vm is None:
-                raise AnsibleError("Unable to find VM by path '%s'" % to_native(self.get_option("vm_path")))
+                raise AnsibleError("Unable to find VM by path '{}'".format(to_native(self.get_option("vm_path"))))
         elif self.get_option("vm_uuid") is not None:
             self.vm = searchIndex.FindByUuid(None, self.get_option("vm_uuid"), True)
             if self.vm is None:
-                raise AnsibleError("Unable to find VM by uuid '%s'" % to_native(self.get_option("vm_uuid")))
+                raise AnsibleError("Unable to find VM by uuid '{}'".format(to_native(self.get_option("vm_uuid"))))
 
         self.vm_auth = vim.NamePasswordAuthentication(
             username=self.get_option("vm_user"), password=self.get_option("vm_password"), interactiveSession=False
@@ -335,35 +333,33 @@ class Connection(ConnectionBase):
             if check_vm_credentials:
                 self.authManager.ValidateCredentialsInGuest(vm=self.vm, auth=self.vm_auth)
         except vim.fault.InvalidPowerState as e:
-            raise AnsibleError("VM Power State Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"VM Power State Error: {to_native(e.msg)}")
         except vim.fault.RestrictedVersion as e:
-            raise AnsibleError("Restricted Version Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"Restricted Version Error: {to_native(e.msg)}")
         except vim.fault.GuestOperationsUnavailable as e:
-            raise AnsibleError("VM Guest Operations (VMware Tools) Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"VM Guest Operations (VMware Tools) Error: {to_native(e.msg)}")
         except vim.fault.InvalidGuestLogin as e:
-            raise AnsibleError("VM Login Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"VM Login Error: {to_native(e.msg)}")
         except vim.fault.NoPermission as e:
-            raise AnsibleConnectionFailure("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleConnectionFailure(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 
     def _connect(self, check_vm_credentials=True):
         if not HAS_REQUESTS:
-            raise AnsibleError("%s : %s" % (missing_required_lib('requests'), REQUESTS_IMP_ERR))
+            raise AnsibleError("{} : {}".format(missing_required_lib('requests'), REQUESTS_IMP_ERR))
 
         if not HAS_PYVMOMI:
-            raise AnsibleError("%s : %s" % (missing_required_lib('PyVmomi'), PYVMOMI_IMP_ERR))
+            raise AnsibleError("{} : {}".format(missing_required_lib('PyVmomi'), PYVMOMI_IMP_ERR))
 
-        super(Connection, self)._connect()
+        super()._connect()
 
         if not self.connected:
             self._establish_connection()
@@ -372,7 +368,7 @@ class Connection(ConnectionBase):
 
     def close(self):
         """Close connection."""
-        super(Connection, self).close()
+        super().close()
 
         Disconnect(self._si)
         self._connected = False
@@ -390,16 +386,14 @@ class Connection(ConnectionBase):
         try:
             return self.fileManager.CreateTemporaryFileInGuest(vm=self.vm, auth=self.vm_auth, prefix=prefix, suffix=suffix)
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 
@@ -411,10 +405,10 @@ class Connection(ConnectionBase):
             #FIXME: Fix the unecessary invocation of cmd and run the command directly
             '''
             program_path = "cmd.exe"
-            arguments = "/c %s" % cmd
+            arguments = f"/c {cmd}"
         else:
             program_path = self.get_option("executable")
-            arguments = re.sub(r"^%s\s*" % program_path, "", cmd)
+            arguments = re.sub(rf"^{program_path}\s*", "", cmd)
 
         return program_path, arguments
 
@@ -423,7 +417,7 @@ class Connection(ConnectionBase):
 
         program_path, arguments = self._get_program_spec_program_path_and_arguments(cmd)
 
-        arguments += " 1> %s 2> %s" % (stdout, stderr)
+        arguments += f" 1> {stdout} 2> {stderr}"
 
         guest_program_spec.programPath = program_path
         guest_program_spec.arguments = arguments
@@ -434,18 +428,16 @@ class Connection(ConnectionBase):
         try:
             processes = self.processManager.ListProcessesInGuest(vm=self.vm, auth=self.vm_auth, pids=[pid])
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             # https://pubs.vmware.com/vsphere-6-5/index.jsp?topic=%2Fcom.vmware.wssdk.smssdk.doc%2Fvmodl.fault.SystemError.html
             # https://github.com/ansible/ansible/issues/57607
             if e.reason == 'vix error codes = (1, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, Netlogon service stopped or dcpromo in progress. Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, Netlogon service stopped or dcpromo in progress. Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection plugin failed. Reason: %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection plugin failed. Reason: {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
         except vim.fault.InvalidGuestLogin:
@@ -469,16 +461,14 @@ class Connection(ConnectionBase):
         try:
             fileTransferInformation = self.fileManager.InitiateFileTransferFromGuest(vm=self.vm, auth=self.vm_auth, guestFilePath=guestFilePath)
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 
@@ -495,22 +485,20 @@ class Connection(ConnectionBase):
         try:
             self.fileManager.DeleteFileInGuest(vm=self.vm, auth=self.vm_auth, filePath=filePath)
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 
     def exec_command(self, cmd, in_data=None, sudoable=True):
         """Execute command."""
-        super(Connection, self).exec_command(cmd, in_data=in_data, sudoable=sudoable)
+        super().exec_command(cmd, in_data=in_data, sudoable=sudoable)
 
         stdout = self.create_temporary_file_in_guest(suffix=".stdout")
         stderr = self.create_temporary_file_in_guest(suffix=".stderr")
@@ -520,18 +508,16 @@ class Connection(ConnectionBase):
         try:
             pid = self.processManager.StartProgramInGuest(vm=self.vm, auth=self.vm_auth, spec=guest_program_spec)
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vim.fault.FileNotFound as e:
-            raise AnsibleError("StartProgramInGuest Error: %s" % to_native(e.msg))
+            raise AnsibleError(f"StartProgramInGuest Error: {to_native(e.msg)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 
@@ -551,7 +537,7 @@ class Connection(ConnectionBase):
 
     def fetch_file(self, in_path, out_path):
         """Fetch file."""
-        super(Connection, self).fetch_file(in_path, out_path)
+        super().fetch_file(in_path, out_path)
 
         in_path_response = self._fetch_file_from_vm(in_path)
 
@@ -561,26 +547,24 @@ class Connection(ConnectionBase):
 
     def put_file(self, in_path, out_path):
         """Put file."""
-        super(Connection, self).put_file(in_path, out_path)
+        super().put_file(in_path, out_path)
 
         if not exists(to_bytes(in_path, errors="surrogate_or_strict")):
-            raise AnsibleFileNotFound("file or module does not exist: '%s'" % to_native(in_path))
+            raise AnsibleFileNotFound(f"file or module does not exist: '{to_native(in_path)}'")
 
         try:
             put_url = self.fileManager.InitiateFileTransferToGuest(
                 vm=self.vm, auth=self.vm_auth, guestFilePath=out_path, fileAttributes=vim.GuestFileAttributes(), fileSize=getsize(in_path), overwrite=True
             )
         except vim.fault.NoPermission as e:
-            raise AnsibleError("No Permission Error: %s %s" % (to_native(e.msg), to_native(e.privilegeId)))
+            raise AnsibleError(f"No Permission Error: {to_native(e.msg)} {to_native(e.privilegeId)}")
         except vmodl.fault.SystemError as e:
             if e.reason == 'vix error codes = (3016, 0).\n':
                 raise AnsibleConnectionFailure(
-                    "Connection failed, is the vm currently rebooting? Reason: %s" % (
-                        to_native(e.reason)
-                    )
+                    f"Connection failed, is the vm currently rebooting? Reason: {to_native(e.reason)}"
                 )
             else:
-                raise AnsibleConnectionFailure("Connection failed. Reason %s" % (to_native(e.reason)))
+                raise AnsibleConnectionFailure(f"Connection failed. Reason {to_native(e.reason)}")
         except vim.fault.GuestOperationsUnavailable:
             raise AnsibleConnectionFailure("Cannot connect to guest. Native error: GuestOperationsUnavailable")
 

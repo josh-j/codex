@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2022, Swisscom (Schweiz) AG
 # Author(s): Olivia Luetolf <olivia.luetolf@swisscom.com>
@@ -7,8 +6,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -78,20 +75,20 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     TaskError,
     find_datacenter_by_name,
     vmware_argument_spec,
-    wait_for_task
+    wait_for_task,
 )
-from ansible.module_utils._text import to_native
 
 
 class VMwareCluster(PyVmomi):
     def __init__(self, module):
-        super(VMwareCluster, self).__init__(module)
+        super().__init__(module)
         self.cluster_name = module.params['cluster_name']
         self.datacenter_name = module.params['datacenter']
         self.enable_dpm = module.params['enable_dpm']
@@ -102,11 +99,11 @@ class VMwareCluster(PyVmomi):
 
         self.datacenter = find_datacenter_by_name(self.content, self.datacenter_name)
         if self.datacenter is None:
-            self.module.fail_json(msg="Datacenter %s does not exist." % self.datacenter_name)
+            self.module.fail_json(msg=f"Datacenter {self.datacenter_name} does not exist.")
 
         self.cluster = self.find_cluster_by_name(cluster_name=self.cluster_name, datacenter_name=self.datacenter)
         if self.cluster is None:
-            self.module.fail_json(msg="Cluster %s does not exist." % self.cluster_name)
+            self.module.fail_json(msg=f"Cluster {self.cluster_name} does not exist.")
 
     def check_dpm_config_diff(self):
         """
@@ -156,7 +153,7 @@ class VMwareCluster(PyVmomi):
                     self.module.fail_json(msg=to_native(task_e))
                 except Exception as generic_exc:
                     self.module.fail_json(msg="Failed to update cluster"
-                                              " due to generic exception %s" % to_native(generic_exc))
+                                              f" due to generic exception {to_native(generic_exc)}")
             else:
                 changed = True
 

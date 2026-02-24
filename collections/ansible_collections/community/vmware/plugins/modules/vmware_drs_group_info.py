@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Karsten Kaj Jakobsen <kj@patientsky.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -111,7 +108,12 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi, find_datacenter_by_name, get_all_objs
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_datacenter_by_name,
+    get_all_objs,
+    vmware_argument_spec,
+)
 
 
 class VmwareDrsGroupInfoManager(PyVmomi):
@@ -121,7 +123,7 @@ class VmwareDrsGroupInfoManager(PyVmomi):
         Doctring: Init
         """
 
-        super(VmwareDrsGroupInfoManager, self).__init__(module)
+        super().__init__(module)
 
         self.__datacenter_name = datacenter_name
         self.__datacenter_obj = None
@@ -138,14 +140,14 @@ class VmwareDrsGroupInfoManager(PyVmomi):
                 folder = self.__datacenter_obj.hostFolder
                 self.cluster_obj_list = get_all_objs(self.content, [vim.ClusterComputeResource], folder)
             else:
-                raise Exception("Datacenter '%s' not found" % self.__datacenter_name)
+                raise Exception(f"Datacenter '{self.__datacenter_name}' not found")
 
         if self.__cluster_name:
 
             self.__cluster_obj = self.find_cluster_by_name(cluster_name=self.__cluster_name)
 
             if self.__cluster_obj is None:
-                raise Exception("Cluster '%s' not found" % self.__cluster_name)
+                raise Exception(f"Cluster '{self.__cluster_name}' not found")
             else:
                 self.cluster_obj_list = [self.__cluster_obj]
 
@@ -262,7 +264,7 @@ def main():
                        drs_group_info=vmware_drs_group_info.get_result())
 
     except Exception as error:
-        results = dict(failed=True, msg="Error: %s" % error)
+        results = dict(failed=True, msg=f"Error: {error}")
 
     if results['failed']:
         module.fail_json(**results)

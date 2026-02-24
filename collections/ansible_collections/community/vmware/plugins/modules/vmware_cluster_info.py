@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -183,14 +180,19 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six.moves.urllib.parse import unquote
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_datacenter_by_name, find_cluster_by_name, \
-    get_parent_datacenter
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_cluster_by_name,
+    find_datacenter_by_name,
+    get_parent_datacenter,
+    vmware_argument_spec,
+)
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 
 class VmwreClusterInfoManager(PyVmomi):
     def __init__(self, module):
-        super(VmwreClusterInfoManager, self).__init__(module)
+        super().__init__(module)
         datacenter = self.params.get('datacenter')
         cluster_name = self.params.get('cluster_name')
         self.schema = self.params.get('schema')
@@ -199,12 +201,12 @@ class VmwreClusterInfoManager(PyVmomi):
         if datacenter:
             datacenter_obj = find_datacenter_by_name(self.content, datacenter_name=datacenter)
             if datacenter_obj is None:
-                self.module.fail_json(msg="Failed to find datacenter '%s'" % datacenter)
+                self.module.fail_json(msg=f"Failed to find datacenter '{datacenter}'")
             self.cluster_objs = self.get_all_cluster_objs(parent=datacenter_obj)
         elif cluster_name:
             cluster_obj = find_cluster_by_name(self.content, cluster_name=cluster_name)
             if cluster_obj is None:
-                self.module.fail_json(msg="Failed to find cluster '%s'" % cluster_name)
+                self.module.fail_json(msg=f"Failed to find cluster '{cluster_name}'")
 
             self.cluster_objs = [cluster_obj]
 

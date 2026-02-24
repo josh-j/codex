@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -115,6 +112,7 @@ tag_status:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
+
 try:
     from com.vmware.vapi.std.errors_client import Error
 except ImportError:
@@ -123,7 +121,7 @@ except ImportError:
 
 class VmwareTag(VmwareRestClient):
     def __init__(self, module):
-        super(VmwareTag, self).__init__(module)
+        super().__init__(module)
         self.tag_service = self.api_client.tagging.Tag
         self.tag_name = self.params.get('tag_name')
         self.category_service = self.api_client.tagging.Category
@@ -133,7 +131,7 @@ class VmwareTag(VmwareRestClient):
             category_name = self.params.get('category_name')
             category_obj = self.search_svc_object_by_name(service=self.category_service, svc_obj_name=category_name)
             if category_obj is None:
-                self.module.fail_json(msg="Unable to find the category %s" % category_name)
+                self.module.fail_json(msg=f"Unable to find the category {category_name}")
 
             self.category_id = category_obj.id
 
@@ -177,11 +175,11 @@ class VmwareTag(VmwareRestClient):
         try:
             tag_id = self.tag_service.create(tag_spec)
         except Error as error:
-            self.module.fail_json(msg="%s" % self.get_error_message(error))
+            self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         if tag_id is not None:
             self.module.exit_json(changed=True,
-                                  tag_status=dict(msg="Tag '%s' created." % tag_spec.name, tag_id=tag_id))
+                                  tag_status=dict(msg=f"Tag '{tag_spec.name}' created.", tag_id=tag_id))
         self.module.exit_json(changed=False,
                               tag_status=dict(msg="No tag created", tag_id=tag_id))
 
@@ -199,7 +197,7 @@ class VmwareTag(VmwareRestClient):
         """
         changed = False
         tag_id = self.tag_obj.id
-        results = dict(msg="Tag %s is unchanged." % self.tag_name,
+        results = dict(msg=f"Tag {self.tag_name} is unchanged.",
                        tag_id=tag_id)
         tag_desc = self.tag_obj.description
         desired_tag_desc = self.params.get('tag_description')
@@ -209,9 +207,9 @@ class VmwareTag(VmwareRestClient):
             try:
                 self.tag_service.update(tag_id, tag_update_spec)
             except Error as error:
-                self.module.fail_json(msg="%s" % self.get_error_message(error))
+                self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
-            results['msg'] = 'Tag %s updated.' % self.tag_name
+            results['msg'] = f'Tag {self.tag_name} updated.'
             changed = True
 
         self.module.exit_json(changed=changed, tag_status=results)
@@ -225,10 +223,10 @@ class VmwareTag(VmwareRestClient):
         try:
             self.tag_service.delete(tag_id=tag_id)
         except Error as error:
-            self.module.fail_json(msg="%s" % self.get_error_message(error))
+            self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         self.module.exit_json(changed=True,
-                              tag_status=dict(msg="Tag '%s' deleted." % self.tag_name, tag_id=tag_id))
+                              tag_status=dict(msg=f"Tag '{self.tag_name}' deleted.", tag_id=tag_id))
 
     def check_tag_status(self):
         """

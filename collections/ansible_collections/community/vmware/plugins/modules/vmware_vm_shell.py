@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015-16, Ritesh Khadgaray <khadgaray () gmail.com>
 # Copyright: (c) 2018, Ansible Project
@@ -7,8 +6,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -190,6 +187,7 @@ results:
 '''
 
 import time
+
 try:
     from pyVmomi import vim, vmodl
 except ImportError:
@@ -198,13 +196,17 @@ except ImportError:
 from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, find_cluster_by_name, find_datacenter_by_name, find_vm_by_id,
-    vmware_argument_spec)
+    PyVmomi,
+    find_cluster_by_name,
+    find_datacenter_by_name,
+    find_vm_by_id,
+    vmware_argument_spec,
+)
 
 
 class VMwareShellManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareShellManager, self).__init__(module)
+        super().__init__(module)
         datacenter_name = module.params['datacenter']
         cluster_name = module.params['cluster']
         folder = module.params['folder']
@@ -219,13 +221,13 @@ class VMwareShellManager(PyVmomi):
         if datacenter_name:
             datacenter = find_datacenter_by_name(self.content, datacenter_name)
             if not datacenter:
-                module.fail_json(changed=False, msg="Unable to find %(datacenter)s datacenter" % module.params)
+                module.fail_json(changed=False, msg="Unable to find {datacenter} datacenter".format(**module.params))
 
         cluster = None
         if cluster_name:
             cluster = find_cluster_by_name(self.content, cluster_name, datacenter)
             if not cluster:
-                module.fail_json(changed=False, msg="Unable to find %(cluster)s cluster" % module.params)
+                module.fail_json(changed=False, msg="Unable to find {cluster} cluster".format(**module.params))
 
         if module.params['vm_id_type'] == 'inventory_path':
             vm = find_vm_by_id(self.content,

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Dag Wieers (@dagwieers) <dag@wieers.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -125,15 +122,14 @@ EXAMPLES = r'''
 RETURN = r'''
 '''
 
-import socket
 import sys
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import PY2
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import quote, urlencode
 from ansible.module_utils.urls import open_url
-from ansible.module_utils._text import to_native
 
 
 def vmware_path(datastore, datacenter, path):
@@ -147,7 +143,7 @@ def vmware_path(datastore, datacenter, path):
     params = dict(dsName=datastore)
     if datacenter:
         params['dcPath'] = datacenter
-    return '{0}?{1}'.format(path, urlencode(params))
+    return f'{path}?{urlencode(params)}'
 
 
 def main():
@@ -178,7 +174,7 @@ def main():
     state = module.params.get('state')
 
     remote_path = vmware_path(datastore, datacenter, path)
-    url = 'https://%s%s' % (host, remote_path)
+    url = f'https://{host}{remote_path}'
 
     result = dict(
         path=path,
@@ -195,7 +191,7 @@ def main():
                      validate_certs=validate_certs, force_basic_auth=True)
     except HTTPError as e:
         r = e
-    except socket.error as e:
+    except OSError as e:
         module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
     except Exception as e:
         module.fail_json(msg=to_native(e), errno=dir(e), reason=to_native(e), **result)
@@ -212,7 +208,7 @@ def main():
     else:
         result['reason'] = r.msg
         result['status'] = status
-        module.fail_json(msg="Failed to query for file '%s'" % path, errno=None, headers=dict(r.headers), **result)
+        module.fail_json(msg=f"Failed to query for file '{path}'", errno=None, headers=dict(r.headers), **result)
 
     if state == 'absent':
         if not exists:
@@ -228,7 +224,7 @@ def main():
                              validate_certs=validate_certs, force_basic_auth=True)
             except HTTPError as e:
                 r = e
-            except socket.error as e:
+            except OSError as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
             except Exception as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
@@ -243,7 +239,7 @@ def main():
                 result['state'] = 'directory'
                 module.fail_json(msg='Directories cannot be removed with this module', errno=None, headers=dict(r.headers), **result)
             elif result['status'] != 204:
-                module.fail_json(msg="Failed to remove '%s'" % path, errno=None, headers=dict(r.headers), **result)
+                module.fail_json(msg=f"Failed to remove '{path}'", errno=None, headers=dict(r.headers), **result)
 
         result['size'] = None
         module.exit_json(changed=True, **result)
@@ -259,7 +255,7 @@ def main():
         else:
             # Create a temporary file in the new directory
             remote_path = vmware_path(datastore, datacenter, path + '/foobar.tmp')
-            temp_url = 'https://%s%s' % (host, remote_path)
+            temp_url = f'https://{host}{remote_path}'
 
             try:
                 r = open_url(temp_url, method='PUT', timeout=timeout,
@@ -267,7 +263,7 @@ def main():
                              validate_certs=validate_certs, force_basic_auth=True)
             except HTTPError as e:
                 r = e
-            except socket.error as e:
+            except OSError as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
             except Exception as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
@@ -287,7 +283,7 @@ def main():
                              validate_certs=validate_certs, force_basic_auth=True)
             except HTTPError as e:
                 r = e
-            except socket.error as e:
+            except OSError as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
             except Exception as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
@@ -308,7 +304,7 @@ def main():
         if not exists:
             result['state'] = 'absent'
             result['status'] = status
-            module.fail_json(msg="File '%s' is absent, cannot continue" % path, **result)
+            module.fail_json(msg=f"File '{path}' is absent, cannot continue", **result)
 
         result['status'] = status
         module.exit_json(changed=False, **result)
@@ -328,7 +324,7 @@ def main():
                              validate_certs=validate_certs, force_basic_auth=True)
             except HTTPError as e:
                 r = e
-            except socket.error as e:
+            except OSError as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
             except Exception as e:
                 module.fail_json(msg=to_native(e), errno=e[0], reason=to_native(e), **result)
@@ -339,7 +335,7 @@ def main():
             result['reason'] = r.msg
             result['status'] = r.getcode()
             if result['status'] != 201:
-                module.fail_json(msg="Failed to touch '%s'" % path, errno=None, headers=dict(r.headers), **result)
+                module.fail_json(msg=f"Failed to touch '{path}'", errno=None, headers=dict(r.headers), **result)
 
         result['size'] = 0
         result['state'] = 'file'

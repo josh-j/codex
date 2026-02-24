@@ -4,16 +4,17 @@ import importlib.util
 from pathlib import Path
 
 try:
-    from .report_view_models_common import _iter_hosts, _status_from_health, canonical_severity
+    from .report_view_models_common import _iter_hosts, _status_from_health, canonical_severity, safe_list
 except ImportError:
     _helper_path = Path(__file__).resolve().parent / "report_view_models_common.py"
     _spec = importlib.util.spec_from_file_location("internal_core_report_view_models_common", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _iter_hosts = _mod._iter_hosts
     _status_from_health = _mod._status_from_health
     canonical_severity = _mod.canonical_severity
+    safe_list = _mod.safe_list
 
 
 def _canonical_stig_status(value):
@@ -65,7 +66,10 @@ def _infer_stig_target_type(audit_type, payload):
 
 
 def _normalize_stig_finding(finding_or_alert, audit_type, platform):
-    item = dict(finding_or_alert or {})
+    if not isinstance(finding_or_alert, dict):
+        finding_or_alert = {"message": str(finding_or_alert)}
+    
+    item = dict(finding_or_alert)
     detail = dict(item.get("detail") or {})
     if not detail:
         for key in (
@@ -123,12 +127,11 @@ def _normalize_stig_finding(finding_or_alert, audit_type, platform):
 
 
 def _summarize_stig_findings(findings):
-    findings = list(findings or [])
     out = {
         "findings": {"total": 0, "critical": 0, "warning": 0, "info": 0},
         "by_status": {"open": 0, "pass": 0, "na": 0, "not_reviewed": 0, "unknown": 0},
     }
-    for f in findings:
+    for f in safe_list(findings):
         sev = str((f or {}).get("severity") or "INFO").upper()
         status = str((f or {}).get("status") or "unknown")
         out["findings"]["total"] += 1
@@ -159,11 +162,12 @@ def build_stig_host_view(
     target_type = _infer_stig_target_type(audit_type, stig_payload)
 
     source_findings = []
-    if isinstance(stig_payload.get("full_audit"), list):
-        for row in stig_payload.get("full_audit") or []:
+    full_audit = stig_payload.get("full_audit")
+    if isinstance(full_audit, list):
+        for row in full_audit:
             source_findings.append(_normalize_stig_finding(row, audit_type, platform_name))
     else:
-        for alert in stig_payload.get("alerts") or []:
+        for alert in safe_list(stig_payload.get("alerts")):
             source_findings.append(_normalize_stig_finding(alert, audit_type, platform_name))
 
     summary = _summarize_stig_findings(source_findings)
@@ -247,6 +251,10 @@ def build_stig_fleet_view(
                 link_base = "platform/windows"
             else:
                 link_base = "platform/ubuntu"
+
+            # Use the canonical STIG report name pattern: <host>_stig_<target_type>.html
+            target_type = target.get("target_type", "unknown")
+            stamped_name = f"{hostname}_stig_{target_type}.html"
             rows.append(
                 {
                     "host": hostname,
@@ -257,7 +265,7 @@ def build_stig_fleet_view(
                     "critical": crit,
                     "warning": warn,
                     "links": {
-                        "node_report_latest": f"{link_base}/{hostname}/health_report.html",
+                        "node_report_latest": f"{link_base}/{hostname}/{stamped_name}",
                     },
                     "findings": [f for f in findings if f.get("status") == "open"],
                 }

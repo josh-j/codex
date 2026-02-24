@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -158,14 +155,14 @@ except ImportError:
 
 import xml.etree.ElementTree as ET
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostLogbundle(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostLogbundle, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = self.params['esxi_hostname']
         self.dest = self.params['dest']
         self.manifests = self.params['manifests']
@@ -181,7 +178,7 @@ class VMwareHostLogbundle(PyVmomi):
 
         headers = {
             'Content-Type': 'application/octet-stream',
-            'Cookie': 'vmware_cgi_ticket=%s' % ticket.id
+            'Cookie': f'vmware_cgi_ticket={ticket.id}'
         }
 
         return headers
@@ -194,18 +191,18 @@ class VMwareHostLogbundle(PyVmomi):
         try:
             resp, info = fetch_url(self.module, method='GET', headers=headers, url=url)
             if info['status'] != 200:
-                self.module.fail_json(msg="failed to fetch manifests from %s: %s" % (url, info['msg']))
+                self.module.fail_json(msg="failed to fetch manifests from {}: {}".format(url, info['msg']))
             manifest_list = ET.fromstring(resp.read())
             for manifest in manifest_list[0]:
                 manifests.append(manifest.attrib['id'])
 
         except Exception as e:
-            self.module.fail_json(msg="Failed to fetch manifests from %s: %s" % (url, e))
+            self.module.fail_json(msg=f"Failed to fetch manifests from {url}: {e}")
 
         for manifest in self.manifests:
             validate_manifest_result = [m for m in manifests if m == manifest]
             if not validate_manifest_result:
-                self.module.fail_json(msg="%s is a manifest that cannot be specified." % manifest)
+                self.module.fail_json(msg=f"{manifest} is a manifest that cannot be specified.")
 
     def get_logbundle(self):
         self.validate_manifests()
@@ -214,19 +211,19 @@ class VMwareHostLogbundle(PyVmomi):
         if self.performance_data:
             duration = self.performance_data.get('duration')
             interval = self.performance_data.get('interval')
-            url = url + '&performance=true&duration=%s&interval=%s' % (duration, interval)
+            url = url + f'&performance=true&duration={duration}&interval={interval}'
 
         headers = self.generate_req_headers(url)
 
         try:
             resp, info = fetch_url(self.module, method='GET', headers=headers, url=url)
             if info['status'] != 200:
-                self.module.fail_json(msg="failed to fetch logbundle from %s: %s" % (url, info['msg']))
+                self.module.fail_json(msg="failed to fetch logbundle from {}: {}".format(url, info['msg']))
             with open(self.dest, 'wb') as local_file:
                 local_file.write(resp.read())
 
         except Exception as e:
-            self.module.fail_json(msg="Failed to fetch logbundle from %s: %s" % (url, e))
+            self.module.fail_json(msg=f"Failed to fetch logbundle from {url}: {e}")
 
         self.module.exit_json(changed=True, dest=self.dest)
 

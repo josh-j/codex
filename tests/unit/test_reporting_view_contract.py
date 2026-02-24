@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import unittest
+from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CORE_REPORT_VM_PATH = (
@@ -20,13 +21,15 @@ WINDOWS_REPORTING_PATH = (
 
 def _load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 class ReportingViewContractTests(unittest.TestCase):
+    core_vm: Any
+    windows: Any
     @classmethod
     def setUpClass(cls):
         cls.core_vm = _load(CORE_REPORT_VM_PATH, "core_report_view_models")

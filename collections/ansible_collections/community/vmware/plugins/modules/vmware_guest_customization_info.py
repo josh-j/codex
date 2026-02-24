@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -88,14 +85,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareCustomSpecManger(PyVmomi):
     def __init__(self, module):
-        super(VmwareCustomSpecManger, self).__init__(module)
+        super().__init__(module)
         self.cc_mgr = self.content.customizationSpecManager
         if self.cc_mgr is None:
             self.module.fail_json(msg="Failed to get customization spec manager.")
@@ -111,7 +108,7 @@ class VmwareCustomSpecManger(PyVmomi):
             if self.cc_mgr.DoesCustomizationSpecExist(name=spec_name):
                 specs_list.append(spec_name)
             else:
-                self.module.fail_json(msg="Unable to find customization specification named '%s'" % spec_name)
+                self.module.fail_json(msg=f"Unable to find customization specification named '{spec_name}'")
         else:
             available_specs = self.cc_mgr.info
             for spec_info in available_specs:
@@ -186,7 +183,7 @@ def main():
     try:
         module.exit_json(custom_spec_info=pyv.gather_custom_spec_info())
     except Exception as exc:
-        module.fail_json(msg="Failed to gather information with exception : %s" % to_text(exc))
+        module.fail_json(msg=f"Failed to gather information with exception : {to_text(exc)}")
 
 
 if __name__ == '__main__':

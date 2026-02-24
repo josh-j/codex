@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Jose Angel Munoz <josea.munoz () gmail.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -166,14 +163,18 @@ instance:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
 
 def main():
@@ -226,20 +227,19 @@ def main():
                 module.exit_json(changed=True, instance=pyv.gather_facts(vm))
             if vm_path != module.params['dest_folder'].lstrip('/'):
                 move_task = folder.MoveInto([vm_to_move])
-                changed, err = wait_for_task(move_task)
+                changed, _err = wait_for_task(move_task)
                 if changed:
                     module.exit_json(
                         changed=True, instance=pyv.gather_facts(vm))
             else:
                 module.exit_json(instance=pyv.gather_facts(vm))
         except Exception as exc:
-            module.fail_json(msg="Failed to move VM with exception %s" %
-                             to_native(exc))
+            module.fail_json(msg=f"Failed to move VM with exception {to_native(exc)}")
     else:
         if module.check_mode:
             module.exit_json(changed=False)
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg="Unable to find VM %s to move to %s" % (vm_id, module.params.get('dest_folder')))
+        module.fail_json(msg="Unable to find VM {} to move to {}".format(vm_id, module.params.get('dest_folder')))
 
 
 if __name__ == '__main__':

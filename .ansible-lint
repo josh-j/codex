@@ -4,6 +4,9 @@ exclude_paths:
   - .venv/
   - logs/
   - inventory/production/vault.yaml
+  - collections/ansible_collections/cloud/
+  - collections/ansible_collections/community/
+  - collections/ansible_collections/vmware/
 skip_list:
   - yaml[line-length]
   - name[secondary]

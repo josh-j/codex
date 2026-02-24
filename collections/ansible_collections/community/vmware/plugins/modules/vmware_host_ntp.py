@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -131,16 +128,16 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareNtpConfigManager(PyVmomi):
     """Class to manage configured NTP servers"""
 
     def __init__(self, module):
-        super(VmwareNtpConfigManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.ntp_servers = self.params.get('ntp_servers', list())
@@ -187,8 +184,7 @@ class VmwareNtpConfigManager(PyVmomi):
                     self.results[host.name]['msg'] = message
             except vim.fault.HostConfigFault as config_fault:
                 self.module.fail_json(
-                    msg="Failed to configure NTP for host '%s' due to : %s" %
-                    (host.name, to_native(config_fault.msg))
+                    msg=f"Failed to configure NTP for host '{host.name}' due to : {to_native(config_fault.msg)}"
                 )
 
             return new_ntp_servers
@@ -248,7 +244,7 @@ class VmwareNtpConfigManager(PyVmomi):
                         change_list.append(False)
             else:
                 self.results[host.name]['changed'] = False
-                self.results[host.name]['msg'] = "Host %s is disconnected and cannot be changed." % host.name
+                self.results[host.name]['msg'] = f"Host {host.name} is disconnected and cannot be changed."
 
         if any(change_list):
             changed = True
@@ -292,46 +288,41 @@ class VmwareNtpConfigManager(PyVmomi):
                     diff_servers.remove(server)
                 if new_ntp_servers != diff_servers:
                     message = (
-                        "NTP server %s %sadded and %s %sremoved and the server sequence %schanged as well" %
-                        (self.array_to_string(add), check_mode, self.array_to_string(remove), check_mode, check_mode)
+                        f"NTP server {self.array_to_string(add)} {check_mode}added and {self.array_to_string(remove)} {check_mode}removed and the server sequence {check_mode}changed as well"
                     )
                 else:
                     if new_ntp_servers != ntp_servers_configured:
                         message = (
-                            "NTP server %s %sreplaced with %s" %
-                            (self.array_to_string(remove), check_mode, self.array_to_string(add))
+                            f"NTP server {self.array_to_string(remove)} {check_mode}replaced with {self.array_to_string(add)}"
                         )
                     else:
                         message = (
-                            "NTP server %s %sremoved and %s %sadded" %
-                            (self.array_to_string(remove), check_mode, self.array_to_string(add), check_mode)
+                            f"NTP server {self.array_to_string(remove)} {check_mode}removed and {self.array_to_string(add)} {check_mode}added"
                         )
             elif add:
                 for server in add:
                     diff_servers.append(server)
                 if new_ntp_servers != diff_servers:
                     message = (
-                        "NTP server %s %sadded and the server sequence %schanged as well" %
-                        (self.array_to_string(add), check_mode, check_mode)
+                        f"NTP server {self.array_to_string(add)} {check_mode}added and the server sequence {check_mode}changed as well"
                     )
                 else:
-                    message = "NTP server %s %sadded" % (self.array_to_string(add), check_mode)
+                    message = f"NTP server {self.array_to_string(add)} {check_mode}added"
             elif remove:
                 for server in remove:
                     diff_servers.remove(server)
                 if new_ntp_servers != diff_servers:
                     message = (
-                        "NTP server %s %sremoved and the server sequence %schanged as well" %
-                        (self.array_to_string(remove), check_mode, check_mode)
+                        f"NTP server {self.array_to_string(remove)} {check_mode}removed and the server sequence {check_mode}changed as well"
                     )
                 else:
-                    message = "NTP server %s %sremoved" % (self.array_to_string(remove), check_mode)
+                    message = f"NTP server {self.array_to_string(remove)} {check_mode}removed"
             else:
-                message = "NTP server sequence %schanged" % check_mode
+                message = f"NTP server sequence {check_mode}changed"
         elif operation == 'add':
-            message = "NTP server %s %sadded" % (self.array_to_string(ntp_servers_to_change), check_mode)
+            message = f"NTP server {self.array_to_string(ntp_servers_to_change)} {check_mode}added"
         elif operation == 'delete':
-            message = "NTP server %s %sremoved" % (self.array_to_string(ntp_servers_to_change), check_mode)
+            message = f"NTP server {self.array_to_string(ntp_servers_to_change)} {check_mode}removed"
 
         return message
 
@@ -345,13 +336,13 @@ class VmwareNtpConfigManager(PyVmomi):
         """Return string from array"""
         if len(array) > 2:
             string = (
-                ', '.join("'{0}'".format(element) for element in array[:-1]) + ', and '
-                + "'{0}'".format(str(array[-1]))
+                ', '.join(f"'{element}'" for element in array[:-1]) + ', and '
+                + f"'{array[-1]!s}'"
             )
         elif len(array) == 2:
-            string = ' and '.join("'{0}'".format(element) for element in array)
+            string = ' and '.join(f"'{element}'" for element in array)
         elif len(array) == 1:
-            string = "'{0}'".format(array[0])
+            string = f"'{array[0]}'"
         return string
 
     @staticmethod

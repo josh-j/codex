@@ -100,8 +100,8 @@ class EmbeddedModule:
         self.module_class = None
         self.debug_mode = False
         self.module_path = (
-            "ansible_collections.{collection_name}." "plugins.modules.{module_name}"
-        ).format(collection_name=self.collection_name, module_name=self.module_name)
+            f"ansible_collections.{self.collection_name}." f"plugins.modules.{self.module_name}"
+        )
 
     def find_module_name(self):
         with zipfile.ZipFile(self.ansiblez_path) as zip:
@@ -206,11 +206,11 @@ class EmbeddedModule:
         except EmbeddedModuleSuccess as e:
             self.print_profiling_info(pr)
             return e.kwargs
-        except EmbeddedModuleFailure as e:
+        except EmbeddedModuleFailure:
             backtrace = traceback.format_exc()
             self.print_backtrace(backtrace)
             raise
-        except Exception as e:
+        except Exception:
             backtrace = traceback.format_exc()
             self.print_backtrace(backtrace)
             raise EmbeddedModuleUnexpectedFailure(str(backtrace))
@@ -298,12 +298,12 @@ async def run_as_module(content, debug_mode):
                 result.update(e.kwargs)
         except Exception as e:
             result = {
-                "msg": traceback.format_stack() + [str(e)],
+                "msg": [*traceback.format_stack(), str(e)],
                 "failed": True,
             }
         await embedded_module.unload()
     except Exception as e:
-        result = {"msg": traceback.format_stack() + [str(e)], "failed": True}
+        result = {"msg": [*traceback.format_stack(), str(e)], "failed": True}
     return result
 
 

@@ -52,8 +52,8 @@ async def execute(terms, variables, playbook_vars):
     if terms:
         result += terms
 
-    for id, stack in list(sys._current_frames().items()):
-        for fname, line_id, name, line in traceback.extract_stack(stack):
+    for _id, stack in list(sys._current_frames().items()):
+        for fname, _line_id, _name, _line in traceback.extract_stack(stack):
             if fname == __file__:
                 continue
 

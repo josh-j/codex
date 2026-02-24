@@ -19,5 +19,5 @@
 - name: Parse API facts
   tags: [discovery, api]
   ansible.builtin.set_fact:
-    _esxi_api_facts: "{{ (_host_api_raw.stdout | regex_search('(?s)\{.*') | from_json).hosts[0] | default({}) }}"
+    _esxi_api_facts: "{{ (_host_api_raw.stdout | regex_search('(?s)\\{.*') | from_json).hosts[0] | default({}) }}"
   when: _host_api_raw.stdout | trim | length > 0

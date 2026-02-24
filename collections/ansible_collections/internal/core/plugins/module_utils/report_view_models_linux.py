@@ -4,7 +4,13 @@ import importlib.util
 from pathlib import Path
 
 try:
-    from .report_view_models_common import _iter_hosts, _status_from_health, canonical_severity, to_int
+    from .report_view_models_common import (
+        _iter_hosts,
+        _status_from_health,
+        canonical_severity,
+        safe_list,
+        to_int,
+    )
     from .report_view_models_stig import build_stig_fleet_view
 except ImportError:
     _base = Path(__file__).resolve().parent
@@ -22,6 +28,7 @@ except ImportError:
     _iter_hosts = _common._iter_hosts
     _status_from_health = _common._status_from_health
     canonical_severity = _common.canonical_severity
+    safe_list = _common.safe_list
     to_int = _common.to_int
     build_stig_fleet_view = _stig.build_stig_fleet_view
 
@@ -63,7 +70,7 @@ def build_linux_fleet_view(
             summary = dict(linux_audit.get("summary") or {})
             crit = to_int(summary.get("critical_count", 0), 0)
             warn = to_int(summary.get("warning_count", 0), 0)
-            alerts = list(linux_audit.get("alerts") or [])
+            alerts = safe_list(linux_audit.get("alerts"))
             rows.append(
                 {
                     "name": hostname,
@@ -149,7 +156,7 @@ def build_linux_node_view(
             "status": {"raw": _status_from_health(linux_audit.get("health"))},
             "distribution": linux_audit.get("distribution", "Linux"),
             "distribution_version": linux_audit.get("distribution_version", ""),
-            "alerts": list(linux_audit.get("alerts") or []),
+            "alerts": safe_list(linux_audit.get("alerts")),
             "summary": dict(linux_audit.get("summary") or {}),
             "sys_facts": sys_facts,
             "data": audit_data,

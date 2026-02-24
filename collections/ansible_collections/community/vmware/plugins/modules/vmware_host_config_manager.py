@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -80,19 +77,25 @@ RETURN = r'''#
 '''
 
 try:
-    from pyVmomi import vim, vmodl, VmomiSupport
+    from pyVmomi import VmomiSupport, vim, vmodl
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi, is_boolean, is_integer, is_truthy
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import integer_types, string_types
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    is_boolean,
+    is_integer,
+    is_truthy,
+    vmware_argument_spec,
+)
 
 
 class VmwareConfigManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareConfigManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.options = self.params.get('options', dict())
@@ -131,14 +134,14 @@ class VmwareConfigManager(PyVmomi):
                     elif isinstance(option_value, string_types) and isinstance(option_type, (vim.option.StringOption, vim.option.ChoiceOption)):
                         pass
                     else:
-                        self.module.fail_json(msg="Provided value is of type %s."
-                                                  " Option %s expects: %s" % (type(option_value), option_key, type(option_type)))
+                        self.module.fail_json(msg=f"Provided value is of type {type(option_value)}."
+                                                  f" Option {option_key} expects: {type(option_type)}")
 
                     if option_value != host_facts[option_key]['value']:
                         change_option_list.append(vim.option.OptionValue(key=option_key, value=option_value))
                         changed_list.append(option_key)
                 else:  # Don't silently drop unknown options. This prevents typos from falling through the cracks.
-                    self.module.fail_json(msg="Unsupported option %s" % option_key)
+                    self.module.fail_json(msg=f"Unsupported option {option_key}")
             if change_option_list:
                 if self.module.check_mode:
                     changed_suffix = ' would be changed.'
@@ -156,10 +159,10 @@ class VmwareConfigManager(PyVmomi):
                         option_manager.UpdateOptions(changedValue=change_option_list)
                     except (vmodl.fault.SystemError, vmodl.fault.InvalidArgument) as e:
                         self.module.fail_json(msg="Failed to update option/s as one or more OptionValue "
-                                                  "contains an invalid value: %s" % to_native(e.msg))
+                                                  f"contains an invalid value: {to_native(e.msg)}")
                     except vim.fault.InvalidName as e:
                         self.module.fail_json(msg="Failed to update option/s as one or more OptionValue "
-                                                  "objects refers to a non-existent option : %s" % to_native(e.msg))
+                                                  f"objects refers to a non-existent option : {to_native(e.msg)}")
             else:
                 message = 'All settings are already configured.'
 

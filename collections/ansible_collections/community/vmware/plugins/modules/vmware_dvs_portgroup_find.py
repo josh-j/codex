@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -84,15 +81,13 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    vmware_argument_spec,
-    PyVmomi)
 from ansible.module_utils.six.moves.urllib.parse import unquote
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class DVSPortgroupFindManager(PyVmomi):
     def __init__(self, module):
-        super(DVSPortgroupFindManager, self).__init__(module)
+        super().__init__(module)
         self.dvs_name = self.params['dvswitch']
         self.vlan = self.params['vlanid']
         self.cmp_vlans = True if self.vlan else False

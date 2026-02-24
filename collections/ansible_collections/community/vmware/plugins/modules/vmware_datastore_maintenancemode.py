@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -103,19 +100,20 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
+    find_cluster_by_name,
+    get_all_objs,
     vmware_argument_spec,
     wait_for_task,
-    find_cluster_by_name,
-    get_all_objs)
-from ansible.module_utils._text import to_native
+)
 
 
 class VmwareDatastoreMaintenanceMgr(PyVmomi):
     def __init__(self, module):
-        super(VmwareDatastoreMaintenanceMgr, self).__init__(module)
+        super().__init__(module)
         datastore_name = self.params.get('datastore')
         cluster_name = self.params.get('cluster_name')
         datastore_cluster = self.params.get('datastore_cluster')
@@ -123,17 +121,17 @@ class VmwareDatastoreMaintenanceMgr(PyVmomi):
         if datastore_name:
             ds = self.find_datastore_by_name(datastore_name=datastore_name)
             if not ds:
-                self.module.fail_json(msg='Failed to find datastore "%(datastore)s".' % self.params)
+                self.module.fail_json(msg='Failed to find datastore "{datastore}".'.format(**self.params))
             self.datastore_objs = [ds]
         elif cluster_name:
             cluster = find_cluster_by_name(self.content, cluster_name)
             if not cluster:
-                self.module.fail_json(msg='Failed to find cluster "%(cluster_name)s".' % self.params)
+                self.module.fail_json(msg='Failed to find cluster "{cluster_name}".'.format(**self.params))
             self.datastore_objs = cluster.datastore
         elif datastore_cluster:
             datastore_cluster_obj = get_all_objs(self.content, [vim.StoragePod])
             if not datastore_cluster_obj:
-                self.module.fail_json(msg='Failed to find datastore cluster "%(datastore_cluster)s".' % self.params)
+                self.module.fail_json(msg='Failed to find datastore cluster "{datastore_cluster}".'.format(**self.params))
             for datastore in datastore_cluster_obj.childEntity:
                 self.datastore_objs.append(datastore)
         else:
@@ -146,10 +144,10 @@ class VmwareDatastoreMaintenanceMgr(PyVmomi):
         for datastore in self.datastore_objs:
             changed = False
             if self.state == 'present' and datastore.summary.maintenanceMode != 'normal':
-                datastore_results[datastore.name] = "Datastore '%s' is already in maintenance mode." % datastore.name
+                datastore_results[datastore.name] = f"Datastore '{datastore.name}' is already in maintenance mode."
                 break
             if self.state == 'absent' and datastore.summary.maintenanceMode == 'normal':
-                datastore_results[datastore.name] = "Datastore '%s' is not in maintenance mode." % datastore.name
+                datastore_results[datastore.name] = f"Datastore '{datastore.name}' is not in maintenance mode."
                 break
 
             try:
@@ -159,27 +157,27 @@ class VmwareDatastoreMaintenanceMgr(PyVmomi):
                 else:
                     task = datastore.DatastoreExitMaintenanceMode_Task()
 
-                success, result = wait_for_task(task)
+                success, _result = wait_for_task(task)
 
                 if success:
                     changed = True
                     if self.state == 'present':
-                        datastore_results[datastore.name] = "Datastore '%s' entered in maintenance mode." % datastore.name
+                        datastore_results[datastore.name] = f"Datastore '{datastore.name}' entered in maintenance mode."
                     else:
-                        datastore_results[datastore.name] = "Datastore '%s' exited from maintenance mode." % datastore.name
+                        datastore_results[datastore.name] = f"Datastore '{datastore.name}' exited from maintenance mode."
             except vim.fault.InvalidState as invalid_state:
                 if self.state == 'present':
-                    msg = "Unable to enter datastore '%s' in" % datastore.name
+                    msg = f"Unable to enter datastore '{datastore.name}' in"
                 else:
-                    msg = "Unable to exit datastore '%s' from" % datastore.name
-                msg += " maintenance mode due to : %s" % to_native(invalid_state.msg)
+                    msg = f"Unable to exit datastore '{datastore.name}' from"
+                msg += f" maintenance mode due to : {to_native(invalid_state.msg)}"
                 self.module.fail_json(msg=msg)
             except Exception as exc:
                 if self.state == 'present':
-                    msg = "Unable to enter datastore '%s' in" % datastore.name
+                    msg = f"Unable to enter datastore '{datastore.name}' in"
                 else:
-                    msg = "Unable to exit datastore '%s' from" % datastore.name
-                msg += " maintenance mode due to generic exception : %s" % to_native(exc)
+                    msg = f"Unable to exit datastore '{datastore.name}' from"
+                msg += f" maintenance mode due to generic exception : {to_native(exc)}"
                 self.module.fail_json(msg=msg)
             change_datastore_list.append(changed)
 

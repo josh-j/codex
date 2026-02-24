@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, Ansible Project
 # Copyright: (c) 2021, VMware, Inc. All Rights Reserved.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -110,15 +107,15 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import find_obj, vmware_argument_spec, PyVmomi
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_obj, vmware_argument_spec
 
 
 class VmConfigOption(PyVmomi):
     def __init__(self, module):
-        super(VmConfigOption, self).__init__(module)
+        super().__init__(module)
         self.device_helper = PyVmomiDeviceHelper(self.module)
         self.ctl_device_type = self.device_helper.scsi_device_type.copy()
         self.ctl_device_type.update({'sata': self.device_helper.sata_device_type,
@@ -134,11 +131,11 @@ class VmConfigOption(PyVmomi):
         try:
             desc = env_browser.QueryConfigOptionDescriptor()
         except Exception as e:
-            self.module.fail_json(msg="Failed to obtain VM config option descriptor due to fault: %s" % to_native(e))
+            self.module.fail_json(msg=f"Failed to obtain VM config option descriptor due to fault: {to_native(e)}")
         if desc:
             for option_desc in desc:
                 if option_desc.createSupported:
-                    support_create = support_create + [option_desc.key]
+                    support_create = [*support_create, option_desc.key]
                 if option_desc.defaultConfigOption:
                     default_config = option_desc.key
 
@@ -156,7 +153,7 @@ class VmConfigOption(PyVmomi):
         try:
             vm_config_option = env_browser.QueryConfigOptionEx(spec=config_query_spec)
         except Exception as e:
-            self.module.fail_json(msg="Failed to obtain VM config options due to fault: %s" % to_native(e))
+            self.module.fail_json(msg=f"Failed to obtain VM config options due to fault: {to_native(e)}")
 
         return vm_config_option
 
@@ -170,17 +167,17 @@ class VmConfigOption(PyVmomi):
             for name, dev_type in self.ctl_device_type.items():
                 for supported_type in guest_os_desc[0].supportedUSBControllerList:
                     if supported_type == dev_type:
-                        support_usb_controller = support_usb_controller + [name]
+                        support_usb_controller = [*support_usb_controller, name]
                     if dev_type == guest_os_desc[0].recommendedUSBController:
                         default_usb_ctl = name
                 for supported_type in guest_os_desc[0].supportedEthernetCard:
                     if supported_type == dev_type:
-                        support_ethernet_card = support_ethernet_card + [name]
+                        support_ethernet_card = [*support_ethernet_card, name]
                     if dev_type == guest_os_desc[0].recommendedEthernetCard:
                         default_ethernet = name
                 for supported_type in guest_os_desc[0].supportedDiskControllerList:
                     if supported_type == dev_type:
-                        support_disk_controller = support_disk_controller + [name]
+                        support_disk_controller = [*support_disk_controller, name]
                     if dev_type == guest_os_desc[0].recommendedDiskController:
                         default_disk_ctl = name
                     if dev_type == guest_os_desc[0].recommendedCdromController:
@@ -216,7 +213,7 @@ class VmConfigOption(PyVmomi):
         gos_id_list = []
         if guest_os_desc:
             for gos_desc in guest_os_desc.guestOSDescriptor:
-                gos_id_list = gos_id_list + [gos_desc.id]
+                gos_id_list = [*gos_id_list, gos_desc.id]
 
         return gos_id_list
 
@@ -240,17 +237,17 @@ class VmConfigOption(PyVmomi):
         # Get the datacenter object
         datacenter = find_obj(self.content, [vim.Datacenter], datacenter_name)
         if not datacenter:
-            self.module.fail_json(msg='Unable to find datacenter "%s"' % datacenter_name)
+            self.module.fail_json(msg=f'Unable to find datacenter "{datacenter_name}"')
         # Get the cluster object
         if cluster_name:
             cluster = find_obj(self.content, [vim.ComputeResource], cluster_name, folder=datacenter)
             if not cluster:
-                self.module.fail_json(msg='Unable to find cluster "%s"' % cluster_name)
+                self.module.fail_json(msg=f'Unable to find cluster "{cluster_name}"')
         # If host is given, get the cluster object using the host
         elif esxi_host_name:
             host = find_obj(self.content, [vim.HostSystem], esxi_host_name, folder=datacenter)
             if not host:
-                self.module.fail_json(msg='Unable to find host "%s"' % esxi_host_name)
+                self.module.fail_json(msg=f'Unable to find host "{esxi_host_name}"')
             self.target_host = host
             cluster = host.parent
         # Define the environment browser object the ComputeResource presents
@@ -268,8 +265,7 @@ class VmConfigOption(PyVmomi):
             # Get supported guest ID list
             hardware_version = self.params.get('hardware_version', '')
             if hardware_version and len(support_create_list) != 0 and hardware_version not in support_create_list:
-                self.module.fail_json(msg="Specified hardware version '%s' is not in the supported create list: %s"
-                                          % (hardware_version, support_create_list))
+                self.module.fail_json(msg=f"Specified hardware version '{hardware_version}' is not in the supported create list: {support_create_list}")
             vm_config_option_all = self.get_config_option_by_spec(env_browser=env_browser, key=hardware_version)
             supported_gos_list = self.get_guest_id_list(guest_os_desc=vm_config_option_all)
             if self.params.get('get_guest_os_ids'):
@@ -277,8 +273,7 @@ class VmConfigOption(PyVmomi):
 
             if self.params.get('get_config_options') and len(guest_id) != 0:
                 if supported_gos_list and guest_id[0] not in supported_gos_list:
-                    self.module.fail_json(msg="Specified guest ID '%s' is not in the supported guest ID list: '%s'"
-                                              % (guest_id[0], supported_gos_list))
+                    self.module.fail_json(msg=f"Specified guest ID '{guest_id[0]}' is not in the supported guest ID list: '{supported_gos_list}'")
                 vm_config_option_guest = self.get_config_option_by_spec(env_browser=env_browser, guest_id=guest_id,
                                                                         key=hardware_version)
                 guest_os_options = vm_config_option_guest.guestOSDescriptor

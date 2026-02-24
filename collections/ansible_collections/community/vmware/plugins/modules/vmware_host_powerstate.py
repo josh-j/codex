@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -104,14 +101,19 @@ result:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task, TaskError
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VmwareHostPowerManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareHostPowerManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name')
         esxi_host_name = self.params.get('esxi_hostname')
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -131,39 +133,39 @@ class VmwareHostPowerManager(PyVmomi):
         for host in self.hosts:
             changed = False
             if not host.runtime.inMaintenanceMode and not force:
-                self.module.fail_json(msg="Current host system '%s' is not in maintenance mode,"
-                                          " please specify 'force' as True to proceed." % host.name)
+                self.module.fail_json(msg=f"Current host system '{host.name}' is not in maintenance mode,"
+                                          " please specify 'force' as True to proceed.")
             if host.runtime.connectionState == 'notResponding':
-                self.module.fail_json(msg="Current host system '%s' can not be set in '%s'"
-                                          " mode as the host system is not responding." % (host.name, state))
+                self.module.fail_json(msg=f"Current host system '{host.name}' can not be set in '{state}'"
+                                          " mode as the host system is not responding.")
 
             results['result'][host.name] = dict(msg='', error='')
             if state == 'reboot-host' and not host.capability.rebootSupported:
-                self.module.fail_json(msg="Current host '%s' can not be rebooted as the host system"
-                                          " does not have capability to reboot." % host.name)
+                self.module.fail_json(msg=f"Current host '{host.name}' can not be rebooted as the host system"
+                                          " does not have capability to reboot.")
             elif state == 'shutdown-host' and not host.capability.shutdownSupported:
-                self.module.fail_json(msg="Current host '%s' can not be shut down as the host system"
-                                          " does not have capability to shut down." % host.name)
+                self.module.fail_json(msg=f"Current host '{host.name}' can not be shut down as the host system"
+                                          " does not have capability to shut down.")
             elif state in ['power-down-to-standby', 'power-up-from-standby'] and not host.capability.standbySupported:
-                self.module.fail_json(msg="Current host '%s' can not be '%s' as the host system"
-                                          " does not have capability to standby supported." % (host.name, state))
+                self.module.fail_json(msg=f"Current host '{host.name}' can not be '{state}' as the host system"
+                                          " does not have capability to standby supported.")
 
             if state == 'reboot-host':
                 if not self.module.check_mode:
                     task = host.RebootHost_Task(force)
-                verb = "reboot '%s'" % host.name
+                verb = f"reboot '{host.name}'"
             elif state == 'shutdown-host':
                 if not self.module.check_mode:
                     task = host.ShutdownHost_Task(force)
-                verb = "shutdown '%s'" % host.name
+                verb = f"shutdown '{host.name}'"
             elif state == 'power-down-to-standby':
                 if not self.module.check_mode:
                     task = host.PowerDownHostToStandBy_Task(timeout, force)
-                verb = "power down '%s' to standby" % host.name
+                verb = f"power down '{host.name}' to standby"
             elif state == 'power-up-from-standby':
                 if not self.module.check_mode:
                     task = host.PowerUpHostFromStandBy_Task(timeout)
-                verb = "power up '%s' from standby" % host.name
+                verb = f"power up '{host.name}' from standby"
 
             if not self.module.check_mode:
                 try:
@@ -174,11 +176,9 @@ class VmwareHostPowerManager(PyVmomi):
                     else:
                         results['result'][host.name]['error'] = result
                 except TaskError as task_error:
-                    self.module.fail_json(msg="Failed to %s as host system due to : %s" % (verb,
-                                                                                           str(task_error)))
+                    self.module.fail_json(msg=f"Failed to {verb} as host system due to : {task_error!s}")
                 except Exception as generic_exc:
-                    self.module.fail_json(msg="Failed to %s due to generic exception : %s" % (host.name,
-                                                                                              to_native(generic_exc)))
+                    self.module.fail_json(msg=f"Failed to {host.name} due to generic exception : {to_native(generic_exc)}")
             else:
                 # Check mode
                 changed = True

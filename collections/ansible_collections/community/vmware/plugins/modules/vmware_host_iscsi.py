@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 module: vmware_host_iscsi
@@ -377,15 +374,16 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils.basic import AnsibleModule
 from copy import deepcopy
+
+from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostiScsiManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostiScsiManager, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = self.params['esxi_hostname']
         self.iscsi_config = self.params['iscsi_config']
         self.state = self.params['state']
@@ -442,7 +440,7 @@ class VMwareHostiScsiManager(PyVmomi):
 
     def check_hba_name(self):
         if self.existing_system_iscsi_config['vmhba_name'] != self.vmhba_name:
-            self.module.fail_json(msg="%s is not an iSCSI device." % self.vmhba_name)
+            self.module.fail_json(msg=f"{self.vmhba_name} is not an iSCSI device.")
 
     def diff_iscsi_config(self):
         if self.state == 'enabled':
@@ -651,7 +649,7 @@ class VMwareHostiScsiManager(PyVmomi):
     def execute(self):
         self.host_obj = self.find_hostsystem_by_name(self.esxi_hostname)
         if not self.host_obj:
-            self.module.fail_json(msg="Cannot find the specified ESXi host: %s" % self.esxi_hostname)
+            self.module.fail_json(msg=f"Cannot find the specified ESXi host: {self.esxi_hostname}")
 
         if not self.iscsi_config and (self.state == 'present' or self.state == 'absent'):
             self.module.fail_json(msg="If state is present or absent must specify the iscsi_config parameter.")
@@ -670,7 +668,7 @@ class VMwareHostiScsiManager(PyVmomi):
                     self.host_obj.configManager.storageSystem.UpdateSoftwareInternetScsiEnabled(enabled=True)
                     result['changed'] = True
                 except Exception as e:
-                    self.module.fail_json(msg="Failed to enable iSCSI: %s" % to_native(e))
+                    self.module.fail_json(msg=f"Failed to enable iSCSI: {to_native(e)}")
 
         if self.state == 'disabled':
             self.diff_iscsi_config()
@@ -682,7 +680,7 @@ class VMwareHostiScsiManager(PyVmomi):
                     self.host_obj.configManager.storageSystem.UpdateSoftwareInternetScsiEnabled(enabled=False)
                     result['changed'] = True
                 except Exception as e:
-                    self.module.fail_json(msg="Failed to disable iSCSI: %s" % to_native(e))
+                    self.module.fail_json(msg=f"Failed to disable iSCSI: {to_native(e)}")
 
         if self.state == 'present':
             self.check_hba_name()
@@ -703,7 +701,7 @@ class VMwareHostiScsiManager(PyVmomi):
                                 targets=self.send_target_configs)
                             result['changed'] = True
                         except Exception as e:
-                            self.module.fail_json(msg="Failed to add a dynamic target: %s" % to_native(e))
+                            self.module.fail_json(msg=f"Failed to add a dynamic target: {to_native(e)}")
 
                 # add a static target to an iSCSI configuration
                 if self.add_static_interface_flag:
@@ -714,7 +712,7 @@ class VMwareHostiScsiManager(PyVmomi):
                                 targets=self.static_target_configs)
                             result['changed'] = True
                         except Exception as e:
-                            self.module.fail_json(msg="Failed to add a static target: %s" % to_native(e))
+                            self.module.fail_json(msg=f"Failed to add a static target: {to_native(e)}")
 
                 # update a CHAP authentication of a dynamic target in an iSCSI configuration
                 if self.update_send_target_authentication:
@@ -727,7 +725,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             targetSet=target_set)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to update a CHAP authentication of a dynamic target: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to update a CHAP authentication of a dynamic target: {to_native(e)}")
 
                 # update a CHAP authentication of a static target in an iSCSI configuration
                 if self.update_static_target_authentication:
@@ -740,7 +738,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             targetSet=target_set)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to update a CHAP authentication of a static target: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to update a CHAP authentication of a static target: {to_native(e)}")
 
                 # update an iqn in an iSCSI configuration
                 if self.update_iscsi_name_flag:
@@ -749,7 +747,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             iScsiHbaDevice=self.vmhba_name, iScsiName=self.iscsi_name)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to update an iqn: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to update an iqn: {to_native(e)}")
 
                 # update an alias in an iSCSI configuration
                 if self.update_alias_flag:
@@ -758,7 +756,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             iScsiHbaDevice=self.vmhba_name, iScsiAlias=self.alias)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to update an alias: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to update an alias: {to_native(e)}")
 
                 # update a CHAP authentication an iSCSI configuration
                 if self.update_auth_flag:
@@ -769,7 +767,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             targetSet=None)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to update a CHAP authentication: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to update a CHAP authentication: {to_native(e)}")
 
                 # add port binds in an iSCSI configuration
                 if self.update_port_bind_flag:
@@ -780,7 +778,7 @@ class VMwareHostiScsiManager(PyVmomi):
                                                                               vnicDevice=vnic)
                             result['changed'] = True
                         except Exception as e:
-                            self.module.fail_json(msg="Failed to add a port bind: %s" % to_native(e))
+                            self.module.fail_json(msg=f"Failed to add a port bind: {to_native(e)}")
 
         if self.state == 'absent':
             self.check_hba_name()
@@ -800,7 +798,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             targets=self.send_target_configs)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to remove a dynamic target: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to remove a dynamic target: {to_native(e)}")
 
                 # remove a static target to an iSCSI configuration
                 if self.remove_static_interface_flag:
@@ -810,7 +808,7 @@ class VMwareHostiScsiManager(PyVmomi):
                             targets=self.static_target_configs)
                         result['changed'] = True
                     except Exception as e:
-                        self.module.fail_json(msg="Failed to remove a static target: %s" % to_native(e))
+                        self.module.fail_json(msg=f"Failed to remove a static target: {to_native(e)}")
 
                 # remove port binds from an iSCSI configuration
                 if self.remove_port_bind_flag:
@@ -821,7 +819,7 @@ class VMwareHostiScsiManager(PyVmomi):
                                                                                 force=self.force)
                             result['changed'] = True
                         except Exception as e:
-                            self.module.fail_json(msg="Failed to remove a port bind: %s" % to_native(e))
+                            self.module.fail_json(msg=f"Failed to remove a port bind: {to_native(e)}")
 
         if result['changed'] is True:
             self.get_iscsi_config()

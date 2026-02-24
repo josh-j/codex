@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -199,13 +196,13 @@ except ImportError:
         pass
 
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostAutoStartManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostAutoStartManager, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = self.params['esxi_hostname']
         self.name = self.params['name']
         self.uuid = self.params['uuid']
@@ -240,7 +237,7 @@ class VMwareHostAutoStartManager(PyVmomi):
 
         host_obj = self.find_hostsystem_by_name(self.esxi_hostname)
         if not host_obj:
-            self.module.fail_json(msg="Cannot find the specified ESXi host: %s" % self.esxi_hostname)
+            self.module.fail_json(msg=f"Cannot find the specified ESXi host: {self.esxi_hostname}")
 
         self.vm_obj = None
         if self.name or self.uuid or self.moid:
@@ -248,7 +245,7 @@ class VMwareHostAutoStartManager(PyVmomi):
             if not self.vm_obj:
                 self.module.fail_json(msg="Cannot find the specified VM: %s" % (self.name or self.uuid or self.moid))
             elif self.esxi_hostname != self.vm_obj.runtime.host.name:
-                self.module.fail_json(msg="%s exists on another host: %s" % (self.name or self.uuid or self.moid, self.vm_obj.runtime.host.name))
+                self.module.fail_json(msg=f"{self.name or self.uuid or self.moid} exists on another host: {self.vm_obj.runtime.host.name}")
 
         # Check the existing autoStart setting difference.
         system_defaults_config_difference = False

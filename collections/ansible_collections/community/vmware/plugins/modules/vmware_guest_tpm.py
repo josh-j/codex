@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, Ansible Project
 # Copyright: (c) 2021, VMware, Inc. All Rights Reserved.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -106,15 +103,19 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi, wait_for_task
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.device_helper = PyVmomiDeviceHelper(self.module)
         self.config_spec = vim.vm.ConfigSpec()
         self.config_spec.deviceChange = []
@@ -144,7 +145,7 @@ class PyVmomiHelper(PyVmomi):
         self.vm = vm_obj
         if self.vm.runtime.powerState != vim.VirtualMachinePowerState.poweredOff:
             self.module.fail_json(msg="Please make sure VM is powered off before configuring vTPM device,"
-                                      " current state is '%s'" % self.vm.runtime.powerState)
+                                      f" current state is '{self.vm.runtime.powerState}'")
 
         for device in self.vm.config.hardware.device:
             if self.device_helper.is_tpm_device(device):
@@ -183,7 +184,7 @@ class PyVmomiHelper(PyVmomi):
             task = self.vm.ReconfigVM_Task(spec=self.config_spec)
             wait_for_task(task)
         except Exception as e:
-            self.module.fail_json(msg="Failed to configure vTPM device on virtual machine due to '%s'" % to_native(e))
+            self.module.fail_json(msg=f"Failed to configure vTPM device on virtual machine due to '{to_native(e)}'")
         if task.info.state == 'error':
             self.module.fail_json(msg='Failed to reconfigure VM with vTPM device', detail=task.info.error.msg)
         results['changed'] = True
@@ -215,12 +216,11 @@ def main():
     vm = vm_config_vtpm.get_vm()
     if not vm:
         vm_id = (module.params.get('name') or module.params.get('uuid') or module.params.get('moid'))
-        module.fail_json(msg="Unable to configure vTPM device for non-existing virtual machine '%s'." % vm_id)
+        module.fail_json(msg=f"Unable to configure vTPM device for non-existing virtual machine '{vm_id}'.")
     try:
         vm_config_vtpm.vtpm_operation(vm_obj=vm)
     except Exception as e:
-        module.fail_json(msg="Failed to configure vTPM device of virtual machine '%s' with exception : %s"
-                             % (vm.name, to_native(e)))
+        module.fail_json(msg=f"Failed to configure vTPM device of virtual machine '{vm.name}' with exception : {to_native(e)}")
 
 
 if __name__ == "__main__":

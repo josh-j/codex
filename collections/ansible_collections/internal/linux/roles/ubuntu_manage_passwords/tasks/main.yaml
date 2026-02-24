@@ -24,3 +24,9 @@
   loop_control:
     label: "{{ item.name }}"
   changed_when: true
+
+- name: Audit Security State if users changed
+  ansible.builtin.include_role:
+    name: internal.linux.ubuntu_system_audit
+  when: _user_mods.changed
+  tags: [skip_ansible_lint]

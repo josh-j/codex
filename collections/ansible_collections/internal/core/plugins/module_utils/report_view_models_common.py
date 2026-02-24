@@ -4,14 +4,15 @@ import importlib.util
 from pathlib import Path
 
 try:
-    from .reporting_primitives import canonical_severity, to_float, to_int
+    from .reporting_primitives import canonical_severity, safe_list, to_float, to_int
 except ImportError:
     _helper_path = Path(__file__).resolve().parent / "reporting_primitives.py"
     _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     canonical_severity = _mod.canonical_severity
+    safe_list = _mod.safe_list
     to_float = _mod.to_float
     to_int = _mod.to_int
 
@@ -51,7 +52,7 @@ def _status_from_health(value):
 
     text = str(value or "UNKNOWN").strip()
     low = text.lower()
-    if low in ("green", "healthy", "ok", "success"):
+    if low in ("green", "healthy", "ok", "success", "pass", "passed"):
         return "OK"
     if low in ("yellow", "warning", "degraded"):
         return "WARNING"
@@ -88,8 +89,10 @@ def _severity_for_pct(value_pct, warning=85.0, critical=90.0):
 
 def _count_alerts(alerts):
     counts = {"critical": 0, "warning": 0, "total": 0}
-    for alert in list(alerts or []):
-        sev = canonical_severity((alert or {}).get("severity"))
+    for alert in safe_list(alerts):
+        if not isinstance(alert, dict):
+            continue
+        sev = canonical_severity(alert.get("severity"))
         if sev == "CRITICAL":
             counts["critical"] += 1
         elif sev == "WARNING":

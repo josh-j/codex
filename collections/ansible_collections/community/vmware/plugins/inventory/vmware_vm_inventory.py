@@ -4,8 +4,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 DOCUMENTATION = r'''
     name: vmware_vm_inventory
@@ -384,14 +382,13 @@ EXAMPLES = r'''
 '''
 
 from ansible.errors import AnsibleError, AnsibleParserError
-from ansible.module_utils._text import to_text, to_native
-from ansible.module_utils.common.dict_transformations import camel_dict_to_snake_dict
-from ansible.module_utils.common.dict_transformations import _snake_to_camel
-from ansible.utils.display import Display
+from ansible.module_utils._text import to_native, to_text
+from ansible.module_utils.common.dict_transformations import _snake_to_camel, camel_dict_to_snake_dict
 from ansible.module_utils.six import text_type
+from ansible.utils.display import Display
 from ansible_collections.community.vmware.plugins.plugin_utils.inventory import (
-    to_nested_dict,
     to_flatten_dict,
+    to_nested_dict,
 )
 
 display = Display()
@@ -417,8 +414,8 @@ except ImportError:
     HAS_VSPHERE = False
 
 
-from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable
 from ansible.parsing.yaml.objects import AnsibleVaultEncryptedUnicode
+from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, Constructable
 from ansible_collections.community.vmware.plugins.module_utils.vmware import connect_to_api
 
 
@@ -470,9 +467,9 @@ class BaseVMwareInventory:
             err = error
 
         if client is None:
-            msg = "Failed to login to %s using %s" % (server, self.username)
+            msg = f"Failed to login to {server} using {self.username}"
             if err:
-                msg += " due to : %s" % to_native(err)
+                msg += f" due to : {to_native(err)}"
             raise AnsibleError(msg)
         return client
 
@@ -507,7 +504,7 @@ class BaseVMwareInventory:
 
             if requests_major_minor < required_version:
                 raise AnsibleParserError("'requests' library version should"
-                                         " be >= %s, found: %s." % (".".join([str(w) for w in required_version]),
+                                         " be >= {}, found: {}.".format(".".join([str(w) for w in required_version]),
                                                                     requests.__version__))
 
         if not HAS_VSPHERE and self.with_tags:
@@ -519,7 +516,7 @@ class BaseVMwareInventory:
             raise AnsibleError("Missing one of the following : hostname, username, password. Please read "
                                "the documentation for more information.")
 
-    def get_managed_objects_properties(self, vim_type, properties=None, resources=None, strict=False):  # noqa  # pylint: disable=too-complex
+    def get_managed_objects_properties(self, vim_type, properties=None, resources=None, strict=False):  # pylint: disable=too-complex
         """
         Look up a Managed Object Reference in vCenter / ESXi Environment
         :param vim_type: Type of vim object e.g, for datacenter - vim.Datacenter
@@ -573,7 +570,7 @@ class BaseVMwareInventory:
 
                 for fil in filter_list:
                     if fil not in found_filters:
-                        _handle_error("Unable to find %s %s" % (type_to_name_map[typ], fil))
+                        _handle_error(f"Unable to find {type_to_name_map[typ]} {fil}")
 
                 return objs
             return containers
@@ -627,9 +624,9 @@ class BaseVMwareInventory:
         try:
             return self.content.propertyCollector.RetrieveContents([filter_spec])
         except vmodl.query.InvalidProperty as err:
-            _handle_error("Invalid property name: %s" % err.name)
+            _handle_error(f"Invalid property name: {err.name}")
         except Exception as err:  # pylint: disable=broad-except
-            _handle_error("Couldn't retrieve contents from host: %s" % to_native(err))
+            _handle_error(f"Couldn't retrieve contents from host: {to_native(err)}")
         return []
 
 
@@ -645,7 +642,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         Returns: True if everything is correct, else False
         """
         valid = False
-        if super(InventoryModule, self).verify_file(path):
+        if super().verify_file(path):
             if path.endswith(('vmware.yaml', 'vmware.yml', 'vmware_vm_inventory.yaml', 'vmware_vm_inventory.yml')):
                 valid = True
 
@@ -655,7 +652,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         """
         Parses the inventory file
         """
-        super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
+        super().parse(inventory, loader, path, cache=cache)
 
         cache_key = self.get_cache_key(path)
 
@@ -771,7 +768,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 if self.pyv.content.customFieldsManager:  # not an ESXi
                     field_mgr = self.pyv.content.customFieldsManager.field
                 for cust_value in vm_obj.obj.customValue:
-                    properties[[y.name for y in field_mgr if y.key == cust_value.key][0]] = cust_value.value
+                    properties[next(y.name for y in field_mgr if y.key == cust_value.key)] = cust_value.value
 
             # Tags
             if tags_info:
@@ -830,7 +827,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 hostname = self._compose(preference, properties)
             except Exception as e:  # pylint: disable=broad-except
                 if strict:
-                    raise AnsibleError("Could not compose %s as hostnames - %s" % (preference, to_native(e)))
+                    raise AnsibleError(f"Could not compose {preference} as hostnames - {to_native(e)}")
                 else:
                     errors.append(
                         (preference, str(e))
@@ -839,9 +836,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 return to_text(hostname)
 
         raise AnsibleError(
-            'Could not template any hostname for host, errors for each preference: %s' % (
-                ', '.join(['%s: %s' % (pref, err) for pref, err in errors])
-            )
+            'Could not template any hostname for host, errors for each preference: {}'.format(', '.join([f'{pref}: {err}' for pref, err in errors]))
         )
 
     def _can_add_host(self, host_filters, host_properties, strict=False):
@@ -851,7 +846,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 can_add_host = self._compose(host_filter, host_properties)
             except Exception as e:  # pylint: disable=broad-except
                 if strict:
-                    raise AnsibleError("Could not evaluate %s as host filters - %s" % (host_filter, to_native(e)))
+                    raise AnsibleError(f"Could not evaluate {host_filter} as host filters - {to_native(e)}")
 
             if not can_add_host:
                 return False
@@ -880,7 +875,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             parents = host_properties['path'].split('/')
             if parents:
                 if isinstance(with_path, text_type):
-                    parents = [with_path] + parents
+                    parents = [with_path, *parents]
 
                 c_name = self._sanitize_group_name('/'.join(parents))
                 c_group = self.inventory.add_group(c_name)

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -77,18 +74,19 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     find_datacenter_by_name,
     vmware_argument_spec,
-    wait_for_task)
-from ansible.module_utils._text import to_native
+    wait_for_task,
+)
 
 
 class VMwareCluster(PyVmomi):
     def __init__(self, module):
-        super(VMwareCluster, self).__init__(module)
+        super().__init__(module)
         self.cluster_name = module.params['cluster_name']
         self.datacenter_name = module.params['datacenter']
         self.desired_state = module.params['state']
@@ -125,15 +123,14 @@ class VMwareCluster(PyVmomi):
             self.module.exit_json(changed=True)
         except vmodl.fault.InvalidArgument as invalid_args:
             self.module.fail_json(msg="Cluster configuration specification"
-                                      " parameter is invalid : %s" % to_native(invalid_args.msg))
+                                      f" parameter is invalid : {to_native(invalid_args.msg)}")
         except vim.fault.InvalidName as invalid_name:
-            self.module.fail_json(msg="'%s' is an invalid name for a"
-                                      " cluster : %s" % (self.cluster_name,
-                                                         to_native(invalid_name.msg)))
+            self.module.fail_json(msg=f"'{self.cluster_name}' is an invalid name for a"
+                                      f" cluster : {to_native(invalid_name.msg)}")
         except vmodl.fault.NotSupported as not_supported:
             # This should never happen
             self.module.fail_json(msg="Trying to create a cluster on an incorrect"
-                                      " folder object : %s" % to_native(not_supported.msg))
+                                      f" folder object : {to_native(not_supported.msg)}")
         except vmodl.RuntimeFault as runtime_fault:
             self.module.fail_json(msg=to_native(runtime_fault.msg))
         except vmodl.MethodFault as method_fault:
@@ -141,7 +138,7 @@ class VMwareCluster(PyVmomi):
             self.module.fail_json(msg=to_native(method_fault.msg))
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to create cluster"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
     def state_destroy_cluster(self):
         """
@@ -162,7 +159,7 @@ class VMwareCluster(PyVmomi):
             self.module.fail_json(msg=to_native(method_fault.msg))
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to destroy cluster"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
     def state_exit_unchanged(self):
         """
@@ -179,7 +176,7 @@ class VMwareCluster(PyVmomi):
         try:
             self.datacenter = find_datacenter_by_name(self.content, self.datacenter_name)
             if self.datacenter is None:
-                self.module.fail_json(msg="Datacenter %s does not exist." % self.datacenter_name)
+                self.module.fail_json(msg=f"Datacenter {self.datacenter_name} does not exist.")
             self.cluster = self.find_cluster_by_name(cluster_name=self.cluster_name, datacenter_name=self.datacenter)
 
             if self.cluster is None:
@@ -192,7 +189,7 @@ class VMwareCluster(PyVmomi):
             self.module.fail_json(msg=to_native(method_fault.msg))
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to check configuration"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
 
 def main():

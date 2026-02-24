@@ -12,11 +12,11 @@
 {% set skeleton  = lookup('file', cklb_skeleton_path) | from_json %}
 {% set audit_map = {} %}
 {% for result in audit_data %}
-  {% set _ = audit_map.update({result.id | trim: result}) %}
+     {% set _ = audit_map.update({result.id | trim: result}) %}
 {% endfor %}
 {
-  "title":        {{ skeleton.title        | to_json }},
-  "id":           {{ skeleton.id           | to_json }},
+  "title":        {{ skeleton.title | to_json }},
+  "id":           {{ skeleton.id | to_json }},
   "cklb_version": {{ skeleton.cklb_version | to_json }},
   "active":   true,
   "mode":     1,
@@ -32,44 +32,44 @@
   "stigs": [
     {% for stig in skeleton.stigs %}
     {
-      "stig_name":    {{ stig.stig_name    | to_json }},
+      "stig_name":    {{ stig.stig_name | to_json }},
       "display_name": {{ stig.display_name | to_json }},
-      "stig_id":      {{ stig.stig_id      | to_json }},
+      "stig_id":      {{ stig.stig_id | to_json }},
       "release_info": {{ stig.release_info | to_json }},
-      "version":      {{ stig.version      | to_json }},
-      "uuid":         {{ stig.uuid         | to_json }},
-      "size":         {{ stig.size         | to_json }},
+      "version":      {{ stig.version | to_json }},
+      "uuid":         {{ stig.uuid | to_json }},
+      "size":         {{ stig.size | to_json }},
       "rules": [
-        {% for rule in stig.rules %}
-        {% set result = audit_map.get(rule.rule_version) %}
-        {% set ns = namespace(status='not_reviewed', details='', comment='') %}
-        {% if result %}
-          {% set _status = result.status | default('') | string | lower %}
-          {% if _status == 'failed' %}
-            {% set ns.status  = 'open' %}
-            {% set ns.details = result.details | default(result.checktext | default('')) %}
-            {% set ns.comment = 'Automated Audit: Non-Compliant setting found.' %}
-          {% elif _status in ['passed', 'pass'] %}
-            {% set ns.status  = 'not_a_finding' %}
-            {% set ns.details = result.details | default(result.checktext | default('')) %}
-            {% set ns.comment = 'Automated Audit: Verified Compliant.' %}
-          {% endif %}
-        {% endif %}
+     {% for rule in stig.rules %}
+         {% set result = audit_map.get(rule.rule_version) %}
+         {% set ns = namespace(status='not_reviewed', details='', comment='') %}
+         {% if result %}
+             {% set _status = result.status | default('') | string | lower %}
+             {% if _status == 'failed' %}
+                 {% set ns.status  = 'open' %}
+                 {% set ns.details = result.details | default(result.checktext | default('')) %}
+                 {% set ns.comment = 'Automated Audit: Non-Compliant setting found.' %}
+             {% elif _status in ['passed', 'pass'] %}
+                 {% set ns.status  = 'not_a_finding' %}
+                 {% set ns.details = result.details | default(result.checktext | default('')) %}
+                 {% set ns.comment = 'Automated Audit: Verified Compliant.' %}
+             {% endif %}
+         {% endif %}
         {
-          "rule_id":        {{ rule.rule_id      | to_json }},
+          "rule_id":        {{ rule.rule_id | to_json }},
           "rule_version":   {{ rule.rule_version | to_json }},
-          "status":         {{ ns.status         | to_json }},
-          "finding_details": {{ ns.details       | to_json }},
-          "comments":       {{ ns.comment        | to_json }},
-          "severity":       {{ rule.severity      | to_json }},
-          "group_title":    {{ rule.group_title   | to_json }},
-          "rule_title":     {{ rule.rule_title    | to_json }},
-          "fix_text":       {{ rule.fix_text      | to_json }},
+          "status":         {{ ns.status | to_json }},
+          "finding_details": {{ ns.details | to_json }},
+          "comments":       {{ ns.comment | to_json }},
+          "severity":       {{ rule.severity | to_json }},
+          "group_title":    {{ rule.group_title | to_json }},
+          "rule_title":     {{ rule.rule_title | to_json }},
+          "fix_text":       {{ rule.fix_text | to_json }},
           "check_content":  {{ rule.check_content | to_json }},
-          "discussion":     {{ rule.discussion    | to_json }},
+          "discussion":     {{ rule.discussion | to_json }},
           "cci_ref":        {{ (rule.ccis | first | default('')) | to_json }}
         }{{ ',' if not loop.last else '' }}
-        {% endfor %}
+     {% endfor %}
       ]
     }{{ ',' if not loop.last else '' }}
     {% endfor %}

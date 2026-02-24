@@ -1,13 +1,10 @@
 #!/usr/bin/python
-#  -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Diane Wang <dianew@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -156,19 +153,20 @@ sendkey_info:
 '''
 
 import time
+
 try:
     from pyVmomi import vim, vmodl
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.change_detected = False
         self.num_keys_send = 0
         # HID usage tables https://www.usb.org/sites/default/files/documents/hut1_12v2.pdf
@@ -334,8 +332,7 @@ class PyVmomiHelper(PyVmomi):
                         key_found = True
                         break
                 if not key_found:
-                    self.module.fail_json(msg="keys_send parameter: '%s' in %s not supported."
-                                              % (specified_key, self.params['keys_send']))
+                    self.module.fail_json(msg="keys_send parameter: '{}' in {} not supported.".format(specified_key, self.params['keys_send']))
 
         if self.params['string_send']:
             for char in self.params['string_send']:
@@ -349,15 +346,14 @@ class PyVmomiHelper(PyVmomi):
                         key_found = True
                         break
                 if not key_found:
-                    self.module.fail_json(msg="string_send parameter: '%s' contains char: '%s' not supported."
-                                              % (self.params['string_send'], char))
+                    self.module.fail_json(msg="string_send parameter: '{}' contains char: '{}' not supported.".format(self.params['string_send'], char))
 
         if key_queue:
             try:
                 num_keys_returned = self.send_key_events(vm_obj=vm_obj, key_queue=key_queue, sleep_time=self.module.params.get('sleep_time'))
                 self.change_detected = True
             except vmodl.RuntimeFault as e:
-                self.module.fail_json(msg="Failed to send key %s to virtual machine due to %s" % (key_event, to_native(e.msg)))
+                self.module.fail_json(msg=f"Failed to send key {key_event} to virtual machine due to {to_native(e.msg)}")
 
         sendkey_facts = self.get_sendkey_facts(vm_obj, num_keys_returned)
         if num_keys_returned != self.num_keys_send:
@@ -394,7 +390,7 @@ def main():
     vm = pyv.get_vm()
     if not vm:
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg='Unable to find the specified virtual machine : %s ' % vm_id)
+        module.fail_json(msg=f'Unable to find the specified virtual machine : {vm_id} ')
 
     result = pyv.send_key_to_vm(vm)
     if result['failed']:

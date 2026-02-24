@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2018, Ansible Project
 # Copyright (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -137,25 +134,29 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VMwareDatastoreClusterManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareDatastoreClusterManager, self).__init__(module)
+        super().__init__(module)
         folder = self.params['folder']
         if folder:
             self.folder_obj = self.content.searchIndex.FindByInventoryPath(folder)
             if not self.folder_obj:
-                self.module.fail_json(msg="Failed to find the folder specified by %(folder)s" % self.params)
+                self.module.fail_json(msg="Failed to find the folder specified by {folder}".format(**self.params))
         else:
             datacenter_name = self.params.get('datacenter_name')
             datacenter_obj = self.find_datacenter_by_name(datacenter_name)
             if not datacenter_obj:
-                self.module.fail_json(msg="Failed to find datacenter '%s' required"
-                                          " for managing datastore cluster." % datacenter_name)
+                self.module.fail_json(msg=f"Failed to find datacenter '{datacenter_name}' required"
+                                          " for managing datastore cluster.")
             self.folder_obj = datacenter_obj.datastoreFolder
 
         self.datastore_cluster_name = self.params.get('datastore_cluster_name')
@@ -176,34 +177,34 @@ class VMwareDatastoreClusterManager(PyVmomi):
 
         if self.datastore_cluster_obj:
             if state == 'present':
-                results['result'] = "Datastore cluster '%s' already available." % self.datastore_cluster_name
+                results['result'] = f"Datastore cluster '{self.datastore_cluster_name}' already available."
                 sdrs_spec = vim.storageDrs.ConfigSpec()
                 sdrs_spec.podConfigSpec = None
                 if enable_sdrs != self.datastore_cluster_obj.podStorageDrsEntry.storageDrsConfig.podConfig.enabled:
                     if not sdrs_spec.podConfigSpec:
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
                     sdrs_spec.podConfigSpec.enabled = enable_sdrs
-                    results['result'] = results['result'] + " Changed SDRS to '%s'." % enable_sdrs
+                    results['result'] = results['result'] + f" Changed SDRS to '{enable_sdrs}'."
                 if automation_level != self.datastore_cluster_obj.podStorageDrsEntry.storageDrsConfig.podConfig.defaultVmBehavior:
                     if not sdrs_spec.podConfigSpec:
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
                     sdrs_spec.podConfigSpec.defaultVmBehavior = automation_level
-                    results['result'] = results['result'] + " Changed automation level to '%s'." % automation_level
+                    results['result'] = results['result'] + f" Changed automation level to '{automation_level}'."
                 if keep_vmdks_together != self.datastore_cluster_obj.podStorageDrsEntry.storageDrsConfig.podConfig.defaultIntraVmAffinity:
                     if not sdrs_spec.podConfigSpec:
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
                     sdrs_spec.podConfigSpec.defaultIntraVmAffinity = keep_vmdks_together
-                    results['result'] = results['result'] + " Changed VMDK affinity to '%s'." % keep_vmdks_together
+                    results['result'] = results['result'] + f" Changed VMDK affinity to '{keep_vmdks_together}'."
                 if enable_io_loadbalance != self.datastore_cluster_obj.podStorageDrsEntry.storageDrsConfig.podConfig.ioLoadBalanceEnabled:
                     if not sdrs_spec.podConfigSpec:
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
                     sdrs_spec.podConfigSpec.ioLoadBalanceEnabled = enable_io_loadbalance
-                    results['result'] = results['result'] + " Changed I/O workload balancing to '%s'." % enable_io_loadbalance
+                    results['result'] = results['result'] + f" Changed I/O workload balancing to '{enable_io_loadbalance}'."
                 if loadbalance_interval != self.datastore_cluster_obj.podStorageDrsEntry.storageDrsConfig.podConfig.loadBalanceInterval:
                     if not sdrs_spec.podConfigSpec:
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
                     sdrs_spec.podConfigSpec.loadBalanceInterval = loadbalance_interval
-                    results['result'] = results['result'] + " Changed load balance interval to '%s' minutes." % loadbalance_interval
+                    results['result'] = results['result'] + f" Changed load balance interval to '{loadbalance_interval}' minutes."
                 if sdrs_spec.podConfigSpec:
                     if not self.module.check_mode:
                         try:
@@ -212,8 +213,7 @@ class VMwareDatastoreClusterManager(PyVmomi):
                             changed, result = wait_for_task(task)
                         except Exception as generic_exc:
                             self.module.fail_json(msg="Failed to configure datastore cluster"
-                                                      " '%s' due to %s" % (self.datastore_cluster_name,
-                                                                           to_native(generic_exc)))
+                                                      f" '{self.datastore_cluster_name}' due to {to_native(generic_exc)}")
                     else:
                         changed = True
                     results['changed'] = changed
@@ -225,10 +225,10 @@ class VMwareDatastoreClusterManager(PyVmomi):
                 else:
                     changed = True
                 if changed:
-                    results['result'] = "Datastore cluster '%s' deleted successfully." % self.datastore_cluster_name
+                    results['result'] = f"Datastore cluster '{self.datastore_cluster_name}' deleted successfully."
                     results['changed'] = changed
                 else:
-                    self.module.fail_json(msg="Failed to delete datastore cluster '%s'." % self.datastore_cluster_name)
+                    self.module.fail_json(msg=f"Failed to delete datastore cluster '{self.datastore_cluster_name}'.")
         else:
             if state == 'present':
                 # Create datastore cluster
@@ -237,8 +237,7 @@ class VMwareDatastoreClusterManager(PyVmomi):
                         self.datastore_cluster_obj = self.folder_obj.CreateStoragePod(name=self.datastore_cluster_name)
                     except Exception as generic_exc:
                         self.module.fail_json(msg="Failed to create datastore cluster"
-                                                  " '%s' due to %s" % (self.datastore_cluster_name,
-                                                                       to_native(generic_exc)))
+                                                  f" '{self.datastore_cluster_name}' due to {to_native(generic_exc)}")
                     try:
                         sdrs_spec = vim.storageDrs.ConfigSpec()
                         sdrs_spec.podConfigSpec = vim.storageDrs.PodConfigSpec()
@@ -248,15 +247,14 @@ class VMwareDatastoreClusterManager(PyVmomi):
                         sdrs_spec.podConfigSpec.ioLoadBalanceEnabled = enable_io_loadbalance
                         sdrs_spec.podConfigSpec.loadBalanceInterval = loadbalance_interval
                         task = self.content.storageResourceManager.ConfigureStorageDrsForPod_Task(pod=self.datastore_cluster_obj, spec=sdrs_spec, modify=True)
-                        changed, result = wait_for_task(task)
+                        changed, _result = wait_for_task(task)
                     except Exception as generic_exc:
                         self.module.fail_json(msg="Failed to configure datastore cluster"
-                                                  " '%s' due to %s" % (self.datastore_cluster_name,
-                                                                       to_native(generic_exc)))
+                                                  f" '{self.datastore_cluster_name}' due to {to_native(generic_exc)}")
                 results['changed'] = True
-                results['result'] = "Datastore cluster '%s' created successfully." % self.datastore_cluster_name
+                results['result'] = f"Datastore cluster '{self.datastore_cluster_name}' created successfully."
             elif state == 'absent':
-                results['result'] = "Datastore cluster '%s' not available or already deleted." % self.datastore_cluster_name
+                results['result'] = f"Datastore cluster '{self.datastore_cluster_name}' not available or already deleted."
         self.module.exit_json(**results)
 
 

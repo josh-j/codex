@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -174,13 +171,18 @@ try:
 except ImportError:
     pass
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_obj, find_object_by_name
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_obj,
+    find_object_by_name,
+    vmware_argument_spec,
+)
 
 
 class VMwareDvSwitchInfoManager(PyVmomi):
     def __init__(self, module):
-        super(VMwareDvSwitchInfoManager, self).__init__(module)
+        super().__init__(module)
         self.folder = self.params['folder']
         self.switch_name = self.params['switch_name']
 
@@ -188,7 +190,7 @@ class VMwareDvSwitchInfoManager(PyVmomi):
         if self.folder:
             folder_obj = self.content.searchIndex.FindByInventoryPath(self.folder)
             if not folder_obj:
-                self.module.fail_json(msg="Failed to find folder specified by %s" % self.folder)
+                self.module.fail_json(msg=f"Failed to find folder specified by {self.folder}")
 
         if self.switch_name:
             self.switch_objs = [find_object_by_name(self.content, self.switch_name, vim.DistributedVirtualSwitch, folder_obj)]

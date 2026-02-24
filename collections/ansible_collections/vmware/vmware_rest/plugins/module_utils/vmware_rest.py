@@ -97,16 +97,12 @@ async def open_session(
     ) as session:
         try:
             async with session.post(
-                "https://{hostname}/rest/com/vmware/cis/session".format(
-                    hostname=vcenter_hostname
-                ),
+                f"https://{vcenter_hostname}/rest/com/vmware/cis/session",
                 auth=auth,
             ) as resp:
                 if resp.status != 200:
                     raise exceptions.EmbeddedModuleFailure(
-                        "Authentication failure. code: {0}, json: {1}".format(
-                            resp.status, await resp.text()
-                        )
+                        f"Authentication failure. code: {resp.status}, json: {await resp.text()}"
                     )
                 json = await resp.json()
         except aiohttp.client_exceptions.ClientConnectorError as e:

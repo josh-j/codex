@@ -1,13 +1,10 @@
 #!/usr/bin/python
-#  -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Diane Wang <dianew@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -165,14 +162,18 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.change_detected = False
         self.config_spec = vim.vm.ConfigSpec()
         self.config_spec.deviceChange = []
@@ -311,11 +312,11 @@ class PyVmomiHelper(PyVmomi):
             wait_for_task(task)
         except vim.fault.InvalidDeviceSpec as invalid_device_spec:
             self.module.fail_json(msg="Failed to configure video card on given virtual machine due to invalid"
-                                      " device spec : %s" % (to_native(invalid_device_spec.msg)),
+                                      f" device spec : {to_native(invalid_device_spec.msg)}",
                                   details="Please check ESXi server logs for more details.")
         except vim.fault.RestrictedVersion as e:
             self.module.fail_json(msg="Failed to reconfigure virtual machine due to"
-                                      " product versioning restrictions: %s" % to_native(e.msg))
+                                      f" product versioning restrictions: {to_native(e.msg)}")
         if task.info.state == 'error':
             return {'changed': self.change_detected, 'failed': True, 'msg': task.info.error.msg}
         video_card_facts = self.gather_video_card_facts(vm_obj)[1]
@@ -350,7 +351,7 @@ def main():
     vm = pyv.get_vm()
     if not vm:
         vm_id = module.params.get('uuid') or module.params.get('name') or module.params.get('moid')
-        module.fail_json(msg='Unable to find the specified virtual machine : %s' % vm_id)
+        module.fail_json(msg=f'Unable to find the specified virtual machine : {vm_id}')
 
     vm_facts = pyv.gather_facts(vm)
     vm_power_state = vm_facts['hw_power_status'].lower()

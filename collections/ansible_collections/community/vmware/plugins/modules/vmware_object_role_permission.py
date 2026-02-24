@@ -1,14 +1,11 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Derek Rushing <derek.rushing@geekops.com>
 # Copyright: (c) 2018, VMware, Inc.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -142,14 +139,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_obj
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_obj, vmware_argument_spec
 
 
 class VMwareObjectRolePermission(PyVmomi):
     def __init__(self, module):
-        super(VMwareObjectRolePermission, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
         self.is_group = False
@@ -271,7 +268,7 @@ class VMwareObjectRolePermission(PyVmomi):
     def get_role(self):
         self.role = self.role_list.get(self.params['role'], None)
         if not self.role:
-            self.module.fail_json(msg="Specified role (%s) was not found" % self.params['role'])
+            self.module.fail_json(msg="Specified role ({}) was not found".format(self.params['role']))
 
     def get_object(self):
         # find_obj doesn't include rootFolder
@@ -281,15 +278,14 @@ class VMwareObjectRolePermission(PyVmomi):
         try:
             getattr(vim, self.params['object_type'])
         except AttributeError:
-            self.module.fail_json(msg="Object type %s is not valid." % self.params['object_type'])
+            self.module.fail_json(msg="Object type {} is not valid.".format(self.params['object_type']))
         self.current_obj = find_obj(content=self.content,
                                     vimtype=[getattr(vim, self.params['object_type'])],
                                     name=self.params['object_name'])
 
         if self.current_obj is None:
             self.module.fail_json(
-                msg="Specified object %s of type %s was not found."
-                % (self.params['object_name'], self.params['object_type'])
+                msg="Specified object {} of type {} was not found.".format(self.params['object_name'], self.params['object_type'])
             )
         if self.params['object_type'] == 'DistributedVirtualSwitch':
             msg = "You are applying permissions to a Distributed vSwitch. " \

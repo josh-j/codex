@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Hewlett Packard Enterprise Development LP
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -89,7 +86,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class VsanApi(PyVmomi):
     def __init__(self, module):
-        super(VsanApi, self).__init__(module)
+        super().__init__(module)
 
         client_stub = self.si._GetStub()
         ssl_context = client_stub.schemeArgs.get('context')

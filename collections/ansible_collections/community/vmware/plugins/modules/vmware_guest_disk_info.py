@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, NAER William Leemans (@bushvin) <willie@elaba.net>
 # Copyright: (c) 2018, Ansible Project
@@ -7,8 +6,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -147,10 +144,10 @@ guest_disk_info:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_text
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 def main():
@@ -186,12 +183,12 @@ def main():
         try:
             module.exit_json(guest_disk_info=device_helper.gather_disk_info(vm))
         except Exception as exc:
-            module.fail_json(msg="Failed to gather information with exception : %s" % to_text(exc))
+            module.fail_json(msg=f"Failed to gather information with exception : {to_text(exc)}")
     else:
         # We unable to find the virtual machine user specified
         # Bail out
         vm_id = (module.params.get('uuid') or module.params.get('moid') or module.params.get('name'))
-        module.fail_json(msg="Unable to gather disk information for non-existing VM %s" % vm_id)
+        module.fail_json(msg=f"Unable to gather disk information for non-existing VM {vm_id}")
 
 
 if __name__ == '__main__':

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Karsten Kaj Jakobsen <kj@patientsky.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -106,8 +103,12 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, vmware_argument_spec, wait_for_task, find_cluster_by_name,
-    find_datacenter_by_name)
+    PyVmomi,
+    find_cluster_by_name,
+    find_datacenter_by_name,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VmwareVmHostRuleDrs(PyVmomi):
@@ -120,7 +121,7 @@ class VmwareVmHostRuleDrs(PyVmomi):
         Doctring: Init
         """
 
-        super(VmwareVmHostRuleDrs, self).__init__(module)
+        super().__init__(module)
 
         self.__datacenter_name = module.params.get('datacenter', None)
         self.__datacenter_obj = None
@@ -141,7 +142,7 @@ class VmwareVmHostRuleDrs(PyVmomi):
             self.__datacenter_obj = find_datacenter_by_name(self.content, self.__datacenter_name)
 
             if self.__datacenter_obj is None and module.check_mode is False:
-                raise Exception("Datacenter '%s' not found" % self.__datacenter_name)
+                raise Exception(f"Datacenter '{self.__datacenter_name}' not found")
 
         self.__cluster_obj = find_cluster_by_name(content=self.content,
                                                   cluster_name=self.__cluster_name,
@@ -149,7 +150,7 @@ class VmwareVmHostRuleDrs(PyVmomi):
 
         # Throw error if cluster does not exist
         if self.__cluster_obj is None and module.check_mode is False:
-            raise Exception("Cluster '%s' not found" % self.__cluster_name)
+            raise Exception(f"Cluster '{self.__cluster_name}' not found")
 
     def get_msg(self):
         """
@@ -342,9 +343,9 @@ class VmwareVmHostRuleDrs(PyVmomi):
         self.__result = self.__normalize_vm_host_rule_spec(rule_obj)
 
         if operation == 'edit':
-            self.__msg = "Updated DRS rule `%s` successfully" % (self.__rule_name)
+            self.__msg = f"Updated DRS rule `{self.__rule_name}` successfully"
         else:
-            self.__msg = "Created DRS rule `%s` successfully" % (self.__rule_name)
+            self.__msg = f"Created DRS rule `{self.__rule_name}` successfully"
 
     # Delete
     def delete(self, rule_name=None):
@@ -370,9 +371,9 @@ class VmwareVmHostRuleDrs(PyVmomi):
             self.__changed = True
 
         if self.__changed:
-            self.__msg = "Deleted DRS rule `%s` successfully" % (self.__rule_name)
+            self.__msg = f"Deleted DRS rule `{self.__rule_name}` successfully"
         else:
-            self.__msg = "DRS Rule `%s` does not exists or already deleted" % (self.__rule_name)
+            self.__msg = f"DRS Rule `{self.__rule_name}` does not exists or already deleted"
 
 
 def main():
@@ -415,7 +416,7 @@ def main():
                        result=vm_host_drs.get_result())
 
     except Exception as error:
-        results = dict(failed=True, msg="Error: `%s`" % error)
+        results = dict(failed=True, msg=f"Error: `{error}`")
 
     if results['failed']:
         module.fail_json(**results)

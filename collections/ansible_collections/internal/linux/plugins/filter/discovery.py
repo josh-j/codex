@@ -12,9 +12,18 @@ def _to_float(value, default=0.0):
         return default
 
 
+def safe_list(value):
+    if isinstance(value, str):
+        return []
+    try:
+        return list(value or [])
+    except (TypeError, ValueError):
+        return []
+
+
 def build_disk_inventory(mounts):
     results = []
-    for mount in list(mounts or []):
+    for mount in safe_list(mounts):
         if not isinstance(mount, dict):
             continue
         device = str(mount.get("device") or "")
@@ -40,13 +49,13 @@ def build_disk_inventory(mounts):
 
 def build_user_inventory(getent_passwd, shadow_lines, epoch_seconds):
     getent_passwd = dict(getent_passwd or {})
-    shadow_lines = list(shadow_lines or [])
+    shadow_lines = safe_list(shadow_lines)
     epoch_days = _to_int(epoch_seconds, 0) // 86400
 
     shadow_map = {}
     for line in shadow_lines:
-        line = str(line or "")
-        if ":" not in line:
+        line = str(line or "").strip()
+        if not line or ":" not in line or line.startswith("#"):
             continue
         user = line.split(":", 1)[0]
         if user:
@@ -54,9 +63,10 @@ def build_user_inventory(getent_passwd, shadow_lines, epoch_seconds):
 
     results = []
     for user, info in getent_passwd.items():
-        info = list(info or [])
+        info = safe_list(info)
         shadow = shadow_map.get(str(user), "")
         parts = shadow.split(":")
+        # parts[2] is last_change in /etc/shadow
         last_change = _to_int(parts[2], 0) if len(parts) > 2 else 0
         results.append(
             {
@@ -73,17 +83,24 @@ def build_user_inventory(getent_passwd, shadow_lines, epoch_seconds):
 
 def parse_sshd_config(stdout_lines):
     out = {}
-    for line in list(stdout_lines or []):
-        line = str(line or "")
-        parts = line.split(" ", 1)
+    for line in safe_list(stdout_lines):
+        line = str(line or "").strip()
+        if not line or line.startswith("#"):
+            continue
+        # Split on first whitespace, but normalize it first
+        import re
+
+        parts = re.split(r"\s+", line, maxsplit=1)
         if len(parts) == 2 and parts[0]:
-            out[parts[0]] = parts[1]
+            # Strip trailing comments from value
+            val = parts[1].split("#", 1)[0].strip()
+            out[parts[0]] = val
     return out
 
 
 def collect_existing_file_stats(results):
     out = {}
-    for res in list(results or []):
+    for res in safe_list(results):
         if not isinstance(res, dict):
             continue
         stat = res.get("stat")
@@ -101,7 +118,7 @@ def collect_existing_file_stats(results):
 def parse_apt_simulate_output(stdout_lines):
     import re
 
-    for line in reversed(list(stdout_lines or [])):
+    for line in reversed(safe_list(stdout_lines)):
         line = str(line or "")
         match = re.search(r"(\d+)\s+upgraded,", line)
         if match:

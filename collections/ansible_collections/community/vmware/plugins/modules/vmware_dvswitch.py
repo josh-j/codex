@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
@@ -8,8 +7,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -327,10 +324,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, TaskError, find_dvs_by_name, vmware_argument_spec, wait_for_task
+    PyVmomi,
+    TaskError,
+    find_dvs_by_name,
+    vmware_argument_spec,
+    wait_for_task,
 )
 
 
@@ -338,7 +339,7 @@ class VMwareDvSwitch(PyVmomi):
     """Class to manage a Distributed Virtual Switch"""
 
     def __init__(self, module):
-        super(VMwareDvSwitch, self).__init__(module)
+        super().__init__(module)
         self.dvs = None
 
         self.switch_name = self.module.params['switch_name']
@@ -347,19 +348,19 @@ class VMwareDvSwitch(PyVmomi):
         if self.switch_version is not None:
             available_dvs_versions = self.available_dvs_versions()
             if self.switch_version not in available_dvs_versions:
-                self.module.fail_json(msg="Unsupported version '%s'. Supported versions are: %s." % (self.switch_version, ', '.join(available_dvs_versions)))
+                self.module.fail_json(msg="Unsupported version '{}'. Supported versions are: {}.".format(self.switch_version, ', '.join(available_dvs_versions)))
 
         folder = self.params['folder']
         if folder:
             self.folder_obj = self.content.searchIndex.FindByInventoryPath(folder)
             if not self.folder_obj:
-                self.module.fail_json(msg="Failed to find the folder specified by %(folder)s" % self.params)
+                self.module.fail_json(msg="Failed to find the folder specified by {folder}".format(**self.params))
         else:
             datacenter_name = self.params.get('datacenter_name')
             datacenter_obj = self.find_datacenter_by_name(datacenter_name)
             if not datacenter_obj:
-                self.module.fail_json(msg="Failed to find datacenter '%s' required"
-                                          " for managing distributed vSwitch." % datacenter_name)
+                self.module.fail_json(msg=f"Failed to find datacenter '{datacenter_name}' required"
+                                          " for managing distributed vSwitch.")
             self.folder_obj = datacenter_obj.networkFolder
 
         self.mtu = self.module.params['mtu']
@@ -487,7 +488,7 @@ class VMwareDvSwitch(PyVmomi):
                 wait_for_task(task)
             except TaskError as invalid_argument:
                 self.module.fail_json(
-                    msg="Failed to create DVS : %s" % to_native(invalid_argument)
+                    msg=f"Failed to create DVS : {to_native(invalid_argument)}"
                 )
             # Find new DVS
             self.dvs = find_dvs_by_name(self.content, self.switch_name)
@@ -589,7 +590,7 @@ class VMwareDvSwitch(PyVmomi):
             wait_for_task(task)
         except TaskError as invalid_argument:
             self.module.fail_json(
-                msg="Failed to update DVS : %s" % to_native(invalid_argument)
+                msg=f"Failed to update DVS : {to_native(invalid_argument)}"
             )
 
     def check_network_policy_config(self):
@@ -650,15 +651,15 @@ class VMwareDvSwitch(PyVmomi):
         try:
             task = switch_object.UpdateDVSHealthCheckConfig_Task(healthCheckConfig=health_check_config)
         except vim.fault.DvsFault as dvs_fault:
-            self.module.fail_json(msg="Update failed due to DVS fault : %s" % to_native(dvs_fault))
+            self.module.fail_json(msg=f"Update failed due to DVS fault : {to_native(dvs_fault)}")
         except vmodl.fault.NotSupported as not_supported:
-            self.module.fail_json(msg="Health check not supported on the switch : %s" % to_native(not_supported))
+            self.module.fail_json(msg=f"Health check not supported on the switch : {to_native(not_supported)}")
         except TaskError as invalid_argument:
-            self.module.fail_json(msg="Failed to configure health check : %s" % to_native(invalid_argument))
+            self.module.fail_json(msg=f"Failed to configure health check : {to_native(invalid_argument)}")
         try:
             wait_for_task(task)
         except TaskError as invalid_argument:
-            self.module.fail_json(msg="Failed to update health check config : %s" % to_native(invalid_argument))
+            self.module.fail_json(msg=f"Failed to update health check config : {to_native(invalid_argument)}")
 
     def check_netFlow_config(self):
         """Check NetFlow config"""
@@ -728,7 +729,7 @@ class VMwareDvSwitch(PyVmomi):
             try:
                 task = self.dvs.Destroy_Task()
             except vim.fault.VimFault as vim_fault:
-                self.module.fail_json(msg="Failed to deleted DVS : %s" % to_native(vim_fault))
+                self.module.fail_json(msg=f"Failed to deleted DVS : {to_native(vim_fault)}")
             wait_for_task(task)
             results['result'] = "DVS deleted"
         self.module.exit_json(**results)
@@ -951,7 +952,7 @@ class VMwareDvSwitch(PyVmomi):
                     try:
                         wait_for_task(task)
                     except TaskError as invalid_argument:
-                        self.module.fail_json(msg="Failed to update DVS version : %s" % to_native(invalid_argument))
+                        self.module.fail_json(msg=f"Failed to update DVS version : {to_native(invalid_argument)}")
         else:
             message = "DVS already configured properly"
         results['uuid'] = self.dvs.uuid

@@ -11,8 +11,8 @@ try:
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "report_view_models.py"
     _spec = importlib.util.spec_from_file_location("internal_core_report_view_models", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _build_linux_fleet_view = _mod.build_linux_fleet_view
     _build_linux_node_view = _mod.build_linux_node_view

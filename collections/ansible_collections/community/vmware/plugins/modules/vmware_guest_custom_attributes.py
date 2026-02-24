@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright, (c) 2018, Ansible Project
 # Copyright, (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -159,7 +156,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class VmAttributeManager(PyVmomi):
     def __init__(self, module):
-        super(VmAttributeManager, self).__init__(module)
+        super().__init__(module)
 
         # Initialize the variables.
         # Make the diff_config variable to check the difference between a new and existing config.
@@ -355,7 +352,7 @@ def main():
         # virtual machine does not exists
         vm_id = (module.params.get('name') or module.params.get('uuid') or module.params.get('moid'))
         module.fail_json(msg="Unable to manage custom attributes for non-existing"
-                             " virtual machine %s" % vm_id)
+                             f" virtual machine {vm_id}")
 
 
 if __name__ == '__main__':

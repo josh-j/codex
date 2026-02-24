@@ -1,11 +1,8 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -106,7 +103,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class HostAttributeManager(PyVmomi):
     def __init__(self, module):
-        super(HostAttributeManager, self).__init__(module)
+        super().__init__(module)
         self.esxi_hostname = module.params.get('esxi_hostname')
         self.host = self.find_hostsystem_by_name(self.esxi_hostname)
 
@@ -187,7 +184,7 @@ def main():
     else:
         # host does not exists
         module.fail_json(msg="Unable to manage custom attributes for non-existing"
-                             " host %s" % pyv.esxi_hostname)
+                             f" host {pyv.esxi_hostname}")
 
 
 if __name__ == '__main__':

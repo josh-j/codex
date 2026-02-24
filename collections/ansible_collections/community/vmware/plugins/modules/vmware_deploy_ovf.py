@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # based on code vmware_deploy_ovf from Matt Martz <matt@sivel.net>
 # Copyright: (c) 2023, Alexander Nikitin <alexander@ihumster.ru>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -217,9 +214,7 @@ import sys
 import tarfile
 import time
 import traceback
-
 import xml.etree.ElementTree as ET
-
 from threading import Thread
 
 from ansible.module_utils._text import to_native
@@ -228,14 +223,16 @@ from ansible.module_utils.six import string_types
 from ansible.module_utils.six.moves.urllib.request import Request, urlopen
 from ansible.module_utils.urls import generic_urlparse, open_url, urlparse, urlunparse
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
     find_all_networks_by_name,
     find_vm_by_name,
-    PyVmomi,
     gather_vm_facts,
+    set_vm_power_state,
     vmware_argument_spec,
     wait_for_task,
     wait_for_vm_ip,
-    set_vm_power_state)
+)
+
 try:
     from ansible_collections.community.vmware.plugins.module_utils.vmware import vim
     from pyVmomi import vmodl
@@ -252,7 +249,7 @@ def path_exists(value):
     return value
 
 
-class WebHandle(object):
+class WebHandle:
     def __init__(self, url):
         self.url = url
         self.thumbprint = None
@@ -441,7 +438,7 @@ class VMDKUploader(Thread):
 
 class VMwareDeployOvf(PyVmomi):
     def __init__(self, module):
-        super(VMwareDeployOvf, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
 
@@ -531,18 +528,18 @@ class VMwareDeployOvf(PyVmomi):
             try:
                 path_exists(self.params['ovf'])
             except ValueError as e:
-                self.module.fail_json(msg="%s" % e)
+                self.module.fail_json(msg=f"{e}")
 
             if tarfile.is_tarfile(self.params['ovf']):
                 self.tar = tarfile.open(self.params['ovf'])
                 ovf = None
                 for candidate in self.tar.getmembers():
-                    dummy, ext = os.path.splitext(candidate.name)
+                    _dummy, ext = os.path.splitext(candidate.name)
                     if ext.lower() == '.ovf':
                         ovf = candidate
                         break
                 if not ovf:
-                    self.module.fail_json(msg='Could not locate OVF file in %(ovf)s' % self.params)
+                    self.module.fail_json(msg='Could not locate OVF file in {ovf}'.format(**self.params))
 
                 self.ovf_descriptor = to_native(self.tar.extractfile(ovf).read())
             else:
@@ -553,8 +550,7 @@ class VMwareDeployOvf(PyVmomi):
         else:
             self.handle = WebHandle(self.params['url'])
             self.tar = tarfile.open(fileobj=self.handle)
-            ovffilename = list(
-                filter(lambda x: x.endswith('.ovf'), self.tar.getnames()))[0]
+            ovffilename = next(filter(lambda x: x.endswith('.ovf'), self.tar.getnames()))
             ovffile = self.tar.extractfile(ovffilename)
             self.ovf_descriptor = ovffile.read().decode()
 
@@ -562,7 +558,7 @@ class VMwareDeployOvf(PyVmomi):
                 return self.ovf_descriptor
             else:
                 self.module.fail_json(
-                    msg='Could not locate OVF file in %(url)s' % self.params)
+                    msg='Could not locate OVF file in {url}'.format(**self.params))
 
     def get_lease(self):
         datastore, datacenter, resource_pool, network_mappings = self.get_objects()
@@ -609,7 +605,7 @@ class VMwareDeployOvf(PyVmomi):
         errors = [to_native(e.msg) for e in getattr(self.import_spec, 'error', [])]
         if self.params['fail_on_spec_warnings']:
             errors.extend(
-                (to_native(w.msg) for w in getattr(self.import_spec, 'warning', []))
+                to_native(w.msg) for w in getattr(self.import_spec, 'warning', [])
             )
         if errors:
             self.module.fail_json(
@@ -752,10 +748,10 @@ class VMwareDeployOvf(PyVmomi):
 
                 if uploader.e:
                     lease.HttpNfcLeaseAbort(
-                        vmodl.fault.SystemError(reason='%s' % to_native(uploader.e[1]))
+                        vmodl.fault.SystemError(reason=f'{to_native(uploader.e[1])}')
                     )
                     self.module.fail_json(
-                        msg='%s' % to_native(uploader.e[1]),
+                        msg=f'{to_native(uploader.e[1])}',
                         exception=''.join(traceback.format_tb(uploader.e[2]))
                     )
 

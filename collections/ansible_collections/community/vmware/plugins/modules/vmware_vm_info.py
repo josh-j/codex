@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
@@ -7,8 +6,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -288,14 +285,20 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, \
-    get_all_objs, vmware_argument_spec, _get_vm_prop, get_parent_datacenter, find_vm_by_name
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    _get_vm_prop,
+    find_vm_by_name,
+    get_all_objs,
+    get_parent_datacenter,
+    vmware_argument_spec,
+)
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 
 class VmwareVmInfo(PyVmomi):
     def __init__(self, module):
-        super(VmwareVmInfo, self).__init__(module)
+        super().__init__(module)
         if self.module.params.get('show_tag'):
             self.vmware_client = VmwareRestClient(self.module)
 
@@ -316,13 +319,13 @@ class VmwareVmInfo(PyVmomi):
         if folder:
             folder_obj = self.content.searchIndex.FindByInventoryPath(folder)
             if not folder_obj:
-                self.module.fail_json(msg="Failed to find folder specified by %(folder)s" % self.params)
+                self.module.fail_json(msg="Failed to find folder specified by {folder}".format(**self.params))
 
         vm_name = self.params.get('vm_name')
         if vm_name:
             virtual_machine = find_vm_by_name(self.content, vm_name=vm_name, folder=folder_obj)
             if not virtual_machine:
-                self.module.fail_json(msg="Failed to find virtual machine %s" % vm_name)
+                self.module.fail_json(msg=f"Failed to find virtual machine {vm_name}")
             else:
                 virtual_machines = [virtual_machine]
         else:

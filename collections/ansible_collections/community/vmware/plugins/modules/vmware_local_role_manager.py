@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: Abhijeet Kasurde <akasurde@redhat.com>
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -165,7 +162,7 @@ class VMwareLocalRoleManager(PyVmomi):
     """Class to manage local roles"""
 
     def __init__(self, module):
-        super(VMwareLocalRoleManager, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
         self.role_name = self.params['local_role_name']
@@ -178,7 +175,7 @@ class VMwareLocalRoleManager(PyVmomi):
         if self.content.authorizationManager is None:
             self.module.fail_json(
                 msg="Failed to get local authorization manager settings.",
-                details="It seems that '%s' does not support this functionality" % self.params['hostname']
+                details="It seems that '{}' does not support this functionality".format(self.params['hostname'])
             )
 
     def process_state(self):
@@ -240,18 +237,15 @@ class VMwareLocalRoleManager(PyVmomi):
                 results['msg'] = "Role created"
             except vim.fault.AlreadyExists as already_exists:
                 self.module.fail_json(
-                    msg="Failed to create role '%s' as the user specified role name already exists." %
-                    self.role_name, details=already_exists.msg
+                    msg=f"Failed to create role '{self.role_name}' as the user specified role name already exists.", details=already_exists.msg
                 )
             except vim.fault.InvalidName as invalid_name:
                 self.module.fail_json(
-                    msg="Failed to create a role %s as the user specified role name is empty" %
-                    self.role_name, details=invalid_name.msg
+                    msg=f"Failed to create a role {self.role_name} as the user specified role name is empty", details=invalid_name.msg
                 )
             except vmodl.fault.InvalidArgument as invalid_argument:
                 self.module.fail_json(
-                    msg="Failed to create a role %s as the user specified privileges are unknown" %
-                    self.role_name, etails=invalid_argument.msg
+                    msg=f"Failed to create a role {self.role_name} as the user specified privileges are unknown", etails=invalid_argument.msg
                 )
         self.module.exit_json(changed=True, result=results)
 
@@ -273,18 +267,16 @@ class VMwareLocalRoleManager(PyVmomi):
                 results['msg'] = "Role deleted"
             except vim.fault.NotFound as not_found:
                 self.module.fail_json(
-                    msg="Failed to remove a role %s as the user specified role name does not exist." %
-                    self.role_name, details=not_found.msg
+                    msg=f"Failed to remove a role {self.role_name} as the user specified role name does not exist.", details=not_found.msg
                 )
             except vim.fault.RemoveFailed as remove_failed:
-                msg = "Failed to remove role '%s' as the user specified role name." % self.role_name
+                msg = f"Failed to remove role '{self.role_name}' as the user specified role name."
                 if self.force:
                     msg += " Use force_remove as True."
                 self.module.fail_json(msg=msg, details=remove_failed.msg)
             except vmodl.fault.InvalidArgument as invalid_argument:
                 self.module.fail_json(
-                    msg="Failed to remove a role %s as the user specified role is a system role" %
-                    self.role_name, details=invalid_argument.msg
+                    msg=f"Failed to remove a role {self.role_name} as the user specified role is a system role", details=invalid_argument.msg
                 )
         self.module.exit_json(changed=True, result=results)
 

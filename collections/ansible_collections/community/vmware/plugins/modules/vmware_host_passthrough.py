@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
@@ -140,13 +137,16 @@ except ImportError:
     pass
 
 import copy
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
+import functools
+import operator
+
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostPassthrough(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostPassthrough, self).__init__(module)
+        super().__init__(module)
         self.cluster = self.params['cluster']
         self.esxi_hostname = self.params['esxi_hostname']
         self.devices = self.params['devices']
@@ -157,7 +157,7 @@ class VMwareHostPassthrough(PyVmomi):
         if self.cluster and self.esxi_hostname:
             self.hosts = [host_obj for host_obj in self.hosts if host_obj.name == self.esxi_hostname]
         if not self.hosts:
-            self.module.fail_json(msg="Failed to find host system: %s" % self.esxi_hostname)
+            self.module.fail_json(msg=f"Failed to find host system: {self.esxi_hostname}")
 
         self.result = dict(changed=False, passthrough_configs=[], diff={})
 
@@ -226,7 +226,7 @@ class VMwareHostPassthrough(PyVmomi):
                 self.existent_devices.append({
                     esxi_hostname: {
                         'host_obj': value['host_obj'],
-                        'checked_pci_devices': self.de_duplication(sum(pci_devices, []))
+                        'checked_pci_devices': self.de_duplication(functools.reduce(operator.iadd, pci_devices, []))
                     }
                 })
 
@@ -307,7 +307,7 @@ class VMwareHostPassthrough(PyVmomi):
 
         self.check_whether_devices_exist()
         if self.non_existent_devices:
-            self.module.fail_json(msg="Failed to fined device: %s" % list(set(self.non_existent_devices)))
+            self.module.fail_json(msg=f"Failed to fined device: {list(set(self.non_existent_devices))}")
 
         self.diff_passthrough_config()
         if self.change_flag and self.module.check_mode is False:
@@ -318,7 +318,7 @@ class VMwareHostPassthrough(PyVmomi):
                     config = value['generated_new_configs']
                     host_obj.configManager.pciPassthruSystem.UpdatePassthruConfig(config)
                 except Exception as e:
-                    self.module.fail_json(msg="Failed to operate PCI device passthrough: %s" % e)
+                    self.module.fail_json(msg=f"Failed to operate PCI device passthrough: {e}")
 
         # ESXi host configuration will be included in the result if it will be changed.
         self.result['passthrough_configs'] = [

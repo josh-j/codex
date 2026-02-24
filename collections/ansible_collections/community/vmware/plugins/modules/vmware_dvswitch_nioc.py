@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, VMware, Inc.
 # Copyright: (c) 2019, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -138,19 +135,20 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     find_dvs_by_name,
     vmware_argument_spec,
-    wait_for_task)
+    wait_for_task,
+)
 
 
 class VMwareDVSwitchNIOC(PyVmomi):
 
     def __init__(self, module):
-        super(VMwareDVSwitchNIOC, self).__init__(module)
+        super().__init__(module)
         self.dvs = None
         self.resource_changes = list()
         self.switch = module.params['switch']
@@ -193,7 +191,7 @@ class VMwareDVSwitchNIOC(PyVmomi):
         if not self.module.check_mode:
             self.set_nioc_enabled(True)
             self.set_nioc_version()
-            self.result['dvswitch_nioc_status'] = "Enabled NIOC with version %s" % self.version
+            self.result['dvswitch_nioc_status'] = f"Enabled NIOC with version {self.version}"
 
             # Check resource state and apply all required changes
             if self.check_resources() == 'update':
@@ -203,7 +201,7 @@ class VMwareDVSwitchNIOC(PyVmomi):
         self.result['changed'] = True
         if not self.module.check_mode:
             self.set_nioc_version()
-            self.result['dvswitch_nioc_status'] = "Set NIOC to version %s" % self.version
+            self.result['dvswitch_nioc_status'] = f"Set NIOC to version {self.version}"
 
             # Check resource state and apply all required changes
             if self.check_resources() == 'update':
@@ -219,13 +217,13 @@ class VMwareDVSwitchNIOC(PyVmomi):
         try:
             self.dvs.EnableNetworkResourceManagement(enable=state)
         except vim.fault.DvsFault as dvs_fault:
-            self.module.fail_json(msg='DvsFault while setting NIOC enabled=%r: %s' % (state, to_native(dvs_fault.msg)))
+            self.module.fail_json(msg=f'DvsFault while setting NIOC enabled={state!r}: {to_native(dvs_fault.msg)}')
         except vim.fault.DvsNotAuthorized as auth_fault:
-            self.module.fail_json(msg='Not authorized to set NIOC enabled=%r: %s' % (state, to_native(auth_fault.msg)))
+            self.module.fail_json(msg=f'Not authorized to set NIOC enabled={state!r}: {to_native(auth_fault.msg)}')
         except vmodl.fault.NotSupported as support_fault:
-            self.module.fail_json(msg='NIOC not supported by DVS: %s' % to_native(support_fault.msg))
+            self.module.fail_json(msg=f'NIOC not supported by DVS: {to_native(support_fault.msg)}')
         except vmodl.RuntimeFault as runtime_fault:
-            self.module.fail_json(msg='RuntimeFault while setting NIOC enabled=%r: %s' % (state, to_native(runtime_fault.msg)))
+            self.module.fail_json(msg=f'RuntimeFault while setting NIOC enabled={state!r}: {to_native(runtime_fault.msg)}')
 
     def set_nioc_version(self):
         upgrade_spec = vim.DistributedVirtualSwitch.ConfigSpec()
@@ -238,13 +236,13 @@ class VMwareDVSwitchNIOC(PyVmomi):
             task = self.dvs.ReconfigureDvs_Task(spec=upgrade_spec)
             wait_for_task(task)
         except vmodl.RuntimeFault as runtime_fault:
-            self.module.fail_json(msg="RuntimeFault when setting NIOC version: %s " % to_native(runtime_fault.msg))
+            self.module.fail_json(msg=f"RuntimeFault when setting NIOC version: {to_native(runtime_fault.msg)} ")
 
     def check_nioc_state(self):
         self.dvs = find_dvs_by_name(self.content, self.switch)
 
         if self.dvs is None:
-            self.module.fail_json(msg='DVS %s was not found.' % self.switch)
+            self.module.fail_json(msg=f'DVS {self.switch} was not found.')
         else:
             if not self.dvs.config.networkResourceManagementEnabled:
                 return 'absent'
@@ -257,7 +255,7 @@ class VMwareDVSwitchNIOC(PyVmomi):
     def check_resources(self):
         self.dvs = find_dvs_by_name(self.content, self.switch)
         if self.dvs is None:
-            self.module.fail_json(msg="DVS named '%s' was not found" % self.switch)
+            self.module.fail_json(msg=f"DVS named '{self.switch}' was not found")
 
         for resource in self.resources:
             if self.check_resource_state(resource) == 'update':
@@ -271,7 +269,7 @@ class VMwareDVSwitchNIOC(PyVmomi):
     def check_resource_state(self, resource):
         resource_cfg = self.find_netioc_by_key(resource['name'])
         if resource_cfg is None:
-            self.module.fail_json(msg="NetIOC resource named '%s' was not found" % resource['name'])
+            self.module.fail_json(msg="NetIOC resource named '{}' was not found".format(resource['name']))
 
         rc = {
             "limit": resource_cfg.allocationInfo.limit,
@@ -311,7 +309,7 @@ class VMwareDVSwitchNIOC(PyVmomi):
                     allocation.allocationInfo.shares.shares = resource['shares']
                 elif resource['shares_level'] == 'custom':
                     self.module.fail_json(
-                        msg="Resource %s, shares_level set to custom but shares not specified" % resource['name']
+                        msg="Resource {}, shares_level set to custom but shares not specified".format(resource['name'])
                     )
 
             allocations.append(allocation)

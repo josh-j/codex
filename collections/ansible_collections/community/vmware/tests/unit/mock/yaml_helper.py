@@ -1,18 +1,16 @@
 # Copyright: (c) 2017 Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import io
+
 import yaml
-
 from ansible.module_utils.six import PY3
-from ansible.parsing.yaml.loader import AnsibleLoader
 from ansible.parsing.yaml.dumper import AnsibleDumper
+from ansible.parsing.yaml.loader import AnsibleLoader
 
 
-class YamlTestUtils(object):
+class YamlTestUtils:
     """Mixin class to combine with a unittest.TestCase subclass."""
     def _loader(self, stream):
         """Vault related tests will want to override this.

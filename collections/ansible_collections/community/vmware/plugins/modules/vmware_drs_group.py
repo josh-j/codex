@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Karsten Kaj Jakobsen <kj@patientsky.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -143,11 +140,12 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
+    find_cluster_by_name,
+    find_datacenter_by_name,
+    find_vm_by_id,
     vmware_argument_spec,
     wait_for_task,
-    find_cluster_by_name,
-    find_vm_by_id,
-    find_datacenter_by_name)
+)
 
 
 class VmwareDrsGroupManager(PyVmomi):
@@ -161,7 +159,7 @@ class VmwareDrsGroupManager(PyVmomi):
         Init
         """
 
-        super(VmwareDrsGroupManager, self).__init__(module)
+        super().__init__(module)
 
         self.__datacenter_name = datacenter_name
         self.__datacenter_obj = None
@@ -184,7 +182,7 @@ class VmwareDrsGroupManager(PyVmomi):
             self.__datacenter_obj = find_datacenter_by_name(self.content, self.__datacenter_name)
 
             if self.__datacenter_obj is None:
-                raise Exception("Datacenter '%s' not found" % self.__datacenter_name)
+                raise Exception(f"Datacenter '{self.__datacenter_name}' not found")
 
         self.__cluster_obj = find_cluster_by_name(content=self.content,
                                                   cluster_name=self.__cluster_name,
@@ -193,7 +191,7 @@ class VmwareDrsGroupManager(PyVmomi):
         # Throw error if cluster does not exist
         if self.__cluster_obj is None:
             if not module.check_mode:
-                raise Exception("Cluster '%s' not found" % self.__cluster_name)
+                raise Exception(f"Cluster '{self.__cluster_name}' not found")
         else:
             # get group
             self.__group_obj = self.__get_group_by_name()
@@ -281,8 +279,7 @@ class VmwareDrsGroupManager(PyVmomi):
                     vm_obj = find_vm_by_id(content=self.content, vm_id=vm,
                                            vm_id_type='vm_name', cluster=cluster_obj)
                     if vm_obj is None:
-                        raise Exception("VM %s does not exist in cluster %s" % (vm,
-                                                                                self.__cluster_name))
+                        raise Exception(f"VM {vm} does not exist in cluster {self.__cluster_name}")
                     self.__vm_obj_list.append(vm_obj)
 
     def __set_host_obj_list(self, host_list=None):
@@ -304,7 +301,7 @@ class VmwareDrsGroupManager(PyVmomi):
                     # Get host data
                     host_obj = self.find_hostsystem_by_name(host)
                     if host_obj is None:
-                        raise Exception("ESXi host %s does not exist in cluster %s" % (host, self.__cluster_name))
+                        raise Exception(f"ESXi host {host} does not exist in cluster {self.__cluster_name}")
                     self.__host_obj_list.append(host_obj)
 
     def __get_group_by_name(self, group_name=None, cluster_obj=None):
@@ -408,16 +405,16 @@ class VmwareDrsGroupManager(PyVmomi):
             changed = True
             if not self.module.check_mode:
                 task = self.__cluster_obj.ReconfigureEx(config_spec, modify=True)
-                changed, result = wait_for_task(task)
+                changed, _result = wait_for_task(task)
 
             # Set new result since something changed
             self.__set_result(group)
             self.__changed = changed
 
         if self.__operation == 'edit':
-            self.__msg = "Updated host group %s successfully" % (self.__group_name)
+            self.__msg = f"Updated host group {self.__group_name} successfully"
         else:
-            self.__msg = "Created host group %s successfully" % (self.__group_name)
+            self.__msg = f"Created host group {self.__group_name} successfully"
 
     def __create_vm_group(self):
 
@@ -435,15 +432,15 @@ class VmwareDrsGroupManager(PyVmomi):
             changed = True
             if not self.module.check_mode:
                 task = self.__cluster_obj.ReconfigureEx(config_spec, modify=True)
-                changed, result = wait_for_task(task)
+                changed, _result = wait_for_task(task)
 
             self.__set_result(group)
             self.__changed = changed
 
         if self.__operation == 'edit':
-            self.__msg = "Updated vm group %s successfully" % (self.__group_name)
+            self.__msg = f"Updated vm group {self.__group_name} successfully"
         else:
-            self.__msg = "Created vm group %s successfully" % (self.__group_name)
+            self.__msg = f"Created vm group {self.__group_name} successfully"
 
     def __normalize_group_data(self, group_obj):
         """
@@ -502,9 +499,9 @@ class VmwareDrsGroupManager(PyVmomi):
 
         # Do not throw error if group does not exist. Simply set changed = False
         if self.__changed:
-            self.__msg = "Deleted group `%s` successfully" % (self.__group_name)
+            self.__msg = f"Deleted group `{self.__group_name}` successfully"
         else:
-            self.__msg = "DRS group `%s` does not exists or already deleted" % (self.__group_name)
+            self.__msg = f"DRS group `{self.__group_name}` does not exists or already deleted"
 
 
 def main():
@@ -559,7 +556,7 @@ def main():
                        result=vmware_drs_group.get_result())
 
     except Exception as error:
-        results = dict(failed=True, msg="Error: %s" % error)
+        results = dict(failed=True, msg=f"Error: {error}")
 
     if results['failed']:
         module.fail_json(**results)

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2020, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -93,7 +90,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class VmwareHostDiskManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareHostDiskManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name')
         esxi_host_name = self.params.get('esxi_hostname')
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)

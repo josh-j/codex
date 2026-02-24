@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019-2020, Ansible Project
 # Copyright: (c) 2019-2020, Naveenkumar G P <ngp@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -146,17 +143,18 @@ import_profile:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.compat.version import LooseVersion
-from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
 import json
 import time
+
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.compat.version import LooseVersion
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
+from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 
 class VcVersionChecker(PyVmomi):
     def __init__(self, module):
-        super(VcVersionChecker, self).__init__(module)
+        super().__init__(module)
 
     def check_vc_version(self):
         if LooseVersion(self.content.about.version) < LooseVersion('7'):
@@ -166,7 +164,7 @@ class VcVersionChecker(PyVmomi):
 class VcenterProfile(VmwareRestClient):
 
     def __init__(self, module):
-        super(VcenterProfile, self).__init__(module)
+        super().__init__(module)
         self.config_path = self.params['config_path']
 
     def list_vc_infraprofile_configs(self):
@@ -195,7 +193,7 @@ class VcenterProfile(VmwareRestClient):
         self.module.exit_json(changed=False, export_config_json=config_json)
 
     def read_profile(self):
-        with open(self.config_path, "r") as file:
+        with open(self.config_path) as file:
             return file.read()
 
     def get_import_profile_spec(self):
@@ -212,7 +210,7 @@ class VcenterProfile(VmwareRestClient):
         self.wait_for_task(import_task)
         if "SUCCEEDED" == import_task.get_info().status:
             self.module.exit_json(changed=True, status=import_task.get_info().result.value)
-        self.module.fail_json(msg='Failed to import profile status:"%s" ' % import_task.get_info().status)
+        self.module.fail_json(msg=f'Failed to import profile status:"{import_task.get_info().status}" ')
 
     def vc_validate_profile_task(self):
         infra = self.api_client.appliance.infraprofile.Configs
@@ -225,7 +223,7 @@ class VcenterProfile(VmwareRestClient):
             self.module.exit_json(changed=False, status=validate_task.get_info().result.get_field("status").value)
         else:
             # TO-DO: move to vmware_rest_client
-            self.module.fail_json(msg='Failed to validate profile status:"%s" ' % dir(validate_task.get_info().status))
+            self.module.fail_json(msg=f'Failed to validate profile status:"{dir(validate_task.get_info().status)}" ')
 
     def wait_for_task(self, task, poll_interval=1):
         while task.get_info().status == "RUNNING":

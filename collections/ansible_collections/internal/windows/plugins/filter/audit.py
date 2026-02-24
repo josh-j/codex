@@ -1,5 +1,22 @@
 import copy
+import importlib.util
 from datetime import datetime, timezone
+from pathlib import Path
+
+try:
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        safe_list,
+    )
+except ImportError:
+    # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
+    _helper_path = (
+        Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "reporting_primitives.py"
+    )
+    _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
+    assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    safe_list = _mod.safe_list
 
 
 def _as_dict(value):
@@ -90,8 +107,8 @@ def compute_application_metrics(windows_ctx):
     out = copy.deepcopy(_as_dict(windows_ctx))
     apps = _as_dict(out.get("applications"))
     metrics = {
-        "configmgr_count": len(list(apps.get("configmgr_apps") or [])),
-        "installed_count": len(list(apps.get("installed_apps") or [])),
+        "configmgr_count": len(safe_list(apps.get("configmgr_apps"))),
+        "installed_count": len(safe_list(apps.get("installed_apps"))),
     }
     apps["metrics"] = metrics
     out["applications"] = apps
@@ -101,7 +118,7 @@ def compute_application_metrics(windows_ctx):
 def set_update_results(windows_ctx, results):
     out = copy.deepcopy(_as_dict(windows_ctx))
     out.setdefault("updates", {})
-    out["updates"]["results"] = list(results or [])
+    out["updates"]["results"] = safe_list(results)
     return out
 
 
@@ -138,14 +155,14 @@ def build_windows_audit_export_payload(windows_ctx, audit_failed=False):
     services = _as_dict(ctx.get("services"))
     apps = _as_dict(ctx.get("applications"))
     updates = _as_dict(ctx.get("updates"))
-    results = list(updates.get("results") or [])
+    results = safe_list(updates.get("results"))
     failed_updates = [r for r in results if isinstance(r, dict) and bool(r.get("failed", False))]
 
     summary = {
         "applications": {
-            "configmgr_count": len(list(apps.get("configmgr_apps") or [])),
-            "installed_count": len(list(apps.get("installed_apps") or [])),
-            "apps_to_update_count": len(list(apps.get("apps_to_update") or [])),
+            "configmgr_count": len(safe_list(apps.get("configmgr_apps"))),
+            "installed_count": len(safe_list(apps.get("installed_apps"))),
+            "apps_to_update_count": len(safe_list(apps.get("apps_to_update"))),
             "total_apps": int(apps.get("total_apps") or 0),
         },
         "updates": {
@@ -171,7 +188,7 @@ def build_windows_audit_export_payload(windows_ctx, audit_failed=False):
         "audit_failed": bool(audit_failed),
         "health": health,
         "summary": summary,
-        "alerts": list(ctx.get("alerts") or []),
+        "alerts": safe_list(ctx.get("alerts")),
         "check_metadata": {
             "engine": "ansible-ncs-windows",
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

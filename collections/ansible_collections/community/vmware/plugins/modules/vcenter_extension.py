@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Michael Tipton <mike () ibeta.org>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -172,7 +169,7 @@ def main():
 
     if state == 'present' and key_check:
         results['changed'] = False
-        results['installed'] = "'%s' is already installed" % (extension_key)
+        results['installed'] = f"'{extension_key}' is already installed"
 
     elif state == 'present' and not key_check:
         extension = vim.Extension()
@@ -205,16 +202,16 @@ def main():
 
         em.RegisterExtension(extension)
         results['changed'] = True
-        results['installed'] = "'%s' installed." % (extension_key)
+        results['installed'] = f"'{extension_key}' installed."
 
     elif state == 'absent' and key_check:
         em.UnregisterExtension(extension_key)
         results['changed'] = True
-        results['installed'] = "'%s' uninstalled." % (extension_key)
+        results['installed'] = f"'{extension_key}' uninstalled."
 
     elif state == 'absent' and not key_check:
         results['changed'] = False
-        results['installed'] = "'%s' is not installed." % (extension_key)
+        results['installed'] = f"'{extension_key}' is not installed."
 
     module.exit_json(**results)
 

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r"""
@@ -212,12 +209,20 @@ try:
 except ImportError:
     pass
 
-from random import randint
 from datetime import datetime
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, set_vm_power_state, vmware_argument_spec, \
-    check_answer_question_status, make_answer_response, answer_question, gather_vm_facts
+from random import randint
+
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    answer_question,
+    check_answer_question_status,
+    gather_vm_facts,
+    make_answer_response,
+    set_vm_power_state,
+    vmware_argument_spec,
+)
 
 
 def main():
@@ -270,8 +275,8 @@ def main():
         scheduled_at = module.params.get('scheduled_at', None)
         if scheduled_at:
             if not pyv.is_vcenter():
-                module.fail_json(msg="Scheduling task requires vCenter, hostname %s "
-                                     "is an ESXi server." % module.params.get('hostname'))
+                module.fail_json(msg="Scheduling task requires vCenter, hostname {} "
+                                     "is an ESXi server.".format(module.params.get('hostname')))
             powerstate = {
                 'present': vim.VirtualMachine.PowerOn,
                 'powered-off': vim.VirtualMachine.PowerOff,
@@ -286,13 +291,13 @@ def main():
                 dt = datetime.strptime(scheduled_at, '%d/%m/%Y %H:%M')
             except ValueError as e:
                 module.fail_json(msg="Failed to convert given date and time string to Python datetime object,"
-                                     "please specify string in 'dd/mm/yyyy hh:mm' format: %s" % to_native(e))
+                                     f"please specify string in 'dd/mm/yyyy hh:mm' format: {to_native(e)}")
             schedule_task_spec = vim.scheduler.ScheduledTaskSpec()
-            schedule_task_name = module.params['schedule_task_name'] or 'task_%s' % str(randint(10000, 99999))
+            schedule_task_name = module.params['schedule_task_name'] or f'task_{randint(10000, 99999)!s}'
             schedule_task_desc = module.params['schedule_task_description']
             if schedule_task_desc is None:
-                schedule_task_desc = 'Schedule task for vm %s for ' \
-                                     'operation %s at %s' % (vm.name, module.params['state'], scheduled_at)
+                schedule_task_desc = 'Schedule task for vm {} for ' \
+                                     'operation {} at {}'.format(vm.name, module.params['state'], scheduled_at)
             schedule_task_spec.name = schedule_task_name
             schedule_task_spec.description = schedule_task_desc
             schedule_task_spec.scheduler = vim.scheduler.OnceTaskScheduler()
@@ -306,14 +311,14 @@ def main():
                 # As this is async task, we create scheduled task and mark state to changed.
                 module.exit_json(changed=True)
             except vim.fault.InvalidName as e:
-                module.fail_json(msg="Failed to create scheduled task %s for %s : %s" % (module.params.get('state'),
+                module.fail_json(msg="Failed to create scheduled task {} for {} : {}".format(module.params.get('state'),
                                                                                          vm.name,
                                                                                          to_native(e.msg)))
             except vim.fault.DuplicateName as e:
                 module.exit_json(changed=False, details=to_native(e.msg))
             except vmodl.fault.InvalidArgument as e:
-                module.fail_json(msg="Failed to create scheduled task %s as specifications "
-                                     "given are invalid: %s" % (module.params.get('state'),
+                module.fail_json(msg="Failed to create scheduled task {} as specifications "
+                                     "given are invalid: {}".format(module.params.get('state'),
                                                                 to_native(e.msg)))
         else:
             # Check if a virtual machine is locked by a question
@@ -322,7 +327,7 @@ def main():
                     responses = make_answer_response(vm, module.params['answer'])
                     answer_question(vm, responses)
                 except Exception as e:
-                    module.fail_json(msg="%s" % e)
+                    module.fail_json(msg=f"{e}")
 
                 # Wait until a virtual machine is unlocked
                 while True:
@@ -337,7 +342,7 @@ def main():
             result['answer'] = module.params['answer']
     else:
         id = module.params.get('uuid') or module.params.get('moid') or module.params.get('name')
-        module.fail_json(msg="Unable to set power state for non-existing virtual machine : '%s'" % id)
+        module.fail_json(msg=f"Unable to set power state for non-existing virtual machine : '{id}'")
 
     if result.get('failed') is True:
         module.fail_json(**result)

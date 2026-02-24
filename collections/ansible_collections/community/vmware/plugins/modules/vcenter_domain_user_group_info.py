@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2020, sky-joker
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 module: vcenter_domain_user_group_info
@@ -119,14 +116,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VcenterDomainUserGroupInfo(PyVmomi):
     def __init__(self, module):
-        super(VcenterDomainUserGroupInfo, self).__init__(module)
+        super().__init__(module)
         self.domain = self.params['domain']
         self.search_string = self.params['search_string']
         self.belongs_to_group = self.params['belongs_to_group']
@@ -138,8 +135,8 @@ class VcenterDomainUserGroupInfo(PyVmomi):
     def execute(self):
         user_directory_manager = self.content.userDirectory
 
-        if not self.domain.upper() in user_directory_manager.domainList:
-            self.module.fail_json(msg="domain not found: %s" % self.domain)
+        if self.domain.upper() not in user_directory_manager.domainList:
+            self.module.fail_json(msg=f"domain not found: {self.domain}")
 
         try:
             user_search_result = user_directory_manager.RetrieveUserGroups(
@@ -152,9 +149,9 @@ class VcenterDomainUserGroupInfo(PyVmomi):
                 findGroups=self.find_groups
             )
         except vim.fault.NotFound as e:
-            self.module.fail_json(msg="%s" % to_native(e.msg))
+            self.module.fail_json(msg=f"{to_native(e.msg)}")
         except Exception as e:
-            self.module.fail_json(msg="Couldn't gather domain user or group information: %s" % to_native(e))
+            self.module.fail_json(msg=f"Couldn't gather domain user or group information: {to_native(e)}")
 
         user_search_result_normalization = []
         if user_search_result:

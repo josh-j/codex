@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # This module is also sponsored by E.T.A.I. (www.etai.fr)
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -1110,8 +1107,8 @@ instance:
 '''
 
 import re
-import time
 import string
+import time
 
 HAS_PYVMOMI = False
 try:
@@ -1120,28 +1117,28 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.common.network import is_mac
-from ansible.module_utils._text import to_text, to_native
+from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    compile_folder_path_for_object,
+    find_dvs_by_name,
+    find_dvspg_by_name,
     find_obj,
     gather_vm_facts,
     get_all_objs,
-    compile_folder_path_for_object,
-    serialize_spec,
-    vmware_argument_spec,
-    set_vm_power_state,
-    PyVmomi,
-    find_dvs_by_name,
-    find_dvspg_by_name,
-    wait_for_vm_ip,
     quote_obj_name,
+    serialize_spec,
+    set_vm_power_state,
+    vmware_argument_spec,
+    wait_for_vm_ip,
 )
-from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
 from ansible_collections.community.vmware.plugins.module_utils.vmware_spbm import SPBM
 
 
-class PyVmomiCache(object):
+class PyVmomiCache:
     """ This class caches references to objects which are requested multiples times but not modified """
 
     def __init__(self, content, dc_name=None):
@@ -1171,7 +1168,7 @@ class PyVmomiCache(object):
             if hasattr(objects, 'items'):
                 # resource pools come back as a dictionary
                 # make a copy
-                for k, v in tuple(objects.items()):
+                for k, _v in tuple(objects.items()):
                     parent_dc = self.get_parent_datacenter(k)
                     if parent_dc.name != self.dc_name:
                         del objects[k]
@@ -1221,7 +1218,7 @@ class PyVmomiCache(object):
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.device_helper = PyVmomiDeviceHelper(self.module)
         self.configspec = None
         self.relospec = None
@@ -1237,9 +1234,9 @@ class PyVmomiHelper(PyVmomi):
     def remove_vm(self, vm, delete_from_inventory=False):
         # https://www.vmware.com/support/developer/converter-sdk/conv60_apireference/vim.ManagedEntity.html#destroy
         if vm.summary.runtime.powerState.lower() == 'poweredon':
-            self.module.fail_json(msg="Virtual machine %s found in 'powered on' state, "
+            self.module.fail_json(msg=f"Virtual machine {vm.name} found in 'powered on' state, "
                                       "please use 'force' parameter to remove or poweroff VM "
-                                      "and try removing VM again." % vm.name)
+                                      "and try removing VM again.")
         # Delete VM from Inventory
         if delete_from_inventory:
             try:
@@ -1474,14 +1471,13 @@ class PyVmomiHelper(PyVmomi):
                 cdrom_ctl_unit_num = int(cdrom_spec.get('unit_number'))
 
                 if cdrom_spec['controller_type'] == 'ide' and (cdrom_ctl_num not in [0, 1] or cdrom_ctl_unit_num not in [0, 1]):
-                    self.module.fail_json(msg="Invalid cdrom.controller_number: %s or cdrom.unit_number: %s, valid"
-                                              " values are 0 or 1 for IDE controller."
-                                              % (cdrom_spec.get('controller_number'), cdrom_spec.get('unit_number')))
+                    self.module.fail_json(msg="Invalid cdrom.controller_number: {} or cdrom.unit_number: {}, valid"
+                                              " values are 0 or 1 for IDE controller.".format(cdrom_spec.get('controller_number'), cdrom_spec.get('unit_number')))
 
                 if cdrom_spec['controller_type'] == 'sata' and (cdrom_ctl_num not in range(0, 4) or cdrom_ctl_unit_num not in range(0, 30)):
-                    self.module.fail_json(msg="Invalid cdrom.controller_number: %s or cdrom.unit_number: %s,"
+                    self.module.fail_json(msg="Invalid cdrom.controller_number: {} or cdrom.unit_number: {},"
                                               " valid controller_number value is 0-3, valid unit_number is 0-29"
-                                              " for SATA controller." % (cdrom_spec.get('controller_number'),
+                                              " for SATA controller.".format(cdrom_spec.get('controller_number'),
                                                                          cdrom_spec.get('unit_number')))
                 cdrom_spec['controller_number'] = cdrom_ctl_num
                 cdrom_spec['unit_number'] = cdrom_ctl_unit_num
@@ -1492,9 +1488,8 @@ class PyVmomiHelper(PyVmomi):
                             exist_spec.get('ctl_type') == cdrom_spec['controller_type']:
                         for cdrom_same_ctl in exist_spec['cdroms']:
                             if cdrom_same_ctl['unit_number'] == cdrom_spec['unit_number']:
-                                self.module.fail_json(msg="Duplicate cdrom.controller_type: %s, cdrom.controller_number: %s,"
-                                                          "cdrom.unit_number: %s parameters specified."
-                                                          % (cdrom_spec['controller_type'], cdrom_spec['controller_number'], cdrom_spec['unit_number']))
+                                self.module.fail_json(msg="Duplicate cdrom.controller_type: {}, cdrom.controller_number: {},"
+                                                          "cdrom.unit_number: {} parameters specified.".format(cdrom_spec['controller_type'], cdrom_spec['controller_number'], cdrom_spec['unit_number']))
                         ctl_exist = True
                         exist_spec['cdroms'].append(cdrom_spec)
                         break
@@ -1620,9 +1615,9 @@ class PyVmomiHelper(PyVmomi):
                 try:
                     temp_version = int(temp_version)
                 except ValueError:
-                    self.module.fail_json(msg="Failed to set hardware.version '%s' value as valid"
+                    self.module.fail_json(msg=f"Failed to set hardware.version '{temp_version}' value as valid"
                                           " values are either 'latest' or a number."
-                                          " Please check VMware documentation for valid VM hardware versions." % temp_version)
+                                          " Please check VMware documentation for valid VM hardware versions.")
 
             if isinstance(temp_version, int):
                 # Hardware version is denoted as "vmx-10"
@@ -1770,9 +1765,8 @@ class PyVmomiHelper(PyVmomi):
                                         self.change_detected = True
                                         self.configspec.deviceChange.append(nvdimm_config_spec)
                                     elif existing_nvdimm_dev.capacityInMB > self.params['nvdimm']['size_mb']:
-                                        self.module.fail_json(msg="Can not change NVDIMM device size to %s MB, which is"
-                                                                  " smaller than the current size %s MB."
-                                                                  % (self.params['nvdimm']['size_mb'],
+                                        self.module.fail_json(msg="Can not change NVDIMM device size to {} MB, which is"
+                                                                  " smaller than the current size {} MB.".format(self.params['nvdimm']['size_mb'],
                                                                      existing_nvdimm_dev.capacityInMB))
             # New VM or existing VM without label specified, add new NVDIMM device
             if vm_obj is None or (vm_obj and not vm_obj.config.template and self.params['nvdimm']['label'] is None):
@@ -1784,7 +1778,7 @@ class PyVmomiHelper(PyVmomi):
                         spbm = SPBM(self.module)
                         pmem_profile = spbm.find_storage_profile_by_name(profile_name=storage_profile_name)
                         if pmem_profile is None:
-                            self.module.fail_json(msg="Can not find PMem storage policy with name '%s'." % storage_profile_name)
+                            self.module.fail_json(msg=f"Can not find PMem storage policy with name '{storage_profile_name}'.")
                         vc_pmem_profile_id = pmem_profile.profileId.uniqueId
 
                     if not nvdimm_ctl_exists:
@@ -1827,7 +1821,7 @@ class PyVmomiHelper(PyVmomi):
                                           " a VLAN name under VM network list.")
 
             if 'name' in network and self.cache.get_network(network['name']) is None:
-                self.module.fail_json(msg="Network '%(name)s' does not exist." % network)
+                self.module.fail_json(msg="Network '{name}' does not exist.".format(**network))
             elif 'vlan' in network:
                 dvps = self.cache.get_all_objs(self.content, [vim.dvs.DistributedVirtualPortgroup])
                 for dvp in dvps:
@@ -1846,15 +1840,15 @@ class PyVmomiHelper(PyVmomi):
                         network['name'] = dvp.config.name
                         break
                 else:
-                    self.module.fail_json(msg="VLAN '%(vlan)s' does not exist." % network)
+                    self.module.fail_json(msg="VLAN '{vlan}' does not exist.".format(**network))
 
             if 'type' in network:
                 if network['type'] not in ['dhcp', 'static']:
-                    self.module.fail_json(msg="Network type '%(type)s' is not a valid parameter."
-                                              " Valid parameters are ['dhcp', 'static']." % network)
+                    self.module.fail_json(msg="Network type '{type}' is not a valid parameter."
+                                              " Valid parameters are ['dhcp', 'static'].".format(**network))
                 if network['type'] != 'static' and ('ip' in network or 'netmask' in network):
-                    self.module.fail_json(msg='Static IP information provided for network "%(name)s",'
-                                              ' but "type" is set to "%(type)s".' % network)
+                    self.module.fail_json(msg='Static IP information provided for network "{name}",'
+                                              ' but "type" is set to "{type}".'.format(**network))
             else:
                 # Type is optional parameter, if user provided IP or Subnet assume
                 # network type as 'static'
@@ -1874,11 +1868,11 @@ class PyVmomiHelper(PyVmomi):
 
             if 'typev6' in network:
                 if network['typev6'] not in ['dhcp', 'static']:
-                    self.module.fail_json(msg="Network type '%(typev6)s' for IPv6 is not a valid parameter."
-                                              " Valid parameters are ['dhcp', 'static']." % network)
+                    self.module.fail_json(msg="Network type '{typev6}' for IPv6 is not a valid parameter."
+                                              " Valid parameters are ['dhcp', 'static'].".format(**network))
                     if network['typev6'] != 'static' and ('ipv6' in network or 'netmaskv6' in network):
-                        self.module.fail_json(msg='Static IPv6 information provided for network "%(name)s",'
-                                                  ' but "typev6" is set to "%(typev6)s".' % network)
+                        self.module.fail_json(msg='Static IPv6 information provided for network "{name}",'
+                                                  ' but "typev6" is set to "{typev6}".'.format(**network))
             else:
                 # Type is optional parameter, if user provided IP or Subnet assume
                 # network type as 'static'
@@ -1897,13 +1891,13 @@ class PyVmomiHelper(PyVmomi):
                                               " specified under VM network list.")
 
             if 'device_type' in network and network['device_type'] not in self.device_helper.nic_device_type.keys():
-                self.module.fail_json(msg="Device type specified '%s' is not valid. Please specify correct device type"
-                                          " from ['%s']." % (network['device_type'],
+                self.module.fail_json(msg="Device type specified '{}' is not valid. Please specify correct device type"
+                                          " from ['{}'].".format(network['device_type'],
                                                              "', '".join(self.device_helper.nic_device_type.keys())))
 
             if 'mac' in network and not is_mac(network['mac']):
-                self.module.fail_json(msg="Device MAC address '%s' is invalid."
-                                          " Please provide correct MAC address." % network['mac'])
+                self.module.fail_json(msg="Device MAC address '{}' is invalid."
+                                          " Please provide correct MAC address.".format(network['mac']))
 
             network_devices.append(network)
 
@@ -1957,12 +1951,11 @@ class PyVmomiHelper(PyVmomi):
                     device = self.device_helper.nic_device_type.get(network_devices[key]['device_type'])
                     if not isinstance(nic.device, device):
                         self.module.fail_json(msg="Changing the device type is not possible when interface is already"
-                                                  " present. The failing device type is %s"
-                                                  % network_devices[key]['device_type'])
+                                                  " present. The failing device type is {}".format(network_devices[key]['device_type']))
                 # Changing mac address has no effect when editing interface
                 if 'mac' in network_devices[key] and nic.device.macAddress != current_net_devices[key].macAddress:
                     self.module.fail_json(msg="Changing MAC address has not effect when interface is already present. "
-                                              "The failing new MAC address is %s" % nic.device.macAddress)
+                                              f"The failing new MAC address is {nic.device.macAddress}")
 
             else:
                 # Default device type is vmxnet3, VMware best practice
@@ -1981,10 +1974,10 @@ class PyVmomiHelper(PyVmomi):
                     dvs_name = network_devices[key]['dvswitch_name']
                     dvs_obj = find_dvs_by_name(self.content, dvs_name)
                     if dvs_obj is None:
-                        self.module.fail_json(msg="Unable to find distributed virtual switch %s" % dvs_name)
+                        self.module.fail_json(msg=f"Unable to find distributed virtual switch {dvs_name}")
                     pg_obj = find_dvspg_by_name(dvs_obj, network_name)
                     if pg_obj is None:
-                        self.module.fail_json(msg="Unable to find distributed port group %s" % network_name)
+                        self.module.fail_json(msg=f"Unable to find distributed port group {network_name}")
                 else:
                     pg_obj = self.cache.find_obj(self.content, [vim.dvs.DistributedVirtualPortgroup], network_name)
 
@@ -1993,10 +1986,9 @@ class PyVmomiHelper(PyVmomi):
                 if not pg_obj.config.distributedVirtualSwitch:
                     self.module.fail_json(
                         msg="Failed to find distributed virtual switch which is associated with"
-                        " distributed virtual portgroup '%s'. Make sure hostsystem is associated with"
+                        f" distributed virtual portgroup '{pg_obj.name}'. Make sure hostsystem is associated with"
                         " the given distributed virtual portgroup. Also, check if user has correct"
                         " permission to access distributed virtual switch in the given portgroup."
-                        % pg_obj.name
                     )
                 if nic.device.backing and (
                     not hasattr(nic.device.backing, "port")
@@ -2015,9 +2007,9 @@ class PyVmomiHelper(PyVmomi):
                 # association between given distributed port group and host system.
                 host_system = self.params.get('esxi_hostname')
                 if host_system and host_system not in [host.config.host.name for host in pg_obj.config.distributedVirtualSwitch.config.host]:
-                    self.module.fail_json(msg="It seems that host system '%s' is not associated with distributed"
-                                              " virtual portgroup '%s'. Please make sure host system is associated"
-                                              " with given distributed virtual portgroup" % (host_system, pg_obj.name))
+                    self.module.fail_json(msg=f"It seems that host system '{host_system}' is not associated with distributed"
+                                              f" virtual portgroup '{pg_obj.name}'. Please make sure host system is associated"
+                                              " with given distributed virtual portgroup")
                 dvs_port_connection.switchUuid = pg_obj.config.distributedVirtualSwitch.uuid
                 nic.device.backing = vim.vm.device.VirtualEthernetCard.DistributedVirtualPortBackingInfo()
                 nic.device.backing.port = dvs_port_connection
@@ -2028,7 +2020,7 @@ class PyVmomiHelper(PyVmomi):
                 network_id = net_obj.summary.opaqueNetworkId
                 nic.device.backing.opaqueNetworkType = 'nsx.LogicalSwitch'
                 nic.device.backing.opaqueNetworkId = network_id
-                nic.device.deviceInfo.summary = 'nsx.LogicalSwitch: %s' % network_id
+                nic.device.deviceInfo.summary = f'nsx.LogicalSwitch: {network_id}'
                 nic_change_detected = True
             else:
                 # vSwitch
@@ -2118,7 +2110,7 @@ class PyVmomiHelper(PyVmomi):
                                     is_property_changed = True
 
                         except Exception as e:
-                            msg = "Failed to set vApp property field='%s' and value='%s'. Error: %s" % (property_name, property_value, to_text(e))
+                            msg = f"Failed to set vApp property field='{property_name}' and value='{property_value}'. Error: {to_text(e)}"
                             self.module.fail_json(msg=msg)
                 else:
                     if property_spec.get('operation') == 'remove':
@@ -2218,7 +2210,7 @@ class PyVmomiHelper(PyVmomi):
                     break
 
             if not key_id:
-                self.module.fail_json(msg="Unable to find custom value key %s" % kv['key'])
+                self.module.fail_json(msg="Unable to find custom value key {}".format(kv['key']))
 
             # If kv is not kv fetched from facts, change it
             if kv['key'] not in facts['customvalues'] or facts['customvalues'][kv['key']] != kv['value']:
@@ -2236,7 +2228,7 @@ class PyVmomiHelper(PyVmomi):
                 self.customspec = temp_spec.spec
                 return
             self.module.fail_json(msg="Unable to find customization specification"
-                                      " '%s' in given configuration." % custom_spec_name)
+                                      f" '{custom_spec_name}' in given configuration.")
 
         # Network settings
         adaptermaps = []
@@ -2317,7 +2309,7 @@ class PyVmomiHelper(PyVmomi):
             ident.userData.computerName = vim.vm.customization.FixedName()
             # computer name will be truncated to 15 characters if using VM name
             default_name = ""
-            if 'name' in self.params and self.params['name']:
+            if self.params.get('name'):
                 default_name = self.params['name'].replace(' ', '')
             elif vm_obj:
                 default_name = vm_obj.name.replace(' ', '')
@@ -2387,7 +2379,7 @@ class PyVmomiHelper(PyVmomi):
 
             ident.hostName = vim.vm.customization.FixedName()
             default_name = ""
-            if 'name' in self.params and self.params['name']:
+            if self.params.get('name'):
                 default_name = self.params['name']
             elif vm_obj:
                 default_name = vm_obj.name
@@ -2458,7 +2450,7 @@ class PyVmomiHelper(PyVmomi):
                     self.module.fail_json(msg="Failed to parse disk size please review value"
                                               " provided using documentation.")
             else:
-                param = [x for x in expected_disk_spec.keys() if x.startswith('size_') and expected_disk_spec[x]][0]
+                param = next(x for x in expected_disk_spec.keys() if x.startswith('size_') and expected_disk_spec[x])
                 unit = param.split('_')[-1]
                 expected = expected_disk_spec[param]
 
@@ -2467,8 +2459,8 @@ class PyVmomiHelper(PyVmomi):
                 unit = unit.lower()
                 return expected * (1024 ** disk_units[unit])
             else:
-                self.module.fail_json(msg="%s is not a supported unit for disk size."
-                                          " Supported units are ['%s']." % (unit,
+                self.module.fail_json(msg="{} is not a supported unit for disk size."
+                                          " Supported units are ['{}'].".format(unit,
                                                                             "', '".join(disk_units.keys())))
 
         # No size found but disk, fail
@@ -2514,14 +2506,14 @@ class PyVmomiHelper(PyVmomi):
                 for ctl in controllers:
                     if ctl['type'] in self.device_helper.scsi_device_type.keys() and ctl_type in self.device_helper.scsi_device_type.keys():
                         if ctl['type'] != ctl_type and ctl['num'] == ctl_num:
-                            self.module.fail_json(msg="Specified SCSI controller '%s' and '%s' have the same bus number"
-                                                      ": '%s'" % (ctl['type'], ctl_type, ctl_num))
+                            self.module.fail_json(msg="Specified SCSI controller '{}' and '{}' have the same bus number"
+                                                      ": '{}'".format(ctl['type'], ctl_type, ctl_num))
 
                     if ctl['type'] == ctl_type and ctl['num'] == ctl_num:
                         for i in range(0, len(ctl['disk'])):
                             if disk_spec['unit_number'] == ctl['disk'][i]['unit_number']:
                                 self.module.fail_json(msg="Specified the same 'controller_type, controller_number, "
-                                                          "unit_number in disk configuration '%s:%s'" % (ctl_type, ctl_num))
+                                                          f"unit_number in disk configuration '{ctl_type}:{ctl_num}'")
                         ctl['disk'].append(disk_spec)
                         ctl_exist = True
                         break
@@ -2581,8 +2573,8 @@ class PyVmomiHelper(PyVmomi):
                     if scsi_ctls:
                         for scsi_ctl in scsi_ctls:
                             if scsi_ctl.device.busNumber == ctl['num']:
-                                self.module.fail_json(msg="Specified SCSI controller number '%s' is already used"
-                                                          " by: %s" % (ctl['num'], scsi_ctl))
+                                self.module.fail_json(msg="Specified SCSI controller number '{}' is already used"
+                                                          " by: {}".format(ctl['num'], scsi_ctl))
                 # create new disk controller if not exist
                 disk_ctl_spec = self.device_helper.create_disk_controller(ctl['type'], ctl['num'])
                 self.change_detected = True
@@ -2727,9 +2719,9 @@ class PyVmomiHelper(PyVmomi):
     def select_host(self):
         hostsystem = self.cache.get_esx_host(self.params['esxi_hostname'])
         if not hostsystem:
-            self.module.fail_json(msg='Failed to find ESX host "%(esxi_hostname)s"' % self.params)
+            self.module.fail_json(msg='Failed to find ESX host "{esxi_hostname}"'.format(**self.params))
         if hostsystem.runtime.connectionState != 'connected' or hostsystem.runtime.inMaintenanceMode:
-            self.module.fail_json(msg='ESXi "%(esxi_hostname)s" is in invalid state or in maintenance mode.' % self.params)
+            self.module.fail_json(msg='ESXi "{esxi_hostname}" is in invalid state or in maintenance mode.'.format(**self.params))
         return hostsystem
 
     def autoselect_datastore(self):
@@ -2818,9 +2810,9 @@ class PyVmomiHelper(PyVmomi):
         if not datastore:
             if len(self.params['disk']) != 0 or self.params['template'] is None:
                 self.module.fail_json(msg="Unable to find the datastore with given parameters."
-                                          " This could mean, %s is a non-existent virtual machine and module tried to"
+                                          " This could mean, {} is a non-existent virtual machine and module tried to"
                                           " deploy it as new virtual machine with no disk. Please specify disks parameter"
-                                          " or specify template to clone from." % self.params['name'])
+                                          " or specify template to clone from.".format(self.params['name']))
             self.module.fail_json(msg="Failed to find a matching datastore")
 
         return datastore, datastore_name
@@ -2892,18 +2884,18 @@ class PyVmomiHelper(PyVmomi):
         # get the datacenter object
         datacenter = find_obj(self.content, [vim.Datacenter], self.params['datacenter'])
         if not datacenter:
-            self.module.fail_json(msg='Unable to find datacenter "%s"' % self.params['datacenter'])
+            self.module.fail_json(msg='Unable to find datacenter "{}"'.format(self.params['datacenter']))
 
         # if cluster is given, get the cluster object
         if cluster_name:
             cluster = find_obj(self.content, [vim.ComputeResource], cluster_name, folder=datacenter)
             if not cluster:
-                self.module.fail_json(msg='Unable to find cluster "%s"' % cluster_name)
+                self.module.fail_json(msg=f'Unable to find cluster "{cluster_name}"')
         # if host is given, get the cluster object using the host
         elif host_name:
             host = find_obj(self.content, [vim.HostSystem], host_name, folder=datacenter)
             if not host:
-                self.module.fail_json(msg='Unable to find host "%s"' % host_name)
+                self.module.fail_json(msg=f'Unable to find host "{host_name}"')
             cluster = host.parent
         else:
             cluster = None
@@ -2912,7 +2904,7 @@ class PyVmomiHelper(PyVmomi):
         resource_pool = find_obj(self.content, [vim.ResourcePool], resource_pool_name, folder=cluster or datacenter)
         if not resource_pool:
             if resource_pool_name:
-                self.module.fail_json(msg='Unable to find resource_pool "%s"' % resource_pool_name)
+                self.module.fail_json(msg=f'Unable to find resource_pool "{resource_pool_name}"')
             else:
                 self.module.fail_json(msg='Unable to find resource pool, need esxi_hostname, resource_pool, or cluster')
         return resource_pool
@@ -2932,12 +2924,12 @@ class PyVmomiHelper(PyVmomi):
 
         # Prepend / if it was missing from the folder path, also strip trailing slashes
         if not self.folder.startswith('/'):
-            self.folder = '/%(folder)s' % self.params
+            self.folder = '/{folder}'.format(**self.params)
         self.folder = self.folder.rstrip('/')
 
         datacenter = self.cache.find_obj(self.content, [vim.Datacenter], self.params['datacenter'])
         if datacenter is None:
-            self.module.fail_json(msg='No datacenter named %(datacenter)s was found' % self.params)
+            self.module.fail_json(msg='No datacenter named {datacenter} was found'.format(**self.params))
 
         dcpath = compile_folder_path_for_object(datacenter)
 
@@ -2951,11 +2943,11 @@ class PyVmomiHelper(PyVmomi):
         ) or self.folder.startswith(dcpath + "/" + self.params["datacenter"] + "/vm"):
             fullpath = self.folder
         elif self.folder.startswith("/vm/") or self.folder == "/vm":
-            fullpath = "%s%s%s" % (dcpath, self.params["datacenter"], self.folder)
+            fullpath = "{}{}{}".format(dcpath, self.params["datacenter"], self.folder)
         elif self.folder.startswith("/"):
-            fullpath = "%s%s/vm%s" % (dcpath, self.params["datacenter"], self.folder)
+            fullpath = "{}{}/vm{}".format(dcpath, self.params["datacenter"], self.folder)
         else:
-            fullpath = "%s%s/vm/%s" % (dcpath, self.params["datacenter"], self.folder)
+            fullpath = "{}{}/vm/{}".format(dcpath, self.params["datacenter"], self.folder)
 
         f_obj = self.content.searchIndex.FindByInventoryPath(fullpath)
 
@@ -2968,7 +2960,7 @@ class PyVmomiHelper(PyVmomi):
                 'folder': self.folder,
                 'full_search_path': fullpath,
             }
-            self.module.fail_json(msg='No folder %s matched in the search path : %s' % (self.folder, fullpath),
+            self.module.fail_json(msg=f'No folder {self.folder} matched in the search path : {fullpath}',
                                   details=details)
 
         destfolder = f_obj
@@ -2976,7 +2968,7 @@ class PyVmomiHelper(PyVmomi):
         if self.params['template']:
             vm_obj = self.get_vm_or_template(template_name=self.params['template'])
             if vm_obj is None:
-                self.module.fail_json(msg="Could not find a template named %(template)s" % self.params)
+                self.module.fail_json(msg="Could not find a template named {template}".format(**self.params))
         else:
             vm_obj = None
 
@@ -3072,12 +3064,12 @@ class PyVmomiHelper(PyVmomi):
 
                 if snapshot_src is not None:
                     if vm_obj.snapshot is None:
-                        self.module.fail_json(msg="No snapshots present for virtual machine or template [%(template)s]" % self.params)
+                        self.module.fail_json(msg="No snapshots present for virtual machine or template [{template}]".format(**self.params))
                     snapshot = self.get_snapshots_by_name_recursively(snapshots=vm_obj.snapshot.rootSnapshotList,
                                                                       snapname=snapshot_src)
                     if len(snapshot) != 1:
-                        self.module.fail_json(msg='virtual machine "%(template)s" does not contain'
-                                                  ' snapshot named "%(snapshot_src)s"' % self.params)
+                        self.module.fail_json(msg='virtual machine "{template}" does not contain'
+                                                  ' snapshot named "{snapshot_src}"'.format(**self.params))
 
                     clonespec.snapshot = snapshot[0].snapshot
 
@@ -3086,8 +3078,8 @@ class PyVmomiHelper(PyVmomi):
                 try:
                     task = vm_obj.Clone(folder=destfolder, name=self.params['name'], spec=clonespec)
                 except vim.fault.NoPermission as e:
-                    self.module.fail_json(msg="Failed to clone virtual machine %s to folder %s "
-                                              "due to permission issue: %s" % (self.params['name'],
+                    self.module.fail_json(msg="Failed to clone virtual machine {} to folder {} "
+                                              "due to permission issue: {}".format(self.params['name'],
                                                                                destfolder,
                                                                                to_native(e.msg)))
                 self.change_detected = True
@@ -3108,14 +3100,14 @@ class PyVmomiHelper(PyVmomi):
                     task = destfolder.CreateVM_Task(config=self.configspec, pool=resource_pool, host=esx_host)
                 except vmodl.fault.InvalidRequest as e:
                     self.module.fail_json(msg="Failed to create virtual machine due to invalid configuration "
-                                              "parameter %s" % to_native(e.msg))
+                                              f"parameter {to_native(e.msg)}")
                 except vim.fault.RestrictedVersion as e:
                     self.module.fail_json(msg="Failed to create virtual machine due to "
-                                              "product versioning restrictions: %s" % to_native(e.msg))
+                                              f"product versioning restrictions: {to_native(e.msg)}")
                 self.change_detected = True
             self.wait_for_task(task)
         except TypeError as e:
-            self.module.fail_json(msg="TypeError was returned, please ensure to give correct inputs. %s" % to_text(e))
+            self.module.fail_json(msg=f"TypeError was returned, please ensure to give correct inputs. {to_text(e)}")
 
         if task.info.state == 'error':
             # https://kb.vmware.com/selfservice/microsites/search.do?language=en_US&cmd=displayKC&externalId=2021361
@@ -3229,7 +3221,7 @@ class PyVmomiHelper(PyVmomi):
                     task = self.current_vm_obj.ReconfigVM_Task(spec=self.configspec)
                 except vim.fault.RestrictedVersion as e:
                     self.module.fail_json(msg="Failed to reconfigure virtual machine due to"
-                                              " product versioning restrictions: %s" % to_native(e.msg))
+                                              f" product versioning restrictions: {to_native(e.msg)}")
                 self.wait_for_task(task)
                 if task.info.state == 'error':
                     return {'changed': self.change_applied, 'failed': True, 'msg': task.info.error.msg, 'op': 'reconfig'}
@@ -3253,8 +3245,8 @@ class PyVmomiHelper(PyVmomi):
                 self.change_applied = True
                 self.tracked_changes['MarkAsTemplate'] = True
             except vmodl.fault.NotSupported as e:
-                self.module.fail_json(msg="Failed to mark virtual machine [%s] "
-                                          "as template: %s" % (self.params['name'], e.msg))
+                self.module.fail_json(msg="Failed to mark virtual machine [{}] "
+                                          "as template: {}".format(self.params['name'], e.msg))
 
         # Mark Template as VM
         elif not self.params['is_template'] and self.current_vm_obj.config.template:
@@ -3272,21 +3264,21 @@ class PyVmomiHelper(PyVmomi):
                 self.tracked_changes['MarkAsVirtualMachine'] = True
             except vim.fault.InvalidState as invalid_state:
                 self.module.fail_json(msg="Virtual machine is not marked"
-                                          " as template : %s" % to_native(invalid_state.msg))
+                                          f" as template : {to_native(invalid_state.msg)}")
             except vim.fault.InvalidDatastore as invalid_ds:
                 self.module.fail_json(msg="Converting template to virtual machine"
                                           " operation cannot be performed on the"
-                                          " target datastores: %s" % to_native(invalid_ds.msg))
+                                          f" target datastores: {to_native(invalid_ds.msg)}")
             except vim.fault.CannotAccessVmComponent as cannot_access:
                 self.module.fail_json(msg="Failed to convert template to virtual machine"
                                           " as operation unable access virtual machine"
-                                          " component: %s" % to_native(cannot_access.msg))
+                                          f" component: {to_native(cannot_access.msg)}")
             except vmodl.fault.InvalidArgument as invalid_argument:
                 self.module.fail_json(msg="Failed to convert template to virtual machine"
-                                          " due to : %s" % to_native(invalid_argument.msg))
+                                          f" due to : {to_native(invalid_argument.msg)}")
             except Exception as generic_exc:
                 self.module.fail_json(msg="Failed to convert template to virtual machine"
-                                          " due to generic error : %s" % to_native(generic_exc))
+                                          f" due to generic error : {to_native(generic_exc)}")
 
         # add customize existing VM after VM re-configure
         if self.params['customization']['existing_vm']:
@@ -3323,11 +3315,11 @@ class PyVmomiHelper(PyVmomi):
         try:
             task = self.current_vm_obj.CustomizeVM_Task(self.customspec)
         except vim.fault.CustomizationFault as e:
-            self.module.fail_json(msg="Failed to customization virtual machine due to CustomizationFault: %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"Failed to customization virtual machine due to CustomizationFault: {to_native(e.msg)}")
         except vim.fault.RuntimeFault as e:
-            self.module.fail_json(msg="failed to customization virtual machine due to RuntimeFault: %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"failed to customization virtual machine due to RuntimeFault: {to_native(e.msg)}")
         except Exception as e:
-            self.module.fail_json(msg="failed to customization virtual machine due to fault: %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"failed to customization virtual machine due to fault: {to_native(e.msg)}")
         self.wait_for_task(task)
         if task.info.state == 'error':
             return {'changed': self.change_applied, 'failed': True, 'msg': task.info.error.msg, 'op': 'customize_exist'}
@@ -3377,8 +3369,7 @@ class PyVmomiHelper(PyVmomi):
                     eventsFinishedResult = self.get_vm_events(vm, ['CustomizationSucceeded', 'CustomizationFailed'])
                     if len(eventsFinishedResult):
                         if not isinstance(eventsFinishedResult[0], vim.event.CustomizationSucceeded):
-                            self.module.warn("Customization failed with error {%s}:{%s}"
-                                             % (eventsFinishedResult[0]._wsdlName, eventsFinishedResult[0].fullFormattedMessage))
+                            self.module.warn(f"Customization failed with error {{{eventsFinishedResult[0]._wsdlName}}}:{{{eventsFinishedResult[0].fullFormattedMessage}}}")
                             return False
                         else:
                             return True
@@ -3635,7 +3626,7 @@ def main():
                 module.exit_json(**result)
             result = pyv.deploy_vm()
             if result['failed']:
-                module.fail_json(msg='Failed to create a virtual machine : %s' % result['msg'])
+                module.fail_json(msg='Failed to create a virtual machine : {}'.format(result['msg']))
 
     if result['failed']:
         module.fail_json(**result)

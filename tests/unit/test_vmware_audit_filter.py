@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import unittest
+from typing import Any
 
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
@@ -16,19 +17,20 @@ MODULE_PATH = (
 
 def _load_module():
     spec = importlib.util.spec_from_file_location("vmware_audit_filter", MODULE_PATH)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 class VmwareAuditFilterTests(unittest.TestCase):
+    module: Any
     @classmethod
     def setUpClass(cls):
         cls.module = _load_module()
 
     def test_attach_audit_results_updates_nested_vcenter_health_and_preserves_data(self):
-        base = {
+        base: dict[str, Any] = {
             "alerts": [{"message": "old"}],
             "vcenter_health": {"data": {"utilization": {"cpu_pct": 50.0}}},
         }

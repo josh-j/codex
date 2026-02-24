@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, Ansible Project
 # Copyright: (c) 2021, VMware, Inc. All Rights Reserved
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -187,14 +184,15 @@ except ImportError:
     pass
 
 import os
-from ansible.module_utils.basic import AnsibleModule
+
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.crypto_mgr = self.content.cryptoManager
         self.key_provider_id = None
 
@@ -206,7 +204,7 @@ class PyVmomiHelper(PyVmomi):
             else:
                 key_provider_clusters = self.crypto_mgr.ListKmipServers()
         except Exception as e:
-            self.module.fail_json(msg="Failed to get key provider clusters info with exception: %s" % to_native(e))
+            self.module.fail_json(msg=f"Failed to get key provider clusters info with exception: {to_native(e)}")
 
         return key_provider_clusters
 
@@ -258,8 +256,7 @@ class PyVmomiHelper(PyVmomi):
         try:
             self.crypto_mgr.MarkDefault(self.key_provider_id)
         except Exception as e:
-            self.module.fail_json(msg="Failed to mark default key provider to '%s' with exception: %s"
-                                      % (self.key_provider_id.id, to_native(e)))
+            self.module.fail_json(msg=f"Failed to mark default key provider to '{self.key_provider_id.id}' with exception: {to_native(e)}")
 
     @staticmethod
     def create_key_provider_id(key_provider_name):
@@ -312,19 +309,18 @@ class PyVmomiHelper(PyVmomi):
             try:
                 self.crypto_mgr.RegisterKmipServer(server=kms_spec)
             except Exception as e:
-                self.module.fail_json(msg="Failed to add Standard Key Provider '%s' with exception: %s"
-                                          % (kp_name, to_native(e)))
+                self.module.fail_json(msg=f"Failed to add Standard Key Provider '{kp_name}' with exception: {to_native(e)}")
             try:
                 server_cert = self.crypto_mgr.RetrieveKmipServerCert(keyProvider=kp_id, server=kms_server).certificate
             except Exception as e:
-                self.module.fail_json(msg="Failed to retrieve KMS server certificate with exception: %s" % to_native(e))
+                self.module.fail_json(msg=f"Failed to retrieve KMS server certificate with exception: {to_native(e)}")
             if not server_cert:
-                self.module.fail_json(msg="Got empty KMS server certificate: '%s'" % server_cert)
+                self.module.fail_json(msg=f"Got empty KMS server certificate: '{server_cert}'")
             try:
                 self.crypto_mgr.UploadKmipServerCert(cluster=kp_id, certificate=server_cert)
             except Exception as e:
-                self.module.fail_json(msg="Failed to upload KMS server certificate for key provider '%s' with"
-                                          " exception: %s" % (kp_name, to_native(e)))
+                self.module.fail_json(msg=f"Failed to upload KMS server certificate for key provider '{kp_name}' with"
+                                          f" exception: {to_native(e)}")
 
         return kp_id
 
@@ -335,8 +331,7 @@ class PyVmomiHelper(PyVmomi):
         try:
             self.crypto_mgr.RegisterKmipServer(server=kmip_server_spec)
         except Exception as e:
-            self.module.fail_json(msg="Failed to add the KMIP server to Key Provider cluster with exception: %s"
-                                      % to_native(e))
+            self.module.fail_json(msg=f"Failed to add the KMIP server to Key Provider cluster with exception: {to_native(e)}")
 
     def change_kmip_in_standard_kp(self, existing_kmip_info, kms_info, proxy_user_config_dict):
         changed = False
@@ -367,7 +362,7 @@ class PyVmomiHelper(PyVmomi):
                 # Since vSphere API 6.5
                 self.crypto_mgr.UpdateKmipServer(server=kmip_server_spec)
             except Exception as e:
-                self.module.fail_json(msg="Failed to update KMIP server info with exception: %s" % to_native(e))
+                self.module.fail_json(msg=f"Failed to update KMIP server info with exception: {to_native(e)}")
 
         return changed
 
@@ -390,8 +385,7 @@ class PyVmomiHelper(PyVmomi):
                 # no kms server with specified name
                 else:
                     if kms_info.get('remove_kms'):
-                        self.module.fail_json(msg="Not find named KMS server to remove in the key provider cluster '%s'"
-                                                  % self.key_provider_id.id)
+                        self.module.fail_json(msg=f"Not find named KMS server to remove in the key provider cluster '{self.key_provider_id.id}'")
                     self.add_kmip_to_standard_kp(kms_info, proxy_user_config_dict)
                     kms_changed = True
                 if kms_changed:
@@ -410,22 +404,21 @@ class PyVmomiHelper(PyVmomi):
             try:
                 os.makedirs(dest_path)
             except OSError as e:
-                self.module.fail_json(msg="Specified destination path '%s' not exist, but failed to create it with"
-                                          " exception: %s" % (dest_path, to_native(e)))
+                self.module.fail_json(msg=f"Specified destination path '{dest_path}' not exist, but failed to create it with"
+                                          f" exception: {to_native(e)}")
         client_cert_file_path = os.path.join(dest_path, self.key_provider_id.id + '_self_signed_cert.pem')
         client_cert = self.crypto_mgr.RetrieveSelfSignedClientCert(self.key_provider_id)
         if not client_cert:
             try:
                 client_cert = self.crypto_mgr.GenerateSelfSignedClientCert(self.key_provider_id)
             except Exception as e:
-                self.module.fail_json(msg="Generate self signed client certificate failed with exception: %s"
-                                          % to_native(e))
+                self.module.fail_json(msg=f"Generate self signed client certificate failed with exception: {to_native(e)}")
         if not client_cert:
-            self.module.fail_json(msg="Generated self signed client certificate is empty '%s'" % client_cert)
+            self.module.fail_json(msg=f"Generated self signed client certificate is empty '{client_cert}'")
         try:
             self.crypto_mgr.UpdateSelfSignedClientCert(self.key_provider_id, client_cert)
         except Exception as e:
-            self.module.fail_json(msg="Update self signed client cert failed with exception: %s" % to_native(e))
+            self.module.fail_json(msg=f"Update self signed client cert failed with exception: {to_native(e)}")
         client_cert_file = open(client_cert_file_path, 'w')
         client_cert_file.write(client_cert)
         client_cert_file.close()
@@ -437,17 +430,17 @@ class PyVmomiHelper(PyVmomi):
             try:
                 os.makedirs(dest_path)
             except OSError as e:
-                self.module.fail_json(msg="Specified destination path '%s' not exist, but failed to create it with"
-                                          " exception: %s" % (dest_path, to_native(e)))
+                self.module.fail_json(msg=f"Specified destination path '{dest_path}' not exist, but failed to create it with"
+                                          f" exception: {to_native(e)}")
         client_csr_file_path = os.path.join(dest_path, self.key_provider_id.id + '_client_csr.pem')
         client_csr = self.crypto_mgr.RetrieveClientCsr(self.key_provider_id)
         if not client_csr:
             try:
                 client_csr = self.crypto_mgr.GenerateClientCsr(self.key_provider_id)
             except Exception as e:
-                self.module.fail_json(msg="Generate client CSR failed with exception: %s" % to_native(e))
+                self.module.fail_json(msg=f"Generate client CSR failed with exception: {to_native(e)}")
         if not client_csr:
-            self.module.fail_json(msg="Generated client CSR is empty '%s'" % client_csr)
+            self.module.fail_json(msg=f"Generated client CSR is empty '{client_csr}'")
         else:
             client_csr_file = open(client_csr_file_path, 'w')
             client_csr_file.write(client_csr)
@@ -462,7 +455,7 @@ class PyVmomiHelper(PyVmomi):
         try:
             self.crypto_mgr.UpdateKmsSignedCsrClientCert(self.key_provider_id, kms_signed_csr_content)
         except Exception as e:
-            self.module.fail_json(msg="Update KMS signed client CSR cert failed with exception: '%s'" % to_native(e))
+            self.module.fail_json(msg=f"Update KMS signed client CSR cert failed with exception: '{to_native(e)}'")
 
     def upload_client_cert_key(self, client_cert, client_key):
         client_cert_file = open(client_cert)
@@ -475,8 +468,8 @@ class PyVmomiHelper(PyVmomi):
             self.crypto_mgr.UploadClientCert(cluster=self.key_provider_id, certificate=client_cert_content,
                                              privateKey=private_key_content)
         except Exception as e:
-            self.module.fail_json(msg="Failed to upload client certificate and private key for key provider '%s'"
-                                      " with exception: %s" % (self.key_provider_id.id, to_native(e)))
+            self.module.fail_json(msg=f"Failed to upload client certificate and private key for key provider '{self.key_provider_id.id}'"
+                                      f" with exception: {to_native(e)}")
 
     def download_upload_cert_for_trust(self, kms_trust_vc_config):
         changed = False
@@ -489,29 +482,24 @@ class PyVmomiHelper(PyVmomi):
 
         if client_cert and client_key:
             if not os.path.exists(client_cert) or not os.path.exists(client_key):
-                self.module.fail_json(msg="Configured 'upload_client_cert' file: '%s', or 'upload_client_key' file:"
-                                          " '%s' does not exist." % (client_cert, client_key))
+                self.module.fail_json(msg=f"Configured 'upload_client_cert' file: '{client_cert}', or 'upload_client_key' file:"
+                                          f" '{client_key}' does not exist.")
             self.upload_client_cert_key(client_cert, client_key)
-            cert_info = "Client cert file '%s', key file '%s' uploaded for key provider '%s'" \
-                        % (client_cert, client_key, self.key_provider_id.id)
+            cert_info = f"Client cert file '{client_cert}', key file '{client_key}' uploaded for key provider '{self.key_provider_id.id}'"
             changed = True
         elif kms_signed_csr:
             if not os.path.exists(kms_signed_csr):
-                self.module.fail_json(msg="Configured 'upload_kms_signed_client_csr' file: '%s' does not exist."
-                                          % kms_signed_csr)
+                self.module.fail_json(msg=f"Configured 'upload_kms_signed_client_csr' file: '{kms_signed_csr}' does not exist.")
             self.upload_kms_signed_csr(kms_signed_csr)
-            cert_info = "KMS signed client CSR '%s' uploaded for key provider '%s'" % (kms_signed_csr,
-                                                                                       self.key_provider_id.id)
+            cert_info = f"KMS signed client CSR '{kms_signed_csr}' uploaded for key provider '{self.key_provider_id.id}'"
             changed = True
         elif self_signed_cert_path:
             cert_file_path = self.update_self_signed_client_cert(self_signed_cert_path)
-            cert_info = "Client self signed certificate file '%s' for key provider '%s' updated and downloaded" \
-                        % (cert_file_path, self.key_provider_id.id)
+            cert_info = f"Client self signed certificate file '{cert_file_path}' for key provider '{self.key_provider_id.id}' updated and downloaded"
             changed = True
         elif client_csr_path:
             cert_file_path = self.download_client_csr_file(client_csr_path)
-            cert_info = "Client certificate signing request file '%s' for key provider '%s' downloaded" \
-                        % (cert_file_path, self.key_provider_id.id)
+            cert_info = f"Client certificate signing request file '{cert_file_path}' for key provider '{self.key_provider_id.id}' downloaded"
 
         return changed, cert_info
 
@@ -520,8 +508,7 @@ class PyVmomiHelper(PyVmomi):
         try:
             self.crypto_mgr.RemoveKmipServer(clusterId=key_provider_id, serverName=kms_server)
         except Exception as e:
-            self.module.fail_json(msg="Failed to remove KMIP server '%s' from key provider '%s' with exception: %s"
-                                      % (kms_server, key_provider_id.id, to_native(e)))
+            self.module.fail_json(msg=f"Failed to remove KMIP server '{kms_server}' from key provider '{key_provider_id.id}' with exception: {to_native(e)}")
 
     def remove_kms_cluster(self, kp_cluster):
         for kms in kp_cluster.servers:
@@ -548,16 +535,15 @@ class PyVmomiHelper(PyVmomi):
         results = {'failed': False, 'changed': False}
         kp_name = self.params['name']
         if not kp_name:
-            self.module.fail_json(msg="Please set a valid name of key provider via 'name' parameter, now it's '%s',"
-                                      % kp_name)
+            self.module.fail_json(msg=f"Please set a valid name of key provider via 'name' parameter, now it's '{kp_name}',")
         key_provider_clusters = self.get_key_provider_clusters()
         # Find if there is existing Key Provider with the specified name
         existing_kp_cluster = self.get_key_provider_by_name(key_provider_clusters, kp_name)
         existing_kp_type = self.get_key_provider_type(existing_kp_cluster)
         if existing_kp_cluster is not None:
             if existing_kp_type and existing_kp_type == 'native':
-                self.module.fail_json(msg="Native Key Provider with name '%s' already exist, please change to another"
-                                          " name for Standard Key Provider operation using this module." % kp_name)
+                self.module.fail_json(msg=f"Native Key Provider with name '{kp_name}' already exist, please change to another"
+                                          " name for Standard Key Provider operation using this module.")
             self.key_provider_id = existing_kp_cluster.clusterId
 
         # Add a new Key Provider or reconfigure the existing Key Provider
@@ -588,8 +574,8 @@ class PyVmomiHelper(PyVmomi):
                     self.module.fail_json(msg="Please set 'kms_info' when add new standard key provider")
                 for configured_kms_info in self.params['kms_info']:
                     if configured_kms_info.get('remove_kms'):
-                        self.module.fail_json(msg="Specified key provider '%s' not exist, so no KMS server to be"
-                                              " removed." % kp_name)
+                        self.module.fail_json(msg=f"Specified key provider '{kp_name}' not exist, so no KMS server to be"
+                                              " removed.")
                 if self.module.check_mode:
                     results['desired_operation'] = "add standard key provider"
                     self.module.exit_json(**results)
@@ -617,7 +603,7 @@ class PyVmomiHelper(PyVmomi):
                 results['operation'] = "remove standard key provider"
             # Named Key Provider not found
             if existing_kp_cluster is None:
-                output_msg = "Key Provider with name '%s' is not found." % kp_name
+                output_msg = f"Key Provider with name '{kp_name}' is not found."
                 if self.module.check_mode:
                     results['msg'] = output_msg
                     self.module.exit_json(**results)
@@ -675,15 +661,14 @@ def main():
     )
     config_key_provider = PyVmomiHelper(module)
     if not config_key_provider.is_vcenter():
-        module.fail_json(msg="hostname '%s' is not set to the vCenter server, please connect to vCenter for key"
-                             " provider operations." % module.params.get('hostname'))
+        module.fail_json(msg="hostname '{}' is not set to the vCenter server, please connect to vCenter for key"
+                             " provider operations.".format(module.params.get('hostname')))
     if not config_key_provider.vcenter_version_at_least(version=(6, 5, 0)):
-        module.fail_json(msg="vCenter server '%s' version is not >= 6.5.0, key provider is supported from vSphere 6.5."
-                             % module.params.get('hostname'))
+        module.fail_json(msg="vCenter server '{}' version is not >= 6.5.0, key provider is supported from vSphere 6.5.".format(module.params.get('hostname')))
     try:
         config_key_provider.key_provider_operation()
     except Exception as e:
-        module.fail_json(msg="Failed to configure key provider on vCenter with exception : %s" % to_native(e))
+        module.fail_json(msg=f"Failed to configure key provider on vCenter with exception : {to_native(e)}")
 
 
 if __name__ == "__main__":

@@ -44,11 +44,13 @@
 - name: "Phase 3c: Windows Server STIG Audit (Optional)"
   hosts: windows_servers
   gather_facts: false
-  when: master_enable_windows_stig | default(false) | bool
-  roles:
-    - role: internal.windows.windows_stig_audit
+  tasks:
+    - name: "STIG | Windows Audit"
+      ansible.builtin.include_role:
+        name: internal.windows.windows_stig_audit
       vars:
         windows_stig_enable_audit: true
+      when: master_enable_windows_stig | default(false) | bool
 
 # Phase 4: Platform Summaries (Fleet Dashboards)
 - name: "Phase 4: Generate Fleet-Level Reports"

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -61,12 +58,13 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     find_datacenter_by_name,
     vmware_argument_spec,
-    wait_for_task)
+    wait_for_task,
+)
 
 
 class VMwareCluster(PyVmomi):
     def __init__(self, module):
-        super(VMwareCluster, self).__init__(module)
+        super().__init__(module)
         self.cluster_name = module.params['cluster_name']
         self.datacenter_name = module.params['datacenter']
         self.datacenter = None
@@ -74,11 +72,11 @@ class VMwareCluster(PyVmomi):
 
         self.datacenter = find_datacenter_by_name(self.content, self.datacenter_name)
         if self.datacenter is None:
-            self.module.fail_json(msg="Datacenter %s does not exist." % self.datacenter_name)
+            self.module.fail_json(msg=f"Datacenter {self.datacenter_name} does not exist.")
 
         self.cluster = self.find_cluster_by_name(cluster_name=self.cluster_name, datacenter_name=self.datacenter)
         if self.cluster is None:
-            self.module.fail_json(msg="Cluster %s does not exist." % self.cluster_name)
+            self.module.fail_json(msg=f"Cluster {self.cluster_name} does not exist.")
 
     def recommendations(self):
         results = []
@@ -88,9 +86,7 @@ class VMwareCluster(PyVmomi):
             self.module.exit_json(changed=changed, result="No recommendations.")
         else:
             for index, recommendation in enumerate(self.cluster.recommendation):
-                results.append("%s move from %s to %s." % (recommendation.action[0].target.name,
-                                                           recommendation.action[0].drsMigration.source.name,
-                                                           recommendation.action[0].drsMigration.destination.name))
+                results.append(f"{recommendation.action[0].target.name} move from {recommendation.action[0].drsMigration.source.name} to {recommendation.action[0].drsMigration.destination.name}.")
                 if not self.module.check_mode:
                     task = self.cluster.ApplyRecommendation(recommendation.key)
                     changed = True

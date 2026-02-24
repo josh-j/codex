@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Mike Klebolt  <michael.klebolt@centurylink.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -117,14 +114,18 @@ EXAMPLES = r'''
 RETURN = r''' # '''
 
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
     def upgrade_tools(self, vm):
         result = {'failed': False, 'changed': False, 'msg': ''}
@@ -171,7 +172,7 @@ class PyVmomiHelper(PyVmomi):
             except Exception as exc:
                 result.update(
                     failed=True,
-                    msg='Error while upgrading VMware tools %s' % to_native(exc),
+                    msg=f'Error while upgrading VMware tools {to_native(exc)}',
                 )
                 return result
         else:
@@ -221,10 +222,10 @@ def main():
             else:
                 module.exit_json(msg=result['msg'], changed=result['changed'])
         except Exception as exc:
-            module.fail_json(msg='Unknown error: %s' % to_native(exc))
+            module.fail_json(msg=f'Unknown error: {to_native(exc)}')
     else:
         vm_id = module.params.get('uuid') or module.params.get('name') or module.params.get('moid')
-        module.fail_json(msg='Unable to find VM %s' % vm_id)
+        module.fail_json(msg=f'Unable to find VM {vm_id}')
 
 
 if __name__ == '__main__':

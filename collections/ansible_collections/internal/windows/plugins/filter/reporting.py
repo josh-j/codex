@@ -12,8 +12,8 @@ except ImportError:
         Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "report_view_models_common.py"
     )
     _spec = importlib.util.spec_from_file_location("internal_core_report_view_models_common", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _iter_hosts = _mod._iter_hosts
     _status_from_health = _mod._status_from_health

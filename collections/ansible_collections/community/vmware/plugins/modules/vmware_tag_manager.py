@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -187,11 +184,16 @@ tag_status:
     }
 '''
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_dvs_by_name,
+    find_dvspg_by_name,
+)
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
-from ansible_collections.community.vmware.plugins.module_utils.vmware import (PyVmomi, find_dvs_by_name, find_dvspg_by_name)
+
 try:
-    from com.vmware.vapi.std_client import DynamicID
     from com.vmware.vapi.std.errors_client import Error
+    from com.vmware.vapi.std_client import DynamicID
 except ImportError:
     pass
 
@@ -201,7 +203,7 @@ class VmwareTagManager(VmwareRestClient):
         """
         Constructor
         """
-        super(VmwareTagManager, self).__init__(module)
+        super().__init__(module)
         self.pyv = PyVmomi(module=module)
 
         moid = self.params.get('moid')
@@ -215,10 +217,10 @@ class VmwareTagManager(VmwareRestClient):
             managed_object = self.get_managed_object(object_name, self.object_type)
 
             if managed_object is None:
-                self.module.fail_json(msg="Failed to find the managed object for %s with type %s" % (object_name, self.object_type))
+                self.module.fail_json(msg=f"Failed to find the managed object for {object_name} with type {self.object_type}")
 
             if not hasattr(managed_object, '_moId'):
-                self.module.fail_json(msg="Unable to find managed object id for %s managed object" % object_name)
+                self.module.fail_json(msg=f"Unable to find managed object id for {object_name} managed object")
 
             managed_object_id = managed_object._moId
 
@@ -268,7 +270,7 @@ class VmwareTagManager(VmwareRestClient):
             dvs_name, pg_name = object_name.split(":", 1)
             dv_switch = find_dvs_by_name(self.pyv.content, dvs_name)
             if dv_switch is None:
-                self.module.fail_json(msg="A distributed virtual switch with name %s does not exist" % dvs_name)
+                self.module.fail_json(msg=f"A distributed virtual switch with name {dvs_name} does not exist")
             managed_object = find_dvspg_by_name(dv_switch, pg_name)
 
         return managed_object
@@ -291,9 +293,9 @@ class VmwareTagManager(VmwareRestClient):
                                                         dobj=self.dynamic_managed_object,
                                                         tags=set())
         except Error as error:
-            self.module.fail_json(msg="%s" % self.get_error_message(error))
+            self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
-        results['tag_status']['previous_tags'] = ["%s:%s" % (tag_obj.category_id, tag_obj.name) for tag_obj in current_tag_objs]
+        results['tag_status']['previous_tags'] = [f"{tag_obj.category_id}:{tag_obj.name}" for tag_obj in current_tag_objs]
         results['tag_status']['attached_tags'] = []
         results['tag_status']['detached_tags'] = []
 
@@ -307,14 +309,14 @@ class VmwareTagManager(VmwareRestClient):
                     # User specified category
                     category_obj = self.search_svc_object_by_name(self.category_service, category_name)
                     if category_obj is None:
-                        self.module.fail_json(msg="Unable to find the category %s" % category_name)
+                        self.module.fail_json(msg=f"Unable to find the category {category_name}")
             elif isinstance(tag, str):
                 if ":" in tag:
                     # User specified category
                     category_name, tag_name = tag.split(":", 1)
                     category_obj = self.search_svc_object_by_name(self.category_service, category_name)
                     if category_obj is None:
-                        self.module.fail_json(msg="Unable to find the category %s" % category_name)
+                        self.module.fail_json(msg=f"Unable to find the category {category_name}")
                 else:
                     # User specified only tag
                     tag_name = tag
@@ -325,7 +327,7 @@ class VmwareTagManager(VmwareRestClient):
                 tag_obj = self.get_tag_by_name(tag_name=tag_name)
 
             if tag_obj is None:
-                self.module.fail_json(msg="Unable to find the tag %s" % tag_name)
+                self.module.fail_json(msg=f"Unable to find the tag {tag_name}")
 
             desired_tag_objs.add(tag_obj)
 
@@ -344,7 +346,7 @@ class VmwareTagManager(VmwareRestClient):
                     current_tag_objs.update(tag_objs_to_attach)
                     changed = True
                 except Error as error:
-                    self.module.fail_json(msg="%s" % self.get_error_message(error))
+                    self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         elif action == 'set':
             # Tags that need to be detached
@@ -358,7 +360,7 @@ class VmwareTagManager(VmwareRestClient):
                     current_tag_objs.difference_update(tag_objs_to_detach)
                     changed = True
                 except Error as error:
-                    self.module.fail_json(msg="%s" % self.get_error_message(error))
+                    self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
             # Tags that need to be attached
             tag_objs_to_attach = desired_tag_objs.difference(current_tag_objs)
@@ -371,7 +373,7 @@ class VmwareTagManager(VmwareRestClient):
                     current_tag_objs.update(tag_objs_to_attach)
                     changed = True
                 except Error as error:
-                    self.module.fail_json(msg="%s" % self.get_error_message(error))
+                    self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
         elif action in ('remove', 'absent'):
             # Tags that need to be detached
@@ -385,11 +387,11 @@ class VmwareTagManager(VmwareRestClient):
                     current_tag_objs.difference_update(tag_objs_to_detach)
                     changed = True
                 except Error as error:
-                    self.module.fail_json(msg="%s" % self.get_error_message(error))
+                    self.module.fail_json(msg=f"{self.get_error_message(error)}")
 
-        results['tag_status']['detached_tags'] = ["%s:%s" % (tag_obj.category_id, tag_obj.name) for tag_obj in detached_tag_objs]
-        results['tag_status']['attached_tags'] = ["%s:%s" % (tag_obj.category_id, tag_obj.name) for tag_obj in attached_tag_objs]
-        results['tag_status']['current_tags'] = ["%s:%s" % (tag_obj.category_id, tag_obj.name) for tag_obj in current_tag_objs]
+        results['tag_status']['detached_tags'] = [f"{tag_obj.category_id}:{tag_obj.name}" for tag_obj in detached_tag_objs]
+        results['tag_status']['attached_tags'] = [f"{tag_obj.category_id}:{tag_obj.name}" for tag_obj in attached_tag_objs]
+        results['tag_status']['current_tags'] = [f"{tag_obj.category_id}:{tag_obj.name}" for tag_obj in current_tag_objs]
         results['changed'] = changed
         self.module.exit_json(**results)
 

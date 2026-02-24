@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Michael Tipton <mike () ibeta.org>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -82,19 +79,20 @@ result:
 '''
 
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
+    TaskError,
     find_datacenter_by_name,
     vmware_argument_spec,
     wait_for_task,
-    TaskError)
+)
 
 
 class VMwareEVC(PyVmomi):
     def __init__(self, module):
-        super(VMwareEVC, self).__init__(module)
+        super().__init__(module)
         self.cluster_name = module.params['cluster_name']
         self.evc_mode = module.params['evc_mode']
         self.datacenter_name = module.params['datacenter_name']
@@ -129,15 +127,15 @@ class VMwareEVC(PyVmomi):
         try:
             self.datacenter = find_datacenter_by_name(self.content, self.datacenter_name)
             if self.datacenter is None:
-                self.module.fail_json(msg="Datacenter '%s' does not exist." % self.datacenter_name)
+                self.module.fail_json(msg=f"Datacenter '{self.datacenter_name}' does not exist.")
             self.cluster = self.find_cluster_by_name(cluster_name=self.cluster_name, datacenter_name=self.datacenter)
 
             if self.cluster is None:
-                self.module.fail_json(msg="Cluster '%s' does not exist." % self.cluster_name)
+                self.module.fail_json(msg=f"Cluster '{self.cluster_name}' does not exist.")
             self.evcm = self.cluster.EvcManager()
 
             if not self.evcm:
-                self.module.fail_json(msg="Unable to get EVC manager for cluster '%s'." % self.cluster_name)
+                self.module.fail_json(msg=f"Unable to get EVC manager for cluster '{self.cluster_name}'.")
             self.evc_state = self.evcm.evcState
             self.current_evc_mode = self.evc_state.currentEVCModeKey
 
@@ -147,60 +145,60 @@ class VMwareEVC(PyVmomi):
             return 'present'
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to check configuration"
-                                      " due to generic exception %s" % to_native(generic_exc))
+                                      f" due to generic exception {to_native(generic_exc)}")
 
     def state_exit_unchanged(self):
         """
         Exit without any change
         """
-        self.module.exit_json(changed=False, msg="EVC Mode is already disabled on cluster '%s'." % self.cluster_name)
+        self.module.exit_json(changed=False, msg=f"EVC Mode is already disabled on cluster '{self.cluster_name}'.")
 
     def state_update_evc(self):
         """
         Update EVC Mode
         """
-        changed, result = False, None
+        changed, _result = False, None
         try:
             if not self.module.check_mode and self.current_evc_mode != self.evc_mode:
                 evc_task = self.evcm.ConfigureEvcMode_Task(self.evc_mode)
-                changed, result = wait_for_task(evc_task)
+                changed, _result = wait_for_task(evc_task)
             if self.module.check_mode and self.current_evc_mode != self.evc_mode:
                 changed = True
             if self.current_evc_mode == self.evc_mode:
-                self.module.exit_json(changed=changed, msg="EVC Mode is already set to '%(evc_mode)s' on '%(cluster_name)s'." % self.params)
-            self.module.exit_json(changed=changed, msg="EVC Mode has been updated to '%(evc_mode)s' on '%(cluster_name)s'." % self.params)
+                self.module.exit_json(changed=changed, msg="EVC Mode is already set to '{evc_mode}' on '{cluster_name}'.".format(**self.params))
+            self.module.exit_json(changed=changed, msg="EVC Mode has been updated to '{evc_mode}' on '{cluster_name}'.".format(**self.params))
         except TaskError as invalid_argument:
-            self.module.fail_json(msg="Failed to update EVC mode: %s" % to_native(invalid_argument))
+            self.module.fail_json(msg=f"Failed to update EVC mode: {to_native(invalid_argument)}")
 
     def state_enable_evc(self):
         """
         Enable EVC Mode
         """
-        changed, result = False, None
+        changed, _result = False, None
         try:
             if not self.module.check_mode:
                 evc_task = self.evcm.ConfigureEvcMode_Task(self.evc_mode)
-                changed, result = wait_for_task(evc_task)
+                changed, _result = wait_for_task(evc_task)
             if self.module.check_mode:
                 changed = True
-            self.module.exit_json(changed=changed, msg="EVC Mode for '%(evc_mode)s' has been enabled on '%(cluster_name)s'." % self.params)
+            self.module.exit_json(changed=changed, msg="EVC Mode for '{evc_mode}' has been enabled on '{cluster_name}'.".format(**self.params))
         except TaskError as invalid_argument:
-            self.module.fail_json(msg="Failed to enable EVC mode: %s" % to_native(invalid_argument))
+            self.module.fail_json(msg=f"Failed to enable EVC mode: {to_native(invalid_argument)}")
 
     def state_disable_evc(self):
         """
         Disable EVC Mode
         """
-        changed, result = False, None
+        changed, _result = False, None
         try:
             if not self.module.check_mode:
                 evc_task = self.evcm.DisableEvcMode_Task()
-                changed, result = wait_for_task(evc_task)
+                changed, _result = wait_for_task(evc_task)
             if self.module.check_mode:
                 changed = True
-            self.module.exit_json(changed=changed, msg="EVC Mode has been disabled on cluster '%s'." % self.cluster_name)
+            self.module.exit_json(changed=changed, msg=f"EVC Mode has been disabled on cluster '{self.cluster_name}'.")
         except TaskError as invalid_argument:
-            self.module.fail_json(msg="Failed to disable EVC mode: %s" % to_native(invalid_argument))
+            self.module.fail_json(msg=f"Failed to disable EVC mode: {to_native(invalid_argument)}")
 
 
 def main():

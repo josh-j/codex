@@ -20,23 +20,39 @@ try:
     from ansible_collections.internal.core.plugins.module_utils.normalization import (
         section_defaults as _section_defaults,
     )
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        safe_list as _safe_list,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        to_int as _to_int,
+    )
 except ImportError:
     # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
-    _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "normalization.py"
-    _spec = importlib.util.spec_from_file_location("internal_core_normalization_helpers", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
+    _core_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils"
+    _norm_path = _core_path / "normalization.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_normalization_helpers", _norm_path)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     discovery_result = _mod.result_envelope
     _section_defaults = _mod.section_defaults
     _merge_defaults = _mod.merge_section_defaults
     parse_json_command_result = _mod.parse_json_command_result
-    _date_helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "date_utils.py"
-    _date_spec = importlib.util.spec_from_file_location("internal_core_date_utils", _date_helper_path)
-    _date_mod = importlib.util.module_from_spec(_date_spec)
+
+    _date_path = _core_path / "date_utils.py"
+    _date_spec = importlib.util.spec_from_file_location("internal_core_date_utils", _date_path)
     assert _date_spec is not None and _date_spec.loader is not None
+    _date_mod = importlib.util.module_from_spec(_date_spec)
     _date_spec.loader.exec_module(_date_mod)
     _safe_iso_utc_to_epoch = _date_mod.safe_iso_to_epoch
+
+    _prim_path = _core_path / "reporting_primitives.py"
+    _prim_spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _prim_path)
+    assert _prim_spec is not None and _prim_spec.loader is not None
+    _prim_mod = importlib.util.module_from_spec(_prim_spec)
+    _prim_spec.loader.exec_module(_prim_mod)
+    _safe_list = _prim_mod.safe_list
+    _to_int = _prim_mod.to_int
 
 _BACKUP_TS_RE = re.compile(r"EndTime=([^,]+)")
 _SYSTEM_VM_RE = re.compile(r"^(vCLS-|vsanhealth|vmware-).*")
@@ -49,7 +65,7 @@ def seed_vmware_ctx(base_ctx, inventory_hostname, vcenter_hostname):
         {
             "audit_type": "vcenter_health",
             "checks_failed": False,
-            "alerts": list(base_ctx.get("alerts") or []),
+            "alerts": _safe_list(base_ctx.get("alerts")),
         }
     )
     system = dict(base_ctx.get("system") or {})
@@ -66,7 +82,7 @@ def seed_vmware_ctx(base_ctx, inventory_hostname, vcenter_hostname):
 
 def append_vmware_ctx_alert(vmware_ctx, alert):
     out = dict(vmware_ctx or {})
-    alerts = list(out.get("alerts") or [])
+    alerts = _safe_list(out.get("alerts"))
     if isinstance(alert, dict) and alert:
         alerts.append(alert)
     out["alerts"] = alerts
@@ -92,9 +108,9 @@ def build_discovery_export_payload(vmware_ctx):
     out = dict(vmware_ctx)
     out["audit_type"] = "discovery"
     out["summary"] = {
-        "clusters": len(list(clusters.get("list") or [])),
-        "hosts": len(list(hosts.get("list") or [])),
-        "vms": len(list(vms.get("list") or [])),
+        "clusters": len(_safe_list(clusters.get("list"))),
+        "hosts": len(_safe_list(hosts.get("list"))),
+        "vms": len(_safe_list(vms.get("list"))),
     }
     return out
 
@@ -102,20 +118,13 @@ def build_discovery_export_payload(vmware_ctx):
 def normalize_compute_inventory(cluster_results):
     """
     Normalize vmware.vmware.cluster_info loop results into cluster/host structures.
-
-    Args:
-        cluster_results: list of per-datacenter module results (register.results)
-
-    Returns:
-        dict with:
-          - clusters_by_name
-          - clusters_list
-          - hosts_list
     """
-    cluster_results = cluster_results or []
+    cluster_results = _safe_list(cluster_results)
 
     raw_clusters = {}
     for result in cluster_results:
+        if not isinstance(result, dict):
+            continue
         clusters = result.get("clusters")
         if isinstance(clusters, dict):
             raw_clusters.update(clusters)
@@ -124,22 +133,22 @@ def normalize_compute_inventory(cluster_results):
     hosts_list = []
 
     for name, data in raw_clusters.items():
-        data = data or {}
-        stats = data.get("resource_summary") or {}
+        data = dict(data or {})
+        stats = dict(data.get("resource_summary") or {})
 
-        cpu_cap = max(int(stats.get("cpuCapacityMHz", 0) or 0), 1)
-        mem_cap = max(int(stats.get("memCapacityMB", 0) or 0), 1)
-        cpu_used = int(stats.get("cpuUsedMHz", 0) or 0)
-        mem_used = int(stats.get("memUsedMB", 0) or 0)
+        cpu_cap = max(_to_int(stats.get("cpuCapacityMHz", 0)), 1)
+        mem_cap = max(_to_int(stats.get("memCapacityMB", 0)), 1)
+        cpu_used = _to_int(stats.get("cpuUsedMHz", 0))
+        mem_used = _to_int(stats.get("memUsedMB", 0))
         datacenter = data.get("datacenter", "unknown")
-        hosts = list(data.get("hosts") or [])
+        hosts = _safe_list(data.get("hosts"))
 
         cluster_data = {
-            "name": name,
+            "name": str(name),
             "datacenter": datacenter,
             "utilization": {
-                "cpu_pct": round((cpu_used / max(cpu_cap, 1)) * 100, 1),
-                "mem_pct": round((mem_used / max(mem_cap, 1)) * 100, 1),
+                "cpu_pct": round((cpu_used / cpu_cap) * 100, 1),
+                "mem_pct": round((mem_used / mem_cap) * 100, 1),
                 "cpu_total_mhz": cpu_cap,
                 "cpu_used_mhz": cpu_used,
                 "mem_total_mb": mem_cap,
@@ -172,16 +181,17 @@ def normalize_datastores(datastores, low_space_pct=10):
     Normalize datastore objects from community.vmware.vmware_datastore_info.
     Returns a dict with `list` and `summary`.
     """
-    datastores = datastores or []
+    datastores = _safe_list(datastores)
     gb_factor = 1073741824.0
     low_space_pct = float(low_space_pct)
     normalized = []
 
     for ds in datastores:
-        ds = ds or {}
+        if not isinstance(ds, dict):
+            continue
         accessible = bool(ds.get("accessible", False))
-        cap_bytes = int(ds.get("capacity", 0) or 0)
-        free_bytes = int(ds.get("freeSpace", 0) or 0)
+        cap_bytes = _to_int(ds.get("capacity", 0))
+        free_bytes = _to_int(ds.get("freeSpace", 0))
         cap_safe = max(cap_bytes, 1) if accessible else 1
         free_pct = round((float(free_bytes) / cap_safe) * 100.0, 1) if accessible else 0.0
 
@@ -212,8 +222,8 @@ def normalize_datastores(datastores, low_space_pct=10):
 
 
 def normalize_appliance_backup_result(raw_result, collected_at=""):
-    raw_result = raw_result or {}
-    schedules = list(raw_result.get("schedules") or [])
+    raw_result = dict(raw_result or {})
+    schedules = _safe_list(raw_result.get("schedules"))
     has_schedules = len(schedules) > 0
     active_schedule = next(
         (s for s in schedules if isinstance(s, dict) and bool(s.get("enabled", False))),
@@ -222,7 +232,7 @@ def normalize_appliance_backup_result(raw_result, collected_at=""):
     location = str(active_schedule.get("location", "NOT_SET") or "NOT_SET")
     protocol = (location.split(":")[0].upper() if ":" in location else (location or "NONE")).upper()
     schedule_cfg = dict(active_schedule.get("schedule") or {})
-    days = list(schedule_cfg.get("days_of_week") or [])
+    days = _safe_list(schedule_cfg.get("days_of_week"))
     recurrence = "Daily" if len(days) == 7 else (", ".join(days) if len(days) > 0 else "Manual/None")
 
     return discovery_result(
@@ -240,7 +250,7 @@ def normalize_appliance_backup_result(raw_result, collected_at=""):
 
 
 def normalize_appliance_health_result(raw_result, backup_result=None, collected_at=""):
-    raw_result = raw_result or {}
+    raw_result = dict(raw_result or {})
     app = dict(raw_result.get("appliance") or {})
     summary = dict(app.get("summary") or {})
     health = dict(summary.get("health") or {})
@@ -267,7 +277,7 @@ def normalize_appliance_health_result(raw_result, backup_result=None, collected_
             "config": {
                 "ssh_enabled": bool(access.get("ssh", False)),
                 "shell_enabled": bool(dict(access.get("shell") or {}).get("enabled", False)),
-                "ntp_servers": list(time_sync.get("servers") or []),
+                "ntp_servers": _safe_list(time_sync.get("servers")),
                 "ntp_mode": str(time_sync.get("mode", "disabled")).upper(),
                 "timezone": time_cfg.get("time_zone", "UTC"),
             },
@@ -280,11 +290,12 @@ def normalize_appliance_health_result(raw_result, backup_result=None, collected_
 
 
 def normalize_compute_result(cluster_loop_result, collected_at=""):
-    cluster_loop_result = cluster_loop_result or {}
-    results = list(cluster_loop_result.get("results") or [])
+    cluster_loop_result = dict(cluster_loop_result or {})
+    results = _safe_list(cluster_loop_result.get("results"))
     errors = []
     for item in results:
-        item = item or {}
+        if not isinstance(item, dict):
+            continue
         if bool(item.get("failed", False)):
             errors.append(
                 {
@@ -322,7 +333,7 @@ def normalize_compute_result(cluster_loop_result, collected_at=""):
 
 
 def normalize_storage_result(raw_result, collected_at="", low_space_pct=10):
-    raw_result = raw_result or {}
+    raw_result = dict(raw_result or {})
     normalized = normalize_datastores(
         raw_result.get("datastores") or [],
         low_space_pct=low_space_pct,
@@ -343,15 +354,16 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
     Normalize VM inventory and derive ownership/backup compliance fields.
     Returns a dict with `list`, `summary`, and `metrics`.
     """
-    virtual_machines = virtual_machines or []
-    current_epoch = int(current_epoch or 0)
-    backup_overdue_days = int(backup_overdue_days or 2)
+    virtual_machines = _safe_list(virtual_machines)
+    current_epoch = _to_int(current_epoch)
+    backup_overdue_days = _to_int(backup_overdue_days, 2)
     results = []
 
     for item in virtual_machines:
-        item = item or {}
-        attrs = item.get("attributes") or {}
-        owner = (attrs.get("Owner Email") or attrs.get("owner_email") or "").strip()
+        if not isinstance(item, dict):
+            continue
+        attrs = dict(item.get("attributes") or {})
+        owner = str(attrs.get("Owner Email") or attrs.get("owner_email") or "").strip()
 
         backup_attr = attrs.get("Last Dell PowerProtect Backup", "") or ""
         match = _BACKUP_TS_RE.search(backup_attr) if isinstance(backup_attr, str) else None
@@ -377,8 +389,8 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
                 "tools_status": item.get("tools_status", "toolsNotInstalled"),
                 "tools_version": item.get("tools_version", "unknown"),
                 "guest_os": item.get("guest_id", "unknown"),
-                "memory_mb": item.get("memory_mb", 0),
-                "cpu_count": item.get("num_cpu", 0),
+                "memory_mb": _to_int(item.get("memory_mb", 0)),
+                "cpu_count": _to_int(item.get("num_cpu", 0)),
                 "last_backup": (raw_ts if ts_parseable else ("INVALID_FORMAT" if match else "NEVER")),
                 "days_since": days_since,
                 "backup_overdue": (days_since > backup_overdue_days) if ts_parseable else True,
@@ -400,9 +412,9 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
 
 
 def normalize_workload_result(raw_result, current_epoch, collected_at="", backup_overdue_days=2):
-    raw_result = raw_result or {}
+    raw_result = dict(raw_result or {})
     analyzed = analyze_workload_vms(
-        raw_result.get("virtual_machines") or [],
+        raw_result.get("virtual_machines"),
         current_epoch,
         backup_overdue_days=backup_overdue_days,
     )
@@ -419,8 +431,8 @@ def normalize_workload_result(raw_result, current_epoch, collected_at="", backup
 
 
 def normalize_datacenters_result(raw_result, collected_at=""):
-    raw_result = raw_result or {}
-    raw_list = list(raw_result.get("value") or [])
+    raw_result = dict(raw_result or {})
+    raw_list = _safe_list(raw_result.get("value"))
     dc_names = [str(item.get("name", "")) for item in raw_list if isinstance(item, dict)]
     dc_ids = [item.get("datacenter") for item in raw_list if isinstance(item, dict)]
     payload = {
@@ -428,7 +440,7 @@ def normalize_datacenters_result(raw_result, collected_at=""):
         "raw": raw_list,
         "by_name": dict(zip(dc_names, dc_ids, strict=False)),
         "summary": {
-            "total_count": len(raw_list),
+            "total_count": len(dc_names),
             "primary_dc": dc_names[0] if dc_names else "",
         },
     }
@@ -487,14 +499,15 @@ def parse_esxi_ssh_facts(raw_stdout):
 
 
 def normalize_alarm_result(parsed_result, site, collected_at=""):
-    parsed_result = parsed_result or {}
+    parsed_result = dict(parsed_result or {})
     # Handle both legacy script payload and native module result
-    payload = parsed_result.get("payload") or parsed_result
-    alarms = list(payload.get("alarms") or [])
+    payload = dict(parsed_result.get("payload") or parsed_result)
+    alarms = _safe_list(payload.get("alarms"))
     normalized_list = []
 
     for item in alarms:
-        item = item or {}
+        if not isinstance(item, dict):
+            continue
         normalized_list.append(
             {
                 "site": site,
@@ -511,7 +524,7 @@ def normalize_alarm_result(parsed_result, site, collected_at=""):
     script_ok = (bool(parsed_result.get("script_valid", False)) and bool(payload.get("success", False))) or (
         not bool(parsed_result.get("failed", False)) and "alarms" in parsed_result
     )
-    rc = int(parsed_result.get("rc", 0) if "rc" in parsed_result else (0 if script_ok else 1))
+    rc = _to_int(parsed_result.get("rc", 0) if "rc" in parsed_result else (0 if script_ok else 1))
 
     critical_items = [i for i in normalized_list if i.get("severity") == "critical"]
     warning_count = len([i for i in normalized_list if i.get("severity") == "warning"])
@@ -540,8 +553,8 @@ def normalize_alarm_result(parsed_result, site, collected_at=""):
 
 
 def snapshot_owner_map(vms_section):
-    vms_section = vms_section or {}
-    vm_list = list(vms_section.get("list") or [])
+    vms_section = dict(vms_section or {})
+    vm_list = _safe_list(vms_section.get("list"))
     out = {}
     for item in vm_list:
         if not isinstance(item, dict):
@@ -579,9 +592,9 @@ def normalize_snapshots_result(
     collected_at="",
     size_warning_gb=100,
 ):
-    raw_result = raw_result or {}
-    all_snaps = list(all_snaps or [])
-    aged_snaps = list(aged_snaps or [])
+    raw_result = dict(raw_result or {})
+    all_snaps = _safe_list(all_snaps)
+    aged_snaps = _safe_list(aged_snaps)
     size_warning_gb = float(size_warning_gb or 100)
     total_size_gb = round(float(sum(float(item.get("size_gb", 0) or 0) for item in aged_snaps)), 1)
     large_snapshots = [item for item in aged_snaps if float(item.get("size_gb", 0) or 0) > size_warning_gb]
@@ -725,7 +738,7 @@ def build_discovery_ctx(base_ctx, disc, collected_at=""):
     else:
         system_status = "DISCOVERY_COMPLETE"
 
-    alerts = list(base_ctx.get("alerts") or [])
+    alerts = _safe_list(base_ctx.get("alerts"))
     if dc_failed:
         alerts.append(
             {

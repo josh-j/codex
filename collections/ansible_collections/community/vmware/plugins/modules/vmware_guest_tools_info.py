@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, VMware, Inc. All Rights Reserved.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -124,7 +121,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import PyV
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.name = self.params['name']
         self.uuid = self.params['uuid']
         self.moid = self.params['moid']
@@ -184,7 +181,7 @@ def main():
     vm = pyv.get_vm()
     if not vm:
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg='Unable to find the specified virtual machine using: %s' % vm_id)
+        module.fail_json(msg=f'Unable to find the specified virtual machine using: {vm_id}')
     results = pyv.gather_vmtools_info()
     module.exit_json(**results)
 

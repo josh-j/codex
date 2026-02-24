@@ -96,8 +96,8 @@
                 <thead><tr><th>Component</th><th>Status</th></tr></thead>
                 <tbody>
                     {% for key in ['overall', 'cpu', 'memory', 'database', 'storage', 'swap'] %}
-                    {% set value = app_health.get(key, 'unknown') %}
-                    {% set _health_badge = value | internal.core.status_badge_meta(true) %}
+     {% set value = app_health.get(key, 'unknown') %}
+     {% set _health_badge = value | internal.core.status_badge_meta(true) %}
                     <tr>
                         <td style="text-transform: capitalize;"><strong>{{ key }}</strong></td>
                         <td><span class="badge {{ _health_badge.css_class }}">{{ _health_badge.label }}</span></td>
@@ -113,8 +113,8 @@
                 <thead><tr><th>Cluster</th><th>Datacenter</th><th>CPU %</th><th>Memory %</th><th>HA</th><th>DRS</th></tr></thead>
                 <tbody>
                     {% for cluster in node.get('clusters', []) %}
-                    {% set c_util = cluster.get('utilization', {}) %}
-                    {% set comp = cluster.get('compliance', {}) %}
+     {% set c_util = cluster.get('utilization', {}) %}
+     {% set comp = cluster.get('compliance', {}) %}
                     <tr>
                         <td><strong>{{ cluster.get('name', 'unknown') }}</strong></td>
                         <td>{{ cluster.get('datacenter', 'unknown') }}</td>
@@ -140,43 +140,43 @@
                 <thead><tr><th>Severity</th><th>Category</th><th>Message / Detail</th></tr></thead>
                 <tbody>
                     {% for alert in alert_items %}
-                    {% set _alert_badge = alert.get('severity', 'INFO') | internal.core.status_badge_meta(true) %}
+     {% set _alert_badge = alert.get('severity', 'INFO') | internal.core.status_badge_meta(true) %}
                     <tr class="{{ 'alert-row-critical' if (alert.get('severity', '') | upper) == 'CRITICAL' else ('alert-row-warning' if (alert.get('severity', '') | upper) == 'WARNING' else '') }}">
                         <td><span class="badge {{ _alert_badge.css_class }}">{{ _alert_badge.label }}</span></td>
                         <td style="text-transform: uppercase; font-weight: 700; color: var(--indigo);">{{ alert.get('category', 'vmware') }}</td>
                         <td>
                             <div>{{ alert.get('message', '') }}</div>
-                            {% set detail = alert.get('detail', {}) %}
-                            {% set affected_items = alert.get('affected_items', []) %}
-                            {% if (detail and detail|length > 0) or (affected_items and affected_items|length > 0) %}
+     {% set detail = alert.get('detail', {}) %}
+     {% set affected_items = alert.get('affected_items', []) %}
+     {% if (detail and detail | length > 0) or (affected_items and affected_items | length > 0) %}
                             <details style="margin-top: 6px;">
                                 <summary style="cursor: pointer; color: var(--text-muted);">Technical details</summary>
-                                {% if detail and detail|length > 0 %}
+         {% if detail and detail | length > 0 %}
                                 <div style="margin-top: 8px;">
                                     <table>
                                         <tbody>
-                                            {% for k, v in detail.items() %}
+             {% for k, v in detail.items() %}
                                             <tr>
                                                 <th style="width: 180px;">{{ k }}</th>
                                                 <td><code>{{ v }}</code></td>
                                             </tr>
-                                            {% endfor %}
+             {% endfor %}
                                         </tbody>
                                     </table>
                                 </div>
-                                {% endif %}
-                                {% if affected_items and affected_items|length > 0 %}
+         {% endif %}
+         {% if affected_items and affected_items | length > 0 %}
                                 <div style="margin-top: 8px;">
                                     <strong>Affected Items ({{ affected_items | length }})</strong>
                                     <ul style="margin-top: 6px;">
-                                        {% for item in affected_items[:10] %}
+             {% for item in affected_items[:10] %}
                                         <li><code>{{ item }}</code></li>
-                                        {% endfor %}
+             {% endfor %}
                                     </ul>
                                 </div>
-                                {% endif %}
+         {% endif %}
                             </details>
-                            {% endif %}
+     {% endif %}
                         </td>
                     </tr>
                     {% else %}

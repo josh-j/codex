@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -122,10 +119,11 @@ rename_status:
     }
 '''
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, wait_for_task
+from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
+
 try:
     from pyVmomi import vim
 except ImportError:
@@ -137,7 +135,7 @@ class VmwareObjectRename(VmwareRestClient):
         """
         Constructor
         """
-        super(VmwareObjectRename, self).__init__(module)
+        super().__init__(module)
         self.pyv = PyVmomi(module=module)
         self.soap_stub = self.pyv.si._stub
 
@@ -167,7 +165,7 @@ class VmwareObjectRename(VmwareRestClient):
 
         if self.object_type not in available_object_types:
             self.module.fail_json(msg="Object type can be any"
-                                  " one of [%s]" % ", ".join(available_object_types))
+                                  " one of [{}]".format(", ".join(available_object_types)))
 
         valid_object_types = {
             'ClusterComputeResource': [

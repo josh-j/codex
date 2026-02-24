@@ -32,7 +32,6 @@
       tags: [discovery, ssh]
       ansible.builtin.set_fact:
         _esxi_ssh_facts: "{{ _ssh_raw.stdout | internal.vmware.parse_esxi_ssh_facts }}"
-    
 
   always:
     - name: Disable SSH service

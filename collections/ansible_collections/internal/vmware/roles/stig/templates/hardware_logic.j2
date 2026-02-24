@@ -3,16 +3,16 @@
 
 {# ESXI-70-000094: TPM Encryption #}
 {% if sys.get('crypto_mode') == 'TPM' %}
-    {% set _ = res.append({"id": "ESXI-70-000094", "status": "PASSED", "details": "TPM Encryption Enabled"}) %}
+     {% set _ = res.append({"id": "ESXI-70-000094", "status": "PASSED", "details": "TPM Encryption Enabled"}) %}
 {% else %}
-    {% set _ = res.append({"id": "ESXI-70-000094", "status": "FAILED", "details": "Encryption Mode: " ~ sys.get('crypto_mode', 'None')}) %}
+     {% set _ = res.append({"id": "ESXI-70-000094", "status": "FAILED", "details": "Encryption Mode: " ~ sys.get('crypto_mode', 'None')}) %}
 {% endif %}
 
 {# ESXI-70-000095: Secure Boot Enforcement #}
-{% if sys.get('secure_boot_required')|string|lower == 'true' %}
-    {% set _ = res.append({"id": "ESXI-70-000095", "status": "PASSED", "details": "Secure Boot Enforced"}) %}
+{% if sys.get('secure_boot_required') | string | lower == 'true' %}
+     {% set _ = res.append({"id": "ESXI-70-000095", "status": "PASSED", "details": "Secure Boot Enforced"}) %}
 {% else %}
-    {% set _ = res.append({"id": "ESXI-70-000095", "status": "FAILED", "details": "Secure Boot not enforced"}) %}
+     {% set _ = res.append({"id": "ESXI-70-000095", "status": "FAILED", "details": "Secure Boot not enforced"}) %}
 {% endif %}
 
 {{ res | to_json }}

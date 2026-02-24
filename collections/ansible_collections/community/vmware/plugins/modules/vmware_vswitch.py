@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
@@ -7,8 +6,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -247,14 +244,14 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VMwareHostVirtualSwitch(PyVmomi):
     def __init__(self, module):
-        super(VMwareHostVirtualSwitch, self).__init__(module)
+        super().__init__(module)
         self.host_system = None
         self.vss = None
         self.switch = module.params['switch']
@@ -292,14 +289,13 @@ class VMwareHostVirtualSwitch(PyVmomi):
             for desired_pnic in self.nics:
                 if desired_pnic not in available_pnic:
                     # Check if pnic does not exists
-                    self.module.fail_json(msg="Specified Physical NIC '%s' does not"
-                                              " exists on given ESXi '%s'." % (desired_pnic,
-                                                                               self.host_system.name))
+                    self.module.fail_json(msg=f"Specified Physical NIC '{desired_pnic}' does not"
+                                              f" exists on given ESXi '{self.host_system.name}'.")
                 for vswitch in self.available_vswitches:
                     if desired_pnic in self.available_vswitches[vswitch]['pnic'] and vswitch != self.switch:
                         # Check if pnic is already part of some other vSwitch
-                        self.module.fail_json(msg="Specified Physical NIC '%s' is already used"
-                                                  " by vSwitch '%s'." % (desired_pnic, vswitch))
+                        self.module.fail_json(msg=f"Specified Physical NIC '{desired_pnic}' is already used"
+                                                  f" by vSwitch '{vswitch}'.")
 
     def process_state(self):
         """
@@ -342,7 +338,7 @@ class VMwareHostVirtualSwitch(PyVmomi):
             vss_spec.bridge = vim.host.VirtualSwitch.BondBridge(nicDevice=self.nics)
 
         if self.module.check_mode:
-            results['msg'] = "vSwitch '%s' would be created" % self.switch
+            results['msg'] = f"vSwitch '{self.switch}' would be created"
         else:
             try:
                 self.network_mgr.AddVirtualSwitch(vswitchName=self.switch,
@@ -367,32 +363,26 @@ class VMwareHostVirtualSwitch(PyVmomi):
                     self.network_mgr.UpdateVirtualSwitch(vswitchName=self.switch,
                                                          spec=spec)
 
-                results['result'] = "vSwitch '%s' is created successfully" % self.switch
+                results['result'] = f"vSwitch '{self.switch}' is created successfully"
             except vim.fault.AlreadyExists as already_exists:
-                results['result'] = "vSwitch with name %s already exists: %s" % (self.switch,
-                                                                                 to_native(already_exists.msg))
+                results['result'] = f"vSwitch with name {self.switch} already exists: {to_native(already_exists.msg)}"
             except vim.fault.ResourceInUse as resource_used:
-                self.module.fail_json(msg="Failed to add vSwitch '%s' as physical network adapter"
-                                          " being bridged is already in use: %s" % (self.switch,
-                                                                                    to_native(resource_used.msg)))
+                self.module.fail_json(msg=f"Failed to add vSwitch '{self.switch}' as physical network adapter"
+                                          f" being bridged is already in use: {to_native(resource_used.msg)}")
             except vim.fault.HostConfigFault as host_config_fault:
-                self.module.fail_json(msg="Failed to add vSwitch '%s' due to host"
-                                          " configuration fault : %s" % (self.switch,
-                                                                         to_native(host_config_fault.msg)))
+                self.module.fail_json(msg=f"Failed to add vSwitch '{self.switch}' due to host"
+                                          f" configuration fault : {to_native(host_config_fault.msg)}")
             except vmodl.fault.InvalidArgument as invalid_argument:
-                self.module.fail_json(msg="Failed to add vSwitch '%s', this can be due to either of following :"
+                self.module.fail_json(msg=f"Failed to add vSwitch '{self.switch}', this can be due to either of following :"
                                           " 1. vSwitch Name exceeds the maximum allowed length,"
                                           " 2. Number of ports specified falls out of valid range,"
                                           " 3. Network policy is invalid,"
-                                          " 4. Beacon configuration is invalid : %s" % (self.switch,
-                                                                                        to_native(invalid_argument.msg)))
+                                          f" 4. Beacon configuration is invalid : {to_native(invalid_argument.msg)}")
             except vmodl.fault.SystemError as system_error:
-                self.module.fail_json(msg="Failed to add vSwitch '%s' due to : %s" % (self.switch,
-                                                                                      to_native(system_error.msg)))
+                self.module.fail_json(msg=f"Failed to add vSwitch '{self.switch}' due to : {to_native(system_error.msg)}")
             except Exception as generic_exc:
-                self.module.fail_json(msg="Failed to add vSwitch '%s' due to"
-                                          " generic exception : %s" % (self.switch,
-                                                                       to_native(generic_exc)))
+                self.module.fail_json(msg=f"Failed to add vSwitch '{self.switch}' due to"
+                                          f" generic exception : {to_native(generic_exc)}")
 
         results['changed'] = True
 
@@ -412,27 +402,23 @@ class VMwareHostVirtualSwitch(PyVmomi):
         results = dict(changed=False, result="")
 
         if self.module.check_mode:
-            results['msg'] = "vSwitch '%s' would be removed" % self.vss.name
+            results['msg'] = f"vSwitch '{self.vss.name}' would be removed"
         else:
             try:
                 self.host_system.configManager.networkSystem.RemoveVirtualSwitch(self.vss.name)
-                results['result'] = "vSwitch '%s' removed successfully." % self.vss.name
+                results['result'] = f"vSwitch '{self.vss.name}' removed successfully."
             except vim.fault.NotFound as vswitch_not_found:
-                results['result'] = "vSwitch '%s' not available. %s" % (self.switch,
-                                                                        to_native(vswitch_not_found.msg))
+                results['result'] = f"vSwitch '{self.switch}' not available. {to_native(vswitch_not_found.msg)}"
             except vim.fault.ResourceInUse as vswitch_in_use:
-                self.module.fail_json(msg="Failed to remove vSwitch '%s' as vSwitch"
+                self.module.fail_json(msg=f"Failed to remove vSwitch '{self.switch}' as vSwitch"
                                           " is used by several virtual"
-                                          " network adapters: %s" % (self.switch,
-                                                                     to_native(vswitch_in_use.msg)))
+                                          f" network adapters: {to_native(vswitch_in_use.msg)}")
             except vim.fault.HostConfigFault as host_config_fault:
-                self.module.fail_json(msg="Failed to remove vSwitch '%s' due to host"
-                                          " configuration fault : %s" % (self.switch,
-                                                                         to_native(host_config_fault.msg)))
+                self.module.fail_json(msg=f"Failed to remove vSwitch '{self.switch}' due to host"
+                                          f" configuration fault : {to_native(host_config_fault.msg)}")
             except Exception as generic_exc:
-                self.module.fail_json(msg="Failed to remove vSwitch '%s' due to generic"
-                                          " exception : %s" % (self.switch,
-                                                               to_native(generic_exc)))
+                self.module.fail_json(msg=f"Failed to remove vSwitch '{self.switch}' due to generic"
+                                          f" exception : {to_native(generic_exc)}")
 
         results['changed'] = True
 
@@ -444,7 +430,7 @@ class VMwareHostVirtualSwitch(PyVmomi):
 
         """
         changed = False
-        results = dict(changed=False, result="No change in vSwitch '%s'" % self.switch)
+        results = dict(changed=False, result=f"No change in vSwitch '{self.switch}'")
         spec = self.vss.spec
 
         # Check MTU
@@ -492,43 +478,36 @@ class VMwareHostVirtualSwitch(PyVmomi):
 
         if changed:
             if self.module.check_mode:
-                results['msg'] = "vSwitch '%s' would be updated" % self.switch
+                results['msg'] = f"vSwitch '{self.switch}' would be updated"
             else:
                 try:
                     self.network_mgr.UpdateVirtualSwitch(vswitchName=self.switch,
                                                          spec=spec)
-                    results['result'] = "vSwitch '%s' is updated successfully" % self.switch
+                    results['result'] = f"vSwitch '{self.switch}' is updated successfully"
                 except vim.fault.ResourceInUse as resource_used:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s' as physical network adapter"
-                                              " being bridged is already in use: %s" % (self.switch,
-                                                                                        to_native(resource_used.msg)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}' as physical network adapter"
+                                              f" being bridged is already in use: {to_native(resource_used.msg)}")
                 except vim.fault.NotFound as not_found:
-                    self.module.fail_json(msg="Failed to update vSwitch with name '%s'"
-                                              " as it does not exists: %s" % (self.switch,
-                                                                              to_native(not_found.msg)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch with name '{self.switch}'"
+                                              f" as it does not exists: {to_native(not_found.msg)}")
 
                 except vim.fault.HostConfigFault as host_config_fault:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s' due to host"
-                                              " configuration fault : %s" % (self.switch,
-                                                                             to_native(host_config_fault.msg)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}' due to host"
+                                              f" configuration fault : {to_native(host_config_fault.msg)}")
                 except vmodl.fault.InvalidArgument as invalid_argument:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s', this can be due to either of following :"
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}', this can be due to either of following :"
                                               " 1. vSwitch Name exceeds the maximum allowed length,"
                                               " 2. Number of ports specified falls out of valid range,"
                                               " 3. Network policy is invalid,"
-                                              " 4. Beacon configuration is invalid : %s" % (self.switch,
-                                                                                            to_native(invalid_argument.msg)))
+                                              f" 4. Beacon configuration is invalid : {to_native(invalid_argument.msg)}")
                 except vmodl.fault.SystemError as system_error:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s' due to : %s" % (self.switch,
-                                                                                             to_native(system_error.msg)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}' due to : {to_native(system_error.msg)}")
                 except vmodl.fault.NotSupported as not_supported:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s' as network adapter teaming policy"
-                                              " is set but is not supported : %s" % (self.switch,
-                                                                                     to_native(not_supported.msg)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}' as network adapter teaming policy"
+                                              f" is set but is not supported : {to_native(not_supported.msg)}")
                 except Exception as generic_exc:
-                    self.module.fail_json(msg="Failed to update vSwitch '%s' due to"
-                                              " generic exception : %s" % (self.switch,
-                                                                           to_native(generic_exc)))
+                    self.module.fail_json(msg=f"Failed to update vSwitch '{self.switch}' due to"
+                                              f" generic exception : {to_native(generic_exc)}")
 
             results['changed'] = True
 
@@ -704,7 +683,7 @@ class VMwareHostVirtualSwitch(PyVmomi):
 
         for value in ['average_bandwidth', 'peak_bandwidth', 'burst_size']:
             if not self.params['traffic_shaping'].get(value):
-                self.module.fail_json(msg="traffic_shaping.%s is a required parameter if traffic_shaping is enabled." % value)
+                self.module.fail_json(msg=f"traffic_shaping.{value} is a required parameter if traffic_shaping is enabled.")
         ts_average_bandwidth = self.params['traffic_shaping'].get('average_bandwidth') * 1000
         ts_peak_bandwidth = self.params['traffic_shaping'].get('peak_bandwidth') * 1000
         ts_burst_size = self.params['traffic_shaping'].get('burst_size') * 1024

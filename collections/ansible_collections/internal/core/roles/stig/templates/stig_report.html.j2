@@ -58,18 +58,18 @@
                 </tr>
             </thead>
             <tbody>
-                {% for rule in open_findings %}
-                {% set rule_detail = rule.detail | default({}) %}
-                {% set rule_raw = rule.raw | default({}) %}
-                {% set rule_id = rule.rule_id | default(rule_detail.rule_id | default(rule_raw.id | default(''))) %}
+     {% for rule in open_findings %}
+         {% set rule_detail = rule.detail | default({}) %}
+         {% set rule_raw = rule.raw | default({}) %}
+         {% set rule_id = rule.rule_id | default(rule_detail.rule_id | default(rule_raw.id | default(''))) %}
                 <tr>
                     <td class="col-id">{{ rule_id }}</td>
                     <td>
-                        {% if rule.status == 'pass' %}
+         {% if rule.status == 'pass' %}
                             <span class="badge status-fixed-badge">REMEDIATED</span>
-                        {% else %}
+         {% else %}
                             <span class="badge status-failed-badge">FAILED</span>
-                        {% endif %}
+         {% endif %}
                     </td>
                     <td>
                         <span class="sev-{{ (rule.category | default(rule.severity | default('info'))) | lower }}">
@@ -79,15 +79,15 @@
                     <td>
                         <div style="font-weight: bold; margin-bottom: 5px;">{{ rule.title | default(rule.message) }}</div>
 
-                        {% if rule.status == 'pass' %}
+         {% if rule.status == 'pass' %}
                             <div style="color: #27ae60; font-size: 0.9rem; margin-bottom: 5px;">
                                 ✅ Automatically fixed by Ansible.
                             </div>
-                        {% else %}
+         {% else %}
                             <div style="color: #c0392b; font-size: 0.9rem; margin-bottom: 5px;">
                                 ❌ Could not apply fix automatically. Manual intervention required.
                             </div>
-                        {% endif %}
+         {% endif %}
 
                         <button class="toggle-btn" onclick="toggleDetails('d-{{ rule_id | default(loop.index) }}')">▶ View Technical Details</button>
                         <div id="d-{{ rule_id | default(loop.index) }}" class="details-box">
@@ -99,7 +99,7 @@
                         </div>
                     </td>
                 </tr>
-                {% endfor %}
+     {% endfor %}
             </tbody>
         </table>
     {% else %}

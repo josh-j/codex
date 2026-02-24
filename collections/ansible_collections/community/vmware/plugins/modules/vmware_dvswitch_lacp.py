@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -146,10 +143,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, TaskError, find_dvs_by_name, vmware_argument_spec, wait_for_task
+    PyVmomi,
+    TaskError,
+    find_dvs_by_name,
+    vmware_argument_spec,
+    wait_for_task,
 )
 
 
@@ -157,7 +158,7 @@ class VMwareDvSwitchLacp(PyVmomi):
     """Class to manage a LACP on a Distributed Virtual Switch"""
 
     def __init__(self, module):
-        super(VMwareDvSwitchLacp, self).__init__(module)
+        super().__init__(module)
         self.switch_name = self.module.params['switch']
         self.support_mode = self.module.params['support_mode']
         self.link_aggregation_groups = self.module.params['link_aggregation_groups']
@@ -169,7 +170,7 @@ class VMwareDvSwitchLacp(PyVmomi):
             )
         self.dvs = find_dvs_by_name(self.content, self.switch_name)
         if self.dvs is None:
-            self.module.fail_json(msg="Failed to find DVS %s" % self.switch_name)
+            self.module.fail_json(msg=f"Failed to find DVS {self.switch_name}")
 
     def ensure(self):
         """Manage LACP configuration"""
@@ -350,7 +351,7 @@ class VMwareDvSwitchLacp(PyVmomi):
         if lag_load_balancing_mode is None:
             self.module.fail_json(msg="Please specify load_balancing_mode in lag options as it's a required parameter")
         elif lag_load_balancing_mode not in supported_lb_modes:
-            self.module.fail_json(msg="The specified load balancing mode '%s' isn't supported!" % lag_load_balancing_mode)
+            self.module.fail_json(msg=f"The specified load balancing mode '{lag_load_balancing_mode}' isn't supported!")
         return lag_name, lag_mode, lag_uplink_number, lag_load_balancing_mode
 
     @staticmethod
@@ -384,7 +385,7 @@ class VMwareDvSwitchLacp(PyVmomi):
             result = wait_for_task(task)
         except TaskError as invalid_argument:
             self.module.fail_json(
-                msg="Failed to update DVS : %s" % to_native(invalid_argument)
+                msg=f"Failed to update DVS : {to_native(invalid_argument)}"
             )
         return result
 
@@ -394,15 +395,14 @@ class VMwareDvSwitchLacp(PyVmomi):
             task = switch_object.UpdateDVSLacpGroupConfig_Task(lacpGroupSpec=lacp_group_spec)
             result = wait_for_task(task)
         except vim.fault.DvsFault as dvs_fault:
-            self.module.fail_json(msg="Update failed due to DVS fault : %s" % to_native(dvs_fault))
+            self.module.fail_json(msg=f"Update failed due to DVS fault : {to_native(dvs_fault)}")
         except vmodl.fault.NotSupported as not_supported:
             self.module.fail_json(
-                msg="Multiple Link Aggregation Control Protocol groups not supported on the switch : %s" %
-                to_native(not_supported)
+                msg=f"Multiple Link Aggregation Control Protocol groups not supported on the switch : {to_native(not_supported)}"
             )
         except TaskError as invalid_argument:
             self.module.fail_json(
-                msg="Failed to update Link Aggregation Group : %s" % to_native(invalid_argument)
+                msg=f"Failed to update Link Aggregation Group : {to_native(invalid_argument)}"
             )
         return result
 

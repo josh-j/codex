@@ -1,30 +1,28 @@
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Ansible Project
 # Copyright: (c) 2023, Pure Storage, Inc.
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 try:
-    from pyVmomi import sms
     from pyVim.connect import SoapStubAdapter
+    from pyVmomi import sms
 except ImportError:
     pass
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
-from random import randint
 import time
+from random import randint
+
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
 
 
 class TaskError(Exception):
     def __init__(self, *args, **kwargs):
-        super(TaskError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class SMS(PyVmomi):
     def __init__(self, module):
-        super(SMS, self).__init__(module)
+        super().__init__(module)
         self.sms_si = None
         self.version = "sms.version.v7_0_0_1"
 

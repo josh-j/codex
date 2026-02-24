@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -203,26 +200,27 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
-from ansible.module_utils._text import to_native
 import socket
+
+from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 def is_ipaddress(value):
     try:
         socket.inet_aton(value)
-    except socket.error:
+    except OSError:
         try:
             socket.inet_pton(socket.AF_INET6, value)
-        except socket.error:
+        except OSError:
             return False
     return True
 
 
 class VmwareFirewallManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareFirewallManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.options = self.params.get('options', dict())
@@ -257,8 +255,7 @@ class VmwareFirewallManager(PyVmomi):
             hosts_with_rule_name = [h for h, r in rules_by_host.items() if rule_name in r]
             hosts_without_rule_name = set([i.name for i in self.hosts]) - set(hosts_with_rule_name)
             if hosts_without_rule_name:
-                self.module.fail_json(msg="rule named '%s' wasn't found on hosts: %s" % (
-                    rule_name, hosts_without_rule_name))
+                self.module.fail_json(msg=f"rule named '{rule_name}' wasn't found on hosts: {hosts_without_rule_name}")
 
             allowed_hosts = rule_option.get('allowed_hosts')
             if allowed_hosts is not None:
@@ -266,15 +263,15 @@ class VmwareFirewallManager(PyVmomi):
                     try:
                         is_ipaddress(ip_address)
                     except ValueError:
-                        self.module.fail_json(msg="The provided IP address %s is not a valid IP"
-                                                  " for the rule %s" % (ip_address, rule_name))
+                        self.module.fail_json(msg=f"The provided IP address {ip_address} is not a valid IP"
+                                                  f" for the rule {rule_name}")
 
                 for ip_network in allowed_hosts.get('ip_network'):
                     try:
                         is_ipaddress(ip_network)
                     except ValueError:
-                        self.module.fail_json(msg="The provided IP network %s is not a valid network"
-                                                  " for the rule %s" % (ip_network, rule_name))
+                        self.module.fail_json(msg=f"The provided IP network {ip_network} is not a valid network"
+                                                  f" for the rule {rule_name}")
 
     def ensure(self):
         """
@@ -304,16 +301,12 @@ class VmwareFirewallManager(PyVmomi):
                         # keep track of changes as we go
                         enable_disable_changed = True
                     except vim.fault.NotFound as not_found:
-                        self.module.fail_json(msg="Failed to enable rule set %s as"
-                                                  " rule set id is unknown : %s" % (
-                                                      rule_name,
-                                                      to_native(not_found.msg)))
+                        self.module.fail_json(msg=f"Failed to enable rule set {rule_name} as"
+                                                  f" rule set id is unknown : {to_native(not_found.msg)}")
                     except vim.fault.HostConfigFault as host_config_fault:
-                        self.module.fail_json(msg="Failed to enabled rule set %s as an internal"
+                        self.module.fail_json(msg=f"Failed to enabled rule set {rule_name} as an internal"
                                                   " error happened while reconfiguring"
-                                                  " rule set : %s" % (
-                                                      rule_name,
-                                                      to_native(host_config_fault.msg)))
+                                                  f" rule set : {to_native(host_config_fault.msg)}")
 
                 # save variables here for comparison later and change tracking
                 # also covers cases where inputs may be null
@@ -353,18 +346,16 @@ class VmwareFirewallManager(PyVmomi):
 
                             firewall_system.UpdateRuleset(id=rule_name, spec=firewall_spec)
                     except vim.fault.NotFound as not_found:
-                        self.module.fail_json(msg="Failed to configure rule set %s as"
-                                                  " rule set id is unknown : %s" % (rule_name,
-                                                                                    to_native(not_found.msg)))
+                        self.module.fail_json(msg=f"Failed to configure rule set {rule_name} as"
+                                                  f" rule set id is unknown : {to_native(not_found.msg)}")
                     except vim.fault.HostConfigFault as host_config_fault:
-                        self.module.fail_json(msg="Failed to configure rule set %s as an internal"
+                        self.module.fail_json(msg=f"Failed to configure rule set {rule_name} as an internal"
                                                   " error happened while reconfiguring"
-                                                  " rule set : %s" % (rule_name,
-                                                                      to_native(host_config_fault.msg)))
+                                                  f" rule set : {to_native(host_config_fault.msg)}")
                     except vim.fault.RuntimeFault as runtime_fault:
-                        self.module.fail_json(msg="Failed to configure the rule set %s as a runtime"
+                        self.module.fail_json(msg=f"Failed to configure the rule set {rule_name} as a runtime"
                                                   " error happened while applying the reconfiguration:"
-                                                  " %s" % (rule_name, to_native(runtime_fault.msg)))
+                                                  f" {to_native(runtime_fault.msg)}")
 
                 results['rule_set_state'][host.name][rule_name] = {
                     'current_state': rule_option['enabled'],

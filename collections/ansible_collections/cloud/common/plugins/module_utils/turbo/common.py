@@ -95,7 +95,7 @@ class AnsibleTurboSocket:
         self._socket.shutdown(socket.SHUT_WR)
         raw_answer = b""
         while True:
-            b = self._socket.recv((1024 * 1024))
+            b = self._socket.recv(1024 * 1024)
             if not b:
                 break
             raw_answer += b

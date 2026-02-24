@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2018, Ansible Project
 # Copyright (c) 2020, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -95,9 +92,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task, TaskError
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VMwareDatastoreClusterManager(PyVmomi):
@@ -106,18 +108,18 @@ class VMwareDatastoreClusterManager(PyVmomi):
         Constructor
 
         """
-        super(VMwareDatastoreClusterManager, self).__init__(module)
+        super().__init__(module)
         datacenter_name = self.params.get('datacenter_name')
         datacenter_obj = self.find_datacenter_by_name(datacenter_name)
         if not datacenter_obj:
-            self.module.fail_json(msg="Failed to find datacenter '%s' required"
-                                      " for managing datastore cluster." % datacenter_name)
+            self.module.fail_json(msg=f"Failed to find datacenter '{datacenter_name}' required"
+                                      " for managing datastore cluster.")
         self.folder_obj = datacenter_obj.datastoreFolder
 
         self.datastore_cluster_name = self.params.get('datastore_cluster_name')
         self.datastore_cluster_obj = self.find_datastore_cluster_by_name(self.datastore_cluster_name, datacenter=datacenter_obj)
         if not self.datastore_cluster_obj:
-            self.module.fail_json(msg="Failed to find the datastore cluster '%s'" % self.datastore_cluster_name)
+            self.module.fail_json(msg=f"Failed to find the datastore cluster '{self.datastore_cluster_name}'")
 
     def get_datastore_cluster_children(self):
         """
@@ -150,7 +152,7 @@ class VMwareDatastoreClusterManager(PyVmomi):
             for datastore_name in datastores:
                 datastore_obj = self.find_datastore_by_name(datastore_name)
                 if not datastore_obj:
-                    self.module.fail_json(msg="Failed to find datastore '%s'" % datastore_name)
+                    self.module.fail_json(msg=f"Failed to find datastore '{datastore_name}'")
                 if datastore_obj not in dsc_child_obj and datastore_obj not in datastore_obj_list:
                     datastore_obj_list.append(datastore_obj)
 
@@ -179,7 +181,7 @@ class VMwareDatastoreClusterManager(PyVmomi):
             for datastore_name in datastores:
                 datastore_obj = self.find_datastore_by_name(datastore_name)
                 if not datastore_obj:
-                    self.module.fail_json(msg="Failed to find datastore '%s'" % datastore_name)
+                    self.module.fail_json(msg=f"Failed to find datastore '{datastore_name}'")
                 if datastore_obj in dsc_child_obj and datastore_obj not in datastore_obj_list:
                     datastore_obj_list.append(datastore_obj)
 

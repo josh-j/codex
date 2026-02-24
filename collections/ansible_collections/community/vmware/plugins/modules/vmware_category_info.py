@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -86,7 +83,7 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_clien
 
 class VmwareCategoryInfoManager(VmwareRestClient):
     def __init__(self, module):
-        super(VmwareCategoryInfoManager, self).__init__(module)
+        super().__init__(module)
         self.category_service = self.api_client.tagging.Category
 
     def get_all_tag_categories(self):

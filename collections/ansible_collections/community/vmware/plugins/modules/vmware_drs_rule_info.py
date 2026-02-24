@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -107,12 +104,17 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi, find_datacenter_by_name, get_all_objs
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_datacenter_by_name,
+    get_all_objs,
+    vmware_argument_spec,
+)
 
 
 class VmwareDrsInfoManager(PyVmomi):
     def __init__(self, module):
-        super(VmwareDrsInfoManager, self).__init__(module)
+        super().__init__(module)
 
         datacenter_name = self.params.get('datacenter', None)
         if datacenter_name:
@@ -122,13 +124,13 @@ class VmwareDrsInfoManager(PyVmomi):
                 folder = datacenter_obj.hostFolder
                 self.cluster_obj_list = get_all_objs(self.content, [vim.ClusterComputeResource], folder)
             else:
-                self.module.fail_json(changed=False, msg="Datacenter '%s' not found" % datacenter_name)
+                self.module.fail_json(changed=False, msg=f"Datacenter '{datacenter_name}' not found")
 
         cluster_name = self.params.get('cluster_name', None)
         if cluster_name:
             cluster_obj = self.find_cluster_by_name(cluster_name=cluster_name)
             if cluster_obj is None:
-                self.module.fail_json(changed=False, msg="Cluster '%s' not found" % cluster_name)
+                self.module.fail_json(changed=False, msg=f"Cluster '{cluster_name}' not found")
             else:
                 self.cluster_obj_list = [cluster_obj]
 

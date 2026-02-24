@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -424,12 +421,13 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     is_boolean,
     is_truthy,
     vmware_argument_spec,
-    wait_for_task)
+    wait_for_task,
+)
 
 
 class VMwareDvsPortgroup(PyVmomi):
     def __init__(self, module):
-        super(VMwareDvsPortgroup, self).__init__(module)
+        super().__init__(module)
         self.dvs_portgroup = None
         self.dv_switch = None
 
@@ -451,23 +449,23 @@ class VMwareDvsPortgroup(PyVmomi):
         for vlan_id_splitted in self.module.params['vlan_id'].split(','):
             vlans = vlan_id_splitted.split('-')
             if len(vlans) > 2:
-                self.module.fail_json(msg="Invalid VLAN range %s." % vlan_id_splitted)
+                self.module.fail_json(msg=f"Invalid VLAN range {vlan_id_splitted}.")
             if len(vlans) == 2:
                 vlan_id_start = vlans[0].strip()
                 vlan_id_end = vlans[1].strip()
                 if not vlan_id_start.isdigit():
-                    self.module.fail_json(msg="Invalid VLAN %s." % vlan_id_start)
+                    self.module.fail_json(msg=f"Invalid VLAN {vlan_id_start}.")
                 if not vlan_id_end.isdigit():
-                    self.module.fail_json(msg="Invalid VLAN %s." % vlan_id_end)
+                    self.module.fail_json(msg=f"Invalid VLAN {vlan_id_end}.")
                 vlan_id_start = int(vlan_id_start)
                 vlan_id_end = int(vlan_id_end)
                 if vlan_id_start not in range(0, 4095) or vlan_id_end not in range(0, 4095):
-                    self.module.fail_json(msg="vlan_id range %s specified is incorrect. The valid vlan_id range is from 0 to 4094." % vlan_id_splitted)
+                    self.module.fail_json(msg=f"vlan_id range {vlan_id_splitted} specified is incorrect. The valid vlan_id range is from 0 to 4094.")
                 vlan_id_list.append((vlan_id_start, vlan_id_end))
             else:
                 vlan_id = vlans[0].strip()
                 if not vlan_id.isdigit():
-                    self.module.fail_json(msg="Invalid VLAN %s." % vlan_id)
+                    self.module.fail_json(msg=f"Invalid VLAN {vlan_id}.")
                 vlan_id = int(vlan_id)
                 vlan_id_list.append((vlan_id, vlan_id))
 
@@ -494,8 +492,7 @@ class VMwareDvsPortgroup(PyVmomi):
             if self.module.params['vlan_private']:
                 pvlan_exists = self.check_dvs_pvlan()
                 if not pvlan_exists:
-                    self.module.fail_json(msg="No private vlan with id %s in distributed vSwitch %s"
-                                          % (self.module.params['vlan_id'], self.module.params['switch_name']))
+                    self.module.fail_json(msg="No private vlan with id {} in distributed vSwitch {}".format(self.module.params['vlan_id'], self.module.params['switch_name']))
 
             config.defaultPortConfig.vlan = vim.dvs.VmwareDistributedVirtualSwitch.PvlanSpec()
             config.defaultPortConfig.vlan.pvlanId = int(self.module.params['vlan_id'])
@@ -726,7 +723,7 @@ class VMwareDvsPortgroup(PyVmomi):
         self.dv_switch = find_dvs_by_name(self.content, self.module.params['switch_name'])
 
         if self.dv_switch is None:
-            self.module.fail_json(msg="A distributed virtual switch with name %s does not exist" % self.module.params['switch_name'])
+            self.module.fail_json(msg="A distributed virtual switch with name {} does not exist".format(self.module.params['switch_name']))
         self.dvs_portgroup = find_dvspg_by_name(self.dv_switch, self.module.params['portgroup_name'])
 
         if self.dvs_portgroup is None:

@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -176,9 +173,9 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 # This is a helper class to sort the changes in a valid order
@@ -222,7 +219,7 @@ class VmwareVcenterStatistics(PyVmomi):
     """Manage statistics for a vCenter server"""
 
     def __init__(self, module):
-        super(VmwareVcenterStatistics, self).__init__(module)
+        super().__init__(module)
 
         if not self.is_vcenter():
             self.module.fail_json(msg="You have to connect to a vCenter server!")
@@ -458,7 +455,7 @@ class VmwareVcenterStatistics(PyVmomi):
         except vmodl.fault.InvalidArgument as invalid_argument:
             self.module.fail_json(
                 msg="The set of arguments passed to the function is not specified correctly or "
-                "the update does not conform to the rules: %s" % to_native(invalid_argument.msg)
+                f"the update does not conform to the rules: {to_native(invalid_argument.msg)}"
             )
 
 

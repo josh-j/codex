@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r"""
@@ -70,14 +67,14 @@ from ansible_collections.community.vmware.plugins.module_utils.vmware import (
 
 class VmwareDatastoreClusterInfo(PyVmomi):
     def __init__(self, module):
-        super(VmwareDatastoreClusterInfo, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
         datacenter_name = self.params.get("datacenter")
         datacenter_obj = self.find_datacenter_by_name(datacenter_name)
         if datacenter_obj is None:
             self.module.fail_json(
-                msg="Unable to find datacenter with name %s" % datacenter_name
+                msg=f"Unable to find datacenter with name {datacenter_name}"
             )
         datastore_cluster_name = self.params.get("datastore_cluster")
         datastore_cluster_obj = self.find_datastore_cluster_by_name(

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (C) 2020, Viktor Tsymbalyuk
 # Copyright: (C) 2020, Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -147,17 +144,18 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from time import sleep
+
+from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareAdapterConfigManager(PyVmomi):
     """Class to configure SR-IOV settings"""
 
     def __init__(self, module):
-        super(VmwareAdapterConfigManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get("cluster_name", None)
         esxi_host_name = self.params.get("esxi_hostname", None)
 
@@ -204,7 +202,7 @@ class VmwareAdapterConfigManager(PyVmomi):
         if self.num_virt_func > 0:
             if not before["sriovCapable"]:
                 self.module.fail_json(
-                    msg="sriov not supported on host= %s, nic= %s" % (hostname, self.vmnic)
+                    msg=f"sriov not supported on host= {hostname}, nic= {self.vmnic}"
                 )
 
         if before["maxVirtualFunctionSupported"] < self.num_virt_func:
@@ -316,7 +314,7 @@ class VmwareAdapterConfigManager(PyVmomi):
         for pnic in host.config.network.pnic:
             if pnic.device == self.vmnic:
                 return pnic.pci
-        self.module.fail_json(msg="No nic= %s on host= %s" % (self.vmnic, host.name))
+        self.module.fail_json(msg=f"No nic= {self.vmnic} on host= {host.name}")
 
     def _update_sriov(self, host, sriovEnabled, numVirtualFunction):
         nic_sriov = vim.host.SriovConfig()
@@ -334,8 +332,7 @@ class VmwareAdapterConfigManager(PyVmomi):
             return False
         except vim.fault.HostConfigFault as config_fault:
             self.module.fail_json(
-                msg="Failed to configure SR-IOV for host= %s due to : %s"
-                % (host.name, to_native(config_fault.msg))
+                msg=f"Failed to configure SR-IOV for host= {host.name} due to : {to_native(config_fault.msg)}"
             )
             return False
 

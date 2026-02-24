@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2021, Tyler Gates <tgates81@gmail.com>
 #
@@ -18,8 +17,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -154,7 +151,9 @@ changed_policies:
 '''
 
 import traceback
+
 from ansible.module_utils.basic import missing_required_lib
+
 PYVMOMI_IMP_ERR = None
 try:
     from pyVmomi import pbm, vim
@@ -162,8 +161,8 @@ try:
 except ImportError:
     HAS_PYVMOMI = False
     PYVMOMI_IMP_ERR = traceback.format_exc()
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, wait_for_task
 from ansible_collections.community.vmware.plugins.module_utils.vmware_spbm import SPBM
 
@@ -330,7 +329,7 @@ class SPBM_helper(SPBM):
             pol_obj = self.SearchStorageProfileByName(pm, policy)
 
             if not pol_obj:
-                result['msg'] = "Unable to find storage policy `%s' for vm_home" % policy
+                result['msg'] = f"Unable to find storage policy `{policy}' for vm_home"
                 self.module.fail_json(**result)
 
             if not self.CheckAssociatedStorageProfile(pm, pmRef, policy):
@@ -357,7 +356,7 @@ class SPBM_helper(SPBM):
             disk_obj = self.GetVirtualDiskObj(vm_obj, unit_number, controller_number)
             pol_obj = self.SearchStorageProfileByName(pm, policy)
             if not pol_obj:
-                result['msg'] = "Unable to find storage policy `%s' for disk %s." % (policy, disk)
+                result['msg'] = f"Unable to find storage policy `{policy}' for disk {disk}."
                 self.module.fail_json(**result)
             if not disk_obj:
                 errmsg = "Unable to find disk for controller_number '%s' unit_number '%s'. 7 is reserved for SCSI adapters."
@@ -374,8 +373,7 @@ class SPBM_helper(SPBM):
             disk_obj = disks_objs[unit_number]['disk']
             pol_obj = disks_objs[unit_number]['policy']
             pmObjectType = pbm.ServerObjectRef.ObjectType("virtualDiskId")
-            pmRef = pbm.ServerObjectRef(key="%s:%s"
-                                            % (vm_obj._moId, disk_obj.key),
+            pmRef = pbm.ServerObjectRef(key=f"{vm_obj._moId}:{disk_obj.key}",
                                         objectType=pmObjectType)
 
             if not self.CheckAssociatedStorageProfile(pm, pmRef, policy):
@@ -446,8 +444,7 @@ def run_module():
         spbm_h.ensure_storage_policies(vm)
     except Exception as e:
         module.fail_json(msg="Failed to set storage policies for virtual"
-                             "machine '%s' with exception: %s"
-                             % (vm.name, to_native(e)))
+                             f"machine '{vm.name}' with exception: {to_native(e)}")
 
 
 def main():

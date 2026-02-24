@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -129,10 +126,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, TaskError, find_dvs_by_name, vmware_argument_spec, wait_for_task
+    PyVmomi,
+    TaskError,
+    find_dvs_by_name,
+    vmware_argument_spec,
+    wait_for_task,
 )
 
 
@@ -140,7 +141,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
     """Class to manage Private VLANs on a Distributed Virtual Switch"""
 
     def __init__(self, module):
-        super(VMwareDvSwitchPvlans, self).__init__(module)
+        super().__init__(module)
         self.switch_name = self.module.params['switch']
         if self.module.params['primary_pvlans']:
             self.primary_pvlans = self.module.params['primary_pvlans']
@@ -154,7 +155,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
             self.secondary_pvlans = None
         self.dvs = find_dvs_by_name(self.content, self.switch_name)
         if self.dvs is None:
-            self.module.fail_json(msg="Failed to find DVS %s" % self.switch_name)
+            self.module.fail_json(msg=f"Failed to find DVS {self.switch_name}")
 
     def do_pvlan_sanity_checks(self):
         """Do sanity checks for primary and secondary PVLANs"""
@@ -168,7 +169,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                     count += 1
             if count > 1:
                 self.module.fail_json(
-                    msg="The primary PVLAN ID '%s' must be unique!" % primary_pvlan_id
+                    msg=f"The primary PVLAN ID '{primary_pvlan_id}' must be unique!"
                 )
         if self.secondary_pvlans:
             # Check if secondary PVLANs are unique
@@ -181,7 +182,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                         count += 1
                 if count > 1:
                     self.module.fail_json(
-                        msg="The secondary PVLAN ID '%s' must be unique!" % result[0]
+                        msg=f"The secondary PVLAN ID '{result[0]}' must be unique!"
                     )
             # Check if secondary PVLANs are already used as primary PVLANs
             for primary_vlan in self.primary_pvlans:
@@ -190,8 +191,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                     result = self.get_secondary_pvlan_options(secondary_pvlan)
                     if primary_pvlan_id == result[0]:
                         self.module.fail_json(
-                            msg="The secondary PVLAN ID '%s' is already used as a primary PVLAN!" %
-                            result[0]
+                            msg=f"The secondary PVLAN ID '{result[0]}' is already used as a primary PVLAN!"
                         )
             # Check if a primary PVLAN is present for every secondary PVLANs
             for secondary_pvlan in self.secondary_pvlans:
@@ -204,8 +204,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                         break
                 if not primary_pvlan_found:
                     self.module.fail_json(
-                        msg="The primary PVLAN ID '%s' isn't defined for the secondary PVLAN ID '%s'!" %
-                        (result[1], result[0])
+                        msg=f"The primary PVLAN ID '{result[1]}' isn't defined for the secondary PVLAN ID '{result[0]}'!"
                     )
 
     def ensure(self):
@@ -254,7 +253,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                             break
                     if not promiscuous_found:
                         changed = True
-                        changed_list_add.append('promiscuous (%s, %s)' % (primary_pvlan_id, primary_pvlan_id))
+                        changed_list_add.append(f'promiscuous ({primary_pvlan_id}, {primary_pvlan_id})')
                         pvlan_spec_list.append(
                             self.create_pvlan_config_spec(
                                 operation='add',
@@ -278,7 +277,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                                 if not other_found:
                                     changed = True
                                     changed_list_add.append(
-                                        '%s (%s, %s)' % (pvlan_type, primary_pvlan_id, secondary_pvlan_id)
+                                        f'{pvlan_type} ({primary_pvlan_id}, {secondary_pvlan_id})'
                                     )
                                     pvlan_spec_list.append(
                                         self.create_pvlan_config_spec(
@@ -301,7 +300,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                         if not promiscuous_found:
                             changed = True
                             changed_list_remove.append(
-                                'promiscuous (%s, %s)' % (pvlan_object.primaryVlanId, pvlan_object.secondaryVlanId)
+                                f'promiscuous ({pvlan_object.primaryVlanId}, {pvlan_object.secondaryVlanId})'
                             )
                             pvlan_spec_list.append(
                                 self.create_pvlan_config_spec(
@@ -324,9 +323,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                         if not other_found:
                             changed = True
                             changed_list_remove.append(
-                                '%s (%s, %s)' % (
-                                    pvlan_object.pvlanType, pvlan_object.primaryVlanId, pvlan_object.secondaryVlanId
-                                )
+                                f'{pvlan_object.pvlanType} ({pvlan_object.primaryVlanId}, {pvlan_object.secondaryVlanId})'
                             )
                             pvlan_spec_list.append(
                                 self.create_pvlan_config_spec(
@@ -339,9 +336,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                     else:
                         changed = True
                         changed_list_remove.append(
-                            '%s (%s, %s)' % (
-                                pvlan_object.pvlanType, pvlan_object.primaryVlanId, pvlan_object.secondaryVlanId
-                            )
+                            f'{pvlan_object.pvlanType} ({pvlan_object.primaryVlanId}, {pvlan_object.secondaryVlanId})'
                         )
                         pvlan_spec_list.append(
                             self.create_pvlan_config_spec(
@@ -423,7 +418,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
                     wait_for_task(task)
                 except TaskError as invalid_argument:
                     self.module.fail_json(
-                        msg="Failed to update DVS : %s" % to_native(invalid_argument)
+                        msg=f"Failed to update DVS : {to_native(invalid_argument)}"
                     )
         else:
             message = "PVLANs already configured properly"
@@ -464,7 +459,7 @@ class VMwareDvSwitchPvlans(PyVmomi):
         if pvlan_type is None:
             self.module.fail_json(msg="Please specify pvlan_type in secondary_pvlans options as it's a required parameter")
         elif pvlan_type not in supported_pvlan_types:
-            self.module.fail_json(msg="The specified PVLAN type '%s' isn't supported!" % pvlan_type)
+            self.module.fail_json(msg=f"The specified PVLAN type '{pvlan_type}' isn't supported!")
         return secondary_pvlan_id, primary_pvlan_id, pvlan_type
 
     @staticmethod
@@ -489,9 +484,9 @@ class VMwareDvSwitchPvlans(PyVmomi):
         elif operation == 'remove':
             changed_operation = 'removed'
         if self.module.check_mode:
-            changed_suffix = ' would be %s' % changed_operation
+            changed_suffix = f' would be {changed_operation}'
         else:
-            changed_suffix = ' %s' % changed_operation
+            changed_suffix = f' {changed_operation}'
         if len(changed_list) > 2:
             message = ', '.join(changed_list[:-1]) + ', and ' + str(changed_list[-1])
         elif len(changed_list) == 2:

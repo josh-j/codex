@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright, (c) 2022, Mario Lenz <m@riolenz.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -121,12 +118,12 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_obj
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_obj, vmware_argument_spec
 
 
 class CustomAttributeManager(PyVmomi):
     def __init__(self, module):
-        super(CustomAttributeManager, self).__init__(module)
+        super().__init__(module)
 
         if not self.is_vcenter():
             self.module.fail_json(msg="You have to connect to a vCenter server!")
@@ -149,7 +146,7 @@ class CustomAttributeManager(PyVmomi):
         self.obj = find_obj(self.content, [self.object_type], self.params['object_name'])
         if self.obj is None:
             module.fail_json(msg="Unable to manage custom attributes for non-existing"
-                                 " object %s." % self.object_name)
+                                 f" object {self.object_name}.")
 
         self.ca_list = self.params['custom_attributes'].copy()
 
@@ -161,7 +158,7 @@ class CustomAttributeManager(PyVmomi):
 
         for ca in self.ca_list:
             if 'key' not in ca:
-                self.module.fail_json(msg="Custom attribute %s does not exist for object type %s." % (ca['name'], self.params['object_type']))
+                self.module.fail_json(msg="Custom attribute {} does not exist for object type {}.".format(ca['name'], self.params['object_type']))
 
     def set_custom_attributes(self):
         changed = False

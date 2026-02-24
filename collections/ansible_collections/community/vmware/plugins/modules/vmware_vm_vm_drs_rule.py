@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -132,16 +129,20 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    PyVmomi, vmware_argument_spec, wait_for_task,
-    find_vm_by_id, find_cluster_by_name)
+    PyVmomi,
+    find_cluster_by_name,
+    find_vm_by_id,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class VmwareDrs(PyVmomi):
     def __init__(self, module):
-        super(VmwareDrs, self).__init__(module)
+        super().__init__(module)
         self.vm_list = module.params['vms']
         self.cluster_name = module.params['cluster_name']
         self.rule_name = module.params['drs_rule_name']
@@ -154,7 +155,7 @@ class VmwareDrs(PyVmomi):
         self.cluster_obj = find_cluster_by_name(content=self.content,
                                                 cluster_name=self.cluster_name)
         if self.cluster_obj is None:
-            self.module.fail_json(msg="Failed to find the cluster %s" % self.cluster_name)
+            self.module.fail_json(msg=f"Failed to find the cluster {self.cluster_name}")
         # Sanity check for virtual machines
         self.vm_obj_list = []
         if self.state == 'present':
@@ -179,9 +180,8 @@ class VmwareDrs(PyVmomi):
             vm_obj = find_vm_by_id(content=self.content, vm_id=vm_name,
                                    vm_id_type='vm_name', cluster=self.cluster_obj)
             if vm_obj is None:
-                self.module.fail_json(msg="Failed to find the virtual machine %s "
-                                          "in the given cluster %s" % (vm_name,
-                                                                       self.cluster_name))
+                self.module.fail_json(msg=f"Failed to find the virtual machine {vm_name} "
+                                          f"in the given cluster {self.cluster_name}")
             vm_obj_list.append(vm_obj)
         return vm_obj_list
 
@@ -341,13 +341,13 @@ class VmwareDrs(PyVmomi):
                     changed, result = wait_for_task(task)
                 else:
                     changed = True
-                    result = 'Rule %s will be deleted' % self.rule_name
+                    result = f'Rule {self.rule_name} will be deleted'
             except vmodl.fault.InvalidRequest as e:
                 result = to_native(e.msg)
             except Exception as e:
                 result = to_native(e)
         else:
-            result = 'No rule named %s exists' % self.rule_name
+            result = f'No rule named {self.rule_name} exists'
         return changed, result
 
 
@@ -382,21 +382,21 @@ def main():
             results['changed'] = changed
         else:
             results['failed'] = True
-            results['msg'] = "Failed to create DRS rule %s" % vm_drs.rule_name
+            results['msg'] = f"Failed to create DRS rule {vm_drs.rule_name}"
         results['result'] = result
     elif state == 'absent':
         # Delete Rule
         changed, result = vm_drs.delete()
         if changed:
             results['changed'] = changed
-            results['msg'] = "DRS rule %s deleted successfully." % vm_drs.rule_name
+            results['msg'] = f"DRS rule {vm_drs.rule_name} deleted successfully."
         else:
             if "No rule named" in result:
                 results['msg'] = result
                 module.exit_json(**results)
 
             results['failed'] = True
-            results['msg'] = "Failed to delete DRS rule %s" % vm_drs.rule_name
+            results['msg'] = f"Failed to delete DRS rule {vm_drs.rule_name}"
         results['result'] = result
 
     if results['changed']:

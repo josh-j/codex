@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import unittest
+from typing import Any
 
 CORE_FILTER_DIR = (
     pathlib.Path(__file__).resolve().parents[2]
@@ -15,8 +16,8 @@ CORE_FILTER_DIR = (
 
 def _load_module(module_name, filename):
     spec = importlib.util.spec_from_file_location(module_name, CORE_FILTER_DIR / filename)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
@@ -39,6 +40,8 @@ def _build_stig_export_payload(stig_mod, alerts_mod, rows, target_type, host="ho
 
 
 class StigExportContractTests(unittest.TestCase):
+    alerts_mod: Any
+    stig_mod: Any
     @classmethod
     def setUpClass(cls):
         cls.stig_mod = _load_module("core_stig_filter", "stig.py")

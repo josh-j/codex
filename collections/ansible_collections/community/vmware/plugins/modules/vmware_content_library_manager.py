@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, Pavan Bidkar <pbidkar@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -158,14 +155,15 @@ content_library_info:
 '''
 
 import uuid
+
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi
+from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 HAS_VAUTOMATION_PYTHON_SDK = False
 try:
-    from com.vmware.content_client import LibraryModel
     from com.vmware.content.library_client import StorageBacking, SubscriptionInfo
+    from com.vmware.content_client import LibraryModel
     from com.vmware.vapi.std.errors_client import ResourceInaccessible
     HAS_VAUTOMATION_PYTHON_SDK = True
 except ImportError:
@@ -175,7 +173,7 @@ except ImportError:
 class VmwareContentLibCreate(VmwareRestClient):
     def __init__(self, module):
         """Constructor."""
-        super(VmwareContentLibCreate, self).__init__(module)
+        super().__init__(module)
         self.content_service = self.api_client
         self.local_libraries = dict()
         # Track all existing library names, to  block update/delete if duplicates exist
@@ -248,7 +246,7 @@ class VmwareContentLibCreate(VmwareRestClient):
 
     def fail_when_duplicated(self):
         if self.existing_library_names.count(self.library_name) > 1:
-            self.module.fail_json(msg="Operation cannot continue, library [%s] is not unique" % self.library_name)
+            self.module.fail_json(msg=f"Operation cannot continue, library [{self.library_name}] is not unique")
 
     def state_exit_unchanged(self):
         """
@@ -287,12 +285,12 @@ class VmwareContentLibCreate(VmwareRestClient):
                     )
                     action = "created"
             except ResourceInaccessible as e:
-                message = ("vCenter Failed to make connection to %s with exception: %s "
-                           "If using HTTPS, check that the SSL thumbprint is valid" % (self.subscription_url, str(e)))
+                message = (f"vCenter Failed to make connection to {self.subscription_url} with exception: {e!s} "
+                           "If using HTTPS, check that the SSL thumbprint is valid")
                 self.module.fail_json(msg=message)
 
         content_library_info = dict(
-            msg="Content Library '%s' %s." % (spec.name, action),
+            msg=f"Content Library '{spec.name}' {action}.",
             library_id=library_id,
             library_description=self.library_description,
             library_type=spec.type,
@@ -313,7 +311,7 @@ class VmwareContentLibCreate(VmwareRestClient):
         # Find the datastore by the given datastore name
         datastore_id = self.pyv.find_datastore_by_name(datastore_name=self.datastore_name)
         if not datastore_id:
-            self.module.fail_json(msg="Failed to find the datastore %s" % self.datastore_name)
+            self.module.fail_json(msg=f"Failed to find the datastore {self.datastore_name}")
         self.datastore_id = datastore_id._moId
         # Build the storage backing for the library to be created
         storage_backings = []
@@ -351,8 +349,7 @@ class VmwareContentLibCreate(VmwareRestClient):
         # Ensure library types are consistent
         existing_library_type = self.local_libraries[self.library_name]['lib_type'].lower()
         if existing_library_type != self.library_type:
-            self.module.fail_json(msg="Library [%s] is of type %s, cannot be changed to %s" %
-                                  (self.library_name, existing_library_type, self.library_type))
+            self.module.fail_json(msg=f"Library [{self.library_name}] is of type {existing_library_type}, cannot be changed to {self.library_type}")
 
         # Compare changeable subscribed attributes
         if self.library_type == "subscribed":
@@ -383,7 +380,7 @@ class VmwareContentLibCreate(VmwareRestClient):
             library_update_spec.name = self.library_name
             self.create_update(spec=library_update_spec, library_id=library_id, update=True)
 
-        content_library_info = dict(msg="Content Library %s is unchanged." % self.library_name, library_id=library_id)
+        content_library_info = dict(msg=f"Content Library {self.library_name} is unchanged.", library_id=library_id)
         self.module.exit_json(changed=False,
                               content_library_info=dict(msg=content_library_info, library_id=library_id))
 
@@ -404,7 +401,7 @@ class VmwareContentLibCreate(VmwareRestClient):
         self.module.exit_json(
             changed=True,
             content_library_info=dict(
-                msg="Content Library '%s' %s." % (self.library_name, action),
+                msg=f"Content Library '{self.library_name}' {action}.",
                 library_id=library_id
             )
         )

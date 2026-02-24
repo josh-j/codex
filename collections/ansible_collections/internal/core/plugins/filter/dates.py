@@ -7,17 +7,28 @@ try:
     from ansible_collections.internal.core.plugins.module_utils.date_utils import (
         safe_iso_to_epoch,
     )
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        safe_list,
+    )
 except ImportError:
     import importlib.util
     from pathlib import Path
 
-    _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "date_utils.py"
-    _spec = importlib.util.spec_from_file_location("internal_core_date_utils", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
+    _core_path = Path(__file__).resolve().parents[1] / "module_utils"
+    _date_path = _core_path / "date_utils.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_date_utils", _date_path)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _parse_iso_epoch = _mod.parse_iso_epoch
     safe_iso_to_epoch = _mod.safe_iso_to_epoch
+
+    _prim_path = _core_path / "reporting_primitives.py"
+    _prim_spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _prim_path)
+    assert _prim_spec is not None and _prim_spec.loader is not None
+    _prim_mod = importlib.util.module_from_spec(_prim_spec)
+    _prim_spec.loader.exec_module(_prim_mod)
+    safe_list = _prim_mod.safe_list
 
 
 def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_time"):
@@ -39,7 +50,9 @@ def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_t
     threshold_secs = int(age_threshold_days) * 86400
     results = []
 
-    for item in items:
+    for item in safe_list(items):
+        if not isinstance(item, dict):
+            continue
         epoch = _parse_iso_epoch(item.get(date_key, ""))
         if epoch is None:
             continue

@@ -21,24 +21,24 @@
 
 {# --- 1. ADVANCED SETTINGS --- #}
 {% for rule in vsphere_stig_vm_settings | default([]) %}
-  {% set ns = namespace(status='pass', checktext='Value matches expected') %}
-  {% set current = _config.get(rule.key, 'MISSING') %}
+     {% set ns = namespace(status='pass', checktext='Value matches expected') %}
+     {% set current = _config.get(rule.key, 'MISSING') %}
 
-  {% if rule.value == 'ABSENT' %}
-    {% if current != 'MISSING' and current | string | lower == 'true' %}
-      {% set ns.status    = 'failed' %}
-      {% set ns.checktext = 'Key is TRUE (should be absent or false)' %}
-    {% else %}
-      {% set ns.checktext = 'Key is absent or false' %}
-    {% endif %}
-  {% else %}
-    {% if current | string | lower != rule.value | string | lower %}
-      {% set ns.status    = 'failed' %}
-      {% set ns.checktext = "Expected '" ~ rule.value ~ "', found '" ~ current ~ "'" %}
-    {% endif %}
-  {% endif %}
+     {% if rule.value == 'ABSENT' %}
+         {% if current != 'MISSING' and current | string | lower == 'true' %}
+             {% set ns.status    = 'failed' %}
+             {% set ns.checktext = 'Key is TRUE (should be absent or false)' %}
+         {% else %}
+             {% set ns.checktext = 'Key is absent or false' %}
+         {% endif %}
+     {% else %}
+         {% if current | string | lower != rule.value | string | lower %}
+             {% set ns.status    = 'failed' %}
+             {% set ns.checktext = "Expected '" ~ rule.value ~ "', found '" ~ current ~ "'" %}
+         {% endif %}
+     {% endif %}
 
-  {% set _ = res.append({
+     {% set _ = res.append({
     "id":       rule.id,
     "title":    rule.title,
     "status":   ns.status,

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2023, Pure Storage, Inc.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -192,15 +189,20 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, find_datastore_by_name, find_obj, wait_for_task
-from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import SMS
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    find_datastore_by_name,
+    find_obj,
+    vmware_argument_spec,
+    wait_for_task,
+)
+from ansible_collections.community.vmware.plugins.module_utils.vmware_sms import SMS
 
 
 class VMwareHostDatastore(SMS):
     def __init__(self, module):
-        super(VMwareHostDatastore, self).__init__(module)
+        super().__init__(module)
 
         self.datastore_name = module.params['datastore_name']
         self.datastore_type = module.params['datastore_type']
@@ -220,7 +222,7 @@ class VMwareHostDatastore(SMS):
                 self.module.fail_json(msg="esxi_hostname is mandatory with a vcenter")
             self.esxi = self.find_hostsystem_by_name(self.esxi_hostname)
             if self.esxi is None:
-                self.module.fail_json(msg="Failed to find ESXi hostname %s" % self.esxi_hostname)
+                self.module.fail_json(msg=f"Failed to find ESXi hostname {self.esxi_hostname}")
         else:
             self.esxi = find_obj(self.content, [vim.HostSystem], None)
 
@@ -262,7 +264,7 @@ class VMwareHostDatastore(SMS):
                     cnf_mng.datastoreSystem.ExpandVmfsDatastore(datastore=expand_datastore_obj,
                                                                 spec=vmfs_ds_options[0].spec)
                 except Exception as e:
-                    self.module.fail_json(msg="%s can not expand the datastore: %s" % (to_native(e.msg), self.datastore_name))
+                    self.module.fail_json(msg=f"{to_native(e.msg)} can not expand the datastore: {self.datastore_name}")
 
             self.module.exit_json(changed=True)
 
@@ -291,16 +293,16 @@ class VMwareHostDatastore(SMS):
     def umount_datastore_host(self):
         ds = find_datastore_by_name(self.content, self.datastore_name)
         if not ds:
-            self.module.fail_json(msg="No datastore found with name %s" % self.datastore_name)
+            self.module.fail_json(msg=f"No datastore found with name {self.datastore_name}")
         if self.module.check_mode is False:
-            error_message_umount = "Cannot umount datastore %s from host %s" % (self.datastore_name, self.esxi.name)
+            error_message_umount = f"Cannot umount datastore {self.datastore_name} from host {self.esxi.name}"
             try:
                 self.esxi.configManager.datastoreSystem.RemoveDatastore(ds)
             except (vim.fault.NotFound, vim.fault.HostConfigFault, vim.fault.ResourceInUse) as fault:
-                self.module.fail_json(msg="%s: %s" % (error_message_umount, to_native(fault.msg)))
+                self.module.fail_json(msg=f"{error_message_umount}: {to_native(fault.msg)}")
             except Exception as e:
-                self.module.fail_json(msg="%s: %s" % (error_message_umount, to_native(e)))
-        self.module.exit_json(changed=True, result="Datastore %s on host %s" % (self.datastore_name, self.esxi.name))
+                self.module.fail_json(msg=f"{error_message_umount}: {to_native(e)}")
+        self.module.exit_json(changed=True, result=f"Datastore {self.datastore_name} on host {self.esxi.name}")
 
     def mount_datastore_host(self):
         if self.datastore_type == 'nfs' or self.datastore_type == 'nfs41':
@@ -329,7 +331,7 @@ class VMwareHostDatastore(SMS):
                 mnt_specs.accessMode = "readOnly"
             else:
                 mnt_specs.accessMode = "readWrite"
-            error_message_mount = "Cannot mount datastore %s on host %s" % (self.datastore_name, self.esxi.name)
+            error_message_mount = f"Cannot mount datastore {self.datastore_name} on host {self.esxi.name}"
             try:
                 ds = self.esxi.configManager.datastoreSystem.CreateNasDatastore(mnt_specs)
                 if not ds:
@@ -338,10 +340,10 @@ class VMwareHostDatastore(SMS):
                     vim.fault.AlreadyExists, vim.fault.HostConfigFault,
                     vmodl.fault.InvalidArgument, vim.fault.NoVirtualNic,
                     vim.fault.NoGateway) as fault:
-                self.module.fail_json(msg="%s: %s" % (error_message_mount, to_native(fault.msg)))
+                self.module.fail_json(msg=f"{error_message_mount}: {to_native(fault.msg)}")
             except Exception as e:
-                self.module.fail_json(msg="%s : %s" % (error_message_mount, to_native(e)))
-        self.module.exit_json(changed=True, result="Datastore %s on host %s" % (self.datastore_name, self.esxi.name))
+                self.module.fail_json(msg=f"{error_message_mount} : {to_native(e)}")
+        self.module.exit_json(changed=True, result=f"Datastore {self.datastore_name} on host {self.esxi.name}")
 
     def mount_vmfs_datastore_host(self):
         if self.module.check_mode is False:
@@ -349,9 +351,9 @@ class VMwareHostDatastore(SMS):
             host_ds_system = self.esxi.configManager.datastoreSystem
             ds_system = vim.host.DatastoreSystem
             if self.vmfs_device_name in self.get_used_disks_names():
-                error_message_used_disk = "VMFS disk %s already in use" % self.vmfs_device_name
-                self.module.fail_json(msg="%s" % error_message_used_disk)
-            error_message_mount = "Cannot mount datastore %s on host %s" % (self.datastore_name, self.esxi.name)
+                error_message_used_disk = f"VMFS disk {self.vmfs_device_name} already in use"
+                self.module.fail_json(msg=f"{error_message_used_disk}")
+            error_message_mount = f"Cannot mount datastore {self.datastore_name} on host {self.esxi.name}"
             try:
                 if self.resignature:
                     storage_system = self.esxi.configManager.storageSystem
@@ -376,10 +378,10 @@ class VMwareHostDatastore(SMS):
                         vmfs_ds_options[0].spec)
             except (vim.fault.NotFound, vim.fault.DuplicateName,
                     vim.fault.HostConfigFault, vmodl.fault.InvalidArgument) as fault:
-                self.module.fail_json(msg="%s : %s" % (error_message_mount, to_native(fault.msg)))
+                self.module.fail_json(msg=f"{error_message_mount} : {to_native(fault.msg)}")
             except Exception as e:
-                self.module.fail_json(msg="%s : %s" % (error_message_mount, to_native(e)))
-        self.module.exit_json(changed=True, result="Datastore %s on host %s" % (self.datastore_name, self.esxi.name))
+                self.module.fail_json(msg=f"{error_message_mount} : {to_native(e)}")
+        self.module.exit_json(changed=True, result=f"Datastore {self.datastore_name} on host {self.esxi.name}")
 
     def mount_vvol_datastore_host(self):
         if self.module.check_mode is False:
@@ -392,8 +394,8 @@ class VMwareHostDatastore(SMS):
                     provider = p
                     break
             if provider is None:
-                error_message_provider = "VASA provider %s not found" % self.vasa_provider_name
-                self.module.fail_json(msg="%s" % error_message_provider)
+                error_message_provider = f"VASA provider {self.vasa_provider_name} not found"
+                self.module.fail_json(msg=f"{error_message_provider}")
 
             container = None
             for sc in container_result.storageContainer:
@@ -401,17 +403,17 @@ class VMwareHostDatastore(SMS):
                     container = sc
                     break
             if container is None:
-                error_message_container = "vVol container for provider %s not found" % provider.uid
-                self.module.fail_json(msg="%s" % error_message_container)
+                error_message_container = f"vVol container for provider {provider.uid} not found"
+                self.module.fail_json(msg=f"{error_message_container}")
 
             vvol_spec = vim.HostDatastoreSystem.VvolDatastoreSpec(name=self.datastore_name, scId=container.uuid)
             host_ds_system = self.esxi.configManager.datastoreSystem
-            error_message_mount = "Cannot mount datastore %s on host %s" % (self.datastore_name, self.esxi.name)
+            error_message_mount = f"Cannot mount datastore {self.datastore_name} on host {self.esxi.name}"
             try:
                 host_ds_system.CreateVvolDatastore(vvol_spec)
             except Exception as e:
-                self.module.fail_json(msg="%s : %s" % (error_message_mount, to_native(e)))
-        self.module.exit_json(changed=True, result="Datastore %s on host %s" % (self.datastore_name, self.esxi.name))
+                self.module.fail_json(msg=f"{error_message_mount} : {to_native(e)}")
+        self.module.exit_json(changed=True, result=f"Datastore {self.datastore_name} on host {self.esxi.name}")
 
 
 def main():

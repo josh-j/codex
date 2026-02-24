@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2017, Philippe Dellaert <philippe@dellaert.org>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -129,14 +126,18 @@ instance:
 import datetime
 import time
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, gather_vm_facts, vmware_argument_spec
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    gather_vm_facts,
+    vmware_argument_spec,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
 
     def gather_facts(self, vm):
         return gather_vm_facts(self.content, vm)
@@ -154,7 +155,7 @@ class PyVmomiHelper(PyVmomi):
             time.sleep(5)
 
         if not tools_running:
-            return {'failed': True, 'msg': 'VMware tools either not present or not running after {0} seconds'.format(timeout.total_seconds())}
+            return {'failed': True, 'msg': f'VMware tools either not present or not running after {timeout.total_seconds()} seconds'}
 
 
 def main():
@@ -187,7 +188,7 @@ def main():
 
     if not vm:
         vm_id = module.params.get('name') or module.params.get('uuid') or module.params.get('moid')
-        module.fail_json(msg="Unable to wait for VMware tools for non-existing VM '%s'." % vm_id)
+        module.fail_json(msg=f"Unable to wait for VMware tools for non-existing VM '{vm_id}'.")
 
     timeout = datetime.timedelta(seconds=module.params['timeout'])
 
@@ -196,7 +197,7 @@ def main():
         result = pyv.wait_for_tools(vm, timeout)
     except Exception as e:
         module.fail_json(msg="Waiting for VMware tools failed with"
-                             " exception: {0:s}".format(to_native(e)))
+                             f" exception: {to_native(e):s}")
 
     if result['failed']:
         module.fail_json(**result)

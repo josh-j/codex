@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -183,16 +180,16 @@ try:
 except ImportError:
     HAS_PYVMOMI = False
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_obj
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, find_obj, vmware_argument_spec
 
 
 class VmwareHostSnmp(PyVmomi):
     """Manage SNMP configuration for an ESXi host system"""
 
     def __init__(self, module):
-        super(VmwareHostSnmp, self).__init__(module)
+        super().__init__(module)
         self.results = {"changed": False}
         self.changed = False
         self.hosts = None
@@ -208,7 +205,7 @@ class VmwareHostSnmp(PyVmomi):
                 if cluster_name:
                     self.hosts = self.get_all_host_objs(cluster_name=cluster_name)
                     if self.hosts is None:
-                        self.module.fail_json(msg="Failed to find host system in cluster %s." % cluster_name)
+                        self.module.fail_json(msg=f"Failed to find host system in cluster {cluster_name}.")
                 if esxi_hostname:
                     self.hosts = self.get_all_host_objs(esxi_host_name=esxi_hostname)
                     if self.hosts is None:
@@ -333,12 +330,12 @@ class VmwareHostSnmp(PyVmomi):
                                 if trap_target.hostName == dest_hostname:
                                     if trap_target.port != dest_port or trap_target.community != dest_community:
                                         changed = True
-                                        changed_list.append("trap target '%s'" % dest_hostname)
+                                        changed_list.append(f"trap target '{dest_hostname}'")
                                     trap_target_found = True
                                     break
                             if not trap_target_found:
                                 changed = True
-                                changed_list.append("trap target '%s'" % dest_hostname)
+                                changed_list.append(f"trap target '{dest_hostname}'")
                             # Build destination and add to temp target list
                             destination = self.build_destination(dest_hostname, dest_port, dest_community)
                             temp_desired_targets.append(destination)
@@ -351,7 +348,7 @@ class VmwareHostSnmp(PyVmomi):
                                     break
                             if not target_found:
                                 changed = True
-                                changed_list.append("trap target '%s'" % trap_target.hostName)
+                                changed_list.append(f"trap target '{trap_target.hostName}'")
                         # Configure trap targets if something has changed
                         if changed:
                             self.results[host.name]['trap_targets_previous'] = self.get_previous_targets(snmp_config_spec.trapTargets)
@@ -467,11 +464,11 @@ class VmwareHostSnmp(PyVmomi):
                         snmp_system.ReconfigureSnmpAgent(snmp_config_spec)
                     except vim.fault.NotFound as not_found:
                         self.module.fail_json(
-                            msg="Not found : %s" % to_native(not_found)
+                            msg=f"Not found : {to_native(not_found)}"
                         )
                     except vim.fault.InsufficientResourcesFault as insufficient_resources:
                         self.module.fail_json(
-                            msg="Insufficient resources : %s" % to_native(insufficient_resources)
+                            msg=f"Insufficient resources : {to_native(insufficient_resources)}"
                         )
             else:
                 message = "SNMP already configured properly"
@@ -490,11 +487,11 @@ class VmwareHostSnmp(PyVmomi):
                         message = message + "a test trap was sent"
                     except vim.fault.NotFound as not_found:
                         self.module.fail_json(
-                            msg="Error during trap test : Not found : %s" % to_native(not_found)
+                            msg=f"Error during trap test : Not found : {to_native(not_found)}"
                         )
                     except vim.fault.InsufficientResourcesFault as insufficient_resources:
                         self.module.fail_json(
-                            msg="Error during trap test : Insufficient resources : %s" % to_native(insufficient_resources)
+                            msg=f"Error during trap test : Insufficient resources : {to_native(insufficient_resources)}"
                         )
             self.changed = any([self.changed, changed])
             self.results[host.name]['changed'] = changed

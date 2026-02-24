@@ -4,8 +4,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -91,15 +89,15 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmwareKernelManager(PyVmomi):
     def __init__(self, module):
         self.module = module
-        super(VmwareKernelManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -117,7 +115,7 @@ class VmwareKernelManager(PyVmomi):
         try:
             return host_kernel_manager.QueryConfiguredModuleOptionString(self.kernel_module_name)
         except vim.fault.NotFound as kernel_fault:
-            self.module.fail_json(msg="Failed to find kernel module on host '%s'. More information: %s" % (host.name, to_native(kernel_fault.msg)))
+            self.module.fail_json(msg=f"Failed to find kernel module on host '{host.name}'. More information: {to_native(kernel_fault.msg)}")
 
     # configure the provided kernel module with the specified options
     def apply_kernel_module_option(self, host, kmod_name, kmod_option):
@@ -128,9 +126,9 @@ class VmwareKernelManager(PyVmomi):
                 if not self.module.check_mode:
                     host_kernel_manager.UpdateModuleOptionString(kmod_name, kmod_option)
             except vim.fault.NotFound as kernel_fault:
-                self.module.fail_json(msg="Failed to find kernel module on host '%s'. More information: %s" % (host.name, to_native(kernel_fault)))
+                self.module.fail_json(msg=f"Failed to find kernel module on host '{host.name}'. More information: {to_native(kernel_fault)}")
             except Exception as kernel_fault:
-                self.module.fail_json(msg="Failed to configure kernel module for host '%s' due to: %s" % (host.name, to_native(kernel_fault)))
+                self.module.fail_json(msg=f"Failed to configure kernel module for host '{host.name}' due to: {to_native(kernel_fault)}")
 
     # evaluate our current configuration against desired options and save results
     def check_host_configuration_state(self):
@@ -167,11 +165,11 @@ class VmwareKernelManager(PyVmomi):
                     self.results[host.name]['original_options'] = original_options
 
                 else:
-                    msg = "No kernel module manager found on host %s - impossible to configure." % host.name
+                    msg = f"No kernel module manager found on host {host.name} - impossible to configure."
                     self.results[host.name]['changed'] = changed
                     self.results[host.name]['msg'] = msg
             else:
-                msg = "Host %s is disconnected and cannot be changed." % host.name
+                msg = f"Host {host.name} is disconnected and cannot be changed."
                 self.results[host.name]['changed'] = changed
                 self.results[host.name]['msg'] = msg
 

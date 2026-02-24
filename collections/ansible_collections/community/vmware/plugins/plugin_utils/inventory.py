@@ -5,13 +5,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
-import ssl
 import atexit
 import base64
+import ssl
 
 try:
     # requests is required for exception handling of the ConnectionError
@@ -23,9 +21,8 @@ except ImportError:
 
 try:
     from pyVim import connect
-    from pyVmomi import vim, vmodl
+    from pyVmomi import Iso8601, vim, vmodl
     from pyVmomi.VmomiSupport import DataObject
-    from pyVmomi import Iso8601
 
     HAS_PYVMOMI = True
 except ImportError:
@@ -39,8 +36,8 @@ except ImportError:
     HAS_VSPHERE = False
 
 from ansible.errors import AnsibleError, AnsibleParserError
+from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.common.dict_transformations import _snake_to_camel
-from ansible.module_utils._text import to_text, to_native
 
 
 class BaseVMwareInventory:
@@ -94,9 +91,9 @@ class BaseVMwareInventory:
             err = error
 
         if client is None:
-            msg = "Failed to login to %s using %s" % (server, self.username)
+            msg = f"Failed to login to {server} using {self.username}"
             if err:
-                msg += " due to : %s" % to_native(err)
+                msg += f" due to : {to_native(err)}"
             raise AnsibleError(msg)
         return client
 
@@ -129,36 +126,31 @@ class BaseVMwareInventory:
 
         except vim.fault.InvalidLogin as e:
             raise AnsibleParserError(
-                "Unable to log on to vCenter or ESXi API at %s:%s as %s: %s"
-                % (self.hostname, self.port, self.username, e.msg)
+                f"Unable to log on to vCenter or ESXi API at {self.hostname}:{self.port} as {self.username}: {e.msg}"
             )
         except vim.fault.NoPermission as e:
             raise AnsibleParserError(
-                "User %s does not have required permission"
-                " to log on to vCenter or ESXi API at %s:%s : %s"
-                % (self.username, self.hostname, self.port, e.msg)
+                f"User {self.username} does not have required permission"
+                f" to log on to vCenter or ESXi API at {self.hostname}:{self.port} : {e.msg}"
             )
         except (requests.ConnectionError, ssl.SSLError) as e:
             raise AnsibleParserError(
-                "Unable to connect to vCenter or ESXi API at %s on TCP/%s: %s"
-                % (self.hostname, self.port, e)
+                f"Unable to connect to vCenter or ESXi API at {self.hostname} on TCP/{self.port}: {e}"
             )
         except vmodl.fault.InvalidRequest as e:
             # Request is malformed
             raise AnsibleParserError(
-                "Failed to get a response from server %s:%s as "
-                "request is malformed: %s" % (self.hostname, self.port, e.msg)
+                f"Failed to get a response from server {self.hostname}:{self.port} as "
+                f"request is malformed: {e.msg}"
             )
         except Exception as e:
             raise AnsibleParserError(
-                "Unknown error while connecting to vCenter or ESXi API at %s:%s : %s"
-                % (self.hostname, self.port, e)
+                f"Unknown error while connecting to vCenter or ESXi API at {self.hostname}:{self.port} : {e}"
             )
 
         if service_instance is None:
             raise AnsibleParserError(
-                "Unknown error while connecting to vCenter or ESXi API at %s:%s"
-                % (self.hostname, self.port)
+                f"Unknown error while connecting to vCenter or ESXi API at {self.hostname}:{self.port}"
             )
 
         atexit.register(connect.Disconnect, service_instance)
@@ -189,8 +181,7 @@ class BaseVMwareInventory:
             if requests_major_minor < required_version:
                 raise AnsibleParserError(
                     "'requests' library version should"
-                    " be >= %s, found: %s."
-                    % (
+                    " be >= {}, found: {}.".format(
                         ".".join([str(w) for w in required_version]),
                         requests.__version__,
                     )
@@ -277,7 +268,7 @@ class BaseVMwareInventory:
                 for fil in filter_list:
                     if fil not in found_filters:
                         _handle_error(
-                            "Unable to find %s %s" % (type_to_name_map[typ], fil)
+                            f"Unable to find {type_to_name_map[typ]} {fil}"
                         )
 
                 return objs
@@ -340,9 +331,9 @@ class BaseVMwareInventory:
         try:
             return self.content.propertyCollector.RetrieveContents([filter_spec])
         except vmodl.query.InvalidProperty as err:
-            _handle_error("Invalid property name: %s" % err.name)
+            _handle_error(f"Invalid property name: {err.name}")
         except Exception as err:  # pylint: disable=broad-except
-            _handle_error("Couldn't retrieve contents from host: %s" % to_native(err))
+            _handle_error(f"Couldn't retrieve contents from host: {to_native(err)}")
         return []
 
 

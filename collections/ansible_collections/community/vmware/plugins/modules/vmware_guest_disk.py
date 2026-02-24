@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -505,22 +502,30 @@ disk_changes:
 '''
 
 import re
+
 try:
     from pyVmomi import vim
 except ImportError:
     pass
 
 from random import randint
-from ansible.module_utils.basic import AnsibleModule
+
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, \
-    wait_for_task, find_obj, get_all_objs, get_parent_datacenter
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_obj,
+    get_all_objs,
+    get_parent_datacenter,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.device_helper = PyVmomiDeviceHelper(self.module)
         self.desired_disks = self.params['disk']  # Match with vmware_guest parameter
         self.vm = None
@@ -593,12 +598,12 @@ class PyVmomiHelper(PyVmomi):
             task = self.vm.ReconfigVM_Task(spec=config_spec)
             changed, results = wait_for_task(task)
         except vim.fault.InvalidDeviceSpec as invalid_device_spec:
-            self.module.fail_json(msg="Failed to manage '%s' on given virtual machine due to invalid"
-                                      " device spec : %s" % (device_type, to_native(invalid_device_spec.msg)),
+            self.module.fail_json(msg=f"Failed to manage '{device_type}' on given virtual machine due to invalid"
+                                      f" device spec : {to_native(invalid_device_spec.msg)}",
                                       details="Please check ESXi server logs for more details.")
         except vim.fault.RestrictedVersion as e:
             self.module.fail_json(msg="Failed to reconfigure virtual machine due to"
-                                      " product versioning restrictions: %s" % to_native(e.msg))
+                                      f" product versioning restrictions: {to_native(e.msg)}")
 
         return changed, results
 
@@ -636,8 +641,8 @@ class PyVmomiHelper(PyVmomi):
         """
         sharing = disk.get('sharing')
         if sharing and disk_type != 'eagerzeroedthick' and disk_type != 'rdm':
-            self.module.fail_json(msg="Invalid 'sharing' mode specified for disk index [%s]. 'disk_mode'"
-                                      " must be 'eagerzeroedthick' or 'rdm' when 'sharing'." % disk_index)
+            self.module.fail_json(msg=f"Invalid 'sharing' mode specified for disk index [{disk_index}]. 'disk_mode'"
+                                      " must be 'eagerzeroedthick' or 'rdm' when 'sharing'.")
         if sharing:
             sharing_mode = 'sharingMultiWriter'
         else:
@@ -690,9 +695,9 @@ class PyVmomiHelper(PyVmomi):
                 ctl_changed = True
                 self.config_spec.deviceChange.append(ctl_spec)
             elif not ctl_found and disk['state'] == 'absent':
-                self.module.fail_json(msg="Not found 'controller_type': '%s', 'controller_number': '%s', so can not"
+                self.module.fail_json(msg="Not found 'controller_type': '{}', 'controller_number': '{}', so can not"
                                           " remove this disk, please make sure 'controller_type' and"
-                                          " 'controller_number' are correct." % (disk['controller_type'], disk['controller_number']))
+                                          " 'controller_number' are correct.".format(disk['controller_type'], disk['controller_number']))
         if ctl_changed:
             self.reconfigure_vm(self.config_spec, 'Disk Controller')
             self.config_spec = vim.vm.ConfigSpec()
@@ -792,7 +797,7 @@ class PyVmomiHelper(PyVmomi):
                                 # If datastore is not configured or backing filename is not set, default is VM datastore
                                 if disk['datastore'] is not None and disk['datastore'].name != vm_files_datastore:
                                     disk_spec.device.backing.datastore = disk['datastore']
-                                    disk_spec.device.backing.fileName = "[%s] %s/%s_%s_%s_%s.vmdk" % (disk['datastore'].name,
+                                    disk_spec.device.backing.fileName = "[{}] {}/{}_{}_{}_{}.vmdk".format(disk['datastore'].name,
                                                                                                       self.vm.name,
                                                                                                       self.vm.name,
                                                                                                       device.key,
@@ -827,8 +832,7 @@ class PyVmomiHelper(PyVmomi):
         """
         disks_data = list()
         if not self.desired_disks:
-            self.module.exit_json(changed=False, msg="No disks provided for virtual machine '%s' for management."
-                                                     % self.vm.name)
+            self.module.exit_json(changed=False, msg=f"No disks provided for virtual machine '{self.vm.name}' for management.")
 
         for disk_index, disk in enumerate(self.desired_disks):
             # Initialize default value for disk
@@ -870,8 +874,7 @@ class PyVmomiHelper(PyVmomi):
             elif disk['controller_type'] is not None and disk['scsi_type'] is None:
                 current_disk['controller_type'] = disk['controller_type']
             else:
-                self.module.fail_json(msg="Please specify either 'scsi_type' or 'controller_type' for disk index [%s]."
-                                          % disk_index)
+                self.module.fail_json(msg=f"Please specify either 'scsi_type' or 'controller_type' for disk index [{disk_index}].")
             if current_disk['controller_type'] == 'ide':
                 if self.vm.runtime.powerState != vim.VirtualMachinePowerState.poweredOff:
                     self.module.fail_json(msg="Please make sure VM is in powered off state before doing IDE disk"
@@ -884,56 +887,51 @@ class PyVmomiHelper(PyVmomi):
                 temp_disk_controller = disk['controller_number']
             else:
                 self.module.fail_json(msg="Please specify 'scsi_controller' with 'scsi_type', or 'controller_number'"
-                                          " with 'controller_type' under disk parameter for disk index [%s], which is"
-                                          " required while creating or configuring disk." % disk_index)
+                                          f" with 'controller_type' under disk parameter for disk index [{disk_index}], which is"
+                                          " required while creating or configuring disk.")
             try:
                 disk_controller = int(temp_disk_controller)
             except ValueError:
-                self.module.fail_json(msg="Invalid controller bus number '%s' specified"
-                                          " for disk index [%s]" % (temp_disk_controller, disk_index))
+                self.module.fail_json(msg=f"Invalid controller bus number '{temp_disk_controller}' specified"
+                                          f" for disk index [{disk_index}]")
             if current_disk['controller_type'] == 'ide' and disk_controller not in [0, 1]:
-                self.module.fail_json(msg="Invalid controller bus number '%s' specified"
-                                          " for disk index [%s], valid value is 0 or 1" % (disk_controller, disk_index))
+                self.module.fail_json(msg=f"Invalid controller bus number '{disk_controller}' specified"
+                                          f" for disk index [{disk_index}], valid value is 0 or 1")
 
             current_disk['controller_number'] = disk_controller
 
             try:
                 temp_disk_unit_number = int(disk['unit_number'])
             except ValueError:
-                self.module.fail_json(msg="Invalid Disk unit number ID '%s' specified at index [%s]."
-                                          % (disk['unit_number'], disk_index))
+                self.module.fail_json(msg="Invalid Disk unit number ID '{}' specified at index [{}].".format(disk['unit_number'], disk_index))
             if current_disk['controller_type'] in self.device_helper.scsi_device_type.keys():
                 # the Paravirtual SCSI Controller Supports up to 64 disks in vSphere 6.7. Using hardware
                 # version 14 or higher from the vm config should catch this appropriately.
                 hw_version = int(self.vm.config.version.split('-')[1])
                 if current_disk['controller_type'] == 'paravirtual' and hw_version >= 14:
                     if temp_disk_unit_number not in range(0, 64):
-                        self.module.fail_json(msg="Invalid Disk unit number ID specified for disk [%s] at index [%s],"
-                                                  " please specify value between 0 to 64 only (excluding 7)."
-                                                  % (temp_disk_unit_number, disk_index))
+                        self.module.fail_json(msg=f"Invalid Disk unit number ID specified for disk [{temp_disk_unit_number}] at index [{disk_index}],"
+                                                  " please specify value between 0 to 64 only (excluding 7).")
                     if temp_disk_unit_number == 7:
-                        self.module.fail_json(msg="Invalid Disk unit number ID specified for disk at index [%s], please"
-                                                  " specify value other than 7 as it is reserved for SCSI Controller."
-                                                  % disk_index)
+                        self.module.fail_json(msg=f"Invalid Disk unit number ID specified for disk at index [{disk_index}], please"
+                                                  " specify value other than 7 as it is reserved for SCSI Controller.")
 
                 else:
                     if temp_disk_unit_number not in range(0, 16):
-                        self.module.fail_json(msg="Invalid Disk unit number ID specified for disk [%s] at index [%s],"
-                                                  " please specify value between 0 to 15 only (excluding 7)."
-                                                  % (temp_disk_unit_number, disk_index))
+                        self.module.fail_json(msg=f"Invalid Disk unit number ID specified for disk [{temp_disk_unit_number}] at index [{disk_index}],"
+                                                  " please specify value between 0 to 15 only (excluding 7).")
                     if temp_disk_unit_number == 7:
-                        self.module.fail_json(msg="Invalid Disk unit number ID specified for disk at index [%s], please"
-                                                  " specify value other than 7 as it is reserved for SCSI Controller."
-                                                  % disk_index)
+                        self.module.fail_json(msg=f"Invalid Disk unit number ID specified for disk at index [{disk_index}], please"
+                                                  " specify value other than 7 as it is reserved for SCSI Controller.")
             elif current_disk['controller_type'] == 'sata' and temp_disk_unit_number not in range(0, 30):
-                self.module.fail_json(msg="Invalid Disk unit number ID specified for SATA disk [%s] at index [%s],"
-                                          " please specify value between 0 to 29" % (temp_disk_unit_number, disk_index))
+                self.module.fail_json(msg=f"Invalid Disk unit number ID specified for SATA disk [{temp_disk_unit_number}] at index [{disk_index}],"
+                                          " please specify value between 0 to 29")
             elif current_disk['controller_type'] == 'nvme' and temp_disk_unit_number not in range(0, 15):
-                self.module.fail_json(msg="Invalid Disk unit number ID specified for NVMe disk [%s] at index [%s],"
-                                          " please specify value between 0 to 14" % (temp_disk_unit_number, disk_index))
+                self.module.fail_json(msg=f"Invalid Disk unit number ID specified for NVMe disk [{temp_disk_unit_number}] at index [{disk_index}],"
+                                          " please specify value between 0 to 14")
             elif current_disk['controller_type'] == 'ide' and temp_disk_unit_number not in [0, 1]:
-                self.module.fail_json(msg="Invalid Disk unit number ID specified for IDE disk [%s] at index [%s],"
-                                          " please specify value 0 or 1" % (temp_disk_unit_number, disk_index))
+                self.module.fail_json(msg=f"Invalid Disk unit number ID specified for IDE disk [{temp_disk_unit_number}] at index [{disk_index}],"
+                                          " please specify value 0 or 1")
             current_disk['disk_unit_number'] = temp_disk_unit_number
 
             # By default destroy file from datastore if 'destroy' parameter is not provided
@@ -944,22 +942,22 @@ class PyVmomiHelper(PyVmomi):
                 if disk['datastore'] is not None:
                     if disk['autoselect_datastore'] is not None:
                         self.module.fail_json(msg="Please specify either 'datastore' or 'autoselect_datastore' for"
-                                                  " disk index [%s]" % disk_index)
+                                                  f" disk index [{disk_index}]")
                     # Check if given value is datastore or datastore cluster
                     datastore_name = disk['datastore']
                     datastore_cluster = find_obj(self.content, [vim.StoragePod], datastore_name)
                     datastore = find_obj(self.content, [vim.Datastore], datastore_name)
                     if datastore is None and datastore_cluster is None:
-                        self.module.fail_json(msg="Failed to find datastore or datastore cluster named '%s' "
-                                                  "in given configuration." % disk['datastore'])
+                        self.module.fail_json(msg="Failed to find datastore or datastore cluster named '{}' "
+                                                  "in given configuration.".format(disk['datastore']))
                     if datastore_cluster:
                         # If user specified datastore cluster, keep track of that for determining datastore later
                         current_disk['datastore_cluster'] = datastore_cluster
                     elif datastore:
                         ds_datacenter = get_parent_datacenter(datastore)
                         if ds_datacenter.name != self.module.params['datacenter']:
-                            self.module.fail_json(msg="Get datastore '%s' in datacenter '%s', not the configured"
-                                                      " datacenter '%s'" % (datastore.name, ds_datacenter.name,
+                            self.module.fail_json(msg="Get datastore '{}' in datacenter '{}', not the configured"
+                                                      " datacenter '{}'".format(datastore.name, ds_datacenter.name,
                                                                             self.module.params['datacenter']))
                         current_disk['datastore'] = datastore
                     current_disk['autoselect_datastore'] = False
@@ -968,7 +966,7 @@ class PyVmomiHelper(PyVmomi):
                     datastores = get_all_objs(self.content, [vim.Datastore])
                     if not datastores:
                         self.module.fail_json(msg="Failed to gather information about available datastores in given"
-                                                  " datacenter '%s'." % self.module.params['datacenter'])
+                                                  " datacenter '{}'.".format(self.module.params['datacenter']))
                     datastore = None
                     datastore_freespace = 0
                     for ds in datastores:
@@ -1008,7 +1006,7 @@ class PyVmomiHelper(PyVmomi):
                     else:
                         # Even multiple size_ parameter provided by user,
                         # consider first value only
-                        param = [x for x in disk.keys() if (x.startswith('size_') and disk[x] is not None)][0]
+                        param = next(x for x in disk.keys() if (x.startswith('size_') and disk[x] is not None))
                         unit = param.split('_')[-1]
                         disk_size = disk[param]
                         if isinstance(disk_size, (float, int)):
@@ -1026,21 +1024,21 @@ class PyVmomiHelper(PyVmomi):
 
                     if disk_size_parse_failed:
                         # Common failure
-                        self.module.fail_json(msg="Failed to parse disk size for disk index [%s],"
+                        self.module.fail_json(msg=f"Failed to parse disk size for disk index [{disk_index}],"
                                                   " please review value provided"
-                                                  " using documentation." % disk_index)
+                                                  " using documentation.")
 
                     disk_units = dict(tb=3, gb=2, mb=1, kb=0)
                     unit = unit.lower()
                     if unit in disk_units:
                         current_disk['size'] = expected * (1024 ** disk_units[unit])
                     else:
-                        self.module.fail_json(msg="%s is not a supported unit for disk size for disk index [%s]."
-                                                  " Supported units are ['%s']." % (unit, disk_index, "', '".join(disk_units.keys())))
+                        self.module.fail_json(msg="{} is not a supported unit for disk size for disk index [{}]."
+                                                  " Supported units are ['{}'].".format(unit, disk_index, "', '".join(disk_units.keys())))
                 elif current_disk['filename'] is None and disk['type'] != 'rdm':
                     # No size found but disk, fail. Excepting RDMs because the cluster_disk will need a filename.
                     self.module.fail_json(msg="No size, size_kb, size_mb, size_gb or size_tb"
-                                              " attribute found into disk index [%s] configuration." % disk_index)
+                                              f" attribute found into disk index [{disk_index}] configuration.")
 
                 # Mode of Disk
                 if disk['disk_mode'] is not None:
@@ -1059,20 +1057,20 @@ class PyVmomiHelper(PyVmomi):
                 if disk['type'] == 'rdm':
                     compatibility_mode = disk.get('compatibility_mode', 'physicalMode')
                     if compatibility_mode not in ['physicalMode', 'virtualMode']:
-                        self.module.fail_json(msg="Invalid 'compatibility_mode' specified for disk index [%s]. Please specify"
-                                              "'compatibility_mode' value from ['physicalMode', 'virtualMode']." % disk_index)
+                        self.module.fail_json(msg=f"Invalid 'compatibility_mode' specified for disk index [{disk_index}]. Please specify"
+                                              "'compatibility_mode' value from ['physicalMode', 'virtualMode'].")
                     current_disk['compatibility_mode'] = compatibility_mode
 
                     # RDMs need a path
                     if 'rdm_path' not in disk and 'filename' not in disk:
                         self.module.fail_json(msg="rdm_path and/or 'filename' needs must be specified when using disk type 'rdm'"
-                                              "for disk index [%s]" % disk_index)
+                                              f"for disk index [{disk_index}]")
                     else:
                         current_disk['rdm_path'] = disk.get('rdm_path')
 
                     if disk['filename'] and disk['rdm_path'] is None and disk['cluster_disk'] is False:
                         self.module.fail_json(msg=" 'filename' requires setting 'cluster_disk' to True when using disk type 'rdm' without a"
-                                              "'rdm_path' for disk index [%s]" % disk_index)
+                                              f"'rdm_path' for disk index [{disk_index}]")
                     else:
                         current_disk['cluster_disk'] = disk.get('cluster_disk')
 
@@ -1080,9 +1078,9 @@ class PyVmomiHelper(PyVmomi):
                 if disk['bus_sharing']:
                     bus_sharing = disk.get('bus_sharing', 'noSharing')
                     if bus_sharing not in ['noSharing', 'physicalSharing', 'virtualSharing']:
-                        self.module.fail_json(msg="Invalid SCSI 'bus_sharing' specied for disk index [%s]. Please "
+                        self.module.fail_json(msg=f"Invalid SCSI 'bus_sharing' specied for disk index [{disk_index}]. Please "
                                                   "specify 'bus_sharing' value from "
-                                                  "['noSharing', 'physicalSharing', 'virtualSharing']." % disk_index)
+                                                  "['noSharing', 'physicalSharing', 'virtualSharing'].")
                     current_disk['bus_sharing'] = bus_sharing
 
             disks_data.append(current_disk)
@@ -1215,15 +1213,14 @@ def main():
         # Bail out
         vm_id = (module.params.get('name') or module.params.get('uuid') or module.params.get('moid'))
         module.fail_json(msg="Unable to manage disks for non-existing"
-                             " virtual machine '%s'." % vm_id)
+                             f" virtual machine '{vm_id}'.")
 
     # VM exists
     try:
         pyv.ensure_disks(vm_obj=vm)
     except Exception as exc:
         module.fail_json(msg="Failed to manage disks for virtual machine"
-                             " '%s' with exception : %s" % (vm.name,
-                                                            to_native(exc)))
+                             f" '{vm.name}' with exception : {to_native(exc)}")
 
 
 if __name__ == '__main__':

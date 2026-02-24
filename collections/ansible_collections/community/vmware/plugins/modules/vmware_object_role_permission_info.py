@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Derek Rushing <derek.rushing@geekops.com>
 # Copyright: (c) 2018, VMware, Inc.
@@ -8,9 +7,7 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 
 DOCUMENTATION = r"""
@@ -98,14 +95,14 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
-    vmware_argument_spec,
     find_obj,
+    vmware_argument_spec,
 )
 
 
 class VMwareObjectRolePermission(PyVmomi):
     def __init__(self, module):
-        super(VMwareObjectRolePermission, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
         self.role_list = {}
@@ -200,23 +197,23 @@ class VMwareObjectRolePermission(PyVmomi):
             pass
         if not vim_type:
             self.module.fail_json(
-                msg="Object type %s is not valid." % self.params["object_type"]
+                msg="Object type {} is not valid.".format(self.params["object_type"])
             )
 
         msg = "Specified object "
-        if "moid" in self.params and self.params["moid"]:
+        if self.params.get("moid"):
             self.current_obj = vim_type(self.params["moid"], self.si._stub)
-            msg += "with moid %s of type %s" % (
+            msg += "with moid {} of type {}".format(
                 self.params["moid"],
                 self.params["object_type"],
             )
-        elif "object_name" in self.params and self.params["object_name"]:
+        elif self.params.get("object_name"):
             self.current_obj = find_obj(
                 content=self.content,
                 vimtype=[vim_type],
                 name=self.params["object_name"],
             )
-            msg = "%s of type %s" % (
+            msg = "{} of type {}".format(
                 self.params["object_name"],
                 self.params["object_type"],
             )

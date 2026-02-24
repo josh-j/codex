@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
@@ -6,24 +5,22 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import atexit
-import ansible.module_utils.common._collections_compat as collections_compat
+import datetime
+import hashlib
 import json
 import os
 import re
 import socket
 import ssl
-import hashlib
 import time
 import traceback
-import datetime
 from collections import OrderedDict
-from ansible.module_utils.compat.version import StrictVersion
 from random import randint
 
+import ansible.module_utils.common._collections_compat as collections_compat
+from ansible.module_utils.compat.version import StrictVersion
 
 REQUESTS_IMP_ERR = None
 try:
@@ -37,7 +34,7 @@ except ImportError:
 PYVMOMI_IMP_ERR = None
 try:
     from pyVim import connect
-    from pyVmomi import vim, vmodl, VmomiSupport
+    from pyVmomi import VmomiSupport, vim, vmodl
     HAS_PYVMOMI = True
     HAS_PYVMOMIJSON = hasattr(VmomiSupport, 'VmomiJSONEncoder')
 except ImportError:
@@ -45,20 +42,20 @@ except ImportError:
     HAS_PYVMOMI = False
     HAS_PYVMOMIJSON = False
 
-from ansible.module_utils._text import to_text, to_native
-from ansible.module_utils.six import integer_types, iteritems, string_types, raise_from
+from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.basic import env_fallback, missing_required_lib
+from ansible.module_utils.six import integer_types, iteritems, raise_from, string_types
 from ansible.module_utils.six.moves.urllib.parse import unquote
 
 
 class TaskError(Exception):
     def __init__(self, *args, **kwargs):
-        super(TaskError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class ApiAccessError(Exception):
     def __init__(self, *args, **kwargs):
-        super(ApiAccessError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 def check_answer_question_status(vm):
@@ -101,7 +98,7 @@ def make_answer_response(vm, answers):
                 "response_num": response_list[answer["question"]][answer["response"]]
             })
     except Exception:
-        raise TaskError("not found %s or %s or both in the response list" % (answer["question"], answer["response"]))
+        raise TaskError("not found {} or {} or both in the response list".format(answer["question"], answer["response"]))
 
     return responses
 
@@ -117,7 +114,7 @@ def answer_question(vm, responses):
         try:
             vm.AnswerVM(response["id"], response["response_num"])
         except Exception as e:
-            raise TaskError("answer failed: %s" % to_text(e))
+            raise TaskError(f"answer failed: {to_text(e)}")
 
 
 def wait_for_task(task, max_backoff=64, timeout=3600, vm=None, answers=None):
@@ -140,7 +137,7 @@ def wait_for_task(task, max_backoff=64, timeout=3600, vm=None, answers=None):
                 responses = make_answer_response(vm, answers)
                 answer_question(vm, responses)
             else:
-                raise TaskError("%s" % to_text(vm.runtime.question.text))
+                raise TaskError(f"{to_text(vm.runtime.question.text)}")
         if time.time() - start_time >= timeout:
             raise TaskError("Timeout")
         if task.info.state == vim.TaskInfo.State.success:
@@ -300,7 +297,7 @@ def find_folder_by_fqpn(content, folder_name, datacenter_name=None, folder_type=
         if folder_type == folder_parts[0]:
             folder_parts.pop(0)
     if folder_type in ['vm', 'host', 'datastore', 'network']:
-        parent_obj = getattr(datacenter, "%sFolder" % folder_type.lower())
+        parent_obj = getattr(datacenter, f"{folder_type.lower()}Folder")
     else:
         return None
 
@@ -466,7 +463,7 @@ def gather_vm_facts(content, vm):
         'current_snapshot': None,
         'vnc': {},
         'moid': vm._moId,
-        'vimref': "vim.VirtualMachine:%s" % vm._moId,
+        'vimref': f"vim.VirtualMachine:{vm._moId}",
         'advanced_settings': {},
     }
 
@@ -783,23 +780,23 @@ def connect_to_api(module, disconnect_atexit=True, return_si=False, hostname=Non
             connect_args.update(user=username, pwd=password)
             service_instance = connect.SmartConnect(**connect_args)
     except vim.fault.InvalidLogin as invalid_login:
-        msg = "Unable to log on to vCenter or ESXi API at %s:%s " % (hostname, port)
-        _raise_or_fail(msg="%s as %s: %s" % (msg, username, invalid_login.msg) + msg_suffix)
+        msg = f"Unable to log on to vCenter or ESXi API at {hostname}:{port} "
+        _raise_or_fail(msg=f"{msg} as {username}: {invalid_login.msg}" + msg_suffix)
     except vim.fault.NoPermission as no_permission:
-        _raise_or_fail(msg="User %s does not have required permission"
-                           " to log on to vCenter or ESXi API at %s:%s : %s" % (username, hostname, port, no_permission.msg))
+        _raise_or_fail(msg=f"User {username} does not have required permission"
+                           f" to log on to vCenter or ESXi API at {hostname}:{port} : {no_permission.msg}")
     except (requests.ConnectionError, ssl.SSLError) as generic_req_exc:
-        _raise_or_fail(msg="Unable to connect to vCenter or ESXi API at %s on TCP/%s: %s" % (hostname, port, generic_req_exc))
+        _raise_or_fail(msg=f"Unable to connect to vCenter or ESXi API at {hostname} on TCP/{port}: {generic_req_exc}")
     except vmodl.fault.InvalidRequest as invalid_request:
         # Request is malformed
-        msg = "Failed to get a response from server %s:%s " % (hostname, port)
-        _raise_or_fail(msg="%s as request is malformed: %s" % (msg, invalid_request.msg) + msg_suffix)
+        msg = f"Failed to get a response from server {hostname}:{port} "
+        _raise_or_fail(msg=f"{msg} as request is malformed: {invalid_request.msg}" + msg_suffix)
     except Exception as generic_exc:
-        msg = "Unknown error while connecting to vCenter or ESXi API at %s:%s" % (hostname, port) + msg_suffix
-        _raise_or_fail(msg="%s : %s" % (msg, generic_exc))
+        msg = f"Unknown error while connecting to vCenter or ESXi API at {hostname}:{port}" + msg_suffix
+        _raise_or_fail(msg=f"{msg} : {generic_exc}")
 
     if service_instance is None:
-        msg = "Unknown error while connecting to vCenter or ESXi API at %s:%s" % (hostname, port)
+        msg = f"Unknown error while connecting to vCenter or ESXi API at {hostname}:{port}"
         _raise_or_fail(msg=msg + msg_suffix)
 
     # Disabling atexit should be used in special cases only.
@@ -935,10 +932,10 @@ def serialize_spec(clonespec):
 def find_host_by_cluster_datacenter(module, content, datacenter_name, cluster_name, host_name):
     dc = find_datacenter_by_name(content, datacenter_name)
     if dc is None:
-        module.fail_json(msg="Unable to find datacenter with name %s" % datacenter_name)
+        module.fail_json(msg=f"Unable to find datacenter with name {datacenter_name}")
     cluster = find_cluster_by_name(content, cluster_name, datacenter=dc)
     if cluster is None:
-        module.fail_json(msg="Unable to find cluster with name %s" % cluster_name)
+        module.fail_json(msg=f"Unable to find cluster with name {cluster_name}")
 
     for host in cluster.host:
         if host.name == host_name:
@@ -965,7 +962,7 @@ def set_vm_power_state(content, vm, state, force, timeout=0, answers=None):
     # Need Force
     if not force and current_state not in ['poweredon', 'poweredoff']:
         result['failed'] = True
-        result['msg'] = "Virtual Machine is in %s power state. Force is required!" % current_state
+        result['msg'] = f"Virtual Machine is in {current_state} power state. Force is required!"
         result['instance'] = gather_vm_facts(content, vm)
         return result
 
@@ -984,14 +981,14 @@ def set_vm_power_state(content, vm, state, force, timeout=0, answers=None):
                     task = vm.Reset()
                 else:
                     result['failed'] = True
-                    result['msg'] = "Cannot restart virtual machine in the current state %s" % current_state
+                    result['msg'] = f"Cannot restart virtual machine in the current state {current_state}"
 
             elif expected_state == 'suspended':
                 if current_state in ('poweredon', 'poweringon'):
                     task = vm.Suspend()
                 else:
                     result['failed'] = True
-                    result['msg'] = 'Cannot suspend virtual machine in the current state %s' % current_state
+                    result['msg'] = f'Cannot suspend virtual machine in the current state {current_state}'
 
             elif expected_state in ['shutdownguest', 'rebootguest']:
                 if current_state == 'poweredon':
@@ -1012,11 +1009,11 @@ def set_vm_power_state(content, vm, state, force, timeout=0, answers=None):
                     result['changed'] = False
                 else:
                     result['failed'] = True
-                    result['msg'] = "Virtual machine %s must be in poweredon state for guest reboot" % vm.name
+                    result['msg'] = f"Virtual machine {vm.name} must be in poweredon state for guest reboot"
 
             else:
                 result['failed'] = True
-                result['msg'] = "Unsupported expected state provided: %s" % expected_state
+                result['msg'] = f"Unsupported expected state provided: {expected_state}"
 
         except Exception as e:
             result['failed'] = True
@@ -1122,7 +1119,7 @@ def quote_obj_name(object_name=None):
     return object_name
 
 
-class PyVmomi(object):
+class PyVmomi:
     def __init__(self, module):
         """
         Constructor
@@ -1154,7 +1151,7 @@ class PyVmomi(object):
         try:
             api_type = self.content.about.apiType
         except (vmodl.RuntimeFault, vim.fault.VimFault) as exc:
-            self.module.fail_json(msg="Failed to get status of vCenter server : %s" % exc.msg)
+            self.module.fail_json(msg=f"Failed to get status of vCenter server : {exc.msg}")
 
         if api_type == 'VirtualCenter':
             return True
@@ -1171,7 +1168,7 @@ class PyVmomi(object):
         if version:
             vc_version = self.content.about.version
             return StrictVersion(vc_version) >= StrictVersion('.'.join(map(str, version)))
-        self.module.fail_json(msg='The passed vCenter version: %s is None.' % version)
+        self.module.fail_json(msg=f'The passed vCenter version: {version} is None.')
 
     def get_cert_fingerprint(self, fqdn, port, proxy_host=None, proxy_port=None):
         if proxy_host:
@@ -1198,7 +1195,7 @@ class PyVmomi(object):
             der_cert_bin = ssl.PEM_cert_to_DER_cert(pem)
         if der_cert_bin:
             string = str(hashlib.sha1(der_cert_bin).hexdigest())
-            return ':'.join(a + b for a, b in zip(string[::2], string[1::2]))
+            return ':'.join(a + b for a, b in zip(string[::2], string[1::2], strict=False))
         else:
             self.module.fail_json(msg=f"Unable to obtain certificate fingerprint for host: {fqdn}")
 
@@ -1259,14 +1256,14 @@ class PyVmomi(object):
         vm_obj = None
         user_desired_path = None
         use_instance_uuid = self.params.get('use_instance_uuid') or False
-        if 'uuid' in self.params and self.params['uuid']:
+        if self.params.get('uuid'):
             if not use_instance_uuid:
                 vm_obj = find_vm_by_id(self.content, vm_id=self.params['uuid'], vm_id_type="uuid")
             elif use_instance_uuid:
                 vm_obj = find_vm_by_id(self.content,
                                        vm_id=self.params['uuid'],
                                        vm_id_type="instance_uuid")
-        elif 'name' in self.params and self.params['name']:
+        elif self.params.get('name'):
             objects = self.get_managed_objects_properties(vim_type=vim.VirtualMachine, properties=['name'])
             vms = []
 
@@ -1282,9 +1279,9 @@ class PyVmomi(object):
             if len(vms) > 1:
                 # We have found multiple virtual machines, decide depending upon folder value
                 if self.params['folder'] is None:
-                    self.module.fail_json(msg="Multiple virtual machines with same name [%s] found, "
+                    self.module.fail_json(msg="Multiple virtual machines with same name [{}] found, "
                                           "Folder value is a required parameter to find uniqueness "
-                                          "of the virtual machine" % self.params['name'],
+                                          "of the virtual machine".format(self.params['name']),
                                           details="Please see documentation of the vmware_guest module "
                                           "for folder parameter.")
 
@@ -1306,11 +1303,11 @@ class PyVmomi(object):
                     # User provided blank value or
                     # User provided only root value, we fail
                     self.module.fail_json(msg="vmware_guest found multiple virtual machines with same "
-                                          "name [%s], please specify folder path other than blank "
-                                          "or '/'" % self.params['name'])
+                                          "name [{}], please specify folder path other than blank "
+                                          "or '/'".format(self.params['name']))
                 elif user_folder.startswith('/vm/'):
                     # User provided nested folder under VMware default vm folder i.e. folder = /vm/india/finance
-                    user_desired_path = "%s%s%s" % (dcpath, user_defined_dc, user_folder)
+                    user_desired_path = f"{dcpath}{user_defined_dc}{user_folder}"
                 else:
                     # User defined datacenter is not nested i.e. dcpath = '/' , or
                     # User defined datacenter is nested i.e. dcpath = '/F0/DC0' or
@@ -1323,7 +1320,7 @@ class PyVmomi(object):
                 for vm in vms:
                     # Check if user has provided same path as virtual machine
                     actual_vm_folder_path = self.get_vm_path(content=self.content, vm_name=vm)
-                    if not actual_vm_folder_path.startswith("%s%s" % (dcpath, user_defined_dc)):
+                    if not actual_vm_folder_path.startswith(f"{dcpath}{user_defined_dc}"):
                         continue
                     if user_desired_path in actual_vm_folder_path:
                         vm_obj = vm
@@ -1335,10 +1332,10 @@ class PyVmomi(object):
                     vm_obj = vms[0]
                 elif self.params['folder'] in actual_vm_folder_path:
                     vm_obj = vms[0]
-        elif 'moid' in self.params and self.params['moid']:
+        elif self.params.get('moid'):
             vm_obj = VmomiSupport.templateOf('VirtualMachine')(self.params['moid'], self.si._stub)
             try:
-                getattr(vm_obj, 'name')
+                vm_obj.name
             except vmodl.fault.ManagedObjectNotFound:
                 vm_obj = None
 
@@ -1422,7 +1419,7 @@ class PyVmomi(object):
 
             if len(templates) > 1:
                 # We have found multiple virtual machine templates
-                self.module.fail_json(msg="Multiple virtual machines or templates with same name [%s] found." % template_name)
+                self.module.fail_json(msg=f"Multiple virtual machines or templates with same name [{template_name}] found.")
             elif templates:
                 template_obj = templates[0]
 
@@ -1484,14 +1481,14 @@ class PyVmomi(object):
         if not self.is_vcenter():
             hosts = get_all_objs(self.content, [vim.HostSystem]).keys()
             if hosts:
-                host_obj_list.append(list(hosts)[0])
+                host_obj_list.append(next(iter(hosts)))
         else:
             if cluster_name:
                 cluster_obj = self.find_cluster_by_name(cluster_name=cluster_name)
                 if cluster_obj:
                     host_obj_list = list(cluster_obj.host)
                 else:
-                    self.module.fail_json(changed=False, msg="Cluster '%s' not found" % cluster_name)
+                    self.module.fail_json(changed=False, msg=f"Cluster '{cluster_name}' not found")
             elif esxi_host_name:
                 if isinstance(esxi_host_name, str):
                     esxi_host_name = [esxi_host_name]
@@ -1501,7 +1498,7 @@ class PyVmomi(object):
                     if esxi_host_obj:
                         host_obj_list.append(esxi_host_obj)
                     else:
-                        self.module.fail_json(changed=False, msg="ESXi '%s' not found" % host)
+                        self.module.fail_json(changed=False, msg=f"ESXi '{host}' not found")
 
         return host_obj_list
 
@@ -1524,8 +1521,8 @@ class PyVmomi(object):
             host_version = host_system.summary.config.product.version
             return StrictVersion(host_version) >= StrictVersion('.'.join(map(str, version)))
         else:
-            self.module.fail_json(msg='Unable to get the ESXi host from vm: %s, or hostname %s,'
-                                      'or the passed ESXi version: %s is None.' % (vm_obj, host_name, version))
+            self.module.fail_json(msg=f'Unable to get the ESXi host from vm: {vm_obj}, or hostname {host_name},'
+                                      f'or the passed ESXi version: {version} is None.')
 
     # Network related functions
     @staticmethod
@@ -1793,7 +1790,7 @@ class PyVmomi(object):
             vmdk_folder = os.path.dirname(vmdk_fullpath)
             return datastore_name, vmdk_fullpath, vmdk_filename, vmdk_folder
         except (IndexError, AttributeError) as e:
-            self.module.fail_json(msg="Bad path '%s' for filename disk vmdk image: %s" % (vmdk_path, to_native(e)))
+            self.module.fail_json(msg=f"Bad path '{vmdk_path}' for filename disk vmdk image: {to_native(e)}")
 
     def find_vmdk_file(self, datastore_obj, vmdk_fullpath, vmdk_filename, vmdk_folder):
         """
@@ -1810,7 +1807,7 @@ class PyVmomi(object):
         datastore_name = datastore_obj.name
         datastore_name_sq = "[" + datastore_name + "]"
         if browser is None:
-            self.module.fail_json(msg="Unable to access browser for datastore %s" % datastore_name)
+            self.module.fail_json(msg=f"Unable to access browser for datastore {datastore_name}")
 
         detail_query = vim.host.DatastoreBrowser.FileInfo.Details(
             fileOwner=True,
@@ -1831,12 +1828,12 @@ class PyVmomi(object):
         changed = False
         vmdk_path = datastore_name_sq + " " + vmdk_fullpath
         try:
-            changed, result = wait_for_task(search_res)
+            changed, _result = wait_for_task(search_res)
         except TaskError as task_e:
             self.module.fail_json(msg=to_native(task_e))
 
         if not changed:
-            self.module.fail_json(msg="No valid disk vmdk image found for path %s" % vmdk_path)
+            self.module.fail_json(msg=f"No valid disk vmdk image found for path {vmdk_path}")
 
         target_folder_paths = [
             datastore_name_sq + " " + vmdk_folder + '/',
@@ -1844,11 +1841,11 @@ class PyVmomi(object):
         ]
 
         for file_result in search_res.info.result:
-            for f in getattr(file_result, 'file'):
+            for f in file_result.file:
                 if f.path == vmdk_filename and file_result.folderPath in target_folder_paths:
                     return f
 
-        self.module.fail_json(msg="No vmdk file found for path specified [%s]" % vmdk_path)
+        self.module.fail_json(msg=f"No vmdk file found for path specified [{vmdk_path}]")
 
     def find_first_class_disk_by_name(self, disk_name, datastore_obj):
         """
@@ -1983,7 +1980,7 @@ class PyVmomi(object):
                             prop_name = 'vimref'
                         result[prop_name] = result[prop]
                 except (AttributeError, KeyError):
-                    self.module.fail_json(msg="Property '{0}' not found.".format(prop))
+                    self.module.fail_json(msg=f"Property '{prop}' not found.")
         else:
             result = self._jsonify(obj)
         return result
@@ -2013,7 +2010,7 @@ class PyVmomi(object):
 
         obj = VmomiSupport.templateOf(object_type)(moid, self.si._stub)
         try:
-            getattr(obj, 'name')
+            obj.name
         except vmodl.fault.ManagedObjectNotFound:
             obj = None
 

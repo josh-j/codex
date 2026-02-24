@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -88,16 +85,16 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VmwareHostIPv6(PyVmomi):
     """Class to manage IPv6 for an ESXi host system"""
 
     def __init__(self, module):
-        super(VmwareHostIPv6, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name')
         esxi_host_name = self.params.get('esxi_hostname')
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -121,11 +118,10 @@ class VmwareHostIPv6(PyVmomi):
                 # Don't do anything if IPv6 is already enabled
                 if host_network_info.atBootIpV6Enabled:
                     if host_network_info.ipV6Enabled:
-                        results['result'][host.name]['msg'] = "IPv6 is already enabled and active for host '%s'" % \
-                                                              host.name
+                        results['result'][host.name]['msg'] = f"IPv6 is already enabled and active for host '{host.name}'"
                     if not host_network_info.ipV6Enabled:
-                        results['result'][host.name]['msg'] = ("IPv6 is already enabled for host '%s', but a reboot"
-                                                               " is required!" % host.name)
+                        results['result'][host.name]['msg'] = (f"IPv6 is already enabled for host '{host.name}', but a reboot"
+                                                               " is required!")
                 # Enable IPv6
                 else:
                     if not self.module.check_mode:
@@ -135,35 +131,31 @@ class VmwareHostIPv6(PyVmomi):
                             host_network_system.UpdateNetworkConfig(config, "modify")
                             changed = True
                             results['result'][host.name]['changed'] = True
-                            results['result'][host.name]['msg'] = "IPv6 enabled for host '%s'" % host.name
+                            results['result'][host.name]['msg'] = f"IPv6 enabled for host '{host.name}'"
                         except (vim.fault.AlreadyExists, vim.fault.NotFound):
-                            self.module.fail_json(msg="Network entity specified in the configuration for host '%s'"
-                                                  " already exists" % host.name)
+                            self.module.fail_json(msg=f"Network entity specified in the configuration for host '{host.name}'"
+                                                  " already exists")
                         except vmodl.fault.InvalidArgument as invalid_argument:
-                            self.module.fail_json(msg="Invalid parameter specified for host '%s' : %s" %
-                                                  (host.name, to_native(invalid_argument.msg)))
+                            self.module.fail_json(msg=f"Invalid parameter specified for host '{host.name}' : {to_native(invalid_argument.msg)}")
                         except vim.fault.HostConfigFault as config_fault:
-                            self.module.fail_json(msg="Failed to enable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(config_fault.msg)))
+                            self.module.fail_json(msg=f"Failed to enable IPv6 for host '{host.name}' due to : {to_native(config_fault.msg)}")
                         except vmodl.fault.NotSupported as not_supported:
-                            self.module.fail_json(msg="Failed to enable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(not_supported.msg)))
+                            self.module.fail_json(msg=f"Failed to enable IPv6 for host '{host.name}' due to : {to_native(not_supported.msg)}")
                         except (vmodl.RuntimeFault, vmodl.MethodFault) as runtime_fault:
-                            self.module.fail_json(msg="Failed to enable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(runtime_fault.msg)))
+                            self.module.fail_json(msg=f"Failed to enable IPv6 for host '{host.name}' due to : {to_native(runtime_fault.msg)}")
                     else:
                         changed = True
                         results['result'][host.name]['changed'] = True
-                        results['result'][host.name]['msg'] = "IPv6 will be enabled for host '%s'" % host.name
+                        results['result'][host.name]['msg'] = f"IPv6 will be enabled for host '{host.name}'"
             elif desired_state == 'disabled':
                 # Don't do anything if IPv6 is already disabled
                 if not host_network_info.atBootIpV6Enabled:
                     if not host_network_info.ipV6Enabled:
-                        results['result'][host.name]['msg'] = "IPv6 is already disabled for host '%s'" % host.name
+                        results['result'][host.name]['msg'] = f"IPv6 is already disabled for host '{host.name}'"
                     if host_network_info.ipV6Enabled:
                         changed = True
-                        results['result'][host.name]['msg'] = ("IPv6 is already disabled for host '%s',"
-                                                               " but a reboot is required!" % host.name)
+                        results['result'][host.name]['msg'] = (f"IPv6 is already disabled for host '{host.name}',"
+                                                               " but a reboot is required!")
                 # Disable IPv6
                 else:
                     if not self.module.check_mode:
@@ -173,26 +165,22 @@ class VmwareHostIPv6(PyVmomi):
                             host_network_system.UpdateNetworkConfig(config, "modify")
                             changed = True
                             results['result'][host.name]['changed'] = True
-                            results['result'][host.name]['msg'] = "IPv6 disabled for host '%s'" % host.name
+                            results['result'][host.name]['msg'] = f"IPv6 disabled for host '{host.name}'"
                         except (vim.fault.AlreadyExists, vim.fault.NotFound):
-                            self.module.fail_json(msg="Network entity specified in the configuration for host '%s'"
-                                                  " already exists" % host.name)
+                            self.module.fail_json(msg=f"Network entity specified in the configuration for host '{host.name}'"
+                                                  " already exists")
                         except vmodl.fault.InvalidArgument as invalid_argument:
-                            self.module.fail_json(msg="Invalid parameter specified for host '%s' : %s" %
-                                                  (host.name, to_native(invalid_argument.msg)))
+                            self.module.fail_json(msg=f"Invalid parameter specified for host '{host.name}' : {to_native(invalid_argument.msg)}")
                         except vim.fault.HostConfigFault as config_fault:
-                            self.module.fail_json(msg="Failed to disable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(config_fault.msg)))
+                            self.module.fail_json(msg=f"Failed to disable IPv6 for host '{host.name}' due to : {to_native(config_fault.msg)}")
                         except vmodl.fault.NotSupported as not_supported:
-                            self.module.fail_json(msg="Failed to disable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(not_supported.msg)))
+                            self.module.fail_json(msg=f"Failed to disable IPv6 for host '{host.name}' due to : {to_native(not_supported.msg)}")
                         except (vmodl.RuntimeFault, vmodl.MethodFault) as runtime_fault:
-                            self.module.fail_json(msg="Failed to disable IPv6 for host '%s' due to : %s" %
-                                                  (host.name, to_native(runtime_fault.msg)))
+                            self.module.fail_json(msg=f"Failed to disable IPv6 for host '{host.name}' due to : {to_native(runtime_fault.msg)}")
                     else:
                         changed = True
                         results['result'][host.name]['changed'] = True
-                        results['result'][host.name]['msg'] = "IPv6 will be disabled for host '%s'" % host.name
+                        results['result'][host.name]['msg'] = f"IPv6 will be disabled for host '{host.name}'"
 
             host_change_list.append(changed)
 

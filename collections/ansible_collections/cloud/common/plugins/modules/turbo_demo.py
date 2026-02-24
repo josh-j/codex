@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (C) 2020, Gonéri Le Bouder <goneri@lebouder.net>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
@@ -65,7 +64,6 @@ def run_module():
 
 
 def main():
-    from ansible_collections.cloud.common.plugins.module_utils import turbo_demo
 
     run_module()
 

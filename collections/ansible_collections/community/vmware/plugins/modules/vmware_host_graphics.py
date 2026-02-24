@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2023, Alexander Nikitin (ihumster@ihumster.ru)
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
@@ -89,15 +86,15 @@ try:
 except ImportError:
     HAS_PYVMOMI = False
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VMwareHostGraphicSettings(PyVmomi):
     """ Main class for configuring Host Graphics Settings """
     def __init__(self, module):
-        super(VMwareHostGraphicSettings, self).__init__(module)
+        super().__init__(module)
         self.graphic_type = self.params['graphic_type']
         self.assigment_policy = self.params['assigment_policy']
         self.restart_xorg = self.params['restart_xorg']

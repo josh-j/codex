@@ -5,8 +5,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -287,15 +285,21 @@ except ImportError:
     pass
 
 import copy
+
 from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, TaskError, vmware_argument_spec, wait_for_task
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.change_detected = False
         self.device_helper = PyVmomiDeviceHelper(self.module)
 
@@ -575,7 +579,7 @@ class PyVmomiHelper(PyVmomi):
         device_spec = None
         vm_obj = self.get_vm()
         if not vm_obj:
-            self.module.fail_json(msg='could not find vm: {0}'.format(self.params['name']))
+            self.module.fail_json(msg='could not find vm: {}'.format(self.params['name']))
         nic_info, nic_obj_lst = self._get_nics_from_vm(vm_obj)
 
         for nic in nic_info:
@@ -626,7 +630,7 @@ class PyVmomiHelper(PyVmomi):
     def _get_nic_info(self):
         rv = {'network_info': []}
         vm_obj = self.get_vm()
-        nic_info, nic_obj_lst = self._get_nics_from_vm(vm_obj)
+        nic_info, _nic_obj_lst = self._get_nics_from_vm(vm_obj)
 
         rv['network_info'] = nic_info
         return rv
@@ -643,7 +647,7 @@ class PyVmomiHelper(PyVmomi):
 
         vm_obj = self.get_vm()
         if not vm_obj:
-            self.module.fail_json(msg='could not find vm: {0}'.format(self.params['name']))
+            self.module.fail_json(msg='could not find vm: {}'.format(self.params['name']))
 
         if self.params['device_type'] == 'pvrdma':
             if int(vm_obj.config.version.split('vmx-')[-1]) > 19 or int(vm_obj.config.version.split('vmx-')[-1]) == 13:
@@ -663,10 +667,10 @@ class PyVmomiHelper(PyVmomi):
         network_name_lst = [d.get('network_name') for d in nic_info]
 
         # TODO: make checks below less inelegant
-        if ((vlan_id and vlan_id in vlan_id_lst) or (network_name and network_name in network_name_lst)
+        if ((vlan_id and vlan_id in vlan_id_lst) or ((network_name and network_name in network_name_lst)
                 and not mac_address
                 and not label
-                and not force):
+                and not force)):
             for nic in nic_info:
                 diff['before'].update({nic.get('mac_address'): copy.copy(nic)})
                 diff['after'].update({nic.get('mac_address'): copy.copy(nic)})
@@ -674,9 +678,7 @@ class PyVmomiHelper(PyVmomi):
 
         if not network_obj and (network_name or vlan_id):
             self.module.fail_json(
-                msg='unable to find specified network_name/vlan_id ({0}), check parameters'.format(
-                    network_name or vlan_id
-                )
+                msg=f'unable to find specified network_name/vlan_id ({network_name or vlan_id}), check parameters'
             )
 
         for nic in nic_info:
@@ -805,7 +807,7 @@ def main():
         network_data = {}
         nics_sorted = sorted(nics.get('network_info'), key=lambda k: k['unit_number'])
         for n, i in enumerate(nics_sorted):
-            key_name = '{0}'.format(n)
+            key_name = f'{n}'
             network_data[key_name] = i
             network_data[key_name].update({'mac_addr': i['mac_address'], 'name': i['network_name']})
 

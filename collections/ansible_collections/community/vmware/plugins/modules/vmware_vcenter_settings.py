@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -396,16 +393,16 @@ except ImportError:
     except ImportError:
         pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, option_diff, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VmwareVcenterSettings(PyVmomi):
     """Manage settings for a vCenter server"""
 
     def __init__(self, module):
-        super(VmwareVcenterSettings, self).__init__(module)
+        super().__init__(module)
 
         if not self.is_vcenter():
             self.module.fail_json(msg="You have to connect to a vCenter server!")
@@ -501,14 +498,14 @@ class VmwareVcenterSettings(PyVmomi):
                 diff_config['before'][key] = result[key]
                 diff_config['after'][key] = result[key]
         for n in range(1, 5):
-            exec("diff_config['before']['snmp_receiver_%s_url'] = snmp_receiver_%s_url" % (n, n))
-            exec("diff_config['before']['snmp_receiver_%s_enabled'] = snmp_receiver_%s_enabled" % (n, n))
-            exec("diff_config['before']['snmp_receiver_%s_port'] = snmp_receiver_%s_port" % (n, n))
-            exec("diff_config['before']['snmp_receiver_%s_community'] = snmp_receiver_%s_community" % (n, n))
-            exec("diff_config['after']['snmp_receiver_%s_url'] = snmp_receiver_%s_url" % (n, n))
-            exec("diff_config['after']['snmp_receiver_%s_enabled'] = snmp_receiver_%s_enabled" % (n, n))
-            exec("diff_config['after']['snmp_receiver_%s_port'] = snmp_receiver_%s_port" % (n, n))
-            exec("diff_config['after']['snmp_receiver_%s_community'] = snmp_receiver_%s_community" % (n, n))
+            exec(f"diff_config['before']['snmp_receiver_{n}_url'] = snmp_receiver_{n}_url")
+            exec(f"diff_config['before']['snmp_receiver_{n}_enabled'] = snmp_receiver_{n}_enabled")
+            exec(f"diff_config['before']['snmp_receiver_{n}_port'] = snmp_receiver_{n}_port")
+            exec(f"diff_config['before']['snmp_receiver_{n}_community'] = snmp_receiver_{n}_community")
+            exec(f"diff_config['after']['snmp_receiver_{n}_url'] = snmp_receiver_{n}_url")
+            exec(f"diff_config['after']['snmp_receiver_{n}_enabled'] = snmp_receiver_{n}_enabled")
+            exec(f"diff_config['after']['snmp_receiver_{n}_port'] = snmp_receiver_{n}_port")
+            exec(f"diff_config['after']['snmp_receiver_{n}_community'] = snmp_receiver_{n}_community")
         result['diff'] = {}
 
         advanced_settings = self.params['advanced_settings']
@@ -837,13 +834,12 @@ class VmwareVcenterSettings(PyVmomi):
                     self.option_manager.UpdateOptions(changedValue=change_option_list)
                 except (vmodl.fault.SystemError, vmodl.fault.InvalidArgument) as invalid_argument:
                     self.module.fail_json(
-                        msg="Failed to update option(s) as one or more OptionValue contains an invalid value: %s" %
-                        to_native(invalid_argument.msg)
+                        msg=f"Failed to update option(s) as one or more OptionValue contains an invalid value: {to_native(invalid_argument.msg)}"
                     )
                 except vim.fault.InvalidName as invalid_name:
                     self.module.fail_json(
                         msg="Failed to update option(s) as one or more OptionValue objects refers to a "
-                        "non-existent option : %s" % to_native(invalid_name.msg)
+                        f"non-existent option : {to_native(invalid_name.msg)}"
                     )
         else:
             message = "vCenter settings already configured properly"

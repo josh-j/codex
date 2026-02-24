@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import unittest
+from typing import Any
 
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
@@ -16,13 +17,14 @@ MODULE_PATH = (
 
 def _load_module():
     spec = importlib.util.spec_from_file_location("core_stig_filter", MODULE_PATH)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 class CoreStigFilterTests(unittest.TestCase):
+    module: Any
     @classmethod
     def setUpClass(cls):
         cls.module = _load_module()

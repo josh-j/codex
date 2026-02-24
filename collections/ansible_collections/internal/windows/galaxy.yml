@@ -1,7 +1,13 @@
-# collections/ansible_collections/internal/windows/galaxy.yml
+---
 namespace: internal
 name: windows
-version: 0.0.1
+version: 1.0.0
 readme: README.md
 authors:
-  - Internal
+  - Codex Team
+description: Windows auditing and reporting roles.
+license: ["GPL-3.0-or-later"]
+tags:
+  - windows
+  - security
+repository: https://github.com/example/codex

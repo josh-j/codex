@@ -50,35 +50,35 @@
       <thead><tr><th>Severity</th><th>Category</th><th>Message</th></tr></thead>
       <tbody>
       {% for alert in alerts %}
-      {% set badge = (alert.get('severity', 'INFO')) | internal.core.status_badge_meta %}
+     {% set badge = (alert.get('severity', 'INFO')) | internal.core.status_badge_meta %}
       <tr>
         <td><span class="badge {{ badge.css_class }}">{{ badge.label }}</span></td>
         <td>{{ alert.get('category', 'windows') }}</td>
         <td>
           <div>{{ alert.get('message', '') }}</div>
-          {% set detail = alert.get('detail', {}) %}
-          {% if detail and detail|length > 0 %}
+     {% set detail = alert.get('detail', {}) %}
+     {% if detail and detail | length > 0 %}
           <details style="margin-top: 6px;">
             <summary style="cursor: pointer; color: var(--text-muted);">Technical details</summary>
             <div style="margin-top: 8px;">
               <table>
                 <tbody>
-                  {% for k, v in detail.items() %}
+         {% for k, v in detail.items() %}
                   <tr>
                     <th style="width: 180px;">{{ k }}</th>
                     <td><code>{{ v }}</code></td>
                   </tr>
-                  {% endfor %}
+         {% endfor %}
                 </tbody>
               </table>
             </div>
           </details>
-          {% endif %}
-          {% if alert.get('recommendation') or alert.get('remediation') %}
+     {% endif %}
+     {% if alert.get('recommendation') or alert.get('remediation') %}
           <div style="margin-top: 6px; color: var(--text-muted);">
             <strong>Remediation:</strong> {{ alert.get('recommendation', alert.get('remediation', '')) }}
           </div>
-          {% endif %}
+     {% endif %}
         </td>
       </tr>
       {% else %}

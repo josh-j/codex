@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -83,9 +80,9 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VmwareHostPowerManagement(PyVmomi):
@@ -94,7 +91,7 @@ class VmwareHostPowerManagement(PyVmomi):
     """
 
     def __init__(self, module):
-        super(VmwareHostPowerManagement, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name')
         esxi_host_name = self.params.get('esxi_hostname')
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -172,10 +169,9 @@ class VmwareHostPowerManagement(PyVmomi):
                             results['result'][host.name]['changed'] = True
                             results['result'][host.name]['msg'] = "Power policy changed"
                         except vmodl.fault.InvalidArgument:
-                            self.module.fail_json(msg="Invalid power policy key provided for host '%s'" % host.name)
+                            self.module.fail_json(msg=f"Invalid power policy key provided for host '{host.name}'")
                         except vim.fault.HostConfigFault as host_config_fault:
-                            self.module.fail_json(msg="Failed to configure power policy for host '%s': %s" %
-                                                  (host.name, to_native(host_config_fault.msg)))
+                            self.module.fail_json(msg=f"Failed to configure power policy for host '{host.name}': {to_native(host_config_fault.msg)}")
                     else:
                         changed = True
                         results['result'][host.name]['changed'] = True
@@ -187,8 +183,7 @@ class VmwareHostPowerManagement(PyVmomi):
                     results['result'][host.name]['changed'] = changed
                     results['result'][host.name]['previous_state'] = current_policy
                     results['result'][host.name]['current_state'] = current_policy
-                    self.module.fail_json(msg="Power policy '%s' isn't supported for host '%s'" %
-                                          (policy, host.name))
+                    self.module.fail_json(msg=f"Power policy '{policy}' isn't supported for host '{host.name}'")
 
             host_change_list.append(changed)
 

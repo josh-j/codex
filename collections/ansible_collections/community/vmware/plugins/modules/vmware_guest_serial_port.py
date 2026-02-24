@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Anusha Hegde <anushah@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -212,9 +209,14 @@ serial_port_data:
     ]
 '''
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    vmware_argument_spec,
+    wait_for_task,
+)
+
 try:
     from pyVmomi import vim
 except ImportError:
@@ -225,7 +227,7 @@ class PyVmomiHelper(PyVmomi):
     """ This class is a helper to create easily VMware Spec for PyVmomiHelper """
 
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.change_applied = False   # a change was applied meaning at least one task succeeded
         self.config_spec = vim.vm.ConfigSpec()
         self.config_spec.deviceChange = []
@@ -301,9 +303,9 @@ class PyVmomiHelper(PyVmomi):
             task = vm_obj.ReconfigVM_Task(spec=self.config_spec)
             wait_for_task(task)
         except vim.fault.InvalidDatastorePath as e:
-            self.module.fail_json(msg="Failed to configure serial port on given virtual machine due to invalid path: %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"Failed to configure serial port on given virtual machine due to invalid path: {to_native(e.msg)}")
         except vim.fault.RestrictedVersion as e:
-            self.module.fail_json(msg="Failed to reconfigure virtual machine due to product versioning restrictions: %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"Failed to reconfigure virtual machine due to product versioning restrictions: {to_native(e.msg)}")
         if task.info.state == 'error':
             results = {'changed': self.change_applied, 'failed': True, 'msg': task.info.error.msg}
         else:
@@ -384,7 +386,7 @@ class PyVmomiHelper(PyVmomi):
         backing_func = switcher.get(backing_type, None)
         if backing_func is None:
             self.module.fail_json(msg="Failed to find a valid backing type. "
-                                      "Provided '%s', should be one of [%s]" % (backing_type, ', '.join(switcher.keys())))
+                                      "Provided '{}', should be one of [{}]".format(backing_type, ', '.join(switcher.keys())))
         return backing_func(serial_port, backing)
 
     def create_serial_port(self, backing):
@@ -568,7 +570,7 @@ def main():
         # Bail out
         vm_id = (module.params.get('name') or module.params.get('uuid') or module.params.get('vm_id'))
         module.fail_json(msg="Unable to manage serial ports for non-existing"
-                             " virtual machine '%s'." % vm_id)
+                             f" virtual machine '{vm_id}'.")
 
     if result['failed']:
         module.fail_json(**result)

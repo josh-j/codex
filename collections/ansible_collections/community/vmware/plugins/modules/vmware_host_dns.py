@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -146,16 +143,16 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
-from ansible.module_utils._text import to_native
 
 
 class VmwareHostDNS(PyVmomi):
     """Class to manage DNS configuration of an ESXi host system"""
 
     def __init__(self, module):
-        super(VmwareHostDNS, self).__init__(module)
+        super().__init__(module)
         self.cluster_name = self.params.get('cluster_name')
         self.esxi_host_name = self.params.get('esxi_hostname')
         if self.is_vcenter():
@@ -308,28 +305,25 @@ class VmwareHostDNS(PyVmomi):
                         host_network_system.UpdateNetworkConfig(config, 'modify')
                     except vim.fault.AlreadyExists:
                         self.module.fail_json(
-                            msg="Network entity specified in the configuration already exist on host '%s'" % host.name
+                            msg=f"Network entity specified in the configuration already exist on host '{host.name}'"
                         )
                     except vim.fault.NotFound:
                         self.module.fail_json(
-                            msg="Network entity specified in the configuration doesn't exist on host '%s'" % host.name
+                            msg=f"Network entity specified in the configuration doesn't exist on host '{host.name}'"
                         )
                     except vim.fault.ResourceInUse:
-                        self.module.fail_json(msg="Resource is in use on host '%s'" % host.name)
+                        self.module.fail_json(msg=f"Resource is in use on host '{host.name}'")
                     except vmodl.fault.InvalidArgument:
                         self.module.fail_json(
-                            msg="An invalid parameter is passed in for one of the networking objects for host '%s'" %
-                            host.name
+                            msg=f"An invalid parameter is passed in for one of the networking objects for host '{host.name}'"
                         )
                     except vmodl.fault.NotSupported as not_supported:
                         self.module.fail_json(
-                            msg="Operation isn't supported for the instance on '%s' : %s" %
-                            (host.name, to_native(not_supported.msg))
+                            msg=f"Operation isn't supported for the instance on '{host.name}' : {to_native(not_supported.msg)}"
                         )
                     except vim.fault.HostConfigFault as config_fault:
                         self.module.fail_json(
-                            msg="Failed to configure TCP/IP stacks for host '%s' due to : %s" %
-                            (host.name, to_native(config_fault.msg))
+                            msg=f"Failed to configure TCP/IP stacks for host '{host.name}' due to : {to_native(config_fault.msg)}"
                         )
             else:
                 host_result['changed'] = False
@@ -358,42 +352,37 @@ class VmwareHostDNS(PyVmomi):
                 diff_servers.remove(server)
             if dns_servers_new != diff_servers:
                 message = (
-                    "DNS server %s %sadded and %s %sremoved and the server sequence %schanged as well" %
-                    (self.array_to_string(add), check_mode, self.array_to_string(remove), check_mode, check_mode)
+                    f"DNS server {self.array_to_string(add)} {check_mode}added and {self.array_to_string(remove)} {check_mode}removed and the server sequence {check_mode}changed as well"
                 )
             else:
                 if dns_servers_new != dns_servers_configured:
                     message = (
-                        "DNS server %s %sreplaced with %s" %
-                        (self.array_to_string(remove), check_mode, self.array_to_string(add))
+                        f"DNS server {self.array_to_string(remove)} {check_mode}replaced with {self.array_to_string(add)}"
                     )
                 else:
                     message = (
-                        "DNS server %s %sremoved and %s %sadded" %
-                        (self.array_to_string(remove), check_mode, self.array_to_string(add), check_mode)
+                        f"DNS server {self.array_to_string(remove)} {check_mode}removed and {self.array_to_string(add)} {check_mode}added"
                     )
         elif add:
             for server in add:
                 diff_servers.append(server)
             if dns_servers_new != diff_servers:
                 message = (
-                    "DNS server %s %sadded and the server sequence %schanged as well" %
-                    (self.array_to_string(add), check_mode, check_mode)
+                    f"DNS server {self.array_to_string(add)} {check_mode}added and the server sequence {check_mode}changed as well"
                 )
             else:
-                message = "DNS server %s %sadded" % (self.array_to_string(add), check_mode)
+                message = f"DNS server {self.array_to_string(add)} {check_mode}added"
         elif remove:
             for server in remove:
                 diff_servers.remove(server)
             if dns_servers_new != diff_servers:
                 message = (
-                    "DNS server %s %sremoved and the server sequence %schanged as well" %
-                    (self.array_to_string(remove), check_mode, check_mode)
+                    f"DNS server {self.array_to_string(remove)} {check_mode}removed and the server sequence {check_mode}changed as well"
                 )
             else:
-                message = "DNS server %s %sremoved" % (self.array_to_string(remove), check_mode)
+                message = f"DNS server {self.array_to_string(remove)} {check_mode}removed"
         else:
-            message = "DNS server sequence %schanged" % check_mode
+            message = f"DNS server sequence {check_mode}changed"
 
         return message
 
@@ -407,13 +396,13 @@ class VmwareHostDNS(PyVmomi):
         """Return string from array"""
         if len(array) > 2:
             string = (
-                ', '.join("'{0}'".format(element) for element in array[:-1]) + ', and '
-                + "'{0}'".format(str(array[-1]))
+                ', '.join(f"'{element}'" for element in array[:-1]) + ', and '
+                + f"'{array[-1]!s}'"
             )
         elif len(array) == 2:
-            string = ' and '.join("'{0}'".format(element) for element in array)
+            string = ' and '.join(f"'{element}'" for element in array)
         elif len(array) == 1:
-            string = "'{0}'".format(array[0])
+            string = f"'{array[0]}'"
         return string
 
     @staticmethod

@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, VMware, Inc. All Rights Reserved.
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -245,15 +242,21 @@ except ImportError:
     pass
 
 import time
-from ansible.module_utils.basic import AnsibleModule
+
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task, TaskError
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vm_device_helper import PyVmomiDeviceHelper
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.device_helper = PyVmomiDeviceHelper(self.module)
         self.sleep_time = 10
         self.controller_types = self.device_helper.scsi_device_type.copy()
@@ -377,7 +380,7 @@ class PyVmomiHelper(PyVmomi):
         """
         if not self.params.get('controllers'):
             self.module.exit_json(changed=False, msg="No controller provided for virtual"
-                                                     " machine '%s' for management." % self.current_vm_obj.name)
+                                                     f" machine '{self.current_vm_obj.name}' for management.")
         if 10 != self.params.get('sleep_time') <= 300:
             self.sleep_time = self.params.get('sleep_time')
         exec_get_unused_ctl_bus_number = False
@@ -395,7 +398,7 @@ class PyVmomiHelper(PyVmomi):
                     vm_hwv = int(self.current_vm_obj.config.version.split('-')[1])
                     if vm_hwv < 13:
                         self.module.fail_json(msg="Can not create new NVMe disk controller due to VM hardware version"
-                                                  " is '%s', not >= 13." % vm_hwv)
+                                                  f" is '{vm_hwv}', not >= 13.")
         if exec_get_unused_ctl_bus_number:
             for ctl_config in controller_config:
                 if ctl_config and ctl_config['state'] == 'present' and ctl_config['type'] not in self.device_helper.usb_device_type.keys():
@@ -430,7 +433,7 @@ class PyVmomiHelper(PyVmomi):
                 if disk_ctl_config['type'] in self.device_helper.usb_device_type.keys():
                     usb_exists, has_disks_attached = self.check_ctl_disk_exist(disk_ctl_config['type'])
                     if usb_exists:
-                        self.module.warn("'%s' USB controller already exists, can not add more." % disk_ctl_config['type'])
+                        self.module.warn("'{}' USB controller already exists, can not add more.".format(disk_ctl_config['type']))
                     else:
                         disk_controller_new = self.create_controller(disk_ctl_config['type'], disk_ctl_config.get('bus_sharing'))
                         self.config_spec.deviceChange.append(disk_controller_new)
@@ -447,9 +450,9 @@ class PyVmomiHelper(PyVmomi):
                         self.change_detected = True
                     else:
                         if disk_ctl_config['type'] in self.device_helper.scsi_device_type.keys():
-                            self.module.warn("Already 4 SCSI controllers, can not add new '%s' controller." % disk_ctl_config['type'])
+                            self.module.warn("Already 4 SCSI controllers, can not add new '{}' controller.".format(disk_ctl_config['type']))
                         else:
-                            self.module.warn("Already 4 '%s' controllers, can not add new one." % disk_ctl_config['type'])
+                            self.module.warn("Already 4 '{}' controllers, can not add new one.".format(disk_ctl_config['type']))
             elif disk_ctl_config and disk_ctl_config['state'] == 'absent':
                 existing_ctl, has_disks_attached = self.check_ctl_disk_exist(disk_ctl_config['type'], disk_ctl_config.get('controller_number'))
                 if existing_ctl is not None:
@@ -460,22 +463,21 @@ class PyVmomiHelper(PyVmomi):
                         self.config_spec.deviceChange.append(ctl_spec)
                         self.change_detected = True
                     else:
-                        self.module.warn("Can not remove specified controller, type '%s', bus number '%s',"
-                                         " there are disks attaching to it." % (disk_ctl_config['type'], disk_ctl_config.get('controller_number')))
+                        self.module.warn("Can not remove specified controller, type '{}', bus number '{}',"
+                                         " there are disks attaching to it.".format(disk_ctl_config['type'], disk_ctl_config.get('controller_number')))
                 else:
-                    self.module.warn("Can not find specified controller to remove, type '%s', bus number '%s'."
-                                     % (disk_ctl_config['type'], disk_ctl_config.get('controller_number')))
+                    self.module.warn("Can not find specified controller to remove, type '{}', bus number '{}'.".format(disk_ctl_config['type'], disk_ctl_config.get('controller_number')))
 
         try:
             task = self.current_vm_obj.ReconfigVM_Task(spec=self.config_spec)
             wait_for_task(task)
         except vim.fault.InvalidDeviceSpec as e:
             self.module.fail_json(msg="Failed to configure controller on given virtual machine due to invalid"
-                                      " device spec : %s" % to_native(e.msg),
+                                      f" device spec : {to_native(e.msg)}",
                                   details="Please check ESXi server logs for more details.")
         except vim.fault.RestrictedVersion as e:
             self.module.fail_json(msg="Failed to reconfigure virtual machine due to"
-                                      " product versioning restrictions: %s" % to_native(e.msg))
+                                      f" product versioning restrictions: {to_native(e.msg)}")
         except TaskError as task_e:
             self.module.fail_json(msg=to_native(task_e))
 
@@ -541,7 +543,7 @@ def main():
         # We unable to find the virtual machine user specified
         # Bail out
         vm_id = (module.params.get('name') or module.params.get('uuid') or module.params.get('moid'))
-        module.fail_json(msg="Unable to manage disk or USB controllers for non-existing virtual machine '%s'." % vm_id)
+        module.fail_json(msg=f"Unable to manage disk or USB controllers for non-existing virtual machine '{vm_id}'.")
 
     # VM exists
     result = pyv.configure_disk_controllers()

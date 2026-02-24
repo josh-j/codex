@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
 
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import traceback
 from random import randint
-from ansible.module_utils.common.network import is_mac
+
 from ansible.module_utils.basic import missing_required_lib
+from ansible.module_utils.common.network import is_mac
 
 PYVMOMI_IMP_ERR = None
 try:
@@ -20,7 +18,7 @@ except ImportError:
     HAS_PYVMOMI = False
 
 
-class PyVmomiDeviceHelper(object):
+class PyVmomiDeviceHelper:
     """ This class is a helper to create easily VMware Objects for PyVmomiHelper """
 
     def __init__(self, module):
@@ -334,8 +332,8 @@ class PyVmomiDeviceHelper(object):
         elif isinstance(input_value, str) and input_value.isdigit():
             return int(input_value)
         else:
-            self.module.fail_json(msg='"%s" attribute should be an'
-                                  ' integer value.' % name)
+            self.module.fail_json(msg=f'"{name}" attribute should be an'
+                                  ' integer value.')
 
     def create_nvdimm_controller(self):
         nvdimm_ctl = vim.vm.device.VirtualDeviceSpec()

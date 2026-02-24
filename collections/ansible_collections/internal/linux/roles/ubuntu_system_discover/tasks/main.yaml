@@ -18,7 +18,7 @@
   block:
     - name: Run discovery tasks
       ansible.builtin.include_tasks: discover.yaml
-      when: not (ubuntu_skip_discovery | default(false) | bool)
+      when: falset (ubuntu_skip_discovery | default(false) | bool)
   rescue:
     - name: Log discovery failure
       ansible.builtin.debug:

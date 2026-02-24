@@ -68,7 +68,7 @@
                 </thead>
                 <tbody>
                     {% for row in rows %}
-                    {% set _badge = (row.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
+     {% set _badge = (row.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
                     <tr>
                         <td>
                             <a href="{{ row.links.node_report_latest | default('./' ~ row.name ~ '/health_report.html') }}" style="color: var(--indigo); font-weight: bold; text-decoration: none;">
@@ -108,7 +108,7 @@
                         <td class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
                             <strong>{{ alert.host }}</strong>
                         </td>
-                        {% set _badge = alert.severity | internal.core.status_badge_meta %}
+     {% set _badge = alert.severity | internal.core.status_badge_meta %}
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                         <td style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700; color: var(--indigo);">
                             {{ alert.category | default('System') }}
@@ -138,14 +138,14 @@
                 </thead>
                 <tbody>
                     {% for row in stig_fleet_rows %}
-                    {% if (row.platform | default('')) == 'linux' %}
-                    {% set _badge = (row.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
+     {% if (row.platform | default('')) == 'linux' %}
+         {% set _badge = (row.status.raw | default('UNKNOWN')) | internal.core.status_badge_meta %}
                     <tr>
                         <td><strong>{{ row.host }}</strong></td>
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                         <td>{{ row.findings_open | default(0) }} finding(s)</td>
                     </tr>
-                    {% endif %}
+     {% endif %}
                     {% else %}
                     <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No STIG results found.</td></tr>
                     {% endfor %}

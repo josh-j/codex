@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Joseph Callen <jcallen () csc.com>
 # Copyright: (c) 2018, Ansible Project
@@ -8,8 +7,6 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -147,19 +144,20 @@ try:
 except ImportError:
     pass
 
+from ansible.module_utils._text import to_native
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.community.vmware.plugins.module_utils.vmware import (
     PyVmomi,
     find_dvs_by_name,
     find_hostsystem_by_name,
     vmware_argument_spec,
-    wait_for_task)
-from ansible.module_utils._text import to_native
+    wait_for_task,
+)
 
 
 class VMwareDvsHost(PyVmomi):
     def __init__(self, module):
-        super(VMwareDvsHost, self).__init__(module)
+        super().__init__(module)
         self.host = None
         self.dv_switch = None
         self.desired_state = {}
@@ -174,8 +172,8 @@ class VMwareDvsHost(PyVmomi):
         self.dv_switch = find_dvs_by_name(self.content, self.switch_name)
 
         if self.dv_switch is None:
-            self.module.fail_json(msg="A distributed virtual switch %s "
-                                      "does not exist" % self.switch_name)
+            self.module.fail_json(msg=f"A distributed virtual switch {self.switch_name} "
+                                      "does not exist")
 
         self.uplink_portgroup = self.find_dvs_uplink_pg()
 
@@ -186,7 +184,7 @@ class VMwareDvsHost(PyVmomi):
         if self.lag_uplinks is not None:
             for lag_uplink in self.lag_uplinks:
                 if lag_uplink['lag'] not in self.lags:
-                    self.module.fail_json(msg="LAG %s not found" % lag_uplink['lag'])
+                    self.module.fail_json(msg="LAG {} not found".format(lag_uplink['lag']))
 
     def process_state(self):
         dvs_host_states = {
@@ -244,8 +242,8 @@ class VMwareDvsHost(PyVmomi):
             task = self.dv_switch.ReconfigureDvs_Task(spec)
             changed, result = wait_for_task(task)
         except vmodl.fault.NotSupported as not_supported:
-            self.module.fail_json(msg="Failed to configure DVS host %s as it is not"
-                                      " compatible with the VDS version." % self.esxi_hostname,
+            self.module.fail_json(msg=f"Failed to configure DVS host {self.esxi_hostname} as it is not"
+                                      " compatible with the VDS version.",
                                   details=to_native(not_supported.msg))
         return changed, result
 
@@ -362,7 +360,7 @@ class VMwareDvsHost(PyVmomi):
     def check_dvs_host_state(self):
         if self.uplink_portgroup is None:
             self.module.fail_json(msg="An uplink portgroup does not exist on"
-                                      " the distributed virtual switch %s" % self.switch_name)
+                                      f" the distributed virtual switch {self.switch_name}")
 
         self.host = self.find_host_attached_dvs()
 
@@ -371,8 +369,8 @@ class VMwareDvsHost(PyVmomi):
             # to the distributed vswitch
             self.host = find_hostsystem_by_name(self.content, self.esxi_hostname)
             if self.host is None:
-                self.module.fail_json(msg="The esxi_hostname %s does not exist "
-                                          "in vCenter" % self.esxi_hostname)
+                self.module.fail_json(msg=f"The esxi_hostname {self.esxi_hostname} does not exist "
+                                          "in vCenter")
             return 'absent'
         # Skip checking uplinks if the host should be absent, anyway
         elif self.state == 'absent':

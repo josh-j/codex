@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # Copyright: (c) 2018, Christian Kotte <christian.kotte@gmx.de>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -162,14 +159,14 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi, get_all_objs
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, get_all_objs, vmware_argument_spec
 
 
 class HostVmnicMgr(PyVmomi):
     """Class to manage vmnic info"""
 
     def __init__(self, module):
-        super(HostVmnicMgr, self).__init__(module)
+        super().__init__(module)
         self.capabilities = self.params.get('capabilities')
         self.directpath_io = self.params.get('directpath_io')
         self.sriov = self.params.get('sriov')

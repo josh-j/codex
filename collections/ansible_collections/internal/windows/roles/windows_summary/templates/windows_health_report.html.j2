@@ -38,7 +38,7 @@
       </thead>
       <tbody>
         {% for row in rows %}
-        {% set badge = (row.get('status', {}).get('raw', 'UNKNOWN')) | internal.core.status_badge_meta %}
+     {% set badge = (row.get('status', {}).get('raw', 'UNKNOWN')) | internal.core.status_badge_meta %}
         <tr>
           <td>{{ row.name }}</td>
           <td><span class="badge {{ badge.css_class }}">{{ badge.label }}</span></td>
@@ -67,7 +67,7 @@
       </thead>
       <tbody>
         {% for alert in active_alerts %}
-        {% set badge = (alert.get('severity', 'UNKNOWN')) | internal.core.status_badge_meta %}
+     {% set badge = (alert.get('severity', 'UNKNOWN')) | internal.core.status_badge_meta %}
         <tr>
           <td>{{ alert.get('host', 'unknown') }}</td>
           <td><span class="badge {{ badge.css_class }}">{{ badge.label }}</span></td>

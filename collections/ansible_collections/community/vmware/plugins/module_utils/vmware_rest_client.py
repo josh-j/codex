@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # Simplified BSD License (see LICENSES/BSD-2-Clause.txt or https://opensource.org/licenses/BSD-2-Clause)
 # SPDX-License-Identifier: BSD-2-Clause
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import traceback
 
@@ -29,16 +26,11 @@ except ImportError:
 
 VSPHERE_IMP_ERR = None
 try:
-    from com.vmware.vapi.std_client import DynamicID
-    from vmware.vapi.vsphere.client import create_vsphere_client
-    from com.vmware.vapi.std.errors_client import Unauthorized
     from com.vmware.content.library_client import Item
-    from com.vmware.vcenter_client import (Folder,
-                                           Datacenter,
-                                           ResourcePool,
-                                           Datastore,
-                                           Cluster,
-                                           Host)
+    from com.vmware.vapi.std.errors_client import Unauthorized
+    from com.vmware.vapi.std_client import DynamicID
+    from com.vmware.vcenter_client import Cluster, Datacenter, Datastore, Folder, Host, ResourcePool
+    from vmware.vapi.vsphere.client import create_vsphere_client
     HAS_VSPHERE = True
 except ImportError:
     VSPHERE_IMP_ERR = traceback.format_exc()
@@ -54,11 +46,11 @@ except ImportError:
     except ImportError:
         HAS_URLLIB3 = False
 
-from ansible.module_utils.basic import env_fallback, missing_required_lib
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import env_fallback, missing_required_lib
 
 
-class VmwareRestClient(object):
+class VmwareRestClient:
     def __init__(self, module):
         """
         Constructor
@@ -153,29 +145,29 @@ class VmwareRestClient(object):
             if HAS_URLLIB3:
                 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         if all([protocol, proxy_host, proxy_port]):
-            proxies = {protocol: "{0}://{1}:{2}".format(protocol, proxy_host, proxy_port)}
+            proxies = {protocol: f"{protocol}://{proxy_host}:{proxy_port}"}
             session.proxies.update(proxies)
 
         if not all([hostname, username, password]):
             self.module.fail_json(msg="Missing one of the following : hostname, username, password."
                                       " Please read the documentation for more information.")
 
-        msg = "Failed to connect to vCenter or ESXi API at %s:%s" % (hostname, port)
+        msg = f"Failed to connect to vCenter or ESXi API at {hostname}:{port}"
         try:
             client = create_vsphere_client(
-                server="%s:%s" % (hostname, port),
+                server=f"{hostname}:{port}",
                 username=username,
                 password=password,
                 session=session
             )
         except requests.exceptions.SSLError as ssl_exc:
             msg += " due to SSL verification failure"
-            self.module.fail_json(msg="%s : %s" % (msg, to_native(ssl_exc)))
+            self.module.fail_json(msg=f"{msg} : {to_native(ssl_exc)}")
         except Exception as generic_exc:
-            self.module.fail_json(msg="%s : %s" % (msg, to_native(generic_exc)))
+            self.module.fail_json(msg=f"{msg} : {to_native(generic_exc)}")
 
         if client is None:
-            self.module.fail_json(msg="Failed to login to %s" % hostname)
+            self.module.fail_json(msg=f"Failed to login to {hostname}")
 
         return client
 
@@ -195,7 +187,7 @@ class VmwareRestClient(object):
             tags = []
 
         if not (isinstance(tags, list) or isinstance(tags, set)):
-            self.module.fail_json(msg="The parameter 'tags' must be of type 'list' or 'set', but type %s was passed" % type(tags))
+            self.module.fail_json(msg=f"The parameter 'tags' must be of type 'list' or 'set', but type {type(tags)} was passed")
 
         if not dobj:
             return tags
@@ -228,7 +220,7 @@ class VmwareRestClient(object):
             tags = []
 
         if not (isinstance(tags, list) or isinstance(tags, set)):
-            self.module.fail_json(msg="The parameter 'tags' must be of type 'list' or 'set', but type %s was passed" % type(tags))
+            self.module.fail_json(msg=f"The parameter 'tags' must be of type 'list' or 'set', but type {type(tags)} was passed")
 
         if dobj is None:
             return tags

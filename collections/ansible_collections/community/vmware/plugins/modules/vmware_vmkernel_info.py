@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -88,14 +85,14 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec, PyVmomi
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec
 
 
 class VmkernelInfoManager(PyVmomi):
     def __init__(self, module):
-        super(VmkernelInfoManager, self).__init__(module)
+        super().__init__(module)
         cluster_name = self.params.get('cluster_name', None)
         esxi_host_name = self.params.get('esxi_hostname', None)
         self.hosts = self.get_all_host_objs(cluster_name=cluster_name, esxi_host_name=esxi_host_name)
@@ -128,14 +125,14 @@ class VmkernelInfoManager(PyVmomi):
         try:
             query = host_system.configManager.virtualNicManager.QueryNetConfig(service_type)
         except vim.fault.HostConfigFault as config_fault:
-            self.module.fail_json(msg="Failed to get all VMKs for service type %s due to"
-                                      " host config fault : %s" % (service_type, to_native(config_fault.msg)))
+            self.module.fail_json(msg=f"Failed to get all VMKs for service type {service_type} due to"
+                                      f" host config fault : {to_native(config_fault.msg)}")
         except vmodl.fault.InvalidArgument as invalid_argument:
-            self.module.fail_json(msg="Failed to get all VMKs for service type %s due to"
-                                      " invalid arguments : %s" % (service_type, to_native(invalid_argument.msg)))
+            self.module.fail_json(msg=f"Failed to get all VMKs for service type {service_type} due to"
+                                      f" invalid arguments : {to_native(invalid_argument.msg)}")
         except Exception as e:
-            self.module.fail_json(msg="Failed to get all VMKs for service type %s due to"
-                                      "%s" % (service_type, to_native(e)))
+            self.module.fail_json(msg=f"Failed to get all VMKs for service type {service_type} due to"
+                                      f"{to_native(e)}")
 
         if not query or not query.selectedVnic:
             return vmks_list

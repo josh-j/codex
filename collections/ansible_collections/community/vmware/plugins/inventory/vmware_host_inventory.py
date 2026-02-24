@@ -4,9 +4,7 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
 
 DOCUMENTATION = r"""
     name: vmware_host_inventory
@@ -193,16 +191,16 @@ except ImportError:
     pass
 
 from ansible.errors import AnsibleError
-from ansible.module_utils._text import to_text, to_native
+from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.common.dict_transformations import camel_dict_to_snake_dict
 from ansible.module_utils.six import text_type
-from ansible_collections.community.vmware.plugins.plugin_utils.inventory import (
-    to_nested_dict,
-    to_flatten_dict,
-)
-from ansible_collections.community.vmware.plugins.inventory.vmware_vm_inventory import BaseVMwareInventory
-from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable
 from ansible.parsing.yaml.objects import AnsibleVaultEncryptedUnicode
+from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, Constructable
+from ansible_collections.community.vmware.plugins.inventory.vmware_vm_inventory import BaseVMwareInventory
+from ansible_collections.community.vmware.plugins.plugin_utils.inventory import (
+    to_flatten_dict,
+    to_nested_dict,
+)
 
 
 class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
@@ -217,7 +215,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         Returns: True if everything is correct, else False
         """
         valid = False
-        if super(InventoryModule, self).verify_file(path):
+        if super().verify_file(path):
             if path.endswith(
                 (
                     "vmware.yaml",
@@ -234,7 +232,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         """
         Parses the inventory file
         """
-        super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
+        super().parse(inventory, loader, path, cache=cache)
 
         cache_key = self.get_cache_key(path)
 
@@ -358,7 +356,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                     field_mgr = self.pyv.content.customFieldsManager.field
                 for cust_value in host_obj.obj.customValue:
                     properties[
-                        [y.name for y in field_mgr if y.key == cust_value.key][0]
+                        next(y.name for y in field_mgr if y.key == cust_value.key)
                     ] = cust_value.value
 
             # Tags
@@ -426,8 +424,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             except Exception as e:  # pylint: disable=broad-except
                 if strict:
                     raise AnsibleError(
-                        "Could not compose %s as hostnames - %s"
-                        % (preference, to_native(e))
+                        f"Could not compose {preference} as hostnames - {to_native(e)}"
                     )
 
                 errors.append((preference, str(e)))
@@ -435,8 +432,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 return to_text(hostname)
 
         raise AnsibleError(
-            "Could not template any hostname for host, errors for each preference: %s"
-            % (", ".join(["%s: %s" % (pref, err) for pref, err in errors]))
+            "Could not template any hostname for host, errors for each preference: {}".format(", ".join([f"{pref}: {err}" for pref, err in errors]))
         )
 
     def _can_add_host(self, host_filters, host_properties, strict=False):
@@ -447,8 +443,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             except Exception as e:  # pylint: disable=broad-except
                 if strict:
                     raise AnsibleError(
-                        "Could not evaluate %s as host filters - %s"
-                        % (host_filter, to_native(e))
+                        f"Could not evaluate {host_filter} as host filters - {to_native(e)}"
                     )
 
             if not can_add_host:
@@ -493,7 +488,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             parents = host_properties["path"].split("/")
             if parents:
                 if isinstance(with_path, text_type):
-                    parents = [with_path] + parents
+                    parents = [with_path, *parents]
 
                 c_name = self._sanitize_group_name("/".join(parents))
                 c_group = self.inventory.add_group(c_name)

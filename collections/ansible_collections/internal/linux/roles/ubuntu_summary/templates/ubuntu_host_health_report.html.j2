@@ -73,7 +73,7 @@
                 <tbody>
                     {% for alert in alerts %}
                     <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
-                        {% set _badge = alert.severity | internal.core.status_badge_meta(true) %}
+     {% set _badge = alert.severity | internal.core.status_badge_meta(true) %}
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                         <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
                         <td>{{ alert.message }}</td>
@@ -91,15 +91,15 @@
                 <thead><tr><th>Failed Service Output</th></tr></thead>
                 <tbody>
                     {% if sys_facts.services is defined and sys_facts.services.failed_list is defined %}
-                        {% if sys_facts.services.failed_list | length > 0 %}
-                            {% for svc_string in sys_facts.services.failed_list %}
+     {% if sys_facts.services.failed_list | length > 0 %}
+         {% for svc_string in sys_facts.services.failed_list %}
                             <tr>
                                 <td><span style="font-family: monospace; color: var(--red); font-weight: 600;">{{ svc_string }}</span></td>
                             </tr>
-                            {% endfor %}
-                        {% else %}
+         {% endfor %}
+     {% else %}
                             <tr><td style="text-align:center; padding: 30px; color: var(--text-muted);">All detected services are currently running gracefully.</td></tr>
-                        {% endif %}
+     {% endif %}
                     {% else %}
                         <tr><td style="text-align:center; padding: 30px; color: var(--text-muted);">No service data found in payload.</td></tr>
                     {% endif %}
@@ -113,7 +113,7 @@
                 <thead><tr><th>Mount Point</th><th>Device</th><th>Free (GB)</th><th>Total (GB)</th><th>Usage %</th></tr></thead>
                 <tbody>
                     {% if sys_facts.disks is defined %}
-                        {% for disk in sys_facts.disks %}
+     {% for disk in sys_facts.disks %}
                             <tr>
                                 <td><strong>{{ disk.mount }}</strong></td>
                                 <td style="color: var(--text-muted);">{{ disk.device }}</td>
@@ -123,7 +123,7 @@
                                     <strong>{{ disk.used_pct }}%</strong>
                                 </td>
                             </tr>
-                        {% endfor %}
+     {% endfor %}
                     {% else %}
                         <tr><td colspan="5" style="text-align:center; padding: 30px; color: var(--text-muted);">No disk data found in payload.</td></tr>
                     {% endif %}
@@ -175,7 +175,7 @@
                         <td><strong>System Uptime</strong></td>
                         <td>{{ sys_facts.uptime_days | default('0') }} Days</td>
                         <td class="{{ 'text-warning' if sys_facts.uptime_days|default(0)|int > 180 else 'text-muted' }}">
-                            {{ 'Legacy Uptime (Consider Reboot)' if sys_facts.uptime_days|default(0)|int > 180 else 'Normal' }}
+                            {{ 'Legacy Uptime (Consider Reboot)' if sys_facts.uptime_days | default(0) | int > 180 else 'Normal' }}
                         </td>
                     </tr>
                     {% if update_facts %}

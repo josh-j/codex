@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -89,14 +86,14 @@ class VMwareLocalRoleInfo(PyVmomi):
     """Class to manage local role info"""
 
     def __init__(self, module):
-        super(VMwareLocalRoleInfo, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self.params = module.params
 
         if self.content.authorizationManager is None:
             self.module.fail_json(
                 msg="Failed to get local authorization manager settings.",
-                details="It seems that '%s' does not support this functionality" % self.params['hostname']
+                details="It seems that '{}' does not support this functionality".format(self.params['hostname'])
             )
 
     def gather_local_role_info(self):

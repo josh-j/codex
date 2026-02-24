@@ -27,8 +27,8 @@
 | Application Name | Version | Publisher | Status |
 |------------------|---------|-----------|--------|
 {% for result in successful_updates %}
-{% set app = apps_to_update[loop.index0] %}
-| {{ app.Name }} | {{ app.Version }} | {{ app.Publisher }} | ✓ Success |
+     {% set app = apps_to_update[loop.index0] %}
+| {{ app.name }} | {{ app.version }} | {{ app.publisher }} | ✓ Success |
 {% endfor %}
 
 {% if successful_updates | length == 0 %}
@@ -42,8 +42,8 @@
 | Application Name | Version | Publisher | Error |
 |------------------|---------|-----------|-------|
 {% for result in failed_updates %}
-{% set app = apps_to_update[loop.index0] %}
-| {{ app.Name }} | {{ app.Version }} | {{ app.Publisher }} | {{ result.msg | default('Unknown error') }} |
+     {% set app = apps_to_update[loop.index0] %}
+| {{ app.name }} | {{ app.version }} | {{ app.publisher }} | {{ result.msg | default('unknown error') }} |
 {% endfor %}
 
 {% if failed_updates | length == 0 %}
@@ -57,9 +57,9 @@
 {% if excluded_app_names | length > 0 %}
 | Application Name |
 |------------------|
-{% for app_name in excluded_app_names %}
+     {% for app_name in excluded_app_names %}
 | {{ app_name }} |
-{% endfor %}
+     {% endfor %}
 {% else %}
 *No applications excluded*
 {% endif %}

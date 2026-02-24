@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
@@ -28,8 +29,8 @@ except ImportError:
     # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
     _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "reporting_primitives.py"
     _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _as_list = _mod.as_list
     _alert = _mod.build_alert
@@ -249,10 +250,10 @@ def audit_cluster_configuration_alerts(clusters, cpu_threshold=90, mem_threshold
                 _alert(
                     "WARNING",
                     "cluster_capacity",
-                    f"Memory Saturation: Cluster '{name}' is at {util.get('mem_pct', 0)}%",
+                    f"Memory Saturation: Cluster '{name}' is at {mem_pct}%",
                     {
                         "cluster": name,
-                        "current_pct": util.get("mem_pct", 0),
+                        "current_pct": mem_pct,
                         "threshold_pct": mem_threshold,
                     },
                 )
@@ -262,10 +263,10 @@ def audit_cluster_configuration_alerts(clusters, cpu_threshold=90, mem_threshold
                 _alert(
                     "WARNING",
                     "cluster_capacity",
-                    f"CPU Saturation: Cluster '{name}' is at {util.get('cpu_pct', 0)}%",
+                    f"CPU Saturation: Cluster '{name}' is at {cpu_pct}%",
                     {
                         "cluster": name,
-                        "current_pct": util.get("cpu_pct", 0),
+                        "current_pct": cpu_pct,
                         "threshold_pct": cpu_threshold,
                     },
                 )
@@ -547,7 +548,7 @@ def append_alerts(existing_alerts, new_alerts):
 
 def compute_audit_rollups(alerts):
     alerts = list(alerts or [])
-    summary = {
+    summary: dict[str, Any] = {
         "total": len(alerts),
         "critical_count": 0,
         "warning_count": 0,

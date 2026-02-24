@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2023, Valentin Yonev <valentin.ionev@live.com>
@@ -68,15 +67,14 @@ EXAMPLES = r'''
   delegate_to: localhost
 '''
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
-
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
 from ansible_collections.community.vmware.plugins.module_utils.vmware_rest_client import VmwareRestClient
 
 
 class VcRootPasswordExpiration(VmwareRestClient):
     def __init__(self, module: AnsibleModule):
-        super(VcRootPasswordExpiration, self).__init__(module)
+        super().__init__(module)
         self.module = module
         self._state = True if self.module.params['state'] == 'present' else False
 
@@ -107,7 +105,7 @@ class VcRootPasswordExpiration(VmwareRestClient):
                 if current_vcenter_info[k] != v:
                     _changes_dict[k] = v
                 if k == 'fullname':
-                    setattr(default_config, 'full_name', v)
+                    default_config.full_name = v
                     continue
             except KeyError:
                 '''

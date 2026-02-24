@@ -15,8 +15,8 @@ except ImportError:
 
     _helper_path = Path(__file__).resolve().parent / "reporting_primitives.py"
     _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
-    _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     canonical_severity = _mod.canonical_severity
 
@@ -113,11 +113,26 @@ def load_all_reports(report_dir, audit_filter=None, normalizer=None):
         # Filter out directories we should never enter
         dirs[:] = [d for d in dirs if d not in traversal_exclude]
 
-        current_dir_name = os.path.basename(root)
-        if current_dir_name in host_exclude or root == report_dir:
+        if root == report_dir:
             continue
 
-        hostname = current_dir_name
+        rel_path = os.path.relpath(root, report_dir)
+        path_parts = rel_path.split(os.sep)
+
+        # Strip all leading parts that are in host_exclude (platform containers)
+        while path_parts and path_parts[0] in host_exclude:
+            path_parts.pop(0)
+
+        if not path_parts:
+            continue
+
+        # The first non-excluded part is the hostname
+        hostname = path_parts[0]
+
+        # If we have anything left after hostname, it's a subfolder we should skip
+        if len(path_parts) > 1:
+            continue
+
         yaml_files = [f for f in files if f.endswith(".yaml") and f not in host_exclude]
 
         if not yaml_files:
@@ -141,10 +156,21 @@ def load_all_reports(report_dir, audit_filter=None, normalizer=None):
                 aggregated["hosts"][hostname][audit_type] = report
 
                 summary = report.get("summary", {})
-                if not summary and "vcenter_health" in report:
-                    alerts = report["vcenter_health"].get("alerts", [])
-                    criticals = len([a for a in alerts if canonical_severity(a.get("severity")) == "CRITICAL"])
-                    warnings = len([a for a in alerts if canonical_severity(a.get("severity")) == "WARNING"])
+                if not isinstance(summary, dict):
+                    summary = {}
+
+                vcenter_health = report.get("vcenter_health")
+                if not summary and isinstance(vcenter_health, dict):
+                    alerts = vcenter_health.get("alerts", [])
+                    criticals = 0
+                    warnings = 0
+                    for a in (alerts if isinstance(alerts, list) else []):
+                        if isinstance(a, dict):
+                            sev = canonical_severity(a.get("severity"))
+                            if sev == "CRITICAL":
+                                criticals += 1
+                            elif sev == "WARNING":
+                                warnings += 1
                 else:
                     criticals = int(summary.get("critical_count", 0))
                     warnings = int(summary.get("warning_count", 0))

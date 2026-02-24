@@ -1,13 +1,10 @@
 #!/usr/bin/python
-#  -*- coding: utf-8 -*-
 
 # Copyright: (c) 2019, Ansible Project
 # Copyright: (c) 2019, Diane Wang <dianew@vmware.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -128,17 +125,23 @@ try:
 except ImportError:
     pass
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.six.moves.urllib.parse import urlencode, quote
-from ansible.module_utils._text import to_native
-from ansible.module_utils.urls import open_url
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, wait_for_task, get_parent_datacenter
 import os
+
+from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.six.moves.urllib.parse import quote, urlencode
+from ansible.module_utils.urls import open_url
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    get_parent_datacenter,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 
 class PyVmomiHelper(PyVmomi):
     def __init__(self, module):
-        super(PyVmomiHelper, self).__init__(module)
+        super().__init__(module)
         self.change_detected = False
 
     def generate_http_access_url(self, file_path):
@@ -148,14 +151,14 @@ class PyVmomiHelper(PyVmomi):
         if not file_path:
             return url_path
 
-        path = "/folder/%s" % quote(file_path.split()[1])
+        path = f"/folder/{quote(file_path.split()[1])}"
         params = dict(dsName=file_path.split()[0].strip('[]'))
         if not self.is_vcenter():
             datacenter = 'ha-datacenter'
         else:
             datacenter = get_parent_datacenter(self.current_vm_obj).name.replace('&', '%26')
         params['dcPath'] = datacenter
-        url_path = "https://%s%s?%s" % (self.params['hostname'], path, urlencode(params))
+        url_path = "https://{}{}?{}".format(self.params['hostname'], path, urlencode(params))
 
         return url_path
 
@@ -172,18 +175,16 @@ class PyVmomiHelper(PyVmomi):
             try:
                 os.makedirs(local_file_path)
             except OSError as err:
-                self.module.fail_json(msg="Exception caught when create folder %s on local machine, with error %s"
-                                          % (local_file_path, to_native(err)))
+                self.module.fail_json(msg=f"Exception caught when create folder {local_file_path} on local machine, with error {to_native(err)}")
         local_file = os.path.join(local_file_path, local_file_name)
         with open(local_file, 'wb') as handle:
             try:
                 response = open_url(file_url, url_username=self.params.get('username'),
                                     url_password=self.params.get('password'), validate_certs=False)
             except Exception as err:
-                self.module.fail_json(msg="Download screenshot file from URL %s, failed due to %s" % (file_url, to_native(err)))
+                self.module.fail_json(msg=f"Download screenshot file from URL {file_url}, failed due to {to_native(err)}")
             if not response or response.getcode() >= 400:
-                self.module.fail_json(msg="Download screenshot file from URL %s, failed with response %s, response code %s"
-                                          % (file_url, response, response.getcode()))
+                self.module.fail_json(msg=f"Download screenshot file from URL {file_url}, failed with response {response}, response code {response.getcode()}")
             bytes_read = response.read(2 ** 20)
             while bytes_read:
                 handle.write(bytes_read)
@@ -212,20 +213,20 @@ class PyVmomiHelper(PyVmomi):
 
     def take_vm_screenshot(self):
         if self.current_vm_obj.runtime.powerState != vim.VirtualMachinePowerState.poweredOn:
-            self.module.fail_json(msg="VM is %s, valid power state is poweredOn." % self.current_vm_obj.runtime.powerState)
+            self.module.fail_json(msg=f"VM is {self.current_vm_obj.runtime.powerState}, valid power state is poweredOn.")
         try:
             task = self.current_vm_obj.CreateScreenshot_Task()
             wait_for_task(task)
         except vim.fault.FileFault as e:
             self.module.fail_json(msg="Failed to create screenshot due to errors when creating or accessing one or more"
-                                      " files needed for this operation, %s" % to_native(e.msg))
+                                      f" files needed for this operation, {to_native(e.msg)}")
         except vim.fault.InvalidState as e:
             self.module.fail_json(msg="Failed to create screenshot due to VM is not ready to respond to such requests,"
-                                      " %s" % to_native(e.msg))
+                                      f" {to_native(e.msg)}")
         except vmodl.RuntimeFault as e:
-            self.module.fail_json(msg="Failed to create screenshot due to runtime fault, %s," % to_native(e.msg))
+            self.module.fail_json(msg=f"Failed to create screenshot due to runtime fault, {to_native(e.msg)},")
         except vim.fault.TaskInProgress as e:
-            self.module.fail_json(msg="Failed to create screenshot due to VM is busy, %s" % to_native(e.msg))
+            self.module.fail_json(msg=f"Failed to create screenshot due to VM is busy, {to_native(e.msg)}")
 
         if task.info.state == 'error':
             return {'changed': self.change_detected, 'failed': True, 'msg': task.info.error.msg}
@@ -264,7 +265,7 @@ def main():
     vm = pyv.get_vm()
     if not vm:
         vm_id = (module.params.get('uuid') or module.params.get('name') or module.params.get('moid'))
-        module.fail_json(msg='Unable to find the specified virtual machine : %s' % vm_id)
+        module.fail_json(msg=f'Unable to find the specified virtual machine : {vm_id}')
 
     result = pyv.take_vm_screenshot()
     if result['failed']:

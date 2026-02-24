@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -166,19 +163,25 @@ vm_boot_status:
 '''
 
 
-from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils._text import to_native
-from ansible_collections.community.vmware.plugins.module_utils.vmware import PyVmomi, vmware_argument_spec, find_vm_by_id, wait_for_task, TaskError
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    TaskError,
+    find_vm_by_id,
+    vmware_argument_spec,
+    wait_for_task,
+)
 
 try:
-    from pyVmomi import vim, VmomiSupport
+    from pyVmomi import VmomiSupport, vim
 except ImportError:
     pass
 
 
 class VmBootManager(PyVmomi):
     def __init__(self, module):
-        super(VmBootManager, self).__init__(module)
+        super().__init__(module)
         self.name = self.params['name']
         self.uuid = self.params['uuid']
         self.moid = self.params['moid']
@@ -194,7 +197,7 @@ class VmBootManager(PyVmomi):
             else:
                 vm_obj = find_vm_by_id(self.content, vm_id=self.uuid, vm_id_type="uuid")
             if vm_obj is None:
-                self.module.fail_json(msg="Failed to find the virtual machine with UUID : %s" % self.uuid)
+                self.module.fail_json(msg=f"Failed to find the virtual machine with UUID : {self.uuid}")
             vms = [vm_obj]
 
         elif self.name:
@@ -241,7 +244,7 @@ class VmBootManager(PyVmomi):
 
         for device_order in self.params.get('boot_order'):
             if device_order not in valid_device_strings:
-                self.module.fail_json(msg="Invalid device found [%s], please specify device from ['%s']" % (device_order,
+                self.module.fail_json(msg="Invalid device found [{}], please specify device from ['{}']".format(device_order,
                                                                                                             "', '".join(valid_device_strings)))
             if device_order == 'cdrom':
                 first_cdrom = [device for device in self.vm.config.hardware.device if isinstance(device, vim.vm.device.VirtualCdrom)]
@@ -254,7 +257,7 @@ class VmBootManager(PyVmomi):
                     first_hdd = [device for device in self.vm.config.hardware.device if isinstance(device, vim.vm.device.VirtualDisk)
                                  and device.deviceInfo.label == self.params.get('boot_hdd_name')]
                     if not first_hdd:
-                        self.module.fail_json(msg="Not found virtual disk with disk label '%s'" % (self.params.get('boot_hdd_name')))
+                        self.module.fail_json(msg="Not found virtual disk with disk label '{}'".format(self.params.get('boot_hdd_name')))
                 if first_hdd:
                     boot_order_list.append(vim.vm.BootOptions.BootableDiskDevice(deviceKey=first_hdd[0].key))
             elif device_order == 'ethernet':
@@ -352,11 +355,10 @@ class VmBootManager(PyVmomi):
             task = self.vm.ReconfigVM_Task(vm_conf)
 
             try:
-                changed, result = wait_for_task(task)
+                changed, _result = wait_for_task(task)
             except TaskError as e:
                 self.module.fail_json(msg="Failed to perform reconfigure virtual"
-                                          " machine %s for boot order due to: %s" % (self.name or self.uuid,
-                                                                                     to_native(e)))
+                                          f" machine {self.name or self.uuid} for boot order due to: {to_native(e)}")
 
         results.update(
             {

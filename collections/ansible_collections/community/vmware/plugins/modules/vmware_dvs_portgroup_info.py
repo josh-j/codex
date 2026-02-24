@@ -1,13 +1,10 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -149,28 +146,29 @@ except ImportError:
     pass
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.community.vmware.plugins.module_utils.vmware import (
-    vmware_argument_spec,
-    PyVmomi,
-    get_all_objs,
-    find_dvs_by_name)
 from ansible.module_utils.six.moves.urllib.parse import unquote
+from ansible_collections.community.vmware.plugins.module_utils.vmware import (
+    PyVmomi,
+    find_dvs_by_name,
+    get_all_objs,
+    vmware_argument_spec,
+)
 
 
 class DVSPortgroupInfoManager(PyVmomi):
     def __init__(self, module):
-        super(DVSPortgroupInfoManager, self).__init__(module)
+        super().__init__(module)
         self.dc_name = self.params['datacenter']
         self.dvs_name = self.params['dvswitch']
 
         datacenter = self.find_datacenter_by_name(self.dc_name)
         if datacenter is None:
-            self.module.fail_json(msg="Failed to find the datacenter %s" % self.dc_name)
+            self.module.fail_json(msg=f"Failed to find the datacenter {self.dc_name}")
         if self.dvs_name:
             # User specified specific dvswitch name to gather information
             dvsn = find_dvs_by_name(self.content, self.dvs_name)
             if dvsn is None:
-                self.module.fail_json(msg="Failed to find the dvswitch %s" % self.dvs_name)
+                self.module.fail_json(msg=f"Failed to find the dvswitch {self.dvs_name}")
 
             self.dvsls = [dvsn]
         else:

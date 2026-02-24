@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 '''
@@ -42,7 +39,7 @@ import sys
 import time
 
 from ansible.module_utils.common._collections_compat import MutableMapping
-from ansible.module_utils.six import integer_types, text_type, string_types
+from ansible.module_utils.six import integer_types, string_types, text_type
 from ansible.module_utils.six.moves import configparser
 
 # Disable logging message trigged by pSphere/suds.
@@ -60,11 +57,11 @@ logging.getLogger('suds').addHandler(NullHandler())
 
 from psphere.client import Client
 from psphere.errors import ObjectNotFoundError
-from psphere.managedobjects import HostSystem, VirtualMachine, ManagedObject, ClusterComputeResource
+from psphere.managedobjects import ClusterComputeResource, HostSystem, ManagedObject, VirtualMachine
 from suds.sudsobject import Object as SudsObject
 
 
-class VMwareInventory(object):
+class VMwareInventory:
 
     def __init__(self, guests_only=None):
         self.config = configparser.ConfigParser()
@@ -165,7 +162,7 @@ class VMwareInventory(object):
             if isinstance(v, MutableMapping):
                 items.extend(self._flatten_dict(v, new_key, sep).items())
             elif isinstance(v, (list, tuple)):
-                if all((isinstance(x, string_types) for x in v)):
+                if all(isinstance(x, string_types) for x in v):
                     items.append((new_key, v))
             else:
                 items.append((new_key, v))
@@ -179,7 +176,7 @@ class VMwareInventory(object):
         seen = seen or set()
         if isinstance(obj, ManagedObject):
             try:
-                obj_unicode = text_type(getattr(obj, 'name'))
+                obj_unicode = text_type(obj.name)
             except AttributeError:
                 obj_unicode = ()
             if obj in seen:
@@ -196,7 +193,7 @@ class VMwareInventory(object):
                     obj_info = self._get_obj_info(val, depth - 1, seen)
                     if obj_info != ():
                         d[attr] = obj_info
-                except Exception as e:
+                except Exception:
                     pass
             return d
         elif isinstance(obj, SudsObject):
@@ -213,7 +210,7 @@ class VMwareInventory(object):
                 if obj_info != ():
                     l.append(obj_info)
             return l
-        elif isinstance(obj, (type(None), bool, float) + string_types + integer_types):
+        elif isinstance(obj, (type(None), bool, float, *string_types, *integer_types)):
             return obj
         else:
             return ()
@@ -228,9 +225,9 @@ class VMwareInventory(object):
         for attr in ('datastore', 'network', 'vm'):
             try:
                 value = getattr(host, attr)
-                host_info['%ss' % attr] = self._get_obj_info(value, depth=0)
+                host_info[f'{attr}s'] = self._get_obj_info(value, depth=0)
             except AttributeError:
-                host_info['%ss' % attr] = []
+                host_info[f'{attr}s'] = []
         for k, v in self._get_obj_info(host.summary, depth=0).items():
             if isinstance(v, MutableMapping):
                 for k2, v2 in v.items():
@@ -242,8 +239,8 @@ class VMwareInventory(object):
         except Exception as e:
             print(e, file=sys.stderr)
         host_info = self._flatten_dict(host_info, prefix)
-        if ('%s_ipAddress' % prefix) in host_info:
-            host_info['ansible_ssh_host'] = host_info['%s_ipAddress' % prefix]
+        if (f'{prefix}_ipAddress') in host_info:
+            host_info['ansible_ssh_host'] = host_info[f'{prefix}_ipAddress']
         return host_info
 
     def _get_vm_info(self, vm, prefix='vmware'):
@@ -256,9 +253,9 @@ class VMwareInventory(object):
         for attr in ('datastore', 'network'):
             try:
                 value = getattr(vm, attr)
-                vm_info['%ss' % attr] = self._get_obj_info(value, depth=0)
+                vm_info[f'{attr}s'] = self._get_obj_info(value, depth=0)
             except AttributeError:
-                vm_info['%ss' % attr] = []
+                vm_info[f'{attr}s'] = []
         try:
             vm_info['resourcePool'] = self._get_obj_info(vm.resourcePool, depth=0)
         except AttributeError:
@@ -276,8 +273,8 @@ class VMwareInventory(object):
             elif k != 'vm':
                 vm_info[k] = v
         vm_info = self._flatten_dict(vm_info, prefix)
-        if ('%s_ipAddress' % prefix) in vm_info:
-            vm_info['ansible_ssh_host'] = vm_info['%s_ipAddress' % prefix]
+        if (f'{prefix}_ipAddress') in vm_info:
+            vm_info['ansible_ssh_host'] = vm_info[f'{prefix}_ipAddress']
         return vm_info
 
     def _add_host(self, inv, parent_group, host_name):
@@ -306,7 +303,7 @@ class VMwareInventory(object):
                 group_children.append(child_group)
         inv.setdefault(child_group, [])
 
-    def get_inventory(self, meta_hostvars=True):  # noqa  # pylint: disable=too-complex
+    def get_inventory(self, meta_hostvars=True):  # pylint: disable=too-complex
         '''
         Reads the inventory from cache or VMware API via pSphere.
         '''
@@ -454,7 +451,7 @@ def main():
     parser.add_option('--no-meta-hostvars', action='store_false',
                       dest='meta_hostvars', default=True,
                       help='Exclude [\'_meta\'][\'hostvars\'] with --list')
-    options, args = parser.parse_args()
+    options, _args = parser.parse_args()
 
     if options.include_host_systems:
         vmware_inventory = VMwareInventory(guests_only=False)

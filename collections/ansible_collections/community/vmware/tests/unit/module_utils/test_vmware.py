@@ -1,23 +1,18 @@
-# -*- coding: utf-8 -*-
 # Copyright: (c) 2018, Ansible Project
 # Copyright: (c) 2018, Abhijeet Kasurde <akasurde@redhat.com>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 import ssl
 import sys
-import pytest
-
 from unittest import mock
+
+import pytest
 
 pyvmomi = pytest.importorskip('pyVmomi')
 
-from ansible_collections.community.vmware.plugins.module_utils.vmware import option_diff
-
 import ansible_collections.community.vmware.plugins.module_utils.vmware as vmware_module_utils
-
+from ansible_collections.community.vmware.plugins.module_utils.vmware import option_diff
 
 test_data = [
     (
@@ -110,7 +105,7 @@ def test_lib_loading_failure(monkeypatch, fake_ansible_module, key, libname):
     monkeypatch.setattr(vmware_module_utils, key, False)
     with pytest.raises(FailJsonException):
         vmware_module_utils.PyVmomi(fake_ansible_module)
-    error_str = 'Failed to import the required Python library (%s)' % libname
+    error_str = f'Failed to import the required Python library ({libname})'
     fake_ansible_module.fail_json.assert_called_once()
     assert error_str in fake_ansible_module.fail_json.call_args[1]['msg']
 

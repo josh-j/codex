@@ -1,12 +1,9 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # Copyright: (c) 2015, Dag Wieers (@dagwieers) <dag@wieers.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
 
 DOCUMENTATION = r'''
@@ -93,19 +90,18 @@ import atexit
 import errno
 import mmap
 import os
-import socket
 import traceback
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.six.moves.urllib.parse import urlencode, quote
 from ansible.module_utils._text import to_native
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.six.moves.urllib.parse import quote, urlencode
 from ansible.module_utils.urls import open_url
 from ansible_collections.community.vmware.plugins.module_utils.vmware import vmware_argument_spec
 
 
 def vmware_path(datastore, datacenter, path):
     ''' Constructs a URL path that vSphere accepts reliably '''
-    path = "/folder/%s" % quote(path.lstrip("/"))
+    path = "/folder/{}".format(quote(path.lstrip("/")))
     # Due to a software bug in vSphere, it fails to handle ampersand in datacenter names
     # The solution is to do what vSphere does (when browsing) and double-encode ampersands, maybe others ?
     if not path.startswith("/"):
@@ -115,7 +111,7 @@ def vmware_path(datastore, datacenter, path):
         datacenter = datacenter.replace('&', '%26')
         params["dcPath"] = datacenter
     params = urlencode(params)
-    return "%s?%s" % (path, params)
+    return f"{path}?{params}"
 
 
 def main():
@@ -148,7 +144,7 @@ def main():
         fd = open(src, "rb")
         atexit.register(fd.close)
     except Exception as e:
-        module.fail_json(msg="Failed to open src file %s" % to_native(e))
+        module.fail_json(msg=f"Failed to open src file {to_native(e)}")
 
     if os.stat(src).st_size == 0:
         data = ''
@@ -160,7 +156,7 @@ def main():
 
     if not all([hostname, username, password]):
         module.fail_json(msg="One of following parameter is missing - hostname, username, password")
-    url = 'https://%s%s' % (hostname, remote_path)
+    url = f'https://{hostname}{remote_path}'
 
     headers = {
         "Content-Type": "application/octet-stream",
@@ -172,7 +168,7 @@ def main():
         r = open_url(url, data=data, headers=headers, method='PUT', timeout=timeout,
                      url_username=username, url_password=password, validate_certs=validate_certs,
                      force_basic_auth=True)
-    except socket.error as e:
+    except OSError as e:
         if isinstance(e.args, tuple):
             if len(e.args) > 0:
                 if e[0] == errno.ECONNRESET:
