@@ -1,5 +1,0 @@
----
-- name: Log WARNING message
-  ansible.builtin.include_tasks: main.yaml
-  vars:
-    ncs_log_level: "warning"

@@ -1,0 +1,14 @@
+---
+# playbooks/common/init_environment.yaml
+# Phase 1: Initializes the local environment before remote execution begins.
+# Prepares base directories for the Phase 2 remote execution to write to.
+
+- name: Initialize Environment
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Ensure base report directory exists
+      ansible.builtin.file:
+        path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+        state: directory
+        mode: "0755"

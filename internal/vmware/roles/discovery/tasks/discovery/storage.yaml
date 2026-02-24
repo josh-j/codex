@@ -1,0 +1,53 @@
+---
+# internal.vmware.discovery : discovery/storage.yaml
+
+- name: Storage | Query Datastore Inventory
+  community.vmware.vmware_datastore_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    # Fallback to empty omit if datacenter discovery was skipped or failed
+    datacenter: "{{ vmware_ctx.inventory.summary.primary_dc | default(omit) }}"
+  register: _datastores_raw
+  delegate_to: localhost
+  no_log: true
+  retries: 3
+  delay: 5
+  until: _datastores_raw is succeeded
+  changed_when: false
+
+- name: Storage | Normalize Capacity and Accessibility Metrics
+  ansible.builtin.set_fact:
+    _temp_datastores:
+      list: "{{ _normalized_datastores }}"
+      summary:
+        total_count: "{{ _normalized_datastores | length }}"
+        inaccessible_count: "{{ _normalized_datastores | selectattr('accessible', 'equalto', false) | list | length }}"
+        low_space_count: "{{ _normalized_datastores | selectattr('free_pct', 'le', 10) | list | length }}"
+  vars:
+    # Use 1024^3 for GB conversion
+    _gb_factor: 1073741824.0
+
+    _normalized_datastores: >-
+      {%- set results = [] -%}
+      {%- for ds in (_datastores_raw.datastores | default([])) -%}
+        {%- set cap_bytes  = ds.capacity | default(0) | int -%}
+        {%- set free_bytes = ds.freeSpace | default(0) | int -%}
+        {%- set cap_safe   = [cap_bytes, 1] | max -%}
+        {%- set free_pct   = ((free_bytes | float / cap_safe) * 100.0) | round(1) -%}
+
+        {%- set _ = results.append({
+          'name':             ds.name | default('UNKNOWN_DS'),
+          'type':             ds.type | default('N/A'),
+          'capacity_gb':      (cap_bytes | float / _gb_factor) | round(1),
+          'used_gb':          ((cap_bytes - free_bytes) | float / _gb_factor) | round(1),
+          'free_pct':         free_pct,
+          'used_pct':         (100.0 - free_pct) | round(1),
+          'accessible':       ds.accessible | default(true),
+          'maintenance_mode': ds.maintenanceMode | default('normal') | lower,
+          'url':              ds.url | default('')
+        }) -%}
+      {%- endfor -%}
+      {{ results }}
+  changed_when: false

@@ -1,5 +1,0 @@
----
-- name: Log ERROR message
-  ansible.builtin.include_tasks: main.yaml
-  vars:
-    ncs_log_level: "error"

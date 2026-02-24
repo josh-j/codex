@@ -1,0 +1,35 @@
+---
+# internal.vmware.audit : tasks/main.yaml
+
+- name: VMware health audit
+  block:
+    - name: Initialize ephemeral alert state
+      ansible.builtin.set_fact:
+        vmware_alerts: []
+        _vmw_audit_failed: false
+
+    - name: Phase 2 | Execute Audit Logic
+      ansible.builtin.include_tasks: checks.yaml
+      tags: [checks]
+
+    - name: Phase 3.5 | Workload Notifications
+      ansible.builtin.include_tasks: notify/workload.yaml
+      when:
+        - vmware_enable_email_notifications | default(false) | bool
+        - ansible_date_time.weekday | lower in (vmware_owner_notification_days | map('lower') | list)
+      tags: [notify]
+
+  rescue:
+    # FIX: Split the rescue actions into two distinct tasks
+    - name: Set audit failure flag
+      ansible.builtin.set_fact:
+        _vmw_audit_failed: true
+
+    - name: Log audit failure
+      ansible.builtin.debug:
+        msg: "VMware audit failed for {{ inventory_hostname }}. Exporting partial results."
+
+  always:
+    - name: Phase 4 | Process and Export State
+      ansible.builtin.include_tasks: export.yaml
+      tags: [export]

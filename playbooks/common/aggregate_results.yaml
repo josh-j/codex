@@ -1,46 +1,38 @@
-- name: Aggregate Audit Results
+---
+- name: Phase 3 | Aggregate Audit Results & Generate Dashboard
   hosts: localhost
-  gather_facts: false
+  connection: local
+  gather_facts: true # Gathers ansible_date_time for the report timestamp
+
   vars:
-    _report_base: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-    _summary_dir: "{{ _report_base }}/Summary/{{ run_ctx.id }}"
-    _combined: "{{ _summary_dir }}/all_hosts.yaml"
+    # FIX: Since this playbook is in playbooks/common/, we must go up TWO levels to reach the project root
+    _project_root: "{{ playbook_dir | dirname | dirname }}"
+
   tasks:
     - name: Ensure summary directory exists
       ansible.builtin.file:
-        path: "{{ _summary_dir }}"
+        path: "{{ _project_root }}/reports/summary"
         state: directory
         mode: "0755"
 
-    - name: Aggregate per-host YAML reports
-      ansible.builtin.script:
-        cmd: "{{ playbook_dir }}/../scripts/aggregate_yaml_reports.py {{ _report_base }} {{ _combined }}"
-      register: _aggregate_result
+    - name: Run Python Aggregator (Merge Raw State)
+      ansible.builtin.command: >
+        python3 {{ _project_root }}/scripts/aggregate_yaml_reports.py
+        {{ _project_root }}/reports/raw_state
+        {{ _project_root }}/reports/summary/all_hosts_state.yaml
+      changed_when: false
 
-    - name: Load combined host data
-      ansible.builtin.set_fact:
-        _all_host_data: "{{ lookup('file', _combined) | from_yaml }}"
+    - name: Load Aggregated Data into Playbook
+      ansible.builtin.include_vars:
+        file: "{{ _project_root }}/reports/summary/all_hosts_state.yaml"
+        name: all_hosts
 
-    - name: Render HTML dashboard
+    - name: Render Global HTML Dashboard
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/templates/site_health_report.html.j2"
-        dest: "{{ _summary_dir }}/dashboard.html"
+        src: "{{ _project_root }}/templates/site_health_report.html.j2"
+        dest: "{{ _project_root }}/reports/summary/site_health_report.html"
         mode: "0644"
-      vars:
-        all_hosts: "{{ _all_host_data | default({}) }}"
-        report_date: "{{ run_ctx.date }}"
-        report_id: "{{ run_ctx.id }}"
 
-    - name: Render Markdown summary
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/templates/site_health_report.md.j2"
-        dest: "{{ _summary_dir }}/dashboard.md"
-        mode: "0644"
-      vars:
-        all_hosts: "{{ _all_host_data | default({}) }}"
-        report_date: "{{ run_ctx.date }}"
-        report_id: "{{ run_ctx.id }}"
-
-    - name: Display report location
+    - name: Announce Completion
       ansible.builtin.debug:
-        msg: "Reports written to {{ _summary_dir }}"
+        msg: "✅ Fleet aggregation complete. Dashboard available at: {{ _project_root }}/reports/summary/site_health_report.html"

@@ -1,0 +1,84 @@
+---
+# internal.vmware.discovery : discovery.yaml
+
+# ========================================================================
+# 1. COLLECTION (Include sub-tasks)
+# ========================================================================
+
+- name: Discovery | Appliance Health
+  ansible.builtin.include_tasks: discovery/appliance_health.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Appliance Backup
+  ansible.builtin.include_tasks: discovery/appliance_backup.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Datacenters
+  ansible.builtin.include_tasks: discovery/datacenter.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Compute (Clusters & Hosts)
+  ansible.builtin.include_tasks: discovery/compute.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Storage (Datastores)
+  ansible.builtin.include_tasks: discovery/storage.yaml
+  tags: [discovery, storage]
+
+- name: Discovery | Workload (VMs)
+  ansible.builtin.include_tasks: discovery/workload.yaml
+  tags: [discovery, workload]
+
+- name: Discovery | Alarms
+  ansible.builtin.include_tasks: discovery/alarms.yaml
+  tags: [discovery, alarms]
+
+# ========================================================================
+# 2. NORMALIZE (Assemble and Standardize)
+# ========================================================================
+
+- name: Assemble discovery context
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
+      {{
+        vmware_ctx | combine({
+          'system': {
+             'status': 'DISCOVERY_COMPLETE',
+             'updated_at': ansible_date_time.iso8601
+          },
+          'health': {
+            'appliance': _temp_appliance | default({}),
+            'alarms': _temp_alarms | default({})
+          },
+          'inventory': {
+            'datacenters': _temp_datacenters | default({}),
+            'clusters': _temp_clusters | default({}),
+            'hosts': _temp_hosts | default({}),
+            'datastores': _temp_datastores | default({}),
+            'vms': _temp_vms | default({})
+          }
+        }, recursive=true)
+      }}
+  changed_when: false
+
+# ========================================================================
+# 3. EXPORT (Phase 2 Standardized State)
+# ========================================================================
+
+- name: Export VMware discovery state
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    # We pass the context with a specific audit_type to prevent file collisions
+    ncs_export_data: >-
+      {{
+        vmware_ctx | combine({
+          'audit_type': 'discovery',
+          'summary': {
+             'clusters': _temp_clusters | length | default(0),
+             'hosts': _temp_hosts | length | default(0),
+             'vms': _temp_vms | length | default(0)
+          }
+        })
+      }}

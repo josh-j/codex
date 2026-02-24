@@ -1,7 +1,0 @@
----
-- name: Log DEBUG message
-  ansible.builtin.include_tasks: main.yaml # use _emit
-  vars:
-    ncs_log_level: "debug"
-  # Optimization: Only include the heavy logging task if debug is actually on
-  when: ncs.config.debug_mode | default(false) | bool

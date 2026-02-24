@@ -1,0 +1,39 @@
+---
+# internal.vmware.discovery : discovery/datacenter.yaml
+
+- name: Datacenter | Query vCenter Inventory
+  vmware.vmware_rest.vcenter_datacenter_info:
+    vcenter_hostname: "{{ _vcenter_hostname }}"
+    vcenter_username: "{{ vmware_username }}"
+    vcenter_password: "{{ vmware_password }}"
+    vcenter_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  register: _datacenters_raw
+  delegate_to: localhost
+  no_log: true
+  # Do not fail yet; we want to handle the "Empty vCenter" state gracefully
+  failed_when: false
+
+- name: Datacenter | Normalize and Inject into Context
+  ansible.builtin.set_fact:
+    vmware_ctx: "{{ vmware_ctx | combine(_dc_data, recursive=true) }}"
+  vars:
+    # 1. Extraction
+    _raw_list: "{{ _datacenters_raw.value | default([]) }}"
+    _dc_names: "{{ _raw_list | map(attribute='name') | list }}"
+
+    # 2. Structural normalization
+    _dc_data:
+      inventory:
+        datacenters: "{{ _dc_names }}"
+        datacenters_raw: "{{ _raw_list }}"
+      summary:
+        datacenter_count: "{{ _raw_list | length }}"
+        primary_dc: "{{ _dc_names | first | default('NONE_FOUND') }}"
+      system:
+        # Update status so dashboard shows progress
+        status: "{{ 'DISCOVERING_COMPUTE' if _raw_list | length > 0 else 'NO_DATACENTERS_FOUND' }}"
+  changed_when: false
+
+- name: Datacenter | Stop host if no datacenters found
+  ansible.builtin.meta: end_host
+  when: (vmware_ctx.inventory.datacenters | length) == 0

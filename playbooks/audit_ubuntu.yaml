@@ -1,9 +1,0 @@
-# playbooks/ubuntu_ops_audit.yaml
-- name: "Phase 1: Initialize"
-  ansible.builtin.import_playbook: common/init_ubuntu.yaml
-
-- name: "Phase 2: Perform Audit"
-  ansible.builtin.import_playbook: ubuntu/ops.yaml
-
-- name: "Phase 3: Generate Reports"
-  ansible.builtin.import_playbook: common/aggregate_results.yaml

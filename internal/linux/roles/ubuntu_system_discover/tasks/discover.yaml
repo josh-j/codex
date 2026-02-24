@@ -1,0 +1,161 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_discover/tasks/discover.yaml
+
+# ========================================================================
+# 1. COLLECTION
+# ========================================================================
+
+- name: Gather system facts (hardware, disks, network)
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+      - mounts
+      - network
+
+- name: Get list of failed systemd services
+  ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain # noqa command-instead-of-module
+  register: _failed_services_raw
+  changed_when: false
+  check_mode: false
+
+- name: Get user accounts from /etc/passwd
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Get password aging data from /etc/shadow
+  ansible.builtin.command: cat /etc/shadow
+  register: _shadow_raw
+  become: true
+  changed_when: false
+  no_log: true
+  check_mode: false
+
+- name: Get active SSH server configuration
+  ansible.builtin.command: sshd -T
+  register: _sshd_raw
+  become: true
+  changed_when: false
+  check_mode: false
+
+- name: Find world-writable files in /etc and /var
+  ansible.builtin.command: find /etc /var -xdev -type f -perm -0002 -print
+  register: _world_writable_raw
+  become: true
+  changed_when: false
+  failed_when: _world_writable_raw.rc is defined and _world_writable_raw.rc != 0
+  async: 10
+  poll: 1
+  check_mode: false
+
+- name: Refresh apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600 # 1 hour cache is usually sufficient for discovery
+  changed_when: false
+  become: true
+
+- name: Check if a reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _reboot_stat
+  check_mode: false
+
+- name: Check available updates
+  ansible.builtin.command: apt-get -s upgrade # noqa command-instead-of-module
+  register: _apt_simulate
+  changed_when: false
+  failed_when: _apt_simulate.rc != 0 and 'Could not get lock' not in _apt_simulate.stderr
+  check_mode: false
+
+# ========================================================================
+# 2. PRE-NORMALIZE (Calculate complex data sets)
+# ========================================================================
+
+- name: Calculate disk and user data sets
+  ansible.builtin.set_fact:
+    _tmp_disks: >-
+      {%- set results = [] -%}
+      {%- for mount in ansible_facts['mounts'] | default([]) -%}
+        {%- if 'loop' not in mount.device and 'tmpfs' not in mount.device -%}
+          {%- set pct = (mount.size_total - mount.size_available) / mount.size_total * 100 if mount.size_total > 0 else 0 -%}
+          {%- set _ = results.append({
+            'mount': mount.mount,
+            'device': mount.device,
+            'fstype': mount.fstype,
+            'total_gb': (mount.size_total / 1073741824) | round(1),
+            'free_gb': (mount.size_available / 1073741824) | round(1),
+            'used_pct': pct | round(1)
+          }) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ results }}
+    _tmp_users: >-
+      {%- set results = [] -%}
+      {%- set epoch_days = (ansible_facts['date_time']['epoch'] | int / 86400) | int -%}
+      {%- for user, info in (ansible_facts['getent_passwd'] | default({})).items() -%}
+        {%- set shadow = (_shadow_raw.stdout_lines | default([])) | select('match', '^' ~ user ~ ':') | list | first | default('') -%}
+        {%- set parts = shadow.split(':') -%}
+        {%- set last_change = parts[2] | default(0) | int -%}
+        {%- set _ = results.append({
+          'name': user,
+          'uid': info[1],
+          'gid': info[2],
+          'home': info[4],
+          'shell': info[5],
+          'password_age_days': (epoch_days - last_change) if last_change > 0 else -1
+        }) -%}
+      {%- endfor -%}
+      {{ results }}
+
+# ========================================================================
+# 3. NORMALIZE (Assemble final ubuntu_ctx)
+# ========================================================================
+
+- name: Build ubuntu_ctx (Schema compliant)
+  ansible.builtin.set_fact:
+    ubuntu_ctx:
+      system:
+        hostname: "{{ ansible_facts['hostname'] | default(inventory_hostname) }}"
+        ip: "{{ ansible_facts['default_ipv4']['address'] | default('N/A') }}"
+        kernel: "{{ ansible_facts['kernel'] | default('unknown') }}"
+        uptime_days: "{{ ((ansible_facts['uptime_seconds'] | default(0)) / 86400) | int }}"
+        load_avg: "{{ (ansible_facts['loadavg'] | default({'15m': 0}))['15m'] }}"
+        memory:
+          total_mb: "{{ ansible_facts['memtotal_mb'] | default(0) }}"
+          free_mb: "{{ ansible_facts['memfree_mb'] | default(0) }}"
+          used_pct: "{{ (((ansible_facts['memtotal_mb'] - ansible_facts['memfree_mb']) / ansible_facts['memtotal_mb']) * 100) | round(1) if ansible_facts['memtotal_mb'] | default(0) | int > 0 else 0 }}"
+        swap:
+          total_mb: "{{ ansible_facts['swaptotal_mb'] | default(0) }}"
+          used_pct: "{{ (((ansible_facts['swaptotal_mb'] - ansible_facts['swapfree_mb']) / ansible_facts['swaptotal_mb']) * 100) | round(1) if ansible_facts['swaptotal_mb'] | default(0) | int > 0 else 0 }}"
+        services:
+          failed_count: "{{ _failed_services_raw.stdout_lines | length }}"
+          failed_list: "{{ _failed_services_raw.stdout_lines }}"
+        disks: "{{ _tmp_disks }}"
+      updates:
+        pending_count: "{{ (_apt_simulate.stdout_lines | select('search', 'upgraded,') | list | last | default('0 upgraded')).split()[0] | int }}"
+        reboot_pending: "{{ _reboot_stat.stat.exists | default(false) }}"
+      security:
+        users: "{{ _tmp_users }}"
+        # FIX: Replaced selectattr('length') with a safe loop
+        ssh_config: >-
+          {%- set out = {} -%}
+          {%- for line in _sshd_raw.stdout_lines | default([]) -%}
+            {%- set parts = line.split(' ', 1) -%}
+            {%- if parts | length == 2 -%}
+              {%- set _ = out.update({parts[0]: parts[1]}) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ out }}
+        file_stats: >-
+          {%- set fstats = {} -%}
+          {%- for res in (_file_stats_raw.results | default([])) -%}
+            {%- if res.stat is defined and res.stat.exists -%}
+              {%- set _ = fstats.update({res.item: res.stat}) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ fstats }}
+        world_writable_files: "{{ _world_writable_raw.stdout_lines | default([]) }}"
+
+- name: Log discovery summary
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} | Load: {{ ubuntu_ctx.system.load_avg }} | Mem: {{ ubuntu_ctx.system.memory.used_pct }}% | Updates: {{ ubuntu_ctx.updates.pending_count }}"

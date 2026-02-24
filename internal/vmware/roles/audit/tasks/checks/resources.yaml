@@ -1,0 +1,34 @@
+---
+# internal.vmware.audit : tasks/checks/resources.yaml
+
+- name: Audit | Evaluate Global vCenter Resource Saturation
+  ansible.builtin.set_fact:
+    vmware_alerts: >-
+      {{
+        vmware_alerts | default([])
+        + (_cpu_pct | internal.core.threshold_alert('capacity', _cpu_msg, _cpu_crit, _cpu_warn))
+        + (_mem_pct | internal.core.threshold_alert('capacity', _mem_msg, _mem_crit, _mem_warn))
+      }}
+  vars:
+    # 1. Threshold Definitions
+    _cpu_crit: "{{ vmware_cpu_critical_pct | default(90) | float }}"
+    _cpu_warn: "{{ vmware_cpu_warning_pct | default(80) | float }}"
+    _mem_crit: "{{ vmware_memory_critical_pct | default(90) | float }}"
+    _mem_warn: "{{ vmware_memory_warning_pct | default(80) | float }}"
+
+    # 2. Aggregation Logic
+    # We use the list we built in discovery to sum up all cluster resources
+    _cl: "{{ vmware_ctx.inventory.clusters.list | default([]) }}"
+
+    _cpu_cap: "{{ _cl | map(attribute='utilization.cpu_total_mhz') | map('int') | sum }}"
+    _cpu_used: "{{ _cl | map(attribute='utilization.cpu_used_mhz')  | map('int') | sum }}"
+    _mem_cap: "{{ _cl | map(attribute='utilization.mem_total_mb') | map('int') | sum }}"
+    _mem_used: "{{ _cl | map(attribute='utilization.mem_used_mb')  | map('int') | sum }}"
+
+    # 3. Calculation with Zero-Protection
+    _cpu_pct: "{{ ((_cpu_used | int / ([_cpu_cap | int, 1] | max)) * 100) | round(1) }}"
+    _mem_pct: "{{ ((_mem_used | int / ([_mem_cap | int, 1] | max)) * 100) | round(1) }}"
+
+    # 4. Message Generation
+    _cpu_msg: "Fleet CPU Saturation: vCenter is using {{ _cpu_pct }}% of total aggregate MHz"
+    _mem_msg: "Fleet Memory Saturation: vCenter is using {{ _mem_pct }}% of total aggregate MB"

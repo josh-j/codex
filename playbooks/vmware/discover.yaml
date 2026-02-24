@@ -1,0 +1,15 @@
+---
+- name: Phase 1 | VMware Infrastructure Discovery
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Execute vCenter Discovery
+      ansible.builtin.include_role:
+        name: internal.vmware.discover
+      vars:
+        # Define credentials via Vault or ENV vars in production
+        vmware_username: "{{ vault_vcenter_username }}"
+        vmware_password: "{{ vault_vcenter_password }}"
+        vmware_validate_certs: false

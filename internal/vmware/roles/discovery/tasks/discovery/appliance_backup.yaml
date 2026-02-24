@@ -1,0 +1,37 @@
+---
+# internal.vmware.discovery : discovery/appliance_backup.yaml
+
+- name: Get VCSA backup schedule
+  vmware.vmware.vcsa_backup_schedule_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  register: _vcsa_backup_info
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true
+
+- name: Normalize appliance backup state
+  ansible.builtin.set_fact:
+    _temp_appliance_backup:
+      configured: "{{ _has_schedules }}"
+      enabled: "{{ _active_schedule.enabled | default(false) }}"
+      location: "{{ _active_schedule.location | default('NOT_SET') }}"
+      protocol: "{{ (_active_schedule.location | default('')).split(':')[0] | upper | default('NONE') }}"
+      recurrence: "{{ _recurrence_summary }}"
+  vars:
+    # 1. Logic to find the current active schedule
+    _schedules: "{{ _vcsa_backup_info.schedules | default([]) }}"
+    _has_schedules: "{{ _schedules | length > 0 }}"
+    _active_schedule: "{{ _schedules | selectattr('enabled', 'equalto', true) | list | first | default({}) }}"
+
+    # 2. Clean recurrence string building
+    _days: "{{ _active_schedule.schedule.days_of_week | default([]) }}"
+    _recurrence_summary: >-
+      {{
+        'Daily' if _days | length == 7
+        else (_days | join(', ') if _days | length > 0 else 'Manual/None')
+      }}
+  changed_when: false

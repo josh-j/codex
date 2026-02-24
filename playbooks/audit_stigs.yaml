@@ -1,6 +1,0 @@
----
-# playbooks/audit_stigs.yaml (Legacy Wrapper)
-# Redirects to: audit_security.yaml
-
-- name: Security Baseline Audit
-  ansible.builtin.import_playbook: audit_security.yaml

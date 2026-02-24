@@ -1,0 +1,12 @@
+---
+# collections/ansible_collections/internal/vmware/roles/audit/meta/main.yaml
+
+galaxy_info:
+  author: NCS
+  description: VMware Health Audit and Reporting
+  license: "license"
+  min_ansible_version: "2.9"
+  # Removed the 'platforms' block as 'VMware' is not a valid Galaxy OS schema enum.
+
+dependencies:
+  - role: internal.vmware.discovery

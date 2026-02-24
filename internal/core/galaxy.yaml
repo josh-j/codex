@@ -1,0 +1,9 @@
+---
+namespace: internal
+name: core
+version: 1.0.0
+readme: README.md
+authors:
+  - NCS Operations
+description: Core utilities, plugins, and filters for NCS Ansible automation.
+license: "license"

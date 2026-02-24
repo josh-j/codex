@@ -1,0 +1,37 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_audit/tasks/main.yaml
+
+- name: Validate discovery data exists dynamically
+  ansible.builtin.assert:
+    that:
+      - ubuntu_ctx | internal.core.validate_schema_from_file(role_path ~ '/../ubuntu_system_discover/defaults/main.yaml', 'ubuntu_ctx')
+    fail_msg: "ubuntu_ctx does not match the default structure defined in ubuntu_system_discover."
+
+- name: Run system checks
+  ansible.builtin.import_tasks: check.yaml
+  when: not (ubuntu_skip_checks | default(false) | bool)
+
+- name: Process and Export Results
+  when: not (ubuntu_skip_export | default(false) | bool)
+  block:
+    - name: Generate alert summary
+      ansible.builtin.set_fact:
+        _ubuntu_summary: "{{ ubuntu_alerts | default([]) | internal.core.summarize_alerts }}"
+
+    - name: Calculate host health
+      ansible.builtin.set_fact:
+        _ubuntu_health: "{{ ubuntu_alerts | default([]) | internal.core.health_rollup }}"
+
+    - name: Export Ubuntu host state for Phase 3 aggregation
+      ansible.builtin.include_role:
+        name: internal.core.state
+        tasks_from: export
+      vars:
+        ncs_export_data: >-
+          {{
+            ubuntu_ctx | combine({
+              'health': _ubuntu_health,
+              'alerts': ubuntu_alerts | default([]),
+              'summary': _ubuntu_summary
+            })
+          }}

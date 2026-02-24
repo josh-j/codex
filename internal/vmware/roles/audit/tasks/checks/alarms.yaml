@@ -1,0 +1,30 @@
+---
+# internal.vmware.audit : checks/alarms.yaml
+
+- name: Evaluate vCenter Active Alarms
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_alerts | default([]) + (alarm_checks | internal.core.build_alerts) }}"
+  vars:
+    _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
+    _metrics: "{{ _alarms.metrics | default({'critical_count': 0, 'warning_count': 0}) }}"
+
+    alarm_checks:
+      # 1. Critical Alarm Rollup
+      - condition: "{{ _metrics.critical_count | int > 0 }}"
+        severity: CRITICAL
+        category: "vcenter_alarms"
+        message: "Active Critical Alarms: {{ _metrics.critical_count }} detected"
+        detail:
+          critical_count: "{{ _metrics.critical_count }}"
+          warning_count: "{{ _metrics.warning_count }}"
+        # We pass the first few critical items for the dashboard summary
+        affected_items: "{{ _alarms.list | selectattr('severity', 'equalto', 'critical') | list }}"
+
+      # 2. Warning Alarm Rollup (Only shown if no Criticals exist to reduce noise)
+      - condition: "{{ _metrics.warning_count | int > 0 and _metrics.critical_count | int == 0 }}"
+        severity: WARNING
+        category: "vcenter_alarms"
+        message: "Active Warning Alarms: {{ _metrics.warning_count }} detected"
+        detail:
+          warning_count: "{{ _metrics.warning_count }}"
+        affected_items: "{{ _alarms.list | selectattr('severity', 'equalto', 'warning') | list }}"

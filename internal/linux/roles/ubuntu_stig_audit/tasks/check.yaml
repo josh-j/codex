@@ -1,0 +1,45 @@
+---
+# internal.linux.ubuntu_stig_audit : tasks/check.yaml
+
+- name: "Ubuntu STIG | Evaluate compliance (read-only)"
+  tags: [stig, security, audit]
+  when:
+    - ubuntu_stig_enable_audit | default(true) | bool
+    - not (ubuntu_stig_enable_hardening | default(false) | bool)
+  block:
+    - name: "Ubuntu STIG | Execute STIG rules in simulation"
+      ansible.builtin.include_tasks: ubuntu2404.yaml
+      args:
+        apply:
+          check_mode: true
+          # We tag these specifically so we can register their results
+          tags: [stig_task]
+      register: _stig_results
+      ignore_errors: true # noqa: ignore-errors
+
+    - name: "Ubuntu STIG | Parse STIG findings into alerts"
+      ansible.builtin.set_fact:
+        ubuntu_stig_alerts: "{{ _stig_findings | internal.core.build_alerts }}"
+      vars:
+        # We look for any task that 'changed' (meaning it is non-compliant)
+        _stig_findings: >-
+          {%- set findings = [] -%}
+          {%- for result in _stig_results.results | default([]) -%}
+            {%- if result.changed | default(false) -%}
+              {%- set _ = findings.append({
+                'condition': true,
+                'severity': 'MEDIUM',
+                'category': 'security_compliance',
+                'message': 'STIG Non-Compliance: ' ~ (result.task_name | default(result.item | default('Unknown Rule'))),
+                'detail': {
+                  'check_id': result.ansible_index_var | default('N/A'),
+                  'current_state': 'Non-compliant'
+                }
+              }) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ findings }}
+
+    - name: "Ubuntu STIG | Flag audit as complete"
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true

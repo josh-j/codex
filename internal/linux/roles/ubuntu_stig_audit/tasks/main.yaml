@@ -1,0 +1,72 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/tasks/main.yaml
+
+- name: Validate discovery data exists dynamically
+  ansible.builtin.assert:
+    that:
+      - ubuntu_ctx | internal.core.validate_schema_from_file(role_path ~ '/../ubuntu_system_discover/defaults/main.yaml', 'ubuntu_ctx')
+    fail_msg: "STIG audit requires discovery data. Run ubuntu_system_discover first."
+
+- name: Ubuntu STIG Audit
+  block:
+    - name: "Ubuntu STIG | Run audit"
+      ansible.builtin.import_tasks: check.yaml
+      tags: [checks, stig, security]
+
+  rescue:
+    # FIX: Split the rescue actions into two distinct tasks
+    - name: "Ubuntu STIG | Set failure flag"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+
+    - name: "Ubuntu STIG | Log failure"
+      ansible.builtin.debug:
+        msg: "STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
+
+  always:
+    - name: "Ubuntu STIG | Process and Export Results"
+      when: _stig_audit_ran | default(false)
+      block:
+        - name: "Ubuntu STIG | Read Callback Artifact"
+          ansible.builtin.slurp:
+            src: "{{ ubuntu_stig_artifact_file }}"
+          register: _artifact_raw
+          delegate_to: localhost
+          become: false
+          ignore_errors: true
+
+        - name: "Ubuntu STIG | Normalize STIG Findings"
+          ansible.builtin.set_fact:
+            # Safer JSON parsing logic
+            ubuntu_stig_alerts: >-
+              {%- set alerts = [] -%}
+              {%- if 'content' in _artifact_raw -%}
+                {%- set raw_data = (_artifact_raw.content | b64decode | from_json) -%}
+                {%- for item in raw_data if item.status == 'failed' -%}
+                  {%- set _ = alerts.append({
+                    'severity': item.severity | default('MEDIUM') | upper,
+                    'category': 'security_compliance',
+                    'message': 'STIG Violation: ' ~ item.title,
+                    'detail': {
+                      'rule_id': item.id,
+                      'description': item.description | default('')
+                    }
+                  }) -%}
+                {%- endfor -%}
+              {%- endif -%}
+              {{ alerts }}
+
+        - name: "Ubuntu STIG | Export STIG state to Core"
+          ansible.builtin.include_role:
+            name: internal.core.state
+            tasks_from: export
+          vars:
+            ncs_export_data: >-
+              {{
+                ubuntu_ctx | combine({
+                  'health': ubuntu_stig_alerts | default([]) | internal.core.health_rollup,
+                  'alerts': ubuntu_stig_alerts | default([]),
+                  'summary': ubuntu_stig_alerts | default([]) | internal.core.summarize_alerts,
+                  'audit_type': 'stig'
+                }, recursive=true)
+              }}

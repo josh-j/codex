@@ -1,0 +1,64 @@
+---
+# collections/ansible_collections/internal/vmware/roles/discovery/defaults/main.yaml
+
+# Configuration Thresholds (Can be overridden in group_vars)
+vmware_discovery_timeout: 30
+vmware_skip_discovery: false
+
+# Primary Data Model: vmware_ctx
+# This object is exported as the host's state for Phase 3.
+vmware_ctx:
+  audit_type: "vcenter_health"
+  checks_failed: false
+
+  # 1. Identity & Metadata
+  system:
+    name: "{{ inventory_hostname }}"
+    hostname: ""
+    status: "PENDING"
+    updated_at: ""
+
+  # 2. Infrastructure Health (VCSA VAMI data)
+  health:
+    appliance:
+      info: { version: "unknown", build: "unknown", uptime_days: 0 }
+      health: { overall: "gray", database: "gray", storage: "gray" }
+      config: { ssh_enabled: false, ntp_mode: "unknown" }
+      backup: { enabled: false, configured: false, status: "UNKNOWN" }
+    alarms:
+      list: []
+      metrics: { total: 0, critical_count: 0, warning_count: 0 }
+
+  # 3. Environment Inventory (Compute, Storage, Workload)
+  inventory:
+    datacenters: []
+    summary:
+      datacenter_count: 0
+      primary_dc: ""
+    clusters:
+      list: []
+      by_name: {}
+    hosts:
+      list: []
+      count: 0
+    datastores:
+      list: []
+      summary: { total_count: 0, inaccessible_count: 0, low_space_count: 0 }
+    vms:
+      list: []
+      summary:
+        { total_vms: 0, overdue_backups: 0, unprotected: 0, missing_owners: 0 }
+      metrics: { powered_off_count: 0, powered_off_pct: 0 }
+
+    # Snapshots are populated during the Audit/Checks phase
+    snapshots:
+      aged: []
+      large_snapshots: []
+      summary: { total_count: 0, total_size_gb: 0 }
+
+  # 4. Phase 2 Result Data
+  alerts: []
+  summary:
+    critical_count: 0
+    warning_count: 0
+    health_score: 100

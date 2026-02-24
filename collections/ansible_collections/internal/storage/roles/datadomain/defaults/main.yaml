@@ -1,9 +1,0 @@
----
-# collections/ansible_collections/internal/storage/roles/datadomain/defaults/main.yaml
-datadomain:
-  config:
-    capacity_warning_pct: 85
-    capacity_critical_pct: 90
-    compression_ratio_min: 10
-    alert_age_threshold_hours: 24
-    export_csv: true

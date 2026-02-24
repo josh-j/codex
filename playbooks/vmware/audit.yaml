@@ -1,0 +1,53 @@
+---
+- name: Phase 2 | VMware Health & Compliance Audit
+  hosts: vcenters
+  connection: local
+  gather_facts: true # Required for ansible_date_time facts in notify/loop.yaml
+
+  tasks:
+    - name: Execute vCenter Audit & Notify
+      ansible.builtin.include_role:
+        name: internal.vmware.audit
+      vars:
+        # Audit Thresholds (can also live in group_vars/vcenters.yaml)
+        vmware_snapshot_age_warning_days: 7
+        vmware_snapshot_size_warning_gb: 100
+        vmware_datastore_free_critical_pct: 10
+        vmware_datastore_free_warning_pct: 15
+
+        # Notification Gates
+        vmware_enable_email_notifications: true
+        vmware_owner_notification_days: ["monday", "wednesday", "friday"]
+        vmware_notification_allowlist: ["*"] # Change to specific emails for testing
+
+- name: Phase 3 | Generate VMware Fleet Dashboard
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  run_once: true
+  vars:
+    # Safely resolves to the project root: /.../ansible-ncs-new
+    _project_root: "{{ playbook_dir | dirname | dirname }}"
+
+  tasks:
+    - name: Aggregate VMware Audit State
+      ansible.builtin.command: >
+        python3 {{ _project_root }}/scripts/aggregate_yaml_reports.py
+        {{ _project_root }}/reports/raw_state
+        {{ _project_root }}/reports/summary/vmware_fleet_state.yaml
+      changed_when: false # FIX: no-changed-when
+
+    - name: Load Aggregated Data into Playbook
+      ansible.builtin.include_vars:
+        file: "{{ _project_root }}/reports/summary/vmware_fleet_state.yaml"
+        name: all_hosts
+
+    - name: Render HTML Report
+      ansible.builtin.template:
+        src: "{{ _project_root }}/templates/site_health_report.html.j2" # FIX: no-relative-paths
+        dest: "{{ _project_root }}/reports/summary/vmware_health_report.html"
+        mode: "0644" # FIX: risky-file-permissions
+
+    - name: Announce Completion
+      ansible.builtin.debug:
+        msg: "VMware Audit Complete. Dashboard available at: reports/summary/vmware_health_report.html"

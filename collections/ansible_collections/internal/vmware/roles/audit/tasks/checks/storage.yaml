@@ -1,9 +1,0 @@
----
-# internal.vmware.audit : checks/storage.yaml
-#
-# Evaluates datastore capacity, maintenance mode, and accessibility.
-# Appends results to vmware_alerts.
-
-- name: Evaluate datastore alerts
-  when: vmware_ctx.inventory.datastores.list | default([]) | length > 0
-  ansible.builtin.include_tasks: storage/_alerts.yaml

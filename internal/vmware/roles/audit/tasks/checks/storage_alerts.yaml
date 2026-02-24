@@ -1,0 +1,47 @@
+---
+# internal.vmware.audit : tasks/checks/storage_alerts.yaml
+
+- name: Audit | Process Datastore Alerts
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_alerts | default([]) + (storage_checks | internal.core.build_alerts) }}"
+  vars:
+    # 1. Access Data and Thresholds
+    _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+    _c_pct: "{{ vmware_datastore_free_critical_pct | default(10) | float }}"
+    _w_pct: "{{ vmware_datastore_free_warning_pct  | default(15) | float }}"
+
+    # 2. Pre-filtered Lists for Logic
+    _crit_list: "{{ _ds | selectattr('free_pct', 'lt', _c_pct) | list }}"
+    _warn_list: "{{ _ds | selectattr('free_pct', 'lt', _w_pct) | selectattr('free_pct', 'ge', _c_pct) | list }}"
+    _maint_list: "{{ _ds | rejectattr('maintenance_mode', 'in', ['normal', 'Normal']) | list }}"
+    _inacc_list: "{{ _ds | selectattr('accessible', 'equalto', false) | list }}"
+
+    # 3. Dynamic Alert Construction
+    storage_checks:
+      # CRITICAL: Inaccessible LUNs (highest priority)
+      - condition: "{{ _inacc_list | length > 0 }}"
+        severity: CRITICAL
+        category: "storage_connectivity"
+        message: "Connectivity Failure: {{ _inacc_list | length }} Datastore(s) are INACCESSIBLE"
+        affected_items: "{{ _inacc_list }}"
+
+      # CRITICAL: Capacity Depletion
+      - condition: "{{ _crit_list | length > 0 }}"
+        severity: CRITICAL
+        category: "storage_capacity"
+        message: "{{ _crit_list | length }} Datastore(s) critically low (<{{ _c_pct }}% free)"
+        affected_items: "{{ _crit_list }}"
+
+      # WARNING: Capacity Warning
+      - condition: "{{ _warn_list | length > 0 }}"
+        severity: WARNING
+        category: "storage_capacity"
+        message: "{{ _warn_list | length }} Datastore(s) low (<{{ _w_pct }}% free)"
+        affected_items: "{{ _warn_list }}"
+
+      # WARNING: Maintenance State
+      - condition: "{{ _maint_list | length > 0 }}"
+        severity: WARNING
+        category: "storage_configuration"
+        message: "Config Alert: {{ _maint_list | length }} Datastore(s) in Maintenance Mode"
+        affected_items: "{{ _maint_list }}"

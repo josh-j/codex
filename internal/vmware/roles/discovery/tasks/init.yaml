@@ -1,0 +1,71 @@
+---
+# collections/ansible_collections/internal/vmware/roles/discovery/tasks/init.yaml
+
+- name: Set vCenter target hostname
+  ansible.builtin.set_fact:
+    _vcenter_hostname: >-
+      {{
+        (vmware_hostname | default(ansible_host) | default(inventory_hostname))
+        | regex_replace('^https?://', '')
+        | regex_replace('/.*$', '')
+      }}
+  tags: [always]
+
+- name: Initialize vmware_ctx
+  ansible.builtin.set_fact:
+    vmware_ctx:
+      audit_type: "vcenter_health"
+      checks_failed: false
+      system:
+        name: "{{ inventory_hostname }}"
+        hostname: "{{ _vcenter_hostname }}"
+        status: "INITIALIZING"
+      vcenter: {}
+      alerts: []
+  tags: [always]
+
+- name: Check vCenter reachability
+  ansible.builtin.uri:
+    url: "https://{{ _vcenter_hostname }}/rest/com/vmware/cis/session"
+    method: POST
+    user: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    force_basic_auth: true
+    status_code: [200, 503]
+    timeout: 15
+  register: _vc_api
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true
+  tags: [always]
+
+- name: Handle unreachable vCenter
+  when:
+    - (_vc_api.status | default(0)) not in [200, 503]
+    - not ansible_check_mode
+  block:
+    - name: Build connectivity alert
+      ansible.builtin.set_fact:
+        vmware_alerts: "{{ vmware_alerts | default([]) + [connectivity_alert] }}"
+      vars:
+        connectivity_alert:
+          severity: CRITICAL
+          category: connectivity
+          message: "Connection Timeout: vCenter {{ _vcenter_hostname }} is unreachable"
+          detail:
+            http_status: "{{ _vc_api.status | default('no response') }}"
+
+    - name: Mark context as failed
+      ansible.builtin.set_fact:
+        vmware_ctx: >-
+          {{
+            vmware_ctx | combine({
+              'checks_failed': true,
+              'system': {'status': 'UNREACHABLE'}
+            }, recursive=True)
+          }}
+
+    - name: Stop discovery (Connectivity Failure)
+      ansible.builtin.meta: end_host

@@ -1,7 +1,0 @@
-- name: Export host data
-  ansible.builtin.copy:
-    dest: "{{ _report_dir }}/{{ inventory_hostname }}.yaml"
-    mode: "0664"
-    content: "{{ {'system': ubuntu_ctx.system, 'updates': ubuntu_ctx.updates, 'security': ubuntu_ctx.security, 'alerts': ubuntu_alerts | default([])} | to_nice_yaml }}"
-  delegate_to: localhost
-  become: false

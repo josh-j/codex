@@ -1,0 +1,49 @@
+---
+# internal.vmware.audit : checks/health.yaml
+
+- name: Audit | Evaluate vCenter Infrastructure Health
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_alerts | default([]) + (health_checks | internal.core.build_alerts) }}"
+  vars:
+    _app: "{{ vmware_ctx.health.appliance | default({}) }}"
+    _h: "{{ _app.health | default({}) }}"
+
+    health_checks:
+      # 1. Total Inventory Check
+      - condition: "{{ vmware_ctx.inventory.summary.datacenter_count | default(0) | int == 0 }}"
+        severity: CRITICAL
+        category: "infrastructure"
+        message: "Inventory Gap: No Datacenters detected in vCenter"
+        detail:
+          datacenter_count: 0
+          status: "Empty Inventory"
+
+      # 2. VAMI Component Health Check
+      - condition: "{{ _h.overall | default('gray') != 'green' }}"
+        severity: CRITICAL
+        category: "appliance_health"
+        message: "VCSA Component Failure: Overall health is {{ _h.overall | upper }}"
+        detail:
+          database: "{{ _h.database | upper }}"
+          storage: "{{ _h.storage  | upper }}"
+          swap: "{{ _h.swap     | upper }}"
+          memory: "{{ _h.memory   | upper }}"
+
+      # 3. Security Compliance Check
+      - condition: "{{ _app.config.ssh_enabled | default(false) | bool }}"
+        severity: WARNING
+        category: "security"
+        message: "Hardening Violation: SSH is ENABLED on VCSA"
+        detail:
+          current_state: "Open"
+          remediation: "Disable SSH via VAMI or CLI unless a maintenance window is active."
+
+      # 4. Disaster Recovery Check
+      - condition: "{{ not (_app.backup.enabled | default(false) | bool) }}"
+        severity: CRITICAL
+        category: "data_protection"
+        message: "DR Risk: File-Based Backup is DISABLED"
+        detail:
+          configured: "{{ _app.backup.configured | default(false) }}"
+          location: "{{ _app.backup.location | default('NONE') }}"
+          protocol: "{{ _app.backup.protocol | default('NONE') }}"

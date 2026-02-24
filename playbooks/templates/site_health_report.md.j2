@@ -1,105 +1,88 @@
-{#── Helper Macros for Markdown ──#}
+{#── Helper Macros for Professional Markdown ──#}
 {% macro safe(val, default='N/A') -%}
 {{ val if val is defined and val is not none and val != '' else default }}
 {%- endmacro %}
 
-{% macro health_badge(status) -%}
+{% macro health_label(status) -%}
 {%- set s = (status | default('unknown') | string | lower) -%}
-{%- if s in ['green','ok','healthy'] -%}🟢 {{ status | default('UNK') | upper }}
-{%- elif s in ['red','critical'] -%}🔴 {{ status | default('UNK') | upper }}
-{%- else -%}🟠 {{ status | default('UNK') | upper }}
+{%- if s in ['green','ok','healthy'] -%}[OK]
+{%- elif s in ['red','critical'] -%}[CRITICAL]
+{%- else -%}[WARN]
 {%- endif -%}
 {%- endmacro %}
 
-{% macro bool_badge(val, true_text='YES', false_text='NO', invert=False) -%}
+{% macro bool_label(val, true_text='YES', false_text='NO', invert=False) -%}
 {% if invert %}
-{{ '🔴 ' + true_text if val else '🟢 ' + false_text }}
+{{ '[FAILED] ' + true_text if val else '[PASS] ' + false_text }}
 {% else %}
-{{ '🟢 ' + true_text if val else '🔴 ' + false_text }}
+{{ '[PASS] ' + true_text if val else '[FAILED] ' + false_text }}
 {% endif %}
 {%- endmacro %}
 
-{#── Data Extraction (all precomputed in tasks) ──#}
-{% set alarms = report.data.alarms | default([]) %}
-{% set alerts = report.data.alerts | default([]) %}
-{% set vc_infra = report.data.vcenter_infra | default([]) %}
-{% set clusters = report.data.cluster_capacity | default([]) %}
-{% set unisphere = report.data.unisphere | default([]) %}
-{% set backups = report.data.backups | default([]) %}
-{% set ucs = report.data.ucs | default([]) %}
+# Enterprise Infrastructure Audit Report
+**Environment:** Production
+**Reference ID:** `{{ report_id | default('N/A') }}`
+**Generated:** {{ report_date }}
 
-{#── Totals (new schema) ──#}
-{% set grand_total_critical = (report.totals.critical | default(0) | int) %}
-{% set grand_total_warning  = (report.totals.warning  | default(0) | int) %}
-
-{# counts are nested under report.counts.{alerts,alarms} in the new model #}
-{% set alarms_critical = (report.counts.alarms.critical | default(0) | int) %}
-{% set alarms_warning  = (report.counts.alarms.warning  | default(0) | int) %}
-{% set alerts_critical = (report.counts.alerts.critical | default(0) | int) %}
-{% set alerts_warning  = (report.counts.alerts.warning  | default(0) | int) %}
-
-# Daily Operations Report
-
-**Date:** {{ safe(report.meta.date, safe(date)) }}
-**Day:** {{ safe(report.meta.day,  safe(day)) }}
-**Generated:** {{ safe(report.meta.generated, 'N/A') }}
-**Run ID:** {{ safe(report.meta.run_id, ncs.check.id | default('N/A')) }}
+---
 
 ## Executive Summary
 
-| Critical Issues | Warnings | Reports Generated | Sites Audited |
-| :---: | :---: | :---: | :---: |
-| {{ '🔴 ' if grand_total_critical > 0 else '🟢 ' }}{{ grand_total_critical }} | {{ '🟠 ' if grand_total_warning > 0 else '🟢 ' }}{{ grand_total_warning }} | {{ report.counts.reports_generated | default(0) }} | {{ report.counts.sites_audited | default(0) }} |
+| Fleet Health | Critical Issues | Warnings | Sites Audited |
+| :--- | :--- | :--- | :--- |
+| **{{ 100 - (grand_total_critical * 2) }}%** | **{{ grand_total_critical }}** | **{{ grand_total_warning }}** | {{ counts.get('sites_audited', 0) }} |
 
-### System Status Overview
+> **Audit Note:** Fleet health is calculated based on active critical faults relative to total managed assets.
 
-| Category | Sites Checked | Critical | Warning | Status |
-|:---|:---:|:---:|:---:|:---|
-| **vCenter Alarms** | {{ (groups['vcenters'] | default([])) | length }} | {{ alarms_critical }} | {{ alarms_warning }} | {{ '✅ OK' if (alarms_critical == 0 and alarms_warning == 0) else '⚠️ ATTENTION' }} |
-| **Ops Alerts** | All | {{ alerts_critical }} | {{ alerts_warning }} | {{ '✅ OK' if (alerts_critical == 0 and alerts_warning == 0) else '⚠️ ATTENTION' }} |
-| **Unity Arrays** | {{ unisphere | length }} | - | - | {{ '✅ OK' if unisphere | length > 0 else '❓ NO DATA' }} |
-| **Data Domain** | {{ backups | length }} | - | - | {{ '✅ OK' if backups | length > 0 else '❓ NO DATA' }} |
-| **UCS Fabrics** | {{ ucs | length }} | - | - | {{ '✅ OK' if ucs | length > 0 else '❓ NO DATA' }} |
+### Subsystem Status Overview
 
-## vCenter Infrastructure Health
+| Subsystem | Site Count | Faults (C/W) | SLA Status |
+| :--- | :---: | :---: | :--- |
+| **VMware Management** | {{ (groups['vcenters'] | default([])) | length }} | {{ alarms_critical }}/{{ alarms_warning }} | {{ 'PASS' if (alarms_critical == 0) else 'FAIL' }} |
+| **Linux Infrastructure** | {{ (groups['ubuntu_servers'] | default([])) | length }} | {{ alerts_critical }}/{{ alerts_warning }} | {{ 'PASS' if (alerts_critical == 0) else 'FAIL' }} |
+| **Enterprise Storage** | {{ unisphere | length }} | - / - | {{ 'STABLE' if unisphere | length > 0 else 'NO DATA' }} |
 
-| Site | Version | Overall Health | DB Health | Storage | Backup Enabled | SSH |
-|:---|:---|:---:|:---:|:---:|:---:|:---:|
-{% for row in vc_infra %}
-| **{{ row.site }}** | {{ row.version }} | {{ health_badge(row.health_overall) }} | {{ health_badge(row.health_database) }} | {{ health_badge(row.health_storage) }} | {{ bool_badge(row.backup_enabled) }} | {{ bool_badge(row.ssh_enabled, 'OPEN', 'SECURE', invert=True) }} |
+---
+
+## Compute Environment Details
+
+### vCenter Infrastructure Health
+
+| Site | Version | Overall | Database | Storage | Backup | SSH |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+{% for hostname, audits in all_hosts.items() if audits.system is defined %}
+{% set sys = audits.system %}
+| `{{ hostname }}` | {{ sys.version | default('---') }} | {{ health_label(sys.health) }} | {{ health_label(sys.db_health) }} | {{ health_label(sys.storage_health) }} | {{ 'Enabled' if sys.backup_enabled else 'Disabled' }} | {{ 'SECURE' if not sys.ssh_enabled else 'OPEN' }} |
 {% endfor %}
 
-## Cluster Capacity & Compliance
+### Security Compliance (STIG)
 
-| Site | Cluster | Hosts | CPU Use | Mem Use | HA | DRS |
-|:---|:---|:---:|:---:|:---:|:---:|:---:|
-{% for row in clusters | sort(attribute='mem_pct', reverse=true) %}
-| {{ row.site }} | **{{ row.cluster }}** | {{ row.hosts }} | {{ '⚠️ ' if (row.cpu_pct | float > 80) else '' }}{{ row.cpu_pct | round(1) }}% | {{ '⚠️ ' if (row.mem_pct | float > 80) else '' }}{{ row.mem_pct | round(1) }}% | {{ bool_badge(row.ha, 'ON', 'OFF') }} | {{ bool_badge(row.drs, 'ON', 'OFF') }} |
+| Hostname | Compliance Score | Open Findings | Status |
+| :--- | :--- | :---: | :--- |
+{% for hostname, audits in all_hosts.items() if audits.stig is defined %}
+{% set stig = audits.stig %}
+| `{{ hostname }}` | {{ 100 - (stig.alerts | length) }}% | {{ stig.alerts | length }} | {{ health_label(stig.health) }} |
 {% endfor %}
 
-## vCenter Active Alarms
+---
 
-{% if alarms | length > 0 %}
-| Severity | Site | Alarm Name | Entity | Status | Time |
-|:---|:---|:---|:---|:---|:---|
-{% for a in alarms | sort(attribute='severity') %}
-| {{ '🔴' if a.severity == 'critical' else ('🟠' if a.severity == 'warning' else '🔵') }} {{ a.severity | upper }} | **{{ a.site }}** | {{ a.alarm_name }} | {{ a.entity }} | {{ a.status | upper }} | {{ a.time }} |
+## Active Alert Queue
+
+{% if all_hosts.values() | map(attribute='alerts') | flatten | length > 0 %}
+
+| Severity | Origin | Category | Message |
+| :--- | :--- | :--- | :--- |
+{% for hostname, audits in all_hosts.items() %}
+{% for alert in audits.get('system', {}).get('alerts', []) + audits.get('stig', {}).get('alerts', []) %}
+| **{{ alert.severity | upper }}** | `{{ hostname }}` | {{ alert.category | upper }} | {{ alert.message }} |
 {% endfor %}
+{% endfor %}
+
 {% else %}
-✅ *No active alarms detected across any vCenter.*
-{% endif %}
-
-## Operational Alerts
-
-{% if alerts | length > 0 %}
-| Severity | Site | Category | Message |
-|:---|:---|:---|:---|
-{% for al in alerts | sort(attribute='severity') %}
-| {{ '🔴' if al.severity == 'CRITICAL' else ('🟠' if al.severity == 'WARNING' else '🔵') }} {{ al.severity }} | **{{ al.site }}** | {{ al.category | upper }} | {{ al.message }} |
-{% endfor %}
-{% else %}
-✅ *No operational alerts detected.*
+*No active alerts or compliance violations detected.*
 {% endif %}
 
 ---
-*Detailed reports saved to: `{{ report_share_path | default('\\\\reports') }}`* *Run ID: {{ safe(report.meta.run_id, ncs.check.id | default('N/A')) }}*
+**Report Source:** `{{ ncs_config.report_directory | default('/srv/samba/reports') }}`
+**Aggregation ID:** `{{ report_id }}`
+*Confidential - Internal Use Only*

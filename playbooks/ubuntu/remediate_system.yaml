@@ -1,0 +1,18 @@
+---
+# Runs discovery, applies system maintenance/fixes, then audits the final state.
+- name: "Phase 1: Prepare Environment"
+  ansible.builtin.import_playbook: ../common/init_environment.yaml
+  tags: ["always"]
+
+- name: "Phase 2: Ubuntu System Remediation"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "remediate", "system"]
+  roles:
+    - role: internal.linux.ubuntu_system_discover
+    - role: internal.linux.ubuntu_system_remediate
+    - role: internal.linux.ubuntu_system_audit # Run audit AFTER to capture the fixed state!
+
+- name: "Phase 3: Aggregate and Report"
+  ansible.builtin.import_playbook: ../common/aggregate_results.yaml
+  tags: ["always"]

@@ -1,0 +1,4 @@
+---
+- name: Calculate host health
+  ansible.builtin.set_fact:
+    host_health: "{{ ubuntu_alerts | internal.core.health_rollup }}"

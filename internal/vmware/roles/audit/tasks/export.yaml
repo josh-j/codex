@@ -1,0 +1,31 @@
+---
+# internal.vmware.audit : tasks/export.yaml
+
+- name: Standardize Audit Results
+  ansible.builtin.set_fact:
+    _vmw_summary: "{{ vmware_alerts | internal.core.summarize_alerts }}"
+    _vmw_health: "{{ vmware_alerts | internal.core.health_rollup }}"
+
+- name: Export VMware host state to Phase 3
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    ncs_export_data: >-
+      {{
+        vmware_ctx | combine({
+          'audit_type': 'vcenter_health',
+          'health': _vmw_health,
+          'summary': _vmw_summary,
+          'alerts': vmware_alerts,
+          'audit_failed': _vmw_audit_failed | default(false),
+          'check_metadata': {
+            'engine': 'ansible-ncs-vmware',
+            'thresholds': {
+              'cpu': vmware_cpu_critical_pct,
+              'mem': vmware_memory_critical_pct,
+              'storage': vmware_datastore_free_critical_pct
+            }
+          }
+        }, recursive=true)
+      }}

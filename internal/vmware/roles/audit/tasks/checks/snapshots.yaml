@@ -1,0 +1,70 @@
+---
+# internal.vmware.audit : tasks/checks/snapshots.yaml
+
+- name: Snapshots | Build VM owner lookup map
+  ansible.builtin.set_fact:
+    _vm_owner_map: "{{ vmware_ctx.inventory.vms.list | default([]) | items2dict(key_name='name', value_name='owner_email') }}"
+
+- name: Snapshots | Gather all active snapshots
+  community.vmware.vmware_all_snapshots_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    datacenter: "{{ vmware_ctx.inventory.summary.primary_dc | default(omit) }}"
+  register: _snapshots_raw
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+
+- name: Snapshots | Process and Audit
+  when: _snapshots_raw is success
+  block:
+    - name: Snapshots | Analyze age and size metrics
+      ansible.builtin.set_fact:
+        _aged_snapshots: >-
+          {{
+            _snapshots_raw.vmware_all_snapshots_info | default([])
+            | internal.core.filter_by_age(ansible_date_time.epoch | int, vmware_snapshot_age_warning_days | default(7) | int)
+            | internal.vmware.enrich_snapshots(_vm_owner_map)
+          }}
+
+    - name: Snapshots | Update inventory state
+      ansible.builtin.set_fact:
+        vmware_ctx: >-
+          {{
+            vmware_ctx | combine({
+              'inventory': {
+                'snapshots': {
+                  'aged': _aged_snapshots,
+                  'summary': {
+                    'total_count': _aged_snapshots | length,
+                    'total_size_gb': _aged_snapshots | map(attribute='size_gb') | sum | round(1),
+                    'large_snapshots': _aged_snapshots | selectattr('size_gb', 'gt', vmware_snapshot_size_warning_gb | default(100) | float) | list
+                  }
+                }
+              }
+            }, recursive=true)
+          }}
+
+    - name: Snapshots | Generate Alerts
+      ansible.builtin.set_fact:
+        vmware_alerts: "{{ vmware_alerts | default([]) + (snapshot_checks | internal.core.build_alerts) }}"
+      vars:
+        _snap_summary: "{{ vmware_ctx.inventory.snapshots.summary }}"
+        snapshot_checks:
+          # A: Cumulative Aged Snapshot Alert
+          - condition: "{{ _snap_summary.total_count | int > 0 }}"
+            severity: WARNING
+            category: "snapshots"
+            message: "Capacity Risk: {{ _snap_summary.total_count }} snapshots older than {{ vmware_snapshot_age_warning_days }} days"
+            detail:
+              total_gb: "{{ _snap_summary.total_size_gb }}"
+              oldest_snap: "{{ (_aged_snapshots | sort(attribute='days_old') | last).days_old | default(0) }} days"
+
+          # B: Individual Large Snapshot Alert
+          - condition: "{{ _snap_summary.large_snapshots | length > 0 }}"
+            severity: WARNING
+            category: "snapshots"
+            message: "{{ _snap_summary.large_snapshots | length }} VM(s) have oversized snapshots (>{{ vmware_snapshot_size_warning_gb }}GB)"
+            affected_items: "{{ _snap_summary.large_snapshots }}"

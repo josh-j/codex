@@ -1,0 +1,13 @@
+---
+# collections/ansible_collections/internal/vmware/roles/discovery/tasks/main.yaml
+
+- name: Phase 0 | Initialize Session and Context
+  ansible.builtin.include_tasks: init.yaml
+  tags: [always]
+
+- name: Phase 1 | Inventory Discovery
+  ansible.builtin.include_tasks: discovery.yaml
+  when:
+    - not (vmware_skip_discovery | default(false) | bool)
+    - not (vmware_ctx.checks_failed | bool)
+  tags: [discovery]

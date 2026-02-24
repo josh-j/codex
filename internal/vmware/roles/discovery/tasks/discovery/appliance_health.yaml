@@ -1,0 +1,56 @@
+---
+# internal.vmware.discovery : discovery/appliance_health.yaml
+
+- name: Gather vCenter appliance system data
+  vmware.vmware.appliance_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    properties: [all]
+  register: _appliance_raw
+  delegate_to: localhost
+  no_log: true
+  retries: 2
+  delay: 5
+  until: _appliance_raw is succeeded
+
+- name: Normalize appliance state
+  ansible.builtin.set_fact:
+    _temp_appliance:
+      info:
+        product: "{{ _summ.product | default('vCenter Server') }}"
+        version: "{{ _summ.version | default('unknown') }}"
+        build: "{{ _summ.build_number | default('unknown') }}"
+        uptime_days: "{{ (_summ.uptime | default(0) | float / 86400) | round(1) }}"
+      health:
+        overall: "{{ _health.overall | default('gray') | lower }}"
+        cpu: "{{ _health.cpu | default('gray') | lower }}"
+        memory: "{{ _health.memory | default('gray') | lower }}"
+        database: "{{ _health.database | default('gray') | lower }}"
+        storage: "{{ _health.storage | default('gray') | lower }}"
+        swap: "{{ _health.swap | default('gray') | lower }}"
+      config:
+        ssh_enabled: "{{ _access.ssh | default(false) }}"
+        shell_enabled: "{{ (_access.shell | default({})).enabled | default(false) }}"
+        ntp_servers: "{{ (_time_sync.servers | default([])) }}"
+        ntp_mode: "{{ (_time_sync.mode | default('disabled')) | upper }}"
+        timezone: "{{ _time.time_zone | default('UTC') }}"
+      backup: "{{ _temp_appliance_backup | default({'enabled': false, 'status': 'NOT_CONFIGURED'}) }}"
+  vars:
+    # Destructuring the complex response for cleaner mapping
+    _app: "{{ _appliance_raw.appliance | default({}) }}"
+    _summ: "{{ _app.summary | default({}) }}"
+    _health: "{{ _summ.health | default({}) }}"
+    _access: "{{ _app.access | default({}) }}"
+    _time: "{{ _app.time | default({}) }}"
+    _time_sync: "{{ _time.time_sync | default({}) }}"
+  changed_when: false
+
+- name: Log critical health metrics
+  ansible.builtin.debug:
+    msg: >-
+      vCenter Instance: {{ inventory_hostname }} |
+      Overall: {{ _temp_appliance.health.overall | upper }} |
+      Database: {{ _temp_appliance.health.database | upper }} |
+      NTP: {{ _temp_appliance.config.ntp_mode }}

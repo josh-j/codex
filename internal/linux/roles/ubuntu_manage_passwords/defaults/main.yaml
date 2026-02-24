@@ -1,0 +1,16 @@
+---
+# ubuntu_manage_passwords defaults
+
+# Standard aging policy (STIG compliant)
+ubuntu_pass_max_days: 60
+ubuntu_pass_min_days: 1
+ubuntu_pass_warn_days: 7
+
+# Users to manage.
+# Overwrite this in host_vars/group_vars using Ansible Vault!
+ubuntu_users: []
+# Example structure:
+# ubuntu_users:
+#   - name: admin
+#     password: "$6$rounds=65536$salt$hashedpassword..."
+#     update_password: on_create # or 'always'

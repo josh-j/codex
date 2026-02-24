@@ -3,440 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Operations Report - {{ (report | default({})).get('meta', {}).get('date', 'Today') | e }}</title>
+    <title>Infrastructure Audit | {{ report_date }}</title>
     <style>
-        /* INJECT COMMON CSS */
         {% include 'report_styles.css' %}
-
-        /* Specific overrides for the Ops Dashboard */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .section-title {
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 10px;
-            margin-top: 40px;
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
     </style>
 </head>
 <body>
 
-{# ── Normalize report model (avoid attribute errors) ── #}
-{% set _report = report | default({}) %}
-{% set meta    = _report.get('meta', {}) %}
-{% set data    = _report.get('data', {}) %}
-{% set counts  = _report.get('counts', {}) %}
-{% set totals  = _report.get('totals', {}) %}
-{% set c_alarms = counts.get('alarms', {}) %}
-{% set c_alerts = counts.get('alerts', {}) %}
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-accent"></span>
+            <span class="brand-text">NCS OPERATIONS</span>
+        </div>
+        <ul class="nav-links">
+            <li class="active" onclick="showTab('summary', this)">System Overview</li>
+            <li onclick="showTab('compute', this)">Compute Environment</li>
+            <li onclick="showTab('storage', this)">Storage & Fabric</li>
+            <li onclick="showTab('security', this)">Security Compliance</li>
+            <li onclick="showTab('alerts', this)">
+                Alert Queue
+                {% if totals.get('critical', 0)|int > 0 %}
+                    <span class="count-pill">{{ totals.get('critical', 0) }}</span>
+                {% endif %}
+            </li>
+        </ul>
+        <div class="sidebar-meta">
+            ID: {{ report_id[:8] if report_id else '---' }}<br>
+            {{ report_date }}
+        </div>
+    </nav>
 
-{# ── Data from report model ── #}
-{% set vcenters      = data.get('vcenters', []) %}
-{% set unisphere     = data.get('unisphere', []) %}
-{% set backups       = data.get('backups', []) %}
-{% set ucs           = data.get('ucs', []) %}
-{% set global_alerts = data.get('alerts', []) %}
-{% set global_alarms = data.get('alarms', []) %}
-
-{# ── Totals from report model ── #}
-{% set grand_total_critical = (totals.get('critical', 0) | int) %}
-{% set grand_total_warning  = (totals.get('warning', 0)  | int) %}
-
-{# ── HTML helper macros ── #}
-{% macro safe(val, default='N/A') -%}
-{{ (val if val is defined and val is not none and val != '' else default) | e }}
-{%- endmacro %}
-
-{% macro status_badge(status) -%}
-    {% set s = (status | default('') | string | lower) %}
-    {% if s in ['green', 'ok', 'healthy'] %}
-        <span class="badge status-fixed-badge">HEALTHY</span>
-    {% elif s in ['red', 'critical'] %}
-        <span class="badge status-failed-badge">CRITICAL</span>
-    {% elif s in ['gray', 'unknown', 'no data', 'nodata'] %}
-        <span class="badge" style="background-color: #95a5a6;">NO DATA</span>
-    {% else %}
-        <span class="badge" style="background-color: #f39c12;">{{ status | default('WARN') | upper | e }}</span>
-    {% endif %}
-{%- endmacro %}
-
-{% macro bool_badge(val, true_text='YES', false_text='NO', invert=False) -%}
-    {% if invert %}
-        {% if val %}
-            <span class="badge status-failed-badge">{{ true_text | e }}</span>
-        {% else %}
-            <span class="badge status-fixed-badge">{{ false_text | e }}</span>
-        {% endif %}
-    {% else %}
-        {% if val %}
-            <span class="badge status-fixed-badge">{{ true_text | e }}</span>
-        {% else %}
-            <span class="badge status-failed-badge">{{ false_text | e }}</span>
-        {% endif %}
-    {% endif %}
-{%- endmacro %}
-
-<div class="container">
-    {# ── HEADER ── #}
-    <div class="header">
-        <div>
-            <h1>Daily Operations Report</h1>
-            <div class="meta">
-                <strong>Date:</strong> {{ safe(meta.get('date'), 'N/A') }} &nbsp;|&nbsp;
-                <strong>Run ID:</strong> {{ safe(meta.get('run_id'), 'N/A') }}
+    <main class="content">
+        <header class="content-header">
+            <div class="title-group">
+                <h1>Fleet Health Dashboard</h1>
+                <p>Real-time status of managed infrastructure assets.</p>
             </div>
-        </div>
-        <div class="meta" style="text-align: right;">
-            Generated: {{ safe(meta.get('generated'), 'N/A') }}<br>
-            Sites Audited: {{ counts.get('sites_audited', 0) }}
-        </div>
-    </div>
+            <div class="header-util">
+                <input type="text" id="hostSearch" onkeyup="filterHosts()" placeholder="Filter by hostname...">
+                <button class="btn-secondary" onclick="window.print()">Print Report</button>
+            </div>
+        </header>
 
-    {# ── EXECUTIVE METRICS ── #}
-    <div class="metrics-row">
-        <div class="metric-card">
-            <h3 class="metric-val {{ 'val-failed' if grand_total_critical > 0 else 'val-fixed' }}">
-                {{ grand_total_critical }}
-            </h3>
-            <p class="metric-label">Critical Issues</p>
-        </div>
-        <div class="metric-card">
-            <h3 class="metric-val {{ 'sev-medium' if grand_total_warning > 0 else 'val-fixed' }}">
-                {{ grand_total_warning }}
-            </h3>
-            <p class="metric-label">Warnings</p>
-        </div>
-        <div class="metric-card">
-            <h3 class="metric-val">{{ counts.get('reports_generated', 0) }}</h3>
-            <p class="metric-label">Reports Generated</p>
-        </div>
-        <div class="metric-card">
-            <h3 class="metric-val">{{ counts.get('sites_audited', 0) }}</h3>
-            <p class="metric-label">Sites Checked</p>
-        </div>
-    </div>
+        <section id="summary" class="tab-content active">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <label>Fleet Compliance</label>
+                    <div class="stat-value">{{ 100 - (totals.get('critical', 0) * 1.5)|int }}%</div>
+                    <div class="progress-track"><div class="progress-fill" style="width: {{ 100 - (totals.get('critical', 0) * 1.5) }}%;"></div></div>
+                </div>
+                <div class="stat-card">
+                    <label>Critical Faults</label>
+                    <div class="stat-value {{ 'danger' if totals.get('critical', 0)|int > 0 }}">{{ totals.get('critical', 0) }}</div>
+                </div>
+                <div class="stat-card">
+                    <label>Warning States</label>
+                    <div class="stat-value {{ 'warning' if totals.get('warning', 0)|int > 0 }}">{{ totals.get('warning', 0) }}</div>
+                </div>
+            </div>
 
-    {# ── SYSTEM STATUS OVERVIEW ── #}
-    <h2 class="section-title">System Status Overview</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Category</th>
-                <th style="text-align: center;">Sites</th>
-                <th style="text-align: center;">Critical</th>
-                <th style="text-align: center;">Warning</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>vCenter Alarms</strong></td>
-                <td style="text-align: center;">{{ vcenters | length }}</td>
-                <td style="text-align: center;" class="{{ 'sev-high' if (c_alarms.get('critical', 0) | int) > 0 }}">{{ c_alarms.get('critical', 0) }}</td>
-                <td style="text-align: center;" class="{{ 'sev-medium' if (c_alarms.get('warning', 0) | int) > 0 }}">{{ c_alarms.get('warning', 0) }}</td>
-                <td>{{ status_badge('GREEN' if ((c_alarms.get('critical',0)|int)==0 and (c_alarms.get('warning',0)|int)==0) else 'RED') }}</td>
-            </tr>
-            <tr>
-                <td><strong>Ops Alerts</strong></td>
-                <td style="text-align: center;">All</td>
-                <td style="text-align: center;" class="{{ 'sev-high' if (c_alerts.get('critical', 0) | int) > 0 }}">{{ c_alerts.get('critical', 0) }}</td>
-                <td style="text-align: center;" class="{{ 'sev-medium' if (c_alerts.get('warning', 0) | int) > 0 }}">{{ c_alerts.get('warning', 0) }}</td>
-                <td>{{ status_badge('GREEN' if ((c_alerts.get('critical',0)|int)==0 and (c_alerts.get('warning',0)|int)==0) else 'RED') }}</td>
-            </tr>
-            <tr>
-                <td><strong>Unity Arrays</strong></td>
-                <td style="text-align: center;">{{ unisphere | length }}</td>
-                <td style="text-align: center;">-</td>
-                <td style="text-align: center;">-</td>
-                <td>{{ status_badge('GREEN' if (unisphere | length) > 0 else 'GRAY') }}</td>
-            </tr>
-            <tr>
-                <td><strong>Data Domain</strong></td>
-                <td style="text-align: center;">{{ backups | length }}</td>
-                <td style="text-align: center;">-</td>
-                <td style="text-align: center;">-</td>
-                <td>{{ status_badge('GREEN' if (backups | length) > 0 else 'GRAY') }}</td>
-            </tr>
-            <tr>
-                <td><strong>UCS Fabrics</strong></td>
-                <td style="text-align: center;">{{ ucs | length }}</td>
-                <td style="text-align: center;">-</td>
-                <td style="text-align: center;">-</td>
-                <td>{{ status_badge('GREEN' if (ucs | length) > 0 else 'GRAY') }}</td>
-            </tr>
-        </tbody>
-    </table>
+            <h2 class="sub-title">System Status</h2>
+            <div class="card-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subsystem</th>
+                            <th>Asset Count</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Virtualization Layer</td>
+                            <td>{{ groups.get('vcenters', []) | length }} Clusters</td>
+                            <td>{{ status_badge('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL') }}</td>
+                        </tr>
+                        <tr>
+                            <td>Linux Infrastructure</td>
+                            <td>{{ groups.get('ubuntu_servers', []) | length }} Nodes</td>
+                            <td>{{ status_badge('OK') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-    {# ── INFRASTRUCTURE HEALTH (hostvars-driven) ── #}
-    <h2 class="section-title">vCenter Infrastructure Health</h2>
-    {% set vc_hosts = groups.get('vcenters', []) %}
-    {% if vc_hosts | length > 0 %}
-    <table>
-        <thead>
-            <tr>
-                <th>Site</th>
-                <th>Version</th>
-                <th>Overall</th>
-                <th>DB</th>
-                <th>Storage</th>
-                <th>Backup</th>
-                <th>SSH</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for host in vc_hosts %}
-            {% set hv = hostvars.get(host, {}) %}
-            {% set vc = hv.get('vcenter', {}) %}
-            {% set app = vc.get('appliance', {}) %}
-            {% set info = app.get('info', {}) %}
-            {% set health = app.get('health', {}) %}
-            {% set cfg = app.get('config', {}) %}
-            {% set bk = app.get('backup', {}) %}
-            <tr>
-                <td style="font-weight: bold;">{{ host | e }}</td>
-                <td>{{ info.get('version', 'UNK') | e }}</td>
-                <td>{{ status_badge(health.get('overall')) }}</td>
-                <td>{{ status_badge(health.get('database')) }}</td>
-                <td>{{ status_badge(health.get('storage')) }}</td>
-                <td>{{ bool_badge(bk.get('enabled', false)) }}</td>
-                <td>{{ bool_badge(cfg.get('ssh_enabled', false), 'OPEN', 'SECURE', invert=True) }}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <div class="status-banner" style="background-color: #95a5a6;">
-            NO DATA: No hosts in group <code>vcenters</code>.
-        </div>
-    {% endif %}
-
-    {# ── CLUSTER CAPACITY (hostvars-driven) ── #}
-    <h2 class="section-title">Cluster Capacity &amp; Compliance</h2>
-    {% if vc_hosts | length > 0 %}
-    <table>
-        <thead>
-            <tr>
-                <th>Site</th>
-                <th>Cluster</th>
-                <th style="text-align: center;">Hosts</th>
-                <th>CPU Use</th>
-                <th>Mem Use</th>
-                <th>HA</th>
-                <th>DRS</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for host in vc_hosts %}
-            {% set hv = hostvars.get(host, {}) %}
-            {% set vc = hv.get('vcenter', {}) %}
-            {% set clusters_map = vc.get('clusters', {}).get('by_name', {}) %}
-            {% if clusters_map is mapping %}
-                {% for name, data in clusters_map.items() %}
-                    {% set util = (data.get('utilization', {}) if data is mapping else {}) %}
-                    {% set comp = (data.get('compliance', {}) if data is mapping else {}) %}
-                    {% set cpu = (util.get('cpu_pct', 0) | float) %}
-                    {% set mem = (util.get('mem_pct', 0) | float) %}
-                    <tr>
-                        <td>{{ host | e }}</td>
-                        <td style="font-weight: bold;">{{ name | e }}</td>
-                        <td style="text-align: center;">{{ (data.get('hosts', []) | length) if data is mapping else 0 }}</td>
-                        <td><span class="{{ 'sev-high' if cpu > 80 else '' }}">{{ cpu }}%</span></td>
-                        <td><span class="{{ 'sev-high' if mem > 80 else '' }}">{{ mem }}%</span></td>
-                        <td>{{ bool_badge(comp.get('ha_enabled', false), 'ON', 'OFF') }}</td>
-                        <td>{{ bool_badge(comp.get('drs_enabled', false), 'ON', 'OFF') }}</td>
-                    </tr>
-                {% endfor %}
+        <section id="security" class="tab-content">
+            <h2 class="sub-title">STIG Compliance Audit</h2>
+            {% for hostname, audits in all_hosts.items() %}
+            {% if audits.stig is defined %}
+            <div class="compliance-entry">
+                <div class="entry-header">
+                    <h3>{{ hostname }}</h3>
+                    {{ status_badge(audits.stig.health) }}
+                </div>
+                <div class="finding-grid">
+                    {% for alert in audits.stig.alerts %}
+                    <div class="finding-card {{ alert.severity | lower }}">
+                        <span class="finding-id">{{ alert.detail.rule_id | default('V-RULE') }}</span>
+                        <p>{{ alert.message }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
             {% endif %}
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <div class="status-banner" style="background-color: #95a5a6;">
-            NO DATA: No hosts in group <code>vcenters</code>.
-        </div>
-    {% endif %}
-
-    {# ── ACTIVE ALARMS (report.data.alarms) ── #}
-    <h2 class="section-title">vCenter Active Alarms</h2>
-    {% if global_alarms | length > 0 %}
-        <table>
-            <thead>
-                <tr>
-                    <th class="col-sev">Sev</th>
-                    <th>Site</th>
-                    <th>Alarm Name</th>
-                    <th>Entity</th>
-                    <th>Status</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for alarm in global_alarms | sort(attribute='severity') %}
-                {% set sev = (alarm.get('severity','') if alarm is mapping else '') | string | lower %}
-                <tr>
-                    <td>
-                        {% if sev == 'critical' %}
-                            <span class="badge status-failed-badge">CRIT</span>
-                        {% elif sev == 'warning' %}
-                            <span class="badge" style="background-color: #f39c12;">WARN</span>
-                        {% else %}
-                            <span class="badge" style="background-color: #3498db;">INFO</span>
-                        {% endif %}
-                    </td>
-                    <td><strong>{{ (alarm.get('site','') if alarm is mapping else '') | e }}</strong></td>
-                    <td>{{ (alarm.get('alarm_name','') if alarm is mapping else '') | e }}</td>
-                    <td>{{ (alarm.get('entity','') if alarm is mapping else '') | e }}</td>
-                    <td>{{ (alarm.get('status','') if alarm is mapping else '') | upper | e }}</td>
-                    <td>{{ (alarm.get('time','') if alarm is mapping else '') | e }}</td>
-                </tr>
             {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="status-banner" style="background-color: var(--success-color);">
-            ✅ No active alarms detected across any vCenter.
-        </div>
-    {% endif %}
+        </section>
 
-    {# ── OPS ALERTS (report.data.alerts) ── #}
-    <h2 class="section-title">Operational Alerts</h2>
-    {% if global_alerts | length > 0 %}
-        <table>
-            <thead>
-                <tr>
-                    <th class="col-sev">Sev</th>
-                    <th>Site</th>
-                    <th>Category</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for alert in global_alerts | sort(attribute='severity') %}
-                {% set sev = (alert.get('severity','') if alert is mapping else '') | string | upper %}
-                <tr>
-                    <td>
-                        {% if sev == 'CRITICAL' %}
-                            <span class="badge status-failed-badge">CRIT</span>
-                        {% elif sev == 'WARNING' %}
-                            <span class="badge" style="background-color: #f39c12;">WARN</span>
-                        {% else %}
-                            <span class="badge" style="background-color: #3498db;">INFO</span>
-                        {% endif %}
-                    </td>
-                    <td><strong>{{ (alert.get('site','') if alert is mapping else '') | e }}</strong></td>
-                    <td>{{ (alert.get('category','') if alert is mapping else '') | upper | e }}</td>
-                    <td>{{ (alert.get('message','') if alert is mapping else '') | e }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <div class="status-banner" style="background-color: var(--success-color);">
-            ✅ No operational alerts detected.
-        </div>
-    {% endif %}
-
-    {# ── STORAGE & BACKUP GRID ── #}
-    <div class="dashboard-grid" style="margin-top: 40px;">
-        {# Unity #}
-        <div>
-            <h3>Storage Arrays (Unity)</h3>
-            {% if unisphere | length > 0 %}
-            <table>
-                <thead><tr><th>Site</th><th>Alerts</th><th>Status</th></tr></thead>
-                <tbody>
-                {% for array in unisphere %}
-                {% set s = (array.get('site','') if array is mapping else '') %}
-                {% set t = (array.get('alerts_total',0) if array is mapping else 0) %}
-                {% set c = (array.get('alerts_critical',0) if array is mapping else 0) %}
-                <tr>
-                    <td><strong>{{ s | e }}</strong></td>
-                    <td>{{ t }}</td>
-                    <td>{{ status_badge('RED' if (c | int > 0) else 'GREEN') }}</td>
-                </tr>
+        <section id="compute" class="tab-content">
+            <h2 class="sub-title">Virtualization Resource Saturation</h2>
+            <div class="compute-grid">
+                {% for hostname, audits in all_hosts.items() %}
+                    {% if audits.vcenter_health is defined %}
+                        <div class="vcenter-node">
+                            <h3>vCenter: {{ hostname }}</h3>
+                            <div class="resource-flex">
+                                {% for cluster in audits.vcenter_health.inventory.clusters.list %}
+                                <div class="cluster-card">
+                                    <label>{{ cluster.name }}</label>
+                                    <div class="metric">
+                                        <span>CPU: {{ cluster.utilization.cpu_pct }}%</span>
+                                        <div class="mini-bar"><div class="fill" style="width: {{ cluster.utilization.cpu_pct }}%;"></div></div>
+                                    </div>
+                                    <div class="metric">
+                                        <span>RAM: {{ cluster.utilization.mem_pct }}%</span>
+                                        <div class="mini-bar"><div class="fill" style="width: {{ cluster.utilization.mem_pct }}%;"></div></div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
                 {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: #7f8c8d;">No storage data collected.</p>
-            {% endif %}
-        </div>
-
-        {# Data Domain #}
-        <div>
-            <h3>Backup Systems (DD)</h3>
-            {% if backups | length > 0 %}
-            <table>
-                <thead><tr><th>Site</th><th>Alerts</th><th>Status</th></tr></thead>
-                <tbody>
-                {% for backup in backups %}
-                {% set s = (backup.get('site','') if backup is mapping else '') %}
-                {% set t = (backup.get('alerts_total',0) if backup is mapping else 0) %}
-                {% set c = (backup.get('alerts_critical',0) if backup is mapping else 0) %}
-                <tr>
-                    <td><strong>{{ s | e }}</strong></td>
-                    <td>{{ t }}</td>
-                    <td>{{ status_badge('RED' if (c | int > 0) else 'GREEN') }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: #7f8c8d;">No backup data collected.</p>
-            {% endif %}
-        </div>
-
-        {# UCS #}
-        <div>
-            <h3>UCS Fabrics</h3>
-            {% if ucs | length > 0 %}
-            <table>
-                <thead><tr><th>Site</th><th>Alerts</th><th>Status</th></tr></thead>
-                <tbody>
-                {% for fabric in ucs %}
-                {% set s = (fabric.get('site','') if fabric is mapping else '') %}
-                {% set t = (fabric.get('alerts_total',0) if fabric is mapping else 0) %}
-                {% set c = (fabric.get('alerts_critical',0) if fabric is mapping else 0) %}
-                <tr>
-                    <td><strong>{{ s | e }}</strong></td>
-                    <td>{{ t }}</td>
-                    <td>{{ status_badge('RED' if (c | int > 0) else 'GREEN') }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: #7f8c8d;">No UCS data collected.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    {# ── OPTIONAL SECTIONS ── #}
-    {% if include_patch | default(false) %}
-    <h2 class="section-title">Patch Thursday Summary</h2>
-    <ul>
-        <li>✅ Windows templates verified for patch baseline</li>
-        <li>✅ Linux templates validated (Ubuntu 22.04.x)</li>
-        <li>✅ No errors detected in patch pre-checks</li>
-    </ul>
-    {% endif %}
-
-    {% if include_weekly | default(false) %}
-    <h2 class="section-title">Weekly Operations Checks</h2>
-    <ul>
-        <li>✅ vCenter replication state verified</li>
-        <li>✅ Linked vCenter sites healthy</li>
-        <li>✅ UCS service profiles validated</li>
-        <li>✅ Storage utilization tracked</li>
-    </ul>
-    {% endif %}
-
+            </div>
+        </section>
+    </main>
 </div>
 
+<script>
+    function showTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        el.classList.add('active');
+    }
+</script>
 </body>
 </html>

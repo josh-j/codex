@@ -1,0 +1,48 @@
+---
+# internal.vmware.audit : notify/workload.yaml
+
+# 1. GATEKEEPING (Schedule & Opt-in)
+- name: Check notification window
+  ansible.builtin.set_fact:
+    _run_notifications: >-
+      {{
+        vmware_enable_email_notifications | default(false) | bool and
+        ansible_date_time.weekday | lower in (vmware_owner_notification_days | map('lower') | list)
+      }}
+
+- name: Log notification state
+  when: not _run_notifications
+  ansible.builtin.debug:
+    msg: "Notifications dormant: Schedule check failed (Today: {{ ansible_date_time.weekday }})"
+
+# 2. IDENTIFY RECIPIENTS (Filtering & Allowlisting)
+- name: Identify and verify target owners
+  when: _run_notifications
+  ansible.builtin.set_fact:
+    _vm_owners: >-
+      {{
+        _discovered_owners if '*' in _allowlist
+        else (_discovered_owners | intersect(_allowlist))
+      }}
+  vars:
+    _allowlist: "{{ vmware_notification_allowlist | default([]) }}"
+    _discovered_owners: >-
+      {{
+        vmware_ctx.inventory.vms.list | default([])
+        | map(attribute='owner_email')
+        | select('defined')
+        | select('match', '^[^@]+@[^@]+\.[^@]+$')
+        | unique
+        | list
+      }}
+
+# 3. EXECUTION (The Loop)
+- name: Trigger personalized digests
+  when:
+    - _run_notifications
+    - _vm_owners | length > 0
+  ansible.builtin.include_tasks: notify/loop.yaml
+  loop: "{{ _vm_owners }}"
+  loop_control:
+    loop_var: owner_email
+    label: "Processing digest for {{ owner_email }}"

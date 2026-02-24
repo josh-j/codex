@@ -1,0 +1,55 @@
+---
+# internal.vmware.discovery : discovery/alarms.yaml
+
+- name: Execute vCenter alarm collection script
+  ansible.builtin.script:
+    cmd: >-
+      {{ role_path }}/files/get_vcenter_alarms.py
+      {{ _vcenter_hostname }}
+      {{ vmware_username }}
+  environment:
+    VC_PASSWORD: "{{ vmware_password }}"
+  register: _alarms_script_raw
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true
+
+- name: Parse and Normalize Alarm Data
+  ansible.builtin.set_fact:
+    _temp_alarms:
+      list: "{{ _normalized_list }}"
+      metrics:
+        total: "{{ _normalized_list | length }}"
+        critical_count: "{{ _normalized_list | selectattr('severity', 'equalto', 'critical') | list | length }}"
+        warning_count: "{{ _normalized_list | selectattr('severity', 'equalto', 'warning') | list | length }}"
+      # Helper groups for immediate alerting
+      critical_items: "{{ _normalized_list | selectattr('severity', 'equalto', 'critical') | list }}"
+      status: "{{ 'SUCCESS' if _script_valid else 'SCRIPT_ERROR' }}"
+  vars:
+    # 1. Validation Logic
+    _script_valid: >-
+      {{
+        _alarms_script_raw is mapping and
+        (_alarms_script_raw.rc | default(1) | int) == 0 and
+        (_alarms_script_raw.stdout | default('') | trim | length) > 0
+      }}
+
+    # 2. Parsing Logic
+    _raw_json: "{{ (_alarms_script_raw.stdout | from_json) if _script_valid else {'alarms': []} }}"
+
+    # 3. Standardization Logic
+    _normalized_list: >-
+      {%- set results = [] -%}
+      {%- for item in (_raw_json.alarms | default([])) -%}
+        {%- set _ = results.append({
+          'site': inventory_hostname,
+          'alarm_name': item.alarm_name | default('Unknown Alarm'),
+          'entity': item.entity | default('Unknown Entity'),
+          'severity': item.severity | default('info') | lower,
+          'status': item.status | default('gray'),
+          'time': item.time | default(ansible_date_time.iso8601),
+          'description': item.description | default('')
+        }) -%}
+      {%- endfor -%}
+      {{ results }}
