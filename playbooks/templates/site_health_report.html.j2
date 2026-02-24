@@ -9,6 +9,16 @@
     </style>
 </head>
 <body>
+{% set site = site_dashboard_view | default({}) %}
+{% set site_meta = site.get('meta', {}) %}
+{% set totals = site.get('totals', totals | default({})) %}
+{% set platforms = site.get('platforms', {}) %}
+{% set linux_platform = platforms.get('linux', {}) %}
+{% set vmware_platform = platforms.get('vmware', {}) %}
+{% set security = site.get('security', {}) %}
+{% set stig_entries = security.get('stig_entries', []) %}
+{% set compute = site.get('compute', {}) %}
+{% set compute_nodes = compute.get('nodes', []) %}
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -77,22 +87,22 @@
                     <tbody>
                         <tr>
                             <td><strong>Linux & Ubuntu Environment</strong></td>
-                            <td>{{ groups.get('ubuntu_servers', []) | length }} Nodes</td>
-                            {% set _badge = (linux_global_health | default('OK' if totals.get('critical', 0)|int == 0 else 'CRITICAL')) | internal.core.status_badge_meta %}
+                            <td>{{ linux_platform.get('asset_count', 0) }} {{ linux_platform.get('asset_label', 'Nodes') }}</td>
+                            {% set _badge = (linux_platform.get('health', 'OK')) | internal.core.status_badge_meta %}
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
-                                <a href="platform/ubuntu/ubuntu_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                <a href="{{ linux_platform.get('link', 'platform/ubuntu/ubuntu_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View Linux Fleet ↗
                                 </a>
                             </td>
                         </tr>
                         <tr>
                             <td><strong>VMware vCenter Environment</strong></td>
-                            <td>{{ groups.get('vcenters', []) | length }} Clusters</td>
-                            {% set _badge = (vmware_global_health | default('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL')) | internal.core.status_badge_meta %}
+                            <td>{{ vmware_platform.get('asset_count', 0) }} {{ vmware_platform.get('asset_label', 'Clusters') }}</td>
+                            {% set _badge = (vmware_platform.get('health', 'OK')) | internal.core.status_badge_meta %}
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
-                                <a href="platform/vmware/vmware_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                <a href="{{ vmware_platform.get('link', 'platform/vmware/vmware_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View VMware Fleet ↗
                                 </a>
                             </td>
@@ -104,17 +114,15 @@
 
         <section id="security" class="tab-content">
             <h2 class="sub-title">STIG Compliance Audit</h2>
-            {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
-            {% for audit_type, stig_audit in audits.items() %}
-            {% if (audit_type | string | lower).startswith('stig') %}
+            {% for entry in stig_entries %}
             <div class="compliance-entry">
                 <div class="entry-header">
-                    <h3>{{ hostname }} <span class="text-muted" style="font-size: 0.85rem;">({{ audit_type }})</span></h3>
-                    {% set _badge = (stig_audit.health | default('UNKNOWN')) | internal.core.status_badge_meta %}
+                    <h3>{{ entry.host }} <span class="text-muted" style="font-size: 0.85rem;">({{ entry.audit_type }})</span></h3>
+                    {% set _badge = (entry.health | default('UNKNOWN')) | internal.core.status_badge_meta %}
                     <span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span>
                 </div>
                 <div class="finding-grid">
-                    {% for alert in (stig_audit.alerts | default([])) %}
+                    {% for alert in (entry.alerts | default([])) %}
                     <div class="finding-card {{ alert.severity | lower }}">
                         <span class="finding-id">{{ alert.detail.rule_id | default('V-RULE') }}</span>
                         <p>{{ alert.message }}</p>
@@ -122,20 +130,17 @@
                     {% endfor %}
                 </div>
             </div>
-            {% endif %}
-            {% endfor %}
             {% endfor %}
         </section>
 
         <section id="compute" class="tab-content">
             <h2 class="sub-title">Virtualization Resource Saturation</h2>
             <div class="compute-grid">
-                {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
-                    {% if audits.vcenter_health is defined %}
+                {% for node in compute_nodes %}
                         <div class="vcenter-node">
-                            <h3>vCenter: {{ hostname }}</h3>
+                            <h3>vCenter: {{ node.host }}</h3>
                             <div class="resource-flex">
-                                {% for cluster in audits.vcenter_health.inventory.clusters.list %}
+                                {% for cluster in (node.clusters | default([])) %}
                                 <div class="cluster-card">
                                     <label>{{ cluster.name }}</label>
                                     <div class="metric">
@@ -150,7 +155,6 @@
                                 {% endfor %}
                             </div>
                         </div>
-                    {% endif %}
                 {% endfor %}
             </div>
         </section>

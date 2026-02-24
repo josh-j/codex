@@ -6,6 +6,19 @@ __metaclass__ = type
 
 import os
 from pathlib import Path
+import importlib.util
+
+try:
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
+        build_site_dashboard_view as _build_site_dashboard_view,
+    )
+except ImportError:
+    _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "report_view_models.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_report_view_models", _helper_path)
+    _mod = importlib.util.module_from_spec(_spec)
+    assert _spec is not None and _spec.loader is not None
+    _spec.loader.exec_module(_mod)
+    _build_site_dashboard_view = _mod.build_site_dashboard_view
 
 
 _DEFAULT_SHARED_CSS_PATH = (
@@ -54,8 +67,25 @@ def shared_report_css(_value=None):
     return _SHARED_CSS_CACHE
 
 
+def site_dashboard_view(
+    aggregated_hosts,
+    groups=None,
+    report_stamp=None,
+    report_date=None,
+    report_id=None,
+):
+    return _build_site_dashboard_view(
+        aggregated_hosts,
+        inventory_groups=groups,
+        report_stamp=report_stamp,
+        report_date=report_date,
+        report_id=report_id,
+    )
+
+
 class FilterModule(object):
     def filters(self):
         return {
             "shared_report_css": shared_report_css,
+            "site_dashboard_view": site_dashboard_view,
         }

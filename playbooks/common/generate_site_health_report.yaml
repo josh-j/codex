@@ -31,53 +31,33 @@
         file: "{{ _platform_root }}/all_hosts_state.yaml"
         name: all_hosts
 
-    - name: "Step 3 | Calculate Fleet-Wide Alert List"
+    - name: "Step 3 | Build Site Dashboard View Model"
       ansible.builtin.set_fact:
-        _global_alerts: >-
-          {%- set alerts = [] -%}
-          {%- for host, audits in (all_hosts.hosts | default({})).items() -%}
-            {# Filter out structural platform folders and state files #}
-            {%- if host not in ['platform', 'ubuntu', 'vmware', 'history', 'linux_fleet_state', 'vmware_fleet_state'] -%}
-              {%- for audit_type, data in audits.items() -%}
-                {%- for alert in (data.alerts | default([])) -%}
-                  {%- set _ = alerts.append(alert | combine({'host': host, 'audit_type': audit_type})) -%}
-                {%- endfor -%}
-              {%- endfor -%}
-            {%- endif -%}
-          {%- endfor -%}
-          {{ alerts }}
+        site_dashboard_view: >-
+          {{
+            all_hosts
+            | internal.core.site_dashboard_view(
+              groups=groups,
+              report_stamp=report_stamp,
+              report_date=report_date,
+              report_id=report_id
+            )
+          }}
 
-    - name: "Step 4 | Define Template-Specific Dashboard Variables"
-      ansible.builtin.set_fact:
-        totals:
-          critical: "{{ _global_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
-          warning: "{{ _global_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
-
-        # Virtualization-specific alarms for Dashboard cards
-        c_alarms:
-          critical: "{{ _global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
-          warning: "{{ _global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
-
-        # Health badges for summary tables
-        linux_global_health: >-
-          {{ 'CRITICAL' if (_global_alerts | selectattr('audit_type', 'equalto', 'system') | selectattr('severity', 'equalto', 'CRITICAL') | list | length > 0) else 'OK' }}
-        vmware_global_health: >-
-          {{ 'CRITICAL' if (_global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'CRITICAL') | list | length > 0) else 'OK' }}
-
-    - name: "Step 5 | Render Site Health Dashboard"
+    - name: "Step 4 | Render Site Health Dashboard"
       ansible.builtin.template:
         src: "{{ _template_dir }}/site_health_report.html.j2"
         dest: "{{ _reports_root }}/site_health_report_{{ report_stamp }}.html"
         mode: "0644"
 
-    - name: "Step 6 | Maintain 'Latest' Symlink"
+    - name: "Step 5 | Maintain 'Latest' Symlink"
       ansible.builtin.file:
         src: "site_health_report_{{ report_stamp }}.html"
         dest: "{{ _reports_root }}/site_health_report.html"
         state: link
         force: true
 
-    - name: "Step 7 | Archive old reports (Older than 30 days)"
+    - name: "Step 6 | Archive old reports (Older than 30 days)"
       block:
         - name: Create history directory
           ansible.builtin.file:

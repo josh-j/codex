@@ -7,11 +7,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 REPORT_TEMPLATES = [
     ROOT / "playbooks/templates/site_health_report.html.j2",
-    ROOT / "internal/vmware/roles/summary/templates/vmware_health_report.html.j2",
-    ROOT / "internal/vmware/roles/summary/templates/vcenter_health_report.html.j2",
-    ROOT / "internal/linux/roles/ubuntu_summary/templates/ubuntu_health_report.html.j2",
-    ROOT / "internal/linux/roles/ubuntu_summary/templates/ubuntu_host_health_report.html.j2",
-    ROOT / "internal/core/roles/stig/templates/stig_report.html.j2",
+    ROOT / "collections/ansible_collections/internal/vmware/roles/summary/templates/vmware_health_report.html.j2",
+    ROOT / "collections/ansible_collections/internal/vmware/roles/summary/templates/vcenter_health_report.html.j2",
+    ROOT / "collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/ubuntu_health_report.html.j2",
+    ROOT / "collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/ubuntu_host_health_report.html.j2",
+    ROOT / "collections/ansible_collections/internal/core/roles/stig/templates/stig_report.html.j2",
 ]
 
 FORBIDDEN_CSS_NAMES = (
@@ -24,7 +24,10 @@ FORBIDDEN_CSS_NAMES = (
 class ReportCssSingleSourceTests(unittest.TestCase):
     def test_shared_stylesheet_exists(self):
         self.assertTrue(
-            (ROOT / "internal/core/roles/reporting/templates/report_shared.css").exists()
+            (
+                ROOT
+                / "collections/ansible_collections/internal/core/roles/reporting/templates/report_shared.css"
+            ).exists()
         )
 
     def test_report_templates_do_not_reference_legacy_css(self):

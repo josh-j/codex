@@ -5,6 +5,8 @@ import unittest
 
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
+    / "collections"
+    / "ansible_collections"
     / "internal"
     / "vmware"
     / "plugins"

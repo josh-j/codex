@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ host_name }} | Node Health Report</title>
+    {% set view = linux_node_view | default({}) %}
+    {% set node = view.get('node', {}) %}
+    {% set meta = view.get('meta', {}) %}
+    <title>{{ node.get('name', 'host') }} | Node Health Report</title>
     <style>
         {{ '' | internal.core.shared_report_css }}
     </style>
@@ -11,48 +14,45 @@
 <body>
 <div class="app-layout">
     <main class="content">
+        {% set _host_badge = (node.get('health', 'UNKNOWN')) | internal.core.status_badge_meta(true) %}
+        {% set sys_facts = node.get('sys_facts', {}) %}
+        {% set alerts = node.get('alerts', []) %}
         <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">
-            <a href="../../../site_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Global Site</a>
+            <a href="{{ node.get('links', {}).get('global_dashboard', '../../../site_health_report.html') }}" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Global Site</a>
             <span style="margin: 0 8px;">/</span>
-            <a href="../ubuntu_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Linux Fleet</a>
+            <a href="{{ node.get('links', {}).get('fleet_dashboard', '../ubuntu_health_report.html') }}" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Linux Fleet</a>
             <span style="margin: 0 8px;">/</span>
-            <span style="font-weight: 600; color: var(--text-primary);">{{ host_name }}</span>
+            <span style="font-weight: 600; color: var(--text-primary);">{{ node.get('name', 'host') }}</span>
         </div>
 
         <header class="content-header">
             <div>
-                <h1>Node Diagnostics: <code>{{ host_name }}</code></h1>
+                <h1>Node Diagnostics: <code>{{ node.get('name', 'host') }}</code></h1>
                 <p style="color: var(--text-muted); margin-top: 5px;">
-                    OS: {{ host_data.distribution | default('Linux') }} {{ host_data.distribution_version | default('') }} |
-                    {% set _host_badge = (host_data.health | default('UNKNOWN')) | internal.core.status_badge_meta(true) %}
+                    OS: {{ node.get('distribution', 'Linux') }} {{ node.get('distribution_version', '') }} |
                     Overall Status: <span class="badge {{ _host_badge.css_class }}">{{ _host_badge.label }}</span>
                 </p>
             </div>
             <div style="color: var(--text-muted); font-size: 0.9rem;">
-                Generated: {{ report_date | default(now(utc=true, fmt='%Y-%m-%d %H:%M:%SZ')) }}
+                Generated: {{ meta.get('report_date', report_date | default(now(utc=true, fmt='%Y-%m-%d %H:%M:%SZ'))) }}
             </div>
         </header>
-
-        {# Target the nested system facts gathered by the audit role #}
-        {% set sys_facts = host_data.data.system | default({}) %}
 
         <h2 class="sub-title">Active Audit Faults</h2>
         <div class="card-wrap">
             <table>
                 <thead><tr><th>Severity</th><th>Category</th><th>Details</th></tr></thead>
                 <tbody>
-                    {% if host_data.alerts | default([]) | length > 0 %}
-                        {% for alert in host_data.alerts %}
-                        <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
-                            {% set _badge = alert.severity | internal.core.status_badge_meta(true) %}
-                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
-                            <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
-                            <td>{{ alert.message }}</td>
-                        </tr>
-                        {% endfor %}
+                    {% for alert in alerts %}
+                    <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
+                        {% set _badge = alert.severity | internal.core.status_badge_meta(true) %}
+                        <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                        <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
+                        <td>{{ alert.message }}</td>
+                    </tr>
                     {% else %}
-                        <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>
-                    {% endif %}
+                    <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>

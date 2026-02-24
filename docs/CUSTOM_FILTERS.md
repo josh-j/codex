@@ -4,7 +4,7 @@ This repo includes Ansible custom filter plugins used by the VMware roles and sh
 
 ## `internal.core` filters
 
-Source: `/Users/joshj/dev/codex/internal/core/plugins/filter/dates.py`
+Source: `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/dates.py`
 
 ### `internal.core.filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_time")`
 
@@ -35,7 +35,7 @@ Example:
 {{ ts_str | internal.core.safe_iso_to_epoch(0) }}
 ```
 
-Source: `/Users/joshj/dev/codex/internal/core/plugins/filter/alerts.py`
+Source: `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/alerts.py`
 
 ### `internal.core.build_alerts(checks)`
 
@@ -95,7 +95,7 @@ Example:
 {{ vmware_ctx.alerts | internal.core.summarize_alerts }}
 ```
 
-Source: `/Users/joshj/dev/codex/internal/core/plugins/filter/validation.py`
+Source: `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/validation.py`
 
 ### `internal.core.validate_schema_from_file(data, filepath, root_key)`
 
@@ -113,7 +113,7 @@ Example:
 
 ## `internal.vmware` filters
 
-Source: `/Users/joshj/dev/codex/internal/vmware/plugins/filter/snapshot.py`
+Source: `/Users/joshj/dev/codex/collections/ansible_collections/internal/vmware/plugins/filter/snapshot.py`
 
 ### `internal.vmware.enrich_snapshots(snapshots, owner_map=None)`
 
@@ -135,7 +135,7 @@ Example:
 }}
 ```
 
-Source: `/Users/joshj/dev/codex/internal/vmware/plugins/filter/discovery.py`
+Source: `/Users/joshj/dev/codex/collections/ansible_collections/internal/vmware/plugins/filter/discovery.py`
 
 ### `internal.vmware.normalize_compute_inventory(cluster_results)`
 
@@ -189,11 +189,11 @@ Example:
 ## Maintenance notes
 
 - Current filter plugin files discovered:
-  - `/Users/joshj/dev/codex/internal/core/plugins/filter/dates.py`
-  - `/Users/joshj/dev/codex/internal/core/plugins/filter/alerts.py`
-  - `/Users/joshj/dev/codex/internal/core/plugins/filter/validation.py`
-  - `/Users/joshj/dev/codex/internal/vmware/plugins/filter/snapshot.py`
-  - `/Users/joshj/dev/codex/internal/vmware/plugins/filter/discovery.py`
+  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/dates.py`
+  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/alerts.py`
+  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/filter/validation.py`
+  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/vmware/plugins/filter/snapshot.py`
+  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/vmware/plugins/filter/discovery.py`
 - Prefer adding generic date/time helpers to `internal.core` instead of role-specific collections.
 - Keep VMware filters focused on VMware domain normalization/enrichment.
 - When adding new filters, document the expected input shape and failure behavior here.

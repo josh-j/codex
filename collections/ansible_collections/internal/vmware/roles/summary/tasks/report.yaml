@@ -41,21 +41,15 @@
         ncs_reporting_template_dest: "{{ _vmware_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
         ncs_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
         ncs_reporting_item_vars:
-          vcenter_name: "{{ item.key }}"
-          _bundle: "{{ item.value | default({}) }}"
-          _discovery: "{{ _bundle.discovery | default({}) }}"
-          _audit: "{{ _bundle.vcenter | default(_bundle.audit | default(_bundle)) }}"
-          vmware_ctx: "{{ _discovery | combine(_audit, recursive=true) }}"
-          vmware_alerts: >-
+          vmware_node_view: >-
             {{
-              (_audit.alerts
-                | default((_audit.vcenter_health.alerts | default(_bundle.vcenter_health.alerts | default([])))))
-              | list
-            }}
-          vcenter_health: >-
-            {{
-              _audit.vcenter_health
-                | default(_bundle.vcenter_health | default({}))
+              (item.value | default({}))
+              | internal.vmware.vmware_node_view(
+                hostname=item.key,
+                report_stamp=report_stamp,
+                report_date=report_date,
+                report_id=report_id
+              )
             }}
 
     - name: Maintain 'Latest' Host Symlinks
@@ -68,6 +62,18 @@
         ncs_reporting_latest_src_name: "health_report_{{ report_stamp }}.html"
         ncs_reporting_latest_dest_name: "health_report.html"
         ncs_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+
+    - name: Build VMware fleet dashboard view model
+      ansible.builtin.set_fact:
+        vmware_fleet_view: >-
+          {{
+            (vmw_all_hosts.hosts | default({}))
+            | internal.vmware.vmware_fleet_view(
+              report_stamp=report_stamp,
+              report_date=report_date,
+              report_id=report_id
+            )
+          }}
 
     - name: Render VMware Fleet HTML Dashboard
       ansible.builtin.template:

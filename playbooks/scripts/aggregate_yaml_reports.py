@@ -19,6 +19,8 @@ except ImportError:
     # Repo checkout fallback for local execution outside the Ansible collection loader.
     _helper_path = (
         Path(__file__).resolve().parents[2]
+        / "collections"
+        / "ansible_collections"
         / "internal"
         / "core"
         / "plugins"
@@ -35,6 +37,8 @@ except ImportError:
     write_output = _mod.write_output
     _vmware_adapter_path = (
         Path(__file__).resolve().parents[2]
+        / "collections"
+        / "ansible_collections"
         / "internal"
         / "vmware"
         / "plugins"

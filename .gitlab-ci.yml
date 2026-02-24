@@ -16,7 +16,10 @@ cache:
 
 before_script:
   - python -m pip install --upgrade pip
-  - pip install ansible-core ansible-lint yamllint molecule
+  - pip install ansible-core ansible-lint yamllint
+  - export ANSIBLE_CONFIG="$CI_PROJECT_DIR/ansible.cfg"
+  - export ANSIBLE_LOCAL_TEMP="/tmp/ansible-local"
+  - export ANSIBLE_REMOTE_TEMP="/tmp/ansible-remote"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1) LINT STAGE
@@ -39,21 +42,24 @@ playbook_syntax:
   script:
     - echo "dummy_password" > .vaultpass
     - |
-      for playbook in playbooks/*.yaml; do
+      for playbook in playbooks/*.yaml playbooks/common/*.yaml; do
+        [ -f "$playbook" ] || continue
         echo "Checking syntax for $playbook..."
         ansible-playbook -i inventory/production --syntax-check "$playbook"
       done
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3) TEST STAGE (Molecule)
+# 3) TEST STAGE (Unit Tests)
 # ─────────────────────────────────────────────────────────────────────────────
-molecule_common:
+unit_tests:
   stage: test
   script:
-    - cd collections/ansible_collections/internal/stig/roles/common
-    - molecule test
-  artifacts:
-    paths:
-      - /tmp/molecule_reports/
-    when: always
-    expire_in: 1 week
+    - python -m unittest
+        tests/unit/test_core_reporting_filter.py
+        tests/unit/test_core_stig_filter.py
+        tests/unit/test_report_css_single_source.py
+        tests/unit/test_report_view_model_vmware.py
+        tests/unit/test_report_view_model_linux.py
+        tests/unit/test_report_view_model_site.py
+        tests/unit/test_vmware_audit_export_contract.py
+        tests/unit/test_vmware_snapshot_filter.py

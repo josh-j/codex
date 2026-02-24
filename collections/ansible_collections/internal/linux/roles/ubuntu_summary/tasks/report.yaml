@@ -10,6 +10,8 @@
 
     # Unified timestamp for this run (e.g., 20260224)
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+    report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
+    report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
 
   block:
     - name: Prepare Linux aggregated platform state
@@ -41,8 +43,28 @@
         ncs_reporting_template_dest: "{{ _ubuntu_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
         ncs_reporting_skip_keys: ['Split', 'Summary', 'platform', 'linux_fleet_state']
         ncs_reporting_item_vars:
-          host_name: "{{ item.key }}"
-          host_data: "{{ item.value.system | default({}) }}"
+          linux_node_view: >-
+            {{
+              (item.value | default({}))
+              | internal.linux.linux_node_view(
+                hostname=item.key,
+                report_stamp=report_stamp,
+                report_date=report_date,
+                report_id=report_id
+              )
+            }}
+
+    - name: Build Linux fleet dashboard view model
+      ansible.builtin.set_fact:
+        linux_fleet_view: >-
+          {{
+            (all_hosts.hosts | default(all_hosts))
+            | internal.linux.linux_fleet_view(
+              report_stamp=report_stamp,
+              report_date=report_date,
+              report_id=report_id
+            )
+          }}
 
     - name: Render Linux Fleet HTML Report (Platform Level)
       ansible.builtin.template:
