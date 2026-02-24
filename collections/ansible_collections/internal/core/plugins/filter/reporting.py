@@ -12,6 +12,8 @@ try:
     from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_site_dashboard_view as _build_site_dashboard_view,
         default_report_skip_keys as _default_report_skip_keys,
+        build_stig_host_view as _build_stig_host_view,
+        build_stig_fleet_view as _build_stig_fleet_view,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "report_view_models.py"
@@ -21,6 +23,8 @@ except ImportError:
     _spec.loader.exec_module(_mod)
     _build_site_dashboard_view = _mod.build_site_dashboard_view
     _default_report_skip_keys = _mod.default_report_skip_keys
+    _build_stig_host_view = _mod.build_stig_host_view
+    _build_stig_fleet_view = _mod.build_stig_fleet_view
 
 
 _DEFAULT_SHARED_CSS_PATH = (
@@ -90,10 +94,46 @@ def report_skip_keys(_value=None):
     return _default_report_skip_keys()
 
 
+def stig_host_view(
+    stig_payload,
+    hostname=None,
+    audit_type="stig",
+    platform=None,
+    report_stamp=None,
+    report_date=None,
+    report_id=None,
+):
+    return _build_stig_host_view(
+        hostname or "unknown",
+        audit_type,
+        stig_payload,
+        platform=platform,
+        report_stamp=report_stamp,
+        report_date=report_date,
+        report_id=report_id,
+    )
+
+
+def stig_fleet_view(
+    aggregated_hosts,
+    report_stamp=None,
+    report_date=None,
+    report_id=None,
+):
+    return _build_stig_fleet_view(
+        aggregated_hosts,
+        report_stamp=report_stamp,
+        report_date=report_date,
+        report_id=report_id,
+    )
+
+
 class FilterModule(object):
     def filters(self):
         return {
             "shared_report_css": shared_report_css,
             "site_dashboard_view": site_dashboard_view,
             "report_skip_keys": report_skip_keys,
+            "stig_host_view": stig_host_view,
+            "stig_fleet_view": stig_fleet_view,
         }

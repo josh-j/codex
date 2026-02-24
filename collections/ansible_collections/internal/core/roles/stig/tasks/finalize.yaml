@@ -81,6 +81,29 @@
 - name: "STIG | Render HTML report"
   tags: [stig, reporting]
   when: _stig_audit_full_list_normalized | default([]) | length > 0
+  ansible.builtin.set_fact:
+    _stig_host_view: >-
+      {{
+        {
+          'health': (_stig_alerts_normalized | default([]) | internal.core.health_rollup),
+          'alerts': (_stig_alerts_normalized | default([])),
+          'violations': (_stig_audit_violations_normalized | default([])),
+          'full_audit': (_stig_audit_full_list_normalized | default([])),
+          'target_type': (stig_target_type | default(''))
+        }
+        | internal.core.stig_host_view(
+          hostname=inventory_hostname,
+          audit_type=('stig_' ~ (stig_target_type | default('unknown'))),
+          report_id=_stig_report_id,
+          report_date=_stig_checked_at
+        )
+      }}
+  delegate_to: localhost
+  become: false
+
+- name: "STIG | Render HTML report"
+  tags: [stig, reporting]
+  when: _stig_audit_full_list_normalized | default([]) | length > 0
   ansible.builtin.template:
     src: "stig_report.html.j2"
     dest: "{{ _stig_report_host_dir }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.html"
@@ -88,5 +111,6 @@
   vars:
     timestamp: "{{ _stig_checked_at }}"
     _failures: "{{ _stig_audit_violations_normalized | default([]) }}"
+    stig_host_view: "{{ _stig_host_view }}"
   delegate_to: localhost
   become: false

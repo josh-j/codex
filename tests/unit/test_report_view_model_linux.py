@@ -69,6 +69,10 @@ class LinuxReportViewModelTests(unittest.TestCase):
         self.assertEqual(fleet["fleet"]["alerts"]["critical"], 1)
         self.assertEqual(fleet["fleet"]["alerts"]["warning"], 2)
         self.assertEqual(len(fleet["active_alerts"]), 2)
+        self.assertIn("stig_fleet", fleet)
+        self.assertEqual(len(fleet["stig_fleet"]["rows"]), 1)
+        self.assertEqual(fleet["stig_fleet"]["rows"][0]["findings_open"], 1)
+        self.assertEqual(len(fleet["stig_fleet"]["rows"][0]["findings"]), 1)
         self.assertEqual(fleet["stig_rows"][0]["open_findings"], 1)
 
         node = self.module.build_linux_node_view("host1", hosts["host1"])

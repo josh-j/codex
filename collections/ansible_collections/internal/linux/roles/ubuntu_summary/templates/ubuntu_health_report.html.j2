@@ -13,7 +13,8 @@
 <body>
 {% set rows = view.get('rows', []) %}
 {% set active_alerts = view.get('active_alerts', []) %}
-{% set stig_rows = view.get('stig_rows', []) %}
+{% set stig_fleet = view.get('stig_fleet', {}) %}
+{% set stig_rows = stig_fleet.get('rows', view.get('stig_rows', [])) %}
 <div class="app-layout">
     <main class="content">
         <div style="margin-bottom: 15px; font-size: 0.85rem;">
@@ -115,9 +116,9 @@
                     {% for row in stig_rows %}
                     {% set _badge = row.health | internal.core.status_badge_meta %}
                     <tr>
-                        <td><strong>{{ row.name }}</strong></td>
+                        <td><strong>{{ row.host | default(row.name) }}</strong></td>
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
-                        <td>{{ row.open_findings | default(0) }} finding(s)</td>
+                        <td>{{ row.findings_open | default(row.open_findings | default(0)) }} finding(s)</td>
                     </tr>
                     {% else %}
                     <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No STIG results found.</td></tr>
