@@ -1,0 +1,50 @@
+---
+# internal.vmware.discovery : collect.yaml
+
+- name: Ensure local facts are available for timestamping
+  ansible.builtin.setup:
+    gather_subset:
+      - min
+  delegate_to: localhost
+  changed_when: false
+
+- name: Set shared controller timestamps for discovery subtasks
+  ansible.builtin.set_fact:
+    _vmware_controller_epoch: "{{ ansible_facts['date_time']['epoch'] | int }}"
+    _vmware_controller_collected_at: >-
+      {{ ansible_facts['date_time']['iso8601'] }}
+  changed_when: false
+
+- name: Discovery | Appliance Backup
+  ansible.builtin.include_tasks: discovery/appliance_backup.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Appliance Health
+  ansible.builtin.include_tasks: discovery/appliance_health.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Datacenters
+  ansible.builtin.include_tasks: discovery/datacenter.yaml
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Compute (Clusters & Hosts)
+  ansible.builtin.include_tasks: discovery/compute.yaml
+  when: (_disc_datacenters.list | default([]) | length) > 0
+  tags: [discovery, infrastructure]
+
+- name: Discovery | Storage (Datastores)
+  ansible.builtin.include_tasks: discovery/storage.yaml
+  when: (_disc_datacenters.list | default([]) | length) > 0
+  tags: [discovery, storage]
+
+- name: Discovery | Workload (VMs)
+  ansible.builtin.include_tasks: discovery/workload.yaml
+  tags: [discovery, workload]
+
+- name: Discovery | Snapshots
+  ansible.builtin.include_tasks: discovery/snapshots.yaml
+  tags: [discovery, snapshots]
+
+- name: Discovery | Alarms
+  ansible.builtin.include_tasks: discovery/alarms.yaml
+  tags: [discovery, alarms]

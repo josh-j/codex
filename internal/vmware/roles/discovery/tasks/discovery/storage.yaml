@@ -7,49 +7,25 @@
     username: "{{ vmware_username }}"
     password: "{{ vmware_password }}"
     validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
-    datacenter: "{{ vmware_ctx.inventory.summary.primary_dc | default(omit) }}"
+    datacenter: "{{ _disc_datacenters.summary.primary_dc | default(omit) }}"
   register: _datastores_raw
   delegate_to: localhost
   no_log: true
+  failed_when: false
+  changed_when: false
   retries: 3
   delay: 5
   until: _datastores_raw is succeeded
+  ignore_errors: true
 
-- name: Storage | Normalize Metrics & Identify Risks
+- name: Storage | Build standardized output
   ansible.builtin.set_fact:
-    _temp_datastores:
-      list: "{{ _normalized_datastores }}"
-      summary:
-        total_count: "{{ _normalized_datastores | length }}"
-        inaccessible_count: "{{ _normalized_datastores | selectattr('accessible', 'equalto', false) | list | length }}"
-        # Logic: Only count as low space if it is actually accessible
-        low_space_count: "{{ _normalized_datastores | selectattr('accessible') | selectattr('free_pct', 'le', 10) | list | length }}"
-        maintenance_count: "{{ _normalized_datastores | rejectattr('maintenance_mode', 'equalto', 'normal') | list | length }}"
-  vars:
-    _gb_factor: 1073741824.0
-
-    _normalized_datastores: >-
-      {%- set results = [] -%}
-      {%- for ds in (_datastores_raw.datastores | default([])) -%}
-        {%- set is_accessible = ds.accessible | default(false) | bool -%}
-        {%- set cap_bytes  = ds.capacity | default(0) | int -%}
-        {%- set free_bytes = ds.freeSpace | default(0) | int -%}
-
-        {# Divide by zero protection + handling for inaccessible LUNs #}
-        {%- set cap_safe   = [cap_bytes, 1] | max if is_accessible else 1 -%}
-        {%- set free_pct   = ((free_bytes | float / cap_safe) * 100.0) | round(1) if is_accessible else 0 -%}
-
-        {%- set _ = results.append({
-          'name': ds.name | default('UNKNOWN_DS'),
-          'type': ds.type | default('N/A'),
-          'capacity_gb': (cap_bytes | float / _gb_factor) | round(1),
-          'free_gb': (free_bytes | float / _gb_factor) | round(1),
-          'used_gb': ((cap_bytes - free_bytes) | float / _gb_factor) | round(1),
-          'free_pct': free_pct,
-          'accessible': is_accessible,
-          'maintenance_mode': ds.maintenanceMode | default('normal') | lower,
-          'uncommitted_gb': (ds.uncommitted | default(0) | float / _gb_factor) | round(1)
-        }) -%}
-      {%- endfor -%}
-      {{ results }}
+    _disc_datastores: >-
+      {{
+        _datastores_raw
+        | internal.vmware.normalize_storage_result(
+          _vmware_controller_collected_at,
+          10
+        )
+      }}
   changed_when: false

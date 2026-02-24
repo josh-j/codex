@@ -6,7 +6,8 @@
     vcenter_hostname: "{{ _vcenter_hostname }}"
     vcenter_username: "{{ vmware_username }}"
     vcenter_password: "{{ vmware_password }}"
-    vcenter_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vcenter_validate_certs: >-
+      {{ vmware_validate_certs | default(false) | bool }}
   register: _datacenters_raw
   delegate_to: localhost
   no_log: true
@@ -15,28 +16,11 @@
 
 - name: Datacenter | Normalize into temp structure (for final assembly)
   ansible.builtin.set_fact:
-    _temp_datacenters:
-      list: "{{ _dc_names }}"
-      raw: "{{ _raw_list }}"
-      by_name: "{{ dict(_dc_names | zip(_dc_ids)) }}"
-      summary:
-        total_count: "{{ _raw_list | length }}"
-        primary_dc: "{{ _dc_names | first | default('NONE_FOUND') }}"
-    vmware_ctx: >-
+    _disc_datacenters: >-
       {{
-        vmware_ctx | combine({
-          'system': {
-            'status': ('DISCOVERING_COMPUTE' if (_raw_list | length > 0) else 'NO_DATACENTERS_FOUND')
-          }
-        }, recursive=true)
+        _datacenters_raw
+        | internal.vmware.normalize_datacenters_result(
+          _vmware_controller_collected_at
+        )
       }}
-  vars:
-    _raw_list: "{{ _datacenters_raw.value | default([]) }}"
-    _dc_names: "{{ _raw_list | map(attribute='name') | list }}"
-    # REST datacenter id field is typically called `datacenter` in the returned objects
-    _dc_ids: "{{ _raw_list | map(attribute='datacenter') | list }}"
   changed_when: false
-
-- name: Datacenter | Stop host if no datacenters found
-  ansible.builtin.meta: end_host
-  when: (_temp_datacenters.list | length) == 0

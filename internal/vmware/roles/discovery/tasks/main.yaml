@@ -5,8 +5,30 @@
   ansible.builtin.include_tasks: init.yaml
   tags: [always]
 
-- name: Phase 1 | Inventory Discovery
-  ansible.builtin.include_tasks: discovery.yaml
+- name: Phase 1 | Collect Discovery Data
+  ansible.builtin.include_tasks: collect.yaml
+  when:
+    - not (vmware_skip_discovery | default(false) | bool)
+    - not (vmware_ctx.checks_failed | bool)
+  tags: [discovery]
+
+- name: Phase 2 | Assemble Discovery Context
+  ansible.builtin.include_tasks: assemble.yaml
+  when:
+    - not (vmware_skip_discovery | default(false) | bool)
+    - not (vmware_ctx.checks_failed | bool)
+  tags: [discovery]
+
+- name: Phase 3 | Validate Discovery Context
+  ansible.builtin.include_tasks: validate.yaml
+  when:
+    - not (vmware_skip_discovery | default(false) | bool)
+    - not (vmware_ctx.checks_failed | bool)
+    - vmware_validate_ctx_schema | default(true) | bool
+  tags: [discovery]
+
+- name: Phase 4 | Export Discovery State
+  ansible.builtin.include_tasks: export.yaml
   when:
     - not (vmware_skip_discovery | default(false) | bool)
     - not (vmware_ctx.checks_failed | bool)

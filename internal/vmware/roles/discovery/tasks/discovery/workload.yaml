@@ -13,63 +13,18 @@
   register: _vms_raw
   delegate_to: localhost
   no_log: true
+  failed_when: false
+  changed_when: false
 
-- name: Workload | Analyze Backup Compliance and Ownership
+- name: Workload | Build standardized output
   ansible.builtin.set_fact:
-    _temp_vms:
-      list: "{{ _vm_analysis }}"
-      summary:
-        total_vms: "{{ _vm_analysis | length }}"
-        overdue_backups: "{{ _vm_analysis | selectattr('backup_overdue', 'equalto', true) | list | length }}"
-        unprotected: "{{ _vm_analysis | selectattr('has_backup', 'equalto', false) | list | length }}"
-        missing_owners: >-
-          {{
-            _vm_analysis
-            | rejectattr('is_system_vm', 'equalto', true)
-            | selectattr('owner_email', 'equalto', '')
-            | list | length
-          }}
-      metrics:
-        powered_off_count: "{{ _vm_analysis | selectattr('power_state', 'equalto', 'POWEREDOFF') | list | length }}"
-  vars:
-    _now_epoch: "{{ ansible_facts['date_time']['epoch'] | int }}"
-
-    _vm_analysis: >-
-      {%- set results = [] -%}
-      {%- for item in (_vms_raw.virtual_machines | default([])) -%}
-        {# 1. Extract Attributes Safely #}
-        {%- set attrs = item.attributes | default({}) -%}
-        {%- set owner = (attrs.get('Owner Email', '') or attrs.get('owner_email', '')) | trim -%}
-
-        {# 2. Parse Backup Timestamp (Added Error Handling) #}
-        {%- set backup_attr = attrs.get('Last Dell PowerProtect Backup', '') -%}
-        {%- set has_backup = 'EndTime=' in backup_attr -%}
-        {%- set ts_str = (backup_attr.split('EndTime=')[1].split(',')[0]) if has_backup else '' -%}
-
-        {# Use a safe date conversion to avoid crash on malformed strings #}
-        {%- set backup_epoch = (ts_str | to_datetime('%Y-%m-%dT%H:%M:%SZ')).strftime('%s') | int if (ts_str and ts_str != '') else 0 -%}
-        {%- set days_since = ((_now_epoch - backup_epoch) / 86400) | int if backup_epoch > 0 else 9999 -%}
-
-        {# 3. Map Comprehensive Data for Audit Phase #}
-        {%- set vm_name = (item.guest_name | default(item.config_name) | default('')) -%}
-        {%- set is_system_vm = vm_name is match('^(vCLS-|vsanhealth|vmware-).*') -%}
-        {%- set _ = results.append({
-          'name': vm_name,
-          'uuid': item.uuid,
-          'is_system_vm': is_system_vm,
-          'power_state': item.power_state | upper,
-          'cluster': item.cluster | default('standalone'),
-          'owner_email': owner,
-          'tools_status': item.tools_status | default('toolsNotInstalled'),
-          'tools_version': item.tools_version | default('unknown'),
-          'guest_os': item.guest_id | default('unknown'),
-          'memory_mb': item.memory_mb | default(0),
-          'cpu_count': item.num_cpu | default(0),
-          'last_backup': ts_str if has_backup else 'NEVER',
-          'days_since': days_since,
-          'backup_overdue': (days_since > 2) if has_backup else true,
-          'has_backup': has_backup
-        }) -%}
-      {%- endfor -%}
-      {{ results }}
+    _disc_vms: >-
+      {{
+        _vms_raw
+        | internal.vmware.normalize_workload_result(
+          (_vmware_controller_epoch | int),
+          _vmware_controller_collected_at,
+          2
+        )
+      }}
   changed_when: false

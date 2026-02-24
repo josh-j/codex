@@ -1,0 +1,8 @@
+---
+# internal.vmware.audit : tasks/init.yaml
+
+- name: Initialize ephemeral audit state
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_ctx.alerts | default([]) | list }}"
+    _vmw_audit_failed: false
+  changed_when: false

@@ -17,9 +17,9 @@
         vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
 
         # Ensure the role knows where to save the discovery.yaml
-        # This forces the role to respect our new platform silo
+        # internal.vmware.discovery now honors caller-provided ncs_export_path
         ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/vmware/{{ inventory_hostname }}/discovery.yaml"
 
     - name: Announce Discovery Success
       ansible.builtin.debug:
-        msg: "✅ Inventory discovery complete for {{ inventory_hostname }}. Data saved to platform/vmware/"
+        msg: "✅ Inventory discovery complete for {{ inventory_hostname }}. Data exported to {{ ncs_export_path | default('configured role default path') }}"

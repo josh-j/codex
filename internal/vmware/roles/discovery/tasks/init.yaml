@@ -1,27 +1,28 @@
 ---
 # collections/ansible_collections/internal/vmware/roles/discovery/tasks/init.yaml
 
-- name: Set vCenter target hostname
-  ansible.builtin.set_fact:
-    _vcenter_hostname: >-
-      {{
-        (vmware_hostname | default(ansible_host) | default(inventory_hostname))
-        | regex_replace('^https?://', '')
-        | regex_replace('/.*$', '')
-      }}
+- name: Initialize shared vCenter connection context
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
   tags: [always]
 
 - name: Initialize vmware_ctx
   ansible.builtin.set_fact:
-    vmware_ctx:
-      audit_type: "vcenter_health"
-      checks_failed: false
-      system:
-        name: "{{ inventory_hostname }}"
-        hostname: "{{ _vcenter_hostname }}"
-        status: "INITIALIZING"
-      vcenter: {}
-      alerts: []
+    vmware_ctx: >-
+      {{
+        (vmware_ctx | default({}))
+        | combine({
+          'audit_type': 'vcenter_health',
+          'checks_failed': false,
+          'system': {
+            'name': inventory_hostname,
+            'hostname': _vcenter_hostname,
+            'status': 'INITIALIZING'
+          },
+          'alerts': []
+        }, recursive=true)
+      }}
   tags: [always]
 
 - name: Check vCenter reachability
@@ -51,14 +52,18 @@
         vmware_ctx: >-
           {{
             vmware_ctx | combine({
-              'alerts': (vmware_ctx.alerts | default([]) | list) + [connectivity_alert]
+              'alerts': (
+                (vmware_ctx.alerts | default([]) | list) + [connectivity_alert]
+              )
             }, recursive=true)
           }}
       vars:
         connectivity_alert:
           severity: CRITICAL
           category: connectivity
-          message: "Connection Timeout: vCenter {{ _vcenter_hostname }} is unreachable"
+          message: >-
+            Connection Timeout: vCenter {{ _vcenter_hostname }}
+            is unreachable
           detail:
             http_status: "{{ _vc_api.status | default('no response') }}"
 

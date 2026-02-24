@@ -1,0 +1,46 @@
+---
+# internal.vmware.audit : tasks/finalize.yaml
+
+- name: Standardize audit results
+  ansible.builtin.set_fact:
+    _vmw_summary: >-
+      {{
+        (vmware_alerts | default([]) | list) | internal.core.summarize_alerts
+      }}
+    _vmw_health: >-
+      {{
+        (vmware_alerts | default([]) | list) | internal.core.health_rollup
+      }}
+  changed_when: false
+
+- name: Build audit export payload
+  ansible.builtin.set_fact:
+    _vmware_audit_export_path: >-
+      {{
+        ncs_export_path
+        | default(
+          (ncs_config.report_directory | default('/srv/samba/reports'))
+          ~ '/platform/vmware/'
+          ~ inventory_hostname
+          ~ '/vcenter.yaml'
+        )
+      }}
+    _vmware_audit_export_data: >-
+      {{
+        (vmware_alerts | default([]) | list)
+        | internal.vmware.build_audit_export_payload(
+          vmware_ctx,
+          (_vmw_audit_failed | default(false) | bool),
+          _vmw_health,
+          _vmw_summary,
+          ansible_facts['date_time']['iso8601'],
+          {
+            'cpu_crit': (vmware_cpu_critical_pct | default(90) | int),
+            'mem_crit': (vmware_memory_critical_pct | default(90) | int),
+            'storage_crit': (
+              vmware_datastore_free_critical_pct | default(10) | int
+            )
+          }
+        )
+      }}
+  changed_when: false

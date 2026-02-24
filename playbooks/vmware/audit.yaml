@@ -15,6 +15,10 @@
         vmware_snapshot_size_warning_gb: 100
         vmware_enable_email_notifications: false
         vmware_owner_notification_days: ["monday", "wednesday", "friday"]
+        # Optional: role now honors caller-provided audit export path
+        # ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/vmware/{{ inventory_hostname }}/vcenter.yaml"
+        # Optional: disable export payload assertion temporarily during migrations
+        # vmware_validate_export_schema: false
 
 # ===============================================================================
 # Phase 3: Aggregation and Fleet-Wide Dashboard Generation

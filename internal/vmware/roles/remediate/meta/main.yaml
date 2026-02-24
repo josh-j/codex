@@ -3,10 +3,10 @@
 galaxy_info:
   author: NCS
   description: VMware Configuration Remediation
-  license: MIT
-  min_ansible_version: "2.9"
+  license: proprietary
+  min_ansible_version: "2.10"
   platforms:
-    - name: VMware
+    - name: GenericUNIX
       versions:
         - all
 dependencies:

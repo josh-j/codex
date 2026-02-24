@@ -15,23 +15,11 @@
 
 - name: Normalize appliance backup state
   ansible.builtin.set_fact:
-    _temp_appliance_backup:
-      configured: "{{ _has_schedules }}"
-      enabled: "{{ _active_schedule.enabled | default(false) }}"
-      location: "{{ _active_schedule.location | default('NOT_SET') }}"
-      protocol: "{{ (_active_schedule.location | default('')).split(':')[0] | upper | default('NONE') }}"
-      recurrence: "{{ _recurrence_summary }}"
-  vars:
-    # 1. Logic to find the current active schedule
-    _schedules: "{{ _vcsa_backup_info.schedules | default([]) }}"
-    _has_schedules: "{{ _schedules | length > 0 }}"
-    _active_schedule: "{{ _schedules | selectattr('enabled', 'equalto', true) | list | first | default({}) }}"
-
-    # 2. Clean recurrence string building
-    _days: "{{ _active_schedule.schedule.days_of_week | default([]) }}"
-    _recurrence_summary: >-
+    _disc_appliance_backup: >-
       {{
-        'Daily' if _days | length == 7
-        else (_days | join(', ') if _days | length > 0 else 'Manual/None')
+        _vcsa_backup_info
+        | internal.vmware.normalize_appliance_backup_result(
+          _vmware_controller_collected_at
+        )
       }}
   changed_when: false

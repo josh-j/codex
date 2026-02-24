@@ -4,8 +4,8 @@
 galaxy_info:
   author: NCS
   description: VMware Health Audit and Reporting
-  license: "license"
-  min_ansible_version: "2.9"
+  license: proprietary
+  min_ansible_version: "2.10"
   # Removed the 'platforms' block as 'VMware' is not a valid Galaxy OS schema enum.
 
 dependencies:

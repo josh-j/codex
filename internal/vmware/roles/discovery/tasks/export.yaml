@@ -1,0 +1,34 @@
+---
+# internal.vmware.discovery : export.yaml
+
+- name: Export VMware discovery state
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    _vmware_discovery_export_path: >-
+      {{
+        ncs_export_path
+        | default(
+          (ncs_config.report_directory | default('/srv/samba/reports'))
+          ~ '/platform/vmware/'
+          ~ inventory_hostname
+          ~ '/discovery.yaml'
+        )
+      }}
+    ncs_export_path: "{{ _vmware_discovery_export_path }}"
+    ncs_export_data: >-
+      {{
+        vmware_ctx | combine({
+          'audit_type': 'discovery',
+          'summary': {
+             'clusters': (
+               vmware_ctx.inventory.clusters.list | default([]) | length
+             ),
+             'hosts': (
+               vmware_ctx.inventory.hosts.list | default([]) | length
+             ),
+             'vms': vmware_ctx.inventory.vms.list | default([]) | length
+          }
+        })
+      }}

@@ -12,6 +12,7 @@
 # --- Output / Report Bounding ---
 # Limit how many items we embed in affected_items for any single alert.
 # Prevents huge YAML/HTML outputs in large environments.
+vmware_validate_export_schema: true
 vmware_alert_items_max: 25
 
 # Per-check overrides (fall back to vmware_alert_items_max if unset)

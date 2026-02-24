@@ -1,39 +1,32 @@
+---
 # internal.vmware.discovery : discovery/snapshots.yaml
 #
-# Collect snapshots once (discovery phase), normalize into _temp_snapshots.
+# Collect snapshots once (discovery phase), normalize into _disc_snapshots.
 # Audit phase should only read vmware_ctx.inventory.snapshots.
 
 - name: Snapshots | Derive datacenter name
   ansible.builtin.set_fact:
     _snap_dc_name: >-
       {{
-        vmware_ctx.inventory.datacenters.summary.primary_dc
-          | default(vmware_ctx.summary.primary_dc | default(''))
+        _disc_datacenters.summary.primary_dc
+          | default('')
       }}
   changed_when: false
 
 - name: Snapshots | Skip if no datacenter discovered
   ansible.builtin.set_fact:
-    _temp_snapshots:
-      all: []
-      aged: []
-      summary:
-        total_count: 0
-        aged_count: 0
-        total_size_gb: 0.0
-        large_snapshots: []
-        oldest_days: 0
-        status: "NO_DATACENTER"
+    _disc_snapshots: >-
+      {{
+        '' | internal.vmware.snapshot_no_datacenter_result(
+          _vmware_controller_collected_at
+        )
+      }}
   when: (_snap_dc_name | length) == 0
   changed_when: false
 
 - name: Snapshots | Build VM owner lookup map
   ansible.builtin.set_fact:
-    _vm_owner_map: >-
-      {{
-        (vmware_ctx.inventory.vms.list | default([]))
-        | items2dict(key_name='name', value_name='owner_email')
-      }}
+    _vm_owner_map: "{{ _disc_vms | internal.vmware.snapshot_owner_map }}"
   when: (_snap_dc_name | length) > 0
   changed_when: false
 
@@ -52,30 +45,32 @@
   when: (_snap_dc_name | length) > 0
 
 # Note: module returns list in key "vmware_all_snapshots_info" (docs)
-# :contentReference[oaicite:0]{index=0}
 
-- name: Snapshots | Normalize into _temp_snapshots
+- name: Snapshots | Normalize into _disc_snapshots
   ansible.builtin.set_fact:
-    _temp_snapshots:
-      all: "{{ _all_snaps }}"
-      aged: "{{ _aged_snaps }}"
-      summary:
-        total_count: "{{ _all_snaps | length }}"
-        aged_count: "{{ _aged_snaps | length }}"
-        total_size_gb: "{{ (_aged_snaps | map(attribute='size_gb') | map('default', 0) | sum) | float | round(1) }}"
-        large_snapshots: "{{ _aged_snaps | selectattr('size_gb', 'defined') | selectattr('size_gb', 'gt', (vmware_snapshot_size_warning_gb | default(100) | float)) | list }}"
-        oldest_days: "{{ (_aged_snaps | map(attribute='days_old') | map('default', 0) | max) | int if (_aged_snaps | length) > 0 else 0 }}"
-        status: "{{ 'SUCCESS' if (_snapshots_raw is succeeded) else 'SCRIPT_ERROR' }}"
-        error: "{{ _snapshots_raw.msg | default('') }}"
+    _disc_snapshots: >-
+      {{
+        _snapshots_raw
+        | internal.vmware.normalize_snapshots_result(
+          _all_snaps,
+          _aged_snaps,
+          _vmware_controller_collected_at,
+          (vmware_snapshot_size_warning_gb | default(100) | float)
+        )
+      }}
   vars:
     _raw_list: "{{ _snapshots_raw.vmware_all_snapshots_info | default([]) }}"
     # Keep raw snapshot list too if you want to display "all snapshots" in HTML
-    _all_snaps: "{{ _raw_list | internal.vmware.enrich_snapshots(_vm_owner_map) }}"
+    _all_snaps: >-
+      {{ _raw_list | internal.vmware.enrich_snapshots(_vm_owner_map) }}
     # Filter by age using your existing custom filter
     _aged_snaps: >-
       {{
         _raw_list
-        | internal.core.filter_by_age(ansible_facts['date_time']['epoch'] | int, (vmware_snapshot_age_warning_days | default(7) | int))
+        | internal.core.filter_by_age(
+          (_vmware_controller_epoch | int),
+          (vmware_snapshot_age_warning_days | default(7) | int)
+        )
         | internal.vmware.enrich_snapshots(_vm_owner_map)
       }}
   when: (_snap_dc_name | length) > 0

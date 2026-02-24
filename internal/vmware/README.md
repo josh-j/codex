@@ -4,13 +4,16 @@ A consolidated Ansible collection for VMware infrastructure auditing, reporting,
 
 ## Roles
 
+### `internal.vmware.discovery`
+Collects and normalizes vCenter inventory/health data into `vmware_ctx`, then exports `discovery.yaml`.
+Supports overriding the export destination with `ncs_export_path`.
+
 ### `internal.vmware.audit`
-The primary capability role for this collection. It acts as an **ETL (Extract, Transform, Load)** pipeline to audit vCenter environments.
+Runs audit checks against discovery data and exports vCenter health state.
 
 **Capabilities:**
-*   **Discovery:** Collects data on Datacenters, Clusters, Hosts, Datastores, VMs, Snapshots, and Alarms.
-*   **Checks:** Analyzes collected data against compliance rules (e.g., Snapshot Age, Datastore Capacity, Host HA/DRS settings).
-*   **Reporting:** Aggregates findings into structured alerts and exports detailed CSV reports.
+*   **Checks:** Analyzes discovery data against health/compliance rules (e.g., Snapshot Age, Datastore Capacity, Host HA/DRS settings).
+*   **Reporting:** Aggregates findings into structured alerts and exports vCenter audit state.
 
 **Usage:**
 ```yaml
@@ -20,16 +23,24 @@ The primary capability role for this collection. It acts as an **ETL (Extract, T
   vars:
     # Optional: Override defaults
     vmware_skip_discovery: false
+    # Optional: Override export destination
+    ncs_export_path: "/srv/samba/reports/platform/vmware/{{ inventory_hostname }}/vcenter.yaml"
 ```
 
 ## Structure
-The collection logic is organized into atomic task files within the `audit` role:
+Primary role layout:
 
-*   `tasks/init.yaml`: Connection handling and reachability checks.
-*   `tasks/discovery/*.yaml`: API data collection (Read-Only).
-*   `tasks/checks/*.yaml`: Business logic and alert generation (Local execution).
-*   `tasks/summary.yaml`: Aggregation of metrics and alerts.
-*   `tasks/export/*.yaml`: CSV/Report generation.
+*   `roles/discovery/tasks/init.yaml`: vCenter initialization and reachability checks.
+*   `roles/discovery/tasks/discovery/*.yaml`: API data collection and normalization.
+*   `roles/audit/tasks/checks*.yaml`: Business logic and alert generation.
+*   `roles/audit/tasks/export.yaml`: Audit export payload generation.
+*   `roles/summary/tasks/*.yaml`: Fleet report rendering.
 
 ## Configuration
-Defaults are defined in `roles/audit/defaults/main.yaml` (inherited from global `vmware_config` if set).
+Defaults are primarily defined in:
+* `roles/discovery/defaults/main.yaml` for discovery/runtime context shape
+* `roles/audit/defaults/main.yaml` for thresholds and audit toggles
+
+Validation toggles:
+* `vmware_validate_ctx_schema` (discovery): assert `vmware_ctx` shape before export
+* `vmware_validate_export_schema` (audit): assert audit export payload shape before export

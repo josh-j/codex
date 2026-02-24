@@ -14,76 +14,20 @@
   changed_when: false
   no_log: true
 
-- name: Parse alarm script JSON | stage 1 (capture + validate)
+- name: Parse alarm script output
   ansible.builtin.set_fact:
-    _alarms_stdout: "{{ _alarms_script_raw.stdout | default('') | trim }}"
-    _alarms_stderr: "{{ _alarms_script_raw.stderr | default('') | trim }}"
-    # Optional: extract the first JSON object if stdout contains noise
-    _alarms_json_text: "{{ (_alarms_script_raw.stdout | default('')) | regex_search('(?s)\\{.*\\}', '\\0') | default('') | trim }}"
-    _script_valid: >-
-      {{
-        (_alarms_script_raw.rc | default(1) | int) == 0 and
-        (_alarms_json_text | length) > 0 and
-        (_alarms_json_text is match('^\\s*\\{'))
-      }}
+    _alarms_parsed: >-
+      {{ _alarms_script_raw | internal.vmware.parse_alarm_script_output }}
   changed_when: false
 
-- name: Parse alarm script JSON | stage 2 (safe decode)
+- name: Normalize alarm data + metrics
   ansible.builtin.set_fact:
-    _alarms_json: >-
+    _disc_alarms: >-
       {{
-        (_alarms_json_text | from_json)
-        if (_script_valid | bool)
-        else {
-          'success': false,
-          'error': (
-            _alarms_stderr
-            if (_alarms_stderr | length) > 0
-            else (
-              'Empty stdout from alarm script'
-              if (_alarms_stdout | length) == 0
-              else 'Non-JSON stdout from alarm script'
-            )
-          ),
-          'alarms': []
-        }
+        _alarms_parsed
+        | internal.vmware.normalize_alarm_result(
+          inventory_hostname,
+          _vmware_controller_collected_at
+        )
       }}
-  changed_when: false
-
-- name: Normalize Alarm Data + Metrics
-  ansible.builtin.set_fact:
-    _temp_alarms:
-      list: "{{ _normalized_list }}"
-      metrics:
-        total: "{{ _normalized_list | length }}"
-        critical_count: "{{ _normalized_list | selectattr('severity', 'equalto', 'critical') | list | length }}"
-        warning_count: "{{ _normalized_list | selectattr('severity', 'equalto', 'warning') | list | length }}"
-      critical_items: "{{ _normalized_list | selectattr('severity', 'equalto', 'critical') | list }}"
-      status: >-
-        {{
-          'SUCCESS'
-          if (_script_ok | bool)
-          else ('SCRIPT_ERROR' if (_alarms_script_raw.rc | default(1) | int != 0) else 'COLLECT_ERROR')
-        }}
-      error: "{{ _alarms_json.error | default('') }}"
-  vars:
-    _script_ok: >-
-      {{
-        (_script_valid | bool) and
-        (_alarms_json.success | default(false) | bool)
-      }}
-    _normalized_list: >-
-      {%- set results = [] -%}
-      {%- for item in (_alarms_json.alarms | default([])) -%}
-        {%- set _ = results.append({
-          'site': inventory_hostname,
-          'alarm_name': item.alarm_name | default('Unknown Alarm'),
-          'entity': item.entity | default('Unknown Entity'),
-          'severity': item.severity | default('info') | lower,
-          'status': item.status | default('gray'),
-          'time': item.time | default(ansible_facts['date_time']['iso8601']),
-          'description': item.description | default('')
-        }) -%}
-      {%- endfor -%}
-      {{ results }}
   changed_when: false

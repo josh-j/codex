@@ -1,4 +1,4 @@
-# internal.vmware/plugins/filter/snapshots.py
+# internal.vmware/plugins/filter/snapshot.py
 
 from urllib.parse import unquote
 

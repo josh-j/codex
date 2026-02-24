@@ -8,84 +8,22 @@
     password: "{{ vmware_password }}"
     validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     datacenter: "{{ item }}"
-  loop: "{{ _temp_datacenters.list | default([]) }}"
+  loop: "{{ _disc_datacenters.list | default([]) }}"
   register: _clusters_per_dc
   delegate_to: localhost
   no_log: true
   failed_when: false
   changed_when: false
 
-- name: Compute | Capture cluster query errors (for audit/reporting)
+- name: Compute | Normalize staged outputs
   ansible.builtin.set_fact:
-    _temp_compute_errors: >-
+    _disc_compute: >-
       {{
-        (_temp_compute_errors | default([])) +
-        ([{
-          'datacenter': item.item,
-          'failed': (item.failed | default(false)),
-          'msg': (item.msg | default(''))
-        }] if (item.failed | default(false)) else [])
+        _clusters_per_dc
+        | internal.vmware.normalize_compute_result(
+          _vmware_controller_collected_at
+        )
       }}
-  loop: "{{ _clusters_per_dc.results | default([]) }}"
-  changed_when: false
-
-- name: Compute | Enrich Cluster and Host metrics
-  ansible.builtin.set_fact:
-    _temp_clusters:
-      by_name: "{{ _enriched_map }}"
-      list: "{{ _enriched_map.values() | list }}"
-    _temp_hosts:
-      list: "{{ _all_hosts }}"
-      count: "{{ _all_hosts | length }}"
-  vars:
-    # 1. Consolidate results across multiple datacenters
-    _raw_clusters: >-
-      {%- set res = {} -%}
-      {%- for r in _clusters_per_dc.results | default([]) if r.clusters is defined -%}
-        {%- set _ = res.update(r.clusters) -%}
-      {%- endfor -%}
-      {{ res }}
-
-    # 2. Add utilization calculations and compliance flags
-    _enriched_map: >-
-      {%- set result = {} -%}
-      {%- for name, data in _raw_clusters.items() -%}
-        {%- set stats = data.resource_summary | default({}) -%}
-        {%- set cpu_cap = [stats.cpuCapacityMHz | default(0) | int, 1] | max -%}
-        {%- set mem_cap = [stats.memCapacityMB  | default(0) | int, 1] | max -%}
-        {%- set cluster_data = {
-          'name': name,
-          'datacenter': data.datacenter | default('unknown'),
-          'utilization': {
-            'cpu_pct': (((stats.cpuUsedMHz | default(0) | int) / cpu_cap) * 100) | round(1),
-            'mem_pct': (((stats.memUsedMB  | default(0) | int) / mem_cap) * 100) | round(1),
-            'cpu_total_mhz': cpu_cap,
-            'cpu_used_mhz': stats.cpuUsedMHz | default(0) | int,
-            'mem_total_mb':  mem_cap,
-            'mem_used_mb':  stats.memUsedMB | default(0) | int
-          },
-          'compliance': {
-            'ha_enabled':  data.ha_enabled  | default(false),
-            'drs_enabled': data.drs_enabled | default(false),
-            'vsan_enabled': data.vsan_enabled | default(false)
-          },
-          'hosts': data.hosts | default([])
-        } -%}
-        {%- set _ = result.update({name: cluster_data}) -%}
-      {%- endfor -%}
-      {{ result }}
-
-    # 3. Flatten hosts into a global list for the audit phase
-    _all_hosts: >-
-      {%- set host_list = [] -%}
-      {%- for c_name, c_data in _enriched_map.items() -%}
-        {# c_data.hosts now exists because we added it above #}
-        {%- for h in c_data.hosts -%}
-          {%- set _ = host_list.append(h | combine({
-            'cluster': c_name,
-            'datacenter': c_data.datacenter
-          })) -%}
-        {%- endfor -%}
-      {%- endfor -%}
-      {{ host_list }}
+    _disc_clusters: "{{ _disc_compute.clusters }}"
+    _disc_hosts: "{{ _disc_compute.hosts }}"
   changed_when: false

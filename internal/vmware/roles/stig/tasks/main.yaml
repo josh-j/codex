@@ -9,8 +9,9 @@
 
 - name: Set vCenter hostname
   tags: [always]
-  ansible.builtin.include_tasks:
-    file: "{{ role_path }}/../../common/tasks/init_vcenter.yaml"
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
 
 - name: "STIG | Dispatch to {{ stig_target_type | upper }} handler"
   tags: [stig, security]

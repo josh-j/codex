@@ -23,6 +23,17 @@ def _parse_iso_epoch(raw):
         return None
 
 
+def safe_iso_to_epoch(raw, default=0):
+    """
+    Safe public wrapper for ISO parsing in templates/filters.
+    Returns `default` when parsing fails.
+    """
+    epoch = _parse_iso_epoch(raw if isinstance(raw, str) else "")
+    if epoch is None:
+        return int(default)
+    return int(epoch)
+
+
 def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_time"):
     """
     Filters a list of dicts to those where date_key is at or over
@@ -56,4 +67,7 @@ def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_t
 
 class FilterModule(object):
     def filters(self):
-        return {"filter_by_age": filter_by_age}
+        return {
+            "filter_by_age": filter_by_age,
+            "safe_iso_to_epoch": safe_iso_to_epoch,
+        }
