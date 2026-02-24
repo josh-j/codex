@@ -13,5 +13,5 @@
     - role: internal.linux.ubuntu_stig_audit
 
 - name: "Phase 3: Aggregate and Report"
-  ansible.builtin.import_playbook: ../common/aggregate_results.yaml
+  ansible.builtin.import_playbook: ../common/generate_site_health_report.yaml
   tags: ['always']

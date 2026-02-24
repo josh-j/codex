@@ -61,6 +61,15 @@ class CoreReportingFilterTests(unittest.TestCase):
         finally:
             self.module._DEFAULT_SHARED_CSS_PATH = original_default
 
+    def test_report_skip_keys_contains_canonical_entries(self):
+        keys = self.module.report_skip_keys("")
+        self.assertIn("Summary", keys)
+        self.assertIn("Split", keys)
+        self.assertIn("platform", keys)
+        self.assertIn("history", keys)
+        self.assertIn("linux_fleet_state.yaml", keys)
+        self.assertIn("vmware_fleet_state.yaml", keys)
+
 
 if __name__ == "__main__":
     unittest.main()

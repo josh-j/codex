@@ -7,7 +7,13 @@
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
     _ubuntu_report_dir: "{{ _platform_root }}/ubuntu"
-    _linux_reporting_skip_keys: ['Split', 'Summary', 'platform', 'linux_fleet_state']
+    _linux_reporting_skip_keys: >-
+      {{
+        (
+          '' | internal.core.report_skip_keys
+        )
+        | union(['linux_fleet_state'])
+      }}
 
     # Unified timestamp for this run (e.g., 20260224)
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"

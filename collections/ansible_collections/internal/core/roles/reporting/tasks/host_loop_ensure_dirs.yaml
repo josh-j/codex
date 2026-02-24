@@ -13,5 +13,4 @@
     state: directory
     mode: "0755"
   loop: "{{ (ncs_reporting_hosts_map | default({})) | dict2items }}"
-  when: item.key not in (ncs_reporting_skip_keys | default(['Summary', 'Split', 'platform', 'history']))
-
+  when: item.key not in (ncs_reporting_skip_keys | default('' | internal.core.report_skip_keys))

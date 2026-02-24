@@ -35,6 +35,11 @@ _DEFAULT_SKIP_KEYS = {
 }
 
 
+def default_report_skip_keys():
+    """Return canonical structural/state keys that should be skipped in host loops."""
+    return sorted(_DEFAULT_SKIP_KEYS)
+
+
 def _status_from_health(value):
     if isinstance(value, dict):
         for key in ("overall", "status", "health"):

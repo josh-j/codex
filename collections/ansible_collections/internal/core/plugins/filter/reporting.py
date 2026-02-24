@@ -11,6 +11,7 @@ import importlib.util
 try:
     from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_site_dashboard_view as _build_site_dashboard_view,
+        default_report_skip_keys as _default_report_skip_keys,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "report_view_models.py"
@@ -19,6 +20,7 @@ except ImportError:
     assert _spec is not None and _spec.loader is not None
     _spec.loader.exec_module(_mod)
     _build_site_dashboard_view = _mod.build_site_dashboard_view
+    _default_report_skip_keys = _mod.default_report_skip_keys
 
 
 _DEFAULT_SHARED_CSS_PATH = (
@@ -83,9 +85,15 @@ def site_dashboard_view(
     )
 
 
+def report_skip_keys(_value=None):
+    """Return canonical structural/state keys excluded from host report loops."""
+    return _default_report_skip_keys()
+
+
 class FilterModule(object):
     def filters(self):
         return {
             "shared_report_css": shared_report_css,
             "site_dashboard_view": site_dashboard_view,
+            "report_skip_keys": report_skip_keys,
         }
