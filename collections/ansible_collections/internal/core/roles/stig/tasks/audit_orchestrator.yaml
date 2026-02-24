@@ -17,11 +17,14 @@
   register: _template_stat
   delegate_to: localhost
   check_mode: false
+  when: audit_logic_template is defined
 
 - name: "AUDIT | Fail if template missing"
   ansible.builtin.fail:
     msg: "Template not found: {{ audit_logic_template }}"
-  when: not _template_stat.stat.exists
+  when:
+    - audit_logic_template is defined
+    - not _template_stat.stat.exists
 
 - name: "AUDIT | Initialize result lists"
   ansible.builtin.set_fact:
@@ -29,19 +32,27 @@
     audit_violations: []
 
 - name: "AUDIT | Debug template render (first item)"
-  when: vmware_config_debug_mode | default(false) | bool
+  when:
+    - vmware_config_debug_mode | default(false) | bool
+    - raw_discovery_data | length > 0
   ansible.builtin.debug:
-    msg: "{{ lookup('template', audit_logic_template) }}"
+    msg: >-
+      {{
+        (audit_logic_inline | from_json)
+        if audit_logic_inline is defined
+        else (lookup('template', audit_logic_template) | from_json)
+      }}
   vars:
-    item: "{{ raw_discovery_data | first | default({}) }}"
+    item: "{{ raw_discovery_data | first }}"
   ignore_errors: true # noqa: ignore-errors
 
 - name: "AUDIT | Evaluate compliance per item"
   ansible.builtin.set_fact:
     audit_full_list: >-
+      {%- set rendered = (audit_logic_inline | from_json) if audit_logic_inline is defined else (lookup('template', audit_logic_template) | from_json) -%}
       {{
         audit_full_list + (
-          lookup('template', audit_logic_template) | from_json
+          rendered
           | map('combine', {'name': item.name, 'uuid': item.uuid | default('N/A')})
           | list
         )

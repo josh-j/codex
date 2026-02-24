@@ -13,6 +13,38 @@
         | rejectattr('name', 'search', 'vCLS')
         | list
       }}
-    audit_logic_template: "{{ role_path }}/templates/vm_logic.j2"
     stig_filter: "{{ stig_vm_filter | default('') }}"
     stig_exclusions: "{{ exclusion_list | default([]) }}"
+    audit_logic_inline: |
+      {%- set _config = item.advanced_settings | default({}) -%}
+      {%- set _hw     = item.hardware | default({}) -%}
+      {%- set rules = [] -%}
+      {%- for rule in vsphere_stig_vm_settings | default([]) -%}
+           {%- set current = _config.get(rule.key, 'MISSING') -%}
+           {%- set check = (current | string | lower != 'true') if rule.value == 'ABSENT' else (current | string | lower == rule.value | string | lower) -%}
+           {%- set _ = rules.append({
+             "id": rule.id,
+             "title": rule.title,
+             "severity": rule.severity | default('medium'),
+             "check": check,
+             "pass_msg": "Value matches expected",
+             "fail_msg": ("Key is TRUE (should be absent/false)" if rule.value == 'ABSENT' else "Expected '" ~ rule.value ~ "', found '" ~ current ~ "'")
+           }) -%}
+      {%- endfor -%}
+      {%- set _hw_ids = vsphere_stig_vm_hardware_ids -%}
+      {%- set _attrs = vsphere_stig_vm_attributes -%}
+      {%- set _floppy_active = _hw.floppies | selectattr('connected', 'equalto', true) | list + _hw.floppies | selectattr('start_connected', 'equalto', true) | list -%}
+      {%- set _cdrom_host = _hw.cdroms | selectattr('backing', 'equalto', 'host_device') | list -%}
+      {%- set _np_disks = _hw.disks | default([]) | selectattr('disk_mode', 'equalto', 'independent_nonpersistent') | list -%}
+      {%- set _ = rules.extend([
+        {"id": _hw_ids.floppy.id, "title": _hw_ids.floppy.title, "severity": _hw_ids.floppy.severity, "check": (_floppy_active | length == 0), "fail_msg": "Floppy drive is connected", "pass_msg": "No floppy drives connected"},
+        {"id": _hw_ids.cdrom.id, "title": _hw_ids.cdrom.title, "severity": _hw_ids.cdrom.severity, "check": (_cdrom_host | length == 0), "fail_msg": "CD-ROM attached to host device", "pass_msg": "No host device CD-ROM backing"},
+        {"id": _hw_ids.parallel.id, "title": _hw_ids.parallel.title, "severity": _hw_ids.parallel.severity, "check": (_hw.parallel_ports | length == 0), "fail_msg": "Parallel ports present", "pass_msg": "No parallel ports"},
+        {"id": _hw_ids.serial.id, "title": _hw_ids.serial.title, "severity": _hw_ids.serial.severity, "check": (_hw.serial_ports | length == 0), "fail_msg": "Serial ports present", "pass_msg": "No serial ports"},
+        {"id": _hw_ids.usb.id, "title": _hw_ids.usb.title, "severity": _hw_ids.usb.severity, "check": not (_hw.usb_present | default(false)), "fail_msg": "USB controller present", "pass_msg": "No USB controllers"},
+        {"id": _hw_ids.persistence.id, "title": _hw_ids.persistence.title, "severity": _hw_ids.persistence.severity, "check": (_np_disks | length == 0), "fail_msg": "Non-persistent disks found", "pass_msg": "All disks are persistent"},
+        {"id": _attrs.vmotion_encryption.id, "title": _attrs.vmotion_encryption.title, "severity": _attrs.vmotion_encryption.severity, "check": (item.vmotion_encryption | default('disabled') != 'disabled'), "fail_msg": "vMotion encryption disabled", "pass_msg": "vMotion encryption: " ~ item.vmotion_encryption},
+        {"id": _attrs.logging.id, "title": _attrs.logging.title, "severity": _attrs.logging.severity, "check": (item.logging_enabled | default(true) | bool), "fail_msg": "Logging disabled", "pass_msg": "Logging enabled"},
+        {"id": _attrs.ft_encryption.id, "title": _attrs.ft_encryption.title, "severity": _attrs.ft_encryption.severity, "check": (item.ft_encryption | default('ftEncryptionDisabled') in _attrs.ft_encryption.required), "fail_msg": "FT encryption: " ~ item.ft_encryption, "pass_msg": "FT encryption: " ~ item.ft_encryption}
+      ]) -%}
+      {{- rules | internal.core.stig_eval | to_json -}}

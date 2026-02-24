@@ -7,5 +7,20 @@
     tasks_from: audit_orchestrator
   vars:
     raw_discovery_data: "{{ esxi_ctx.stig_facts | default([]) }}"
-    audit_logic_template: "{{ role_path }}/templates/hardware_logic.j2"
     report_prefix: "esxi_hardware_stig"
+    audit_logic_inline: |
+      {%- set sys = item.get('system', {}) -%}
+      {{- [
+        {
+          "id": "ESXI-70-000094",
+          "check": (sys.get('crypto_mode') == 'TPM'),
+          "pass_msg": "TPM Encryption Enabled",
+          "fail_msg": "Encryption Mode: " ~ sys.get('crypto_mode', 'None')
+        },
+        {
+          "id": "ESXI-70-000095",
+          "check": (sys.get('secure_boot_required') | string | lower == 'true'),
+          "pass_msg": "Secure Boot Enforced",
+          "fail_msg": "Secure Boot not enforced"
+        }
+      ] | internal.core.stig_eval | to_json -}}

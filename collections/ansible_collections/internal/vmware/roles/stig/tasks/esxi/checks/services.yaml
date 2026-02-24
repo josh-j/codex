@@ -7,5 +7,32 @@
     tasks_from: audit_orchestrator
   vars:
     raw_discovery_data: "{{ esxi_ctx.stig_facts | default([]) }}"
-    audit_logic_template: "{{ role_path }}/templates/services_logic.j2"
     report_prefix: "esxi_services_stig"
+    audit_logic_inline: |
+      {%- set svcs = item.get('services', {}) -%}
+      {{- [
+        {
+          "id": "ESXI-70-000035",
+          "check": (svcs.get('TSM-SSH', {}).get('running') == false),
+          "pass_msg": "SSH Service Stopped",
+          "fail_msg": "SSH Service Running"
+        },
+        {
+          "id": "ESXI-70-000036",
+          "check": (svcs.get('TSM', {}).get('running') == false),
+          "pass_msg": "ESXi Shell Stopped",
+          "fail_msg": "ESXi Shell Running"
+        },
+        {
+          "id": "ESXI-70-000046",
+          "check": (svcs.get('ntpd', {}).get('running') == true and svcs.get('ntpd', {}).get('policy') == 'on'),
+          "pass_msg": "NTP Running and Policy On",
+          "fail_msg": "NTP not running or incorrect policy"
+        },
+        {
+          "id": "ESXI-70-000083",
+          "check": (svcs.get('slpd', {}).get('running') == false),
+          "pass_msg": "SLP Stopped",
+          "fail_msg": "SLP Running"
+        }
+      ] | internal.core.stig_eval | to_json -}}

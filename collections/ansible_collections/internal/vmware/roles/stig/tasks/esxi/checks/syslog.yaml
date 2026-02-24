@@ -7,5 +7,20 @@
     tasks_from: audit_orchestrator
   vars:
     raw_discovery_data: "{{ esxi_ctx.stig_facts | default([]) }}"
-    audit_logic_template: "{{ role_path }}/templates/syslog_logic.j2"
     report_prefix: "esxi_syslog_stig"
+    audit_logic_inline: |
+      {%- set adv = item.get('config', {}).get('option_value', []) -%}
+      {{- [
+        {
+          "id": "ESXI-70-000004",
+          "check": (adv | internal.core.get_adv('Syslog.global.logHost') | trim | length > 0),
+          "pass_msg": "Remote log host configured",
+          "fail_msg": "No remote log host defined"
+        },
+        {
+          "id": "ESXI-70-000086",
+          "check": (adv | internal.core.get_adv('Syslog.global.logCheckSSLCerts') | string | lower == 'true'),
+          "pass_msg": "Syslog SSL Cert Check Enabled",
+          "fail_msg": "Syslog SSL Cert Check Disabled"
+        }
+      ] | internal.core.stig_eval | to_json -}}

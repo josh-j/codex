@@ -7,5 +7,14 @@
     tasks_from: audit_orchestrator
   vars:
     raw_discovery_data: "{{ esxi_ctx.stig_facts | default([]) }}"
-    audit_logic_template: "{{ role_path }}/templates/vibs_logic.j2"
     report_prefix: "esxi_vibs_stig"
+    audit_logic_inline: |
+      {%- set sys = item.get('system', {}) -%}
+      {{- [
+        {
+          "id": "ESXI-70-000047",
+          "check": (sys.get('acceptance_level') in ['PartnerSupported', 'VMwareAccepted']),
+          "pass_msg": "Acceptance Level: " ~ sys.get('acceptance_level'),
+          "fail_msg": "Invalid Level: " ~ sys.get('acceptance_level')
+        }
+      ] | internal.core.stig_eval | to_json -}}
