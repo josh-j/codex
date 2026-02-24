@@ -1,0 +1,97 @@
+---
+# Build/render the global site health dashboard from aggregated platform state.
+# Required vars:
+#   ncs_reporting_reports_root
+#   ncs_reporting_platform_root
+#
+# Optional vars:
+#   ncs_reporting_scripts_dir
+#   ncs_reporting_site_template_src
+#   ncs_reporting_site_report_prefix (default: site_health_report)
+#   ncs_reporting_site_history_root (default: <platform_root>/history)
+#   ncs_reporting_site_retention_days (default: 30)
+#   ncs_reporting_report_stamp
+#   ncs_reporting_report_date
+#   ncs_reporting_report_id
+
+- name: Aggregate global platform state
+  vars:
+    _ncs_reporting_scripts_dir: >-
+      {{
+        ncs_reporting_scripts_dir
+        | default((playbook_dir.split('/playbooks')[0] ~ '/playbooks/scripts'))
+      }}
+    _ncs_reporting_all_hosts_state: "{{ ncs_reporting_platform_root }}/all_hosts_state.yaml"
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ _ncs_reporting_scripts_dir }}/aggregate_yaml_reports.py"
+      - "{{ ncs_reporting_platform_root }}"
+      - "{{ _ncs_reporting_all_hosts_state }}"
+  changed_when: false
+
+- name: Load global platform state
+  vars:
+    _ncs_reporting_all_hosts_state: "{{ ncs_reporting_platform_root }}/all_hosts_state.yaml"
+  ansible.builtin.include_vars:
+    file: "{{ _ncs_reporting_all_hosts_state }}"
+    name: all_hosts
+
+- name: Build site dashboard view model
+  ansible.builtin.set_fact:
+    site_dashboard_view: >-
+      {{
+        all_hosts
+        | internal.core.site_dashboard_view(
+          groups=groups,
+          report_stamp=ncs_reporting_report_stamp | default(report_stamp | default('')),
+          report_date=ncs_reporting_report_date | default(report_date | default('')),
+          report_id=ncs_reporting_report_id | default(report_id | default(''))
+        )
+      }}
+
+- name: Render site health dashboard
+  vars:
+    _ncs_reporting_report_prefix: "{{ ncs_reporting_site_report_prefix | default('site_health_report') }}"
+  ansible.builtin.template:
+    src: "{{ ncs_reporting_site_template_src | default((playbook_dir | dirname) ~ '/templates/site_health_report.html.j2') }}"
+    dest: "{{ ncs_reporting_reports_root }}/{{ _ncs_reporting_report_prefix }}_{{ ncs_reporting_report_stamp | default(report_stamp) }}.html"
+    mode: "0644"
+
+- name: Maintain latest site dashboard symlink
+  vars:
+    _ncs_reporting_report_prefix: "{{ ncs_reporting_site_report_prefix | default('site_health_report') }}"
+  ansible.builtin.file:
+    src: "{{ _ncs_reporting_report_prefix }}_{{ ncs_reporting_report_stamp | default(report_stamp) }}.html"
+    dest: "{{ ncs_reporting_reports_root }}/{{ _ncs_reporting_report_prefix }}.html"
+    state: link
+    force: true
+
+- name: Archive old site dashboards
+  vars:
+    _ncs_reporting_report_prefix: "{{ ncs_reporting_site_report_prefix | default('site_health_report') }}"
+    _ncs_reporting_history_root: >-
+      {{ ncs_reporting_site_history_root | default(ncs_reporting_platform_root ~ '/history') }}
+    _ncs_reporting_retention_days: "{{ ncs_reporting_site_retention_days | default(30) }}"
+  block:
+    - name: Create site dashboard history directory
+      ansible.builtin.file:
+        path: "{{ _ncs_reporting_history_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Find old site dashboards
+      ansible.builtin.find:
+        paths: "{{ ncs_reporting_reports_root }}"
+        patterns: "{{ _ncs_reporting_report_prefix }}_*.html"
+        age: "{{ _ncs_reporting_retention_days }}d"
+      register: _ncs_reporting_old_site_reports
+
+    - name: Move old site dashboards to history
+      ansible.builtin.command: "mv {{ item.path }} {{ _ncs_reporting_history_root }}/"
+      loop: "{{ _ncs_reporting_old_site_reports.files }}"
+      when: _ncs_reporting_old_site_reports.matched > 0
+      changed_when: true
+      loop_control:
+        label: "{{ item.path }}"
+

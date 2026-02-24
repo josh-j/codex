@@ -6,6 +6,7 @@
     _scripts_dir: "{{ playbook_dir.split('/playbooks')[0] }}/playbooks/scripts"
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _vmware_report_dir: "{{ _reports_root }}/platform/vmware"
+    _vmware_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
 
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
     report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
@@ -29,7 +30,7 @@
       vars:
         ncs_reporting_hosts_map: "{{ vmw_all_hosts.hosts | default({}) }}"
         ncs_reporting_host_dir_root: "{{ _vmware_report_dir }}"
-        ncs_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"
 
     - name: Render detailed per-vCenter HTML reports
       ansible.builtin.include_role:
@@ -39,7 +40,7 @@
         ncs_reporting_hosts_map: "{{ vmw_all_hosts.hosts | default({}) }}"
         ncs_reporting_template_src: "vcenter_health_report.html.j2"
         ncs_reporting_template_dest: "{{ _vmware_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
-        ncs_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"
         ncs_reporting_item_vars:
           vmware_node_view: >-
             {{
@@ -61,7 +62,7 @@
         ncs_reporting_host_dir_root: "{{ _vmware_report_dir }}"
         ncs_reporting_latest_src_name: "health_report_{{ report_stamp }}.html"
         ncs_reporting_latest_dest_name: "health_report.html"
-        ncs_reporting_skip_keys: ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"
 
     - name: Build VMware fleet dashboard view model
       ansible.builtin.set_fact:

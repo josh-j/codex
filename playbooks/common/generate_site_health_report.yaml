@@ -8,74 +8,21 @@
   vars:
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
-    _history_root: "{{ _platform_root }}/history"
     _scripts_dir: "{{ playbook_dir | dirname }}/scripts"
-    _template_dir: "{{ playbook_dir | dirname }}/templates"
 
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
     report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
     report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
 
   tasks:
-    - name: "Step 1 | Aggregate Global State"
-      ansible.builtin.command:
-        argv:
-          - python3
-          - "{{ _scripts_dir }}/aggregate_yaml_reports.py"
-          - "{{ _platform_root }}"
-          - "{{ _platform_root }}/all_hosts_state.yaml"
-      changed_when: false
-
-    - name: "Step 2 | Load Global State"
-      ansible.builtin.include_vars:
-        file: "{{ _platform_root }}/all_hosts_state.yaml"
-        name: all_hosts
-
-    - name: "Step 3 | Build Site Dashboard View Model"
-      ansible.builtin.set_fact:
-        site_dashboard_view: >-
-          {{
-            all_hosts
-            | internal.core.site_dashboard_view(
-              groups=groups,
-              report_stamp=report_stamp,
-              report_date=report_date,
-              report_id=report_id
-            )
-          }}
-
-    - name: "Step 4 | Render Site Health Dashboard"
-      ansible.builtin.template:
-        src: "{{ _template_dir }}/site_health_report.html.j2"
-        dest: "{{ _reports_root }}/site_health_report_{{ report_stamp }}.html"
-        mode: "0644"
-
-    - name: "Step 5 | Maintain 'Latest' Symlink"
-      ansible.builtin.file:
-        src: "site_health_report_{{ report_stamp }}.html"
-        dest: "{{ _reports_root }}/site_health_report.html"
-        state: link
-        force: true
-
-    - name: "Step 6 | Archive old reports (Older than 30 days)"
-      block:
-        - name: Create history directory
-          ansible.builtin.file:
-            path: "{{ _history_root }}"
-            state: directory
-            mode: "0755"
-
-        - name: Find old site reports
-          ansible.builtin.find:
-            paths: "{{ _reports_root }}"
-            patterns: "site_health_report_*.html"
-            age: 30d
-          register: _old_reports
-
-        - name: Move old reports to history
-          ansible.builtin.command: "mv {{ item.path }} {{ _history_root }}/"
-          loop: "{{ _old_reports.files }}"
-          when: _old_reports.matched > 0
-          changed_when: true
-          loop_control:
-            label: "{{ item.path }}"
+    - name: "Build and Render Site Dashboard"
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: site_dashboard.yaml
+      vars:
+        ncs_reporting_reports_root: "{{ _reports_root }}"
+        ncs_reporting_platform_root: "{{ _platform_root }}"
+        ncs_reporting_scripts_dir: "{{ _scripts_dir }}"
+        ncs_reporting_report_stamp: "{{ report_stamp }}"
+        ncs_reporting_report_date: "{{ report_date }}"
+        ncs_reporting_report_id: "{{ report_id }}"
