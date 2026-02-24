@@ -1,19 +1,33 @@
 ---
 # internal.vmware.discovery : discovery/compute.yaml
 
-- name: Compute | Get cluster details for identified datacenters
+- name: Compute | Query clusters per datacenter
   vmware.vmware.cluster_info:
     hostname: "{{ _vcenter_hostname }}"
     username: "{{ vmware_username }}"
     password: "{{ vmware_password }}"
     validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     datacenter: "{{ item }}"
+  loop: "{{ _temp_datacenters.list | default([]) }}"
   register: _clusters_per_dc
   delegate_to: localhost
   no_log: true
   failed_when: false
-  loop: "{{ vmware_ctx.inventory.datacenters | default([]) }}"
-  when: (vmware_ctx.inventory.datacenters | default([])) | length > 0
+  changed_when: false
+
+- name: Compute | Capture cluster query errors (for audit/reporting)
+  ansible.builtin.set_fact:
+    _temp_compute_errors: >-
+      {{
+        (_temp_compute_errors | default([])) +
+        ([{
+          'datacenter': item.item,
+          'failed': (item.failed | default(false)),
+          'msg': (item.msg | default(''))
+        }] if (item.failed | default(false)) else [])
+      }}
+  loop: "{{ _clusters_per_dc.results | default([]) }}"
+  changed_when: false
 
 - name: Compute | Enrich Cluster and Host metrics
   ansible.builtin.set_fact:
@@ -46,7 +60,9 @@
             'cpu_pct': (((stats.cpuUsedMHz | default(0) | int) / cpu_cap) * 100) | round(1),
             'mem_pct': (((stats.memUsedMB  | default(0) | int) / mem_cap) * 100) | round(1),
             'cpu_total_mhz': cpu_cap,
-            'mem_total_mb':  mem_cap
+            'cpu_used_mhz': stats.cpuUsedMHz | default(0) | int,
+            'mem_total_mb':  mem_cap,
+            'mem_used_mb':  stats.memUsedMB | default(0) | int
           },
           'compliance': {
             'ha_enabled':  data.ha_enabled  | default(false),
@@ -63,6 +79,7 @@
     _all_hosts: >-
       {%- set host_list = [] -%}
       {%- for c_name, c_data in _enriched_map.items() -%}
+        {# c_data.hosts now exists because we added it above #}
         {%- for h in c_data.hosts -%}
           {%- set _ = host_list.append(h | combine({
             'cluster': c_name,

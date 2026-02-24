@@ -13,9 +13,6 @@
   register: _vms_raw
   delegate_to: localhost
   no_log: true
-  retries: 2
-  delay: 5
-  until: _vms_raw is succeeded
 
 - name: Workload | Analyze Backup Compliance and Ownership
   ansible.builtin.set_fact:
@@ -25,56 +22,53 @@
         total_vms: "{{ _vm_analysis | length }}"
         overdue_backups: "{{ _vm_analysis | selectattr('backup_overdue', 'equalto', true) | list | length }}"
         unprotected: "{{ _vm_analysis | selectattr('has_backup', 'equalto', false) | list | length }}"
-        missing_owners: "{{ _vm_analysis | selectattr('owner_email', 'equalto', '') | list | length }}"
+        missing_owners: >-
+          {{
+            _vm_analysis
+            | rejectattr('is_system_vm', 'equalto', true)
+            | selectattr('owner_email', 'equalto', '')
+            | list | length
+          }}
       metrics:
         powered_off_count: "{{ _vm_analysis | selectattr('power_state', 'equalto', 'POWEREDOFF') | list | length }}"
-        powered_off_pct: >-
-          {{
-            ((_vm_analysis | selectattr('power_state', 'equalto', 'POWEREDOFF') | list | length)
-            / ([_vm_analysis | length, 1] | max) * 100) | round(1)
-          }}
   vars:
-    # 1. Reference time for overdue calculations (current epoch)
-    _now_epoch: "{{ ansible_date_time.epoch | int }}"
+    _now_epoch: "{{ ansible_facts['date_time']['epoch'] | int }}"
 
-    # 2. Extract and Normalize VM properties
     _vm_analysis: >-
       {%- set results = [] -%}
       {%- for item in (_vms_raw.virtual_machines | default([])) -%}
-        {# Extract Owner via various attribute keys #}
+        {# 1. Extract Attributes Safely #}
         {%- set attrs = item.attributes | default({}) -%}
-        {%- set owner = (attrs.get('Owner Email', '') or attrs.get('OwnerEmail', '') or attrs.get('owner_email', '')) | trim -%}
+        {%- set owner = (attrs.get('Owner Email', '') or attrs.get('owner_email', '')) | trim -%}
 
-        {# Extract Backup Schedule Tag #}
-        {%- set schedule = (item.tags | default([])
-            | selectattr('category_name', 'equalto', 'Backup Schedule')
-            | map(attribute='name') | list | first | default('None')) -%}
-
-        {# Parse Dell PowerProtect Last Backup Timestamp #}
+        {# 2. Parse Backup Timestamp (Added Error Handling) #}
         {%- set backup_attr = attrs.get('Last Dell PowerProtect Backup', '') -%}
-        {%- set has_backup  = 'EndTime=' in backup_attr -%}
-        {%- set ts_str      = (backup_attr.split('EndTime=')[1].split(',')[0]) if has_backup else '' -%}
+        {%- set has_backup = 'EndTime=' in backup_attr -%}
+        {%- set ts_str = (backup_attr.split('EndTime=')[1].split(',')[0]) if has_backup else '' -%}
 
-        {# Calculate Recency #}
-        {%- set backup_epoch = (ts_str | to_datetime('%Y-%m-%dT%H:%M:%SZ')).strftime('%s') | int if ts_str else 0 -%}
-        {%- set days_since   = ((_now_epoch - backup_epoch) / 86400) | int if backup_epoch > 0 else 9999 -%}
+        {# Use a safe date conversion to avoid crash on malformed strings #}
+        {%- set backup_epoch = (ts_str | to_datetime('%Y-%m-%dT%H:%M:%SZ')).strftime('%s') | int if (ts_str and ts_str != '') else 0 -%}
+        {%- set days_since = ((_now_epoch - backup_epoch) / 86400) | int if backup_epoch > 0 else 9999 -%}
 
-        {# Compliance Logic #}
-        {%- set freq    = vmware_backup_schedules.get(schedule | lower, 0) | int -%}
-        {%- set grace   = vmware_backup_grace_period_days | default(1) | int -%}
-        {%- set overdue = (freq > 0 and days_since > (freq + grace)) -%}
-
+        {# 3. Map Comprehensive Data for Audit Phase #}
+        {%- set vm_name = (item.guest_name | default(item.config_name) | default('')) -%}
+        {%- set is_system_vm = vm_name is match('^(vCLS-|vsanhealth|vmware-).*') -%}
         {%- set _ = results.append({
-          'name':            item.guest_name | default(item.uuid),
-          'uuid':            item.uuid,
-          'power_state':     item.power_state | upper,
-          'cluster':         item.cluster | default('standalone'),
-          'owner_email':     owner,
-          'backup_schedule': schedule,
-          'last_backup':     ts_str if has_backup else 'NEVER',
-          'days_since':      days_since,
-          'backup_overdue':  overdue,
-          'has_backup':      has_backup
+          'name': vm_name,
+          'uuid': item.uuid,
+          'is_system_vm': is_system_vm,
+          'power_state': item.power_state | upper,
+          'cluster': item.cluster | default('standalone'),
+          'owner_email': owner,
+          'tools_status': item.tools_status | default('toolsNotInstalled'),
+          'tools_version': item.tools_version | default('unknown'),
+          'guest_os': item.guest_id | default('unknown'),
+          'memory_mb': item.memory_mb | default(0),
+          'cpu_count': item.num_cpu | default(0),
+          'last_backup': ts_str if has_backup else 'NEVER',
+          'days_since': days_since,
+          'backup_overdue': (days_since > 2) if has_backup else true,
+          'has_backup': has_backup
         }) -%}
       {%- endfor -%}
       {{ results }}

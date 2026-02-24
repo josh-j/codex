@@ -10,30 +10,33 @@
   register: _datacenters_raw
   delegate_to: localhost
   no_log: true
-  # Do not fail yet; we want to handle the "Empty vCenter" state gracefully
   failed_when: false
+  changed_when: false
 
-- name: Datacenter | Normalize and Inject into Context
+- name: Datacenter | Normalize into temp structure (for final assembly)
   ansible.builtin.set_fact:
-    vmware_ctx: "{{ vmware_ctx | combine(_dc_data, recursive=true) }}"
+    _temp_datacenters:
+      list: "{{ _dc_names }}"
+      raw: "{{ _raw_list }}"
+      by_name: "{{ dict(_dc_names | zip(_dc_ids)) }}"
+      summary:
+        total_count: "{{ _raw_list | length }}"
+        primary_dc: "{{ _dc_names | first | default('NONE_FOUND') }}"
+    vmware_ctx: >-
+      {{
+        vmware_ctx | combine({
+          'system': {
+            'status': ('DISCOVERING_COMPUTE' if (_raw_list | length > 0) else 'NO_DATACENTERS_FOUND')
+          }
+        }, recursive=true)
+      }}
   vars:
-    # 1. Extraction
     _raw_list: "{{ _datacenters_raw.value | default([]) }}"
     _dc_names: "{{ _raw_list | map(attribute='name') | list }}"
-
-    # 2. Structural normalization
-    _dc_data:
-      inventory:
-        datacenters: "{{ _dc_names }}"
-        datacenters_raw: "{{ _raw_list }}"
-      summary:
-        datacenter_count: "{{ _raw_list | length }}"
-        primary_dc: "{{ _dc_names | first | default('NONE_FOUND') }}"
-      system:
-        # Update status so dashboard shows progress
-        status: "{{ 'DISCOVERING_COMPUTE' if _raw_list | length > 0 else 'NO_DATACENTERS_FOUND' }}"
+    # REST datacenter id field is typically called `datacenter` in the returned objects
+    _dc_ids: "{{ _raw_list | map(attribute='datacenter') | list }}"
   changed_when: false
 
 - name: Datacenter | Stop host if no datacenters found
   ansible.builtin.meta: end_host
-  when: (vmware_ctx.inventory.datacenters | length) == 0
+  when: (_temp_datacenters.list | length) == 0

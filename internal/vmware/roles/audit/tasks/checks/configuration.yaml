@@ -1,50 +1,73 @@
----
 # internal.vmware.audit : tasks/checks/configuration.yaml
+
+- name: Audit | Init cluster alerts accumulator
+  ansible.builtin.set_fact:
+    _cluster_alerts: []
+  changed_when: false
 
 - name: Audit | Evaluate Cluster Compliance and Resource Saturation
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts | default([]) + (config_checks | internal.core.build_alerts) }}"
-  # We loop over the pre-enriched cluster map from the discovery phase
+    _cluster_alerts: "{{ _cluster_alerts + (config_checks | internal.core.build_alerts) }}"
   loop: "{{ vmware_ctx.inventory.clusters.list | default([]) }}"
   loop_control:
-    label: "{{ item.name }}"
+    label: "{{ item.name | default('unknown') }}"
   vars:
-    # 1. Configuration Thresholds (Pulled from defaults/main.yaml)
     _cpu_threshold: "{{ vmware_cluster_cpu_warning_pct | default(90) | float }}"
     _mem_threshold: "{{ vmware_cluster_mem_warning_pct | default(90) | float }}"
 
-    # 2. Logic Check Definitions
     config_checks:
-      # Check A: Availability Policy (HA/DRS)
       - condition: >-
           {{
             not (item.compliance.ha_enabled | default(false) | bool) or
             not (item.compliance.drs_enabled | default(false) | bool)
           }}
         severity: WARNING
-        category: "cluster_compliance"
+        category: cluster_compliance
         message: "Policy Violation: HA/DRS disabled on cluster '{{ item.name }}'"
         detail:
           cluster: "{{ item.name }}"
-          ha_state: "{{ 'ENABLED' if item.compliance.ha_enabled else 'DISABLED' }}"
-          drs_state: "{{ 'ENABLED' if item.compliance.drs_enabled else 'DISABLED' }}"
+          ha_state: "{{ 'ENABLED' if (item.compliance.ha_enabled | default(false) | bool) else 'DISABLED' }}"
+          drs_state: "{{ 'ENABLED' if (item.compliance.drs_enabled | default(false) | bool) else 'DISABLED' }}"
 
-      # Check B: Memory Saturation
-      - condition: "{{ item.utilization.mem_pct | default(0) | float > _mem_threshold }}"
+      - condition: "{{ (item.utilization.mem_pct | default(0) | float) > _mem_threshold }}"
         severity: WARNING
-        category: "cluster_capacity"
-        message: "Memory Saturation: Cluster '{{ item.name }}' is at {{ item.utilization.mem_pct }}%"
+        category: cluster_capacity
+        message: "Memory Saturation: Cluster '{{ item.name }}' is at {{ item.utilization.mem_pct | default(0) }}%"
         detail:
           cluster: "{{ item.name }}"
-          current_pct: "{{ item.utilization.mem_pct }}"
+          current_pct: "{{ item.utilization.mem_pct | default(0) }}"
           threshold_pct: "{{ _mem_threshold }}"
 
-      # Check C: CPU Saturation
-      - condition: "{{ item.utilization.cpu_pct | default(0) | float > _cpu_threshold }}"
+      - condition: "{{ (item.utilization.cpu_pct | default(0) | float) > _cpu_threshold }}"
         severity: WARNING
-        category: "cluster_capacity"
-        message: "CPU Saturation: Cluster '{{ item.name }}' is at {{ item.utilization.cpu_pct }}%"
+        category: cluster_capacity
+        message: "CPU Saturation: Cluster '{{ item.name }}' is at {{ item.utilization.cpu_pct | default(0) }}%"
         detail:
           cluster: "{{ item.name }}"
-          current_pct: "{{ item.utilization.cpu_pct }}"
+          current_pct: "{{ item.utilization.cpu_pct | default(0) }}"
           threshold_pct: "{{ _cpu_threshold }}"
+  changed_when: false
+
+- name: Audit | Cluster compliance rollup
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ vmware_alerts + (rollup_checks | internal.core.build_alerts) }}"
+  vars:
+    _noncompliant: >-
+      {{
+        vmware_ctx.inventory.clusters.list | default([])
+        | selectattr('compliance.ha_enabled', 'defined')
+        | rejectattr('compliance.ha_enabled', 'equalto', true)
+        | list
+      }}
+    rollup_checks:
+      - condition: "{{ _noncompliant | length > 0 }}"
+        severity: WARNING
+        category: cluster_compliance
+        message: "{{ _noncompliant | length }} cluster(s) have HA disabled"
+        affected_items: "{{ _noncompliant | map(attribute='name') | list }}"
+  changed_when: false
+
+- name: Audit | Append cluster alerts once
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ (vmware_alerts | default([]) | list) + (_cluster_alerts | default([]) | list) }}"
+  changed_when: false

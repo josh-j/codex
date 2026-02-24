@@ -1,45 +1,63 @@
 ---
 # internal.vmware.audit : tasks/checks/storage.yaml
 
-- name: Audit | Evaluate Datastore Capacity
+- name: Audit | Init datastore alerts accumulator
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts + [new_alert] }}"
+    _ds_alerts: []
+  changed_when: false
+
+- name: Audit | Evaluate Datastore Capacity and Accessibility
+  ansible.builtin.set_fact:
+    _ds_alerts: "{{ _ds_alerts + (ds_checks | internal.core.build_alerts | list) }}"
   loop: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+  loop_control:
+    label: "{{ item.name | default('unknown') }} ({{ item.free_pct | default('n/a') }}%)"
   vars:
-    # Thresholds from defaults/main.yaml
     _crit_t: "{{ vmware_datastore_free_critical_pct | default(10) | float }}"
     _warn_t: "{{ vmware_datastore_free_warning_pct | default(15) | float }}"
 
-    # Logic: Only one alert per DS. Critical takes precedence.
-    _is_crit: "{{ item.free_pct | float <= _crit_t }}"
-    _is_warn: "{{ item.free_pct | float <= _warn_t and item.free_pct | float > _crit_t }}"
+    _free_pct: "{{ item.free_pct | default(100) | float }}"
+    _is_crit: "{{ _free_pct <= _crit_t }}"
+    _is_warn: "{{ (_free_pct <= _warn_t) and (_free_pct > _crit_t) }}"
 
-    new_alert:
-      severity: "{{ 'CRITICAL' if _is_crit else 'WARNING' }}"
-      category: "storage_capacity"
-      message: "Datastore {{ item.name }} is low on space ({{ item.free_pct }}% free)"
-      detail:
-        datastore: "{{ item.name }}"
-        free_gb: "{{ item.free_gb }}"
-        capacity_gb: "{{ item.capacity_gb }}"
-        threshold: "{{ _crit_t if _is_crit else _warn_t }}%"
-  when: _is_crit or _is_warn
-  loop_control:
-    label: "{{ item.name }} ({{ item.free_pct }}%)"
+    ds_checks:
+      # CRITICAL: Inaccessible
+      - condition: "{{ not (item.accessible | default(true) | bool) }}"
+        severity: CRITICAL
+        category: storage_connectivity
+        message: "Datastore {{ item.name }} is INACCESSIBLE"
+        detail:
+          datastore: "{{ item.name }}"
+          type: "{{ item.type | default('unknown') }}"
+          accessible: "{{ item.accessible | default(false) }}"
+          path_status: "Down"
 
-- name: Audit | Detect Inaccessible Datastores
+      # CRITICAL: Capacity depletion
+      - condition: "{{ _is_crit }}"
+        severity: CRITICAL
+        category: storage_capacity
+        message: "Datastore {{ item.name }} is critically low ({{ _free_pct }}% free)"
+        detail:
+          datastore: "{{ item.name }}"
+          free_pct: "{{ _free_pct }}"
+          free_gb: "{{ item.free_gb | default(0) }}"
+          capacity_gb: "{{ item.capacity_gb | default(0) }}"
+          threshold_pct: "{{ _crit_t }}"
+
+      # WARNING: Capacity warning
+      - condition: "{{ _is_warn }}"
+        severity: WARNING
+        category: storage_capacity
+        message: "Datastore {{ item.name }} is low ({{ _free_pct }}% free)"
+        detail:
+          datastore: "{{ item.name }}"
+          free_pct: "{{ _free_pct }}"
+          free_gb: "{{ item.free_gb | default(0) }}"
+          capacity_gb: "{{ item.capacity_gb | default(0) }}"
+          threshold_pct: "{{ _warn_t }}"
+  changed_when: false
+
+- name: Audit | Append datastore alerts once
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts + [inaccessible_alert] }}"
-  loop: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
-  vars:
-    inaccessible_alert:
-      severity: "CRITICAL"
-      category: "storage_health"
-      message: "Datastore {{ item.name }} is INACCESSIBLE"
-      detail:
-        datastore: "{{ item.name }}"
-        type: "{{ item.type }}"
-        path_status: "Down"
-  when: not (item.accessible | bool)
-  loop_control:
-    label: "{{ item.name }}"
+    vmware_alerts: "{{ (vmware_alerts | default([]) | list) + (_ds_alerts | default([]) | list) }}"
+  changed_when: false

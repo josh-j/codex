@@ -1,4 +1,6 @@
 ---
+# playbooks/vmware_phase1_discovery.yaml
+
 - name: Phase 1 | VMware Infrastructure Discovery
   hosts: vcenters
   connection: local
@@ -7,9 +9,17 @@
   tasks:
     - name: Execute vCenter Discovery
       ansible.builtin.include_role:
-        name: internal.vmware.discover
+        name: internal.vmware.discovery
       vars:
-        # Define credentials via Vault or ENV vars in production
+        # Credentials from Vault
         vmware_username: "{{ vault_vcenter_username }}"
         vmware_password: "{{ vault_vcenter_password }}"
-        vmware_validate_certs: false
+        vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
+
+        # Ensure the role knows where to save the discovery.yaml
+        # This forces the role to respect our new platform silo
+        ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/vmware/{{ inventory_hostname }}/discovery.yaml"
+
+    - name: Announce Discovery Success
+      ansible.builtin.debug:
+        msg: "✅ Inventory discovery complete for {{ inventory_hostname }}. Data saved to platform/vmware/"

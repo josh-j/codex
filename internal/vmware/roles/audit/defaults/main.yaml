@@ -9,6 +9,25 @@
 # Thresholds and toggles below can be overridden at group_vars, host_vars,
 # or play level.
 
+# --- Output / Report Bounding ---
+# Limit how many items we embed in affected_items for any single alert.
+# Prevents huge YAML/HTML outputs in large environments.
+vmware_alert_items_max: 25
+
+# Per-check overrides (fall back to vmware_alert_items_max if unset)
+vmware_alarm_items_max: "{{ vmware_alert_items_max }}"
+vmware_snapshot_items_max: "{{ vmware_alert_items_max }}"
+vmware_datastore_items_max: "{{ vmware_alert_items_max }}"
+vmware_tools_items_max: 50 # VM lists can be large; slightly higher is often useful
+
+# --- Alert Granularity Toggles ---
+# If true, emit per-object alerts (e.g., one per datastore). If false, prefer rollups.
+# Recommended false for large fleets; rollups scale better.
+vmware_emit_per_object_storage_alerts: false
+
+# If true, emit per-cluster capacity/compliance alerts; if false, emit only rollups.
+vmware_emit_per_cluster_alerts: true
+
 # --- Notifications ---
 vmware_enable_email_notifications: false
 vmware_owner_notification_days:

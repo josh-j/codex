@@ -1,0 +1,161 @@
+/* collections/ansible_collections/internal/vmware/roles/summary/templates/vmware_report_styles.css */
+:root {
+  --bg-main: #fcfcfd;
+  --panel: #ffffff;
+  --sidebar-bg: #111827;
+  --border-color: #e5e7eb;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --indigo: #4f46e5;
+  --red: #dc2626;
+  --amber: #d97706;
+  --emerald: #059669;
+  --info: #3b82f6;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Inter", "Segoe UI", sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.content {
+  padding: 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 24px;
+}
+
+h1 {
+  font-size: 1.875rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin-top: 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Grid & Cards */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Gauges */
+.gauge-container {
+  margin-bottom: 20px;
+}
+
+.gauge-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.gauge-bar {
+  background: #f3f4f6;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s ease-in-out;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th {
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  background: #f9fafb;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.935rem;
+}
+
+tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Status Badges */
+.badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.badge-CRITICAL,
+.status-fail {
+  background: #fef2f2;
+  color: var(--red);
+  border-color: #fecaca;
+}
+
+.badge-WARNING,
+.status-warn {
+  background: #fffbeb;
+  color: var(--amber);
+  border-color: #fde68a;
+}
+
+.badge-OK,
+.status-ok {
+  background: #ecfdf5;
+  color: var(--emerald);
+  border-color: #a7f3d0;
+}
+
+.nav-link {
+  color: var(--indigo);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}

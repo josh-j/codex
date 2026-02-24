@@ -5,19 +5,13 @@
 
 {% macro health_label(status) -%}
 {%- set s = (status | default('unknown') | string | lower) -%}
-{%- if s in ['green','ok','healthy'] -%}[OK]
-{%- elif s in ['red','critical'] -%}[CRITICAL]
+{%- if s in ['green','ok','healthy','pass'] -%}[OK]
+{%- elif s in ['red','critical','fail','failed'] -%}[CRITICAL]
 {%- else -%}[WARN]
 {%- endif -%}
 {%- endmacro %}
 
-{% macro bool_label(val, true_text='YES', false_text='NO', invert=False) -%}
-{% if invert %}
-{{ '[FAILED] ' + true_text if val else '[PASS] ' + false_text }}
-{% else %}
-{{ '[PASS] ' + true_text if val else '[FAILED] ' + false_text }}
-{% endif %}
-{%- endmacro %}
+{% set stamp = report_stamp | default(now(utc=true, fmt='%Y%m%d')) %}
 
 # Enterprise Infrastructure Audit Report
 **Environment:** Production
@@ -30,52 +24,69 @@
 
 | Fleet Health | Critical Issues | Warnings | Sites Audited |
 | :--- | :--- | :--- | :--- |
-| **{{ 100 - (grand_total_critical * 2) }}%** | **{{ grand_total_critical }}** | **{{ grand_total_warning }}** | {{ counts.get('sites_audited', 0) }} |
+| **{{ 100 - (grand_total_critical | int * 2) }}%** | **{{ grand_total_critical }}** | **{{ grand_total_warning }}** | {{ (all_hosts.hosts | default(all_hosts)) | length }} |
 
 > **Audit Note:** Fleet health is calculated based on active critical faults relative to total managed assets.
 
 ### Subsystem Status Overview
 
-| Subsystem | Site Count | Faults (C/W) | SLA Status |
-| :--- | :---: | :---: | :--- |
-| **VMware Management** | {{ (groups['vcenters'] | default([])) | length }} | {{ alarms_critical }}/{{ alarms_warning }} | {{ 'PASS' if (alarms_critical == 0) else 'FAIL' }} |
-| **Linux Infrastructure** | {{ (groups['ubuntu_servers'] | default([])) | length }} | {{ alerts_critical }}/{{ alerts_warning }} | {{ 'PASS' if (alerts_critical == 0) else 'FAIL' }} |
-| **Enterprise Storage** | {{ unisphere | length }} | - / - | {{ 'STABLE' if unisphere | length > 0 else 'NO DATA' }} |
+| Subsystem | Status | Detailed Report |
+| :--- | :---: | :--- |
+| **VMware Management** | {{ health_label('OK' if alarms_critical|int == 0 else 'CRITICAL') }} | [View VMware Fleet ↗](platform/vmware/vmware_health_report_{{ stamp }}.html) |
+| **Linux Infrastructure** | {{ health_label('OK' if alerts_critical|int == 0 else 'CRITICAL') }} | [View Linux Fleet ↗](platform/ubuntu/ubuntu_health_report_{{ stamp }}.html) |
 
 ---
 
 ## Compute Environment Details
 
-### vCenter Infrastructure Health
+### System Health
 
-| Site | Version | Overall | Database | Storage | Backup | SSH |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-{% for hostname, audits in all_hosts.items() if audits.system is defined %}
-{% set sys = audits.system %}
-| `{{ hostname }}` | {{ sys.version | default('---') }} | {{ health_label(sys.health) }} | {{ health_label(sys.db_health) }} | {{ health_label(sys.storage_health) }} | {{ 'Enabled' if sys.backup_enabled else 'Disabled' }} | {{ 'SECURE' if not sys.ssh_enabled else 'OPEN' }} |
+| Host | Audit Type | Health | Critical | Warning |
+| :--- | :--- | :--- | :--- | :--- |
+{% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+{% if hostname not in ['Split', 'Summary', 'platform'] %}
+{% for audit_type, data in audits.items() %}
+| [`{{ hostname }}`](platform/ubuntu/{{ hostname }}/health_report_{{ stamp }}.html) | {{ audit_type }} | {{ health_label(data.health | default('unknown')) }} | {{ data.summary.critical_count | default(0) }} | {{ data.summary.warning_count | default(0) }} |
 {% endfor %}
+{% endif %}
+{% endfor %}
+
+---
 
 ### Security Compliance (STIG)
 
-| Hostname | Compliance Score | Open Findings | Status |
-| :--- | :--- | :---: | :--- |
-{% for hostname, audits in all_hosts.items() if audits.stig is defined %}
+| Hostname | Open Findings | Status |
+| :--- | :---: | :--- |
+{% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+{% if hostname not in ['Split', 'Summary', 'platform'] %}
+{% if audits.stig is defined %}
 {% set stig = audits.stig %}
-| `{{ hostname }}` | {{ 100 - (stig.alerts | length) }}% | {{ stig.alerts | length }} | {{ health_label(stig.health) }} |
+| [`{{ hostname }}`](platform/ubuntu/{{ hostname }}/health_report_{{ stamp }}.html) | {{ stig.alerts | default([]) | length }} | {{ health_label(stig.health | default('unknown')) }} |
+{% endif %}
+{% endif %}
 {% endfor %}
 
 ---
 
 ## Active Alert Queue
 
-{% if all_hosts.values() | map(attribute='alerts') | flatten | length > 0 %}
-
-| Severity | Origin | Category | Message |
-| :--- | :--- | :--- | :--- |
-{% for hostname, audits in all_hosts.items() %}
-{% for alert in audits.get('system', {}).get('alerts', []) + audits.get('stig', {}).get('alerts', []) %}
-| **{{ alert.severity | upper }}** | `{{ hostname }}` | {{ alert.category | upper }} | {{ alert.message }} |
+{% set all_active_alerts = [] %}
+{% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+{% if hostname not in ['Split', 'Summary', 'platform'] %}
+{% for audit_type, data in audits.items() %}
+{% for alert in (data.alerts | default([])) %}
+{% set _ = all_active_alerts.append(alert | combine({'host': hostname, 'audit_type': audit_type})) %}
 {% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% if all_active_alerts | length > 0 %}
+
+| Severity | Host | Audit | Category | Message |
+| :--- | :--- | :--- | :--- | :--- |
+{% for alert in all_active_alerts %}
+| **{{ alert.severity | upper }}** | `{{ alert.host }}` | {{ alert.audit_type }} | {{ alert.category | upper }} | {{ alert.message }} |
 {% endfor %}
 
 {% else %}

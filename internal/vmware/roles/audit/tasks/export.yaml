@@ -3,29 +3,39 @@
 
 - name: Standardize Audit Results
   ansible.builtin.set_fact:
-    _vmw_summary: "{{ vmware_alerts | internal.core.summarize_alerts }}"
-    _vmw_health: "{{ vmware_alerts | internal.core.health_rollup }}"
+    _vmw_summary: "{{ (vmware_alerts | default([]) | list) | internal.core.summarize_alerts }}"
+    _vmw_health: "{{ (vmware_alerts | default([]) | list) | internal.core.health_rollup }}"
+  changed_when: false
 
-- name: Export VMware host state to Phase 3
+- name: Export VMware vCenter audit state for aggregation
   ansible.builtin.include_role:
     name: internal.core.state
     tasks_from: export
   vars:
-    ncs_export_data: >-
-      {{
-        vmware_ctx | combine({
-          'audit_type': 'vcenter_health',
-          'health': _vmw_health,
-          'summary': _vmw_summary,
-          'alerts': vmware_alerts,
-          'audit_failed': _vmw_audit_failed | default(false),
-          'check_metadata': {
-            'engine': 'ansible-ncs-vmware',
-            'thresholds': {
-              'cpu': vmware_cpu_critical_pct,
-              'mem': vmware_memory_critical_pct,
-              'storage': vmware_datastore_free_critical_pct
-            }
-          }
-        }, recursive=true)
-      }}
+    ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/vmware/{{ inventory_hostname }}/vcenter.yaml"
+    ncs_export_data:
+      audit_type: vcenter_health
+
+      # Canonical alerts (audit accumulator)
+      alerts: "{{ (vmware_alerts | default([]) | list) }}"
+
+      # Keep the full discovery/audit context in data (core exporter nests this under data:)
+      # Note: vmware_ctx already contains discovery inventory + health
+      vcenter_health:
+        health: "{{ _vmw_health }}"
+        summary: "{{ _vmw_summary }}"
+        alerts: "{{ (vmware_alerts | default([]) | list) }}"
+        audit_failed: "{{ _vmw_audit_failed | default(false) }}"
+        data: "{{ vmware_ctx.vcenter_health.data | default({}) }}"
+
+      check_metadata:
+        engine: ansible-ncs-vmware
+        timestamp: "{{ ansible_facts['date_time']['iso8601'] }}"
+        thresholds:
+          cpu_crit: "{{ vmware_cpu_critical_pct | default(90) }}"
+          mem_crit: "{{ vmware_memory_critical_pct | default(90) }}"
+          storage_crit: "{{ vmware_datastore_free_critical_pct | default(10) }}"
+
+      # Optional: persist alerts into vmware_ctx too (if templates read vmware_ctx.alerts)
+      # vmware_ctx is still included in the export payload under data:, but you can also promote it:
+      # vmware_ctx: "{{ vmware_ctx | combine({'alerts': (vmware_alerts | default([]) | list)}, recursive=true) }}"

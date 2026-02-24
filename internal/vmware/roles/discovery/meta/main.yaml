@@ -1,12 +1,17 @@
 ---
-# collections/ansible_collections/internal/vmware/roles/discovery/meta/main.yaml
 galaxy_info:
   author: NCS
   description: VMware vCenter Inventory and Discovery
-  license: MIT
-  min_ansible_version: "2.9"
+  company: NCS
+  license: proprietary
+  min_ansible_version: "2.10"
   platforms:
-    - name: VMware
+    - name: GenericUNIX
       versions:
         - all
+  galaxy_tags:
+    - vmware
+    - discovery
+    - infrastructure
+
 dependencies: []

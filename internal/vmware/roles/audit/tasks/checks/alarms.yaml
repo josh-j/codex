@@ -3,28 +3,52 @@
 
 - name: Evaluate vCenter Active Alarms
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts | default([]) + (alarm_checks | internal.core.build_alerts) }}"
+    vmware_alerts: >-
+      {{
+        (vmware_alerts | default([]) | list) +
+        (alarm_checks | internal.core.build_alerts)
+      }}
   vars:
     _alarms: "{{ vmware_ctx.health.alarms | default({}) }}"
-    _metrics: "{{ _alarms.metrics | default({'critical_count': 0, 'warning_count': 0}) }}"
+    _alarm_list: "{{ _alarms.list | default([]) }}"
+    _metrics: "{{ _alarms.metrics | default({'critical_count': 0, 'warning_count': 0, 'total': 0}) }}"
+    _status: "{{ _alarms.status | default('UNKNOWN') }}"
+
+    # Use regex match to be case-insensitive across discovery normalizations
+    _critical_items: "{{ _alarm_list | selectattr('severity', 'match', '(?i)^critical$') | list }}"
+    _warning_items: "{{ _alarm_list | selectattr('severity', 'match', '(?i)^warning$') | list }}"
+
+    # Hard clamp to keep report size sane
+    _max_items: "{{ vmware_alarm_items_max | default(25) | int }}"
 
     alarm_checks:
-      # 1. Critical Alarm Rollup
+      # 0) Collection health (surface SCRIPT_ERROR / COLLECT_ERROR)
+      - condition: "{{ _status != 'SUCCESS' }}"
+        severity: WARNING
+        category: vcenter_alarms
+        message: "Alarm collection status: {{ _status }}"
+        detail:
+          status: "{{ _status }}"
+          total: "{{ _metrics.total | default(_alarm_list | length) }}"
+          critical_count: "{{ _metrics.critical_count }}"
+          warning_count: "{{ _metrics.warning_count }}"
+
+      # 1) Critical Alarm Rollup
       - condition: "{{ _metrics.critical_count | int > 0 }}"
         severity: CRITICAL
-        category: "vcenter_alarms"
+        category: vcenter_alarms
         message: "Active Critical Alarms: {{ _metrics.critical_count }} detected"
         detail:
           critical_count: "{{ _metrics.critical_count }}"
           warning_count: "{{ _metrics.warning_count }}"
-        # We pass the first few critical items for the dashboard summary
-        affected_items: "{{ _alarms.list | selectattr('severity', 'equalto', 'critical') | list }}"
+        affected_items: "{{ _critical_items[:_max_items] }}"
 
-      # 2. Warning Alarm Rollup (Only shown if no Criticals exist to reduce noise)
-      - condition: "{{ _metrics.warning_count | int > 0 and _metrics.critical_count | int == 0 }}"
+      # 2) Warning Alarm Rollup (only if no criticals)
+      - condition: "{{ (_metrics.warning_count | int > 0) and (_metrics.critical_count | int == 0) }}"
         severity: WARNING
-        category: "vcenter_alarms"
+        category: vcenter_alarms
         message: "Active Warning Alarms: {{ _metrics.warning_count }} detected"
         detail:
           warning_count: "{{ _metrics.warning_count }}"
-        affected_items: "{{ _alarms.list | selectattr('severity', 'equalto', 'warning') | list }}"
+        affected_items: "{{ _warning_items[:_max_items] }}"
+  changed_when: false

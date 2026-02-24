@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# MASTER INFRASTRUCTURE AUDIT ORCHESTRATOR
+# =============================================================================
+
+# Phase 1: Environment Readiness
+- name: "Phase 1: Initialize Reporting Environment"
+  import_playbook: common/init_environment.yaml
+
+# Phase 2: VMware Discovery & Audit
+- name: "Phase 2a: VMware Infrastructure Inventory"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  roles:
+    - role: internal.vmware.discovery
+      vars:
+        vmware_username: "{{ vault_vcenter_username }}"
+        vmware_password: "{{ vault_vcenter_password }}"
+
+- name: "Phase 2b: VMware Health & Compliance Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: true
+  roles:
+    - role: internal.vmware.audit
+
+# Phase 3: Linux Fleet Audit
+- name: "Phase 3: Linux System Health Audit"
+  hosts: ubuntu_servers
+  roles:
+    - role: internal.linux.ubuntu_system_audit
+
+# Phase 4: Platform Summaries (Fleet Dashboards)
+- name: "Phase 4: Generate Fleet-Level Reports"
+  hosts: localhost
+  tasks:
+    - name: "Linux | Fleet Summary"
+      ansible.builtin.include_role:
+        name: internal.linux.ubuntu_summary
+        tasks_from: report.yaml
+
+    - name: "VMware | Fleet Summary"
+      ansible.builtin.include_role:
+        name: internal.vmware.summary
+        tasks_from: report.yaml
+
+# Phase 5: Global Site Health (The Executive Entry Point)
+- name: "Phase 5: Final Site Health Aggregation"
+  import_playbook: common/generate_site_health_report.yaml

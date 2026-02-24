@@ -1,0 +1,112 @@
+/* collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/ubuntu_report_styles.css */
+:root {
+  --bg-main: #fcfcfd;
+  --sidebar-bg: #111827;
+  --border-color: #e5e7eb;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --indigo: #4f46e5;
+  --red: #dc2626;
+  --amber: #d97706;
+  --emerald: #059669;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex-grow: 1;
+  padding: 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 24px;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+h2.sub-title {
+  font-size: 1.25rem;
+  margin-top: 40px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.title-group p {
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+}
+
+.card-wrap {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th {
+  padding: 14px 16px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  background: #f9fafb;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+td {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+tr:hover {
+  background-color: #f9fafb;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.status-ok { background: #ecfdf5; color: var(--emerald); border-color: #a7f3d0; }
+.status-fail { background: #fef2f2; color: var(--red); border-color: #fecaca; }
+.status-warn { background: #fffbeb; color: var(--amber); border-color: #fde68a; }
+
+.alert-row-critical { border-left: 4px solid var(--red); }
+.alert-row-warning { border-left: 4px solid var(--amber); }
+.text-danger { color: var(--red); font-weight: 700; }
+.text-warning { color: var(--amber); font-weight: 700; }
+.text-muted { color: var(--text-muted); }

@@ -7,4 +7,3 @@ readme: README.md
 authors:
   - NCS
 description: VMware stack composable capabilities (vCenter, ESXi, etc.)
-license: MIT

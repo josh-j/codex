@@ -1,0 +1,147 @@
+---
+# playbooks/common/setup_samba_reports.yaml
+#
+# One-time setup playbook: installs and configures a Samba share on the
+# Ansible controller (or a dedicated file server).
+
+- name: Configure Samba Report Share
+  hosts: "{{ samba_target_host | default('localhost') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    samba_report_share_name: "NCSReports"
+    samba_report_share_path: "/srv/samba/reports"
+    samba_report_share_user: "ansible"
+    samba_report_share_group: "ansible"
+    samba_valid_users: "{{ samba_report_share_user }}"
+    samba_workgroup: "WORKGROUP"
+    samba_server_string: "NCS Ansible Report Server"
+
+    # CLEANED: Only 'platform' is needed for the 3-tier architecture
+    _report_subdirs:
+      - "platform"
+
+    _smb_conf_template: "{{ playbook_dir }}/../templates/smb.conf.j2"
+
+  pre_tasks:
+    - name: Verify vault password is defined
+      ansible.builtin.assert:
+        that:
+          - vault_samba_user_password is defined
+          - vault_samba_user_password | length > 0
+        fail_msg: "vault_samba_user_password must be defined in your vault."
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # 1. PACKAGE & OS PREP
+    # -------------------------------------------------------------------------
+    - name: Install Samba packages
+      ansible.builtin.apt:
+        name: [samba, samba-common, python3-samba]
+        state: present
+        update_cache: true
+
+    - name: Ensure report group exists
+      ansible.builtin.group:
+        name: "{{ samba_report_share_group }}"
+        state: present
+        system: true
+
+    - name: Ensure report OS user exists
+      ansible.builtin.user:
+        name: "{{ samba_report_share_user }}"
+        group: "{{ samba_report_share_group }}"
+        shell: /usr/sbin/nologin
+        system: true
+        create_home: false
+
+    # -------------------------------------------------------------------------
+    # 2. FILESYSTEM (Reinforced SGID 2775)
+    # -------------------------------------------------------------------------
+    - name: Ensure share root directory exists
+      ansible.builtin.file:
+        path: "{{ samba_report_share_path }}"
+        state: directory
+        owner: "{{ samba_report_share_user }}"
+        group: "{{ samba_report_share_group }}"
+        mode: "2775"
+
+    - name: Ensure report subdirectories exist
+      ansible.builtin.file:
+        path: "{{ samba_report_share_path }}/{{ item }}"
+        state: directory
+        owner: "{{ samba_report_share_user }}"
+        group: "{{ samba_report_share_group }}"
+        mode: "2775"
+      loop: "{{ _report_subdirs }}"
+
+    # -------------------------------------------------------------------------
+    # 3. SAMBA CONFIGURATION
+    # -------------------------------------------------------------------------
+    - name: Deploy smb.conf
+      ansible.builtin.template:
+        src: "{{ _smb_conf_template }}"
+        dest: /etc/samba/smb.conf
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      notify: restart_smbd
+
+    - name: Validate smb.conf syntax
+      ansible.builtin.command: testparm -s /etc/samba/smb.conf
+      changed_when: false
+      register: _testparm_validate
+
+    # -------------------------------------------------------------------------
+    # 4. SAMBA USER MANAGEMENT
+    # -------------------------------------------------------------------------
+    - name: Check if samba user already exists
+      ansible.builtin.command: pdbedit -L -u {{ samba_report_share_user }}
+      register: _samba_user_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Add/Update samba user in passdb
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          (echo "{{ vault_samba_user_password }}"; echo "{{ vault_samba_user_password }}") \
+          | smbpasswd -s {{ '-a' if _samba_user_exists.rc != 0 else '' }} {{ samba_report_share_user }}
+        executable: /bin/bash
+      no_log: true
+      changed_when: true
+
+    - name: Enable samba user account
+      ansible.builtin.command: smbpasswd -e {{ samba_report_share_user }}
+      changed_when: true
+
+    # -------------------------------------------------------------------------
+    # 5. SERVICE & FIREWALL
+    # -------------------------------------------------------------------------
+    - name: Ensure Samba services are running
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: [smbd, nmbd]
+
+    # FIX: Check if UFW is active instead of using ignore_errors
+    - name: Check if ufw is active
+      ansible.builtin.command: ufw status
+      register: _ufw_status
+      changed_when: false
+      failed_when: false
+
+    - name: Allow Samba through ufw
+      community.general.ufw:
+        rule: allow
+        name: Samba
+      when: "'active' in _ufw_status.stdout"
+
+  handlers:
+    - name: restart_smbd
+      ansible.builtin.systemd:
+        name: smbd
+        state: restarted

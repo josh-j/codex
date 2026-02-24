@@ -3,45 +3,66 @@
 
 - name: Audit | Process Datastore Alerts
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts | default([]) + (storage_checks | internal.core.build_alerts) }}"
+    vmware_alerts: >-
+      {{
+        (vmware_alerts | default([]) | list) +
+        (storage_checks | internal.core.build_alerts | list)
+      }}
   vars:
-    # 1. Access Data and Thresholds
     _ds: "{{ vmware_ctx.inventory.datastores.list | default([]) }}"
+
     _c_pct: "{{ vmware_datastore_free_critical_pct | default(10) | float }}"
     _w_pct: "{{ vmware_datastore_free_warning_pct  | default(15) | float }}"
 
-    # 2. Pre-filtered Lists for Logic
-    _crit_list: "{{ _ds | selectattr('free_pct', 'lt', _c_pct) | list }}"
-    _warn_list: "{{ _ds | selectattr('free_pct', 'lt', _w_pct) | selectattr('free_pct', 'ge', _c_pct) | list }}"
-    _maint_list: "{{ _ds | rejectattr('maintenance_mode', 'in', ['normal', 'Normal']) | list }}"
-    _inacc_list: "{{ _ds | selectattr('accessible', 'equalto', false) | list }}"
+    # Hard clamp to keep export/report bounded
+    _max_items: "{{ vmware_datastore_items_max | default(25) | int }}"
 
-    # 3. Dynamic Alert Construction
+    # Pre-filtered lists (cast free_pct defensively; ignore missing values)
+    _crit_list: >-
+      {{
+        _ds
+        | selectattr('free_pct', 'defined')
+        | selectattr('free_pct', 'lt', _c_pct)
+        | list
+      }}
+    _warn_list: >-
+      {{
+        _ds
+        | selectattr('free_pct', 'defined')
+        | selectattr('free_pct', 'lt', _w_pct)
+        | selectattr('free_pct', 'ge', _c_pct)
+        | list
+      }}
+    _maint_list: >-
+      {{
+        _ds
+        | selectattr('maintenance_mode', 'defined')
+        | rejectattr('maintenance_mode', 'match', '(?i)^normal$')
+        | list
+      }}
+    _inacc_list: "{{ _ds | selectattr('accessible', 'equalto', false) | list }}"
     storage_checks:
-      # CRITICAL: Inaccessible LUNs (highest priority)
       - condition: "{{ _inacc_list | length > 0 }}"
         severity: CRITICAL
-        category: "storage_connectivity"
+        category: storage_connectivity
         message: "Connectivity Failure: {{ _inacc_list | length }} Datastore(s) are INACCESSIBLE"
-        affected_items: "{{ _inacc_list }}"
+        affected_items: "{{ _inacc_list[:_max_items] }}"
 
-      # CRITICAL: Capacity Depletion
       - condition: "{{ _crit_list | length > 0 }}"
         severity: CRITICAL
-        category: "storage_capacity"
+        category: storage_capacity
         message: "{{ _crit_list | length }} Datastore(s) critically low (<{{ _c_pct }}% free)"
-        affected_items: "{{ _crit_list }}"
+        affected_items: "{{ _crit_list[:_max_items] }}"
 
-      # WARNING: Capacity Warning
       - condition: "{{ _warn_list | length > 0 }}"
         severity: WARNING
-        category: "storage_capacity"
+        category: storage_capacity
         message: "{{ _warn_list | length }} Datastore(s) low (<{{ _w_pct }}% free)"
-        affected_items: "{{ _warn_list }}"
+        affected_items: "{{ _warn_list[:_max_items] }}"
 
-      # WARNING: Maintenance State
       - condition: "{{ _maint_list | length > 0 }}"
         severity: WARNING
-        category: "storage_configuration"
+        category: storage_configuration
         message: "Config Alert: {{ _maint_list | length }} Datastore(s) in Maintenance Mode"
-        affected_items: "{{ _maint_list }}"
+        affected_items: "{{ _maint_list[:_max_items] }}"
+  changed_when: false

@@ -1,0 +1,43 @@
+# /etc/samba/smb.conf
+# Managed by Ansible — do not edit manually
+# Source: playbooks/templates/smb.conf.j2
+
+[global]
+   workgroup = {{ samba_workgroup }}
+   server string = {{ samba_server_string }}
+
+   # Security
+   security = user
+   encrypt passwords = yes
+   # Restrict to SMB2/3 — SMB1 is disabled (WannaCry, EternalBlue)
+   server min protocol = SMB2
+   server max protocol = SMB3
+   # Only allow connections from RFC1918 ranges and localhost.
+   # Adjust to match your management network CIDR.
+   hosts allow = 127.0.0.1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+   hosts deny = ALL
+
+   # Logging
+   log file = /var/log/samba/log.%m
+   max log size = 1000
+   logging = file
+
+   # Performance
+   socket options = TCP_NODELAY
+   read raw = yes
+   write raw = yes
+
+[{{ samba_report_share_name }}]
+   comment = NCS Ansible Audit Reports
+   path = {{ samba_report_share_path }}
+   browseable = yes
+   writable = yes
+   create mask = 0664
+   directory mask = 2775
+   valid users = {{ samba_valid_users }}
+   # Force all files into the share group so the Ansible controller
+   # user and the samba user can both read/write without permission fights
+   force group = {{ samba_report_share_group }}
+   # Prevent Windows clients from creating macOS/Windows metadata junk files
+   veto files = /._*/.DS_Store/Thumbs.db/desktop.ini/
+   delete veto files = yes

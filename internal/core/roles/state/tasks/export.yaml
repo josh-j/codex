@@ -1,40 +1,47 @@
 ---
 # internal.core.state : export.yaml
 
-- name: Ensure controller facts are available
-  ansible.builtin.setup:
-    gather_subset: [min]
-  delegate_to: localhost
-  delegate_facts: true
-  run_once: true
-  when: hostvars['localhost']['ansible_date_time'] is not defined
-
 - name: Ensure host state directory exists
   ansible.builtin.file:
-    path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/{{ inventory_hostname }}"
+    # Resolve directory from ncs_export_path (if file path) or default to host folder
+    path: >-
+      {{
+        ncs_export_path | default('') | dirname
+        if ncs_export_path is defined
+        else (ncs_config.report_directory | default('/srv/samba/reports')) ~ '/' ~ inventory_hostname
+      }}
     state: directory
     mode: "0755"
   delegate_to: localhost
   become: false
 
+- name: Sanitize export payload
+  ansible.builtin.set_fact:
+    _ncs_export_clean: "{{ ncs_export_data | to_json | from_json }}"
+
 - name: Export host state to YAML
   ansible.builtin.copy:
     dest: >-
-      {{ ncs_config.report_directory | default('/srv/samba/reports') }}/{{ inventory_hostname }}/{{ inventory_hostname }}.{{ ncs_export_data.audit_type | default('system') }}.yaml
+      {{
+        ncs_export_path
+        if ncs_export_path is defined
+        else (ncs_config.report_directory | default('/srv/samba/reports')) ~ '/' ~ inventory_hostname ~ '/' ~ inventory_hostname ~ '.' ~ (_ncs_export_clean.audit_type | default('system')) ~ '.yaml'
+      }}
     mode: "0664"
-    # We structure the keys so the most important metadata is at the top of the YAML file
     content: >-
       {{
         {
           'metadata': {
             'host': inventory_hostname,
-            'audit_type': ncs_export_data.audit_type | default('system'),
-            'timestamp': hostvars['localhost']['ansible_date_time']['iso8601']
+            'audit_type': _ncs_export_clean.audit_type | default('system'),
+            'audit_failed': _ncs_export_clean.audit_failed | default(false),
+            'timestamp': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')
           },
-          'health': ncs_export_data.health | default('UNKNOWN'),
-          'summary': ncs_export_data.summary | default({}),
-          'alerts': ncs_export_data.alerts | default([])
-        } | combine(ncs_export_data, recursive=True) | to_nice_yaml(indent=2)
+          'health': _ncs_export_clean.health | default('UNKNOWN'),
+          'summary': _ncs_export_clean.summary | default({}),
+          'alerts': _ncs_export_clean.alerts | default([]),
+          'data': _ncs_export_clean
+        } | to_nice_yaml(indent=2)
       }}
   delegate_to: localhost
   become: false

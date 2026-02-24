@@ -48,7 +48,12 @@
   block:
     - name: Build connectivity alert
       ansible.builtin.set_fact:
-        vmware_alerts: "{{ vmware_alerts | default([]) + [connectivity_alert] }}"
+        vmware_ctx: >-
+          {{
+            vmware_ctx | combine({
+              'alerts': (vmware_ctx.alerts | default([]) | list) + [connectivity_alert]
+            }, recursive=true)
+          }}
       vars:
         connectivity_alert:
           severity: CRITICAL

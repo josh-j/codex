@@ -1,4 +1,5 @@
 ---
+# playbooks/ubuntu/apply_update.yaml
 - name: "Phase 1: Prepare Environment"
   ansible.builtin.import_playbook: ../common/init_environment.yaml
   tags: ["always"]

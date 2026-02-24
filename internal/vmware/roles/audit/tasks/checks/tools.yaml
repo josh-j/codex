@@ -3,33 +3,44 @@
 
 - name: Audit | Evaluate VMware Tools Compliance
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts | default([]) + (tool_checks | internal.core.build_alerts) }}"
+    vmware_alerts: >-
+      {{
+        (vmware_alerts | default([]) | list) +
+        (_tool_check_def | internal.core.build_alerts | default([]) | list)
+      }}
   vars:
-    # 1. Access the pre-discovered VM list from vmware_ctx
     _vms: "{{ vmware_ctx.inventory.vms.list | default([]) }}"
+    _max_items: "{{ vmware_tools_items_max | default(50) | int }}"
 
-    # 2. Filter for active VMs with problematic Tools status
-    # Standard healthy states: 'toolsOk' or 'toolsOld' (Old is still managed/functional)
+    # Consider 'toolsOk' healthy; treat 'toolsOld' as healthy if you want to allow it.
+    _healthy_statuses: ["toolsOk", "toolsOld"]
+
+    # Powered on VMs with tools_status missing or not in healthy list
     _unhealthy_tools: >-
       {{
-        _vms | selectattr('power_state', 'equalto', 'POWEREDON')
-             | rejectattr('tools_status', 'defined')
-             | default([])
-             | union(
-                 _vms | selectattr('power_state', 'equalto', 'POWEREDON')
-                      | rejectattr('tools_status', 'in', ['toolsOk', 'toolsOld'])
-                      | list
-               )
+        _vms
+        | selectattr('power_state', 'defined')
+        | selectattr('power_state', 'match', '(?i)^poweredon$')
+        | rejectattr('tools_status', 'defined')
+        | list
+        +
+        (
+          _vms
+          | selectattr('power_state', 'defined')
+          | selectattr('power_state', 'match', '(?i)^poweredon$')
+          | selectattr('tools_status', 'defined')
+          | rejectattr('tools_status', 'in', _healthy_statuses)
+          | list
+        )
       }}
 
-    # 3. Aggregate into a single consolidated alert
-    tool_checks:
+    _tool_check_def:
       - condition: "{{ _unhealthy_tools | length > 0 }}"
         severity: WARNING
-        category: "workload_compliance"
+        category: workload_compliance
         message: "Compliance Gap: {{ _unhealthy_tools | length }} powered-on VM(s) have unhealthy VMware Tools"
+        recommendation: "Verify Tools installation to ensure backup quiescing and driver performance."
         detail:
           total_impacted: "{{ _unhealthy_tools | length }}"
-          recommendation: "Verify Tools installation to ensure backup quiescing and driver performance."
-        # Passing the list here allows the Phase 3 Dashboard to show a sub-table of these VMs
-        affected_items: "{{ _unhealthy_tools | map(attribute='name') | list }}"
+        affected_items: "{{ (_unhealthy_tools | map(attribute='name') | list)[:_max_items] }}"
+  changed_when: false

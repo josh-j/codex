@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMware Fleet Health | {{ report_stamp }}</title>
+    <style>
+        {% include 'vmware_report_styles.css' %}
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <div class="content">
+
+        {# ---------- HOST FILTERING ---------- #}
+        {% set raw_hosts = vmw_all_hosts.hosts | default({}) %}
+        {% set skip_keys = ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history'] %}
+        {% set vCenters = {} %}
+        {% for h, d in raw_hosts.items() if h not in skip_keys %}
+            {% set _ = vCenters.update({h: d}) %}
+        {% endfor %}
+
+        {# ---------- COLLECT ALL ALERTS (CANONICAL) ---------- #}
+        {% set all_alerts = [] %}
+        {% for h, d in vCenters.items() %}
+            {% set vh = d.get('vcenter_health', {}) %}
+            {% set host_alerts = vh.get('alerts', d.get('alerts', [])) %}
+            {% for alert in host_alerts %}
+                {% set _ = all_alerts.append(alert | combine({'vcenter': h})) %}
+            {% endfor %}
+        {% endfor %}
+
+        <div class="header">
+            <div class="title-group">
+                <h1>VMware Infrastructure Fleet</h1>
+                <p class="text-muted">Report ID: <code>{{ report_id }}</code> | Generated: {{ report_date }}</p>
+            </div>
+            <div>
+                <a href="../../site_health_report.html" class="nav-link">← Global Dashboard</a>
+            </div>
+        </div>
+
+        {# ---------- INVENTORY SUMS (NO map(attribute=..., default=...)) ---------- #}
+        {% set total_clusters = 0 %}
+        {% set total_hosts = 0 %}
+        {% set total_vms = 0 %}
+        {% for h, d in vCenters.items() %}
+            {% set disc_sum = d.get('discovery', {}).get('summary', {}) %}
+            {% set total_clusters = total_clusters + (disc_sum.get('clusters', 0) | int) %}
+            {% set total_hosts = total_hosts + (disc_sum.get('hosts', 0) | int) %}
+            {% set total_vms = total_vms + (disc_sum.get('vms', 0) | int) %}
+        {% endfor %}
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>Inventory Footprint</h3>
+                <table>
+                    <tr><td>vCenters</td><td><strong>{{ vCenters | length }}</strong></td></tr>
+                    <tr><td>Total Clusters</td><td><strong>{{ total_clusters }}</strong></td></tr>
+                    <tr><td>Total ESXi Hosts</td><td><strong>{{ total_hosts }}</strong></td></tr>
+                    <tr><td>Total VMs</td><td><strong>{{ total_vms }}</strong></td></tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>Fleet Saturation</h3>
+
+                {% set total_cpu = 0 %}{% set used_cpu = 0 %}
+                {% for h, d in vCenters.items() %}
+                    {% set util = d.get('vcenter_health', {}).get('data', {}).get('utilization', {}) %}
+                    {% set total_cpu = total_cpu + (util.get('cpu_total_mhz', 0) | int) %}
+                    {% set used_cpu = used_cpu + (util.get('cpu_used_mhz', 0) | int) %}
+                {% endfor %}
+                {% set cpu_pct = (used_cpu / ([total_cpu, 1] | max) * 100) | round(1) %}
+                <div class="gauge-container">
+                    <div class="gauge-header"><span>Aggregate CPU</span><span>{{ cpu_pct }}%</span></div>
+                    <div class="gauge-bar">
+                        <div class="gauge-fill" style="width: {{ cpu_pct }}%; background: {{ 'var(--red)' if cpu_pct > 90 else 'var(--indigo)' }}"></div>
+                    </div>
+                </div>
+
+                {% set total_mem = 0 %}{% set used_mem = 0 %}
+                {% for h, d in vCenters.items() %}
+                    {% set util = d.get('vcenter_health', {}).get('data', {}).get('utilization', {}) %}
+                    {% set total_mem = total_mem + (util.get('mem_total_mb', 0) | int) %}
+                    {% set used_mem = used_mem + (util.get('mem_used_mb', 0) | int) %}
+                {% endfor %}
+                {% set mem_pct = (used_mem / ([total_mem, 1] | max) * 100) | round(1) %}
+                <div class="gauge-container">
+                    <div class="gauge-header"><span>Aggregate Memory</span><span>{{ mem_pct }}%</span></div>
+                    <div class="gauge-bar">
+                        <div class="gauge-fill" style="width: {{ mem_pct }}%; background: {{ 'var(--red)' if mem_pct > 90 else 'var(--indigo)' }}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Health Status</h3>
+                <div style="display: flex; justify-content: space-around; padding-top: 10px;">
+                    <div style="text-align:center;">
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--red);">
+                            {{ all_alerts | selectattr('severity', 'match', '(?i)^critical$') | list | length }}
+                        </div>
+                        CRITICAL
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--amber);">
+                            {{ all_alerts | selectattr('severity', 'match', '(?i)^warning$') | list | length }}
+                        </div>
+                        WARNING
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>vCenter Host</th>
+                        <th>Status</th>
+                        <th>Version</th>
+                        <th>Alerts</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for host, data in vCenters.items() %}
+                        {% set v_health = data.get('vcenter_health', {}) %}
+                        {% set host_alerts = v_health.get('alerts', data.get('alerts', [])) %}
+                        {% set crit_n = (host_alerts | selectattr('severity', 'match', '(?i)^critical$') | list | length) %}
+                        {% set warn_n = (host_alerts | selectattr('severity', 'match', '(?i)^warning$')  | list | length) %}
+
+                        <tr>
+                            <td><strong>{{ host }}</strong></td>
+
+                            {% set hs = v_health.get('health', 'HEALTHY') %}
+                            <td>
+                                <span class="badge badge-{{ hs | string | lower }}">
+                                    {{ hs }}
+                                </span>
+                            </td>
+
+                            <td>{{ data.discovery.health.appliance.info.version | default('N/A') }}</td>
+
+                            <td>
+                                <span class="text-danger">●</span> {{ crit_n }}
+                                <span class="text-warning" style="margin-left:8px;">●</span> {{ warn_n }}
+                            </td>
+
+                            <td><a href="./{{ host }}/health_report.html" class="nav-link">View Node →</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>

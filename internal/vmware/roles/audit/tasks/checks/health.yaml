@@ -3,47 +3,76 @@
 
 - name: Audit | Evaluate vCenter Infrastructure Health
   ansible.builtin.set_fact:
-    vmware_alerts: "{{ vmware_alerts | default([]) + (health_checks | internal.core.build_alerts) }}"
+    vmware_alerts: "{{ (vmware_alerts | default([]) | list) + (health_checks | internal.core.build_alerts | list) }}"
   vars:
     _app: "{{ vmware_ctx.health.appliance | default({}) }}"
     _h: "{{ _app.health | default({}) }}"
+    _backup: "{{ _app.backup | default({}) }}"
+    _overall: "{{ _h.overall | default('gray') | lower }}"
+    _dc_count: "{{ vmware_ctx.summary.datacenter_count | default(0) | int }}"
 
     health_checks:
-      # 1. Total Inventory Check
-      - condition: "{{ vmware_ctx.inventory.summary.datacenter_count | default(0) | int == 0 }}"
+      # 1. Total Inventory Check (FIX: correct path)
+      - condition: "{{ _dc_count == 0 }}"
         severity: CRITICAL
-        category: "infrastructure"
+        category: infrastructure
         message: "Inventory Gap: No Datacenters detected in vCenter"
         detail:
-          datacenter_count: 0
+          datacenter_count: "{{ _dc_count }}"
           status: "Empty Inventory"
 
-      # 2. VAMI Component Health Check
-      - condition: "{{ _h.overall | default('gray') != 'green' }}"
+      # 2. VAMI Component Health Check (better severity mapping)
+      - condition: "{{ _overall == 'red' }}"
         severity: CRITICAL
-        category: "appliance_health"
-        message: "VCSA Component Failure: Overall health is {{ _h.overall | upper }}"
+        category: appliance_health
+        message: "VCSA Component Failure: Overall health is {{ _overall | upper }}"
         detail:
-          database: "{{ _h.database | upper }}"
-          storage: "{{ _h.storage  | upper }}"
-          swap: "{{ _h.swap     | upper }}"
-          memory: "{{ _h.memory   | upper }}"
+          overall: "{{ _overall | upper }}"
+          database: "{{ (_h.database | default('gray')) | upper }}"
+          storage: "{{ (_h.storage  | default('gray')) | upper }}"
+          swap: "{{ (_h.swap     | default('gray')) | upper }}"
+          memory: "{{ (_h.memory   | default('gray')) | upper }}"
+          cpu: "{{ (_h.cpu | default('gray')) | upper }}"
+
+      - condition: "{{ _overall == 'yellow' }}"
+        severity: WARNING
+        category: appliance_health
+        message: "VCSA Degraded: Overall health is {{ _overall | upper }}"
+        detail:
+          overall: "{{ _overall | upper }}"
+          database: "{{ (_h.database | default('gray')) | upper }}"
+          storage: "{{ (_h.storage  | default('gray')) | upper }}"
+          swap: "{{ (_h.swap     | default('gray')) | upper }}"
+          memory: "{{ (_h.memory   | default('gray')) | upper }}"
+          cpu: "{{ (_h.cpu | default('gray')) | upper }}"
+
+      - condition: "{{ _overall == 'gray' }}"
+        severity: WARNING
+        category: data_quality
+        message: "VCSA Health Unknown: Overall health is GRAY (check permissions / API availability)"
+        detail:
+          overall: "GRAY"
+          note: "GRAY often indicates unavailable/unknown health from VAMI. Validate credentials/permissions and VCSA health endpoints."
 
       # 3. Security Compliance Check
       - condition: "{{ _app.config.ssh_enabled | default(false) | bool }}"
         severity: WARNING
-        category: "security"
+        category: security
         message: "Hardening Violation: SSH is ENABLED on VCSA"
         detail:
           current_state: "Open"
           remediation: "Disable SSH via VAMI or CLI unless a maintenance window is active."
 
-      # 4. Disaster Recovery Check
-      - condition: "{{ not (_app.backup.enabled | default(false) | bool) }}"
+      # 4. Disaster Recovery Check (align keys + include status/recurrence)
+      - condition: "{{ not (_backup.enabled | default(false) | bool) }}"
         severity: CRITICAL
-        category: "data_protection"
+        category: data_protection
         message: "DR Risk: File-Based Backup is DISABLED"
         detail:
-          configured: "{{ _app.backup.configured | default(false) }}"
-          location: "{{ _app.backup.location | default('NONE') }}"
-          protocol: "{{ _app.backup.protocol | default('NONE') }}"
+          enabled: "{{ _backup.enabled | default(false) }}"
+          configured: "{{ _backup.configured | default(false) }}"
+          status: "{{ _backup.status | default('NOT_CONFIGURED') }}"
+          location: "{{ _backup.location | default('NONE') }}"
+          protocol: "{{ _backup.protocol | default('NONE') }}"
+          recurrence: "{{ _backup.recurrence | default('Manual/None') }}"
+  changed_when: false

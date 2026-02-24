@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 # collections/ansible_collections/internal/vmware/roles/discovery/files/get_vcenter_alarms.py
-#
-# Collects all triggered alarms from vCenter via PyVmomi.
-# Password is passed via VC_PASSWORD environment variable - never as an argument.
-#
-# Usage: get_vcenter_alarms.py <host> <user>
-# Output: JSON to stdout - {"success": bool, "alarms": [...], "count": int}
 
+import argparse
 import json
 import os
 import ssl
@@ -15,7 +10,7 @@ import sys
 from pyVim.connect import Disconnect, SmartConnect
 
 
-def get_triggered_alarms(host, user, password):
+def get_triggered_alarms(host: str, user: str, password: str) -> dict:
     if not password:
         return {
             "success": False,
@@ -24,61 +19,86 @@ def get_triggered_alarms(host, user, password):
             "count": 0,
         }
 
+    # SECURITY: Disabling TLS verification is risky. Prefer a trusted CA bundle in production.
+    # If you must bypass verification (lab/self-signed), keep it explicit like this.
     context = ssl._create_unverified_context()
 
+    si = None
     try:
         si = SmartConnect(host=host, user=user, pwd=password, sslContext=context)
-    except Exception as e:
-        return {"success": False, "error": str(e), "alarms": [], "count": 0}
-
-    try:
         content = si.RetrieveContent()
-        triggered = content.rootFolder.triggeredAlarmState
+        triggered = getattr(content.rootFolder, "triggeredAlarmState", []) or []
 
         alarms = []
         for state in triggered:
             try:
-                has_info = state.alarm and state.alarm.info
-                status = state.overallStatus
+                # Some vSphere objects can be missing fields depending on alarm type
+                acknowledged = bool(getattr(state, "acknowledged", False))
+                if acknowledged:
+                    continue
+
+                status = str(
+                    getattr(state, "overallStatus", "gray")
+                ).lower()  # gray/green/yellow/red
+
+                if status in {"green", "gray"}:
+                    continue
+
+                # Standardize severities (you later lower() in Ansible anyway)
+                severity = (
+                    "CRITICAL"
+                    if status == "red"
+                    else ("WARNING" if status == "yellow" else "INFO")
+                )
+
+                alarm_obj = getattr(state, "alarm", None)
+                info = getattr(alarm_obj, "info", None) if alarm_obj else None
+
+                entity = getattr(state, "entity", None)
+                entity_name = getattr(entity, "name", None)
 
                 alarms.append(
                     {
-                        "alarm_name": state.alarm.info.name if has_info else "Unknown",
-                        "description": state.alarm.info.description if has_info else "",
-                        "entity": state.entity.name
-                        if hasattr(state.entity, "name")
-                        else str(state.entity),
-                        "entity_type": type(state.entity).__name__,
+                        "alarm_name": getattr(info, "name", "Unknown"),
+                        "description": getattr(info, "description", "") or "",
+                        "entity": entity_name or str(entity),
+                        "entity_type": type(entity).__name__
+                        if entity is not None
+                        else "Unknown",
                         "status": status,
-                        "severity": "critical"
-                        if status == "red"
-                        else ("warning" if status == "yellow" else "info"),
-                        "time": str(state.time) if state.time else "",
-                        "acknowledged": state.acknowledged,
+                        "severity": severity,
+                        "time": str(getattr(state, "time", "") or ""),
+                        "acknowledged": acknowledged,
                     }
                 )
             except Exception:
+                # Keep collecting other alarms even if one record is weird
                 continue
 
         return {"success": True, "alarms": alarms, "count": len(alarms)}
 
+    except Exception as e:
+        return {"success": False, "error": str(e), "alarms": [], "count": 0}
+
     finally:
-        Disconnect(si)
+        if si is not None:
+            Disconnect(si)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("host")
+    parser.add_argument("user")
+    args = parser.parse_args()
+
+    result = get_triggered_alarms(args.host, args.user, os.environ.get("VC_PASSWORD"))
+
+    # Ensure stdout is JSON-only for Ansible parsing.
+    print(json.dumps(result))
+
+    # Non-zero exit code on failure so Ansible can detect it reliably.
+    return 0 if result.get("success") else 2
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print(
-            json.dumps(
-                {
-                    "success": False,
-                    "error": "Usage: get_vcenter_alarms.py <host> <user>  (password via VC_PASSWORD)",
-                }
-            )
-        )
-        sys.exit(1)
-
-    result = get_triggered_alarms(
-        sys.argv[1], sys.argv[2], os.environ.get("VC_PASSWORD")
-    )
-    print(json.dumps(result))
+    sys.exit(main())

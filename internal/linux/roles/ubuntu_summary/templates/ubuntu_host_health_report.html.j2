@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ host_name }} | Node Health Report</title>
+    <style>
+        /* Including the common stylesheet shared across all Linux reports */
+        {% include 'ubuntu_report_styles.css' %}
+    </style>
+</head>
+<body>
+
+{% macro status_badge(status) %}
+{%- set s = status | default('unknown') | string | upper -%}
+{%- if s in ['OK', 'HEALTHY', 'GREEN', 'PASS', 'RUNNING'] -%}
+<span class="badge status-ok">{{ s }}</span>
+{%- elif s in ['CRITICAL', 'RED', 'FAILED', 'FAIL', 'STOPPED'] -%}
+<span class="badge status-fail">{{ s }}</span>
+{%- else -%}
+<span class="badge status-warn">{{ s }}</span>
+{%- endif -%}
+{% endmacro %}
+
+<div class="app-layout">
+    <main class="content">
+        <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">
+            <a href="../../../site_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Global Site</a>
+            <span style="margin: 0 8px;">/</span>
+            <a href="../ubuntu_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); text-decoration: none; font-weight: 600;">Linux Fleet</a>
+            <span style="margin: 0 8px;">/</span>
+            <span style="font-weight: 600; color: var(--text-primary);">{{ host_name }}</span>
+        </div>
+
+        <header class="content-header">
+            <div>
+                <h1>Node Diagnostics: <code>{{ host_name }}</code></h1>
+                <p style="color: var(--text-muted); margin-top: 5px;">
+                    OS: {{ host_data.distribution | default('Linux') }} {{ host_data.distribution_version | default('') }} |
+                    Overall Status: {{ status_badge(host_data.health | default('UNKNOWN')) }}
+                </p>
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
+                Generated: {{ report_date | default(now(utc=true, fmt='%Y-%m-%d %H:%M:%SZ')) }}
+            </div>
+        </header>
+
+        {# Target the nested system facts gathered by the audit role #}
+        {% set sys_facts = host_data.data.system | default({}) %}
+
+        <h2 class="sub-title">Active Audit Faults</h2>
+        <div class="card-wrap">
+            <table>
+                <thead><tr><th>Severity</th><th>Category</th><th>Details</th></tr></thead>
+                <tbody>
+                    {% if host_data.alerts | default([]) | length > 0 %}
+                        {% for alert in host_data.alerts %}
+                        <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
+                            <td>{{ status_badge(alert.severity) }}</td>
+                            <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
+                            <td>{{ alert.message }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Problematic System Services</h2>
+        <div class="card-wrap">
+            <table>
+                <thead><tr><th>Failed Service Output</th></tr></thead>
+                <tbody>
+                    {% if sys_facts.services is defined and sys_facts.services.failed_list is defined %}
+                        {% if sys_facts.services.failed_list | length > 0 %}
+                            {% for svc_string in sys_facts.services.failed_list %}
+                            <tr>
+                                <td><span style="font-family: monospace; color: var(--red); font-weight: 600;">{{ svc_string }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td style="text-align:center; padding: 30px; color: var(--text-muted);">All detected services are currently running gracefully.</td></tr>
+                        {% endif %}
+                    {% else %}
+                        <tr><td style="text-align:center; padding: 30px; color: var(--text-muted);">No service data found in payload.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Disk Storage Capacity</h2>
+        <div class="card-wrap">
+            <table>
+                <thead><tr><th>Mount Point</th><th>Device</th><th>Free (GB)</th><th>Total (GB)</th><th>Usage %</th></tr></thead>
+                <tbody>
+                    {% if sys_facts.disks is defined %}
+                        {% for disk in sys_facts.disks %}
+                            <tr>
+                                <td><strong>{{ disk.mount }}</strong></td>
+                                <td style="color: var(--text-muted);">{{ disk.device }}</td>
+                                <td>{{ disk.free_gb }}</td>
+                                <td>{{ disk.total_gb }}</td>
+                                <td class="{{ 'text-danger' if disk.used_pct|float > 85 else '' }}">
+                                    <strong>{{ disk.used_pct }}%</strong>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="5" style="text-align:center; padding: 30px; color: var(--text-muted);">No disk data found in payload.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Memory & Swap Allocation</h2>
+        <div class="card-wrap">
+            <table>
+                <thead><tr><th>Resource Type</th><th>Total (MB)</th><th>Free (MB)</th><th>Usage %</th></tr></thead>
+                <tbody>
+                    {% if sys_facts.memory is defined %}
+                    <tr>
+                        <td><strong>Physical Memory</strong></td>
+                        <td>{{ sys_facts.memory.total_mb }}</td>
+                        <td>{{ sys_facts.memory.free_mb }}</td>
+                        <td class="{{ 'text-warning' if sys_facts.memory.used_pct|float >= 85 else '' }} {{ 'text-danger' if sys_facts.memory.used_pct|float >= 98 else '' }}">
+                            <strong>{{ sys_facts.memory.used_pct }}%</strong>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if sys_facts.swap is defined %}
+                    <tr>
+                        <td><strong>Swap Space</strong></td>
+                        <td>{{ sys_facts.swap.total_mb }}</td>
+                        <td>-</td>
+                        <td><strong>{{ sys_facts.swap.used_pct }}%</strong></td>
+                    </tr>
+                    {% endif %}
+                    {% if sys_facts.memory is not defined and sys_facts.swap is not defined %}
+                        <tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--text-muted);">No memory data found in payload.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Performance & Maintenance</h2>
+        <div class="card-wrap">
+            <table>
+                <thead><tr><th>Metric</th><th>Current Value</th><th>Status / Note</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong>System Load Average</strong></td>
+                        <td>{{ sys_facts.load_avg | default('N/A') }}</td>
+                        <td class="text-muted">1-minute load average</td>
+                    </tr>
+                    <tr>
+                        <td><strong>System Uptime</strong></td>
+                        <td>{{ sys_facts.uptime_days | default('0') }} Days</td>
+                        <td class="{{ 'text-warning' if sys_facts.uptime_days|default(0)|int > 180 else 'text-muted' }}">
+                            {{ 'Legacy Uptime (Consider Reboot)' if sys_facts.uptime_days|default(0)|int > 180 else 'Normal' }}
+                        </td>
+                    </tr>
+                    {% if sys_facts.updates is defined %}
+                    <tr>
+                        <td><strong>Pending Package Updates</strong></td>
+                        <td>{{ sys_facts.updates.pending_count | default('0') }} Packages</td>
+                        <td class="text-muted">Available via APT</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Reboot Required</strong></td>
+                        <td class="{{ 'text-danger' if sys_facts.updates.reboot_pending | default(false) else 'text-muted' }}">
+                            <strong>{{ 'YES' if sys_facts.updates.reboot_pending | default(false) else 'NO' }}</strong>
+                        </td>
+                        <td class="text-muted">Required to apply kernel or security updates</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 ---
+# playbooks/ubuntu/audit_system.yaml
 - name: "Phase 1: Prepare Environment"
   ansible.builtin.import_playbook: ../common/init_environment.yaml
   tags: ["always"]
@@ -7,13 +8,18 @@
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
   tags: ["ubuntu", "audit", "system"]
-  collections:
-    - internal.core
-    - internal.linux
   roles:
     - role: internal.linux.ubuntu_system_discover
     - role: internal.linux.ubuntu_system_audit
 
-- name: "Phase 3: Aggregate and Report"
-  ansible.builtin.import_playbook: ../common/aggregate_results.yaml
+- name: "Phase 3: Aggregate and Report (Linux Only)"
+  hosts: localhost
   tags: ["always"]
+  vars:
+    # Forces all roles in this play to use the exact same timestamp
+    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+  tasks:
+    - name: Run Linux Summary
+      ansible.builtin.include_role:
+        name: internal.linux.ubuntu_summary
+        tasks_from: report.yaml

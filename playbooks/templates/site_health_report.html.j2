@@ -9,6 +9,16 @@
     </style>
 </head>
 <body>
+{% macro status_badge(status) %}
+{%- set s = status | default('unknown') | string | upper -%}
+{%- if s in ['OK', 'HEALTHY', 'GREEN'] -%}
+<span class="badge status-ok">OK</span>
+{%- elif s in ['CRITICAL', 'RED', 'FAILED'] -%}
+<span class="badge status-fail">CRITICAL</span>
+{%- else -%}
+<span class="badge" style="background:#d97706;color:#fff;border-color:#f59e0b;">WARN</span>
+{%- endif -%}
+{% endmacro %}
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -37,7 +47,7 @@
     <main class="content">
         <header class="content-header">
             <div class="title-group">
-                <h1>Fleet Health Dashboard</h1>
+                <h1>Global Fleet Health Dashboard</h1>
                 <p>Real-time status of managed infrastructure assets.</p>
             </div>
             <div class="header-util">
@@ -63,26 +73,37 @@
                 </div>
             </div>
 
-            <h2 class="sub-title">System Status</h2>
+            <h2 class="sub-title">Platform & Fleet Dashboards</h2>
             <div class="card-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>Subsystem</th>
+                            <th>Infrastructure Platform</th>
                             <th>Asset Count</th>
-                            <th>Status</th>
+                            <th>Fleet Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Virtualization Layer</td>
-                            <td>{{ groups.get('vcenters', []) | length }} Clusters</td>
-                            <td>{{ status_badge('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL') }}</td>
+                            <td><strong>Linux & Ubuntu Environment</strong></td>
+                            <td>{{ groups.get('ubuntu_servers', []) | length }} Nodes</td>
+                            <td>{{ status_badge(linux_global_health | default('OK' if totals.get('critical', 0)|int == 0 else 'CRITICAL')) }}</td>
+                            <td>
+                                <a href="platform/ubuntu/ubuntu_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View Linux Fleet ↗
+                                </a>
+                            </td>
                         </tr>
                         <tr>
-                            <td>Linux Infrastructure</td>
-                            <td>{{ groups.get('ubuntu_servers', []) | length }} Nodes</td>
-                            <td>{{ status_badge('OK') }}</td>
+                            <td><strong>VMware vCenter Environment</strong></td>
+                            <td>{{ groups.get('vcenters', []) | length }} Clusters</td>
+                            <td>{{ status_badge(vmware_global_health | default('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL')) }}</td>
+                            <td>
+                                <a href="platform/vmware/vmware_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View VMware Fleet ↗
+                                </a>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

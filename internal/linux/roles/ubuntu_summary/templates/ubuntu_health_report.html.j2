@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux Infrastructure Audit | {{ report_date | default(now(utc=true, fmt='%Y-%m-%d')) }}</title>
+    <style>
+        /* Using common CSS shared across Linux reports */
+        {% include 'ubuntu_report_styles.css' %}
+    </style>
+</head>
+<body>
+{% macro status_badge(status) %}
+{%- set s = status | default('unknown') | string | upper -%}
+{%- if s in ['OK', 'HEALTHY', 'GREEN', 'PASS'] -%}
+<span class="badge status-ok">OK</span>
+{%- elif s in ['CRITICAL', 'RED', 'FAILED', 'FAIL'] -%}
+<span class="badge status-fail">CRITICAL</span>
+{%- else -%}
+<span class="badge status-warn">WARN</span>
+{%- endif -%}
+{% endmacro %}
+
+<div class="app-layout">
+    <main class="content">
+        <div style="margin-bottom: 15px; font-size: 0.85rem;">
+            <a href="../../site_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); text-decoration: none; font-weight: 600;">⬅ Back to Global Site Report</a>
+        </div>
+
+        <header class="content-header">
+            <div class="title-group">
+                <h1>Linux Fleet Health Dashboard</h1>
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
+                <strong>Generated:</strong> {{ report_date | default(now(utc=true, fmt='%Y-%m-%d %H:%M:%S')) }}
+            </div>
+        </header>
+
+        <h2 class="sub-title">System Status Overview</h2>
+        <div class="card-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>Health</th>
+                        <th>OS Version</th>
+                        <th>Critical Faults</th>
+                        <th>Warnings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+                        {% if hostname not in ['Split', 'Summary', 'platform'] %}
+                            {% set linux_audit = audits.ubuntu_system_audit | default(audits.system | default(none)) %}
+                            {% if linux_audit %}
+                            <tr>
+                                <td>
+                                    <a href="{{ hostname }}/health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="color: var(--indigo); font-weight: bold; text-decoration: none;">
+                                        {{ hostname }} ↗
+                                    </a>
+                                </td>
+                                <td>{{ status_badge(linux_audit.health) }}</td>
+                                <td>{{ linux_audit.distribution | default('Ubuntu') }} {{ linux_audit.distribution_version | default('') }}</td>
+                                <td class="{{ 'text-danger' if linux_audit.summary.critical_count|default(0)|int > 0 else '' }}">
+                                    {{ linux_audit.summary.critical_count | default(0) }}
+                                </td>
+                                <td class="{{ 'text-warning' if linux_audit.summary.warning_count|default(0)|int > 0 else '' }}">
+                                    {{ linux_audit.summary.warning_count | default(0) }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Active Alerts & Fault Details</h2>
+        <div class="card-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>Severity</th>
+                        <th>Subsystem</th>
+                        <th>Alert Message / Detail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(found_alerts=false) %}
+                    {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+                        {% if hostname not in ['Split', 'Summary', 'platform'] %}
+                            {% set linux_audit = audits.ubuntu_system_audit | default(audits.system | default(none)) %}
+
+                            {% if linux_audit and linux_audit.alerts is defined %}
+                                {% for alert in linux_audit.alerts %}
+                                    {% set ns.found_alerts = true %}
+                                    <tr>
+                                        <td class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
+                                            <strong>{{ hostname }}</strong>
+                                        </td>
+                                        <td>{{ status_badge(alert.severity) }}</td>
+                                        <td style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700; color: var(--indigo);">
+                                            {{ alert.category | default('System') }}
+                                        </td>
+                                        <td>{{ alert.message }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if not ns.found_alerts %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <strong>No active faults detected.</strong> All systems are operating normally.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">STIG Compliance Audit</h2>
+        <div class="card-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>Compliance Health</th>
+                        <th>Open Findings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+                        {% if hostname not in ['Split', 'Summary', 'platform'] %}
+                            {% if audits.stig is defined %}
+                            <tr>
+                                <td><strong>{{ hostname }}</strong></td>
+                                <td>{{ status_badge(audits.stig.health) }}</td>
+                                <td>{{ audits.stig.alerts | default([]) | length }} finding(s)</td>
+                            </tr>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+</body>
+</html>

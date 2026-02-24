@@ -1,0 +1,101 @@
+---
+# playbooks/common/generate_site_health_report.yaml
+
+- name: "Global Reporting | Generate Site Health Dashboard"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _platform_root: "{{ _reports_root }}/platform"
+    _history_root: "{{ _platform_root }}/history"
+    _scripts_dir: "{{ playbook_dir | dirname }}/scripts"
+    _template_dir: "{{ playbook_dir | dirname }}/templates"
+
+    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+    report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
+    report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+
+  tasks:
+    - name: "Step 1 | Aggregate Global State"
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ _scripts_dir }}/aggregate_yaml_reports.py"
+          - "{{ _platform_root }}"
+          - "{{ _platform_root }}/all_hosts_state.yaml"
+      changed_when: false
+
+    - name: "Step 2 | Load Global State"
+      ansible.builtin.include_vars:
+        file: "{{ _platform_root }}/all_hosts_state.yaml"
+        name: all_hosts
+
+    - name: "Step 3 | Calculate Fleet-Wide Alert List"
+      ansible.builtin.set_fact:
+        _global_alerts: >-
+          {%- set alerts = [] -%}
+          {%- for host, audits in (all_hosts.hosts | default({})).items() -%}
+            {# Filter out structural platform folders and state files #}
+            {%- if host not in ['platform', 'ubuntu', 'vmware', 'history', 'linux_fleet_state', 'vmware_fleet_state'] -%}
+              {%- for audit_type, data in audits.items() -%}
+                {%- for alert in (data.alerts | default([])) -%}
+                  {%- set _ = alerts.append(alert | combine({'host': host, 'audit_type': audit_type})) -%}
+                {%- endfor -%}
+              {%- endfor -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ alerts }}
+
+    - name: "Step 4 | Define Template-Specific Dashboard Variables"
+      ansible.builtin.set_fact:
+        totals:
+          critical: "{{ _global_alerts | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
+          warning: "{{ _global_alerts | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
+
+        # Virtualization-specific alarms for Dashboard cards
+        c_alarms:
+          critical: "{{ _global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}"
+          warning: "{{ _global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'WARNING') | list | length }}"
+
+        # Health badges for summary tables
+        linux_global_health: >-
+          {{ 'CRITICAL' if (_global_alerts | selectattr('audit_type', 'equalto', 'system') | selectattr('severity', 'equalto', 'CRITICAL') | list | length > 0) else 'OK' }}
+        vmware_global_health: >-
+          {{ 'CRITICAL' if (_global_alerts | selectattr('audit_type', 'search', 'vcenter') | selectattr('severity', 'equalto', 'CRITICAL') | list | length > 0) else 'OK' }}
+
+    - name: "Step 5 | Render Site Health Dashboard"
+      ansible.builtin.template:
+        src: "{{ _template_dir }}/site_health_report.html.j2"
+        dest: "{{ _reports_root }}/site_health_report_{{ report_stamp }}.html"
+        mode: "0644"
+
+    - name: "Step 6 | Maintain 'Latest' Symlink"
+      ansible.builtin.file:
+        src: "site_health_report_{{ report_stamp }}.html"
+        dest: "{{ _reports_root }}/site_health_report.html"
+        state: link
+        force: true
+
+    - name: "Step 7 | Archive old reports (Older than 30 days)"
+      block:
+        - name: Create history directory
+          ansible.builtin.file:
+            path: "{{ _history_root }}"
+            state: directory
+            mode: "0755"
+
+        - name: Find old site reports
+          ansible.builtin.find:
+            paths: "{{ _reports_root }}"
+            patterns: "site_health_report_*.html"
+            age: 30d
+          register: _old_reports
+
+        - name: Move old reports to history
+          ansible.builtin.command: "mv {{ item.path }} {{ _history_root }}/"
+          loop: "{{ _old_reports.files }}"
+          when: _old_reports.matched > 0
+          changed_when: true
+          loop_control:
+            label: "{{ item.path }}"

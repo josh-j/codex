@@ -1,0 +1,98 @@
+---
+# internal.vmware.summary : tasks/report.yaml
+
+- name: Phase 3 | VMware Fleet & Node Report Generation
+  vars:
+    _scripts_dir: "{{ playbook_dir.split('/playbooks')[0] }}/playbooks/scripts"
+    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _vmware_report_dir: "{{ _reports_root }}/platform/vmware"
+
+    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+    report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
+    report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+
+  block:
+    - name: Ensure VMware report directory exists
+      ansible.builtin.file:
+        path: "{{ _vmware_report_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Aggregate VMware Audit & Discovery State
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ _scripts_dir }}/aggregate_yaml_reports.py"
+          - "{{ _vmware_report_dir }}"
+          - "{{ _vmware_report_dir }}/vmware_fleet_state.yaml"
+      changed_when: false
+
+    - name: Load Aggregated Data
+      ansible.builtin.include_vars:
+        file: "{{ _vmware_report_dir }}/vmware_fleet_state.yaml"
+        name: vmw_all_hosts
+
+    - name: Ensure per-host report directories exist
+      ansible.builtin.file:
+        path: "{{ _vmware_report_dir }}/{{ item.key }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ (vmw_all_hosts.hosts | default({})) | dict2items }}"
+      when: item.key not in ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+
+    - name: Render detailed per-vCenter HTML reports
+      ansible.builtin.template:
+        src: "vcenter_health_report.html.j2"
+        dest: "{{ _vmware_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
+        mode: "0644"
+      loop: "{{ (vmw_all_hosts.hosts | default({})) | dict2items }}"
+      when: item.key not in ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+      vars:
+        vcenter_name: "{{ item.key }}"
+
+        # Host bundle from aggregator (may contain discovery + audit, or just one)
+        _bundle: "{{ item.value | default({}) }}"
+
+        # Prefer explicit discovery/audit keys if aggregator keeps them split.
+        _discovery: "{{ _bundle.discovery | default({}) }}"
+        _audit: "{{ _bundle.vcenter | default(_bundle.audit | default(_bundle)) }}"
+
+        # One object for templates: discovery base + audit overlays (alerts, vcenter_health, check_metadata, gauges)
+        vmware_ctx: "{{ _discovery | combine(_audit, recursive=true) }}"
+
+        # Canonical alerts (new export persists top-level alerts); fall back to vcenter_health.alerts
+        vmware_alerts: >-
+          {{
+            (_audit.alerts
+              | default((_audit.vcenter_health.alerts | default(_bundle.vcenter_health.alerts | default([])))))
+            | list
+          }}
+
+        # Optional: pass the audit section explicitly if your template wants summary/health
+        vcenter_health: >-
+          {{
+            _audit.vcenter_health
+              | default(_bundle.vcenter_health | default({}))
+          }}
+
+    - name: Maintain 'Latest' Host Symlinks
+      ansible.builtin.file:
+        src: "health_report_{{ report_stamp }}.html"
+        dest: "{{ _vmware_report_dir }}/{{ item.key }}/health_report.html"
+        state: link
+        force: true
+      loop: "{{ (vmw_all_hosts.hosts | default({})) | dict2items }}"
+      when: item.key not in ['Summary', 'Split', 'platform', 'vmware_fleet_state', 'history']
+
+    - name: Render VMware Fleet HTML Dashboard
+      ansible.builtin.template:
+        src: "vmware_health_report.html.j2"
+        dest: "{{ _vmware_report_dir }}/vmware_health_report_{{ report_stamp }}.html"
+        mode: "0644"
+
+    - name: Create 'Latest' Fleet Symlink
+      ansible.builtin.file:
+        src: "vmware_health_report_{{ report_stamp }}.html"
+        dest: "{{ _vmware_report_dir }}/vmware_health_report.html"
+        state: link
+        force: true
