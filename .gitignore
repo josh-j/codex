@@ -4,8 +4,12 @@
 
 # Environment
 .venv/
+.direnv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # Logs & Reports
 logs/*.log

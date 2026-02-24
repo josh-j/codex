@@ -1,6 +1,9 @@
-.PHONY: lint format check test all jinja-lint ansible-lint
+.PHONY: lint format check test all jinja-lint ansible-lint setup
 
-all: lint check test jinja-lint ansible-lint
+all: setup lint check test jinja-lint ansible-lint
+
+setup:
+	ansible-galaxy collection install -r requirements.yml
 
 lint:
 	ruff check .
@@ -18,4 +21,4 @@ jinja-lint:
 	find . -type d -name .venv -prune -o -name "*.j2" -print | xargs j2lint
 
 ansible-lint:
-	ansible-lint
+	ansible-lint --exclude .venv
