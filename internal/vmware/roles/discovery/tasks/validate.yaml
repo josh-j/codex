@@ -9,6 +9,11 @@
           role_path ~ '/../discovery/defaults/main.yaml',
           'vmware_ctx'
         )
+      - >-
+        vmware_ctx | internal.core.validate_typed_schema_from_file(
+          role_path ~ '/../discovery/defaults/main.yaml',
+          'vmware_ctx'
+        )
     fail_msg: "vmware_ctx schema keys do not match discovery defaults."
     quiet: true
   changed_when: false

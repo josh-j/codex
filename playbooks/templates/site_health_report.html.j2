@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infrastructure Audit | {{ report_date }}</title>
     <style>
-        {% include 'report_styles.css' %}
+        {% include 'report_shared.css' %}
     </style>
 </head>
 <body>
@@ -112,15 +112,16 @@
 
         <section id="security" class="tab-content">
             <h2 class="sub-title">STIG Compliance Audit</h2>
-            {% for hostname, audits in all_hosts.items() %}
-            {% if audits.stig is defined %}
+            {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
+            {% for audit_type, stig_audit in audits.items() %}
+            {% if (audit_type | string | lower).startswith('stig') %}
             <div class="compliance-entry">
                 <div class="entry-header">
-                    <h3>{{ hostname }}</h3>
-                    {{ status_badge(audits.stig.health) }}
+                    <h3>{{ hostname }} <span class="text-muted" style="font-size: 0.85rem;">({{ audit_type }})</span></h3>
+                    {{ status_badge(stig_audit.health | default('UNKNOWN')) }}
                 </div>
                 <div class="finding-grid">
-                    {% for alert in audits.stig.alerts %}
+                    {% for alert in (stig_audit.alerts | default([])) %}
                     <div class="finding-card {{ alert.severity | lower }}">
                         <span class="finding-id">{{ alert.detail.rule_id | default('V-RULE') }}</span>
                         <p>{{ alert.message }}</p>
@@ -130,12 +131,13 @@
             </div>
             {% endif %}
             {% endfor %}
+            {% endfor %}
         </section>
 
         <section id="compute" class="tab-content">
             <h2 class="sub-title">Virtualization Resource Saturation</h2>
             <div class="compute-grid">
-                {% for hostname, audits in all_hosts.items() %}
+                {% for hostname, audits in (all_hosts.hosts | default(all_hosts)).items() %}
                     {% if audits.vcenter_health is defined %}
                         <div class="vcenter-node">
                             <h3>vCenter: {{ hostname }}</h3>

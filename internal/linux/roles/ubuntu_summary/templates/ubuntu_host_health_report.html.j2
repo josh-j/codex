@@ -6,7 +6,7 @@
     <title>{{ host_name }} | Node Health Report</title>
     <style>
         /* Including the common stylesheet shared across all Linux reports */
-        {% include 'ubuntu_report_styles.css' %}
+        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
     </style>
 </head>
 <body>

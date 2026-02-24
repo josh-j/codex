@@ -6,7 +6,7 @@
     <title>Linux Infrastructure Audit | {{ report_date | default(now(utc=true, fmt='%Y-%m-%d')) }}</title>
     <style>
         /* Using common CSS shared across Linux reports */
-        {% include 'ubuntu_report_styles.css' %}
+        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
     </style>
 </head>
 <body>

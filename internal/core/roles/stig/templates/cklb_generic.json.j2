@@ -44,13 +44,14 @@
         {% set result = audit_map.get(rule.rule_version) %}
         {% set ns = namespace(status='not_reviewed', details='', comment='') %}
         {% if result %}
-          {% if result.status == 'FAILED' %}
+          {% set _status = result.status | default('') | string | lower %}
+          {% if _status == 'failed' %}
             {% set ns.status  = 'open' %}
-            {% set ns.details = result.details %}
+            {% set ns.details = result.details | default(result.checktext | default('')) %}
             {% set ns.comment = 'Automated Audit: Non-Compliant setting found.' %}
-          {% elif result.status == 'PASSED' %}
+          {% elif _status in ['passed', 'pass'] %}
             {% set ns.status  = 'not_a_finding' %}
-            {% set ns.details = result.details %}
+            {% set ns.details = result.details | default(result.checktext | default('')) %}
             {% set ns.comment = 'Automated Audit: Verified Compliant.' %}
           {% endif %}
         {% endif %}

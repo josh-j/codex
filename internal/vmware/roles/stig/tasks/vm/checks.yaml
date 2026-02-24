@@ -29,4 +29,11 @@
 - name: "VM STIG | Extract violations"
   tags: [stig, audit]
   ansible.builtin.set_fact:
-    audit_violations: "{{ audit_full_list | selectattr('status', 'equalto', 'failed') | list }}"
+    audit_violations: >-
+      {%- set violations = [] -%}
+      {%- for item in (audit_full_list | default([])) -%}
+        {%- if (item.status | default('') | string | lower) == 'failed' -%}
+          {%- set _ = violations.append(item) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ violations }}

@@ -8,6 +8,15 @@
     tasks_from: finalize.yaml
   vars:
     stig_quiet_mode: "{{ vmware_config_quiet_mode | default(false) }}"
+    ncs_export_path: >-
+      {{
+        (ncs_config.report_directory | default('/srv/samba/reports'))
+        ~ '/platform/vmware/'
+        ~ inventory_hostname
+        ~ '/stig_'
+        ~ stig_target_type
+        ~ '.yaml'
+      }}
 
 - name: "STIG | Generate CKLB artifacts"
   tags: [stig, reporting]
@@ -16,7 +25,17 @@
     - audit_full_list | default([]) | length > 0
   ansible.builtin.template:
     src: "cklb_generic.json.j2"
-    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ item.0 }}_{{ run_ctx.id | default('unknown') }}_STIG.cklb"
+    dest: >-
+      {{
+        (ncs_config.report_directory | default('/srv/samba/reports'))
+        ~ '/platform/vmware/'
+        ~ inventory_hostname
+        ~ '/'
+        ~ item.0
+        ~ '_'
+        ~ (run_ctx.id | default('unknown'))
+        ~ '_STIG.cklb'
+      }}
     mode: "0664"
   vars:
     target_name: "{{ item.0 }}"

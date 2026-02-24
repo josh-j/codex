@@ -5,30 +5,14 @@
   ansible.builtin.set_fact:
     vmware_alerts: >-
       {{
-        (vmware_alerts | default([]) | list) +
-        (_snap_check_def | internal.core.build_alerts | default([]) | list)
+        (vmware_alerts | default([]) | list)
+        + (
+          vmware_ctx
+          | internal.vmware.audit_snapshot_alerts(
+            vmware_snapshot_age_warning_days | default(7) | int,
+            vmware_snapshot_size_warning_gb | default(100) | float,
+            vmware_snapshot_items_max | default(25) | int
+          )
+        )
       }}
-  vars:
-    _snap_summary: >-
-      {{
-        vmware_ctx.inventory.snapshots.summary
-        | default({'aged_count': 0, 'total_size_gb': 0.0, 'large_snapshots': [], 'oldest_days': 0})
-      }}
-
-    _max_items: "{{ vmware_snapshot_items_max | default(25) | int }}"
-
-    _snap_check_def:
-      - condition: "{{ (_snap_summary.aged_count | int) > 0 }}"
-        severity: WARNING
-        category: snapshots
-        message: "Capacity Risk: {{ _snap_summary.aged_count }} snapshot(s) older than {{ vmware_snapshot_age_warning_days | default(7) }} days"
-        detail:
-          total_gb: "{{ _snap_summary.total_size_gb | default(0.0) }}"
-          oldest_days: "{{ _snap_summary.oldest_days | default(0) }}"
-
-      - condition: "{{ (_snap_summary.large_snapshots | default([])) | length > 0 }}"
-        severity: WARNING
-        category: snapshots
-        message: "{{ (_snap_summary.large_snapshots | default([])) | length }} VM(s) have oversized snapshots (>{{ vmware_snapshot_size_warning_gb | default(100) }}GB)"
-        affected_items: "{{ (_snap_summary.large_snapshots | default([]))[:_max_items] }}"
   changed_when: false

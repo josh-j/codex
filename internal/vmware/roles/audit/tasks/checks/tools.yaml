@@ -5,42 +5,12 @@
   ansible.builtin.set_fact:
     vmware_alerts: >-
       {{
-        (vmware_alerts | default([]) | list) +
-        (_tool_check_def | internal.core.build_alerts | default([]) | list)
-      }}
-  vars:
-    _vms: "{{ vmware_ctx.inventory.vms.list | default([]) }}"
-    _max_items: "{{ vmware_tools_items_max | default(50) | int }}"
-
-    # Consider 'toolsOk' healthy; treat 'toolsOld' as healthy if you want to allow it.
-    _healthy_statuses: ["toolsOk", "toolsOld"]
-
-    # Powered on VMs with tools_status missing or not in healthy list
-    _unhealthy_tools: >-
-      {{
-        _vms
-        | selectattr('power_state', 'defined')
-        | selectattr('power_state', 'match', '(?i)^poweredon$')
-        | rejectattr('tools_status', 'defined')
-        | list
-        +
-        (
-          _vms
-          | selectattr('power_state', 'defined')
-          | selectattr('power_state', 'match', '(?i)^poweredon$')
-          | selectattr('tools_status', 'defined')
-          | rejectattr('tools_status', 'in', _healthy_statuses)
-          | list
+        (vmware_alerts | default([]) | list)
+        + (
+          vmware_ctx
+          | internal.vmware.audit_tools_alerts(
+            vmware_tools_items_max | default(50) | int
+          )
         )
       }}
-
-    _tool_check_def:
-      - condition: "{{ _unhealthy_tools | length > 0 }}"
-        severity: WARNING
-        category: workload_compliance
-        message: "Compliance Gap: {{ _unhealthy_tools | length }} powered-on VM(s) have unhealthy VMware Tools"
-        recommendation: "Verify Tools installation to ensure backup quiescing and driver performance."
-        detail:
-          total_impacted: "{{ _unhealthy_tools | length }}"
-        affected_items: "{{ (_unhealthy_tools | map(attribute='name') | list)[:_max_items] }}"
   changed_when: false

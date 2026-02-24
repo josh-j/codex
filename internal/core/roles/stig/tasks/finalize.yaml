@@ -4,47 +4,141 @@
 # Generic STIG report export. Called from collection-level finalize tasks.
 # Expects: audit_full_list, audit_violations, stig_target_type, run_ctx, ncs_config
 
+- name: "STIG | Normalize audit results"
+  tags: [stig, reporting]
+  ansible.builtin.set_fact:
+    _stig_report_host_dir: >-
+      {{
+        (
+          ncs_export_path | dirname
+          if ncs_export_path is defined
+          else (ncs_config.report_directory | default('/srv/samba/reports'))
+               ~ '/'
+               ~ inventory_hostname
+        )
+      }}
+    _stig_export_path: >-
+      {{
+        ncs_export_path
+        | default(
+          (ncs_config.report_directory | default('/srv/samba/reports'))
+          ~ '/'
+          ~ inventory_hostname
+          ~ '/'
+          ~ inventory_hostname
+          ~ '_stig_'
+          ~ stig_target_type
+          ~ '.yaml'
+        )
+      }}
+    _stig_audit_full_list_normalized: >-
+      {%- set normalized = [] -%}
+      {%- for item in (audit_full_list | default([])) -%}
+        {%- set _ = normalized.append(
+          item | combine({'status': (item.status | default('') | string | lower)})
+        ) -%}
+      {%- endfor -%}
+      {{ normalized }}
+    _stig_audit_violations_normalized: >-
+      {%- set violations = [] -%}
+      {%- for item in (audit_full_list | default([])) -%}
+        {%- if (item.status | default('') | string | lower) == 'failed' -%}
+          {%- set _ = violations.append(
+            item | combine({'status': (item.status | default('') | string | lower)})
+          ) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ violations }}
+    _stig_alerts_normalized: >-
+      {%- set alerts = [] -%}
+      {%- for item in (_stig_audit_violations_normalized | default([])) -%}
+        {%- set raw_sev = item.severity | default('medium') | string | upper -%}
+        {%- set sev = (
+          'CRITICAL' if raw_sev in ['CAT_I', 'HIGH', 'SEVERE']
+          else 'WARNING' if raw_sev in ['CAT_II', 'MEDIUM', 'MODERATE']
+          else 'INFO'
+        ) -%}
+        {%- set _ = alerts.append({
+          'severity': sev,
+          'category': 'security_compliance',
+          'message': 'STIG Violation: ' ~ (item.title | default(item.id | default('Unknown Rule'))),
+          'detail': {
+            'rule_id': (item.id | default('')),
+            'description': (item.checktext | default(item.details | default(''))),
+            'original_severity': raw_sev,
+            'target_type': (stig_target_type | default(''))
+          }
+        }) -%}
+      {%- endfor -%}
+      {{ alerts }}
+
 - name: "STIG | Summary"
   tags: [stig, reporting]
   when: not (stig_quiet_mode | default(false) | bool)
   ansible.builtin.debug:
     msg: >-
       {{ inventory_hostname }} | {{ stig_target_type | upper }} STIG |
-      {{ audit_full_list | default([]) | length }} checks |
-      {{ audit_violations | default([]) | length }} violation(s)
+      {{ _stig_audit_full_list_normalized | default([]) | length }} checks |
+      {{ _stig_audit_violations_normalized | default([]) | length }} violation(s)
 
 - name: "STIG | Export audit results to YAML"
   tags: [stig, reporting]
-  ansible.builtin.copy:
-    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.yaml"
-    mode: "0664"
-    content: >-
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    ncs_export_path: "{{ _stig_export_path }}"
+    ncs_export_data: >-
       {{
         {
-          'host':        inventory_hostname,
+          'audit_type': 'stig',
+          'audit_failed': (_stig_audit_failed | default(false) | bool),
+          'host': inventory_hostname,
           'target_type': stig_target_type,
-          'checked_at':  run_ctx.timestamp | default(''),
+          'checked_at': (run_ctx.timestamp | default('')),
+          'health': (
+            _stig_alerts_normalized | default([]) | internal.core.health_rollup
+          ),
           'summary': {
-            'total':      audit_full_list  | default([]) | length,
-            'violations': audit_violations | default([]) | length,
-            'passed':     audit_full_list  | default([]) | selectattr('status', 'equalto', 'pass') | list | length
+            'total': (_stig_audit_full_list_normalized | default([]) | length),
+            'violations': (_stig_audit_violations_normalized | default([]) | length),
+            'passed': (
+              _stig_audit_full_list_normalized
+              | default([])
+              | selectattr('status', 'equalto', 'pass')
+              | list
+              | length
+            ),
+            'critical_count': (
+              _stig_alerts_normalized
+              | default([])
+              | selectattr('severity', 'equalto', 'CRITICAL')
+              | list
+              | length
+            ),
+            'warning_count': (
+              _stig_alerts_normalized
+              | default([])
+              | selectattr('severity', 'equalto', 'WARNING')
+              | list
+              | length
+            )
           },
-          'violations': audit_violations | default([]),
-          'full_audit': audit_full_list  | default([])
-        } | to_nice_yaml
+          'alerts': (_stig_alerts_normalized | default([])),
+          'violations': (_stig_audit_violations_normalized | default([])),
+          'full_audit': (_stig_audit_full_list_normalized | default([]))
+        }
       }}
-  delegate_to: localhost
-  become: false
 
 - name: "STIG | Render HTML report"
   tags: [stig, reporting]
-  when: audit_full_list | default([]) | length > 0
+  when: _stig_audit_full_list_normalized | default([]) | length > 0
   ansible.builtin.template:
     src: "stig_report.html.j2"
-    dest: "{{ ncs_config.report_directory }}/{{ inventory_hostname }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.html"
+    dest: "{{ _stig_report_host_dir }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.html"
     mode: "0664"
   vars:
     timestamp: "{{ run_ctx.timestamp | default('') }}"
-    report_data: "{{ audit_violations  | default([]) }}"
+    report_data: "{{ _stig_audit_violations_normalized | default([]) }}"
   delegate_to: localhost
   become: false

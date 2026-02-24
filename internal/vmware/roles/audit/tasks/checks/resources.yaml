@@ -3,62 +3,30 @@
 
 - name: Audit | Evaluate Global vCenter Resource Saturation (alerts)
   ansible.builtin.set_fact:
+    _resource_rollup: >-
+      {{
+        (vmware_ctx.inventory.clusters.list | default([]))
+        | internal.vmware.audit_resource_rollup(
+          vmware_cpu_critical_pct | default(90) | int,
+          vmware_cpu_warning_pct | default(80) | int,
+          vmware_memory_critical_pct | default(90) | int,
+          vmware_memory_warning_pct | default(80) | int
+        )
+      }}
     vmware_alerts: >-
       {{
-        (vmware_alerts | default([]) | list) +
-        (_cpu_alerts | default([]) | list) +
-        (_mem_alerts | default([]) | list)
+        (vmware_alerts | default([]) | list)
+        + (_resource_rollup.alerts | default([]) | list)
       }}
-  vars:
-    _cl: "{{ vmware_ctx.inventory.clusters.list | default([]) }}"
-
-    # Pull values robustly; attribute may be missing on some cluster objects.
-    _cpu_caps: "{{ _cl | map(attribute='utilization.cpu_total_mhz') | map('default', 0) | map('int') | list }}"
-    _cpu_useds: "{{ _cl | map(attribute='utilization.cpu_used_mhz')  | map('default', 0) | map('int') | list }}"
-    _mem_caps: "{{ _cl | map(attribute='utilization.mem_total_mb')   | map('default', 0) | map('int') | list }}"
-    _mem_useds: "{{ _cl | map(attribute='utilization.mem_used_mb')    | map('default', 0) | map('int') | list }}"
-
-    _cpu_cap: "{{ _cpu_caps | sum }}"
-    _cpu_used: "{{ _cpu_useds | sum }}"
-    _mem_cap: "{{ _mem_caps | sum }}"
-    _mem_used: "{{ _mem_useds | sum }}"
-
-    _cpu_pct: "{{ ((_cpu_used | int / ([_cpu_cap | int, 1] | max)) * 100) | round(1) }}"
-    _mem_pct: "{{ ((_mem_used | int / ([_mem_cap | int, 1] | max)) * 100) | round(1) }}"
-
-    _cpu_alerts: "{{ _cpu_pct | internal.core.threshold_alert('capacity', 'CPU Saturation: ' ~ _cpu_pct ~ '%', 90, 80, {'cpu_used_mhz': _cpu_used, 'cpu_total_mhz': _cpu_cap}) }}"
-    _mem_alerts: "{{ _mem_pct | internal.core.threshold_alert('capacity', 'Mem Saturation: ' ~ _mem_pct ~ '%', 90, 80, {'mem_used_mb': _mem_used, 'mem_total_mb': _mem_cap}) }}"
   changed_when: false
 
 - name: Audit | Persist resource utilization gauges (non-alert data only)
   ansible.builtin.set_fact:
     vmware_ctx: >-
       {{
-        vmware_ctx | combine({
-          'vcenter_health': (vmware_ctx.vcenter_health | default({})) | combine({
-            'data': (vmware_ctx.vcenter_health.data | default({})) | combine({
-              'utilization': {
-                'cpu_total_mhz': _cpu_cap | int,
-                'cpu_used_mhz': _cpu_used | int,
-                'mem_total_mb': _mem_cap | int,
-                'mem_used_mb': _mem_used | int,
-                'cpu_pct': _cpu_pct | float,
-                'mem_pct': _mem_pct | float
-              }
-            }, recursive=true)
-          }, recursive=true)
-        }, recursive=true)
+        vmware_ctx
+        | internal.vmware.attach_audit_utilization(
+          _resource_rollup.utilization | default({})
+        )
       }}
-  vars:
-    _cl: "{{ vmware_ctx.inventory.clusters.list | default([]) }}"
-    _cpu_caps: "{{ _cl | map(attribute='utilization.cpu_total_mhz') | map('default', 0) | map('int') | list }}"
-    _cpu_useds: "{{ _cl | map(attribute='utilization.cpu_used_mhz')  | map('default', 0) | map('int') | list }}"
-    _mem_caps: "{{ _cl | map(attribute='utilization.mem_total_mb')   | map('default', 0) | map('int') | list }}"
-    _mem_useds: "{{ _cl | map(attribute='utilization.mem_used_mb')    | map('default', 0) | map('int') | list }}"
-    _cpu_cap: "{{ _cpu_caps | sum }}"
-    _cpu_used: "{{ _cpu_useds | sum }}"
-    _mem_cap: "{{ _mem_caps | sum }}"
-    _mem_used: "{{ _mem_useds | sum }}"
-    _cpu_pct: "{{ ((_cpu_used | int / ([_cpu_cap | int, 1] | max)) * 100) | round(1) }}"
-    _mem_pct: "{{ ((_mem_used | int / ([_mem_cap | int, 1] | max)) * 100) | round(1) }}"
   changed_when: false
