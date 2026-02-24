@@ -47,9 +47,15 @@
       when: vsphere_stig_enable_audit | default(false) | bool
       ansible.builtin.set_fact:
         _vsphere_stig_audit_ran: true
+        _stig_audit_ran: true
 
   rescue:
     - name: "ESXi STIG | Log failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "ESXi STIG | Log failure details"
       ansible.builtin.debug:
         msg: "ESXi STIG audit failed on {{ inventory_hostname }} — export will indicate failure."
       register: _vsphere_stig_task_failure
@@ -57,6 +63,7 @@
   always:
     - name: "ESXi STIG | Export results"
       tags: [always, stig, reporting]
-      when: _vsphere_stig_audit_ran | default(false)
+      when:
+        - _stig_audit_ran | default(false)
       ansible.builtin.include_tasks:
         file: "{{ role_path }}/../shared/finalize.yaml"

@@ -15,11 +15,17 @@
 {% set platforms = site.get('platforms', {}) %}
 {% set linux_platform = platforms.get('linux', {}) %}
 {% set vmware_platform = platforms.get('vmware', {}) %}
+{% set windows_platform = platforms.get('windows', {}) %}
 {% set security = site.get('security', {}) %}
 {% set stig_fleet = security.get('stig_fleet', {}) %}
 {% set stig_fleet_rows = stig_fleet.get('rows', []) %}
+{% set stig_fleet_meta = stig_fleet.get('fleet', {}) %}
+{% set stig_fleet_totals = stig_fleet_meta.get('totals', {}) %}
+{% set stig_by_platform = stig_fleet_meta.get('by_platform', {}) %}
+{% set stig_top_findings = stig_fleet.get('findings_index', {}).get('top_findings', []) %}
 {% set compute = site.get('compute', {}) %}
 {% set compute_nodes = compute.get('nodes', []) %}
+{% set alert_queue = site.get('alerts', []) %}
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -30,11 +36,10 @@
         <ul class="nav-links">
             <li class="active" onclick="showTab('summary', this)">System Overview</li>
             <li onclick="showTab('compute', this)">Compute Environment</li>
-            <li onclick="showTab('storage', this)">Storage & Fabric</li>
             <li onclick="showTab('security', this)">Security Compliance</li>
             <li onclick="showTab('alerts', this)">
                 Alert Queue
-                {% if totals.get('critical', 0)|int > 0 %}
+                {% if totals.get('critical', 0) | int > 0 %}
                     <span class="count-pill">{{ totals.get('critical', 0) }}</span>
                 {% endif %}
             </li>
@@ -52,7 +57,6 @@
                 <p>Real-time status of managed infrastructure assets.</p>
             </div>
             <div class="header-util">
-                <input type="text" id="hostSearch" onkeyup="filterHosts()" placeholder="Filter by hostname...">
                 <button class="btn-secondary" onclick="window.print()">Print Report</button>
             </div>
         </header>
@@ -61,16 +65,16 @@
             <div class="stat-grid">
                 <div class="stat-card">
                     <label>Fleet Compliance</label>
-                    <div class="stat-value">{{ 100 - (totals.get('critical', 0) * 1.5)|int }}%</div>
+                    <div class="stat-value">{{ 100 - (totals.get('critical', 0) * 1.5) | int }}%</div>
                     <div class="progress-track"><div class="progress-fill" style="width: {{ 100 - (totals.get('critical', 0) * 1.5) }}%;"></div></div>
                 </div>
                 <div class="stat-card">
                     <label>Critical Faults</label>
-                    <div class="stat-value {{ 'danger' if totals.get('critical', 0)|int > 0 }}">{{ totals.get('critical', 0) }}</div>
+                    <div class="stat-value {{ 'danger' if totals.get('critical', 0) | int > 0 }}">{{ totals.get('critical', 0) }}</div>
                 </div>
                 <div class="stat-card">
                     <label>Warning States</label>
-                    <div class="stat-value {{ 'warning' if totals.get('warning', 0)|int > 0 }}">{{ totals.get('warning', 0) }}</div>
+                    <div class="stat-value {{ 'warning' if totals.get('warning', 0) | int > 0 }}">{{ totals.get('warning', 0) }}</div>
                 </div>
             </div>
 
@@ -108,6 +112,17 @@
                                 </a>
                             </td>
                         </tr>
+                        <tr>
+                            <td><strong>Windows Server Environment</strong></td>
+                            <td>{{ windows_platform.get('asset_count', 0) }} {{ windows_platform.get('asset_label', 'Nodes') }}</td>
+                            {% set _badge = (windows_platform.get('status', {}).get('raw', 'OK')) | internal.core.status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>
+                                <a href="{{ windows_platform.get('links', {}).get('fleet_dashboard', 'platform/windows/windows_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View Windows Fleet ↗
+                                </a>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -115,6 +130,52 @@
 
         <section id="security" class="tab-content">
             <h2 class="sub-title">STIG Compliance Audit</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Fleet STIG Totals</h3>
+                    <table>
+                        <tr><td>Hosts</td><td><strong>{{ stig_fleet_totals.get('hosts', 0) }}</strong></td></tr>
+                        <tr><td>Open Findings</td><td><strong>{{ stig_fleet_totals.get('findings_open', 0) }}</strong></td></tr>
+                        <tr><td>Critical Findings</td><td><strong class="text-danger">{{ stig_fleet_totals.get('critical', 0) }}</strong></td></tr>
+                        <tr><td>Warning Findings</td><td><strong class="text-warning">{{ stig_fleet_totals.get('warning', 0) }}</strong></td></tr>
+                    </table>
+                </div>
+                <div class="card">
+                    <h3>By Platform</h3>
+                    <table>
+                        <thead><tr><th>Platform</th><th>Hosts</th><th>Open</th></tr></thead>
+                        <tbody>
+                            {% for platform_name, pdata in stig_by_platform.items() %}
+                            <tr>
+                                <td>{{ platform_name }}</td>
+                                <td>{{ pdata.get('hosts', 0) }}</td>
+                                <td>{{ pdata.get('open', 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <h3 class="sub-title">Top Recurring Findings</h3>
+            <div class="card-wrap">
+                <table>
+                    <thead><tr><th>Rule ID</th><th>Severity</th><th>Affected Hosts</th><th>Title</th></tr></thead>
+                    <tbody>
+                        {% for finding in stig_top_findings %}
+                        {% set _badge = (finding.severity | default('INFO')) | internal.core.status_badge_meta %}
+                        <tr>
+                            <td><code>{{ finding.rule_id }}</code></td>
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>{{ finding.affected_hosts }}</td>
+                            <td>{{ finding.title }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-muted);">No recurring open findings.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% for entry in stig_fleet_rows %}
             <div class="compliance-entry">
                 <div class="entry-header">
@@ -147,10 +208,10 @@
             <h2 class="sub-title">Virtualization Resource Saturation</h2>
             <div class="compute-grid">
                 {% for node in compute_nodes %}
-                        <div class="vcenter-node">
-                            <h3>vCenter: {{ node.host }}</h3>
-                            <div class="resource-flex">
-                                {% for cluster in (node.clusters | default([])) %}
+                    <div class="vcenter-node">
+                        <h3>vCenter: {{ node.host }}</h3>
+                        <div class="resource-flex">
+                            {% for cluster in (node.clusters | default([])) %}
                                 <div class="cluster-card">
                                     <label>{{ cluster.name }}</label>
                                     <div class="metric">
@@ -162,10 +223,41 @@
                                         <div class="mini-bar"><div class="fill" style="width: {{ cluster.utilization.mem_pct }}%;"></div></div>
                                     </div>
                                 </div>
-                                {% endfor %}
-                            </div>
+                            {% endfor %}
                         </div>
+                    </div>
                 {% endfor %}
+            </div>
+        </section>
+
+        <section id="alerts" class="tab-content">
+            <h2 class="sub-title">Alert Queue</h2>
+            <div class="card-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Host</th>
+                            <th>Audit Type</th>
+                            <th>Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in alert_queue %}
+                        {% set _badge = (item.severity | default('UNKNOWN')) | internal.core.status_badge_meta %}
+                        <tr>
+                            <td>{{ item.host | default('unknown') }}</td>
+                            <td>{{ item.audit_type | default('unknown') }}</td>
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; padding:30px; color: var(--text-muted);">
+                                No active critical or warning alerts.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </section>
     </main>
@@ -177,6 +269,11 @@
         document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         el.classList.add('active');
+    }
+
+    function filterHosts() {
+        // Legacy hook retained for backwards compatibility with older templates.
+        return;
     }
 </script>
 </body>

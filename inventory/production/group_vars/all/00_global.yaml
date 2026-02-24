@@ -21,14 +21,13 @@ ncs_config:
 
   schedule:
     day_matrix:
-      monday:    [vmware, unisphere, backup_unisphere, ucs_fi, snow]
-      tuesday:   [vmware, unisphere, backup_unisphere, ucs_fi, snow]
+      monday: [vmware, unisphere, backup_unisphere, ucs_fi, snow]
+      tuesday: [vmware, unisphere, backup_unisphere, ucs_fi, snow]
       wednesday: [vmware, unisphere, backup_unisphere, ucs_fi, snow]
-      thursday:  [vmware, unisphere, backup_unisphere, ucs_fi, snow, patch]
-      friday:    [vmware, unisphere, backup_unisphere, ucs_fi, snow, weekly]
-      saturday:  []
-      sunday:    []
-
+      thursday: [vmware, unisphere, backup_unisphere, ucs_fi, snow, patch]
+      friday: [vmware, unisphere, backup_unisphere, ucs_fi, snow, weekly]
+      saturday: []
+      sunday: []
   logging:
     export_to_file: true
     file_path: ../logs/ncs.log

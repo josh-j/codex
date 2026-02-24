@@ -2,7 +2,6 @@ import importlib.util
 import pathlib
 import unittest
 
-
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"

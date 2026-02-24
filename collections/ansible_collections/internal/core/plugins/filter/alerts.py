@@ -20,9 +20,21 @@
 #   set_fact:
 #     my_alerts: "{{ checks | internal.core.build_alerts }}"
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
+import importlib.util
+from pathlib import Path
+
+try:
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        canonical_severity,
+    )
+except ImportError:
+    _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "reporting_primitives.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
+    _mod = importlib.util.module_from_spec(_spec)
+    assert _spec is not None and _spec.loader is not None
+    _spec.loader.exec_module(_mod)
+    canonical_severity = _mod.canonical_severity
 
 DOCUMENTATION = """
   name: build_alerts
@@ -185,7 +197,7 @@ def health_rollup(alerts):
     severities = set()
     for a in alerts or []:
         if isinstance(a, dict):
-            severities.add(str(a.get("severity", "INFO")).upper())
+            severities.add(canonical_severity(a.get("severity", "INFO")))
 
     if "CRITICAL" in severities:
         return "CRITICAL"
@@ -212,15 +224,12 @@ def summarize_alerts(alerts):
         if not isinstance(alert, dict):
             continue
 
-        severity = str(alert.get("severity", "INFO")).upper()
+        severity = canonical_severity(alert.get("severity", "INFO"))
         if severity == "CRITICAL":
             summary["critical_count"] += 1
         elif severity == "WARNING":
             summary["warning_count"] += 1
-        elif severity in ("INFO", "OK"):
-            summary["info_count"] += 1
         else:
-            # Unrecognized severities are counted in total but not split out further.
             summary["info_count"] += 1
 
         cat = str(alert.get("category", "uncategorized")).lower()
@@ -255,7 +264,7 @@ def status_badge_meta(status, preserve_label=False):
     return {"css_class": css_class, "label": label}
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "build_alerts": build_alerts,

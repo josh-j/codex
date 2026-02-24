@@ -18,6 +18,8 @@
             pyvmomi
             jinja2
             pyyaml
+            aiohttp
+            pytest
           ]);
       in {
         devShells.default = pkgs.mkShell {
@@ -27,6 +29,9 @@
             pythonEnv
             ansible-lint
             yamllint
+            j2lint
+            ruff
+            mypy
             gnumake
             pandoc
             git

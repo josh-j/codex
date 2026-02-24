@@ -6,6 +6,7 @@
     vmware_alerts: >-
       {{
         (vmware_alerts | default([]) | list)
-        + (vmware_ctx | internal.vmware.audit_health_alerts)
+        | internal.vmware.append_alerts(vmware_ctx | internal.vmware.audit_health_alerts)
       }}
   changed_when: false
+  when: vmware_ctx is defined and vmware_ctx.get('health', {}).get('appliance') is defined

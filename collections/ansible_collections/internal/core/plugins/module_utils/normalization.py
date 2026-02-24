@@ -6,9 +6,7 @@ import re
 
 def result_envelope(payload, failed=False, error="", collected_at="", status=None):
     payload = dict(payload or {})
-    payload["status"] = str(
-        status if status is not None else ("QUERY_ERROR" if bool(failed) else "SUCCESS")
-    )
+    payload["status"] = str(status if status is not None else ("QUERY_ERROR" if bool(failed) else "SUCCESS"))
     payload["error"] = str(error or "")
     payload["collected_at"] = str(collected_at or "")
     return payload
@@ -35,29 +33,32 @@ def merge_section_defaults(section, payload, collected_at=""):
 
 def parse_json_command_result(command_result, object_only=True):
     """
-    Parse a command result dict (rc/stdout/stderr) and extract the first JSON object from stdout.
-
-    Returns a dict with rc/stdout/stderr/payload/script_valid.
+    Parse a command result dict (rc/stdout/stderr) and extract the first valid JSON object.
+    Supports outputs where JSON is preceded or followed by login banners or shell noise.
     """
     command_result = command_result or {}
     rc = int(command_result.get("rc", 1) or 1)
     stdout = str(command_result.get("stdout", "") or "").strip()
     stderr = str(command_result.get("stderr", "") or "").strip()
 
-    match = re.search(r"(?s)\{.*\}", stdout or "")
-    json_text = match.group(0).strip() if match else ""
-    script_valid = rc == 0 and len(json_text) > 0
-    if object_only:
-        script_valid = script_valid and json_text.lstrip().startswith("{")
+    payload = None
+    script_valid = False
 
-    if script_valid:
-        try:
-            payload = json.loads(json_text)
-        except Exception:
-            payload = None
-            script_valid = False
-    else:
-        payload = None
+    if stdout:
+        # Find all blocks that look like JSON objects
+        # Using a non-greedy but balanced-ish approach: look for {} pairs
+        # This is a heuristic; json.loads will do the heavy lifting.
+        matches = re.finditer(r"(\{.*\})", stdout, re.DOTALL)
+        for match in matches:
+            candidate = match.group(1).strip()
+            try:
+                payload = json.loads(candidate)
+                if object_only and not isinstance(payload, dict):
+                    continue
+                script_valid = rc == 0
+                break  # Found the first valid JSON block
+            except (json.JSONDecodeError, TypeError):
+                continue
 
     return {
         "rc": rc,

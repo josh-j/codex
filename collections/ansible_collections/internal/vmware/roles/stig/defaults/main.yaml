@@ -22,110 +22,110 @@ vsphere_stig_skeleton_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_vms_V1
 # defaults/main.yaml - vsphere_stig_vm_settings entries get severity added
 vsphere_stig_vm_settings:
   - {
-      id: "VMCH-70-000001",
-      key: "isolation.tools.copy.disable",
-      value: "TRUE",
-      severity: "high",
-      title: "Copy operations must be disabled",
-    }
+    id: "VMCH-70-000001",
+    key: "isolation.tools.copy.disable",
+    value: "TRUE",
+    severity: "high",
+    title: "Copy operations must be disabled",
+  }
   - {
-      id: "VMCH-70-000002",
-      key: "isolation.tools.dnd.disable",
-      value: "TRUE",
-      severity: "high",
-      title: "Drag and drop operations must be disabled",
-    }
+    id: "VMCH-70-000002",
+    key: "isolation.tools.dnd.disable",
+    value: "TRUE",
+    severity: "high",
+    title: "Drag and drop operations must be disabled",
+  }
   - {
-      id: "VMCH-70-000003",
-      key: "isolation.tools.paste.disable",
-      value: "TRUE",
-      severity: "high",
-      title: "Paste operations must be disabled",
-    }
+    id: "VMCH-70-000003",
+    key: "isolation.tools.paste.disable",
+    value: "TRUE",
+    severity: "high",
+    title: "Paste operations must be disabled",
+  }
   - {
-      id: "VMCH-70-000004",
-      key: "isolation.tools.diskShrink.disable",
-      value: "TRUE",
-      severity: "medium",
-      title: "Virtual disk shrinking must be disabled",
-    }
+    id: "VMCH-70-000004",
+    key: "isolation.tools.diskShrink.disable",
+    value: "TRUE",
+    severity: "medium",
+    title: "Virtual disk shrinking must be disabled",
+  }
   - {
-      id: "VMCH-70-000005",
-      key: "isolation.tools.diskWiper.disable",
-      value: "TRUE",
-      severity: "medium",
-      title: "Virtual disk wiping must be disabled",
-    }
+    id: "VMCH-70-000005",
+    key: "isolation.tools.diskWiper.disable",
+    value: "TRUE",
+    severity: "medium",
+    title: "Virtual disk wiping must be disabled",
+  }
   - {
-      id: "VMCH-70-000007",
-      key: "isolation.tools.hgfsServerSet.disable",
-      value: "TRUE",
-      severity: "medium",
-      title: "HGFS file transfers must be disabled",
-    }
+    id: "VMCH-70-000007",
+    key: "isolation.tools.hgfsServerSet.disable",
+    value: "TRUE",
+    severity: "medium",
+    title: "HGFS file transfers must be disabled",
+  }
   - {
-      id: "VMCH-70-000013",
-      key: "RemoteDisplay.maxConnections",
-      value: "1",
-      severity: "high",
-      title: "Console connection sharing must be limited",
-    }
+    id: "VMCH-70-000013",
+    key: "RemoteDisplay.maxConnections",
+    value: "1",
+    severity: "high",
+    title: "Console connection sharing must be limited",
+  }
   - {
-      id: "VMCH-70-000015",
-      key: "tools.setinfo.sizeLimit",
-      value: "1048576",
-      severity: "medium",
-      title: "Informational messages to VMX file must be limited",
-    }
+    id: "VMCH-70-000015",
+    key: "tools.setinfo.sizeLimit",
+    value: "1048576",
+    severity: "medium",
+    title: "Informational messages to VMX file must be limited",
+  }
   - {
-      id: "VMCH-70-000016",
-      key: "isolation.device.connectable.disable",
-      value: "TRUE",
-      severity: "medium",
-      title: "Unauthorized connection of devices must be prevented",
-    }
+    id: "VMCH-70-000016",
+    key: "isolation.device.connectable.disable",
+    value: "TRUE",
+    severity: "medium",
+    title: "Unauthorized connection of devices must be prevented",
+  }
   - {
-      id: "VMCH-70-000017",
-      key: "tools.guestlib.enableHostInfo",
-      value: "FALSE",
-      severity: "medium",
-      title: "Guest info gathering must be disabled",
-    }
+    id: "VMCH-70-000017",
+    key: "tools.guestlib.enableHostInfo",
+    value: "FALSE",
+    severity: "medium",
+    title: "Guest info gathering must be disabled",
+  }
   - {
-      id: "VMCH-70-000018",
-      key: "sched.mem.pshare.salt",
-      value: "ABSENT",
-      severity: "medium",
-      title: "Shared salt values must be disabled",
-    }
+    id: "VMCH-70-000018",
+    key: "sched.mem.pshare.salt",
+    value: "ABSENT",
+    severity: "medium",
+    title: "Shared salt values must be disabled",
+  }
   - {
-      id: "VMCH-70-000022",
-      key: "tools.guest.desktop.autolock",
-      value: "TRUE",
-      severity: "medium",
-      title: "Guest OS must lock when console closes",
-    }
+    id: "VMCH-70-000022",
+    key: "tools.guest.desktop.autolock",
+    value: "TRUE",
+    severity: "medium",
+    title: "Guest OS must lock when console closes",
+  }
   - {
-      id: "VMCH-70-000023",
-      key: "mks.enable3d",
-      value: "FALSE",
-      severity: "medium",
-      title: "3D features must be disabled",
-    }
+    id: "VMCH-70-000023",
+    key: "mks.enable3d",
+    value: "FALSE",
+    severity: "medium",
+    title: "3D features must be disabled",
+  }
   - {
-      id: "VMCH-70-000026",
-      key: "vmx.log.rotateSize",
-      value: "2048000",
-      severity: "medium",
-      title: "Log rotation size must be configured",
-    }
+    id: "VMCH-70-000026",
+    key: "vmx.log.rotateSize",
+    value: "2048000",
+    severity: "medium",
+    title: "Log rotation size must be configured",
+  }
   - {
-      id: "VMCH-70-000027",
-      key: "vmx.log.keepOld",
-      value: "10",
-      severity: "medium",
-      title: "Log retention must be configured",
-    }
+    id: "VMCH-70-000027",
+    key: "vmx.log.keepOld",
+    value: "10",
+    severity: "medium",
+    title: "Log retention must be configured",
+  }
 
 vsphere_stig_vm_hardware_ids:
   floppy:

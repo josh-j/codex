@@ -20,5 +20,3 @@ ubuntu:
     enable_stig_hardening: false      # Applies STIGs
     enable_password_rotation: false
     enable_upgrade_reboots: true     # Reboots is reboot is pending (after upgrades)
-
-

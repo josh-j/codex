@@ -21,6 +21,7 @@
     report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
 
   block:
+    # Phase 3a | Aggregate platform state
     - name: Prepare Linux aggregated platform state
       ansible.builtin.include_role:
         name: internal.core.reporting
@@ -29,23 +30,25 @@
         ncs_reporting_scripts_dir: "{{ _playbooks_root }}/scripts"
         ncs_reporting_platform_dir: "{{ _ubuntu_report_dir }}"
         ncs_reporting_aggregate_output: "{{ _ubuntu_report_dir }}/linux_fleet_state.yaml"
-        ncs_reporting_aggregate_var_name: "all_hosts"
+        ncs_reporting_aggregate_var_name: "linux_aggregated_hosts"
 
+    # Phase 3b | Ensure host directories
     - name: Ensure per-host report directories exist
       ansible.builtin.include_role:
         name: internal.core.reporting
         tasks_from: host_loop_ensure_dirs.yaml
       vars:
-        ncs_reporting_hosts_map: "{{ all_hosts.hosts | default(all_hosts) }}"
+        ncs_reporting_hosts_map: "{{ linux_aggregated_hosts.hosts | default(linux_aggregated_hosts) }}"
         ncs_reporting_host_dir_root: "{{ _ubuntu_report_dir }}"
         ncs_reporting_skip_keys: "{{ _linux_reporting_skip_keys }}"
 
+    # Phase 3c | Render host reports
     - name: Render detailed per-host HTML reports
       ansible.builtin.include_role:
         name: internal.core.reporting
         tasks_from: host_loop_render_template.yaml
       vars:
-        ncs_reporting_hosts_map: "{{ all_hosts.hosts | default(all_hosts) }}"
+        ncs_reporting_hosts_map: "{{ linux_aggregated_hosts.hosts | default(linux_aggregated_hosts) }}"
         ncs_reporting_template_src: "ubuntu_host_health_report.html.j2"
         ncs_reporting_template_dest: "{{ _ubuntu_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
         ncs_reporting_skip_keys: "{{ _linux_reporting_skip_keys }}"
@@ -61,11 +64,12 @@
               )
             }}
 
+    # Phase 3d | Build fleet view model
     - name: Build Linux fleet dashboard view model
       ansible.builtin.set_fact:
         linux_fleet_view: >-
           {{
-            (all_hosts.hosts | default(all_hosts))
+            (linux_aggregated_hosts.hosts | default(linux_aggregated_hosts))
             | internal.linux.linux_fleet_view(
               report_stamp=report_stamp,
               report_date=report_date,
@@ -73,12 +77,14 @@
             )
           }}
 
+    # Phase 3e | Render fleet report
     - name: Render Linux Fleet HTML Report (Platform Level)
       ansible.builtin.template:
         src: "ubuntu_health_report.html.j2"
         dest: "{{ _ubuntu_report_dir }}/ubuntu_health_report_{{ report_stamp }}.html"
         mode: "0644"
 
+    # Phase 3f | Maintain fleet latest symlink
     - name: Maintain latest Linux fleet symlink
       ansible.builtin.file:
         src: "ubuntu_health_report_{{ report_stamp }}.html"
@@ -86,12 +92,13 @@
         state: link
         force: true
 
+    # Phase 3g | Maintain host latest symlinks
     - name: Maintain latest Linux host symlinks
       ansible.builtin.include_role:
         name: internal.core.reporting
         tasks_from: host_loop_latest_symlink.yaml
       vars:
-        ncs_reporting_hosts_map: "{{ all_hosts.hosts | default(all_hosts) }}"
+        ncs_reporting_hosts_map: "{{ linux_aggregated_hosts.hosts | default(linux_aggregated_hosts) }}"
         ncs_reporting_host_dir_root: "{{ _ubuntu_report_dir }}"
         ncs_reporting_latest_src_name: "health_report_{{ report_stamp }}.html"
         ncs_reporting_latest_dest_name: "health_report.html"

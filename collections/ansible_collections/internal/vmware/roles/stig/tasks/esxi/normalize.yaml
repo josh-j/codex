@@ -1,0 +1,28 @@
+---
+# internal.vmware.stig : esxi/normalize.yaml
+#
+# Normalizes varied API/SSH facts into the canonical schema and syncs to esxi_ctx.
+# Uses 'normalize_esxi_stig_facts' filter to adapt data into the target schema.
+
+- name: Normalize ESXi facts
+  tags: [discovery, normalization]
+  ansible.builtin.set_fact:
+    _esxi_normalized_host: >-
+      {{
+        _esxi_api_facts | default({}) | internal.vmware.normalize_esxi_stig_facts(
+          identity_facts=_esxi_identity_facts | default({}),
+          services_facts=_esxi_services_facts | default({}),
+          ssh_facts=_esxi_ssh_facts | default({})
+        )
+      }}
+
+- name: Sync host facts to esxi_ctx
+  tags: [discovery, normalization]
+  ansible.builtin.set_fact:
+    esxi_ctx: >-
+      {{
+        esxi_ctx | default({}) | combine({
+          'stig_facts': (esxi_ctx.stig_facts | default([])) + [_esxi_normalized_host]
+        }, recursive=true)
+      }}
+  changed_when: false

@@ -1,95 +1,24 @@
 ---
 # internal.vmware.stig : esxi/discovery.yaml
 #
-# Hybrid discovery: API facts via PowerCLI, SSH facts via direct connection.
-# SSH is enabled transiently and always disabled in the always block.
+# Refactored discovery orchestrator for ESXi STIG.
+# Supports hybrid collection (API modules + legacy script).
 
-- name: API Discovery (vCenter / PowerCLI)
-  block:
-    - name: Get host facts via PowerCLI script
-      tags: [discovery, api]
-      ansible.builtin.script:
-        cmd: >-
-          {{ role_path }}/files/get_esxi_facts.ps1
-          -vcenter     "{{ _vcenter_hostname }}"
-          -vcuser      "{{ vmware_username }}"
-          -vcpass      "{{ vmware_password }}"
-          -target_host "{{ inventory_hostname }}"
-      register: _host_api_raw
-      delegate_to: localhost
-      no_log: true
-      changed_when: false
-      failed_when: _host_api_raw.rc != 0
+- name: "ESXi Discovery | Identity Facts"
+  ansible.builtin.include_tasks: identity.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
 
-    - name: Parse API facts
-      tags: [discovery, api]
-      ansible.builtin.set_fact:
-        _esxi_api_facts: "{{ (_host_api_raw.stdout | regex_search('(?s)\\{.*') | from_json).hosts[0] | default({}) }}"
-      when: _host_api_raw.stdout | trim | length > 0
+- name: "ESXi Discovery | API Facts (Legacy/Hybrid)"
+  ansible.builtin.include_tasks: base_api.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['legacy', 'hybrid']
 
-- name: SSH Discovery (Direct)
-  block:
-    - name: Enable SSH service
-      tags: [discovery, ssh]
-      community.vmware.vmware_host_service_manager:
-        hostname: "{{ _vcenter_hostname }}"
-        username: "{{ vmware_username }}"
-        password: "{{ vmware_password }}"
-        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
-        esxi_hostname: "{{ inventory_hostname }}"
-        service_name: TSM-SSH
-        state: present
-      delegate_to: localhost
-      no_log: true
-      register: _ssh_enable
+- name: "ESXi Discovery | Service Facts"
+  ansible.builtin.include_tasks: services.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
 
-    - name: Gather SSH facts
-      tags: [discovery, ssh]
-      ansible.builtin.raw: |
-        echo "===SSHD==="; cat /etc/ssh/sshd_config
-        echo "===ISSUE==="; cat /etc/issue
-        echo "===FIREWALL==="; esxcli network firewall get
-      register: _ssh_raw
-      changed_when: false
-      vars:
-        ansible_connection: ssh
-        ansible_user: root
-        ansible_password: "{{ vault_esxi_root_password }}"
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+- name: "ESXi Discovery | SSH Facts"
+  ansible.builtin.include_tasks: ssh_facts.yaml
+  tags: [ssh]
 
-    - name: Set SSH facts
-      tags: [discovery, ssh]
-      ansible.builtin.set_fact:
-        _esxi_ssh_facts:
-          sshd_config: "{{ _ssh_raw.stdout | regex_search('===SSHD===\\r?\\n([\\s\\S]*?)(?=\\r?\\n===)', '\\1') | default('', true) }}"
-          banner_content: "{{ _ssh_raw.stdout | regex_search('===ISSUE===\\r?\\n([\\s\\S]*$)', '\\1') | default('', true) | trim }}"
-
-  always:
-    - name: Disable SSH service
-      tags: [always]
-      community.vmware.vmware_host_service_manager:
-        hostname: "{{ _vcenter_hostname }}"
-        username: "{{ vmware_username }}"
-        password: "{{ vmware_password }}"
-        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
-        esxi_hostname: "{{ inventory_hostname }}"
-        service_name: TSM-SSH
-        state: absent
-      delegate_to: localhost
-      no_log: true
-      when: _ssh_enable is defined and _ssh_enable is success
-
-- name: Sync host facts to esxi_ctx
-  tags: [discovery]
-  ansible.builtin.set_fact:
-    esxi_ctx: >-
-      {{
-        esxi_ctx | default({}) | combine({
-          'stig_facts': [
-            (_esxi_api_facts | default({})) | combine({
-              'ssh': (_esxi_ssh_facts | default({}))
-            }, recursive=true)
-          ]
-        }, recursive=true)
-      }}
-  changed_when: false
+- name: "ESXi Discovery | Normalize & Sync"
+  ansible.builtin.include_tasks: normalize.yaml

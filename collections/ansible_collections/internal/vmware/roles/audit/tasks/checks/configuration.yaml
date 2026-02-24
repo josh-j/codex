@@ -17,8 +17,10 @@
   ansible.builtin.set_fact:
     vmware_alerts: >-
       {{
-        (vmware_alerts | default([]) | list)
-        + (_cfg_alerts.cluster_alerts | default([]) | list)
-        + (_cfg_alerts.rollup_alerts | default([]) | list)
+        (
+          (vmware_alerts | default([]) | list)
+          | internal.vmware.append_alerts(_cfg_alerts.cluster_alerts | default([]) | list)
+        )
+        | internal.vmware.append_alerts(_cfg_alerts.rollup_alerts | default([]) | list)
       }}
   changed_when: false

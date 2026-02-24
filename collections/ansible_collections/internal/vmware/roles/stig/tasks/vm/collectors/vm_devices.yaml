@@ -1,0 +1,15 @@
+---
+# internal.vmware.stig : vm/collectors/vm_devices.yaml
+
+- name: Extract VM hardware device facts
+  tags: [discovery, hardware]
+  ansible.builtin.set_fact:
+    _vm_hardware_facts: >-
+      {% set vms = {} %}
+      {% for vm in _vm_raw_payload | default([]) %}
+        {% set _ = vms.update({
+          vm.name: vm.hardware | default({})
+        }) %}
+      {% endfor %}
+      {{ vms }}
+  when: _vm_raw_payload is defined

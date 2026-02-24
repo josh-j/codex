@@ -4,7 +4,6 @@ import pathlib
 import tempfile
 import unittest
 
-
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"
@@ -50,9 +49,7 @@ class CoreReportingFilterTests(unittest.TestCase):
     def test_shared_report_css_missing_path_has_clear_error(self):
         os.environ["NCS_SHARED_REPORT_CSS_PATH"] = "/definitely/missing/report_shared.css"
         original_default = self.module._DEFAULT_SHARED_CSS_PATH
-        self.module._DEFAULT_SHARED_CSS_PATH = pathlib.Path(
-            "/also/missing/report_shared.css"
-        )
+        self.module._DEFAULT_SHARED_CSS_PATH = pathlib.Path("/also/missing/report_shared.css")
         try:
             with self.assertRaises(RuntimeError) as ctx:
                 self.module.shared_report_css("")

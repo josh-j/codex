@@ -19,7 +19,7 @@
     _ncs_reporting_scripts_dir: >-
       {{
         ncs_reporting_scripts_dir
-        | default((playbook_dir.split('/playbooks')[0] ~ '/playbooks/scripts'))
+        | default(((playbook_dir | dirname) ~ '/scripts'))
       }}
   ansible.builtin.command:
     argv:

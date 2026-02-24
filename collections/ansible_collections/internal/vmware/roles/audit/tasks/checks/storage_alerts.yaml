@@ -6,7 +6,7 @@
     vmware_alerts: >-
       {{
         (vmware_alerts | default([]) | list)
-        + (
+        | internal.vmware.append_alerts(
           (vmware_ctx.inventory.datastores.list | default([]))
           | internal.vmware.audit_storage_rollup_alerts(
             vmware_datastore_free_critical_pct | default(10) | float,

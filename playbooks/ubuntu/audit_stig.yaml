@@ -7,6 +7,7 @@
 - name: "Phase 2: Ubuntu STIG Audit"
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
+  become: true
   tags: ['ubuntu', 'audit', 'stig', 'security']
   roles:
     - role: internal.linux.ubuntu_system_discover

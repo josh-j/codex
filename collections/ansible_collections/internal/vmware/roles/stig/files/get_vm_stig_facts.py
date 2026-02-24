@@ -3,6 +3,7 @@
 # NOTE: Only retrieves information -- no mutations/side-effects
 import json
 import logging
+import os
 import ssl
 import sys
 
@@ -10,8 +11,8 @@ from pyVim.connect import Disconnect, SmartConnect
 from pyVmomi import vim
 
 # [LOGGING SETUP]
-# Write to /tmp to ensure persistence across Ansible runs
-log_file = "/tmp/get_vm_stig_facts.log"
+# Default to /tmp but allow override via env var for parallel host runs
+log_file = os.environ.get("STIG_LOG_FILE", "/tmp/get_vm_stig_facts.log")
 
 logging.basicConfig(
     filename=log_file,
@@ -22,7 +23,10 @@ logging.basicConfig(
 
 
 def get_vm_stig_data(host, user, password, vm_filter=None):
-    context = ssl._create_unverified_context()
+    if os.environ.get("VC_VALIDATE_CERTS", "false").lower() in ("false", "0", "no"):
+        context = ssl._create_unverified_context()
+    else:
+        context = ssl.create_default_context()
     si = None
 
     try:
@@ -35,9 +39,7 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
         view_type = [vim.VirtualMachine]
         recursive = True
 
-        container_view = content.viewManager.CreateContainerView(
-            container, view_type, recursive
-        )
+        container_view = content.viewManager.CreateContainerView(container, view_type, recursive)
         children = container_view.view
         logging.info(f"Retrieved {len(children)} total VMs from vCenter inventory.")
 
@@ -82,16 +84,12 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
                                 "start_connected": device.connectable.startConnected,
                             }
                         )
-                        logging.warning(
-                            f"  [!] Floppy found: {device.deviceInfo.label}"
-                        )
+                        logging.warning(f"  [!] Floppy found: {device.deviceInfo.label}")
 
                     # CD-ROM
                     elif isinstance(device, vim.vm.device.VirtualCdrom):
                         backing = "iso"
-                        if isinstance(
-                            device.backing, vim.vm.device.VirtualCdrom.AtapiBackingInfo
-                        ):
+                        if isinstance(device.backing, vim.vm.device.VirtualCdrom.AtapiBackingInfo):
                             backing = "host_device"
                         cdroms.append(
                             {
@@ -105,29 +103,21 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
                     # Serial
                     elif isinstance(device, vim.vm.device.VirtualSerialPort):
                         serial_ports.append({"label": device.deviceInfo.label})
-                        logging.warning(
-                            f"  [!] Serial Port found: {device.deviceInfo.label}"
-                        )
+                        logging.warning(f"  [!] Serial Port found: {device.deviceInfo.label}")
 
                     # Parallel
                     elif isinstance(device, vim.vm.device.VirtualParallelPort):
                         parallel_ports.append({"label": device.deviceInfo.label})
-                        logging.warning(
-                            f"  [!] Parallel Port found: {device.deviceInfo.label}"
-                        )
+                        logging.warning(f"  [!] Parallel Port found: {device.deviceInfo.label}")
 
                     # Disks (Persistence Check)
                     elif isinstance(device, vim.vm.device.VirtualDisk):
                         disk_mode = "persistent"
                         if hasattr(device.backing, "diskMode"):
                             disk_mode = device.backing.diskMode
-                        disks.append(
-                            {"label": device.deviceInfo.label, "disk_mode": disk_mode}
-                        )
+                        disks.append({"label": device.deviceInfo.label, "disk_mode": disk_mode})
                         if disk_mode != "persistent":
-                            logging.warning(
-                                f"  [!] Disk Mode '{disk_mode}' found on {device.deviceInfo.label}"
-                            )
+                            logging.warning(f"  [!] Disk Mode '{disk_mode}' found on {device.deviceInfo.label}")
 
                     # USB Controllers
                     elif isinstance(device, vim.vm.device.VirtualUSBController):
@@ -144,9 +134,7 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
                     vmotion_enc = vm.config.migrateEncryption
 
                 logging_enabled = True
-                if hasattr(vm.config, "flags") and hasattr(
-                    vm.config.flags, "enableLogging"
-                ):
+                if hasattr(vm.config, "flags") and hasattr(vm.config.flags, "enableLogging"):
                     logging_enabled = vm.config.flags.enableLogging
 
                 ft_encryption = "ftEncryptionDisabled"
@@ -184,7 +172,7 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
                 vms_data.append(vm_info)
 
             except Exception as vm_e:
-                logging.error(f"Error processing VM {vm.name}: {str(vm_e)}")
+                logging.error(f"Error processing VM {vm.name}: {vm_e!s}")
                 continue
 
         container_view.Destroy()
@@ -192,7 +180,7 @@ def get_vm_stig_data(host, user, password, vm_filter=None):
         return {"success": True, "vms": vms_data, "count": len(vms_data)}
 
     except Exception as e:
-        logging.critical(f"Critical Failure: {str(e)}")
+        logging.critical(f"Critical Failure: {e!s}")
         if si:
             Disconnect(si)
         return {"success": False, "error": str(e), "vms": [], "count": 0}

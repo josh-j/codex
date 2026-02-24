@@ -1,22 +1,16 @@
-from pathlib import Path
 import importlib.util
+from pathlib import Path
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_linux_fleet_view as _build_linux_fleet_view,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_linux_node_view as _build_linux_node_view,
     )
 except ImportError:
-    _helper_path = (
-        Path(__file__).resolve().parents[3]
-        / "core"
-        / "plugins"
-        / "module_utils"
-        / "report_view_models.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "internal_core_report_view_models", _helper_path
-    )
+    _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "report_view_models.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_report_view_models", _helper_path)
     _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
     _spec.loader.exec_module(_mod)
@@ -43,10 +37,9 @@ def linux_node_view(bundle, hostname=None, report_stamp=None, report_date=None, 
     )
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "linux_fleet_view": linux_fleet_view,
             "linux_node_view": linux_node_view,
         }
-

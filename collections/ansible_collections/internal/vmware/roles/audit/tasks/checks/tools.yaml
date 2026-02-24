@@ -6,7 +6,7 @@
     vmware_alerts: >-
       {{
         (vmware_alerts | default([]) | list)
-        + (
+        | internal.vmware.append_alerts(
           vmware_ctx
           | internal.vmware.audit_tools_alerts(
             vmware_tools_items_max | default(50) | int
@@ -14,3 +14,4 @@
         )
       }}
   changed_when: false
+  when: vmware_ctx is defined and vmware_ctx.get('inventory', {}).get('vms') is defined

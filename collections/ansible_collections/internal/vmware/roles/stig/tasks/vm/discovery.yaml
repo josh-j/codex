@@ -1,34 +1,28 @@
 ---
 # internal.vmware.stig : vm/discovery.yaml
 #
-# Collects VM STIG facts via pyVmomi. Stores results in vsphere_ctx.stig_facts.
+# Decomposed discovery pipeline for Virtual Machines.
+# Supports hybrid collection (API modules + legacy core script).
 
-- name: "VM STIG | Execute discovery script"
-  tags: [stig, discovery]
-  ansible.builtin.script: >-
-    {{ role_path }}/files/get_vm_stig_facts.py
-    '{{ _vcenter_hostname }}'
-    '{{ vmware_username }}'
-    '{{ vmware_password }}'
-    '{{ stig_vm_filter | default("") }}'
-  register: _vm_script_result
-  delegate_to: localhost
-  no_log: true
-  changed_when: false
-  failed_when: _vm_script_result.rc != 0
+- name: "VM Discovery | Core Collector (Legacy/Hybrid)"
+  ansible.builtin.include_tasks: collectors/core_script.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['legacy', 'hybrid']
 
-- name: "VM STIG | Parse discovery results"
-  tags: [stig, discovery]
-  ansible.builtin.set_fact:
-    vsphere_ctx: >-
-      {{
-        vsphere_ctx | default({}) | combine({
-          'stig_facts': _parsed.vms | default([])
-        }, recursive=true)
-      }}
-  vars:
-    _parsed: "{{ _vm_script_result.stdout | regex_search('(?s)\\{.*') | from_json }}"
-  when:
-    - _vm_script_result.rc == 0
-    - _vm_script_result.stdout | trim | length > 0
-    - (_vm_script_result.stdout | regex_search('(?s)\\{.*') | from_json).success | default(false)
+- name: "VM Discovery | Inventory & Identity"
+  ansible.builtin.include_tasks: collectors/vm_inventory.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
+
+- name: "VM Discovery | Security & Encryption"
+  ansible.builtin.include_tasks: collectors/vm_security.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
+
+- name: "VM Discovery | Advanced Configuration"
+  ansible.builtin.include_tasks: collectors/vm_extra_config.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
+
+- name: "VM Discovery | Virtual Devices"
+  ansible.builtin.include_tasks: collectors/vm_devices.yaml
+  when: vmware_stig_collector_backend | default('legacy') in ['hybrid', 'external_first']
+
+- name: "VM Discovery | Normalize & Sync"
+  ansible.builtin.include_tasks: normalize.yaml

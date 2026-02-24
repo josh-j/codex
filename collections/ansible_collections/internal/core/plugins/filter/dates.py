@@ -3,6 +3,8 @@
 try:
     from ansible_collections.internal.core.plugins.module_utils.date_utils import (
         parse_iso_epoch as _parse_iso_epoch,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.date_utils import (
         safe_iso_to_epoch,
     )
 except ImportError:
@@ -49,7 +51,7 @@ def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_t
     return results
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "filter_by_age": filter_by_age,

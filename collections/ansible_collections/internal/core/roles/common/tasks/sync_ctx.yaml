@@ -1,0 +1,13 @@
+---
+# internal.core.common : sync_ctx
+#
+# Generic context-initialization helper used by platform helper roles.
+# Ensures the requested context variable exists as a dictionary.
+
+- name: Ensure requested context namespace exists
+  ansible.builtin.set_fact:
+    "{{ ncs_domain_ctx_name }}": "{{ lookup('vars', ncs_domain_ctx_name, default={}) | default({}) }}"
+  when:
+    - ncs_domain_ctx_name is defined
+    - ncs_domain_ctx_name | string | length > 0
+  changed_when: false

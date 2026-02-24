@@ -1,9 +1,13 @@
 ---
 - name: Validate discovery data exists dynamically
-  ansible.builtin.assert:
-    that:
-      - ubuntu_ctx | internal.core.validate_schema_from_file(role_path ~ '/../ubuntu_system_discover/defaults/main.yaml', 'ubuntu_ctx')
-    fail_msg: "ubuntu_ctx does not match the default structure defined in ubuntu_system_discover."
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ ubuntu_ctx }}"
+    ncs_validate_schema_path: "{{ role_path ~ '/../ubuntu_system_discover/defaults/main.yaml' }}"
+    ncs_validate_root_key: "ubuntu_ctx"
+    ncs_validate_fail_msg: "ubuntu_ctx does not match the default structure defined in ubuntu_system_discover."
 
 - name: Run system checks
   ansible.builtin.import_tasks: check.yaml
@@ -12,13 +16,36 @@
 - name: Process and Export Results
   when: not (ubuntu_skip_export | default(false) | bool)
   block:
-    - name: Generate alert summary
+    - name: Compute audit rollups
       ansible.builtin.set_fact:
-        _ubuntu_summary: "{{ ubuntu_alerts | default([]) | internal.core.summarize_alerts }}"
+        _ubuntu_rollups: >-
+          {{
+            (ubuntu_alerts | default([]) | list)
+            | internal.linux.compute_audit_rollups
+          }}
+        _ubuntu_summary: "{{ (_ubuntu_rollups | default({})).summary | default({}) }}"
+        _ubuntu_health: "{{ (_ubuntu_rollups | default({})).health | default('HEALTHY') }}"
 
-    - name: Calculate host health
-      ansible.builtin.set_fact:
-        _ubuntu_health: "{{ ubuntu_alerts | default([]) | internal.core.health_rollup }}"
+- name: Build Ubuntu audit export payload
+  ansible.builtin.set_fact:
+    _ubuntu_system_export_data: >-
+      {{
+        ubuntu_ctx | internal.linux.build_system_audit_export_payload(
+          (ubuntu_alerts | default([]) | list),
+          _ubuntu_health,
+          _ubuntu_summary
+        )
+      }}
+
+- name: Validate Ubuntu audit export payload schema
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ _ubuntu_system_export_data }}"
+    ncs_validate_schema_path: "{{ role_path ~ '/defaults/export_schema.yaml' }}"
+    ncs_validate_root_key: "_ubuntu_system_export_data"
+    ncs_validate_fail_msg: "Ubuntu audit export payload keys do not match the schema."
 
 - name: Export Ubuntu host state for aggregation
   ansible.builtin.include_role:
@@ -27,11 +54,4 @@
   vars:
     ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/ubuntu/{{ inventory_hostname }}/system.yaml"
     ncs_export_data: >-
-      {{
-        ubuntu_ctx | combine({
-          'audit_type': 'system',
-          'health': _ubuntu_health,
-          'alerts': ubuntu_alerts | default([]),
-          'summary': _ubuntu_summary
-        }, recursive=true)
-      }}
+      {{ _ubuntu_system_export_data }}

@@ -1,0 +1,27 @@
+---
+# internal.vmware.stig : vm/collectors/vm_inventory.yaml
+
+- name: Get VM inventory info
+  tags: [discovery, inventory]
+  community.vmware.vmware_vm_info:
+    vm_name: "{{ stig_vm_filter | default(omit) }}"
+  register: _vm_info_raw
+  delegate_to: localhost
+
+- name: Parse VM inventory info
+  tags: [discovery, inventory]
+  ansible.builtin.set_fact:
+    _vm_inventory_facts: >-
+      {% set vms = {} %}
+      {% for vm in _vm_info_raw.virtual_machines | default([]) %}
+        {% set _ = vms.update({
+          vm.guest_name: {
+            'name': vm.guest_name,
+            'uuid': vm.uuid,
+            'guest_id': vm.guest_id,
+            'tools_status': vm.guest_tools_status
+          }
+        }) %}
+      {% endfor %}
+      {{ vms }}
+  when: _vm_info_raw.virtual_machines is defined

@@ -1,0 +1,18 @@
+---
+_ubuntu_system_export_data:
+  audit_type: ""
+  audit_failed: false
+  health: ""
+  alerts: []
+  summary:
+    total: 0
+    critical_count: 0
+    warning_count: 0
+    info_count: 0
+    by_category: {}
+  check_metadata:
+    engine: ""
+    timestamp: ""
+  system: {}
+  updates: {}
+  security: {}

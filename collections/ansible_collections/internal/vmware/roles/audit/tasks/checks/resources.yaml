@@ -16,7 +16,7 @@
     vmware_alerts: >-
       {{
         (vmware_alerts | default([]) | list)
-        + (_resource_rollup.alerts | default([]) | list)
+        | internal.vmware.append_alerts(_resource_rollup.alerts | default([]) | list)
       }}
   changed_when: false
 

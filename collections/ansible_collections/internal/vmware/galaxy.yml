@@ -1,0 +1,9 @@
+---
+namespace: internal
+name: vmware
+version: 1.0.0
+readme: README.md
+authors:
+  - Codex Team
+description: VMware automation and auditing roles.
+license: "license"

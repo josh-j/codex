@@ -2,7 +2,6 @@ import importlib.util
 import pathlib
 import unittest
 
-
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"
@@ -47,9 +46,7 @@ class StigReportViewModelTests(unittest.TestCase):
                 },
             ],
         }
-        view = self.module.build_stig_host_view(
-            "ubuntu01", "stig_ubuntu", payload, report_id="RID"
-        )
+        view = self.module.build_stig_host_view("ubuntu01", "stig_ubuntu", payload, report_id="RID")
 
         self.assertEqual(view["target"]["platform"], "linux")
         self.assertEqual(view["target"]["target_type"], "ubuntu")
@@ -103,22 +100,40 @@ class StigReportViewModelTests(unittest.TestCase):
                         ],
                     }
                 },
+                "win01": {
+                    "stig": {
+                        "target_type": "windows_server_2022",
+                        "health": "WARNING",
+                        "full_audit": [
+                            {
+                                "id": "WN-1",
+                                "status": "FAILED",
+                                "severity": "CAT_II",
+                                "title": "RDP NLA",
+                            }
+                        ],
+                    }
+                },
             }
         }
         view = self.module.build_stig_fleet_view(aggregated, report_stamp="20260224")
 
-        self.assertEqual(view["fleet"]["totals"]["hosts"], 2)
-        self.assertEqual(view["fleet"]["totals"]["findings_open"], 2)
+        self.assertEqual(view["fleet"]["totals"]["hosts"], 3)
+        self.assertEqual(view["fleet"]["totals"]["findings_open"], 3)
         self.assertEqual(view["fleet"]["totals"]["critical"], 1)
-        self.assertEqual(view["fleet"]["totals"]["warning"], 2)
+        self.assertEqual(view["fleet"]["totals"]["warning"], 3)
         self.assertEqual(view["fleet"]["by_platform"]["linux"]["hosts"], 1)
         self.assertEqual(view["fleet"]["by_platform"]["vmware"]["hosts"], 1)
-        self.assertEqual(len(view["rows"]), 2)
+        self.assertEqual(view["fleet"]["by_platform"]["windows"]["hosts"], 1)
+        self.assertEqual(len(view["rows"]), 3)
         self.assertTrue(any(r["platform"] == "linux" for r in view["rows"]))
         self.assertTrue(any(r["platform"] == "vmware" for r in view["rows"]))
+        self.assertTrue(any(r["platform"] == "windows" for r in view["rows"]))
         row = next(r for r in view["rows"] if r["platform"] == "linux")
         self.assertEqual(row["status"]["raw"], "WARNING")
         self.assertIn("node_report_latest", row["links"])
+        win_row = next(r for r in view["rows"] if r["platform"] == "windows")
+        self.assertIn("platform/windows/", win_row["links"]["node_report_latest"])
         self.assertGreaterEqual(len(view["findings_index"]["top_findings"]), 1)
 
 

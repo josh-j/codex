@@ -1,41 +1,28 @@
 ---
 # configmgr.yaml - ConfigMgr Application Updates
 
-- name: Initialize Role Context
-  ansible.builtin.include_role:
-    name: internal.windows.common
-    tasks_from: sync_ctx
-
 - name: ConfigMgr application update management
   block:
     - name: Initialize Windows ConfigMgr namespace
       ansible.builtin.set_fact:
         windows_ctx: "{{ windows_ctx | internal.core.recursive_combine(structure) }}"
       vars:
-        structure:
-          config:
-            startup_delay: "{{ startup_delay | default(0) }}"
-            skip_startup_delay: "{{ skip_startup_delay | default(false) }}"
-            remote_scripts_path: "{{ remote_scripts_path | default('C:\\Temp\\AnsibleScripts') }}"
-            update_log_directory: "{{ update_log_directory | default('C:\\Temp\\ConfigMgrLogs') }}"
-            excluded_apps: "{{ excluded_apps | default([]) }}"
-            force_update: "{{ force_update | default(false) }}"
-            allow_reboot: "{{ allow_reboot | default(false) }}"
-            enforce_preference: "{{ enforce_preference | default('Immediate') }}"
-            update_priority: "{{ update_priority | default('Normal') }}"
-            cleanup_old_logs: "{{ cleanup_old_logs | default(true) }}"
-            export_csv: true
-          services:
-            ccmexec_running: false
-          applications:
-            apps_to_update: []
-            excluded_apps: []
-            already_current: []
-            total_apps: 0
-            summary: {}
-          updates:
-            results: []
-            logs: []
+        structure: >-
+          {{
+            '' | internal.windows.build_configmgr_update_structure(
+              startup_delay | default(0),
+              skip_startup_delay | default(false),
+              remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
+              update_log_directory | default('C:\\Temp\\ConfigMgrLogs'),
+              excluded_apps | default([]),
+              force_update | default(false),
+              allow_reboot | default(false),
+              enforce_preference | default('Immediate'),
+              update_priority | default('Normal'),
+              cleanup_old_logs | default(true),
+              true
+            )
+          }}
 
     - name: Add startup delay
       ansible.windows.win_shell: Start-Sleep -Seconds {{ windows_ctx.config.startup_delay }}
@@ -48,7 +35,7 @@
 
     - name: Store CCMExec status and fail if not running
       ansible.builtin.set_fact:
-        windows_ctx: "{{ windows_ctx | combine({'services': {'ccmexec_running': _ccm_service.state == 'running'}}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | internal.windows.set_ccmexec_running(_ccm_service.state == 'running') }}"
 
     - name: Fail if CCMExec is not running
       ansible.builtin.fail:
@@ -86,7 +73,7 @@
 
     - name: Parse filtered applications
       ansible.builtin.set_fact:
-        windows_ctx: "{{ windows_ctx | combine({'applications': apps_data}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | internal.windows.merge_applications(apps_data) }}"
       vars:
         filtered_data: "{{ _filtered_apps_result.output[0] | from_json }}"
         apps_data:
@@ -140,7 +127,7 @@
 
     - name: Store update results
       ansible.builtin.set_fact:
-        windows_ctx: "{{ windows_ctx | combine({'updates': {'results': _update_results.results | default([])}}, recursive=true) }}"
+        windows_ctx: "{{ windows_ctx | internal.windows.set_update_results(_update_results.results | default([])) }}"
 
     # ========================================================================
     # CSV EXPORT
@@ -162,26 +149,11 @@
   rescue:
     - name: Log ConfigMgr update failure
       ansible.builtin.include_role:
-          name: internal.core.common
-          tasks_from: logging/error
+        name: internal.core.common
+        tasks_from: logging/error
       vars:
         ncs_log_message: "ConfigMgr update process failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
 
     - name: Set empty update data
       ansible.builtin.set_fact:
-        windows_ctx: "{{ windows_ctx | combine({'applications': empty_apps, 'updates': empty_updates}, recursive=true) }}"
-      vars:
-        empty_apps:
-          apps_to_update: []
-          excluded_apps: []
-          already_current: []
-          total_apps: 0
-          summary: {}
-        empty_updates:
-          results: []
-          logs: []
-
-- name: Finalize Windows Context
-  ansible.builtin.set_fact:
-    windows: "{{ windows_ctx }}"
-  changed_when: false
+        windows_ctx: "{{ windows_ctx | internal.windows.set_empty_configmgr_update_state }}"

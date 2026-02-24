@@ -3,28 +3,13 @@
 
 - name: "Compile personalized compliance data for {{ owner_email }}"
   ansible.builtin.set_fact:
-    _my_vms: >-
+    _owner_notification_ctx: >-
       {{
-        vmware_ctx.inventory.vms.list | default([])
-        | selectattr('owner_email', 'equalto', owner_email)
-        | list
+        vmware_ctx | internal.vmware.build_owner_notification_context(owner_email)
       }}
-    _my_names: >-
-      {{
-        vmware_ctx.inventory.vms.list | default([])
-        | selectattr('owner_email', 'equalto', owner_email)
-        | map(attribute='name')
-        | list
-      }}
-
-- name: "Categorize issues for {{ owner_email }}"
-  ansible.builtin.set_fact:
-    my_issues:
-      no_backup: "{{ vmware_ctx.inventory.vms.never_backed_up | default([]) | selectattr('name', 'in', _my_names) | list }}"
-      no_backup_tags: "{{ vmware_ctx.inventory.vms.without_backup_tags | default([]) | selectattr('name', 'in', _my_names) | list }}"
-      overdue_backup: "{{ vmware_ctx.inventory.vms.with_overdue_backup | default([]) | selectattr('name', 'in', _my_names) | list }}"
-      aged_snapshots: "{{ vmware_ctx.inventory.snapshots.aged | default([]) | selectattr('vm_name', 'in', _my_names) | list }}"
-      powered_off: "{{ _my_vms | selectattr('power_state', 'equalto', 'POWEREDOFF') | list }}"
+    _my_vms: "{{ (_owner_notification_ctx | default({})).my_vms | default([]) }}"
+    _my_names: "{{ (_owner_notification_ctx | default({})).my_names | default([]) }}"
+    my_issues: "{{ (_owner_notification_ctx | default({})).my_issues | default({}) }}"
 
 # - name: "Dispatch compliance digest to {{ owner_email }}"
 #   # Removed {{ }} to satisfy ansible-lint (rule: no-jinja-when)

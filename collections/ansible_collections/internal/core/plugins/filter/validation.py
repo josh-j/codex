@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # collections/ansible_collections/internal/core/plugins/filter/validation.py
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 import os
 
@@ -65,9 +62,7 @@ def _types_compatible(data_value, template_value):
         return isinstance(data_value, int) and not isinstance(data_value, bool)
     if isinstance(template_value, float):
         # Allow ints where schema expects float to reduce false positives in YAML/Jinja coercions
-        return (isinstance(data_value, float) or isinstance(data_value, int)) and not isinstance(
-            data_value, bool
-        )
+        return (isinstance(data_value, float) or isinstance(data_value, int)) and not isinstance(data_value, bool)
     if isinstance(template_value, str):
         return isinstance(data_value, str)
     if template_value is None:
@@ -92,9 +87,7 @@ def _find_type_mismatches(data, template, path=""):
         return mismatches
 
     if not _types_compatible(data, template):
-        mismatches.append(
-            f"{path} (Expected {_type_name(template)}, got {_type_name(data)})"
-        )
+        mismatches.append(f"{path} (Expected {_type_name(template)}, got {_type_name(data)})")
 
     return mismatches
 
@@ -105,22 +98,16 @@ def validate_schema_from_file(data, filepath, root_key):
     and validates that 'data' matches its nested key structure.
     """
     if not os.path.isfile(filepath):
-        raise AnsibleFilterError(
-            f"Schema validation failed: File not found at {filepath}"
-        )
+        raise AnsibleFilterError(f"Schema validation failed: File not found at {filepath}")
 
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             schema_yaml = yaml.safe_load(f)
     except Exception as e:
-        raise AnsibleFilterError(
-            f"Schema validation failed: Could not parse YAML at {filepath}: {e}"
-        )
+        raise AnsibleFilterError(f"Schema validation failed: Could not parse YAML at {filepath}: {e}") from e
 
     if not isinstance(schema_yaml, dict) or root_key not in schema_yaml:
-        raise AnsibleFilterError(
-            f"Schema validation failed: Root key '{root_key}' not found in {filepath}"
-        )
+        raise AnsibleFilterError(f"Schema validation failed: Root key '{root_key}' not found in {filepath}")
 
     template_dict = schema_yaml[root_key]
 
@@ -129,8 +116,7 @@ def validate_schema_from_file(data, filepath, root_key):
 
     if missing_keys:
         raise AnsibleFilterError(
-            f"Validation failed against schema {filepath}.\n"
-            f"Missing required keys: {', '.join(missing_keys)}"
+            f"Validation failed against schema {filepath}.\nMissing required keys: {', '.join(missing_keys)}"
         )
 
     # We return the original data so it can be used inline if needed,
@@ -145,43 +131,35 @@ def validate_typed_schema_from_file(data, filepath, root_key):
       2) container/scalar types inferred from template values
     """
     if not os.path.isfile(filepath):
-        raise AnsibleFilterError(
-            f"Typed schema validation failed: File not found at {filepath}"
-        )
+        raise AnsibleFilterError(f"Typed schema validation failed: File not found at {filepath}")
 
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             schema_yaml = yaml.safe_load(f)
     except Exception as e:
-        raise AnsibleFilterError(
-            f"Typed schema validation failed: Could not parse YAML at {filepath}: {e}"
-        )
+        raise AnsibleFilterError(f"Typed schema validation failed: Could not parse YAML at {filepath}: {e}") from e
 
     if not isinstance(schema_yaml, dict) or root_key not in schema_yaml:
-        raise AnsibleFilterError(
-            f"Typed schema validation failed: Root key '{root_key}' not found in {filepath}"
-        )
+        raise AnsibleFilterError(f"Typed schema validation failed: Root key '{root_key}' not found in {filepath}")
 
     template_dict = schema_yaml[root_key]
 
     missing_keys = _find_missing_keys(data, template_dict, root_key)
     if missing_keys:
         raise AnsibleFilterError(
-            f"Validation failed against typed schema {filepath}.\n"
-            f"Missing required keys: {', '.join(missing_keys)}"
+            f"Validation failed against typed schema {filepath}.\nMissing required keys: {', '.join(missing_keys)}"
         )
 
     type_mismatches = _find_type_mismatches(data, template_dict, root_key)
     if type_mismatches:
         raise AnsibleFilterError(
-            f"Type validation failed against schema {filepath}.\n"
-            f"Mismatched types: {', '.join(type_mismatches)}"
+            f"Type validation failed against schema {filepath}.\nMismatched types: {', '.join(type_mismatches)}"
         )
 
     return True
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "validate_schema_from_file": validate_schema_from_file,

@@ -1,0 +1,46 @@
+---
+# internal.vmware.stig : esxi/ssh_facts.yaml
+
+- name: SSH Discovery (Direct)
+  when: vmware_stig_enable_ssh_collection | default(true) | bool
+  block:
+    - name: Enable SSH service
+      tags: [discovery, ssh]
+      community.vmware.vmware_host_service_manager:
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: present
+      delegate_to: localhost
+      no_log: true
+      register: _ssh_enable
+
+    - name: Gather SSH facts
+      tags: [discovery, ssh]
+      ansible.builtin.raw: |
+        echo "===SSHD==="; cat /etc/ssh/sshd_config
+        echo "===ISSUE==="; cat /etc/issue
+        echo "===FIREWALL==="; esxcli network firewall get
+      register: _ssh_raw
+      changed_when: false
+      vars:
+        ansible_connection: ssh
+        ansible_user: root
+        ansible_password: "{{ vault_esxi_root_password }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+    - name: Set SSH facts
+      tags: [discovery, ssh]
+      ansible.builtin.set_fact:
+        _esxi_ssh_facts: "{{ _ssh_raw.stdout | internal.vmware.parse_esxi_ssh_facts }}"
+    
+
+  always:
+    - name: Disable SSH service
+      tags: [always]
+      community.vmware.vmware_host_service_manager:
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: absent
+      delegate_to: localhost
+      no_log: true
+      when: _ssh_enable is defined and _ssh_enable is success

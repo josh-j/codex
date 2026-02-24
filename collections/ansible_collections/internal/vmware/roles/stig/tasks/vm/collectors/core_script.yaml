@@ -1,0 +1,25 @@
+---
+# internal.vmware.stig : vm/collectors/core_script.yaml
+
+- name: "VM STIG | Execute discovery script"
+  tags: [stig, discovery]
+  ansible.builtin.script: >-
+    {{ role_path }}/files/get_vm_stig_facts.py
+    '{{ _vcenter_hostname }}'
+    '{{ vmware_username }}'
+    '{{ vmware_password }}'
+    '{{ stig_vm_filter | default("") }}'
+  register: _vm_script_result
+  delegate_to: localhost
+  no_log: true
+  changed_when: false
+  failed_when: _vm_script_result.rc != 0
+  environment:
+    STIG_LOG_FILE: "/tmp/get_vm_stig_facts_{{ inventory_hostname }}.log"
+    VC_VALIDATE_CERTS: "{{ vmware_validate_certs | default(false) | string }}"
+
+- name: "VM STIG | Parse core payload"
+  tags: [stig, discovery]
+  ansible.builtin.set_fact:
+    _vm_raw_payload: "{{ (_vm_script_result | internal.vmware.parse_json_command_result).payload.vms | default([]) }}"
+  when: _vm_script_result.stdout | trim | length > 0

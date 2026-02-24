@@ -26,29 +26,28 @@ def parse_xccdf(xml_path):
         sys.exit(1)
 
     root = tree.getroot()
+    if root is None:
+        return []
+
     rules = []
 
     for group in root.findall(".//xccdf:Group", NS):
-        rule = group.find("./xccdf:Rule", NS)
-        if rule is None:
-            continue
-
-        ident = rule.find(".//xccdf:ident", NS)
-        rules.append(
-            {
-                "rule_id": rule.get("id", ""),
-                "rule_version": text(rule, "./xccdf:version"),
-                "severity": rule.get("severity", ""),
-                "group_title": text(group, "./xccdf:title"),
-                "rule_title": text(rule, "./xccdf:title"),
-                "fix_text": text(rule, ".//xccdf:fixtext"),
-                "check_content": text(rule, ".//xccdf:check-content"),
-                "discussion": text(rule, ".//xccdf:description"),
-                "ccis": [ident.text.strip()]
-                if ident is not None and ident.text
-                else [],
-            }
-        )
+        group_title = text(group, "./xccdf:title")
+        for rule in group.findall(".//xccdf:Rule", NS):
+            ident = rule.find(".//xccdf:ident", NS)
+            rules.append(
+                {
+                    "rule_id": rule.get("id", ""),
+                    "rule_version": text(rule, "./xccdf:version"),
+                    "severity": rule.get("severity", ""),
+                    "group_title": group_title,
+                    "rule_title": text(rule, "./xccdf:title"),
+                    "fix_text": text(rule, ".//xccdf:fixtext"),
+                    "check_content": text(rule, ".//xccdf:check-content"),
+                    "discussion": text(rule, ".//xccdf:description"),
+                    "ccis": [ident.text.strip()] if ident is not None and ident.text else [],
+                }
+            )
 
     return rules
 

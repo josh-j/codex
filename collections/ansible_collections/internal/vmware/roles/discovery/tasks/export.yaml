@@ -19,16 +19,5 @@
     ncs_export_path: "{{ _vmware_discovery_export_path }}"
     ncs_export_data: >-
       {{
-        vmware_ctx | combine({
-          'audit_type': 'discovery',
-          'summary': {
-             'clusters': (
-               vmware_ctx.inventory.clusters.list | default([]) | length
-             ),
-             'hosts': (
-               vmware_ctx.inventory.hosts.list | default([]) | length
-             ),
-             'vms': vmware_ctx.inventory.vms.list | default([]) | length
-          }
-        })
+        vmware_ctx | internal.vmware.build_discovery_export_payload
       }}

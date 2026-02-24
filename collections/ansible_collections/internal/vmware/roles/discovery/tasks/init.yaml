@@ -12,16 +12,10 @@
     vmware_ctx: >-
       {{
         (vmware_ctx | default({}))
-        | combine({
-          'audit_type': 'vcenter_health',
-          'checks_failed': false,
-          'system': {
-            'name': inventory_hostname,
-            'hostname': _vcenter_hostname,
-            'status': 'INITIALIZING'
-          },
-          'alerts': []
-        }, recursive=true)
+        | internal.vmware.seed_vmware_ctx(
+          inventory_hostname,
+          _vcenter_hostname
+        )
       }}
   tags: [always]
 
@@ -51,11 +45,7 @@
       ansible.builtin.set_fact:
         vmware_ctx: >-
           {{
-            vmware_ctx | combine({
-              'alerts': (
-                (vmware_ctx.alerts | default([]) | list) + [connectivity_alert]
-              )
-            }, recursive=true)
+            vmware_ctx | internal.vmware.append_vmware_ctx_alert(connectivity_alert)
           }}
       vars:
         connectivity_alert:
@@ -71,10 +61,7 @@
       ansible.builtin.set_fact:
         vmware_ctx: >-
           {{
-            vmware_ctx | combine({
-              'checks_failed': true,
-              'system': {'status': 'UNREACHABLE'}
-            }, recursive=True)
+            vmware_ctx | internal.vmware.mark_vmware_ctx_unreachable
           }}
 
     - name: Stop discovery (Connectivity Failure)

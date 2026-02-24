@@ -31,6 +31,25 @@
   roles:
     - role: internal.linux.ubuntu_system_audit
 
+# Phase 3b: Windows Fleet Audit
+- name: "Phase 3b: Windows System Audit"
+  hosts: windows_servers
+  gather_facts: false
+  roles:
+    - role: internal.windows.windows_audit
+      vars:
+        force_update: false
+
+# Phase 3c: Windows Server STIG Audit (optional)
+- name: "Phase 3c: Windows Server STIG Audit (Optional)"
+  hosts: windows_servers
+  gather_facts: false
+  when: master_enable_windows_stig | default(false) | bool
+  roles:
+    - role: internal.windows.windows_stig_audit
+      vars:
+        windows_stig_enable_audit: true
+
 # Phase 4: Platform Summaries (Fleet Dashboards)
 - name: "Phase 4: Generate Fleet-Level Reports"
   hosts: localhost
@@ -43,6 +62,11 @@
     - name: "VMware | Fleet Summary"
       ansible.builtin.include_role:
         name: internal.vmware.summary
+        tasks_from: report.yaml
+
+    - name: "Windows | Fleet Summary"
+      ansible.builtin.include_role:
+        name: internal.windows.windows_summary
         tasks_from: report.yaml
 
 # Phase 5: Global Site Health (The Executive Entry Point)

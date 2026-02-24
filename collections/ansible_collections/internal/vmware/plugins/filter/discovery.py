@@ -1,32 +1,29 @@
 # internal.vmware/plugins/filter/discovery.py
 
-import json
+import importlib.util
 import re
 from pathlib import Path
-import importlib.util
 
 try:
-    from ansible_collections.internal.core.plugins.module_utils.normalization import (
-        merge_section_defaults as _merge_defaults,
-        parse_json_command_result,
-        result_envelope as discovery_result,
-        section_defaults as _section_defaults,
-    )
     from ansible_collections.internal.core.plugins.module_utils.date_utils import (
         safe_iso_to_epoch as _safe_iso_utc_to_epoch,
     )
+    from ansible_collections.internal.core.plugins.module_utils.normalization import (
+        merge_section_defaults as _merge_defaults,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.normalization import (
+        parse_json_command_result,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.normalization import (
+        result_envelope as discovery_result,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.normalization import (
+        section_defaults as _section_defaults,
+    )
 except ImportError:
     # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
-    _helper_path = (
-        Path(__file__).resolve().parents[3]
-        / "core"
-        / "plugins"
-        / "module_utils"
-        / "normalization.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "internal_core_normalization_helpers", _helper_path
-    )
+    _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "normalization.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_normalization_helpers", _helper_path)
     _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
     _spec.loader.exec_module(_mod)
@@ -43,6 +40,63 @@ except ImportError:
 
 _BACKUP_TS_RE = re.compile(r"EndTime=([^,]+)")
 _SYSTEM_VM_RE = re.compile(r"^(vCLS-|vsanhealth|vmware-).*")
+
+
+def seed_vmware_ctx(base_ctx, inventory_hostname, vcenter_hostname):
+    base_ctx = dict(base_ctx or {})
+    out = dict(base_ctx)
+    out.update(
+        {
+            "audit_type": "vcenter_health",
+            "checks_failed": False,
+            "alerts": list(base_ctx.get("alerts") or []),
+        }
+    )
+    system = dict(base_ctx.get("system") or {})
+    system.update(
+        {
+            "name": inventory_hostname,
+            "hostname": vcenter_hostname,
+            "status": system.get("status") or "INITIALIZING",
+        }
+    )
+    out["system"] = system
+    return out
+
+
+def append_vmware_ctx_alert(vmware_ctx, alert):
+    out = dict(vmware_ctx or {})
+    alerts = list(out.get("alerts") or [])
+    if isinstance(alert, dict) and alert:
+        alerts.append(alert)
+    out["alerts"] = alerts
+    return out
+
+
+def mark_vmware_ctx_unreachable(vmware_ctx):
+    out = dict(vmware_ctx or {})
+    out["checks_failed"] = True
+    system = dict(out.get("system") or {})
+    system["status"] = "UNREACHABLE"
+    out["system"] = system
+    return out
+
+
+def build_discovery_export_payload(vmware_ctx):
+    vmware_ctx = dict(vmware_ctx or {})
+    inventory = dict(vmware_ctx.get("inventory") or {})
+    clusters = dict(inventory.get("clusters") or {})
+    hosts = dict(inventory.get("hosts") or {})
+    vms = dict(inventory.get("vms") or {})
+
+    out = dict(vmware_ctx)
+    out["audit_type"] = "discovery"
+    out["summary"] = {
+        "clusters": len(list(clusters.get("list") or [])),
+        "hosts": len(list(hosts.get("list") or [])),
+        "vms": len(list(vms.get("list") or [])),
+    }
+    return out
 
 
 def normalize_compute_inventory(cluster_results):
@@ -84,8 +138,8 @@ def normalize_compute_inventory(cluster_results):
             "name": name,
             "datacenter": datacenter,
             "utilization": {
-                "cpu_pct": round((cpu_used / cpu_cap) * 100, 1),
-                "mem_pct": round((mem_used / mem_cap) * 100, 1),
+                "cpu_pct": round((cpu_used / max(cpu_cap, 1)) * 100, 1),
+                "mem_pct": round((mem_used / max(mem_cap, 1)) * 100, 1),
                 "cpu_total_mhz": cpu_cap,
                 "cpu_used_mhz": cpu_used,
                 "mem_total_mb": mem_cap,
@@ -104,9 +158,7 @@ def normalize_compute_inventory(cluster_results):
             if isinstance(host, dict):
                 hosts_list.append({**host, "cluster": name, "datacenter": datacenter})
             else:
-                hosts_list.append(
-                    {"name": str(host), "cluster": name, "datacenter": datacenter}
-                )
+                hosts_list.append({"name": str(host), "cluster": name, "datacenter": datacenter})
 
     return {
         "clusters_by_name": clusters_by_name,
@@ -151,15 +203,9 @@ def normalize_datastores(datastores, low_space_pct=10):
         "total_count": len(normalized),
         "inaccessible_count": len([d for d in normalized if not d.get("accessible", False)]),
         "low_space_count": len(
-            [
-                d
-                for d in normalized
-                if d.get("accessible", False) and float(d.get("free_pct", 0)) <= low_space_pct
-            ]
+            [d for d in normalized if d.get("accessible", False) and float(d.get("free_pct", 0)) <= low_space_pct]
         ),
-        "maintenance_count": len(
-            [d for d in normalized if d.get("maintenance_mode", "normal") != "normal"]
-        ),
+        "maintenance_count": len([d for d in normalized if d.get("maintenance_mode", "normal") != "normal"]),
     }
 
     return {"list": normalized, "summary": summary}
@@ -312,10 +358,13 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
         raw_ts = match.group(1).strip() if match else ""
         backup_epoch = _safe_iso_utc_to_epoch(raw_ts)
         ts_parseable = backup_epoch > 0
-        days_since = int((current_epoch - backup_epoch) / 86400) if backup_epoch > 0 else 9999
 
-        vm_name = item.get("guest_name") or item.get("config_name") or ""
-        is_system_vm = bool(_SYSTEM_VM_RE.match(vm_name))
+        days_since = 9999
+        if ts_parseable and current_epoch > 0:
+            days_since = max(int((current_epoch - backup_epoch) / 86400), 0)
+
+        vm_name = str(item.get("guest_name") or item.get("config_name") or "unknown")
+        is_system_vm = bool(_SYSTEM_VM_RE.match(vm_name)) or bool(item.get("is_template", False))
 
         results.append(
             {
@@ -330,9 +379,7 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
                 "guest_os": item.get("guest_id", "unknown"),
                 "memory_mb": item.get("memory_mb", 0),
                 "cpu_count": item.get("num_cpu", 0),
-                "last_backup": (
-                    raw_ts if ts_parseable else ("INVALID_FORMAT" if match else "NEVER")
-                ),
+                "last_backup": (raw_ts if ts_parseable else ("INVALID_FORMAT" if match else "NEVER")),
                 "days_since": days_since,
                 "backup_overdue": (days_since > backup_overdue_days) if ts_parseable else True,
                 "has_backup": ts_parseable,
@@ -344,18 +391,10 @@ def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2)
         "overdue_backups": len([v for v in results if v.get("backup_overdue") is True]),
         "unprotected": len([v for v in results if v.get("has_backup") is False]),
         "missing_owners": len(
-            [
-                v
-                for v in results
-                if not v.get("is_system_vm", False) and (v.get("owner_email") or "") == ""
-            ]
+            [v for v in results if not v.get("is_system_vm", False) and (v.get("owner_email") or "") == ""]
         ),
     }
-    metrics = {
-        "powered_off_count": len(
-            [v for v in results if str(v.get("power_state", "")) == "POWEREDOFF"]
-        )
-    }
+    metrics = {"powered_off_count": len([v for v in results if str(v.get("power_state", "")) == "POWEREDOFF"])}
 
     return {"list": results, "summary": summary, "metrics": metrics}
 
@@ -387,7 +426,7 @@ def normalize_datacenters_result(raw_result, collected_at=""):
     payload = {
         "list": dc_names,
         "raw": raw_list,
-        "by_name": dict(zip(dc_names, dc_ids)),
+        "by_name": dict(zip(dc_names, dc_ids, strict=False)),
         "summary": {
             "total_count": len(raw_list),
             "primary_dc": dc_names[0] if dc_names else "",
@@ -417,11 +456,7 @@ def parse_alarm_script_output(command_result):
         error_msg = (
             stderr
             if len(stderr) > 0
-            else (
-                "Empty stdout from alarm script"
-                if len(stdout) == 0
-                else "Non-JSON stdout from alarm script"
-            )
+            else ("Empty stdout from alarm script" if len(stdout) == 0 else "Non-JSON stdout from alarm script")
         )
 
     parsed["payload"] = {
@@ -432,9 +467,29 @@ def parse_alarm_script_output(command_result):
     return parsed
 
 
+def parse_esxi_ssh_facts(raw_stdout):
+    """
+    Parses raw ESXi SSH discovery output.
+    Expected sections: ===SSHD===, ===ISSUE===, ===FIREWALL===
+    """
+    stdout = str(raw_stdout or "")
+
+    sshd_match = re.search(r"===SSHD===\r?\n([\s\S]*?)(?=\r?\n===)", stdout)
+    sshd_config = sshd_match.group(1).strip() if sshd_match else ""
+
+    issue_match = re.search(r"===ISSUE===\r?\n([\s\S]*?)(?=\r?\n===|$)", stdout)
+    banner = issue_match.group(1).strip() if issue_match else ""
+
+    firewall_match = re.search(r"===FIREWALL===\r?\n([\s\S]*$)", stdout)
+    firewall = firewall_match.group(1).strip() if firewall_match else ""
+
+    return {"sshd_config": sshd_config, "banner_content": banner, "firewall_raw": firewall}
+
+
 def normalize_alarm_result(parsed_result, site, collected_at=""):
     parsed_result = parsed_result or {}
-    payload = parsed_result.get("payload") or {}
+    # Handle both legacy script payload and native module result
+    payload = parsed_result.get("payload") or parsed_result
     alarms = list(payload.get("alarms") or [])
     normalized_list = []
 
@@ -452,17 +507,21 @@ def normalize_alarm_result(parsed_result, site, collected_at=""):
             }
         )
 
-    script_ok = bool(parsed_result.get("script_valid", False)) and bool(payload.get("success", False))
-    rc = int(parsed_result.get("rc", 1) or 1)
+    # script_valid is for legacy, failed is for native
+    script_ok = (bool(parsed_result.get("script_valid", False)) and bool(payload.get("success", False))) or (
+        not bool(parsed_result.get("failed", False)) and "alarms" in parsed_result
+    )
+    rc = int(parsed_result.get("rc", 0) if "rc" in parsed_result else (0 if script_ok else 1))
+
+    critical_items = [i for i in normalized_list if i.get("severity") == "critical"]
+    warning_count = len([i for i in normalized_list if i.get("severity") == "warning"])
+
     if script_ok:
-        status = "SUCCESS"
+        status = "CRITICAL" if critical_items else "SUCCESS"
     elif rc != 0:
         status = "SCRIPT_ERROR"
     else:
         status = "COLLECT_ERROR"
-
-    critical_items = [i for i in normalized_list if i.get("severity") == "critical"]
-    warning_count = len([i for i in normalized_list if i.get("severity") == "warning"])
 
     return discovery_result(
         {
@@ -524,12 +583,8 @@ def normalize_snapshots_result(
     all_snaps = list(all_snaps or [])
     aged_snaps = list(aged_snaps or [])
     size_warning_gb = float(size_warning_gb or 100)
-    total_size_gb = round(
-        float(sum(float(item.get("size_gb", 0) or 0) for item in aged_snaps)), 1
-    )
-    large_snapshots = [
-        item for item in aged_snaps if float(item.get("size_gb", 0) or 0) > size_warning_gb
-    ]
+    total_size_gb = round(float(sum(float(item.get("size_gb", 0) or 0) for item in aged_snaps)), 1)
+    large_snapshots = [item for item in aged_snaps if float(item.get("size_gb", 0) or 0) > size_warning_gb]
     oldest_days = 0
     if aged_snaps:
         oldest_days = int(max(int(item.get("days_old", 0) or 0) for item in aged_snaps))
@@ -649,13 +704,9 @@ def build_discovery_ctx(base_ctx, disc, collected_at=""):
     )
     clusters = _merge_defaults(inventory_defaults["clusters"], disc.get("clusters"), collected_at)
     hosts = _merge_defaults(inventory_defaults["hosts"], disc.get("hosts"), collected_at)
-    datastores = _merge_defaults(
-        inventory_defaults["datastores"], disc.get("datastores"), collected_at
-    )
+    datastores = _merge_defaults(inventory_defaults["datastores"], disc.get("datastores"), collected_at)
     vms = _merge_defaults(inventory_defaults["vms"], disc.get("vms"), collected_at)
-    snapshots = _merge_defaults(
-        inventory_defaults["snapshots"], disc.get("snapshots"), collected_at
-    )
+    snapshots = _merge_defaults(inventory_defaults["snapshots"], disc.get("snapshots"), collected_at)
     snapshots_summary = dict(snapshots.get("summary") or {})
     snapshots_summary.setdefault("status", snapshots.get("status", "NOT_RUN"))
     if snapshots.get("error", ""):
@@ -711,7 +762,7 @@ def build_discovery_ctx(base_ctx, disc, collected_at=""):
     return out
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "normalize_compute_inventory": normalize_compute_inventory,
@@ -725,9 +776,14 @@ class FilterModule(object):
             "discovery_result": discovery_result,
             "normalize_datacenters_result": normalize_datacenters_result,
             "parse_alarm_script_output": parse_alarm_script_output,
+            "parse_esxi_ssh_facts": parse_esxi_ssh_facts,
             "normalize_alarm_result": normalize_alarm_result,
             "snapshot_owner_map": snapshot_owner_map,
             "snapshot_no_datacenter_result": snapshot_no_datacenter_result,
             "normalize_snapshots_result": normalize_snapshots_result,
             "build_discovery_ctx": build_discovery_ctx,
+            "build_discovery_export_payload": build_discovery_export_payload,
+            "seed_vmware_ctx": seed_vmware_ctx,
+            "append_vmware_ctx_alert": append_vmware_ctx_alert,
+            "mark_vmware_ctx_unreachable": mark_vmware_ctx_unreachable,
         }

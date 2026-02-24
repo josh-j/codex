@@ -2,5 +2,5 @@
 # collections/ansible_collections/internal/linux/roles/ubuntu_manage_passwords/handlers/main.yaml
 
 - name: Audit Security State
-  ansible.builtin.import_role:
+  ansible.builtin.include_role:
     name: internal.linux.ubuntu_system_audit

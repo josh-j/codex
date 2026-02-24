@@ -137,14 +137,47 @@
         <h2 class="sub-title">Audit Alerts</h2>
         <div class="card-wrap">
             <table>
-                <thead><tr><th>Severity</th><th>Category</th><th>Message</th></tr></thead>
+                <thead><tr><th>Severity</th><th>Category</th><th>Message / Detail</th></tr></thead>
                 <tbody>
                     {% for alert in alert_items %}
                     {% set _alert_badge = alert.get('severity', 'INFO') | internal.core.status_badge_meta(true) %}
                     <tr class="{{ 'alert-row-critical' if (alert.get('severity', '') | upper) == 'CRITICAL' else ('alert-row-warning' if (alert.get('severity', '') | upper) == 'WARNING' else '') }}">
                         <td><span class="badge {{ _alert_badge.css_class }}">{{ _alert_badge.label }}</span></td>
                         <td style="text-transform: uppercase; font-weight: 700; color: var(--indigo);">{{ alert.get('category', 'vmware') }}</td>
-                        <td>{{ alert.get('message', '') }}</td>
+                        <td>
+                            <div>{{ alert.get('message', '') }}</div>
+                            {% set detail = alert.get('detail', {}) %}
+                            {% set affected_items = alert.get('affected_items', []) %}
+                            {% if (detail and detail|length > 0) or (affected_items and affected_items|length > 0) %}
+                            <details style="margin-top: 6px;">
+                                <summary style="cursor: pointer; color: var(--text-muted);">Technical details</summary>
+                                {% if detail and detail|length > 0 %}
+                                <div style="margin-top: 8px;">
+                                    <table>
+                                        <tbody>
+                                            {% for k, v in detail.items() %}
+                                            <tr>
+                                                <th style="width: 180px;">{{ k }}</th>
+                                                <td><code>{{ v }}</code></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+                                {% if affected_items and affected_items|length > 0 %}
+                                <div style="margin-top: 8px;">
+                                    <strong>Affected Items ({{ affected_items | length }})</strong>
+                                    <ul style="margin-top: 6px;">
+                                        {% for item in affected_items[:10] %}
+                                        <li><code>{{ item }}</code></li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </details>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>

@@ -2,8 +2,9 @@
 # collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/handlers/main.yaml
 # Handlers for DISA STIG compliance on Ubuntu
 
-- name: dconf_update # noqa: name[casing] no-changed-when ignore-errors
+- name: dconf_update # noqa: name[casing] ignore-errors
   ansible.builtin.command: dconf update
+  changed_when: true
   ignore_errors: true # Ignores error if dconf is not installed (headless servers)
 
 - name: auditd_restart # noqa: name[casing] ignore-errors
@@ -23,8 +24,9 @@
     name: rsyslog
     state: restarted
 
-- name: sysctl_load_settings # noqa: name[casing] no-changed-when
+- name: sysctl_load_settings # noqa: name[casing]
   ansible.builtin.command: sysctl --system
+  changed_when: true
 
 - name: daemon_reload # noqa: name[casing]
   ansible.builtin.systemd:
@@ -41,10 +43,11 @@
     name: systemd-logind
     state: restarted
 
-- name: with_faillock_enable # noqa: name[casing] no-changed-when ignore-errors
+- name: with_faillock_enable # noqa: name[casing] ignore-errors
   # NOTE: 'authselect' is RHEL/CentOS specific.
   # Ubuntu uses pam-auth-update. We ignore errors to prevent crashing.
   ansible.builtin.command: authselect enable-feature with-faillock
+  changed_when: true
   ignore_errors: true
 
 - name: do_reboot # noqa: name[casing]

@@ -19,7 +19,7 @@
     _ncs_reporting_scripts_dir: >-
       {{
         ncs_reporting_scripts_dir
-        | default((playbook_dir.split('/playbooks')[0] ~ '/playbooks/scripts'))
+        | default(((playbook_dir | dirname) ~ '/scripts'))
       }}
     _ncs_reporting_all_hosts_state: "{{ ncs_reporting_platform_root }}/all_hosts_state.yaml"
   ansible.builtin.command:
@@ -35,13 +35,13 @@
     _ncs_reporting_all_hosts_state: "{{ ncs_reporting_platform_root }}/all_hosts_state.yaml"
   ansible.builtin.include_vars:
     file: "{{ _ncs_reporting_all_hosts_state }}"
-    name: all_hosts
+    name: site_aggregated_hosts
 
 - name: Build site dashboard view model
   ansible.builtin.set_fact:
     site_dashboard_view: >-
       {{
-        all_hosts
+        site_aggregated_hosts
         | internal.core.site_dashboard_view(
           groups=groups,
           report_stamp=ncs_reporting_report_stamp | default(report_stamp | default('')),
@@ -94,4 +94,3 @@
       changed_when: true
       loop_control:
         label: "{{ item.path }}"
-

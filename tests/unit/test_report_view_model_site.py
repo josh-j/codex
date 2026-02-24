@@ -2,7 +2,6 @@ import importlib.util
 import pathlib
 import unittest
 
-
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"
@@ -51,21 +50,30 @@ class SiteReportViewModelTests(unittest.TestCase):
                         "vcenter_health": {"health": "green", "alerts": [{"severity": "WARNING"}]},
                     },
                 },
+                "win01": {
+                    "windows_audit": {
+                        "health": "WARNING",
+                        "summary": {"services": {"ccmexec_running": False}},
+                    }
+                },
             }
         }
         view = self.module.build_site_dashboard_view(
             aggregated,
-            {"ubuntu_servers": ["host1"], "vcenters": ["vc01"]},
+            {"ubuntu_servers": ["host1"], "vcenters": ["vc01"], "windows_servers": ["win01"]},
             report_id="RID",
         )
         self.assertEqual(view["totals"]["critical"], 1)
-        self.assertEqual(view["totals"]["warning"], 1)
+        self.assertEqual(view["totals"]["warning"], 2)
         self.assertEqual(view["platforms"]["linux"]["asset_count"], 1)
         self.assertEqual(view["platforms"]["vmware"]["asset_count"], 1)
+        self.assertEqual(view["platforms"]["windows"]["asset_count"], 1)
         self.assertEqual(view["platforms"]["linux"]["status"]["raw"], "CRITICAL")
-        self.assertEqual(view["platforms"]["vmware"]["status"]["raw"], "OK")
+        self.assertEqual(view["platforms"]["vmware"]["status"]["raw"], "WARNING")
+        self.assertEqual(view["platforms"]["windows"]["status"]["raw"], "WARNING")
         self.assertIn("fleet_dashboard", view["platforms"]["linux"]["links"])
         self.assertIn("fleet_dashboard", view["platforms"]["vmware"]["links"])
+        self.assertIn("fleet_dashboard", view["platforms"]["windows"]["links"])
         self.assertIn("stig_fleet", view["security"])
         self.assertEqual(len(view["security"]["stig_fleet"]["rows"]), 1)
         self.assertEqual(len(view["security"]["stig_fleet"]["rows"][0]["findings"]), 1)

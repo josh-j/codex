@@ -3,6 +3,7 @@
 
 _vmware_audit_export_data:
   audit_type: ""
+  audit_failed: false
   alerts: []
   vcenter_health:
     health: ""

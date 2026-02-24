@@ -1,7 +1,6 @@
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -10,7 +9,10 @@ REPORT_TEMPLATES = [
     ROOT / "collections/ansible_collections/internal/vmware/roles/summary/templates/vmware_health_report.html.j2",
     ROOT / "collections/ansible_collections/internal/vmware/roles/summary/templates/vcenter_health_report.html.j2",
     ROOT / "collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/ubuntu_health_report.html.j2",
-    ROOT / "collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/ubuntu_host_health_report.html.j2",
+    (
+        ROOT / "collections/ansible_collections/internal/linux/roles/ubuntu_summary/templates/"
+        "ubuntu_host_health_report.html.j2"
+    ),
     ROOT / "collections/ansible_collections/internal/core/roles/stig/templates/stig_report.html.j2",
 ]
 
@@ -25,8 +27,7 @@ class ReportCssSingleSourceTests(unittest.TestCase):
     def test_shared_stylesheet_exists(self):
         self.assertTrue(
             (
-                ROOT
-                / "collections/ansible_collections/internal/core/roles/reporting/templates/report_shared.css"
+                ROOT / "collections/ansible_collections/internal/core/roles/reporting/templates/report_shared.css"
             ).exists()
         )
 

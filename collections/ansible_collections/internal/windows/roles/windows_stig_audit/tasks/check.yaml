@@ -1,0 +1,146 @@
+---
+# internal.windows.windows_stig_audit : tasks/check.yaml
+#
+# Minimal native Windows Server STIG baseline checks.
+# Produces canonical-ish STIG rows consumed by internal.core.stig/finalize.yaml.
+
+- name: "Windows STIG | Run native baseline checks"
+  ansible.windows.win_powershell:
+    script: |
+      $rows = @()
+
+      function Add-StigRow {
+        param(
+          [string]$Id,
+          [string]$Title,
+          [string]$Severity,
+          [bool]$Passed,
+          [string]$Details
+        )
+        $rows += [pscustomobject]@{
+          id = $Id
+          title = $Title
+          severity = $Severity
+          status = $(if ($Passed) { "PASS" } else { "FAILED" })
+          details = $Details
+        }
+      }
+
+      # 1) RDP Network Level Authentication enabled
+      try {
+        $nla = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name UserAuthentication -ErrorAction Stop
+        $nlaEnabled = [int]$nla.UserAuthentication -eq 1
+        Add-StigRow -Id 'WN-SRV-000001' -Title 'RDP must require Network Level Authentication (NLA)' -Severity 'CAT_II' -Passed $nlaEnabled -Details ("UserAuthentication={0}" -f $nla.UserAuthentication)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000001' -Title 'RDP must require Network Level Authentication (NLA)' -Severity 'CAT_II' -Passed $false -Details ("Registry query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 2) Windows Firewall enabled on all profiles
+      try {
+        $profiles = Get-NetFirewallProfile -ErrorAction Stop
+        $disabled = @($profiles | Where-Object { -not $_.Enabled })
+        $passed = $disabled.Count -eq 0
+        $detail = if ($passed) { "All firewall profiles enabled" } else { "Disabled profiles: " + (($disabled | Select-Object -ExpandProperty Name) -join ', ') }
+        Add-StigRow -Id 'WN-SRV-000002' -Title 'Windows Firewall must be enabled for all profiles' -Severity 'CAT_I' -Passed $passed -Details $detail
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000002' -Title 'Windows Firewall must be enabled for all profiles' -Severity 'CAT_I' -Passed $false -Details ("Firewall query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 3) SMBv1 protocol feature disabled
+      try {
+        $feature = Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -ErrorAction Stop
+        $passed = @('Disabled', 'DisabledWithPayloadRemoved') -contains [string]$feature.State
+        Add-StigRow -Id 'WN-SRV-000003' -Title 'SMBv1 protocol must be disabled' -Severity 'CAT_I' -Passed $passed -Details ("SMB1Protocol State={0}" -f $feature.State)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000003' -Title 'SMBv1 protocol must be disabled' -Severity 'CAT_I' -Passed $false -Details ("SMB1 feature query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 4) Guest account disabled
+      try {
+        $guest = Get-LocalUser -Name 'Guest' -ErrorAction Stop
+        $passed = -not [bool]$guest.Enabled
+        Add-StigRow -Id 'WN-SRV-000004' -Title 'Guest account must be disabled' -Severity 'CAT_II' -Passed $passed -Details ("Guest Enabled={0}" -f $guest.Enabled)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000004' -Title 'Guest account must be disabled' -Severity 'CAT_II' -Passed $false -Details ("Guest account query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 5) Password complexity enabled (secedit export)
+      try {
+        $cfg = Join-Path $env:TEMP 'secpol-export.cfg'
+        secedit /export /cfg $cfg | Out-Null
+        $line = Select-String -Path $cfg -Pattern '^PasswordComplexity\s*=\s*(\d+)\s*$' | Select-Object -First 1
+        $value = if ($line) { [int]$line.Matches[0].Groups[1].Value } else { -1 }
+        $passed = $value -eq 1
+        Add-StigRow -Id 'WN-SRV-000005' -Title 'Password complexity must be enabled' -Severity 'CAT_II' -Passed $passed -Details ("PasswordComplexity={0}" -f $value)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000005' -Title 'Password complexity must be enabled' -Severity 'CAT_II' -Passed $false -Details ("Security policy query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 6) Defender real-time monitoring enabled
+      try {
+        $mp = Get-MpComputerStatus -ErrorAction Stop
+        $passed = [bool]$mp.RealTimeProtectionEnabled
+        Add-StigRow -Id 'WN-SRV-000006' -Title 'Microsoft Defender real-time protection must be enabled' -Severity 'CAT_II' -Passed $passed -Details ("RealTimeProtectionEnabled={0}" -f $mp.RealTimeProtectionEnabled)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000006' -Title 'Microsoft Defender real-time protection must be enabled' -Severity 'CAT_II' -Passed $false -Details ("Defender status query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 7) WinRM service must not allow unencrypted traffic
+      try {
+        $allowUnenc = (winrm get winrm/config/service | Select-String -Pattern 'AllowUnencrypted\s*=\s*(\w+)' | Select-Object -First 1)
+        $value = if ($allowUnenc -and $allowUnenc.Matches.Count -gt 0) { $allowUnenc.Matches[0].Groups[1].Value } else { 'Unknown' }
+        $passed = [string]$value -match '^(false|False)$'
+        Add-StigRow -Id 'WN-SRV-000007' -Title 'WinRM must not allow unencrypted traffic' -Severity 'CAT_I' -Passed $passed -Details ("AllowUnencrypted={0}" -f $value)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000007' -Title 'WinRM must not allow unencrypted traffic' -Severity 'CAT_I' -Passed $false -Details ("WinRM service config query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 8) WinRM service must not allow Basic authentication
+      try {
+        $basic = (winrm get winrm/config/service/auth | Select-String -Pattern 'Basic\s*=\s*(\w+)' | Select-Object -First 1)
+        $value = if ($basic -and $basic.Matches.Count -gt 0) { $basic.Matches[0].Groups[1].Value } else { 'Unknown' }
+        $passed = [string]$value -match '^(false|False)$'
+        Add-StigRow -Id 'WN-SRV-000008' -Title 'WinRM Basic authentication must be disabled' -Severity 'CAT_I' -Passed $passed -Details ("WinRM Basic={0}" -f $value)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000008' -Title 'WinRM Basic authentication must be disabled' -Severity 'CAT_I' -Passed $false -Details ("WinRM auth config query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 9) UAC Admin Approval Mode for built-in Administrator should be enabled
+      try {
+        $uac = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name FilterAdministratorToken -ErrorAction Stop
+        $passed = [int]$uac.FilterAdministratorToken -eq 1
+        Add-StigRow -Id 'WN-SRV-000009' -Title 'UAC Admin Approval Mode for the built-in Administrator account must be enabled' -Severity 'CAT_II' -Passed $passed -Details ("FilterAdministratorToken={0}" -f $uac.FilterAdministratorToken)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000009' -Title 'UAC Admin Approval Mode for the built-in Administrator account must be enabled' -Severity 'CAT_II' -Passed $false -Details ("UAC policy query failed: {0}" -f $_.Exception.Message)
+      }
+
+      # 10) Advanced Audit Policy: Logon success/failure auditing enabled
+      try {
+        $auditpol = auditpol /get /subcategory:"Logon" /r
+        $csv = $auditpol | ConvertFrom-Csv
+        $row = $csv | Select-Object -First 1
+        $setting = [string]($row.'Inclusion Setting' | ForEach-Object { $_ })
+        $passed = ($setting -match 'Success') -and ($setting -match 'Failure')
+        Add-StigRow -Id 'WN-SRV-000010' -Title 'Audit Logon events must record both success and failure' -Severity 'CAT_II' -Passed $passed -Details ("Logon Audit Setting={0}" -f $setting)
+      } catch {
+        Add-StigRow -Id 'WN-SRV-000010' -Title 'Audit Logon events must record both success and failure' -Severity 'CAT_II' -Passed $false -Details ("auditpol query failed: {0}" -f $_.Exception.Message)
+      }
+
+      $rows | ConvertTo-Json -Compress -Depth 6
+  register: _windows_stig_native_result
+
+- name: "Windows STIG | Parse native findings"
+  ansible.builtin.set_fact:
+    audit_full_list: >-
+      {{
+        (
+          (_windows_stig_native_result.output[0] | from_json)
+          if (
+            _windows_stig_native_result.output is defined and
+            (_windows_stig_native_result.output | length) > 0
+          )
+          else []
+        )
+      }}
+    _stig_audit_ran: true
+  changed_when: false

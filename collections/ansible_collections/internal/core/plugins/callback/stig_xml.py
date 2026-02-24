@@ -1,7 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
 import json
 import os
 import platform
@@ -38,31 +34,33 @@ class CallbackModule(CallbackBase):
         self.disabled = False
         self._parse_stig_xml()
 
-        artifact_dir = os.environ.get(
-            "ARTIFACT_DIR", os.path.join(os.getcwd(), ".artifacts")
-        )
+        artifact_dir = os.environ.get("ARTIFACT_DIR", os.path.join(os.getcwd(), ".artifacts"))
         os.makedirs(artifact_dir, exist_ok=True)
 
-        self.xml_path = os.environ.get(
-            "XML_PATH", os.path.join(artifact_dir, "xccdf-results.xml")
-        )
+        node_name = os.environ.get("ANSIBLE_HOSTNAME") or platform.node()
+        self.xml_path = os.environ.get("XML_PATH", os.path.join(artifact_dir, f"xccdf-results_{node_name}.xml"))
         self.json_path = self.xml_path.replace(".xml", "_failures.json")
 
         self._init_xml()
         self._dump_json()
 
     def _find_stig_xml(self):
-        """Walk cwd looking for an XCCDF XML file under a files/ directory."""
-        for dirpath, _, files in os.walk(os.path.abspath(".")):
-            if os.path.sep + "files" not in dirpath:
+        """Walk cwd looking for an XCCDF XML file, skipping deep irrelevant paths."""
+        # Limit search to 3 levels deep to avoid traversing large build/venv trees
+        cwd = os.getcwd()
+        exclude_dirs = {".venv", ".git", "__pycache__", ".artifacts", "logs", "tests"}
+
+        for root, dirs, files in os.walk(cwd):
+            # Prune traversal
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            depth = root[len(cwd) :].count(os.path.sep)
+            if depth > 3:
+                dirs[:] = []  # Don't go deeper
                 continue
+
             for f in files:
-                if (
-                    f.endswith(".xml")
-                    and "xccdf" in f.lower()
-                    and "results" not in f.lower()
-                ):
-                    return os.path.join(dirpath, f)
+                if f.endswith(".xml") and "xccdf" in f.lower() and "results" not in f.lower():
+                    return os.path.join(root, f)
         return None
 
     def _init_xml(self):
@@ -96,9 +94,7 @@ class CallbackModule(CallbackBase):
                 continue
 
             rule_num = self._extract_rule_number(elem.get("id"))
-            if not rule_num or (
-                rule_num in self.rule_details and elem.tag.endswith("Group")
-            ):
+            if not rule_num or (rule_num in self.rule_details and elem.tag.endswith("Group")):
                 continue
 
             # For Group elements, use the child Rule for details
@@ -134,7 +130,8 @@ class CallbackModule(CallbackBase):
     def _extract_rule_number(text):
         if not text:
             return None
-        m = re.search(r"(?:V-|SV-|stigrule_)?(\d+)", text)
+        # Handle V-1234, SV-1234, stigrule_1234, etc.
+        m = re.search(r"(?:V-|SV-|stigrule_|R-)?(\d+)", text, re.IGNORECASE)
         return m.group(1) if m else None
 
     # -------------------------------------------------------------------------

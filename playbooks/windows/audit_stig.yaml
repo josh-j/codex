@@ -1,0 +1,15 @@
+---
+- name: "Phase 1: Prepare Environment"
+  ansible.builtin.import_playbook: ../common/init_environment.yaml
+  tags: ['always']
+
+- name: "Phase 2: Windows Server STIG Audit"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ['windows', 'audit', 'stig', 'security']
+  roles:
+    - role: internal.windows.windows_stig_audit
+
+- name: "Phase 3: Aggregate and Report"
+  ansible.builtin.import_playbook: ../common/generate_site_health_report.yaml
+  tags: ['always']

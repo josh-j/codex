@@ -12,8 +12,10 @@
 <div class="app-layout">
     <div class="content">
         {% set view = vmware_fleet_view | default({}) %}
+        {% set meta = view.get('meta', {}) %}
         {% set fleet = view.get('fleet', {}) %}
         {% set rows = view.get('rows', []) %}
+        {% set active_alerts = view.get('active_alerts', []) %}
         {% set fleet_totals = fleet.get('totals', {}) %}
         {% set fleet_alerts = fleet.get('alerts', {}) %}
         {% set fleet_util = fleet.get('utilization', {}) %}
@@ -23,7 +25,7 @@
         <div class="header">
             <div class="title-group">
                 <h1>VMware Infrastructure Fleet</h1>
-                <p class="text-muted">Report ID: <code>{{ report_id }}</code> | Generated: {{ report_date }}</p>
+                <p class="text-muted">Report ID: <code>{{ meta.get('report_id', report_id | default('')) }}</code> | Generated: {{ meta.get('report_date', report_date | default('')) }}</p>
             </div>
             <div>
                 <a href="../../site_health_report.html" class="nav-link">← Global Dashboard</a>
@@ -68,21 +70,52 @@
         <div class="card-wrap">
             <table>
                 <thead>
-                    <tr><th>vCenter Host</th><th>Status</th><th>Version</th><th>Alerts</th><th>Action</th></tr>
+                    <tr><th>vCenter Host</th><th>Status</th><th>Version</th><th>Clusters</th><th>Hosts</th><th>VMs</th><th>CPU%</th><th>Mem%</th><th>Alerts</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     {% for row in rows %}
                         {% set _badge = row.status.raw | internal.core.status_badge_meta(true) %}
+                        {% set inv = row.inventory | default({}) %}
+                        {% set util = row.utilization | default({}) %}
                         <tr>
                             <td><strong>{{ row.name }}</strong></td>
                             <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>{{ row.version | default('N/A') }}</td>
+                            <td>{{ inv.clusters | default(0) }}</td>
+                            <td>{{ inv.hosts | default(0) }}</td>
+                            <td>{{ inv.vms | default(0) }}</td>
+                            <td>{{ util.cpu_pct | default(0) }}%</td>
+                            <td>{{ util.memory_pct | default(0) }}%</td>
                             <td>
                                 <span class="text-danger">●</span> {{ row.alerts.critical | default(0) }}
                                 <span class="text-warning" style="margin-left:8px;">●</span> {{ row.alerts.warning | default(0) }}
                             </td>
                             <td><a href="{{ row.links.node_report_latest }}" class="nav-link">View Node →</a></td>
                         </tr>
+                    {% else %}
+                        <tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-muted);">No VMware fleet rows found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="sub-title">Active Alerts</h2>
+        <div class="card-wrap">
+            <table>
+                <thead>
+                    <tr><th>vCenter</th><th>Severity</th><th>Category</th><th>Message</th></tr>
+                </thead>
+                <tbody>
+                    {% for alert in active_alerts %}
+                    {% set _badge = (alert.severity | default('UNKNOWN')) | internal.core.status_badge_meta(true) %}
+                    <tr>
+                        <td><strong>{{ alert.host }}</strong></td>
+                        <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                        <td>{{ alert.category | default('vmware') }}</td>
+                        <td>{{ alert.message | default('') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

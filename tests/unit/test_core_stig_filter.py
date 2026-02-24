@@ -2,7 +2,6 @@ import importlib.util
 import pathlib
 import unittest
 
-
 MODULE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"
@@ -82,9 +81,7 @@ class CoreStigFilterTests(unittest.TestCase):
         self.assertEqual(out["summary"]["warning_count"], 0)
         self.assertEqual(out["alerts"][0]["severity"], "INFO")
         self.assertEqual(out["alerts"][0]["detail"]["rule_id"], "")
-        self.assertEqual(
-            out["alerts"][0]["message"], "STIG Violation: Unknown Rule"
-        )
+        self.assertEqual(out["alerts"][0]["message"], "STIG Violation: Unknown Rule")
 
     def test_normalize_stig_results_empty_input(self):
         out = self.module.normalize_stig_results(None, "esxi")
@@ -102,6 +99,39 @@ class CoreStigFilterTests(unittest.TestCase):
                 "warning_count": 0,
             },
         )
+
+    def test_normalize_stig_results_handles_variant_field_names_and_status_aliases(self):
+        rows = [
+            {
+                "rule_id": "V-100",
+                "rule_title": "SSH root login disabled",
+                "finding_status": "Open",
+                "cat": "CAT_I",
+                "finding_details": "Observed root login allowed",
+            },
+            {
+                "vuln_id": "V-101",
+                "title": "Banner configured",
+                "result": "notafinding",
+                "severity": "CAT_II",
+            },
+            {
+                "id": "V-102",
+                "compliance": "non_compliant",
+                "severity_override": "HIGH",
+            },
+        ]
+
+        out = self.module.normalize_stig_results(rows, "esxi")
+
+        self.assertEqual(out["summary"]["total"], 3)
+        self.assertEqual(out["summary"]["violations"], 2)
+        self.assertEqual(out["summary"]["critical_count"], 2)
+        self.assertEqual(out["summary"]["passed"], 1)
+        self.assertEqual(out["alerts"][0]["detail"]["rule_id"], "V-100")
+        self.assertEqual(out["alerts"][0]["detail"]["description"], "Observed root login allowed")
+        self.assertEqual(out["alerts"][1]["detail"]["rule_id"], "V-102")
+        self.assertEqual(out["alerts"][1]["message"], "STIG Violation: V-102")
 
 
 if __name__ == "__main__":

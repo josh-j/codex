@@ -1,0 +1,24 @@
+---
+_windows_audit_export_data:
+  audit_type: ""
+  audit_failed: false
+  host: ""
+  target_type: ""
+  checked_at: ""
+  health: ""
+  summary:
+    applications:
+      configmgr_count: 0
+      installed_count: 0
+      apps_to_update_count: 0
+      total_apps: 0
+    updates:
+      results_count: 0
+      failed_count: 0
+    services:
+      ccmexec_running: false
+  alerts: []
+  check_metadata:
+    engine: ""
+    timestamp: ""
+  windows_ctx: {}

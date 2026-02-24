@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Windows Fleet Health</title>
+  <style>{{ '' | internal.core.shared_report_css }}</style>
+</head>
+<body>
+{% set fleet = windows_fleet_view | default({}) %}
+{% set meta = fleet.get('meta', {}) %}
+{% set rows = fleet.get('rows', []) %}
+{% set fleet_meta = fleet.get('fleet', {}) %}
+{% set fleet_alerts = fleet_meta.get('alerts', {}) %}
+{% set active_alerts = fleet.get('active_alerts', []) %}
+<div class="report-shell">
+  <header class="report-header">
+    <h1>Windows Fleet Health</h1>
+    <p>{{ fleet_meta.get('hosts', 0) }} hosts | Critical: {{ fleet_alerts.get('critical', 0) }} | Warning: {{ fleet_alerts.get('warning', 0) }}</p>
+    <p style="color: var(--text-muted);">
+      <a href="../../site_health_report.html">Global Site</a>
+      {% if meta.get('report_date') %} | Generated: {{ meta.get('report_date') }}{% endif %}
+      {% if meta.get('report_id') %} | ID: <code>{{ meta.get('report_id') }}</code>{% endif %}
+    </p>
+  </header>
+  <section class="card-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Host</th>
+          <th>Status</th>
+          <th>ConfigMgr Apps</th>
+          <th>Installed Apps</th>
+          <th>Pending Updates</th>
+          <th>Update Failures</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set badge = (row.get('status', {}).get('raw', 'UNKNOWN')) | internal.core.status_badge_meta %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td><span class="badge {{ badge.css_class }}">{{ badge.label }}</span></td>
+          <td>{{ row.get('applications', {}).get('configmgr_count', 0) }}</td>
+          <td>{{ row.get('applications', {}).get('installed_count', 0) }}</td>
+          <td>{{ row.get('applications', {}).get('apps_to_update_count', 0) }}</td>
+          <td>{{ row.get('updates', {}).get('failed_count', 0) }}</td>
+          <td><a href="{{ row.get('links', {}).get('node_report_latest', './' ~ row.name ~ '/health_report.html') }}">Host report</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No Windows audit data found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="card-wrap">
+    <h2>Active Alerts</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Host</th>
+          <th>Severity</th>
+          <th>Category</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alert in active_alerts %}
+        {% set badge = (alert.get('severity', 'UNKNOWN')) | internal.core.status_badge_meta %}
+        <tr>
+          <td>{{ alert.get('host', 'unknown') }}</td>
+          <td><span class="badge {{ badge.css_class }}">{{ badge.label }}</span></td>
+          <td>{{ alert.get('category', 'windows') }}</td>
+          <td>{{ alert.get('message', '') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No critical or warning alerts.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+</body>
+</html>

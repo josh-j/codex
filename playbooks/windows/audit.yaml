@@ -1,0 +1,28 @@
+---
+- name: "Phase 1: Prepare Environment"
+  ansible.builtin.import_playbook: ../common/init_environment.yaml
+  tags: ['always']
+
+- name: "Phase 2: Windows Audit (Inventory / Compliance, No Updates)"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ['windows', 'audit']
+  roles:
+    - role: internal.windows.windows_audit
+      vars:
+        force_update: false
+
+- name: "Phase 3: Generate Windows Fleet Summary"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: ['always']
+  tasks:
+    - name: Run Windows Summary
+      ansible.builtin.include_role:
+        name: internal.windows.windows_summary
+        tasks_from: report.yaml
+
+- name: "Phase 4: Aggregate and Report"
+  ansible.builtin.import_playbook: ../common/generate_site_health_report.yaml
+  tags: ['always']

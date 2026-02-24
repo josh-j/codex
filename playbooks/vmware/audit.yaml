@@ -29,44 +29,14 @@
   gather_facts: false
   run_once: true
 
-  vars:
-    # Anchor to the project structure
-    _playbooks_dir: "{{ playbook_dir.split('/vmware')[0] if '/vmware' in playbook_dir else playbook_dir }}"
-    _project_root: "{{ _playbooks_dir | dirname }}"
-
-    # Path logic (matching the Summary role expectations)
-    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-    _vmware_dir: "{{ _reports_root }}/platform/vmware"
-    _scripts_dir: "{{ _playbooks_dir }}/scripts"
-
-    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
-
   tasks:
-    - name: Ensure VMware platform directory exists
-      ansible.builtin.file:
-        path: "{{ _vmware_dir }}"
-        state: directory
-        mode: "0755"
-
-    - name: Aggregate VMware Audit State
-      ansible.builtin.command:
-        argv:
-          - python3
-          - "{{ _scripts_dir }}/aggregate_yaml_reports.py"
-          - "{{ _vmware_dir }}"
-          - "{{ _vmware_dir }}/vmware_fleet_state.yaml"
-      changed_when: false
-
     - name: Execute VMware Summary Role
       ansible.builtin.include_role:
         name: internal.vmware.summary
         tasks_from: report.yaml
-      vars:
-        # Pass the calculated paths into the role
-        vmw_report_dest: "{{ _vmware_dir }}/vmware_health_report_{{ report_stamp }}.html"
-        vmw_report_link: "{{ _vmware_dir }}/vmware_health_report.html"
-        vmw_state_file: "{{ _vmware_dir }}/vmware_fleet_state.yaml"
 
     - name: Announce Completion
       ansible.builtin.debug:
-        msg: "✅ VMware Fleet Dashboard Updated: {{ _vmware_dir }}/vmware_health_report.html"
+        msg: >-
+          VMware Fleet Dashboard Updated:
+          {{ (ncs_config.report_directory | default('/srv/samba/reports')) }}/platform/vmware/vmware_health_report.html

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: Internal
+  description: Windows Server STIG audit/report scaffold using internal.core.stig finalize
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

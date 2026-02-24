@@ -6,11 +6,14 @@
 - name: "Phase 2: Ubuntu STIG Remediation"
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
+  become: true
   tags: ['ubuntu', 'remediate', 'stig', 'security']
   roles:
     - role: internal.linux.ubuntu_system_discover
-    # Note: Assuming you create a stig_remediate role, or pass a flag to stig_audit!
-    - role: internal.linux.ubuntu_stig_remediate
+    - role: internal.linux.ubuntu_system_remediate
+      vars:
+        ubuntu_enable_maintenance: true
+        ubuntu_enable_stig_hardening: true
     - role: internal.linux.ubuntu_stig_audit # Capture post-remediation STIG state
 
 - name: "Phase 3: Aggregate and Report"

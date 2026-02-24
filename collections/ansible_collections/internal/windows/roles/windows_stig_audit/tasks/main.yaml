@@ -1,0 +1,123 @@
+---
+# internal.windows.windows_stig_audit : tasks/main.yaml
+
+# =============================================================================
+# Phase 0 | Initialize
+# =============================================================================
+
+- name: "Windows STIG | Phase 0 | Initialize state"
+  ansible.builtin.set_fact:
+    _stig_audit_ran: false
+    _stig_audit_failed: false
+  changed_when: false
+
+# =============================================================================
+# Phase 1 | Ingest Inputs / Evaluate
+# =============================================================================
+
+- name: "Windows STIG | Phase 1a | Load findings from provided rows"
+  when: windows_stig_input_rows | default([]) | length > 0
+  ansible.builtin.set_fact:
+    audit_full_list: "{{ windows_stig_input_rows | default([]) | list }}"
+    _stig_audit_ran: true
+  changed_when: false
+
+- name: "Windows STIG | Phase 1b | Run native checks"
+  when:
+    - not (_stig_audit_ran | default(false))
+    - windows_stig_enable_audit | default(false) | bool
+  block:
+    - name: "Windows STIG | Phase 1b.1 | Execute native baseline checks"
+      ansible.builtin.import_tasks: check.yaml
+      tags: [windows, stig, security, checks]
+  rescue:
+    - name: "Windows STIG | Phase 1b.r | Mark native check failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "Windows STIG | Phase 1b.r | Fail native-only mode"
+      when: windows_stig_native_checks_only | default(false) | bool
+      ansible.builtin.fail:
+        msg: "Windows Server STIG native checks failed on {{ inventory_hostname }}."
+
+- name: "Windows STIG | Phase 1c | Check artifact presence"
+  when:
+    - not (_stig_audit_ran | default(false))
+    - not (windows_stig_native_checks_only | default(false) | bool)
+    - windows_stig_artifact_file | default('') | length > 0
+  ansible.builtin.stat:
+    path: "{{ windows_stig_artifact_file }}"
+  register: _windows_stig_artifact_stat
+  delegate_to: localhost
+  become: false
+
+- name: "Windows STIG | Phase 1d | Read callback artifact"
+  when:
+    - not (_stig_audit_ran | default(false))
+    - not (windows_stig_native_checks_only | default(false) | bool)
+    - _windows_stig_artifact_stat is defined
+    - _windows_stig_artifact_stat.stat.exists | default(false)
+  ansible.builtin.slurp:
+    src: "{{ windows_stig_artifact_file }}"
+  register: _windows_stig_artifact_raw
+  delegate_to: localhost
+  become: false
+  ignore_errors: true
+
+- name: "Windows STIG | Phase 1e | Parse callback findings"
+  when:
+    - not (_stig_audit_ran | default(false))
+    - not (windows_stig_native_checks_only | default(false) | bool)
+    - _windows_stig_artifact_raw is defined
+    - not (_windows_stig_artifact_raw.failed | default(false))
+    - _windows_stig_artifact_raw.content is defined
+  ansible.builtin.set_fact:
+    audit_full_list: "{{ (_windows_stig_artifact_raw.content | b64decode | from_json) | default([]) }}"
+    _stig_audit_ran: true
+  changed_when: false
+
+- name: "Windows STIG | Phase 1f | Fail when input is required but missing"
+  when:
+    - windows_stig_require_input | default(false) | bool
+    - not (_stig_audit_ran | default(false))
+  block:
+    - name: "Windows STIG | Phase 1f.1 | Mark failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "Windows STIG | Phase 1f.2 | Abort due to missing findings input"
+      ansible.builtin.fail:
+        msg: >-
+          No Windows Server STIG findings input available. Provide `windows_stig_input_rows`
+          or a JSON artifact at `windows_stig_artifact_file`.
+
+- name: "Windows STIG | Phase 1g | Skip notice (no findings source)"
+  when:
+    - not (windows_stig_require_input | default(false) | bool)
+    - not (_stig_audit_ran | default(false))
+  ansible.builtin.debug:
+    msg: >-
+      Windows Server STIG scaffold did not run on {{ inventory_hostname }}:
+      no `windows_stig_input_rows` and no artifact at {{ windows_stig_artifact_file }}.
+
+# =============================================================================
+# Phase 2 | Finalize / Export
+# =============================================================================
+
+- name: "Windows STIG | Phase 2 | Export reports via core finalize"
+  when: _stig_audit_ran | default(false)
+  ansible.builtin.include_role:
+    name: internal.core.stig
+    tasks_from: finalize.yaml
+  vars:
+    stig_quiet_mode: "{{ windows_stig_quiet_mode | default(false) }}"
+    stig_target_type: "{{ windows_stig_target_type | default('windows_server_2022') }}"
+    ncs_export_path: >-
+      {{
+        (ncs_config.report_directory | default('/srv/samba/reports'))
+        ~ '/platform/windows/'
+        ~ inventory_hostname
+        ~ '/stig.yaml'
+      }}

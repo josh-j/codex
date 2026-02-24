@@ -1,39 +1,18 @@
 ---
 # internal.vmware.stig : vm/checks.yaml
 
-- name: "VM STIG | Initialize result lists"
-  tags: [stig, audit]
-  ansible.builtin.set_fact:
-    audit_full_list: []
-    audit_violations: []
-
 - name: "VM STIG | Evaluate compliance per VM"
   tags: [stig, audit]
-  ansible.builtin.set_fact:
-    audit_full_list: >-
+  ansible.builtin.include_role:
+    name: internal.core.stig
+    tasks_from: audit_orchestrator
+  vars:
+    raw_discovery_data: >-
       {{
-        audit_full_list + (
-          lookup('template', role_path ~ '/../templates/vm_logic.j2') | from_json
-          | map('combine', {'name': item.name, 'uuid': item.uuid | default('N/A')})
-          | list
-        )
+        (vsphere_ctx.stig_facts | default([]))
+        | rejectattr('name', 'search', 'vCLS')
+        | list
       }}
-  loop: "{{ vsphere_ctx.stig_facts | default([]) }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when:
-    - item.name is not search('vCLS')
-    - item.name not in (exclusion_list | default([]))
-    - stig_vm_filter | default('') == '' or item.name == stig_vm_filter
-
-- name: "VM STIG | Extract violations"
-  tags: [stig, audit]
-  ansible.builtin.set_fact:
-    audit_violations: >-
-      {%- set violations = [] -%}
-      {%- for item in (audit_full_list | default([])) -%}
-        {%- if (item.status | default('') | string | lower) == 'failed' -%}
-          {%- set _ = violations.append(item) -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ violations }}
+    audit_logic_template: "{{ role_path }}/templates/vm_logic.j2"
+    stig_filter: "{{ stig_vm_filter | default('') }}"
+    stig_exclusions: "{{ exclusion_list | default([]) }}"

@@ -3,13 +3,26 @@
 
 - name: Standardize audit results
   ansible.builtin.set_fact:
-    _vmw_summary: >-
+    _vmw_rollups: >-
       {{
-        (vmware_alerts | default([]) | list) | internal.core.summarize_alerts
+        (vmware_alerts | default([]) | list)
+        | internal.vmware.compute_audit_rollups
       }}
-    _vmw_health: >-
+    _vmw_summary: "{{ (_vmw_rollups | default({})).summary | default({}) }}"
+    _vmw_health: "{{ (_vmw_rollups | default({})).health | default('HEALTHY') }}"
+  changed_when: false
+
+- name: Attach finalized audit state to vmware_ctx
+  ansible.builtin.set_fact:
+    vmware_ctx: >-
       {{
-        (vmware_alerts | default([]) | list) | internal.core.health_rollup
+        vmware_ctx
+        | internal.vmware.attach_audit_results(
+          (vmware_alerts | default([]) | list),
+          (_vmw_audit_failed | default(false) | bool),
+          _vmw_health,
+          _vmw_summary
+        )
       }}
   changed_when: false
 

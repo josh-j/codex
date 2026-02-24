@@ -1,22 +1,16 @@
-from pathlib import Path
 import importlib.util
+from pathlib import Path
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_vmware_fleet_view as _build_vmware_fleet_view,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_vmware_node_view as _build_vmware_node_view,
     )
 except ImportError:
-    _helper_path = (
-        Path(__file__).resolve().parents[3]
-        / "core"
-        / "plugins"
-        / "module_utils"
-        / "report_view_models.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "internal_core_report_view_models", _helper_path
-    )
+    _helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "report_view_models.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_report_view_models", _helper_path)
     _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
     _spec.loader.exec_module(_mod)
@@ -54,7 +48,7 @@ def vmware_node_view(
     )
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "vmware_fleet_view": vmware_fleet_view,

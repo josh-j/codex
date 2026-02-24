@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 
-from __future__ import absolute_import, division, print_function
 
-__metaclass__ = type
-
+import importlib.util
 import os
 from pathlib import Path
-import importlib.util
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_site_dashboard_view as _build_site_dashboard_view,
-        default_report_skip_keys as _default_report_skip_keys,
-        build_stig_host_view as _build_stig_host_view,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
         build_stig_fleet_view as _build_stig_fleet_view,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
+        build_stig_host_view as _build_stig_host_view,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.report_view_models import (
+        default_report_skip_keys as _default_report_skip_keys,
     )
 except ImportError:
     _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "report_view_models.py"
@@ -49,10 +52,7 @@ def _resolve_shared_css_path():
         if path.is_file():
             return path
     searched = ", ".join(str(p) for p in _candidate_shared_css_paths())
-    raise RuntimeError(
-        "internal.core.shared_report_css could not locate report_shared.css. "
-        "Searched: " + searched
-    )
+    raise RuntimeError("internal.core.shared_report_css could not locate report_shared.css. Searched: " + searched)
 
 
 def shared_report_css(_value=None):
@@ -62,11 +62,7 @@ def shared_report_css(_value=None):
     global _SHARED_CSS_CACHE, _SHARED_CSS_MTIME_NS, _SHARED_CSS_RESOLVED_PATH
     path = _resolve_shared_css_path()
     stat = path.stat()
-    if (
-        _SHARED_CSS_CACHE is None
-        or _SHARED_CSS_MTIME_NS != stat.st_mtime_ns
-        or _SHARED_CSS_RESOLVED_PATH != path
-    ):
+    if _SHARED_CSS_CACHE is None or _SHARED_CSS_MTIME_NS != stat.st_mtime_ns or _SHARED_CSS_RESOLVED_PATH != path:
         _SHARED_CSS_CACHE = path.read_text(encoding="utf-8")
         _SHARED_CSS_MTIME_NS = stat.st_mtime_ns
         _SHARED_CSS_RESOLVED_PATH = path
@@ -128,7 +124,7 @@ def stig_fleet_view(
     )
 
 
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {
             "shared_report_css": shared_report_css,

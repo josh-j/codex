@@ -1,33 +1,48 @@
 ---
 # collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/tasks/main.yaml
 
-- name: Validate discovery data exists dynamically
-  ansible.builtin.assert:
-    that:
-      - ubuntu_ctx | internal.core.validate_schema_from_file(role_path ~ '/../ubuntu_system_discover/defaults/main.yaml', 'ubuntu_ctx')
-    fail_msg: "STIG audit requires discovery data. Run ubuntu_system_discover first."
+# =============================================================================
+# Phase 0 | Preconditions / Input Validation
+# =============================================================================
 
-- name: Ubuntu STIG Audit
+- name: "Ubuntu STIG | Phase 0 | Validate discovery data exists"
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ ubuntu_ctx }}"
+    ncs_validate_schema_path: "{{ role_path ~ '/../ubuntu_system_discover/defaults/main.yaml' }}"
+    ncs_validate_root_key: "ubuntu_ctx"
+    ncs_validate_fail_msg: "STIG audit requires discovery data. Run ubuntu_system_discover first."
+
+# =============================================================================
+# Phase 1 | Evaluate
+# =============================================================================
+
+- name: "Ubuntu STIG | Phase 1 | Evaluate"
   block:
-    - name: "Ubuntu STIG | Run audit"
+    - name: "Ubuntu STIG | Phase 1a | Run audit"
       ansible.builtin.import_tasks: check.yaml
       tags: [checks, stig, security]
 
   rescue:
-    # FIX: Split the rescue actions into two distinct tasks
-    - name: "Ubuntu STIG | Set failure flag"
+    # Phase 1 rescue: preserve partial export path on failure.
+    - name: "Ubuntu STIG | Phase 1r | Set failure flag"
       ansible.builtin.set_fact:
         _stig_audit_failed: true
 
-    - name: "Ubuntu STIG | Log failure"
+    - name: "Ubuntu STIG | Phase 1r | Log failure"
       ansible.builtin.debug:
         msg: "STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
 
   always:
-    - name: "Ubuntu STIG | Process and Export Results"
+    # =============================================================================
+    # Phase 2 | Finalize / Export
+    # =============================================================================
+    - name: "Ubuntu STIG | Phase 2 | Process and export results"
       when: _stig_audit_ran | default(false)
       block:
-        - name: "Ubuntu STIG | Read Callback Artifact"
+        - name: "Ubuntu STIG | Phase 2a | Read callback artifact"
           ansible.builtin.slurp:
             src: "{{ ubuntu_stig_artifact_file }}"
           register: _artifact_raw
@@ -35,7 +50,7 @@
           become: false
           ignore_errors: true
 
-        - name: "Ubuntu STIG | Load callback findings for core finalize"
+        - name: "Ubuntu STIG | Phase 2b | Load callback findings for core finalize"
           ansible.builtin.set_fact:
             audit_full_list: >-
               {{
@@ -46,7 +61,7 @@
                 )
               }}
 
-        - name: "Ubuntu STIG | Export reports via core finalize"
+        - name: "Ubuntu STIG | Phase 2c | Export reports via core finalize"
           ansible.builtin.include_role:
             name: internal.core.stig
             tasks_from: finalize.yaml

@@ -12,3 +12,18 @@ windows:
     # INHERIT GLOBAL ROOT
     report_directory: "{{ ncs_config.report_directory }}"
     export_csv: true
+
+# -----------------------------------------------------------------------------
+# Master Windows STIG phase (playbooks/master_audit.yaml Phase 3c)
+# -----------------------------------------------------------------------------
+# Disabled by default to avoid unexpectedly running native STIG checks fleet-wide.
+master_enable_windows_stig: false
+
+# Windows Server STIG audit role settings
+# The role can consume:
+# - native checks (set windows_stig_enable_audit: true), and/or
+# - precomputed rows / JSON artifact fallback
+windows_stig_enable_audit: false
+windows_stig_native_checks_only: false
+windows_stig_require_input: false
+windows_stig_target_type: "windows_server_2022"

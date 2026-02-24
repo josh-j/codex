@@ -1,4 +1,8 @@
 ---
-- name: Calculate host health
-  ansible.builtin.set_fact:
-    host_health: "{{ ubuntu_alerts | internal.core.health_rollup }}"
+# internal.linux.ubuntu_summary : tasks/main.yaml
+#
+# Default role entrypoint delegates to the fleet report task file so the role can
+# be invoked either as a normal role or with tasks_from=report.yaml.
+
+- name: Linux Summary | Generate fleet report
+  ansible.builtin.include_tasks: report.yaml

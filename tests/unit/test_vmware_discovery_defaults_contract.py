@@ -1,7 +1,6 @@
 import pathlib
 import unittest
 
-
 DEFAULTS_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
     / "collections"
@@ -22,7 +21,7 @@ class VmwareDiscoveryDefaultsContractTests(unittest.TestCase):
         required_snippets = [
             "vmware_validate_ctx_schema: true",
             "vmware_ctx:",
-            "  audit_type: \"vcenter_health\"",
+            '  audit_type: "vcenter_health"',
             "  checks_failed: false",
             "  system:",
             "  health:",

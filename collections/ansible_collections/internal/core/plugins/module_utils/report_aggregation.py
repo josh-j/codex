@@ -14,9 +14,7 @@ except ImportError:
     from pathlib import Path
 
     _helper_path = Path(__file__).resolve().parent / "reporting_primitives.py"
-    _spec = importlib.util.spec_from_file_location(
-        "internal_core_reporting_primitives", _helper_path
-    )
+    _spec = importlib.util.spec_from_file_location("internal_core_reporting_primitives", _helper_path)
     _mod = importlib.util.module_from_spec(_spec)
     assert _spec is not None and _spec.loader is not None
     _spec.loader.exec_module(_mod)
@@ -24,7 +22,7 @@ except ImportError:
 
 
 def read_report(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
@@ -36,9 +34,7 @@ def read_report(file_path):
         payload = {}
 
     audit_type = (
-        payload.get("audit_type")
-        or metadata.get("audit_type")
-        or os.path.basename(file_path).replace(".yaml", "")
+        payload.get("audit_type") or metadata.get("audit_type") or os.path.basename(file_path).replace(".yaml", "")
     )
 
     merged = dict(payload)
@@ -59,11 +55,7 @@ def _apply_report_normalizer(normalizer, hostname, audit_type, report):
         return audit_type, report
 
     normalized = normalizer(hostname, audit_type, report)
-    if (
-        isinstance(normalized, tuple)
-        and len(normalized) == 2
-        and isinstance(normalized[1], dict)
-    ):
+    if isinstance(normalized, tuple) and len(normalized) == 2 and isinstance(normalized[1], dict):
         return normalized[0], normalized[1]
     if isinstance(normalized, dict):
         return audit_type, normalized
@@ -74,6 +66,7 @@ def load_all_reports(report_dir, audit_filter=None, normalizer=None):
     """
     Groups results by Hostname -> Audit Type and calculates global health metrics.
     Traverses: <report_dir>/<hostname>/<audit_type>.yaml
+    Or: <report_dir>/<platform>/<hostname>/<audit_type>.yaml
     """
     aggregated = {
         "metadata": {
@@ -87,88 +80,80 @@ def load_all_reports(report_dir, audit_filter=None, normalizer=None):
         "hosts": {},
     }
 
-    excluded_names = [
+    # Names that should never be processed as hosts OR descended into
+    traversal_exclude = {
+        "history",
+        "raw_state",
         "Summary",
         "Split",
+        "__pycache__",
+        ".git",
+        ".artifacts",
+    }
+
+    # Names that are valid for traversal but should not be processed as hostnames
+    # (e.g. platform container directories)
+    host_exclude = {
         "platform",
-        "raw_state",
-        "history",
         "ubuntu",
         "vmware",
+        "windows",
         "all_hosts_state.yaml",
         "vmware_fleet_state.yaml",
         "linux_fleet_state.yaml",
-    ]
+        "windows_fleet_state.yaml",
+    }.union(traversal_exclude)
 
-    try:
-        entries = sorted(os.scandir(report_dir), key=lambda e: e.name)
-    except FileNotFoundError:
+    if not os.path.isdir(report_dir):
         print(f"Error: Report directory not found: {report_dir}", file=sys.stderr)
         return None
 
-    for entry in entries:
-        if not entry.is_dir() or entry.name in excluded_names:
+    # Walk recursively to find directories containing .yaml files.
+    for root, dirs, files in os.walk(report_dir):
+        # Filter out directories we should never enter
+        dirs[:] = [d for d in dirs if d not in traversal_exclude]
+
+        current_dir_name = os.path.basename(root)
+        if current_dir_name in host_exclude or root == report_dir:
             continue
 
-        hostname = entry.name
-        host_has_data = False
+        hostname = current_dir_name
+        yaml_files = [f for f in files if f.endswith(".yaml") and f not in host_exclude]
 
-        try:
-            for file in os.scandir(entry.path):
-                if (
-                    file.is_file()
-                    and file.name.endswith(".yaml")
-                    and file.name not in excluded_names
-                ):
-                    try:
-                        _raw_report, report, audit_type = read_report(file.path)
-                        if not isinstance(report, dict):
-                            continue
-                        if audit_filter and audit_type != audit_filter:
-                            continue
+        if not yaml_files:
+            continue
 
-                        audit_type, report = _apply_report_normalizer(
-                            normalizer, hostname, audit_type, report
-                        )
+        for yaml_file in yaml_files:
+            file_path = os.path.join(root, yaml_file)
+            try:
+                _raw_report, report, audit_type = read_report(file_path)
+                if not isinstance(report, dict):
+                    continue
+                if audit_filter and audit_type != audit_filter:
+                    continue
 
-                        if hostname not in aggregated["hosts"]:
-                            aggregated["hosts"][hostname] = {}
+                audit_type, report = _apply_report_normalizer(normalizer, hostname, audit_type, report)
 
-                        aggregated["hosts"][hostname][audit_type] = report
-                        host_has_data = True
+                if hostname not in aggregated["hosts"]:
+                    aggregated["hosts"][hostname] = {}
 
-                        summary = report.get("summary", {})
-                        if not summary and "vcenter_health" in report:
-                            alerts = report["vcenter_health"].get("alerts", [])
-                            criticals = len(
-                                [
-                                    a
-                                    for a in alerts
-                                    if canonical_severity(a.get("severity")) == "CRITICAL"
-                                ]
-                            )
-                            warnings = len(
-                                [
-                                    a
-                                    for a in alerts
-                                    if canonical_severity(a.get("severity")) == "WARNING"
-                                ]
-                            )
-                        else:
-                            criticals = int(summary.get("critical_count", 0))
-                            warnings = int(summary.get("warning_count", 0))
+                # Deep merge or replace? Standard is replace for same audit_type
+                aggregated["hosts"][hostname][audit_type] = report
 
-                        aggregated["metadata"]["fleet_stats"]["critical_alerts"] += criticals
-                        aggregated["metadata"]["fleet_stats"]["warning_alerts"] += warnings
+                summary = report.get("summary", {})
+                if not summary and "vcenter_health" in report:
+                    alerts = report["vcenter_health"].get("alerts", [])
+                    criticals = len([a for a in alerts if canonical_severity(a.get("severity")) == "CRITICAL"])
+                    warnings = len([a for a in alerts if canonical_severity(a.get("severity")) == "WARNING"])
+                else:
+                    criticals = int(summary.get("critical_count", 0))
+                    warnings = int(summary.get("warning_count", 0))
 
-                    except Exception as e:
-                        print(f"Warning: Failed to load {file.path}: {e}", file=sys.stderr)
-        except Exception as e:
-            print(f"Warning: Access denied for {entry.path}: {e}", file=sys.stderr)
+                aggregated["metadata"]["fleet_stats"]["critical_alerts"] += criticals
+                aggregated["metadata"]["fleet_stats"]["warning_alerts"] += warnings
 
-        if host_has_data:
-            # reserved for future host-level stats; keeps parity with prior traversal semantics
-            pass
+            except Exception as e:
+                print(f"Warning: Failed to load {file_path}: {e}", file=sys.stderr)
 
     aggregated["metadata"]["fleet_stats"]["total_hosts"] = len(aggregated["hosts"])
     return aggregated

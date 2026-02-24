@@ -6,7 +6,7 @@
     vmware_alerts: >-
       {{
         (vmware_alerts | default([]) | list)
-        + (
+        | internal.vmware.append_alerts(
           vmware_ctx
           | internal.vmware.audit_snapshot_alerts(
             vmware_snapshot_age_warning_days | default(7) | int,
@@ -16,3 +16,4 @@
         )
       }}
   changed_when: false
+  when: vmware_ctx is defined and vmware_ctx.get('inventory', {}).get('snapshots') is defined
