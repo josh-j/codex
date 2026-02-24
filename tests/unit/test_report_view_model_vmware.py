@@ -99,7 +99,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
         self.assertEqual(view["fleet"]["alerts"]["total"], 0)
         self.assertEqual(view["fleet"]["utilization"]["cpu"]["pct"], 0.0)
         self.assertEqual(view["rows"][0]["version"], "N/A")
-        self.assertEqual(view["rows"][0]["links"]["node_report"], "./vc03/health_report.html")
+        self.assertEqual(view["rows"][0]["links"]["node_report_latest"], "./vc03/health_report.html")
 
     def test_builds_node_view_from_bundle(self):
         bundle = {

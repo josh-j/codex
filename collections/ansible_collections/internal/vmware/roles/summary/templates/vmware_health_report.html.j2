@@ -81,7 +81,7 @@
                                 <span class="text-danger">●</span> {{ row.alerts.critical | default(0) }}
                                 <span class="text-warning" style="margin-left:8px;">●</span> {{ row.alerts.warning | default(0) }}
                             </td>
-                            <td><a href="{{ row.links.node_report }}" class="nav-link">View Node →</a></td>
+                            <td><a href="{{ row.links.node_report_latest }}" class="nav-link">View Node →</a></td>
                         </tr>
                     {% endfor %}
                 </tbody>

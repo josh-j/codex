@@ -251,7 +251,7 @@ def build_vmware_fleet_view(
                 "name": hostname,
                 "status": {"raw": status_raw},
                 "version": _extract_vmware_version(bundle_view) or "N/A",
-                "links": {"node_report": "./%s/health_report.html" % hostname},
+                "links": {"node_report_latest": "./%s/health_report.html" % hostname},
                 "inventory": inv,
                 "utilization": {
                     "cpu_pct": util["cpu"]["pct"],
