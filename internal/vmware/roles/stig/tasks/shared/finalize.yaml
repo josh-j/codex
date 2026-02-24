@@ -33,7 +33,7 @@
         ~ '/'
         ~ item.0
         ~ '_'
-        ~ (run_ctx.id | default('unknown'))
+        ~ (_stig_report_id | default(now(utc=true, fmt='%Y%m%dT%H%M%SZ')))
         ~ '_STIG.cklb'
       }}
     mode: "0664"

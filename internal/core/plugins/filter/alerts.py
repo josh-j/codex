@@ -229,6 +229,32 @@ def summarize_alerts(alerts):
     return summary
 
 
+def status_badge_meta(status, preserve_label=False):
+    """
+    Normalize a status/severity string into badge presentation metadata.
+    Returns a dict with:
+      - css_class: one of status-ok/status-warn/status-fail
+      - label: display text
+    """
+    raw = str(status or "unknown").strip()
+    upper = raw.upper()
+
+    ok_values = {"OK", "HEALTHY", "GREEN", "PASS", "RUNNING"}
+    fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED"}
+
+    if upper in ok_values:
+        css_class = "status-ok"
+        label = upper if preserve_label else "OK"
+    elif upper in fail_values:
+        css_class = "status-fail"
+        label = upper if preserve_label else "CRITICAL"
+    else:
+        css_class = "status-warn"
+        label = upper if preserve_label and upper else "WARN"
+
+    return {"css_class": css_class, "label": label}
+
+
 class FilterModule(object):
     def filters(self):
         return {
@@ -236,4 +262,5 @@ class FilterModule(object):
             "threshold_alert": threshold_alert,
             "health_rollup": health_rollup,
             "summarize_alerts": summarize_alerts,
+            "status_badge_meta": status_badge_meta,
         }

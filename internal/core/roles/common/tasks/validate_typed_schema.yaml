@@ -1,0 +1,28 @@
+---
+# Generic schema + typed-schema assertion wrapper.
+# Required vars:
+#   ncs_validate_data
+#   ncs_validate_schema_path
+#   ncs_validate_root_key
+# Optional vars:
+#   ncs_validate_fail_msg
+#   ncs_validate_quiet (default: true)
+
+- name: Validate payload keys and types from schema
+  ansible.builtin.assert:
+    that:
+      - >-
+        ncs_validate_data
+        | internal.core.validate_schema_from_file(
+          ncs_validate_schema_path,
+          ncs_validate_root_key
+        )
+      - >-
+        ncs_validate_data
+        | internal.core.validate_typed_schema_from_file(
+          ncs_validate_schema_path,
+          ncs_validate_root_key
+        )
+    fail_msg: "{{ ncs_validate_fail_msg | default('Schema validation failed.') }}"
+    quiet: "{{ ncs_validate_quiet | default(true) | bool }}"
+  changed_when: false

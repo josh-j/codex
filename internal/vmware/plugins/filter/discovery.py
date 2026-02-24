@@ -2,11 +2,47 @@
 
 import json
 import re
-from datetime import datetime, timezone
+from pathlib import Path
+import importlib.util
+
+try:
+    from ansible_collections.internal.core.plugins.module_utils.normalization import (
+        merge_section_defaults as _merge_defaults,
+        parse_json_command_result,
+        result_envelope as discovery_result,
+        section_defaults as _section_defaults,
+    )
+    from ansible_collections.internal.core.plugins.module_utils.date_utils import (
+        safe_iso_to_epoch as _safe_iso_utc_to_epoch,
+    )
+except ImportError:
+    # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
+    _helper_path = (
+        Path(__file__).resolve().parents[3]
+        / "core"
+        / "plugins"
+        / "module_utils"
+        / "normalization.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "internal_core_normalization_helpers", _helper_path
+    )
+    _mod = importlib.util.module_from_spec(_spec)
+    assert _spec is not None and _spec.loader is not None
+    _spec.loader.exec_module(_mod)
+    discovery_result = _mod.result_envelope
+    _section_defaults = _mod.section_defaults
+    _merge_defaults = _mod.merge_section_defaults
+    parse_json_command_result = _mod.parse_json_command_result
+    _date_helper_path = Path(__file__).resolve().parents[3] / "core" / "plugins" / "module_utils" / "date_utils.py"
+    _date_spec = importlib.util.spec_from_file_location("internal_core_date_utils", _date_helper_path)
+    _date_mod = importlib.util.module_from_spec(_date_spec)
+    assert _date_spec is not None and _date_spec.loader is not None
+    _date_spec.loader.exec_module(_date_mod)
+    _safe_iso_utc_to_epoch = _date_mod.safe_iso_to_epoch
 
 _BACKUP_TS_RE = re.compile(r"EndTime=([^,]+)")
 _SYSTEM_VM_RE = re.compile(r"^(vCLS-|vsanhealth|vmware-).*")
-_ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
 def normalize_compute_inventory(cluster_results):
@@ -256,19 +292,6 @@ def normalize_storage_result(raw_result, collected_at="", low_space_pct=10):
     )
 
 
-def _safe_iso_utc_to_epoch(value):
-    if not isinstance(value, str):
-        return 0
-    text = value.strip()
-    if not _ISO_UTC_RE.match(text):
-        return 0
-    try:
-        dt = datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ")
-    except ValueError:
-        return 0
-    return int(dt.replace(tzinfo=timezone.utc).timestamp())
-
-
 def analyze_workload_vms(virtual_machines, current_epoch, backup_overdue_days=2):
     """
     Normalize VM inventory and derive ownership/backup compliance fields.
@@ -356,14 +379,6 @@ def normalize_workload_result(raw_result, current_epoch, collected_at="", backup
     )
 
 
-def discovery_result(payload, failed=False, error="", collected_at="", status=None):
-    payload = dict(payload or {})
-    payload["status"] = str(status if status is not None else ("QUERY_ERROR" if bool(failed) else "SUCCESS"))
-    payload["error"] = str(error or "")
-    payload["collected_at"] = str(collected_at or "")
-    return payload
-
-
 def normalize_datacenters_result(raw_result, collected_at=""):
     raw_result = raw_result or {}
     raw_list = list(raw_result.get("value") or [])
@@ -387,41 +402,34 @@ def normalize_datacenters_result(raw_result, collected_at=""):
 
 
 def parse_alarm_script_output(command_result):
-    command_result = command_result or {}
-    rc = int(command_result.get("rc", 1) or 1)
-    stdout = str(command_result.get("stdout", "") or "").strip()
-    stderr = str(command_result.get("stderr", "") or "").strip()
-    match = re.search(r"(?s)\{.*\}", stdout or "")
-    json_text = (match.group(0).strip() if match else "")
-    script_valid = rc == 0 and len(json_text) > 0 and json_text.lstrip().startswith("{")
+    parsed = parse_json_command_result(command_result, object_only=True)
+    payload = parsed.get("payload")
+    stdout = parsed.get("stdout", "")
+    stderr = parsed.get("stderr", "")
 
-    if script_valid:
-        try:
-            payload = json.loads(json_text)
-        except Exception:
-            payload = {
-                "success": False,
-                "error": "Invalid JSON from alarm script",
-                "alarms": [],
-            }
+    if parsed.get("script_valid", False) and isinstance(payload, dict):
+        parsed["payload"] = payload
+        return parsed
+
+    if parsed.get("script_valid", False):
+        error_msg = "Invalid JSON from alarm script"
     else:
-        payload = {
-            "success": False,
-            "error": (
-                stderr
-                if len(stderr) > 0
-                else ("Empty stdout from alarm script" if len(stdout) == 0 else "Non-JSON stdout from alarm script")
-            ),
-            "alarms": [],
-        }
+        error_msg = (
+            stderr
+            if len(stderr) > 0
+            else (
+                "Empty stdout from alarm script"
+                if len(stdout) == 0
+                else "Non-JSON stdout from alarm script"
+            )
+        )
 
-    return {
-        "rc": rc,
-        "stdout": stdout,
-        "stderr": stderr,
-        "payload": payload,
-        "script_valid": script_valid,
+    parsed["payload"] = {
+        "success": False,
+        "error": error_msg,
+        "alarms": [],
     }
+    return parsed
 
 
 def normalize_alarm_result(parsed_result, site, collected_at=""):
@@ -548,25 +556,6 @@ def normalize_snapshots_result(
         error=error,
         collected_at=collected_at,
     )
-
-
-def _section_defaults(collected_at=""):
-    return {
-        "status": "NOT_RUN",
-        "error": "",
-        "collected_at": str(collected_at or ""),
-    }
-
-
-def _merge_defaults(section, payload, collected_at=""):
-    section = dict(section or {})
-    payload = dict(payload or {})
-    out = dict(section)
-    out.update(payload)
-    out.setdefault("status", "NOT_RUN")
-    out.setdefault("error", "")
-    out.setdefault("collected_at", str(collected_at or ""))
-    return out
 
 
 def _default_inventory_sections(collected_at=""):

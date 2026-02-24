@@ -2,18 +2,11 @@
 # internal.vmware.discovery : validate.yaml
 
 - name: Validate discovery context keys from defaults schema
-  ansible.builtin.assert:
-    that:
-      - >-
-        vmware_ctx | internal.core.validate_schema_from_file(
-          role_path ~ '/../discovery/defaults/main.yaml',
-          'vmware_ctx'
-        )
-      - >-
-        vmware_ctx | internal.core.validate_typed_schema_from_file(
-          role_path ~ '/../discovery/defaults/main.yaml',
-          'vmware_ctx'
-        )
-    fail_msg: "vmware_ctx schema keys do not match discovery defaults."
-    quiet: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ vmware_ctx }}"
+    ncs_validate_schema_path: "{{ role_path ~ '/../discovery/defaults/main.yaml' }}"
+    ncs_validate_root_key: "vmware_ctx"
+    ncs_validate_fail_msg: "vmware_ctx schema keys do not match discovery defaults."

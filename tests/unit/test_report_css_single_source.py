@@ -23,7 +23,9 @@ FORBIDDEN_CSS_NAMES = (
 
 class ReportCssSingleSourceTests(unittest.TestCase):
     def test_shared_stylesheet_exists(self):
-        self.assertTrue((ROOT / "playbooks/templates/report_shared.css").exists())
+        self.assertTrue(
+            (ROOT / "internal/core/roles/reporting/templates/report_shared.css").exists()
+        )
 
     def test_report_templates_do_not_reference_legacy_css(self):
         for path in REPORT_TEMPLATES:
@@ -31,13 +33,13 @@ class ReportCssSingleSourceTests(unittest.TestCase):
             for css_name in FORBIDDEN_CSS_NAMES:
                 self.assertNotIn(css_name, text, f"{path} still references {css_name}")
 
-    def test_report_templates_reference_shared_css(self):
+    def test_report_templates_reference_core_shared_css_filter(self):
         for path in REPORT_TEMPLATES:
             text = path.read_text(encoding="utf-8")
             self.assertIn(
-                "report_shared.css",
+                "internal.core.shared_report_css",
                 text,
-                f"{path} does not reference report_shared.css",
+                f"{path} does not reference internal.core.shared_report_css",
             )
 
 

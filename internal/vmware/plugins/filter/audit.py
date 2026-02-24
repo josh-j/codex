@@ -1,37 +1,37 @@
 import copy
+from pathlib import Path
+import importlib.util
 
-
-def _as_list(value):
-    return list(value or [])
-
-
-def _to_int(value, default=0):
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return int(default)
-
-
-def _to_float(value, default=0.0):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float(default)
-
-
-def _alert(severity, category, message, detail=None, affected_items=None, **extra):
-    out = {
-        "severity": severity,
-        "category": category,
-        "message": message,
-        "detail": detail if isinstance(detail, dict) else ({} if detail is None else {"value": detail}),
-    }
-    if affected_items is not None:
-        out["affected_items"] = affected_items
-    for key, val in extra.items():
-        if val is not None:
-            out[key] = val
-    return out
+try:
+    from ansible_collections.internal.core.plugins.module_utils.reporting_primitives import (
+        as_list as _as_list,
+        build_alert as _alert,
+        build_count_alert as _build_count_alert,
+        build_threshold_alert as _build_threshold_alert,
+        to_float as _to_float,
+        to_int as _to_int,
+    )
+except ImportError:
+    # Repo checkout fallback for local lint/py_compile outside the Ansible collection loader.
+    _helper_path = (
+        Path(__file__).resolve().parents[3]
+        / "core"
+        / "plugins"
+        / "module_utils"
+        / "reporting_primitives.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "internal_core_reporting_primitives", _helper_path
+    )
+    _mod = importlib.util.module_from_spec(_spec)
+    assert _spec is not None and _spec.loader is not None
+    _spec.loader.exec_module(_mod)
+    _as_list = _mod.as_list
+    _alert = _mod.build_alert
+    _build_count_alert = _mod.build_count_alert
+    _build_threshold_alert = _mod.build_threshold_alert
+    _to_float = _mod.to_float
+    _to_int = _mod.to_int
 
 
 def build_audit_export_payload(
@@ -301,42 +301,46 @@ def audit_storage_rollup_alerts(datastores, crit_pct=10, warn_pct=15, max_items=
     alerts = []
     if inacc_list:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                len(inacc_list),
                 "CRITICAL",
                 "storage_connectivity",
                 f"Connectivity Failure: {len(inacc_list)} Datastore(s) are INACCESSIBLE",
-                {},
                 affected_items=inacc_list[:max_items],
+                count_key="inaccessible_count",
             )
         )
     if crit_list:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                len(crit_list),
                 "CRITICAL",
                 "storage_capacity",
                 f"{len(crit_list)} Datastore(s) critically low (<{crit_pct}% free)",
-                {},
                 affected_items=crit_list[:max_items],
+                count_key="critical_count",
             )
         )
     if warn_list:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                len(warn_list),
                 "WARNING",
                 "storage_capacity",
                 f"{len(warn_list)} Datastore(s) low (<{warn_pct}% free)",
-                {},
                 affected_items=warn_list[:max_items],
+                count_key="warning_count",
             )
         )
     if maint_list:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                len(maint_list),
                 "WARNING",
                 "storage_configuration",
                 f"Config Alert: {len(maint_list)} Datastore(s) in Maintenance Mode",
-                {},
                 affected_items=maint_list[:max_items],
+                count_key="maintenance_count",
             )
         )
     return alerts
@@ -365,36 +369,25 @@ def audit_storage_object_alerts(datastores, crit_pct=10, warn_pct=15):
                     },
                 )
             )
-        if free_pct <= crit_pct:
-            alerts.append(
-                _alert(
-                    "CRITICAL",
-                    "storage_capacity",
-                    f"Datastore {name} is critically low ({free_pct}% free)",
-                    {
-                        "datastore": name,
-                        "free_pct": free_pct,
-                        "free_gb": item.get("free_gb", 0),
-                        "capacity_gb": item.get("capacity_gb", 0),
-                        "threshold_pct": crit_pct,
-                    },
-                )
-            )
-        elif free_pct <= warn_pct:
-            alerts.append(
-                _alert(
-                    "WARNING",
-                    "storage_capacity",
-                    f"Datastore {name} is low ({free_pct}% free)",
-                    {
-                        "datastore": name,
-                        "free_pct": free_pct,
-                        "free_gb": item.get("free_gb", 0),
-                        "capacity_gb": item.get("capacity_gb", 0),
-                        "threshold_pct": warn_pct,
-                    },
-                )
-            )
+        threshold_alert = _build_threshold_alert(
+            free_pct,
+            crit_pct,
+            warn_pct,
+            "storage_capacity",
+            f"Datastore {name} is low ({free_pct}% free)",
+            detail={
+                "datastore": name,
+                "free_pct": free_pct,
+                "free_gb": item.get("free_gb", 0),
+                "capacity_gb": item.get("capacity_gb", 0),
+            },
+            direction="le",
+            value_key="free_pct",
+        )
+        if threshold_alert is not None:
+            if threshold_alert["severity"] == "CRITICAL":
+                threshold_alert["message"] = f"Datastore {name} is critically low ({free_pct}% free)"
+            alerts.append(threshold_alert)
     return alerts
 
 
@@ -410,21 +403,24 @@ def audit_snapshot_alerts(vmware_ctx, age_warning_days=7, size_warning_gb=100, m
     alerts = []
     if aged_count > 0:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                aged_count,
                 "WARNING",
                 "snapshots",
                 f"Capacity Risk: {aged_count} snapshot(s) older than {int(age_warning_days)} days",
-                {"total_gb": total_size_gb, "oldest_days": oldest_days},
+                detail={"total_gb": total_size_gb, "oldest_days": oldest_days},
+                count_key="aged_count",
             )
         )
     if large:
         alerts.append(
-            _alert(
+            _build_count_alert(
+                len(large),
                 "WARNING",
                 "snapshots",
                 f"{len(large)} VM(s) have oversized snapshots (>{_to_float(size_warning_gb, 100):g}GB)",
-                {},
                 affected_items=large[:max_items],
+                count_key="large_snapshot_count",
             )
         )
     return alerts
@@ -472,43 +468,28 @@ def audit_resource_rollup(clusters, cpu_crit=90, cpu_warn=80, mem_crit=90, mem_w
     mem_pct = round((mem_used / max(mem_cap, 1)) * 100.0, 1)
 
     alerts = []
-    if cpu_pct > _to_float(cpu_crit, 90):
-        alerts.append(
-            _alert(
-                "CRITICAL",
-                "capacity",
-                f"CPU Saturation: {cpu_pct}%",
-                {"usage_pct": cpu_pct, "threshold_pct": _to_float(cpu_crit, 90), "cpu_used_mhz": cpu_used, "cpu_total_mhz": cpu_cap},
-            )
-        )
-    elif cpu_pct > _to_float(cpu_warn, 80):
-        alerts.append(
-            _alert(
-                "WARNING",
-                "capacity",
-                f"CPU Saturation: {cpu_pct}%",
-                {"usage_pct": cpu_pct, "threshold_pct": _to_float(cpu_warn, 80), "cpu_used_mhz": cpu_used, "cpu_total_mhz": cpu_cap},
-            )
-        )
-
-    if mem_pct > _to_float(mem_crit, 90):
-        alerts.append(
-            _alert(
-                "CRITICAL",
-                "capacity",
-                f"Mem Saturation: {mem_pct}%",
-                {"usage_pct": mem_pct, "threshold_pct": _to_float(mem_crit, 90), "mem_used_mb": mem_used, "mem_total_mb": mem_cap},
-            )
-        )
-    elif mem_pct > _to_float(mem_warn, 80):
-        alerts.append(
-            _alert(
-                "WARNING",
-                "capacity",
-                f"Mem Saturation: {mem_pct}%",
-                {"usage_pct": mem_pct, "threshold_pct": _to_float(mem_warn, 80), "mem_used_mb": mem_used, "mem_total_mb": mem_cap},
-            )
-        )
+    cpu_alert = _build_threshold_alert(
+        cpu_pct,
+        cpu_crit,
+        cpu_warn,
+        "capacity",
+        f"CPU Saturation: {cpu_pct}%",
+        detail={"cpu_used_mhz": cpu_used, "cpu_total_mhz": cpu_cap},
+        value_key="usage_pct",
+    )
+    if cpu_alert is not None:
+        alerts.append(cpu_alert)
+    mem_alert = _build_threshold_alert(
+        mem_pct,
+        mem_crit,
+        mem_warn,
+        "capacity",
+        f"Mem Saturation: {mem_pct}%",
+        detail={"mem_used_mb": mem_used, "mem_total_mb": mem_cap},
+        value_key="usage_pct",
+    )
+    if mem_alert is not None:
+        alerts.append(mem_alert)
 
     return {
         "alerts": alerts,

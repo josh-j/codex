@@ -1,37 +1,21 @@
 # internal.core/plugins/filter/dates.py
 
-import re
-from datetime import datetime, timezone
+try:
+    from ansible_collections.internal.core.plugins.module_utils.date_utils import (
+        parse_iso_epoch as _parse_iso_epoch,
+        safe_iso_to_epoch,
+    )
+except ImportError:
+    import importlib.util
+    from pathlib import Path
 
-_ISO_RE = re.compile(r"^\s*(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})")
-
-
-def _parse_iso_epoch(raw):
-    """
-    Extracts date and time from an ISO 8601 string, ignoring timezone suffix.
-    Returns unix timestamp (int) or None if unparseable.
-    """
-    match = _ISO_RE.match(raw)
-    if not match:
-        return None
-    try:
-        dt = datetime.strptime(
-            f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S"
-        )
-        return int(dt.replace(tzinfo=timezone.utc).timestamp())
-    except ValueError:
-        return None
-
-
-def safe_iso_to_epoch(raw, default=0):
-    """
-    Safe public wrapper for ISO parsing in templates/filters.
-    Returns `default` when parsing fails.
-    """
-    epoch = _parse_iso_epoch(raw if isinstance(raw, str) else "")
-    if epoch is None:
-        return int(default)
-    return int(epoch)
+    _helper_path = Path(__file__).resolve().parents[1] / "module_utils" / "date_utils.py"
+    _spec = importlib.util.spec_from_file_location("internal_core_date_utils", _helper_path)
+    _mod = importlib.util.module_from_spec(_spec)
+    assert _spec is not None and _spec.loader is not None
+    _spec.loader.exec_module(_mod)
+    _parse_iso_epoch = _mod.parse_iso_epoch
+    safe_iso_to_epoch = _mod.safe_iso_to_epoch
 
 
 def filter_by_age(items, current_epoch, age_threshold_days, date_key="creation_time"):

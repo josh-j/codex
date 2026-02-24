@@ -1,0 +1,35 @@
+---
+# Prepare a platform report directory by aggregating host YAML state and loading it.
+# Required vars:
+#   ncs_reporting_platform_dir
+#   ncs_reporting_aggregate_output
+#   ncs_reporting_aggregate_var_name
+#
+# Optional vars:
+#   ncs_reporting_scripts_dir (defaults to repo playbooks/scripts derived from playbook_dir)
+
+- name: Ensure platform report directory exists
+  ansible.builtin.file:
+    path: "{{ ncs_reporting_platform_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Aggregate platform state
+  vars:
+    _ncs_reporting_scripts_dir: >-
+      {{
+        ncs_reporting_scripts_dir
+        | default((playbook_dir.split('/playbooks')[0] ~ '/playbooks/scripts'))
+      }}
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ _ncs_reporting_scripts_dir }}/aggregate_yaml_reports.py"
+      - "{{ ncs_reporting_platform_dir }}"
+      - "{{ ncs_reporting_aggregate_output }}"
+  changed_when: false
+
+- name: Load aggregated platform state
+  ansible.builtin.include_vars:
+    file: "{{ ncs_reporting_aggregate_output }}"
+    name: "{{ ncs_reporting_aggregate_var_name }}"

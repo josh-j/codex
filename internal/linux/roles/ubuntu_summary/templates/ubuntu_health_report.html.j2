@@ -5,21 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Linux Infrastructure Audit | {{ report_date | default(now(utc=true, fmt='%Y-%m-%d')) }}</title>
     <style>
-        /* Using common CSS shared across Linux reports */
-        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
+        {{ '' | internal.core.shared_report_css }}
     </style>
 </head>
 <body>
-{% macro status_badge(status) %}
-{%- set s = status | default('unknown') | string | upper -%}
-{%- if s in ['OK', 'HEALTHY', 'GREEN', 'PASS'] -%}
-<span class="badge status-ok">OK</span>
-{%- elif s in ['CRITICAL', 'RED', 'FAILED', 'FAIL'] -%}
-<span class="badge status-fail">CRITICAL</span>
-{%- else -%}
-<span class="badge status-warn">WARN</span>
-{%- endif -%}
-{% endmacro %}
 
 <div class="app-layout">
     <main class="content">
@@ -59,7 +48,8 @@
                                         {{ hostname }} ↗
                                     </a>
                                 </td>
-                                <td>{{ status_badge(linux_audit.health) }}</td>
+                                {% set _badge = linux_audit.health | internal.core.status_badge_meta %}
+                                <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                                 <td>{{ linux_audit.distribution | default('Ubuntu') }} {{ linux_audit.distribution_version | default('') }}</td>
                                 <td class="{{ 'text-danger' if linux_audit.summary.critical_count|default(0)|int > 0 else '' }}">
                                     {{ linux_audit.summary.critical_count | default(0) }}
@@ -99,7 +89,8 @@
                                         <td class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
                                             <strong>{{ hostname }}</strong>
                                         </td>
-                                        <td>{{ status_badge(alert.severity) }}</td>
+                                        {% set _badge = alert.severity | internal.core.status_badge_meta %}
+                                        <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                                         <td style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700; color: var(--indigo);">
                                             {{ alert.category | default('System') }}
                                         </td>
@@ -137,7 +128,8 @@
                             {% if audits.stig is defined %}
                             <tr>
                                 <td><strong>{{ hostname }}</strong></td>
-                                <td>{{ status_badge(audits.stig.health) }}</td>
+                                {% set _badge = audits.stig.health | internal.core.status_badge_meta %}
+                                <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                                 <td>{{ audits.stig.alerts | default([]) | length }} finding(s)</td>
                             </tr>
                             {% endif %}

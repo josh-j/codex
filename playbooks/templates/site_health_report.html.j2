@@ -5,20 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infrastructure Audit | {{ report_date }}</title>
     <style>
-        {% include 'report_shared.css' %}
+        {{ '' | internal.core.shared_report_css }}
     </style>
 </head>
 <body>
-{% macro status_badge(status) %}
-{%- set s = status | default('unknown') | string | upper -%}
-{%- if s in ['OK', 'HEALTHY', 'GREEN'] -%}
-<span class="badge status-ok">OK</span>
-{%- elif s in ['CRITICAL', 'RED', 'FAILED'] -%}
-<span class="badge status-fail">CRITICAL</span>
-{%- else -%}
-<span class="badge" style="background:#d97706;color:#fff;border-color:#f59e0b;">WARN</span>
-{%- endif -%}
-{% endmacro %}
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -88,7 +78,8 @@
                         <tr>
                             <td><strong>Linux & Ubuntu Environment</strong></td>
                             <td>{{ groups.get('ubuntu_servers', []) | length }} Nodes</td>
-                            <td>{{ status_badge(linux_global_health | default('OK' if totals.get('critical', 0)|int == 0 else 'CRITICAL')) }}</td>
+                            {% set _badge = (linux_global_health | default('OK' if totals.get('critical', 0)|int == 0 else 'CRITICAL')) | internal.core.status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
                                 <a href="platform/ubuntu/ubuntu_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View Linux Fleet ↗
@@ -98,7 +89,8 @@
                         <tr>
                             <td><strong>VMware vCenter Environment</strong></td>
                             <td>{{ groups.get('vcenters', []) | length }} Clusters</td>
-                            <td>{{ status_badge(vmware_global_health | default('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL')) }}</td>
+                            {% set _badge = (vmware_global_health | default('OK' if (c_alarms.get('critical', 0)|int) == 0 else 'CRITICAL')) | internal.core.status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>
                                 <a href="platform/vmware/vmware_health_report_{{ report_stamp | default(now(utc=true, fmt='%Y%m%d')) }}.html" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
                                     View VMware Fleet ↗
@@ -118,7 +110,8 @@
             <div class="compliance-entry">
                 <div class="entry-header">
                     <h3>{{ hostname }} <span class="text-muted" style="font-size: 0.85rem;">({{ audit_type }})</span></h3>
-                    {{ status_badge(stig_audit.health | default('UNKNOWN')) }}
+                    {% set _badge = (stig_audit.health | default('UNKNOWN')) | internal.core.status_badge_meta %}
+                    <span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span>
                 </div>
                 <div class="finding-grid">
                     {% for alert in (stig_audit.alerts | default([])) %}

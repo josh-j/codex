@@ -2,7 +2,7 @@
 # internal.core.stig : tasks/finalize.yaml
 #
 # Generic STIG report export. Called from collection-level finalize tasks.
-# Expects: audit_full_list, audit_violations, stig_target_type, run_ctx, ncs_config
+# Expects: audit_full_list, stig_target_type, ncs_config
 
 - name: "STIG | Normalize audit results"
   tags: [stig, reporting]
@@ -31,46 +31,12 @@
           ~ '.yaml'
         )
       }}
-    _stig_audit_full_list_normalized: >-
-      {%- set normalized = [] -%}
-      {%- for item in (audit_full_list | default([])) -%}
-        {%- set _ = normalized.append(
-          item | combine({'status': (item.status | default('') | string | lower)})
-        ) -%}
-      {%- endfor -%}
-      {{ normalized }}
-    _stig_audit_violations_normalized: >-
-      {%- set violations = [] -%}
-      {%- for item in (audit_full_list | default([])) -%}
-        {%- if (item.status | default('') | string | lower) == 'failed' -%}
-          {%- set _ = violations.append(
-            item | combine({'status': (item.status | default('') | string | lower)})
-          ) -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ violations }}
-    _stig_alerts_normalized: >-
-      {%- set alerts = [] -%}
-      {%- for item in (_stig_audit_violations_normalized | default([])) -%}
-        {%- set raw_sev = item.severity | default('medium') | string | upper -%}
-        {%- set sev = (
-          'CRITICAL' if raw_sev in ['CAT_I', 'HIGH', 'SEVERE']
-          else 'WARNING' if raw_sev in ['CAT_II', 'MEDIUM', 'MODERATE']
-          else 'INFO'
-        ) -%}
-        {%- set _ = alerts.append({
-          'severity': sev,
-          'category': 'security_compliance',
-          'message': 'STIG Violation: ' ~ (item.title | default(item.id | default('Unknown Rule'))),
-          'detail': {
-            'rule_id': (item.id | default('')),
-            'description': (item.checktext | default(item.details | default(''))),
-            'original_severity': raw_sev,
-            'target_type': (stig_target_type | default(''))
-          }
-        }) -%}
-      {%- endfor -%}
-      {{ alerts }}
+    _stig_checked_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _stig_report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+    _stig_normalized: "{{ (audit_full_list | default([])) | internal.core.normalize_stig_results(stig_target_type | default('')) }}"
+    _stig_audit_full_list_normalized: "{{ _stig_normalized.full_audit | default([]) }}"
+    _stig_audit_violations_normalized: "{{ _stig_normalized.violations | default([]) }}"
+    _stig_alerts_normalized: "{{ _stig_normalized.alerts | default([]) }}"
 
 - name: "STIG | Summary"
   tags: [stig, reporting]
@@ -95,34 +61,16 @@
           'audit_failed': (_stig_audit_failed | default(false) | bool),
           'host': inventory_hostname,
           'target_type': stig_target_type,
-          'checked_at': (run_ctx.timestamp | default('')),
+          'checked_at': _stig_checked_at,
           'health': (
             _stig_alerts_normalized | default([]) | internal.core.health_rollup
           ),
           'summary': {
-            'total': (_stig_audit_full_list_normalized | default([]) | length),
-            'violations': (_stig_audit_violations_normalized | default([]) | length),
-            'passed': (
-              _stig_audit_full_list_normalized
-              | default([])
-              | selectattr('status', 'equalto', 'pass')
-              | list
-              | length
-            ),
-            'critical_count': (
-              _stig_alerts_normalized
-              | default([])
-              | selectattr('severity', 'equalto', 'CRITICAL')
-              | list
-              | length
-            ),
-            'warning_count': (
-              _stig_alerts_normalized
-              | default([])
-              | selectattr('severity', 'equalto', 'WARNING')
-              | list
-              | length
-            )
+            'total': (_stig_normalized.summary.total | default(0)),
+            'violations': (_stig_normalized.summary.violations | default(0)),
+            'passed': (_stig_normalized.summary.passed | default(0)),
+            'critical_count': (_stig_normalized.summary.critical_count | default(0)),
+            'warning_count': (_stig_normalized.summary.warning_count | default(0))
           },
           'alerts': (_stig_alerts_normalized | default([])),
           'violations': (_stig_audit_violations_normalized | default([])),
@@ -138,7 +86,7 @@
     dest: "{{ _stig_report_host_dir }}/{{ inventory_hostname }}_stig_{{ stig_target_type }}.html"
     mode: "0664"
   vars:
-    timestamp: "{{ run_ctx.timestamp | default('') }}"
-    report_data: "{{ _stig_audit_violations_normalized | default([]) }}"
+    timestamp: "{{ _stig_checked_at }}"
+    _failures: "{{ _stig_audit_violations_normalized | default([]) }}"
   delegate_to: localhost
   become: false

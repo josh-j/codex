@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VMware Fleet Health | {{ report_stamp }}</title>
     <style>
-        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
+        {{ '' | internal.core.shared_report_css }}
     </style>
 </head>
 <body>
@@ -85,9 +85,10 @@
                 <tbody>
                     {% for host, data in vCenters.items() %}
                         {% set v_health = data.get('vcenter_health', {}) %}
+                        {% set _badge = v_health.get('health', 'OK') | internal.core.status_badge_meta(true) %}
                         <tr>
                             <td><strong>{{ host }}</strong></td>
-                            <td><span class="badge badge-{{ v_health.get('health', 'OK') }}">{{ v_health.get('health', 'OK') }}</span></td>
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td>{{ data.discovery.health.appliance.info.version | default('N/A') }}</td>
                             <td>
                                 <span class="text-danger">●</span> {{ v_health.get('alerts', []) | selectattr('severity', 'equalto', 'CRITICAL') | list | length }}

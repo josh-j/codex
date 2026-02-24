@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>STIG Report - {{ inventory_hostname }}</title>
     <style>
-        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
+        {{ '' | internal.core.shared_report_css }}
     </style>
     <script>
         function toggleDetails(id) {

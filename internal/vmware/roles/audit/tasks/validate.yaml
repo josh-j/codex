@@ -2,20 +2,11 @@
 # internal.vmware.audit : tasks/validate.yaml
 
 - name: Validate audit export payload keys from schema
-  ansible.builtin.assert:
-    that:
-      - >-
-        _vmware_audit_export_data
-        | internal.core.validate_schema_from_file(
-          role_path ~ '/defaults/export_schema.yaml',
-          '_vmware_audit_export_data'
-        )
-      - >-
-        _vmware_audit_export_data
-        | internal.core.validate_typed_schema_from_file(
-          role_path ~ '/defaults/export_schema.yaml',
-          '_vmware_audit_export_data'
-        )
-    fail_msg: "VMware audit export payload keys do not match the schema."
-    quiet: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ _vmware_audit_export_data }}"
+    ncs_validate_schema_path: "{{ role_path ~ '/defaults/export_schema.yaml' }}"
+    ncs_validate_root_key: "_vmware_audit_export_data"
+    ncs_validate_fail_msg: "VMware audit export payload keys do not match the schema."

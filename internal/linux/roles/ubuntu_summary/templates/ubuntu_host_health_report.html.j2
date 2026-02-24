@@ -5,23 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ host_name }} | Node Health Report</title>
     <style>
-        /* Including the common stylesheet shared across all Linux reports */
-        {{ lookup('file', (playbook_dir.split('/playbooks')[0] if '/playbooks' in playbook_dir else playbook_dir) ~ '/playbooks/templates/report_shared.css') }}
+        {{ '' | internal.core.shared_report_css }}
     </style>
 </head>
 <body>
-
-{% macro status_badge(status) %}
-{%- set s = status | default('unknown') | string | upper -%}
-{%- if s in ['OK', 'HEALTHY', 'GREEN', 'PASS', 'RUNNING'] -%}
-<span class="badge status-ok">{{ s }}</span>
-{%- elif s in ['CRITICAL', 'RED', 'FAILED', 'FAIL', 'STOPPED'] -%}
-<span class="badge status-fail">{{ s }}</span>
-{%- else -%}
-<span class="badge status-warn">{{ s }}</span>
-{%- endif -%}
-{% endmacro %}
-
 <div class="app-layout">
     <main class="content">
         <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">
@@ -37,7 +24,8 @@
                 <h1>Node Diagnostics: <code>{{ host_name }}</code></h1>
                 <p style="color: var(--text-muted); margin-top: 5px;">
                     OS: {{ host_data.distribution | default('Linux') }} {{ host_data.distribution_version | default('') }} |
-                    Overall Status: {{ status_badge(host_data.health | default('UNKNOWN')) }}
+                    {% set _host_badge = (host_data.health | default('UNKNOWN')) | internal.core.status_badge_meta(true) %}
+                    Overall Status: <span class="badge {{ _host_badge.css_class }}">{{ _host_badge.label }}</span>
                 </p>
             </div>
             <div style="color: var(--text-muted); font-size: 0.9rem;">
@@ -56,7 +44,8 @@
                     {% if host_data.alerts | default([]) | length > 0 %}
                         {% for alert in host_data.alerts %}
                         <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
-                            <td>{{ status_badge(alert.severity) }}</td>
+                            {% set _badge = alert.severity | internal.core.status_badge_meta(true) %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                             <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
                             <td>{{ alert.message }}</td>
                         </tr>
