@@ -1,0 +1,13 @@
+---
+namespace: internal
+name: vmware
+version: 1.0.0
+readme: README.md
+authors:
+  - NCS
+description: VMware automation and auditing roles.
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - security
+repository: https://web.git.mil/dct/ansible-ncs

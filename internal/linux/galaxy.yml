@@ -1,0 +1,13 @@
+---
+namespace: internal
+name: linux
+version: 1.0.0
+readme: README.md
+authors:
+  - NCS
+description: Linux auditing and reporting roles.
+license: ["GPL-3.0-or-later"]
+tags:
+  - linux
+  - security
+repository: https://web.git.mil/dct/ansible-ncs

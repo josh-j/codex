@@ -1,0 +1,46 @@
+---
+# internal.vmware.stig : tasks/main.yaml
+#
+# Unified entry point for all vmware STIG audits.
+# Dispatches to vm/ or esxi/ pipeline based on stig_target_type.
+#
+# Required vars:
+#   stig_target_type: vm | esxi
+
+- name: Set vCenter hostname
+  tags: [always]
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
+
+- name: "STIG | Resolve target type"
+  ansible.builtin.set_fact:
+    _stig_target_type: "{{ stig_target_type | default(vmware_stig_target | default('esxi')) }}"
+  changed_when: false
+
+- name: STIG | Dispatch to handler for {{ _stig_target_type | upper }}
+  tags: [stig, security]
+  module_defaults:
+    community.vmware.vmware_host_service_manager:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    community.vmware.vmware_host_config_manager:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    community.vmware.vmware_host_service_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    community.vmware.vmware_vm_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+    - name: "STIG | Include handler"
+      ansible.builtin.include_tasks: "{{ _stig_target_type }}/main.yaml"

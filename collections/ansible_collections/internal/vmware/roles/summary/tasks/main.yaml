@@ -1,8 +1,0 @@
----
-# internal.vmware.summary : tasks/main.yaml
-#
-# Default role entrypoint delegates to the fleet report task file so the role can
-# be invoked either as a normal role or with tasks_from=report.yaml.
-
-- name: VMware Summary | Generate fleet report
-  ansible.builtin.include_tasks: report.yaml

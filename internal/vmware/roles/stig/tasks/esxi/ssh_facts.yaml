@@ -1,0 +1,118 @@
+---
+# internal.vmware.stig : tasks/esxi/ssh_facts.yaml
+#
+# Collect SSH-related facts from an ESXi host.
+#
+# IMPORTANT:
+# This role runs on the vCenter inventory host (e.g. aedw-vc) with connection: local.
+# Therefore inventory_hostname is NOT an ESXi host. Always resolve an ESXi target host
+# and use that for vmware_* modules and SSH collection.
+
+- name: "ESXi SSH | Resolve target ESXi host"
+  ansible.builtin.set_fact:
+    _stig_esxi_target_host: >-
+      {{
+        _stig_esxi_target_host
+        | default(stig_esxi_target_host | default(vmware_esxi_target_host | default('', true), true), true)
+        | default(
+            (
+              (
+                (vmware_ctx | default({})).inventory.hosts.list
+                | default([])
+                | first
+                | default({})
+              ).name
+              | default('', true)
+            ),
+            true
+          )
+      }}
+  changed_when: false
+
+- name: "ESXi SSH | Fail if no ESXi host target can be resolved"
+  ansible.builtin.fail:
+    msg: >-
+      Could not resolve an ESXi host for SSH fact collection.
+      Provide one of:
+        -e stig_esxi_target_host=<esxi-hostname>
+        -e vmware_esxi_target_host=<esxi-hostname>
+      Or ensure vmware_ctx.inventory.hosts.list is populated by running discovery first.
+  when: _stig_esxi_target_host | length == 0
+
+- name: "ESXi SSH | Fail if ESXi root password not provided"
+  ansible.builtin.assert:
+    that:
+      - (vault_esxi_root_password | default('', true)) | length > 0
+    fail_msg: >-
+      vault_esxi_root_password is required for SSH fact collection.
+      Set it in vault/group_vars (recommended) or pass via -e (not recommended).
+  changed_when: false
+
+- name: "ESXi SSH | Create temporary SSH host (dynamic inventory)"
+  ansible.builtin.add_host:
+    name: "{{ _stig_esxi_target_host }}"
+    groups: ["_ncs_esxi_ssh_targets"]
+    ansible_connection: ssh
+    ansible_user: root
+    ansible_password: "{{ vault_esxi_root_password }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  changed_when: false
+
+- name: "SSH Discovery (Direct)"
+  when: vmware_stig_enable_ssh_collection | default(true) | bool
+  block:
+    - name: "Enable SSH service"
+      tags: [discovery, ssh]
+      community.vmware.vmware_host_service_manager:
+        # IMPORTANT: must be an ESXi hostname known to vCenter, NOT inventory_hostname (vCenter)
+        esxi_hostname: "{{ _stig_esxi_target_host }}"
+        service_name: TSM-SSH
+        state: present
+      delegate_to: localhost
+      register: _ssh_enable
+      # Allow turning off no_log for troubleshooting via -e vmware_stig_debug_mode=true
+      no_log: "{{ not (vmware_stig_debug_mode | default(false) | bool) }}"
+      changed_when: false
+
+    - name: "Wait for SSH to be reachable"
+      tags: [discovery, ssh]
+      ansible.builtin.wait_for:
+        host: "{{ _stig_esxi_target_host }}"
+        port: 22
+        timeout: 30
+        connect_timeout: 5
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: "Gather SSH facts"
+      tags: [discovery, ssh]
+      ansible.builtin.raw: |
+        echo "===SSHD==="; cat /etc/ssh/sshd_config
+        echo "===ISSUE==="; cat /etc/issue
+        echo "===FIREWALL==="; esxcli network firewall get
+      register: _ssh_raw
+      delegate_to: "{{ _stig_esxi_target_host }}"
+      changed_when: false
+      failed_when: false
+
+    - name: "Set SSH facts"
+      tags: [discovery, ssh]
+      ansible.builtin.set_fact:
+        _esxi_ssh_facts: "{{ (_ssh_raw.stdout | default('')) | internal.vmware.parse_esxi_ssh_facts }}"
+      changed_when: false
+
+  always:
+    - name: "Disable SSH service"
+      tags: [always]
+      community.vmware.vmware_host_service_manager:
+        esxi_hostname: "{{ _stig_esxi_target_host }}"
+        service_name: TSM-SSH
+        state: absent
+      delegate_to: localhost
+      # Keep no_log on by default; allow debug override
+      no_log: "{{ not (vmware_stig_debug_mode | default(false) | bool) }}"
+      when:
+        - _ssh_enable is defined
+        - _ssh_enable is success
+      changed_when: false

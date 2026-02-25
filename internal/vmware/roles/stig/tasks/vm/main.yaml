@@ -1,0 +1,47 @@
+---
+# internal.vmware.stig : vm/main.yaml
+#
+# VM STIG audit pipeline.
+# Mirrors the ubuntu_stig_audit pattern: block/rescue/always guarantees export.
+#
+# Toggles (set in group_vars or play vars):
+#   vmware_stig_enable_audit: true   - runs compliance checks in read-only mode
+#   stig_vm_filter:            ''     - optional VM name filter
+#   exclusion_list:            []     - VM names to skip entirely
+
+- name: VM STIG Audit
+  block:
+    - name: "VM STIG | Discover VM configuration"
+      tags: [stig, discovery]
+      ansible.builtin.include_tasks: discovery.yaml
+
+    - name: "VM STIG | Evaluate compliance"
+      tags: [stig, audit]
+      when: vmware_stig_enable_audit | default(false) | bool
+      ansible.builtin.include_tasks: checks.yaml
+
+    - name: "VM STIG | Flag audit as complete"
+      tags: [stig, audit]
+      when: vmware_stig_enable_audit | default(false) | bool
+      ansible.builtin.set_fact:
+        _vsphere_stig_audit_ran: true
+        _stig_audit_ran: true
+
+  rescue:
+    - name: "VM STIG | Log failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "VM STIG | Log failure details"
+      ansible.builtin.debug:
+        msg: "VM STIG audit failed on {{ inventory_hostname }} — export will indicate failure."
+      register: _vsphere_stig_task_failure
+
+  always:
+    - name: "VM STIG | Export results"
+      tags: [always, stig, reporting]
+      when:
+        - _stig_audit_ran | default(false)
+      ansible.builtin.include_tasks:
+        file: "{{ role_path }}/../shared/finalize.yaml"

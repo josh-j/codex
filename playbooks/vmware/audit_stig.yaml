@@ -1,0 +1,105 @@
+---
+# playbooks/vmware/audit_stig.yaml
+#
+# Runs VMware STIG audit(s) against vCenter-managed targets and exports per-vCenter STIG results,
+# then generates the fleet dashboard.
+#
+# Assumptions (based on your collection layout):
+# - vCenter inventory discovery is done via internal.vmware.discovery and exports platform state.
+# - VMware STIG evaluation is done via internal.vmware.stig (role) and exports a stig.yaml per vCenter.
+# - Fleet dashboard is generated via internal.vmware.summary (report.yaml).
+#
+# Adjust the vars under "Phase 2" to match the exact knobs exposed by internal.vmware.stig.
+
+- name: "Phase 1 | Prepare Environment"
+  ansible.builtin.import_playbook: ../common/init_environment.yaml
+  tags: ["always"]
+
+- name: "Phase 2a | VMware Discovery (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "discover"]
+  vars:
+    # Pin controller python (required for local connection + custom modules)
+    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
+
+  tasks:
+    - name: "Execute vCenter Discovery"
+      ansible.builtin.include_role:
+        name: internal.vmware.discovery
+      vars:
+        # vmware_username: "{{ vault_vcenter_username }}"
+        # vmware_password: "{{ vault_vcenter_password }}"
+        # vmware_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        ncs_export_path: >-
+          {{
+            (ncs_config.report_directory | default('/srv/samba/reports'))
+            ~ '/platform/vmware/'
+            ~ inventory_hostname
+            ~ '/discovery.yaml'
+          }}
+
+- name: "Phase 2b | VMware STIG Audit (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit"]
+  vars:
+    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
+
+    # Credentials (role should use these for vCenter access and/or downstream collectors)
+    # vmware_username: "{{ vault_vcenter_username }}"
+    # vmware_password: "{{ jvault_vcenter_password }}"
+    # vmware_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+
+    # ---- STIG behavior knobs (rename to match your role defaults if needed) ----
+    vmware_stig_enable_audit: true
+    vmware_stig_enable_hardening: false
+    vmware_stig_quiet_mode: false
+
+    # Targets:
+    # - "esxi": evaluate ESXi host STIGs
+    # - "vm":   evaluate VM STIGs
+    #
+    # If your role supports running both, set vmware_stig_targets: ["esxi","vm"] instead.
+    vmware_stig_target: "esxi"
+
+    # Optional scoping
+    # vmware_stig_filter: ""          # only a specific object
+    # vmware_stig_exclusions: []      # list of names to skip
+
+    # Export location for this vCenter’s STIG results
+    ncs_export_path: >-
+      {{
+        (ncs_config.report_directory | default('/srv/samba/reports'))
+        ~ '/platform/vmware/'
+        ~ inventory_hostname
+        ~ '/stig.yaml'
+      }}
+
+  tasks:
+    - name: "Execute VMware STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+
+- name: "Phase 3 | Generate VMware Fleet Dashboard"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  run_once: true
+  tags: ["always", "vmware", "report"]
+  vars:
+    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
+
+  tasks:
+    - name: "Execute VMware Summary Role"
+      ansible.builtin.include_role:
+        name: internal.vmware.summary
+        tasks_from: report.yaml
+
+    - name: "Announce Completion"
+      ansible.builtin.debug:
+        msg: >-
+          VMware Fleet Dashboard Updated:
+          {{ (ncs_config.report_directory | default('/srv/samba/reports')) }}/platform/vmware/vmware_health_report.html

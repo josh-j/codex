@@ -1,0 +1,105 @@
+---
+# internal.vmware.summary : tasks/report.yaml
+
+- name: Phase 3 | VMware Fleet & Node Report Generation
+  delegate_to: localhost
+  run_once: true
+  vars:
+    _playbooks_root: "{{ playbook_dir | dirname }}"
+    _scripts_dir: "{{ _playbooks_root }}/scripts"
+    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _vmware_report_dir: "{{ _reports_root }}/platform/vmware"
+    _vmware_reporting_skip_keys: >-
+      {{
+        (
+          '' | internal.core.report_skip_keys
+        )
+        | union(['vmware_fleet_state'])
+      }}
+
+    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+    report_date: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S') }}"
+    report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+
+  block:
+    # Phase 3a | Aggregate platform state
+    - name: Prepare VMware aggregated platform state
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: prepare_platform_state.yaml
+      vars:
+        ncs_reporting_platform_dir: "{{ _vmware_report_dir }}"
+        ncs_reporting_aggregate_output: "{{ _vmware_report_dir }}/vmware_fleet_state.yaml"
+        ncs_reporting_aggregate_var_name: "vmware_aggregated_hosts"
+
+    # Phase 3b | Ensure host directories
+    - name: Ensure per-host report directories exist
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: host_loop_ensure_dirs.yaml
+      vars:
+        ncs_reporting_hosts_map: "{{ vmware_aggregated_hosts.hosts | default({}) }}"
+        ncs_reporting_host_dir_root: "{{ _vmware_report_dir }}"
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"
+
+    # Phase 3c | Render host reports
+    - name: Render detailed per-vCenter HTML reports
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: host_loop_render_template.yaml
+      vars:
+        ncs_reporting_hosts_map: "{{ vmware_aggregated_hosts.hosts | default({}) }}"
+        ncs_reporting_template_src: "vcenter_health_report.html.j2"
+        ncs_reporting_template_dest: "{{ _vmware_report_dir }}/{{ item.key }}/health_report_{{ report_stamp }}.html"
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"
+        ncs_reporting_item_vars:
+          vmware_node_view: >-
+            {{
+              (item.value | default({}))
+              | internal.vmware.vmware_node_view(
+                hostname=item.key,
+                report_stamp=report_stamp,
+                report_date=report_date,
+                report_id=report_id
+              )
+            }}
+
+    # Phase 3d | Build fleet view model
+    - name: Build VMware fleet dashboard view model
+      ansible.builtin.set_fact:
+        vmware_fleet_view: >-
+          {{
+            (vmware_aggregated_hosts.hosts | default({}))
+            | internal.vmware.vmware_fleet_view(
+              report_stamp=report_stamp,
+              report_date=report_date,
+              report_id=report_id
+            )
+          }}
+
+    # Phase 3e | Render fleet report
+    - name: Render VMware Fleet HTML Dashboard
+      ansible.builtin.template:
+        src: "vmware_health_report.html.j2"
+        dest: "{{ _vmware_report_dir }}/vmware_health_report_{{ report_stamp }}.html"
+        mode: "0644"
+
+    # Phase 3f | Maintain fleet latest symlink
+    - name: Create 'Latest' Fleet Symlink
+      ansible.builtin.file:
+        src: "vmware_health_report_{{ report_stamp }}.html"
+        dest: "{{ _vmware_report_dir }}/vmware_health_report.html"
+        state: link
+        force: true
+
+    # Phase 3g | Maintain host latest symlinks
+    - name: Maintain 'Latest' Host Symlinks
+      ansible.builtin.include_role:
+        name: internal.core.reporting
+        tasks_from: host_loop_latest_symlink.yaml
+      vars:
+        ncs_reporting_hosts_map: "{{ vmware_aggregated_hosts.hosts | default({}) }}"
+        ncs_reporting_host_dir_root: "{{ _vmware_report_dir }}"
+        ncs_reporting_latest_src_name: "health_report_{{ report_stamp }}.html"
+        ncs_reporting_latest_dest_name: "health_report.html"
+        ncs_reporting_skip_keys: "{{ _vmware_reporting_skip_keys }}"

@@ -1,25 +1,38 @@
 ---
-# playbooks/vmware_phase1_discovery.yaml
+# playbooks/vmware/audit.yaml
 
-- name: Phase 1 | VMware Infrastructure Discovery
+- name: Phase 2 | VMware Health & Compliance Audit
   hosts: vcenters
   connection: local
-  gather_facts: false
+  gather_facts: true
+  vars:
+    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
 
   tasks:
-    - name: Execute vCenter Discovery
+    - name: Execute vCenter Audit & Notify
       ansible.builtin.include_role:
-        name: internal.vmware.discovery
+        name: internal.vmware.audit
       vars:
-        # Credentials from Vault
-        vmware_username: "{{ vault_vcenter_username }}"
-        vmware_password: "{{ vault_vcenter_password }}"
-        vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
+        vmware_snapshot_age_warning_days: 7
+        vmware_snapshot_size_warning_gb: 100
+        vmware_enable_email_notifications: false
 
-        # Ensure the role knows where to save the discovery.yaml
-        # internal.vmware.discovery now honors caller-provided ncs_export_path
-        ncs_export_path: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/platform/vmware/{{ inventory_hostname }}/discovery.yaml"
+- name: Phase 3 | Generate VMware Fleet Dashboard
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  run_once: true
+  vars:
+    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
 
-    - name: Announce Discovery Success
+  tasks:
+    - name: Execute VMware Summary Role
+      ansible.builtin.include_role:
+        name: internal.vmware.summary
+        tasks_from: report.yaml
+
+    - name: Announce Completion
       ansible.builtin.debug:
-        msg: "✅ Inventory discovery complete for {{ inventory_hostname }}. Data exported to {{ ncs_export_path | default('configured role default path') }}"
+        msg: >-
+          VMware Fleet Dashboard Updated:
+          {{ (ncs_config.report_directory | default('/srv/samba/reports')) }}/platform/vmware/vmware_health_report.html

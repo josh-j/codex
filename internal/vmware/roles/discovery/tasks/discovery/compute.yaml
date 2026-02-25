@@ -1,0 +1,35 @@
+---
+# internal.vmware.discovery : discovery/compute.yaml
+
+- name: Compute | Query clusters per datacenter
+  vmware.vmware.cluster_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    datacenter: "{{ item }}"
+  loop: "{{ _disc_datacenters.list | default([]) }}"
+  register: _clusters_per_dc
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+
+# STEP 1: Define the base object
+- name: Compute | Normalize staged outputs
+  ansible.builtin.set_fact:
+    _disc_compute: >-
+      {{
+        _clusters_per_dc
+        | internal.vmware.normalize_compute_result(
+          _vmware_controller_collected_at
+        )
+      }}
+  changed_when: false
+
+# STEP 2: Extract sub-properties now that _disc_compute exists
+- name: Compute | Map clusters and hosts
+  ansible.builtin.set_fact:
+    _disc_clusters: "{{ _disc_compute.clusters | default({}) }}"
+    _disc_hosts: "{{ _disc_compute.hosts | default({}) }}"
+  changed_when: false

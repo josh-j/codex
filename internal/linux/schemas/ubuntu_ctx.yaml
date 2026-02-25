@@ -1,0 +1,28 @@
+# Default structure - overwritten completely by discovery
+# Also serves as the dynamic validation schema for the audit role
+ubuntu_ctx:
+  system:
+    hostname: ""
+    ip: ""
+    kernel: ""
+    uptime_days: 0
+    load_avg: 0
+    memory:
+      total_mb: 0
+      free_mb: 0
+      used_pct: 0.0
+    swap:
+      total_mb: 0
+      used_pct: 0.0
+    services:
+      failed_count: 0
+      failed_list: []
+    disks: []
+  updates:
+    pending_count: 0
+    reboot_pending: false
+  security:
+    users: []
+    ssh_config: {}
+    file_stats: {}
+    world_writable_files: []

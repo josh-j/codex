@@ -1,0 +1,109 @@
+---
+# internal.vmware.stig : tasks/esxi/base_api.yaml
+#
+# Runs the PowerCLI collector on the controller via pwsh, without putting the vCenter
+# password on the command line (uses env var VC_PASS). Produces actionable errors.
+
+- name: "ESXi Discovery | Ensure pwsh is available on controller"
+  ansible.builtin.command: pwsh -NoProfile -NonInteractive -Command "$PSVersionTable.PSVersion.ToString()"
+  register: _pwsh_check
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  failed_when: _pwsh_check.rc != 0
+
+- name: "ESXi Discovery | Resolve target ESXi host"
+  ansible.builtin.set_fact:
+    _stig_esxi_target_host: >-
+      {{
+        stig_esxi_target_host
+        | default(vmware_esxi_target_host | default('', true), true)
+        | default(
+            (
+              (
+                (vmware_ctx | default({})).inventory.hosts.list
+                | default([])
+                | first
+                | default({})
+              ).name
+              | default('', true)
+            ),
+            true
+          )
+      }}
+  changed_when: false
+
+- name: "ESXi Discovery | Fail if no ESXi host target can be resolved"
+  ansible.builtin.fail:
+    msg: >-
+      Could not resolve an ESXi host to query.
+      Provide one of:
+        -e stig_esxi_target_host=<esxi-hostname>
+        -e vmware_esxi_target_host=<esxi-hostname>
+      Or ensure vmware_ctx.inventory.hosts.list is populated by running discovery first.
+  when: _stig_esxi_target_host | length == 0
+
+- name: "ESXi Discovery | Get host facts via PowerCLI script"
+  tags: [discovery, api]
+  ansible.builtin.command:
+    argv:
+      - pwsh
+      - -NoProfile
+      - -NonInteractive
+      - -ExecutionPolicy
+      - Bypass
+      - -Command
+      - >-
+        & '{{ role_path }}/files/get_esxi_facts.ps1'
+        -vcenter '{{ _vcenter_hostname }}'
+        -vcuser '{{ vmware_username }}'
+        -vcpass $env:VC_PASS
+        -target_host '{{ _stig_esxi_target_host }}'
+  register: _host_api_raw
+  delegate_to: localhost
+  become: false
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  changed_when: false
+  failed_when: false
+
+- name: "ESXi Discovery | Parse API facts JSON"
+  tags: [discovery, api]
+  ansible.builtin.set_fact:
+    _esxi_api_result: >-
+      {%- set out = {'success': false, 'error': '', 'hosts': [], 'count': 0} -%}
+      {%- set s = (_host_api_raw.stdout | default('') | string) -%}
+      {%- set j = (s | regex_search('(?s)\\{.*') | default('', true)) -%}
+      {%- if (j | string | length) > 0 -%}
+        {%- set out = (j | from_json) -%}
+      {%- else -%}
+        {%- set err = (_host_api_raw.stderr | default('') | string | trim) -%}
+        {%- set msg = err if (err | length) > 0 else 'No JSON found in stdout' -%}
+        {%- set out = {'success': false, 'error': msg, 'hosts': [], 'count': 0} -%}
+      {%- endif -%}
+      {{ out }}
+  changed_when: false
+
+- name: "ESXi Discovery | Debug PowerCLI stderr (optional)"
+  when: vmware_stig_debug_mode | default(false) | bool
+  ansible.builtin.debug:
+    msg: |-
+      PowerCLI rc={{ _host_api_raw.rc | default('N/A') }}
+      stderr={{ (_host_api_raw.stderr | default('') | trim)[:2000] }}
+
+- name: "ESXi Discovery | Fail if PowerCLI collection failed"
+  ansible.builtin.fail:
+    msg: >-
+      PowerCLI ESXi facts collection failed.
+      target_host={{ _stig_esxi_target_host }} vcenter={{ _vcenter_hostname }}
+      rc={{ _host_api_raw.rc | default('N/A') }}
+      error={{ _esxi_api_result.error | default('unknown error') }}
+  when:
+    - _host_api_raw.rc | default(1) | int != 0
+    - not (_esxi_api_result.success | default(false) | bool)
+
+- name: "ESXi Discovery | Set _esxi_api_facts from first host payload"
+  tags: [discovery, api]
+  ansible.builtin.set_fact:
+    _esxi_api_facts: "{{ (_esxi_api_result.hosts | default([]) | first | default({})) }}"
+  changed_when: false

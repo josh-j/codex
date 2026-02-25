@@ -1,0 +1,58 @@
+---
+# collections/ansible_collections/internal/vmware/roles/stig/tasks/esxi/main.yaml
+#
+# ESXi STIG audit pipeline.
+# Mirrors vm/main.yaml: block/rescue/always guarantees export.
+#
+# Update: Replace per-category includes with a single combined audit include.
+#
+# Toggles:
+#   vmware_stig_enable_audit: true  - runs compliance checks
+#   exclusion_list:            []    - host names to skip
+
+- name: ESXi STIG Audit
+  block:
+    - name: "ESXi STIG | Initialize collection lists"
+      ansible.builtin.set_fact:
+        audit_full_list: []
+        audit_violations: []
+      changed_when: false
+
+    - name: "ESXi STIG | Discover host configuration"
+      tags: [stig, discovery]
+      ansible.builtin.include_tasks: discovery.yaml
+
+    - name: "ESXi STIG | Evaluate compliance"
+      tags: [stig, audit]
+      when: vmware_stig_enable_audit | default(false) | bool
+      block:
+        - name: Audit | All
+          tags: [audit, all]
+          ansible.builtin.include_tasks: checks.yaml
+
+    - name: "ESXi STIG | Flag audit as complete"
+      tags: [stig, audit]
+      when: vmware_stig_enable_audit | default(false) | bool
+      ansible.builtin.set_fact:
+        _vsphere_stig_audit_ran: true
+        _stig_audit_ran: true
+      changed_when: false
+
+  rescue:
+    - name: "ESXi STIG | Log failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "ESXi STIG | Log failure details"
+      ansible.builtin.debug:
+        msg: "ESXi STIG audit failed on {{ inventory_hostname }} — export will indicate failure."
+      register: _vsphere_stig_task_failure
+
+  always:
+    - name: "ESXi STIG | Export results"
+      tags: [always, stig, reporting]
+      when:
+        - _stig_audit_ran | default(false)
+      ansible.builtin.include_tasks:
+        file: "{{ role_path }}/../stig/tasks/shared/finalize.yaml"
