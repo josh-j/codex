@@ -1,7 +1,0 @@
----
-# inventory/production/group_vars/all.yaml
-# Global defaults for all hosts.
-# Credentials here are defaults; site-specific overrides should live in sites.yaml or host_vars.
-
-vmware_username: "{{ ansible_user | default(ansible_ssh_user) | default('administrator@vsphere.local') }}"
-vmware_password: "{{ ansible_password | default(ansible_ssh_pass) | default('') }}"

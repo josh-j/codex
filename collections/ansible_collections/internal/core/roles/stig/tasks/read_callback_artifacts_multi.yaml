@@ -1,0 +1,24 @@
+---
+# internal.core.stig : tasks/read_callback_artifacts_multi.yaml
+#
+# Multi-host variant: loops over _stig_target_hosts, reads each host's
+# callback artifact, and merges into a single audit_full_list.
+#
+# Required vars:
+#   _stig_target_hosts    - list of hostnames to read artifacts for
+#   _stig_artifacts_dir   - path to .artifacts directory
+#
+# Optional vars:
+#   _stig_is_hardening    - when false, remaps 'fixed' → 'failed' (default: false)
+
+- name: "STIG Multi-Artifact | Initialize merged list"
+  ansible.builtin.set_fact:
+    audit_full_list: []
+  changed_when: false
+
+- name: "STIG Multi-Artifact | Read artifact for each host"
+  ansible.builtin.include_tasks: _read_one_artifact.yaml
+  loop: "{{ _stig_target_hosts }}"
+  loop_control:
+    loop_var: _stig_current_target_host
+    label: "{{ _stig_current_target_host }}"

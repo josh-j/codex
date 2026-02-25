@@ -17,5 +17,5 @@
     - role: internal.linux.ubuntu_stig_audit # Capture post-remediation STIG state
 
 - name: "Phase 3: Aggregate and Report"
-  ansible.builtin.import_playbook: ../common/generate_site_health_report.yaml
+  ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml
   tags: ['always']

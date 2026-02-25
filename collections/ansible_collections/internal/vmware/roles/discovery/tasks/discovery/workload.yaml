@@ -1,0 +1,60 @@
+---
+# internal.vmware.discovery : discovery/workload.yaml
+
+- name: Workload | Fetch Virtual Machine Inventory
+  community.vmware.vmware_vm_info:
+    hostname: "{{ _vcenter_hostname }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vm_type: vm
+    show_attribute: true
+    show_tag: true
+  register: _vms_raw
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+
+- name: Workload | Build standardized output
+  ansible.builtin.set_fact:
+    _disc_vms: >-
+      {{
+        _vms_raw
+        | internal.vmware.normalize_workload_result(
+          (_vmware_controller_epoch | int),
+          _vmware_controller_collected_at,
+          2
+        )
+      }}
+  changed_when: false
+
+- name: Workload | Ensure VM metrics include powered_off_pct
+  ansible.builtin.set_fact:
+    _disc_vms: >-
+      {{
+        _disc_vms
+        | combine(
+            {
+              'metrics': {
+                'powered_off_count': _po_count,
+                'powered_off_pct': _po_pct
+              }
+            },
+            recursive=true
+          )
+      }}
+  vars:
+    _total: >-
+      {{
+        (_disc_vms.summary.total_vms
+          | default((_disc_vms.list | default([]) | length))
+          | int)
+      }}
+    _po_count: "{{ (_disc_vms.metrics.powered_off_count | default(0) | int) }}"
+    _po_pct: >-
+      {{
+        (0.0 if (_total | int) == 0 else (((_po_count | float) / (_total | float)) * 100.0))
+        | float
+      }}
+  changed_when: false

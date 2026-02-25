@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(python:*)",
+      "Bash(find:*)",
+      "Bash(PYTHONPATH=tools/ncs_reporter/src python:*)",
+      "Bash(nix develop:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(PYTHONPATH=src python:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}

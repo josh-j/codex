@@ -17,22 +17,6 @@
         vmware_snapshot_size_warning_gb: 100
         vmware_enable_email_notifications: false
 
-- name: Phase 3 | Generate VMware Fleet Dashboard
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  run_once: true
-  vars:
-    ansible_python_interpreter: /home/joshua.johnson/automations/ansible-ncs-new/.venv/bin/python3
-
-  tasks:
-    - name: Execute VMware Summary Role
-      ansible.builtin.include_role:
-        name: internal.vmware.summary
-        tasks_from: report.yaml
-
-    - name: Announce Completion
-      ansible.builtin.debug:
-        msg: >-
-          VMware Fleet Dashboard Updated:
-          {{ (ncs_config.report_directory | default('/srv/samba/reports')) }}/platform/vmware/vmware_health_report.html
+- name: Phase 3 | Generate Fleet Reports
+  ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml
+  tags: ["always"]

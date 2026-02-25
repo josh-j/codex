@@ -1,0 +1,42 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_discover/tasks/main.yaml
+
+- name: Ensure distribution facts are gathered
+  ansible.builtin.setup:
+    gather_subset:
+      - "distribution"
+  when: ansible_distribution is not defined
+  tags: [always]
+
+- name: Check OS Family
+  ansible.builtin.fail:
+    msg: "This role is for Ubuntu only. Found: {{ ansible_facts['distribution'] | default('Unknown') }}"
+  # Access the fact via the ansible_facts dictionary
+  when: ansible_facts['distribution'] | default('') != 'Ubuntu'
+
+- name: Audit | Resolve Configuration Overrides
+  ansible.builtin.set_fact:
+    ubuntu_mem_warning_pct: "{{ ubuntu_config.mem_warning_pct | default(ubuntu_mem_warning_pct) }}"
+    ubuntu_disk_warning_pct: "{{ ubuntu_config.disk_warning_pct | default(ubuntu_disk_warning_pct) }}"
+    ubuntu_load_warning_threshold: "{{ ubuntu_config.load_warning_threshold | default(ubuntu_load_warning_threshold) }}"
+    ubuntu_updates_critical_threshold: "{{ ubuntu_config.updates_critical_threshold | default(ubuntu_updates_critical_threshold) }}"
+  changed_when: false
+
+- name: Discovery - System, Updates, & Security
+  block:
+    - name: Run discovery tasks
+      ansible.builtin.include_tasks: discover.yaml
+      when: not (ubuntu_skip_discovery | default(false) | bool)
+  rescue:
+    - name: Log discovery failure
+      ansible.builtin.debug:
+        msg: "Discovery failed on {{ inventory_hostname }}. State will reflect defaults only."
+
+- name: Export Ubuntu discovery state for checkpointing
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'discovery') }}"
+    ncs_export_data: "{{ ubuntu_ctx }}"
+  when: not (ubuntu_skip_export | default(false) | bool)

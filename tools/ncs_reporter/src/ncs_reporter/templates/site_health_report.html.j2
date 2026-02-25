@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure Audit | {{ report_date | default(now_date) }}</title>
+    <style>
+        {% include 'report_shared.css' %}
+    </style>
+</head>
+<body>
+{% set site = site_dashboard_view | default({}) %}
+{% set site_meta = site.get('meta', {}) %}
+{% set totals = site.get('totals', totals | default({})) %}
+{% set platforms = site.get('platforms', {}) %}
+{% set linux_platform = platforms.get('linux', {}) %}
+{% set vmware_platform = platforms.get('vmware', {}) %}
+{% set windows_platform = platforms.get('windows', {}) %}
+{% set security = site.get('security', {}) %}
+{% set stig_fleet = security.get('stig_fleet', {}) %}
+{% set stig_fleet_rows = stig_fleet.get('rows', []) %}
+{% set stig_fleet_meta = stig_fleet.get('fleet', {}) %}
+{% set stig_fleet_totals = stig_fleet_meta.get('totals', {}) %}
+{% set stig_by_platform = stig_fleet_meta.get('by_platform', {}) %}
+{% set stig_top_findings = stig_fleet.get('findings_index', {}).get('top_findings', []) %}
+{% set compute = site.get('compute', {}) %}
+{% set compute_nodes = compute.get('nodes', []) %}
+{% set alert_queue = site.get('alerts', []) %}
+
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-accent"></span>
+            <span class="brand-text">NCS OPERATIONS</span>
+        </div>
+        <ul class="nav-links">
+            <li class="active" onclick="showTab('summary', this)">System Overview</li>
+            <li onclick="showTab('compute', this)">Compute Environment</li>
+            <li onclick="showTab('security', this)">Security Compliance</li>
+            <li onclick="showTab('alerts', this)">
+                Alert Queue
+                {% if totals.get('critical', 0) | int > 0 %}
+                    <span class="count-pill">{{ totals.get('critical', 0) }}</span>
+                {% endif %}
+            </li>
+        </ul>
+        <div class="sidebar-meta">
+            ID: {{ report_id[:8] if report_id else '---' }}<br>
+            {{ report_date | default(now_datetime) }}
+        </div>
+    </nav>
+
+    <main class="content">
+        <header class="content-header">
+            <div class="title-group">
+                <h1>Global Fleet Health Dashboard</h1>
+                <p>Real-time status of managed infrastructure assets.</p>
+            </div>
+            <div class="header-util">
+                <button class="btn-secondary" onclick="window.print()">Print Report</button>
+            </div>
+        </header>
+
+        <section id="summary" class="tab-content active">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <label>Fleet Compliance</label>
+                    {% set compliance_pct = 100 - (totals.get('critical', 0) * 1.5) | int %}
+                    <div class="stat-value">{{ compliance_pct if compliance_pct > 0 else 0 }}%</div>
+                    <div class="progress-track"><div class="progress-fill" style="width: {{ compliance_pct if compliance_pct > 0 else 0 }}%;"></div></div>
+                </div>
+                <div class="stat-card">
+                    <label>Critical Faults</label>
+                    <div class="stat-value {{ 'danger' if totals.get('critical', 0) | int > 0 }}">{{ totals.get('critical', 0) }}</div>
+                </div>
+                <div class="stat-card">
+                    <label>Warning States</label>
+                    <div class="stat-value {{ 'warning' if totals.get('warning', 0) | int > 0 }}">{{ totals.get('warning', 0) }}</div>
+                </div>
+            </div>
+
+            <h2 class="sub-title">Platform & Fleet Dashboards</h2>
+            <div class="card-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Infrastructure Platform</th>
+                            <th>Asset Count</th>
+                            <th>Fleet Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Linux & Ubuntu Environment</strong></td>
+                            <td>{{ linux_platform.get('asset_count', 0) }} {{ linux_platform.get('asset_label', 'Nodes') }}</td>
+                            {% set _badge = (linux_platform.get('status', {}).get('raw', 'OK')) | status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>
+                                <a href="{{ linux_platform.get('links', {}).get('fleet_dashboard', 'platform/ubuntu/ubuntu_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View Linux Fleet ↗
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>VMware vCenter Environment</strong></td>
+                            <td>{{ vmware_platform.get('asset_count', 0) }} {{ vmware_platform.get('asset_label', 'vCenters') }}</td>
+                            {% set _badge = (vmware_platform.get('status', {}).get('raw', 'OK')) | status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>
+                                <a href="{{ vmware_platform.get('links', {}).get('fleet_dashboard', 'platform/vmware/vmware_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View VMware Fleet ↗
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Windows Server Environment</strong></td>
+                            <td>{{ windows_platform.get('asset_count', 0) }} {{ windows_platform.get('asset_label', 'Nodes') }}</td>
+                            {% set _badge = (windows_platform.get('status', {}).get('raw', 'OK')) | status_badge_meta %}
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>
+                                <a href="{{ windows_platform.get('links', {}).get('fleet_dashboard', 'platform/windows/windows_health_report.html') }}" style="display: inline-block; padding: 6px 12px; background: var(--indigo, #4f46e5); color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">
+                                    View Windows Fleet ↗
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="security" class="tab-content">
+            <h2 class="sub-title">STIG Compliance Audit</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Fleet STIG Totals</h3>
+                    <table>
+                        <tr><td>Hosts</td><td><strong>{{ stig_fleet_totals.get('hosts', 0) }}</strong></td></tr>
+                        <tr><td>Open Findings</td><td><strong>{{ stig_fleet_totals.get('findings_open', 0) }}</strong></td></tr>
+                        <tr><td>Critical Findings</td><td><strong class="text-danger">{{ stig_fleet_totals.get('critical', 0) }}</strong></td></tr>
+                        <tr><td>Warning Findings</td><td><strong class="text-warning">{{ stig_fleet_totals.get('warning', 0) }}</strong></td></tr>
+                    </table>
+                </div>
+                <div class="card">
+                    <h3>By Platform</h3>
+                    <table>
+                        <thead><tr><th>Platform</th><th>Hosts</th><th>Open</th></tr></thead>
+                        <tbody>
+                            {% for platform_name, pdata in stig_by_platform.items() %}
+                            <tr>
+                                <td style="text-transform: capitalize;">{{ platform_name }}</td>
+                                <td>{{ pdata.get('hosts', 0) }}</td>
+                                <td>{{ pdata.get('open', 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <h3 class="sub-title">Top Recurring Findings</h3>
+            <div class="card-wrap">
+                <table>
+                    <thead><tr><th>Rule ID</th><th>Severity</th><th>Affected Hosts</th><th>Title</th></tr></thead>
+                    <tbody>
+                        {% for finding in stig_top_findings %}
+     {% set _badge = (finding.severity | default('INFO')) | status_badge_meta %}
+                        <tr>
+                            <td><code>{{ finding.rule_id }}</code></td>
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                            <td>{{ finding.affected_hosts }}</td>
+                            <td>{{ finding.title }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-muted);">No recurring open findings.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% for entry in stig_fleet_rows %}
+            <div class="compliance-entry" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+                <div class="entry-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">{{ entry.host }} <span class="text-muted" style="font-size: 0.85rem;">({{ entry.audit_type }})</span></h3>
+     {% set _badge = (entry.status.raw | default('UNKNOWN')) | status_badge_meta %}
+                    <span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span>
+                </div>
+                <div class="finding-grid">
+     {% for finding in (entry.findings | default([])) %}
+                    <div class="finding-card {{ finding.severity | lower }}">
+                        <span class="finding-id">{{ finding.rule_id | default('V-RULE') }}</span>
+                        <p>{{ finding.message }}</p>
+                    </div>
+     {% else %}
+                    <div class="finding-card status-ok">
+                        <span class="finding-id">OK</span>
+                        <p>No open STIG findings.</p>
+                    </div>
+     {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card-wrap" style="padding: 20px; color: var(--text-muted);">
+                No STIG results found.
+            </div>
+            {% endfor %}
+        </section>
+
+        <section id="compute" class="tab-content">
+            <h2 class="sub-title">Virtualization Resource Saturation</h2>
+            <div class="compute-grid">
+                {% for node in compute_nodes %}
+                    <div class="vcenter-node card" style="margin-bottom: 24px;">
+                        <h3>vCenter: {{ node.host }}</h3>
+                        <div class="resource-flex" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 15px;">
+     {% for cluster in (node.clusters | default([])) %}
+                                <div class="cluster-card" style="padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                    <label style="font-weight: 700; font-size: 0.85rem;">{{ cluster.name }}</label>
+                                    <div class="metric" style="margin-top: 8px;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                                            <span>CPU: {{ cluster.utilization.cpu_pct }}%</span>
+                                        </div>
+                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ cluster.utilization.cpu_pct }}%; background: {{ 'var(--red)' if cluster.utilization.cpu_pct > 90 else 'var(--emerald)' }}"></div></div>
+                                    </div>
+                                    <div class="metric" style="margin-top: 8px;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
+                                            <span>RAM: {{ cluster.utilization.mem_pct }}%</span>
+                                        </div>
+                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ cluster.utilization.mem_pct }}%; background: {{ 'var(--red)' if cluster.utilization.mem_pct > 90 else 'var(--emerald)' }}"></div></div>
+                                    </div>
+                                </div>
+     {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="alerts" class="tab-content">
+            <h2 class="sub-title">Global Alert Queue</h2>
+            <div class="card-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Asset Host</th>
+                            <th>Audit Subsystem</th>
+                            <th>Severity Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in alert_queue %}
+     {% set _badge = (item.severity | default('UNKNOWN')) | status_badge_meta %}
+                        <tr>
+                            <td><strong>{{ item.host | default('unknown') }}</strong></td>
+                            <td style="text-transform: uppercase; font-size: 0.8rem; font-weight: 700; color: var(--indigo);">{{ item.audit_type | default('unknown') }}</td>
+                            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; padding:30px; color: var(--text-muted);">
+                                <strong>No active critical or warning alerts.</strong>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    function showTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-links li').forEach(l => l.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        el.classList.add('active');
+    }
+</script>
+</body>
+</html>

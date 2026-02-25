@@ -1,0 +1,142 @@
+---
+# configmgr.yaml - ConfigMgr Application Updates
+
+- name: ConfigMgr application update management
+  block:
+    - name: Initialize Windows ConfigMgr namespace
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.core.recursive_combine(structure) }}"
+      vars:
+        structure: >-
+          {{
+            '' | internal.windows.build_configmgr_update_structure(
+              startup_delay | default(0),
+              skip_startup_delay | default(false),
+              remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
+              update_log_directory | default('C:\\Temp\\ConfigMgrLogs'),
+              excluded_apps | default([]),
+              force_update | default(false),
+              allow_reboot | default(false),
+              enforce_preference | default('Immediate'),
+              update_priority | default('Normal'),
+              cleanup_old_logs | default(true),
+              true
+            )
+          }}
+
+    - name: Add startup delay
+      ansible.windows.win_shell: Start-Sleep -Seconds {{ windows_ctx.config.startup_delay }}
+      when: not windows_ctx.config.skip_startup_delay | bool
+
+    - name: Check if CCMExec service is running
+      ansible.windows.win_service:
+        name: CCMExec
+      register: _ccm_service
+
+    - name: Store CCMExec status and fail if not running
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.set_ccmexec_running(_ccm_service.state == 'running') }}"
+
+    - name: Fail if CCMExec is not running
+      ansible.builtin.fail:
+        msg: "ConfigMgr client service (CCMExec) is not running"
+      when: not windows_ctx.services.ccmexec_running
+
+    - name: Create log directory on remote host
+      ansible.windows.win_file:
+        path: "{{ windows_ctx.config.update_log_directory }}"
+        state: directory
+
+    - name: Ensure scripts directory exists
+      ansible.windows.win_file:
+        path: "{{ windows_ctx.config.remote_scripts_path }}"
+        state: directory
+
+    - name: Copy Get-ConfigMgrApplications.ps1 script
+      ansible.windows.win_copy:
+        src: Get-ConfigMgrApplications.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Get-ConfigMgrApplications.ps1"
+
+    - name: Copy Update-ConfigMgrApplication.ps1 script
+      ansible.windows.win_copy:
+        src: Update-ConfigMgrApplication.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Update-ConfigMgrApplication.ps1"
+
+    - name: Get and filter ConfigMgr applications
+      ansible.windows.win_powershell:
+        script: |
+          param([string[]]$ExcludedPatterns)
+          & "{{ windows_ctx.config.remote_scripts_path }}\\Get-ConfigMgrApplications.ps1" -ExcludedPatterns $ExcludedPatterns
+        parameters:
+          ExcludedPatterns: "{{ windows_ctx.config.excluded_apps }}"
+      register: _filtered_apps_result
+
+    - name: Parse filtered applications
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.merge_applications(apps_data) }}"
+      vars:
+        filtered_data: "{{ _filtered_apps_result.output[0] | from_json }}"
+        apps_data:
+          apps_to_update: "{{ filtered_data.AppsToUpdate | default([]) }}"
+          excluded_apps: "{{ filtered_data.ExcludedApps | default([]) }}"
+          already_current: "{{ filtered_data.AlreadyCurrent | default([]) }}"
+          total_apps: "{{ filtered_data.AllApps | default(0) }}"
+          summary: "{{ filtered_data.Summary | default({}) }}"
+
+    - name: Log update summary
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/info
+      vars:
+        ncs_log_message: >-
+          ConfigMgr Apps: {{ windows_ctx.applications.total_apps }} total,
+          {{ windows_ctx.applications.apps_to_update | length }} to update,
+          {{ windows_ctx.applications.excluded_apps | length }} excluded
+
+    - name: Trigger ConfigMgr application updates
+      ansible.windows.win_powershell:
+        script: |
+          param(
+            [string]$ApplicationName,
+            [string]$LogDirectory,
+            [bool]$Force,
+            [bool]$AllowReboot,
+            [string]$EnforcePreference,
+            [string]$Priority
+          )
+          & "{{ windows_ctx.config.remote_scripts_path }}\Update-ConfigMgrApplication.ps1" `
+            -ApplicationName $ApplicationName `
+            -LogDirectory $LogDirectory `
+            -Force $Force `
+            -AllowReboot $AllowReboot `
+            -EnforcePreference $EnforcePreference `
+            -Priority $Priority `
+            -NoWait
+        parameters:
+          ApplicationName: "{{ item.Name }}"
+          LogDirectory: "{{ windows_ctx.config.update_log_directory }}"
+          Force: "{{ windows_ctx.config.force_update }}"
+          AllowReboot: "{{ windows_ctx.config.allow_reboot }}"
+          EnforcePreference: "{{ windows_ctx.config.enforce_preference }}"
+          Priority: "{{ windows_ctx.config.update_priority }}"
+      loop: "{{ windows_ctx.applications.apps_to_update }}"
+      loop_control:
+        label: "{{ item.Name }}"
+      register: _update_results
+      when: windows_ctx.applications.apps_to_update | length > 0
+
+    - name: Store update results
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.set_update_results(_update_results.results | default([])) }}"
+
+  rescue:
+    - name: Log ConfigMgr update failure
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/error
+      vars:
+        ncs_log_message: "ConfigMgr update process failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+    - name: Set empty update data
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.set_empty_configmgr_update_state }}"

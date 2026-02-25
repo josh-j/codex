@@ -1,0 +1,116 @@
+---
+# internal.core.stig : tasks/finalize.yaml
+
+- name: "STIG | Compute internal facts"
+  ansible.builtin.set_fact:
+    _stig_checked_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _stig_report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+    _stig_target_type: "{{ stig_target_type | default('unknown') }}"
+    _stig_resolved_yaml_path: >-
+      {{
+        ncs_export_path | default(
+          ncs_config | internal.core.resolve_ncs_path('stig', inventory_hostname, 'stig_' ~ (stig_target_type | default('unknown')))
+        )
+      }}
+  changed_when: false
+
+- name: "STIG | Run normalization filter"
+  ansible.builtin.set_fact:
+    # This creates the object seen in your logs
+    _stig_normalized: >-
+      {{
+        (audit_full_list | default([]))
+        | internal.core.normalize_stig_results(_stig_target_type)
+      }}
+  changed_when: false
+
+- name: "STIG | Extract normalized subsets"
+  ansible.builtin.set_fact:
+    # NOW this will work because _stig_normalized is saved
+    _stig_audit_full_list_normalized: "{{ _stig_normalized.full_audit | default([]) }}"
+    _stig_audit_violations_normalized: "{{ _stig_normalized.violations | default([]) }}"
+    _stig_alerts_normalized: "{{ _stig_normalized.alerts | default([]) }}"
+  changed_when: false
+
+- name: "STIG | Summary"
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} | {{ _stig_target_type | upper }} STIG | {{ _stig_audit_full_list_normalized | length }} checks | {{ _stig_audit_violations_normalized | length }} violation(s)"
+
+- name: "STIG | Export YAML state"
+  tags: [stig, reporting]
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    ncs_export_path: "{{ _stig_resolved_yaml_path }}"
+    ncs_export_data:
+      audit_type: stig
+      audit_failed: "{{ _stig_audit_failed | default(false) | bool }}"
+      host: "{{ inventory_hostname }}"
+      target_type: "{{ _stig_target_type }}"
+      checked_at: "{{ _stig_checked_at }}"
+      health: "{{ _stig_alerts_normalized | internal.core.health_rollup }}"
+      summary: "{{ _stig_normalized.summary | default({}) }}"
+      full_audit: "{{ _stig_audit_full_list_normalized }}"
+
+- name: "STIG | Purge prior CKLB artifacts"
+  when:
+    - stig_export_cklb | default(true) | bool
+    - _stig_audit_full_list_normalized | length > 0
+  tags: [stig, reporting]
+  block:
+    - name: "STIG | Find old CKLB files"
+      ansible.builtin.find:
+        paths: "{{ _stig_resolved_yaml_path | dirname }}"
+        patterns: "*_STIG.cklb"
+      register: _old_cklbs
+      delegate_to: localhost
+
+    - name: "STIG | Remove old CKLB files"
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ _old_cklbs.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      delegate_to: localhost
+
+- name: "STIG | Generate CKLB artifacts"
+  tags: [stig, reporting]
+  when:
+    - stig_export_cklb | default(true) | bool
+    - stig_skeleton_path is defined
+    - _stig_audit_full_list_normalized | length > 0
+  ansible.builtin.template:
+    src: "cklb_generic.json.j2"
+    dest: "{{ _stig_resolved_yaml_path | dirname }}/{{ item.0 }}_{{ _stig_report_id }}_STIG.cklb"
+    mode: "0664"
+  vars:
+    target_name: "{{ item.0 }}"
+    audit_data: "{{ item.1 }}"
+    cklb_skeleton_path: "{{ stig_skeleton_path }}"
+  loop: "{{ _stig_audit_full_list_normalized | groupby('name') | map('list') | list }}"
+  loop_control:
+    label: "{{ item.0 }}"
+  delegate_to: localhost
+
+- name: "STIG | Render HTML report"
+  tags: [stig, reporting]
+  when: _stig_audit_full_list_normalized | length > 0
+  ansible.builtin.template:
+    src: "stig_report.html.j2"
+    dest: "{{ _stig_resolved_yaml_path | dirname }}/{{ inventory_hostname }}_stig_{{ _stig_target_type }}.html"
+    mode: "0664"
+  vars:
+    # Build the dictionary directly so the Python filter doesn't strip the lists
+    stig_host_view:
+      meta:
+        report_date: "{{ _stig_checked_at }}"
+        report_id: "{{ _stig_report_id }}"
+      target:
+        host: "{{ inventory_hostname }}"
+        target_type: "{{ _stig_target_type }}"
+      health: "{{ _stig_alerts_normalized | internal.core.health_rollup | default('UNKNOWN') }}"
+      violations: "{{ _stig_audit_violations_normalized }}"
+      full_audit: "{{ _stig_audit_full_list_normalized }}"
+  delegate_to: localhost

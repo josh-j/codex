@@ -14,9 +14,6 @@
   gather_facts: false
   roles:
     - role: internal.vmware.discovery
-      vars:
-        vmware_username: "{{ vault_vcenter_username }}"
-        vmware_password: "{{ vault_vcenter_password }}"
 
 - name: "Phase 2b: VMware Health & Compliance Audit"
   hosts: vcenters
@@ -24,12 +21,17 @@
   gather_facts: true
   roles:
     - role: internal.vmware.audit
+      vars:
+        ncs_ctx: "{{ vmware_ctx }}"
 
 # Phase 3: Linux Fleet Audit
 - name: "Phase 3: Linux System Health Audit"
   hosts: ubuntu_servers
   roles:
+    - role: internal.linux.ubuntu_system_discover
     - role: internal.linux.ubuntu_system_audit
+      vars:
+        ncs_ctx: "{{ ubuntu_ctx }}"
 
 # Phase 3b: Windows Fleet Audit
 - name: "Phase 3b: Windows System Audit"
@@ -38,6 +40,7 @@
   roles:
     - role: internal.windows.windows_audit
       vars:
+        ncs_ctx: "{{ windows_ctx }}"
         force_update: false
 
 # Phase 3c: Windows Server STIG Audit (optional)
@@ -52,25 +55,6 @@
         windows_stig_enable_audit: true
       when: master_enable_windows_stig | default(false) | bool
 
-# Phase 4: Platform Summaries (Fleet Dashboards)
-- name: "Phase 4: Generate Fleet-Level Reports"
-  hosts: localhost
-  tasks:
-    - name: "Linux | Fleet Summary"
-      ansible.builtin.include_role:
-        name: internal.linux.ubuntu_summary
-        tasks_from: report.yaml
-
-    - name: "VMware | Fleet Summary"
-      ansible.builtin.include_role:
-        name: internal.vmware.summary
-        tasks_from: report.yaml
-
-    - name: "Windows | Fleet Summary"
-      ansible.builtin.include_role:
-        name: internal.windows.windows_summary
-        tasks_from: report.yaml
-
-# Phase 5: Global Site Health (The Executive Entry Point)
-- name: "Phase 5: Final Site Health Aggregation"
-  import_playbook: common/generate_site_health_report.yaml
+# Phase 4: Reporting & Dashboards (Decoupled Engine)
+- name: "Phase 4: Unified Infrastructure Reporting"
+  import_playbook: common/generate_fleet_reports.yaml

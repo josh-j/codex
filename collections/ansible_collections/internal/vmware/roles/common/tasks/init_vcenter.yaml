@@ -1,0 +1,26 @@
+---
+# collections/ansible_collections/internal/vmware/roles/common/tasks/init_vcenter.yaml
+#
+# Sets _vcenter_hostname from the best available source.
+# Called by any vmware role that needs to make API calls.
+# Safe to call multiple times - set_fact is idempotent.
+
+- name: Set vCenter target hostname
+  ansible.builtin.set_fact:
+    _vcenter_hostname: >-
+      {{
+        (vmware_hostname | default(ansible_host) | default(inventory_hostname))
+        | regex_replace('^https?://', '')
+        | regex_replace('/.*$', '')
+      }}
+  when: _vcenter_hostname is not defined
+
+- name: Resolve VMware connection parameters
+  ansible.builtin.set_fact:
+    # Adapt vaulted credentials to role-standard names
+    vmware_username: "{{ vmware_username | default(vault_vcenter_username | default('')) }}"
+    vmware_password: "{{ vmware_password | default(vault_vcenter_password | default('')) }}"
+    # Adapt from structured vmware_config
+    vmware_validate_certs: "{{ vmware_config.validate_certs | default(vmware_validate_certs | default(false)) | bool }}"
+  changed_when: false
+  no_log: true

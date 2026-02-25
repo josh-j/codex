@@ -1,0 +1,7 @@
+---
+# collections/ansible_collections/internal/vmware/roles/discovery/defaults/main.yaml
+
+# Configuration Thresholds (Can be overridden in group_vars)
+vmware_discovery_timeout: 30
+vmware_skip_discovery: false
+vmware_validate_ctx_schema: true

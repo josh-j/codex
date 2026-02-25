@@ -12,14 +12,6 @@
     - role: internal.linux.ubuntu_system_discover
     - role: internal.linux.ubuntu_system_audit
 
-- name: "Phase 3: Aggregate and Report (Linux Only)"
-  hosts: localhost
+- name: "Phase 3: Aggregate and Report"
+  ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml
   tags: ["always"]
-  vars:
-    # Forces all roles in this play to use the exact same timestamp
-    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
-  tasks:
-    - name: Run Linux Summary
-      ansible.builtin.include_role:
-        name: internal.linux.ubuntu_summary
-        tasks_from: report.yaml

@@ -1,0 +1,25 @@
+---
+# internal.vmware.stig : vm/check.yaml
+#
+# Outer loop wrapper: iterates over vm_stig_target_vms, including
+# vm_v7r4.yaml once per VM. In audit mode (hardening=false) tasks run
+# in check_mode; in hardening mode they apply changes.
+
+- name: "VM STIG | Process each VM"
+  ansible.builtin.include_tasks: vm_v7r4.yaml
+  loop: "{{ vm_stig_target_vms }}"
+  loop_control:
+    loop_var: _current_vm_name
+    label: "{{ _current_vm_name }}"
+  args:
+    apply:
+      check_mode: "{{ not (vmware_stig_enable_hardening | default(false) | bool) }}"
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ _current_vm_name }}"
+  failed_when: false
+
+- name: "VM STIG | Flag audit as complete"
+  ansible.builtin.set_fact:
+    _stig_audit_ran: true
+  changed_when: false

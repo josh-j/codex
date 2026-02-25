@@ -1,0 +1,39 @@
+---
+# playbooks/common/generate_fleet_reports.yaml (Unified)
+
+- name: "Reporting Phase | Unified Fleet Report Generation"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    _playbooks_root: "{{ playbook_dir | dirname }}"
+    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _platform_root: "{{ _reports_root }}/platform"
+    _groups_json: "{{ _platform_root }}/inventory_groups.json"
+
+    report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
+
+  tasks:
+    - name: "Ensure platform root exists"
+      ansible.builtin.file:
+        path: "{{ _platform_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: "Dump inventory groups for reporter"
+      ansible.builtin.copy:
+        content: "{{ groups | to_json }}"
+        dest: "{{ _groups_json }}"
+        mode: "0644"
+
+    - name: "Run Unified Reporting Engine (ncs-reporter all)"
+      ansible.builtin.command:
+        cmd: >-
+          {{ ansible_playbook_python }} -m ncs_reporter.cli all
+          --platform-root "{{ _platform_root }}"
+          --reports-root "{{ _reports_root }}"
+          --groups "{{ _groups_json }}"
+          --report-stamp "{{ report_stamp }}"
+      environment:
+        PYTHONPATH: "{{ _playbooks_root }}/tools/ncs_reporter/src"
+      changed_when: true

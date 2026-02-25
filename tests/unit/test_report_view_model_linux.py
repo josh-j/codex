@@ -1,34 +1,16 @@
-import importlib.util
 import pathlib
+import sys
 import unittest
-from typing import Any
 
-MODULE_PATH = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "collections"
-    / "ansible_collections"
-    / "internal"
-    / "core"
-    / "plugins"
-    / "module_utils"
-    / "report_view_models.py"
-)
+# Make ncs_reporter importable without installing the package.
+_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
+if _NCS_SRC not in sys.path:
+    sys.path.insert(0, _NCS_SRC)
 
-
-def _load_module():
-    spec = importlib.util.spec_from_file_location("report_view_models", MODULE_PATH)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from ncs_reporter.view_models.linux import build_linux_fleet_view, build_linux_node_view  # noqa: E402
 
 
 class LinuxReportViewModelTests(unittest.TestCase):
-    module: Any
-    @classmethod
-    def setUpClass(cls):
-        cls.module = _load_module()
-
     def test_builds_linux_fleet_and_node_views(self):
         hosts = {
             "host1": {
@@ -64,7 +46,7 @@ class LinuxReportViewModelTests(unittest.TestCase):
             "platform": {"ignore": True},
         }
 
-        fleet = self.module.build_linux_fleet_view(hosts, report_stamp="20260224")
+        fleet = build_linux_fleet_view(hosts, report_stamp="20260224")
         self.assertEqual(len(fleet["rows"]), 1)
         self.assertEqual(fleet["fleet"]["hosts"], 1)
         self.assertEqual(fleet["fleet"]["alerts"]["critical"], 1)
@@ -78,7 +60,7 @@ class LinuxReportViewModelTests(unittest.TestCase):
         self.assertEqual(len(fleet["stig_fleet"]["rows"][0]["findings"]), 1)
         self.assertEqual(fleet["stig_fleet"]["rows"][0]["status"]["raw"], "CRITICAL")
 
-        node = self.module.build_linux_node_view("host1", hosts["host1"])
+        node = build_linux_node_view("host1", hosts["host1"])
         self.assertEqual(node["node"]["name"], "host1")
         self.assertEqual(node["node"]["status"]["raw"], "WARNING")
         self.assertEqual(len(node["node"]["alerts"]), 2)

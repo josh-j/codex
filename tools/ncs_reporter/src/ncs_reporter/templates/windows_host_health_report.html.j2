@@ -1,0 +1,158 @@
+{% set view = windows_node_view | default({}) %}
+{% set node = view.get('node', {}) %}
+{% set meta = view.get('meta', {}) %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Windows Host Health - {{ node.get('name', 'unknown') }}</title>
+  <style>
+    {% include 'report_shared.css' %}
+  </style>
+</head>
+<body>
+{% set summary = node.get('summary', {}) %}
+{% set apps = summary.get('applications', {}) %}
+{% set updates = summary.get('updates', {}) %}
+{% set services = summary.get('services', {}) %}
+{% set data = node.get('data', {}) %}
+{% set update_results = (data.get('updates', {}) or {}).get('results', []) %}
+{% set pending_apps = (data.get('applications', {}) or {}).get('apps_to_update', []) %}
+{% set badge = (node.get('status', {}).get('raw', 'UNKNOWN')) | status_badge_meta %}
+<div class="report-shell app-layout" style="display: block;">
+  <main class="content">
+    <div style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">
+        <a href="{{ node.get('links', {}).get('global_dashboard', '../../../site_health_report.html') }}" class="nav-link">Global Site</a>
+        <span style="margin: 0 8px;">/</span>
+        <a href="{{ node.get('links', {}).get('fleet_dashboard', '../windows_health_report.html') }}" class="nav-link">Windows Fleet</a>
+        <span style="margin: 0 8px;">/</span>
+        <span style="font-weight: 600; color: var(--text-primary);">{{ node.get('name', 'unknown') }}</span>
+    </div>
+
+    <header class="content-header">
+        <div>
+            <h1>Windows Host Health - <code>{{ node.get('name', 'unknown') }}</code></h1>
+            <p style="color: var(--text-muted); margin-top: 5px;">
+                Status: <span class="badge {{ badge.css_class }}">{{ badge.label }}</span>
+            </p>
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.9rem;">
+            Generated: {{ meta.get('report_date', report_date | default(now_datetime)) }}
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h3>Component Status</h3>
+            <table>
+                <tbody>
+                    <tr><td>CCMExec Running</td><td><strong>{{ 'YES' if services.get('ccmexec_running', false) else 'NO' }}</strong></td></tr>
+                    <tr><td>ConfigMgr Apps</td><td><strong>{{ apps.get('configmgr_count', 0) }}</strong></td></tr>
+                    <tr><td>Installed Apps</td><td><strong>{{ apps.get('installed_count', 0) }}</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h3>Update Summary</h3>
+            <table>
+                <tbody>
+                    <tr><td>Apps To Update</td><td class="{{ 'text-warning' if apps.get('apps_to_update_count', 0) > 0 else '' }}"><strong>{{ apps.get('apps_to_update_count', 0) }}</strong></td></tr>
+                    <tr><td>Update Results</td><td><strong>{{ updates.get('results_count', 0) }}</strong></td></tr>
+                    <tr><td>Update Failures</td><td class="{{ 'text-danger' if updates.get('failed_count', 0) > 0 else '' }}"><strong>{{ updates.get('failed_count', 0) }}</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% set alerts = node.get('alerts', []) %}
+    <h2 class="sub-title">Audit Alerts</h2>
+    <div class="card-wrap">
+        <table>
+        <thead><tr><th>Severity</th><th>Category</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for alert in alerts %}
+        {% set _badge = (alert.get('severity', 'INFO')) | status_badge_meta %}
+        <tr class="{{ 'alert-row-critical' if (alert.get('severity', '') | upper) == 'CRITICAL' else ('alert-row-warning' if (alert.get('severity', '') | upper) == 'WARNING' else '') }}">
+            <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
+            <td style="text-transform: uppercase; font-weight: 700; color: var(--indigo);">{{ alert.get('category', 'windows') }}</td>
+            <td>
+            <div>{{ alert.get('message', '') }}</div>
+        {% set detail = alert.get('detail', {}) %}
+        {% if detail and detail | length > 0 %}
+            <details style="margin-top: 6px;">
+                <summary style="cursor: pointer; color: var(--text-muted);">Technical details</summary>
+                <div style="margin-top: 8px;">
+                <table>
+                    <tbody>
+            {% for k, v in detail.items() %}
+                    <tr>
+                        <th style="width: 180px;">{{ k }}</th>
+                        <td><code>{{ v }}</code></td>
+                    </tr>
+            {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </details>
+        {% endif %}
+        {% if alert.get('recommendation') or alert.get('remediation') %}
+            <div style="margin-top: 6px; color: var(--text-muted);">
+                <strong>Remediation:</strong> {{ alert.get('recommendation', alert.get('remediation', '')) }}
+            </div>
+        {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No critical or warning alerts detected.</td></tr>
+        {% endfor %}
+        </tbody>
+        </table>
+    </div>
+
+    <h2 class="sub-title">Pending ConfigMgr Updates</h2>
+    <div class="card-wrap">
+        <table>
+        <thead><tr><th>Application</th><th>Current</th><th>Target</th><th>Reason</th></tr></thead>
+        <tbody>
+        {% for app in pending_apps %}
+        <tr>
+            <td><strong>{{ app.get('Name', app.get('name', 'unknown')) }}</strong></td>
+            <td>{{ app.get('Current Version', app.get('CurrentVersion', app.get('current_version', ''))) }}</td>
+            <td>{{ app.get('Target Version', app.get('TargetVersion', app.get('target_version', ''))) }}</td>
+            <td class="text-muted">{{ app.get('Update Reason', app.get('UpdateReason', app.get('reason', ''))) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--text-muted);">No pending ConfigMgr updates recorded.</td></tr>
+        {% endfor %}
+        </tbody>
+        </table>
+    </div>
+
+    <h2 class="sub-title">Recent Update Results</h2>
+    <div class="card-wrap">
+        <table>
+        <thead><tr><th>Application</th><th>Status</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for r in update_results %}
+        <tr>
+            <td><strong>{{ r.get('item', {}).get('Name', r.get('item', r.get('ApplicationName', 'unknown'))) }}</strong></td>
+            <td>
+                {% if r.get('failed', false) %}
+                <span class="badge status-fail">FAILED</span>
+                {% else %}
+                <span class="badge status-ok">SUCCESS</span>
+                {% endif %}
+            </td>
+            <td class="text-muted">{{ r.get('msg', r.get('message', '')) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-muted);">No update results captured.</td></tr>
+        {% endfor %}
+        </tbody>
+        </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

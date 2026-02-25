@@ -1,0 +1,18 @@
+---
+# internal.vmware.audit : tasks/checks/storage_alerts.yaml
+
+- name: Audit | Process Datastore Alerts
+  ansible.builtin.set_fact:
+    vmware_alerts: >-
+      {{
+        (vmware_alerts | default([]) | list)
+        | internal.core.append_alerts(
+          (vmware_ctx.inventory.datastores.list | default([]))
+          | internal.vmware.audit_storage_rollup_alerts(
+            vmware_datastore_free_critical_pct | default(10) | float,
+            vmware_datastore_free_warning_pct | default(15) | float,
+            vmware_datastore_items_max | default(25) | int
+          )
+        )
+      }}
+  changed_when: false

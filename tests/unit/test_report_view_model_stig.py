@@ -1,34 +1,15 @@
-import importlib.util
 import pathlib
+import sys
 import unittest
-from typing import Any
 
-MODULE_PATH = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "collections"
-    / "ansible_collections"
-    / "internal"
-    / "core"
-    / "plugins"
-    / "module_utils"
-    / "report_view_models.py"
-)
+_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
+if _NCS_SRC not in sys.path:
+    sys.path.insert(0, _NCS_SRC)
 
-
-def _load_module():
-    spec = importlib.util.spec_from_file_location("report_view_models", MODULE_PATH)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from ncs_reporter.view_models.stig import build_stig_fleet_view, build_stig_host_view  # noqa: E402
 
 
 class StigReportViewModelTests(unittest.TestCase):
-    module: Any
-    @classmethod
-    def setUpClass(cls):
-        cls.module = _load_module()
-
     def test_build_stig_host_view_from_alert_payload(self):
         payload = {
             "health": "CRITICAL",
@@ -48,7 +29,7 @@ class StigReportViewModelTests(unittest.TestCase):
                 },
             ],
         }
-        view = self.module.build_stig_host_view("ubuntu01", "stig_ubuntu", payload, report_id="RID")
+        view = build_stig_host_view("ubuntu01", "stig_ubuntu", payload, report_id="RID")
 
         self.assertEqual(view["target"]["platform"], "linux")
         self.assertEqual(view["target"]["target_type"], "ubuntu")
@@ -68,7 +49,7 @@ class StigReportViewModelTests(unittest.TestCase):
                 {"id": "V-202", "status": "not_applicable", "severity": "CAT_III", "title": "N/A Rule"},
             ],
         }
-        view = self.module.build_stig_host_view("esx01", "stig_esxi", payload)
+        view = build_stig_host_view("esx01", "stig_esxi", payload)
 
         self.assertEqual(view["target"]["platform"], "vmware")
         self.assertEqual(view["target"]["target_type"], "esxi")
@@ -118,7 +99,7 @@ class StigReportViewModelTests(unittest.TestCase):
                 },
             }
         }
-        view = self.module.build_stig_fleet_view(aggregated, report_stamp="20260224")
+        view = build_stig_fleet_view(aggregated, report_stamp="20260224")
 
         self.assertEqual(view["fleet"]["totals"]["hosts"], 3)
         self.assertEqual(view["fleet"]["totals"]["findings_open"], 3)

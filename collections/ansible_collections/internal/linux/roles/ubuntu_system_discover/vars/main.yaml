@@ -1,0 +1,6 @@
+---
+# internal.linux.ubuntu_system_discover : vars/main.yaml
+#
+# INTERNAL CONTRACTS & SKELETONS
+# Dynamically generated from schema to prevent duplication and drift.
+ubuntu_ctx: "{{ 'internal.linux:schemas/ubuntu_ctx.yaml' | internal.core.schema_to_skeleton('ubuntu_ctx') }}"

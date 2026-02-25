@@ -1,0 +1,489 @@
+---
+# internal.vmware.stig : esxi/esxi_v7r4.yaml
+#
+# Clean drop-in ESXi V7R4 STIG tasks for a single host (_current_esxi_host).
+# Included via check.yaml which injects: check_mode, ignore_errors, tags.
+#
+# Conventions:
+#   - Each task has ONLY: name, module, parameters, when guard
+#   - NO register (except query→assert pairs), NO ignore_errors, NO tags
+#   - Toggle guard: esxi_70_NNNNNN_Manage | default(esxi_70_NNNNNN) | default(true)
+#   - PowerShell query tasks keep check_mode: false, no_log, register (functional)
+#
+# Credentials come from module_defaults in tasks/main.yaml.
+# Task naming: stigrule_NNNNNN_<desc> for callback compatibility.
+
+# =========================================================================
+# PowerCLI connection preamble (used by all PowerShell query tasks)
+# =========================================================================
+- name: "ESXi STIG | Set PowerCLI preamble"
+  ansible.builtin.set_fact:
+    _pwsh_preamble: >-
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null;
+      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password $env:VC_PASS -Force | Out-Null;
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# GROUP A: vmware_host_config_manager tasks
+# =========================================================================
+
+# --- V-256376 / ESXI-70-000002: DCUI.Access list ---
+- name: stigrule_256376_dcui_access
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      DCUI.Access: "{{ esxi_stig_dcui_access | default('root') }}"
+  when: esxi_70_000002_Manage | default(esxi_70_000002) | default(true) | bool
+
+# --- V-256378 / ESXI-70-000004: Remote syslog ---
+- name: stigrule_256378_syslog
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logHost: "{{ esxi_stig_syslog_host }}"
+  when:
+    - esxi_70_000004_Manage | default(esxi_70_000004) | default(true) | bool
+    - esxi_stig_syslog_host | default('') | length > 0
+
+# --- V-256379 / ESXI-70-000005: Account lock failures ---
+- name: stigrule_256379_account_lock_failures
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.AccountLockFailures: "{{ esxi_stig_account_lock_failures | default(3) }}"
+  when: esxi_70_000005_Manage | default(esxi_70_000005) | default(true) | bool
+
+# --- V-256380 / ESXI-70-000006: Account unlock timeout ---
+- name: stigrule_256380_account_unlock_time
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.AccountUnlockTime: "{{ esxi_stig_account_unlock_time | default(900) }}"
+  when: esxi_70_000006_Manage | default(esxi_70_000006) | default(true) | bool
+
+# --- V-256381 / ESXI-70-000007: DoD welcome banner ---
+- name: stigrule_256381_welcome_banner
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Annotations.WelcomeMessage: "{{ esxi_stig_welcome_message }}"
+  when:
+    - esxi_70_000007_Manage | default(esxi_70_000007) | default(true) | bool
+    - esxi_stig_welcome_message | default('') | length > 0
+
+# --- V-256396 / ESXI-70-000030: Log level ---
+- name: stigrule_256396_log_level
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.log.level: "{{ esxi_stig_log_level | default('info') }}"
+  when: esxi_70_000030_Manage | default(esxi_70_000030) | default(true) | bool
+
+# --- V-256397 / ESXI-70-000031: Password complexity ---
+- name: stigrule_256397_password_complexity
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordQualityControl: "{{ esxi_stig_password_quality | default('retry=3 min=disabled,disabled,disabled,disabled,15') }}"
+  when: esxi_70_000031_Manage | default(esxi_70_000031) | default(true) | bool
+
+# --- V-256398 / ESXI-70-000032: Password history ---
+- name: stigrule_256398_password_history
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordHistory: "{{ esxi_stig_password_history | default(5) }}"
+  when: esxi_70_000032_Manage | default(esxi_70_000032) | default(true) | bool
+
+# --- V-256399 / ESXI-70-000034: MOB disabled ---
+- name: stigrule_256399_mob_disabled
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.solo.enableMob: "{{ esxi_stig_mob_enabled | default('false') }}"
+  when: esxi_70_000034_Manage | default(esxi_70_000034) | default(true) | bool
+
+# --- V-256404 / ESXI-70-000039: AD admin group ---
+- name: stigrule_256404_ad_admin_group
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.hostsvc.esxAdminsGroup: "{{ esxi_stig_ad_admin_group }}"
+  when:
+    - esxi_70_000039_Manage | default(esxi_70_000039) | default(true) | bool
+    - esxi_stig_ad_admin_group | default('') | length > 0
+
+# --- V-256405 / ESXI-70-000041: Shell interactive timeout ---
+- name: stigrule_256405_shell_interactive_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiShellInteractiveTimeOut: "{{ esxi_stig_shell_interactive_timeout | default(120) }}"
+  when: esxi_70_000041_Manage | default(esxi_70_000041) | default(true) | bool
+
+# --- V-256406 / ESXI-70-000042: Shell timeout ---
+- name: stigrule_256406_shell_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiShellTimeOut: "{{ esxi_stig_shell_timeout | default(600) }}"
+  when: esxi_70_000042_Manage | default(esxi_70_000042) | default(true) | bool
+
+# --- V-256407 / ESXI-70-000043: DCUI timeout ---
+- name: stigrule_256407_dcui_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.DcuiTimeOut: "{{ esxi_stig_dcui_timeout | default(120) }}"
+  when: esxi_70_000043_Manage | default(esxi_70_000043) | default(true) | bool
+
+# --- V-256408 / ESXI-70-000045: Persistent logging ---
+- name: stigrule_256408_persistent_logs
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logDir: "{{ esxi_stig_log_dir }}"
+  when:
+    - esxi_70_000045_Manage | default(esxi_70_000045) | default(true) | bool
+    - esxi_stig_log_dir | default('') | length > 0
+
+# --- V-256416 / ESXI-70-000055: Memory salting ---
+- name: stigrule_256416_memory_salting
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Mem.ShareForceSalting: "{{ esxi_stig_share_force_salting | default(2) }}"
+  when: esxi_70_000055_Manage | default(esxi_70_000055) | default(true) | bool
+
+# --- V-256419 / ESXI-70-000058: BPDU filter ---
+- name: stigrule_256419_bpdu_filter
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Net.BlockGuestBPDU: "{{ esxi_stig_block_guest_bpdu | default(1) }}"
+  when: esxi_70_000058_Manage | default(esxi_70_000058) | default(true) | bool
+
+# --- V-256423 / ESXI-70-000062: dvFilter bind IP ---
+- name: stigrule_256423_dvfilter
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Net.DVFilterBindIpAddress: "{{ esxi_stig_dvfilter_bind_ip | default('') }}"
+  when: esxi_70_000062_Manage | default(esxi_70_000062) | default(true) | bool
+
+# --- V-256429 / ESXI-70-000074: TLS 1.2 only ---
+- name: stigrule_256429_tls
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiVPsDisabledProtocols: "{{ esxi_stig_disabled_protocols | default('tlsv1,tlsv1.1,sslv3') }}"
+  when: esxi_70_000074_Manage | default(esxi_70_000074) | default(true) | bool
+
+# --- V-256432 / ESXI-70-000079: Shell warning not suppressed ---
+- name: stigrule_256432_shell_warning
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.SuppressShellWarning: "{{ esxi_stig_suppress_shell_warning | default(0) }}"
+  when: esxi_70_000079_Manage | default(esxi_70_000079) | default(true) | bool
+
+# --- V-256433 / ESXI-70-000081: HT warning not suppressed ---
+- name: stigrule_256433_ht_warning
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.SuppressHyperthreadWarning: "{{ esxi_stig_suppress_ht_warning | default(0) }}"
+  when: esxi_70_000081_Manage | default(esxi_70_000081) | default(true) | bool
+
+# --- V-256438 / ESXI-70-000086: Syslog SSL cert check ---
+- name: stigrule_256438_syslog_cert
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logCheckSSLCerts: "{{ esxi_stig_syslog_check_ssl_certs | default('true') }}"
+  when: esxi_70_000086_Manage | default(esxi_70_000086) | default(true) | bool
+
+# --- V-256439 / ESXI-70-000087: Volatile key destruction ---
+- name: stigrule_256439_eager_zero
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Mem.MemEagerZero: "{{ esxi_stig_mem_eager_zero | default(1) }}"
+  when: esxi_70_000087_Manage | default(esxi_70_000087) | default(true) | bool
+
+# --- V-256440 / ESXI-70-000088: API session timeout ---
+- name: stigrule_256440_api_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.vmacore.soap.sessionTimeout: "{{ esxi_stig_api_session_timeout | default(30) }}"
+  when: esxi_70_000088_Manage | default(esxi_70_000088) | default(true) | bool
+
+# --- V-256441 / ESXI-70-000089: Host client timeout ---
+- name: stigrule_256441_host_client_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.HostClientSessionTimeout: "{{ esxi_stig_host_client_timeout | default(600) }}"
+  when: esxi_70_000089_Manage | default(esxi_70_000089) | default(true) | bool
+
+# --- V-256443 / ESXI-70-000091: Password max days ---
+- name: stigrule_256443_password_max_days
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordMaxDays: "{{ esxi_stig_password_max_days | default(90) }}"
+  when: esxi_70_000091_Manage | default(esxi_70_000091) | default(true) | bool
+
+# =========================================================================
+# GROUP B: vmware_host_service_manager tasks
+# =========================================================================
+
+# --- V-256400 / ESXI-70-000035: SSH service stopped ---
+- name: stigrule_256400_ssh_stopped
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: TSM-SSH
+    service_policy: "off"
+    state: stop
+  when: esxi_70_000035_Manage | default(esxi_70_000035) | default(true) | bool
+
+# --- V-256401 / ESXI-70-000036: ESXi Shell stopped ---
+- name: stigrule_256401_shell_stopped
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: TSM
+    service_policy: "off"
+    state: stop
+  when: esxi_70_000036_Manage | default(esxi_70_000036) | default(true) | bool
+
+# --- V-256435 / ESXI-70-000083: SLPD stopped ---
+- name: stigrule_256435_slpd_stopped
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: slpd
+    service_policy: "off"
+    state: stop
+  when: esxi_70_000083_Manage | default(esxi_70_000083) | default(true) | bool
+
+# --- V-256448 / ESXI-70-000097: CIM watchdog stopped ---
+- name: stigrule_256448_cim_stopped
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: sfcbd-watchdog
+    service_policy: "off"
+    state: stop
+  when: esxi_70_000097_Manage | default(esxi_70_000097) | default(true) | bool
+
+# =========================================================================
+# GROUP C: Other module tasks
+# =========================================================================
+
+# --- V-256409 / ESXI-70-000046: NTP servers ---
+- name: stigrule_256409_ntp_servers
+  community.vmware.vmware_host_ntp:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    state: present
+    ntp_servers: "{{ esxi_stig_ntp_servers }}"
+  when:
+    - esxi_70_000046_Manage | default(esxi_70_000046) | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+# --- V-256409 / ESXI-70-000046: NTP service running ---
+- name: stigrule_256409_ntp_service
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: ntpd
+    service_policy: "on"
+    state: start
+  when:
+    - esxi_70_000046_Manage | default(esxi_70_000046) | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+# --- V-256410 / ESXI-70-000047: VIB acceptance level ---
+- name: stigrule_256410_acceptance_level
+  community.vmware.vmware_host_acceptance:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    acceptance_level: "{{ esxi_stig_acceptance_level | default('PartnerSupported') }}"
+    state: present
+  when: esxi_70_000047_Manage | default(esxi_70_000047) | default(true) | bool
+
+# =========================================================================
+# GROUP D: PowerShell / Assert audit tasks
+# Query tasks keep check_mode: false, no_log, register (functional needs).
+# =========================================================================
+
+# --- V-256375 / ESXI-70-000001: Lockdown mode ---
+- name: stigrule_256375_lockdown_query
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      (Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View).Config.LockdownMode
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256375
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
+
+- name: stigrule_256375_lockdown_assert
+  ansible.builtin.assert:
+    that:
+      - _q_256375.stdout | default('') | lower != 'lockdowndisabled'
+      - _q_256375.stdout | default('') | length > 0
+    fail_msg: "Lockdown mode is disabled"
+    success_msg: "Lockdown mode is enabled ({{ _q_256375.stdout | default('unknown') }})"
+  when:
+    - esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
+    - _q_256375 is not skipped
+    - not (_q_256375.failed | default(false))
+
+- name: stigrule_256375_lockdown_remediate
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+      \$lockdown.ChangeLockdownMode('{{ esxi_stig_lockdown_level | default('lockdownNormal') }}')
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _r_256375
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
+    - _q_256375.failed | default(false)
+  check_mode: false
+  no_log: true
+
+# --- V-256377 / ESXI-70-000003: Lockdown exceptions ---
+- name: stigrule_256377_lockdown_exceptions_query
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+      (\$lockdown.QueryLockdownExceptions()) -join ','
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256377
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
+
+- name: stigrule_256377_lockdown_exceptions_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256377.stdout | default('') | trim | length) == 0
+    fail_msg: "Lockdown exceptions found: {{ _q_256377.stdout | default('') }}"
+    success_msg: "No lockdown exceptions"
+  when:
+    - esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
+    - _q_256377 is not skipped
+    - not (_q_256377.failed | default(false))
+
+# --- V-256415 / ESXI-70-000054: iSCSI CHAP ---
+- name: stigrule_256415_iscsi_chap_query
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$hbas = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostHba | Where-Object { \$_.Type -eq 'iscsi' };
+      if (\$hbas) { \$hbas.AuthenticationProperties.ChapType -join ',' } else { 'NO_ISCSI' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256415
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
+
+- name: stigrule_256415_iscsi_chap_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256415.stdout | default('NO_ISCSI') | trim) in ['NO_ISCSI', 'Required']
+    fail_msg: "iSCSI CHAP not set to Required: {{ _q_256415.stdout | default('') }}"
+    success_msg: "iSCSI CHAP is Required or no iSCSI adapters"
+  when:
+    - esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
+    - _q_256415 is not skipped
+    - not (_q_256415.failed | default(false))
+
+# --- V-256417 / ESXI-70-000056: Firewall rules ---
+- name: stigrule_256417_firewall_query
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$open = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View | Get-VMHostFirewallException |
+        Where-Object { (\$_.Enabled -eq \$true) -and (\$_.ExtensionData.AllowedHosts.AllIp -eq 'enabled') -and
+          (\$_.Name -notin @('vSphere Web Client','VMware vCenter Agent')) };
+      if (\$open) { \$open.Name -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256417
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
+
+- name: stigrule_256417_firewall_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256417.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Firewall rules allow all IPs: {{ _q_256417.stdout | default('') }}"
+    success_msg: "Firewall rules restrict access"
+  when:
+    - esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
+    - _q_256417 is not skipped
+    - not (_q_256417.failed | default(false))
+
+# =========================================================================
+# GROUP E: Audit-only stubs (require manual or SSH-based checks)
+# =========================================================================
+
+# --- V-256402 / ESXI-70-000037: Active Directory ---
+- name: stigrule_256402_active_directory
+  ansible.builtin.debug:
+    msg: "ESXI-70-000037: AD membership requires manual verification for {{ _current_esxi_host }}"
+  when: esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
+
+# --- V-256414 / ESXI-70-000053: SNMP ---
+- name: stigrule_256414_snmp
+  ansible.builtin.debug:
+    msg: "ESXI-70-000053: SNMP configuration requires direct ESXi connection for {{ _current_esxi_host }}"
+  when: esxi_70_000053_Manage | default(esxi_70_000053) | default(true) | bool
+
+# --- V-256420 / ESXI-70-000059: Forged transmits ---
+- name: stigrule_256420_forged_transmits
+  ansible.builtin.debug:
+    msg: "ESXI-70-000059: vSwitch forged transmits requires per-switch inspection for {{ _current_esxi_host }}"
+  when: esxi_70_000059_Manage | default(esxi_70_000059) | default(true) | bool
+
+# --- V-256421 / ESXI-70-000060: MAC changes ---
+- name: stigrule_256421_mac_changes
+  ansible.builtin.debug:
+    msg: "ESXI-70-000060: vSwitch MAC changes requires per-switch inspection for {{ _current_esxi_host }}"
+  when: esxi_70_000060_Manage | default(esxi_70_000060) | default(true) | bool
+
+# --- V-256422 / ESXI-70-000061: Promiscuous mode ---
+- name: stigrule_256422_promiscuous_mode
+  ansible.builtin.debug:
+    msg: "ESXI-70-000061: vSwitch promiscuous mode requires per-switch inspection for {{ _current_esxi_host }}"
+  when: esxi_70_000061_Manage | default(esxi_70_000061) | default(true) | bool

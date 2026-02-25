@@ -1,0 +1,12 @@
+---
+# internal.linux.ubuntu_system_audit : tasks/init.yaml
+
+- name: Audit | Resolve Discovery Context
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: load.yaml
+  vars:
+    ncs_load_platform: "ubuntu"
+    ncs_load_type: "discovery"
+    ncs_load_schema_ref: "internal.linux:schemas/ubuntu_ctx.yaml"
+    ncs_load_root_key: "ubuntu_ctx"

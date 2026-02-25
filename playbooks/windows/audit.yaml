@@ -12,17 +12,6 @@
       vars:
         force_update: false
 
-- name: "Phase 3: Generate Windows Fleet Summary"
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  tags: ['always']
-  tasks:
-    - name: Run Windows Summary
-      ansible.builtin.include_role:
-        name: internal.windows.windows_summary
-        tasks_from: report.yaml
-
-- name: "Phase 4: Aggregate and Report"
-  ansible.builtin.import_playbook: ../common/generate_site_health_report.yaml
+- name: "Phase 3: Aggregate and Report"
+  ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml
   tags: ['always']

@@ -13,6 +13,7 @@ format:
 
 check:
 	mypy .
+	basedpyright .
 
 test:
 	pytest tests/unit

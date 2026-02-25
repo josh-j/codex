@@ -1,0 +1,76 @@
+---
+# internal.windows.windows_audit : main
+# Main entry point for Windows auditing and updates.
+
+- name: Audit | Resolve Configuration Overrides
+  ansible.builtin.set_fact:
+    # Source from windows_config (inventory) or use defaults from role
+    # Note: windows_config.include_system_apps etc. should be mapped here
+    force_update: "{{ windows_config.force_update | default(force_update | default(false)) }}"
+  changed_when: false
+
+- name: Audit | Initialize and Resolve Context
+  ansible.builtin.set_fact:
+    # Use ncs_ctx as source of truth, fall back to windows_ctx
+    windows_ctx: "{{ ncs_ctx | default(windows_ctx) }}"
+  changed_when: false
+
+- name: Validate Windows context namespace (init)
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ windows_ctx }}"
+    ncs_validate_schema_ref: "internal.windows:roles/windows_audit/defaults/context_init_schema.yaml"
+    ncs_validate_root_key: "windows_ctx"
+    ncs_validate_fail_msg: "windows_ctx failed initialization schema validation."
+
+- name: Windows Audit Orchestrator
+  vars:
+    _windows_audit_failed: false
+  block:
+    - name: Run Application Checks
+      ansible.builtin.include_tasks: checks/applications.yaml
+      tags: ["audit", "applications"]
+
+    - name: Run ConfigMgr Updates
+      ansible.builtin.include_tasks: updates/configmgr.yaml
+      when: windows_ctx.config.force_update | default(false) | bool
+      tags: ["update", "configmgr"]
+  rescue:
+    - name: Mark Windows audit as failed
+      ansible.builtin.set_fact:
+        _windows_audit_failed: true
+      changed_when: false
+
+    - name: Re-raise audit failure context
+      ansible.builtin.fail:
+        msg: "{{ ansible_failed_result.msg | default('Windows audit failed') }}"
+  always:
+    - name: Build Windows audit export payload
+      ansible.builtin.set_fact:
+        _windows_audit_export_data: >-
+          {{
+            windows_ctx | default({})
+            | internal.windows.build_windows_audit_export_payload(
+              _windows_audit_failed | default(false) | bool
+            )
+          }}
+
+    - name: Validate Windows audit export payload schema
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: validate_typed_schema.yaml
+      vars:
+        ncs_validate_data: "{{ _windows_audit_export_data }}"
+        ncs_validate_schema_ref: "internal.windows:schemas/export_data.yaml"
+        ncs_validate_root_key: "_windows_audit_export_data"
+        ncs_validate_fail_msg: "Windows audit export payload keys do not match the schema."
+
+    - name: Export Windows audit state for aggregation
+      ansible.builtin.include_role:
+        name: internal.core.state
+        tasks_from: export
+      vars:
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('windows', inventory_hostname, 'windows_audit') }}"
+        ncs_export_data: "{{ _windows_audit_export_data }}"

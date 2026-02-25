@@ -14,9 +14,28 @@ MODULE_PATH = (
     / "audit.py"
 )
 
+STIG_MODULE_PATH = (
+    pathlib.Path(__file__).resolve().parents[2]
+    / "collections"
+    / "ansible_collections"
+    / "internal"
+    / "vmware"
+    / "plugins"
+    / "filter"
+    / "stig_normalize.py"
+)
+
 
 def _load_module():
     spec = importlib.util.spec_from_file_location("vmware_audit_filter", MODULE_PATH)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_stig_module():
+    spec = importlib.util.spec_from_file_location("vmware_stig_normalize", STIG_MODULE_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -35,7 +54,7 @@ class VmwareAuditFilterTests(unittest.TestCase):
             "vcenter_health": {"data": {"utilization": {"cpu_pct": 50.0}}},
         }
         alerts = [{"severity": "WARNING", "message": "new"}]
-        health = {"raw": "WARNING", "label": "Warning"}
+        health = {"overall": "WARNING", "label": "Warning"}
         summary = {"total": 1, "critical": 0, "warning": 1}
 
         out = self.module.attach_audit_results(base, alerts, True, health, summary)
@@ -43,7 +62,7 @@ class VmwareAuditFilterTests(unittest.TestCase):
         self.assertIsNot(out, base)
         self.assertEqual(out["alerts"], alerts)
         self.assertEqual(out["vcenter_health"]["alerts"], alerts)
-        self.assertEqual(out["vcenter_health"]["health"], health)
+        self.assertEqual(out["vcenter_health"]["health"], "WARNING")
         self.assertEqual(out["vcenter_health"]["summary"], summary)
         self.assertTrue(out["vcenter_health"]["audit_failed"])
         self.assertEqual(out["vcenter_health"]["data"]["utilization"]["cpu_pct"], 50.0)
@@ -106,6 +125,13 @@ class VmwareAuditFilterTests(unittest.TestCase):
         self.assertEqual([i["vm_name"] for i in out["my_issues"]["aged_snapshots"]], ["vm2"])
         self.assertEqual([i["name"] for i in out["my_issues"]["powered_off"]], ["vm1"])
 
+class VmwareStigNormalizeTests(unittest.TestCase):
+    stig_module: Any
+
+    @classmethod
+    def setUpClass(cls):
+        cls.stig_module = _load_stig_module()
+
     def test_normalize_esxi_stig_facts_maps_advanced_settings_to_config_list(self):
         raw_api = {
             "name": "esxi01",
@@ -120,7 +146,7 @@ class VmwareAuditFilterTests(unittest.TestCase):
         services = {"TSM-SSH": {"running": True}}
         ssh = {"sshd_config": "PermitRootLogin no"}
 
-        out = self.module.normalize_esxi_stig_facts(raw_api, identity, services, ssh)
+        out = self.stig_module.normalize_esxi_stig_facts(raw_api, identity, services, ssh)
 
         self.assertEqual(out["name"], "esxi01")
         self.assertEqual(out["identity"]["version"], "7.0.3")
@@ -145,7 +171,7 @@ class VmwareAuditFilterTests(unittest.TestCase):
         }
         sec_map = {"vm1": {"encryption": "Encrypted", "vmotion_encryption": "required"}}
 
-        out = self.module.normalize_vm_stig_facts(raw_vms, inv_map, sec_map)
+        out = self.stig_module.normalize_vm_stig_facts(raw_vms, inv_map, sec_map)
 
         self.assertEqual(len(out), 2)
 

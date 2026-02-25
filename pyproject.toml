@@ -20,8 +20,24 @@ ignore_missing_imports = true
 strict_optional = true
 check_untyped_defs = true
 explicit_package_bases = true
-exclude = "collections/ansible_collections/(?!internal)"
+exclude = "collections/ansible_collections/(cloud|community|vmware|windows)/"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.10"
+extraPaths = ["tools/ncs_reporter/src"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    ".direnv",
+    "collections/ansible_collections/cloud",
+    "collections/ansible_collections/community",
+    "collections/ansible_collections/vmware"
+]
+reportMissingImports = true
+reportMissingTypeStubs = false

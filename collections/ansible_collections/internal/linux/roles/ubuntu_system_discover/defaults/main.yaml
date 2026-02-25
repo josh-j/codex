@@ -1,0 +1,12 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_discover/defaults/main.yaml
+
+# Feature flags
+ubuntu_skip_discovery: false
+
+# Thresholds
+ubuntu_disk_warning_pct: 90.0
+ubuntu_mem_warning_pct: 95.0
+ubuntu_swap_warning_pct: 80.0
+ubuntu_load_warning_threshold: 20
+ubuntu_updates_critical_threshold: 50

@@ -1,34 +1,15 @@
-import importlib.util
 import pathlib
+import sys
 import unittest
-from typing import Any
 
-MODULE_PATH = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "collections"
-    / "ansible_collections"
-    / "internal"
-    / "windows"
-    / "plugins"
-    / "filter"
-    / "reporting.py"
-)
+_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
+if _NCS_SRC not in sys.path:
+    sys.path.insert(0, _NCS_SRC)
 
-
-def _load_module():
-    spec = importlib.util.spec_from_file_location("windows_reporting_filter", MODULE_PATH)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from ncs_reporter.view_models.windows import build_windows_fleet_view, build_windows_node_view  # noqa: E402
 
 
 class WindowsReportingFilterTests(unittest.TestCase):
-    module: Any
-    @classmethod
-    def setUpClass(cls):
-        cls.module = _load_module()
-
     def test_windows_fleet_and_node_views(self):
         aggregated = {
             "hosts": {
@@ -45,12 +26,12 @@ class WindowsReportingFilterTests(unittest.TestCase):
                 }
             }
         }
-        fleet = self.module.windows_fleet_view(aggregated, report_stamp="20260224")
+        fleet = build_windows_fleet_view(aggregated, report_stamp="20260224")
         self.assertEqual(fleet["fleet"]["hosts"], 1)
         self.assertEqual(fleet["fleet"]["alerts"]["warning"], 1)
         self.assertEqual(fleet["rows"][0]["status"]["raw"], "WARNING")
 
-        node = self.module.windows_node_view(aggregated["hosts"]["win01"], hostname="win01")
+        node = build_windows_node_view(aggregated["hosts"]["win01"], hostname="win01")
         self.assertEqual(node["node"]["name"], "win01")
         self.assertEqual(node["node"]["summary"]["updates"]["failed_count"], 1)
 

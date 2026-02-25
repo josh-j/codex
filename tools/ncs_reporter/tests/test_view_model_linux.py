@@ -1,0 +1,64 @@
+import unittest
+from ncs_reporter.view_models.linux import build_linux_fleet_view, build_linux_node_view
+
+
+class LinuxReportViewModelTests(unittest.TestCase):
+    def test_builds_linux_fleet_and_node_views(self):
+        hosts = {
+            "host1": {
+                "system": {
+                    "health": "WARNING",
+                    "distribution": "Ubuntu",
+                    "distribution_version": "24.04",
+                    "summary": {"critical_count": 1, "warning_count": 2},
+                    "alerts": [
+                        {"severity": "CRITICAL", "category": "disk", "message": "Disk full"},
+                        {"severity": "warn", "category": "updates", "message": "Updates pending"},
+                    ],
+                    "data": {
+                        "system": {
+                            "services": {"failed_list": ["foo.service failed"]},
+                            "disks": [
+                                {
+                                    "mount": "/",
+                                    "device": "/dev/sda1",
+                                    "free_gb": 1,
+                                    "total_gb": 100,
+                                    "used_pct": 99,
+                                }
+                            ],
+                        }
+                    },
+                },
+                "stig": {
+                    "health": "CRITICAL",
+                    "alerts": [{"severity": "CRITICAL"}],
+                },
+            },
+            "platform": {"ignore": True},
+        }
+
+        fleet = build_linux_fleet_view(hosts, report_stamp="20260224")
+        self.assertEqual(len(fleet["rows"]), 1)
+        self.assertEqual(fleet["fleet"]["hosts"], 1)
+        self.assertEqual(fleet["fleet"]["alerts"]["critical"], 1)
+        self.assertEqual(fleet["fleet"]["alerts"]["warning"], 2)
+        self.assertEqual(len(fleet["active_alerts"]), 2)
+        self.assertEqual(fleet["rows"][0]["status"]["raw"], "WARNING")
+        self.assertIn("node_report_latest", fleet["rows"][0]["links"])
+        self.assertIn("stig_fleet", fleet)
+        self.assertEqual(len(fleet["stig_fleet"]["rows"]), 1)
+        self.assertEqual(fleet["stig_fleet"]["rows"][0]["findings_open"], 1)
+        self.assertEqual(len(fleet["stig_fleet"]["rows"][0]["findings"]), 1)
+        self.assertEqual(fleet["stig_fleet"]["rows"][0]["status"]["raw"], "CRITICAL")
+
+        node = build_linux_node_view("host1", hosts["host1"])
+        self.assertEqual(node["node"]["name"], "host1")
+        self.assertEqual(node["node"]["status"]["raw"], "WARNING")
+        self.assertEqual(len(node["node"]["alerts"]), 2)
+        self.assertIn("fleet_dashboard", node["node"]["links"])
+        self.assertIn("services", node["node"]["sys_facts"])
+
+
+if __name__ == "__main__":
+    unittest.main()

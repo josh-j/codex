@@ -1,0 +1,12 @@
+---
+# internal.vmware.audit : tasks/init.yaml
+
+- name: Initialize ephemeral audit state
+  ansible.builtin.set_fact:
+    vmware_alerts: "{{ (ncs_ctx | default(vmware_ctx)).alerts | default([]) | list }}"
+    _vmw_audit_failed: false
+    # Map from structured vmware_config (group_vars) to role variables
+    vmware_cpu_critical_pct: "{{ vmware_config.cpu_critical_pct | default(vmware_cpu_critical_pct | default(90)) }}"
+    vmware_memory_critical_pct: "{{ vmware_config.memory_critical_pct | default(vmware_memory_critical_pct | default(90)) }}"
+    vmware_datastore_free_critical_pct: "{{ vmware_config.datastore_free_critical_pct | default(vmware_datastore_free_critical_pct | default(10)) }}"
+  changed_when: false

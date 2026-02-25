@@ -1,0 +1,72 @@
+---
+# internal.vmware.stig : esxi/main.yaml
+#
+# ESXi STIG audit + remediation pipeline.
+# Phase 0: Preconditions
+# Phase 1: Evaluate (check_mode) or Remediate (normal mode)
+# Phase 2: Export results (always runs)
+#
+# Toggles:
+#   vmware_stig_enable_hardening: false  - when true, tasks apply changes
+#   vmware_stig_enable_audit: true       - runs compliance evaluation
+#   esxi_stig_target_hosts: []           - list of ESXi hostnames to process
+
+# Phase 0: Preconditions
+- name: "ESXi STIG | Phase 0 | Validate target hosts"
+  ansible.builtin.assert:
+    that: esxi_stig_target_hosts | length > 0
+    fail_msg: "No ESXi hosts defined in esxi_stig_target_hosts"
+
+- name: "ESXi STIG | Phase 0 | Validate required STIG settings"
+  ansible.builtin.assert:
+    that:
+      - (not (esxi_70_000004_Manage | default(true) | bool)) or (esxi_stig_syslog_host | default('') | length > 0)
+      - (not (esxi_70_000007_Manage | default(true) | bool)) or (esxi_stig_welcome_message | default('') | length > 0)
+      - (not (esxi_70_000046_Manage | default(true) | bool)) or (esxi_stig_ntp_servers | default([]) | length > 0)
+      - (not (esxi_70_000039_Manage | default(true) | bool)) or (esxi_stig_ad_admin_group | default('') | length > 0)
+      - (not (esxi_70_000045_Manage | default(true) | bool)) or (esxi_stig_log_dir | default('') | length > 0)
+    fail_msg: >-
+      Required STIG variables are empty while their rules are enabled.
+      Set the variables or disable the rules via *_Manage: false.
+
+# Phase 1: Evaluate/Remediate
+- name: "ESXi STIG | Phase 1"
+  block:
+    - name: "ESXi STIG | Phase 1a | Run audit/hardening"
+      ansible.builtin.import_tasks: check.yaml
+      tags: [checks, stig, security]
+
+  rescue:
+    - name: "ESXi STIG | Phase 1r | Set failure flag"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "ESXi STIG | Phase 1r | Log failure"
+      ansible.builtin.debug:
+        msg: "ESXi STIG audit failed on {{ inventory_hostname }} — export will indicate failure."
+
+  always:
+    # Phase 2: Export
+    - name: "ESXi STIG | Phase 2a | Read callback artifacts"
+      tags: [always, stig, reporting]
+      when: _stig_audit_ran | default(false)
+      ansible.builtin.include_role:
+        name: internal.core.stig
+        tasks_from: read_callback_artifacts_multi.yaml
+      vars:
+        _stig_target_hosts: "{{ esxi_stig_target_hosts }}"
+        _stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        _stig_is_hardening: "{{ vmware_stig_enable_hardening | default(false) | bool }}"
+
+    - name: "ESXi STIG | Phase 2b | Export reports via core finalize"
+      tags: [always, stig, reporting]
+      when: _stig_audit_ran | default(false)
+      ansible.builtin.include_role:
+        name: internal.core.stig
+        tasks_from: finalize.yaml
+      vars:
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_esxi') }}"
+        stig_skeleton_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_esxi_V1R4.json"
+        stig_target_type: esxi
+        stig_export_cklb: "{{ vmware_config_export_cklb | default(true) }}"

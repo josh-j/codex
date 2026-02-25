@@ -1,0 +1,25 @@
+---
+# internal.vmware.stig : esxi/check.yaml
+#
+# Outer loop wrapper: iterates over esxi_stig_target_hosts, including
+# esxi_v7r4.yaml once per host. In audit mode (hardening=false) tasks run
+# in check_mode; in hardening mode they apply changes.
+
+- name: "ESXi STIG | Process each host"
+  ansible.builtin.include_tasks: esxi_v7r4.yaml
+  loop: "{{ esxi_stig_target_hosts }}"
+  loop_control:
+    loop_var: _current_esxi_host
+    label: "{{ _current_esxi_host }}"
+  args:
+    apply:
+      check_mode: "{{ not (vmware_stig_enable_hardening | default(false) | bool) }}"
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ _current_esxi_host }}"
+  failed_when: false
+
+- name: "ESXi STIG | Flag audit as complete"
+  ansible.builtin.set_fact:
+    _stig_audit_ran: true
+  changed_when: false

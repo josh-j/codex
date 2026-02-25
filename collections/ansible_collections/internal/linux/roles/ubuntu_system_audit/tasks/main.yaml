@@ -1,0 +1,52 @@
+---
+- name: Audit | Initialize and Resolve Context
+  ansible.builtin.include_tasks: init.yaml
+
+- name: Run system checks
+  ansible.builtin.import_tasks: check.yaml
+  vars:
+    # Use ncs_ctx as the source of truth for checks
+    ubuntu_ctx: "{{ ncs_ctx | default(ubuntu_ctx) }}"
+  when: not (ubuntu_skip_checks | default(false) | bool)
+
+- name: Process and Export Results
+  when: not (ubuntu_skip_export | default(false) | bool)
+  block:
+    - name: Compute audit rollups
+      ansible.builtin.set_fact:
+        _ubuntu_rollups: >-
+          {{
+            (ubuntu_alerts | default([]) | list)
+            | internal.core.compute_audit_rollups
+          }}
+        _ubuntu_summary: "{{ (_ubuntu_rollups | default({})).summary | default({}) }}"
+        _ubuntu_health: "{{ (_ubuntu_rollups | default({})).health | default('HEALTHY') }}"
+
+- name: Build Ubuntu audit export payload
+  ansible.builtin.set_fact:
+    _ubuntu_system_export_data: >-
+      {{
+        (ncs_ctx | default(ubuntu_ctx)) | internal.linux.build_system_audit_export_payload(
+          (ubuntu_alerts | default([]) | list),
+          _ubuntu_health,
+          _ubuntu_summary
+        )
+      }}
+
+- name: Validate Ubuntu audit export payload schema
+  ansible.builtin.include_role:
+    name: internal.core.common
+    tasks_from: validate_typed_schema.yaml
+  vars:
+    ncs_validate_data: "{{ _ubuntu_system_export_data }}"
+    ncs_validate_schema_ref: "internal.linux:schemas/export_data.yaml"
+    ncs_validate_root_key: "_ubuntu_system_export_data"
+    ncs_validate_fail_msg: "Ubuntu audit export payload keys do not match the schema."
+
+- name: Export Ubuntu host state for aggregation
+  ansible.builtin.include_role:
+    name: internal.core.state
+    tasks_from: export
+  vars:
+    ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'system') }}"
+    ncs_export_data: "{{ _ubuntu_system_export_data }}"

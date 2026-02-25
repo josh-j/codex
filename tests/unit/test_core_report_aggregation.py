@@ -74,7 +74,9 @@ class CoreReportAggregationTests(unittest.TestCase):
             out = self.module.load_all_reports(str(root))
 
             self.assertIn("win01", out["hosts"])
-            self.assertIn("windows_audit", out["hosts"]["win01"])
+            # Reports are deep-merged flat into the host dict (not nested under audit_type)
+            self.assertEqual(out["hosts"]["win01"]["audit_type"], "windows_audit")
+            self.assertEqual(out["hosts"]["win01"]["health"], "WARNING")
             self.assertNotIn("windows", out["hosts"])
             self.assertEqual(out["metadata"]["fleet_stats"]["total_hosts"], 1)
 

@@ -1,40 +1,17 @@
-import importlib.util
 import pathlib
+import sys
 import unittest
-from typing import Any
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-CORE_REPORT_VM_PATH = (
-    ROOT
-    / "collections"
-    / "ansible_collections"
-    / "internal"
-    / "core"
-    / "plugins"
-    / "module_utils"
-    / "report_view_models.py"
-)
-WINDOWS_REPORTING_PATH = (
-    ROOT / "collections" / "ansible_collections" / "internal" / "windows" / "plugins" / "filter" / "reporting.py"
-)
+_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
+if _NCS_SRC not in sys.path:
+    sys.path.insert(0, _NCS_SRC)
 
-
-def _load(path, name):
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from ncs_reporter.view_models.linux import build_linux_fleet_view  # noqa: E402
+from ncs_reporter.view_models.vmware import build_vmware_fleet_view  # noqa: E402
+from ncs_reporter.view_models.windows import build_windows_fleet_view  # noqa: E402
 
 
 class ReportingViewContractTests(unittest.TestCase):
-    core_vm: Any
-    windows: Any
-    @classmethod
-    def setUpClass(cls):
-        cls.core_vm = _load(CORE_REPORT_VM_PATH, "core_report_view_models")
-        cls.windows = _load(WINDOWS_REPORTING_PATH, "windows_reporting_filter")
-
     def assert_fleet_contract(self, view):
         self.assertIsInstance(view, dict)
         self.assertIsInstance(view.get("meta"), dict)
@@ -89,9 +66,9 @@ class ReportingViewContractTests(unittest.TestCase):
             }
         }
 
-        linux_view = self.core_vm.build_linux_fleet_view(linux_hosts, report_stamp="20260224")
-        vmware_view = self.core_vm.build_vmware_fleet_view(vmware_hosts, report_stamp="20260224")
-        windows_view = self.windows.windows_fleet_view(windows_hosts, report_stamp="20260224")
+        linux_view = build_linux_fleet_view(linux_hosts, report_stamp="20260224")
+        vmware_view = build_vmware_fleet_view(vmware_hosts, report_stamp="20260224")
+        windows_view = build_windows_fleet_view(windows_hosts, report_stamp="20260224")
 
         for view in (linux_view, vmware_view, windows_view):
             self.assert_fleet_contract(view)

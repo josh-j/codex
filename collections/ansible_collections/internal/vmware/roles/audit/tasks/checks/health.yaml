@@ -1,0 +1,12 @@
+---
+# internal.vmware.audit : checks/health.yaml
+
+- name: Audit | Evaluate vCenter Infrastructure Health
+  ansible.builtin.set_fact:
+    vmware_alerts: >-
+      {{
+        (vmware_alerts | default([]) | list)
+        | internal.core.append_alerts(vmware_ctx | internal.vmware.audit_health_alerts)
+      }}
+  changed_when: false
+  when: vmware_ctx is defined and vmware_ctx.get('health', {}).get('appliance') is defined

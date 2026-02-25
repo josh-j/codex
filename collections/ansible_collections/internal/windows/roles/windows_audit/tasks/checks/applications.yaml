@@ -1,0 +1,102 @@
+---
+# applications.yaml - Windows Installed Apps Check
+
+- name: Windows installed applications inventory
+  block:
+    - name: Initialize Windows namespace
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.core.recursive_combine(structure) }}"
+      vars:
+        structure: >-
+          {{
+            '' | internal.windows.build_app_inventory_structure(
+              startup_delay | default(0),
+              skip_startup_delay | default(false),
+              remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
+              local_report_path | default(playbook_dir + '/reports'),
+              true
+            )
+          }}
+
+    - name: Add startup delay
+      ansible.windows.win_shell: Start-Sleep -Seconds {{ windows_ctx.config.startup_delay }}
+      when: not windows_ctx.config.skip_startup_delay | bool
+
+    - name: Check if CCMExec service is running
+      ansible.windows.win_service:
+        name: CCMExec
+      register: _ccm_service
+
+    - name: Store CCMExec status
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.set_ccmexec_running(_ccm_service.state == 'running') }}"
+
+    - name: Fail if CCMExec is not running
+      ansible.builtin.fail:
+        msg: "ConfigMgr client service (CCMExec) is not running"
+      when: not windows_ctx.services.ccmexec_running
+
+    - name: Ensure scripts directory exists
+      ansible.windows.win_file:
+        path: "{{ windows_ctx.config.remote_scripts_path }}"
+        state: directory
+
+    - name: Copy Get-ConfigMgrApplications.ps1 script
+      ansible.windows.win_copy:
+        src: Get-ConfigMgrApplications.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Get-ConfigMgrApplications.ps1"
+
+    - name: Copy Get-InstalledApplications.ps1 script
+      ansible.windows.win_copy:
+        src: Get-InstalledApplications.ps1
+        dest: "{{ windows_ctx.config.remote_scripts_path }}\\Get-InstalledApplications.ps1"
+
+    - name: Get ConfigMgr applications
+      ansible.windows.win_powershell:
+        script: |
+          & "{{ windows_ctx.config.remote_scripts_path }}\Get-ConfigMgrApplications.ps1" -ExcludedPatterns @()
+      register: _configmgr_apps_result
+
+    - name: Parse ConfigMgr applications
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.merge_applications(apps_data) }}"
+      vars:
+        filtered_data: "{{ _configmgr_apps_result.output[0] | from_json }}"
+        apps_data:
+          configmgr_apps: "{{ filtered_data.AppsToUpdate | default([]) }}"
+
+    - name: Get installed applications
+      ansible.windows.win_powershell:
+        script: |
+          & "{{ windows_ctx.config.remote_scripts_path }}\Get-InstalledApplications.ps1"
+      register: _installed_apps_result
+
+    - name: Parse installed applications
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.merge_applications(apps_data) }}"
+      vars:
+        apps_data:
+          installed_apps: "{{ _installed_apps_result.output[0] | from_json if _installed_apps_result.output is defined and _installed_apps_result.output | length > 0 else [] }}"
+
+    - name: Calculate application metrics
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.compute_application_metrics }}"
+
+    - name: Log application inventory summary
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/info
+      vars:
+        ncs_log_message: "Applications: {{ windows_ctx.applications.metrics.configmgr_count }} ConfigMgr apps, {{ windows_ctx.applications.metrics.installed_count }} installed apps"
+
+  rescue:
+    - name: Log application check failure
+      ansible.builtin.include_role:
+        name: internal.core.common
+        tasks_from: logging/error
+      vars:
+        ncs_log_message: "Windows application check failed: {{ ansible_failed_result.msg | default('Unknown error') }}"
+
+    - name: Set empty application data
+      ansible.builtin.set_fact:
+        windows_ctx: "{{ windows_ctx | internal.windows.set_empty_applications }}"

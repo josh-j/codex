@@ -34,6 +34,18 @@ ansible_lint:
   script:
     - ansible-lint
 
+ruff:
+  stage: lint
+  script:
+    - pip install ruff
+    - ruff check .
+
+mypy:
+  stage: lint
+  script:
+    - pip install mypy types-pyyaml
+    - mypy .
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 2) SYNTAX STAGE
 # ─────────────────────────────────────────────────────────────────────────────

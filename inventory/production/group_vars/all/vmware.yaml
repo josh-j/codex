@@ -33,9 +33,6 @@ vmware_config:
     weekly: 7
     monthly: 30
 
-  # Report settings (decouple from ncs.config merge order)
-  report_directory: "{{ ncs_config.report_directory }}"
-
   # Notifications (leave disabled unless you actively use them)
   enable_email_notifications: false
   smtp:

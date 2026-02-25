@@ -8,6 +8,7 @@
   gather_facts: false
 
   vars:
+    # Use resolve_ncs_path to get the base directory
     _report_dir: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     # Only the platform root is required here.
     # Sub-directories like /ubuntu and /vmware are created on-the-fly by summary roles.

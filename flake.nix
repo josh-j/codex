@@ -20,6 +20,10 @@
             pyyaml
             aiohttp
             pytest
+            click
+            mypy
+            pytest-cov
+            types-pyyaml
           ]);
       in {
         devShells.default = pkgs.mkShell {
@@ -31,7 +35,7 @@
             yamllint
             j2lint
             ruff
-            mypy
+            basedpyright
             gnumake
             pandoc
             git

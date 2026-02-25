@@ -135,6 +135,24 @@ class CoreStigFilterTests(unittest.TestCase):
         self.assertEqual(out["alerts"][1]["detail"]["rule_id"], "V-102")
         self.assertEqual(out["alerts"][1]["message"], "STIG Violation: V-102")
 
+    def test_stig_eval_basic(self):
+        rules = [
+            {"id": "R1", "check": True, "pass_msg": "OK"},
+            {"id": "R2", "check": False, "fail_msg": "BAD", "severity": "high"},
+        ]
+        results = self.module.stig_eval(rules)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0]["status"], "pass")
+        self.assertEqual(results[0]["checktext"], "OK")
+        self.assertEqual(results[1]["status"], "failed")
+        self.assertEqual(results[1]["checktext"], "BAD")
+        self.assertEqual(results[1]["severity"], "high")
+
+    def test_get_adv_lookup(self):
+        settings = [{"key": "K1", "value": "V1"}, {"key": "K2", "value": "V2"}]
+        self.assertEqual(self.module.get_adv(settings, "K1"), "V1")
+        self.assertEqual(self.module.get_adv(settings, "K3", "MISSING"), "MISSING")
+
 
 if __name__ == "__main__":
     unittest.main()

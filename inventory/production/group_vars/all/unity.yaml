@@ -1,18 +1,15 @@
 # inventory/group_vars/all/unity.yaml
-unity:
-  config:
-    # Capacity thresholds (percent used)
-    capacity_warning_pct: 85
-    capacity_critical_pct: 90
+unity_config:
+  # Capacity thresholds (percent used)
+  capacity_warning_pct: 85
+  capacity_critical_pct: 90
 
-    # Pool subscription threshold (percent)
-    subscription_warning_pct: 100
-    subscription_critical_pct: 120
+  # Pool subscription threshold (percent)
+  subscription_warning_pct: 100
+  subscription_critical_pct: 120
 
-    # Alert age threshold (hours)
-    alert_age_threshold_hours: 24
+  # Alert age threshold (hours)
+  alert_age_threshold_hours: 24
 
-    # Report settings
-    # INHERIT GLOBAL ROOT
-    report_directory: "{{ ncs_config.report_directory }}"
-    export_csv: true
+  # Report settings
+  export_csv: true

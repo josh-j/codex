@@ -33,3 +33,7 @@ ncs_config:
     file_path: ../logs/ncs.log
     max_size_mb: 100
     backup_count: 5
+
+# Global credentials (vaulted in production)
+vault_vcenter_username: "{{ ansible_user | default(ansible_ssh_user) | default('administrator@vsphere.local') }}"
+vault_vcenter_password: "{{ ansible_password | default(ansible_ssh_pass) | default('') }}"

@@ -122,6 +122,37 @@ Use this for host-loop tasks/templates instead of hardcoding exclusions.
 - Integration rendering runs with representative Linux/VMware/Windows/STIG payloads
 - CI integration coverage (Molecule or equivalent) on the collection layout
 
+## State Management & Context Flow
+
+To ensure variable state is easy to reason about across collections and playbooks, Codex follows these standards:
+
+### 1. The Context Pattern
+Roles that consume discovery data must accept a `ncs_ctx` variable as input. This makes dependencies explicit in playbooks.
+
+- **Producers (Discovery Roles):** Populate a role-prefixed fact (e.g., `ubuntu_ctx`).
+- **Consumers (Audit/Remediation Roles):** Access data via `ncs_ctx`.
+- **Usage in Playbooks:**
+  ```yaml
+  roles:
+    - role: internal.linux.ubuntu_system_discover
+    - role: internal.linux.ubuntu_system_audit
+      vars:
+        ncs_ctx: "{{ ubuntu_ctx }}"
+  ```
+
+### 2. Centralized Path Resolution
+Never hardcode file paths or use repeated `default('/srv/samba/reports')` logic. Use the `internal.core.resolve_ncs_path` filter.
+
+```yaml
+# Example: Exporting host state
+ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'system') }}"
+```
+
+### 3. Encapsulated Role State
+- Use role-prefixed variables for all public facts.
+- Use internal prefixes (e.g., `_`) for transient task-level variables (`set_fact`, `register`).
+- Avoid mutating global configuration objects directly; return new objects or specific facts instead.
+
 ## Design Rules (current)
 
 - Prefer collection-path imports and collection-local code as canonical source of truth

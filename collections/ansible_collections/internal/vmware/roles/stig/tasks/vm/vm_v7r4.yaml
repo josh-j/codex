@@ -1,0 +1,262 @@
+---
+# internal.vmware.stig : vm/vm_v7r4.yaml
+#
+# Clean drop-in VM V7R4 STIG tasks for a single VM (_current_vm_name).
+# Included via check.yaml which injects: check_mode, ignore_errors, tags.
+#
+# Conventions:
+#   - Each task has ONLY: name, module, parameters, when guard
+#   - NO register (except functional), NO ignore_errors, NO tags
+#   - Toggle guard: vmch_70_NNNNNN_Manage | default(true)
+#   - Advanced settings flattened: one task per rule (no loop)
+#
+# Credentials come from module_defaults in tasks/main.yaml.
+# Task naming: stigrule_NNNNNN_<desc> for callback compatibility.
+
+# =========================================================================
+# INIT: V-number mapping (kept for reporting/callback reference)
+# =========================================================================
+
+- name: "VM STIG | Initialize for {{ _current_vm_name }}"
+  ansible.builtin.set_fact:
+    _vm_stig_id_map:
+      VMCH-70-000001: "V-256450"
+      VMCH-70-000002: "V-256451"
+      VMCH-70-000003: "V-256452"
+      VMCH-70-000004: "V-256453"
+      VMCH-70-000005: "V-256454"
+      VMCH-70-000006: "V-256455"
+      VMCH-70-000007: "V-256456"
+      VMCH-70-000008: "V-256457"
+      VMCH-70-000009: "V-256458"
+      VMCH-70-000010: "V-256459"
+      VMCH-70-000011: "V-256460"
+      VMCH-70-000012: "V-256461"
+      VMCH-70-000013: "V-256462"
+      VMCH-70-000015: "V-256463"
+      VMCH-70-000016: "V-256464"
+      VMCH-70-000017: "V-256465"
+      VMCH-70-000018: "V-256466"
+      VMCH-70-000022: "V-256470"
+      VMCH-70-000023: "V-256471"
+      VMCH-70-000024: "V-256472"
+      VMCH-70-000025: "V-256473"
+      VMCH-70-000026: "V-256474"
+      VMCH-70-000027: "V-256475"
+      VMCH-70-000029: "V-256477"
+  changed_when: false
+  check_mode: false
+
+# =========================================================================
+# PRE-TASK: Gather VM info for hardware/attribute assertions
+# =========================================================================
+
+- name: "VM STIG | Gather info for {{ _current_vm_name }}"
+  community.vmware.vmware_vm_info:
+    vm_name: "{{ _current_vm_name }}"
+  register: _vm_info_raw
+  check_mode: false
+
+- name: "VM STIG | Extract VM details"
+  ansible.builtin.set_fact:
+    _vm_detail: "{{ _vm_info_raw.virtual_machines | default([]) | first | default({}) }}"
+  changed_when: false
+  check_mode: false
+
+# =========================================================================
+# GROUP A: Advanced settings — explicit per-rule tasks
+# =========================================================================
+
+# V-256450 / VMCH-70-000001: Copy operations must be disabled
+- name: stigrule_256450_copy_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.copy.disable
+        value: "{{ vm_stig_256450_value | default('TRUE') }}"
+  when: vmch_70_000001_Manage | default(true) | bool
+
+# V-256451 / VMCH-70-000002: Drag and drop operations must be disabled
+- name: stigrule_256451_dnd_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.dnd.disable
+        value: "{{ vm_stig_256451_value | default('TRUE') }}"
+  when: vmch_70_000002_Manage | default(true) | bool
+
+# V-256452 / VMCH-70-000003: Paste operations must be disabled
+- name: stigrule_256452_paste_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.paste.disable
+        value: "{{ vm_stig_256452_value | default('TRUE') }}"
+  when: vmch_70_000003_Manage | default(true) | bool
+
+# V-256453 / VMCH-70-000004: Virtual disk shrinking must be disabled
+- name: stigrule_256453_disk_shrink_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.diskShrink.disable
+        value: "{{ vm_stig_256453_value | default('TRUE') }}"
+  when: vmch_70_000004_Manage | default(true) | bool
+
+# V-256454 / VMCH-70-000005: Virtual disk wiping must be disabled
+- name: stigrule_256454_disk_wiper_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.diskWiper.disable
+        value: "{{ vm_stig_256454_value | default('TRUE') }}"
+  when: vmch_70_000005_Manage | default(true) | bool
+
+# V-256456 / VMCH-70-000007: HGFS file transfers must be disabled
+- name: stigrule_256456_hgfs_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.tools.hgfsServerSet.disable
+        value: "{{ vm_stig_256456_value | default('TRUE') }}"
+  when: vmch_70_000007_Manage | default(true) | bool
+
+# V-256462 / VMCH-70-000013: Console connection sharing must be limited
+- name: stigrule_256462_max_connections
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: RemoteDisplay.maxConnections
+        value: "{{ vm_stig_256462_value | default('1') }}"
+  when: vmch_70_000013_Manage | default(true) | bool
+
+# V-256463 / VMCH-70-000015: Informational messages to VMX file must be limited
+- name: stigrule_256463_setinfo_size_limit
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: tools.setinfo.sizeLimit
+        value: "{{ vm_stig_256463_value | default('1048576') }}"
+  when: vmch_70_000015_Manage | default(true) | bool
+
+# V-256464 / VMCH-70-000016: Unauthorized connection of devices must be prevented
+- name: stigrule_256464_connectable_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: isolation.device.connectable.disable
+        value: "{{ vm_stig_256464_value | default('TRUE') }}"
+  when: vmch_70_000016_Manage | default(true) | bool
+
+# V-256465 / VMCH-70-000017: Guest info gathering must be disabled
+- name: stigrule_256465_guest_host_info
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: tools.guestlib.enableHostInfo
+        value: "{{ vm_stig_256465_value | default('FALSE') }}"
+  when: vmch_70_000017_Manage | default(true) | bool
+
+# V-256466 / VMCH-70-000018: Shared salt values must be disabled
+- name: stigrule_256466_pshare_salt
+  ansible.builtin.debug:
+    msg: "VMCH-70-000018: sched.mem.pshare.salt should be absent on {{ _current_vm_name }}"
+  when: vmch_70_000018_Manage | default(true) | bool
+
+# V-256470 / VMCH-70-000022: Guest OS must lock when console closes
+- name: stigrule_256470_desktop_autolock
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: tools.guest.desktop.autolock
+        value: "{{ vm_stig_256470_value | default('TRUE') }}"
+  when: vmch_70_000022_Manage | default(true) | bool
+
+# V-256471 / VMCH-70-000023: 3D features must be disabled
+- name: stigrule_256471_3d_disable
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: mks.enable3d
+        value: "{{ vm_stig_256471_value | default('FALSE') }}"
+  when: vmch_70_000023_Manage | default(true) | bool
+
+# V-256474 / VMCH-70-000026: Log rotation size must be configured
+- name: stigrule_256474_log_rotate_size
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: vmx.log.rotateSize
+        value: "{{ vm_stig_256474_value | default('2048000') }}"
+  when: vmch_70_000026_Manage | default(true) | bool
+
+# V-256475 / VMCH-70-000027: Log retention must be configured
+- name: stigrule_256475_log_keep_old
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: vmx.log.keepOld
+        value: "{{ vm_stig_256475_value | default('10') }}"
+  when: vmch_70_000027_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP B: Hardware assertions (audit-only, cannot remediate via API)
+# =========================================================================
+
+# --- VMCH-70-000008 / floppy ---
+- name: stigrule_256457_floppy
+  ansible.builtin.debug:
+    msg: "VMCH-70-000008: Floppy drive status requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000008_Manage | default(true) | bool
+
+# --- VMCH-70-000009 / cdrom ---
+- name: stigrule_256458_cdrom
+  ansible.builtin.debug:
+    msg: "VMCH-70-000009: CD-ROM host device backing requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000009_Manage | default(true) | bool
+
+# --- VMCH-70-000010 / parallel ---
+- name: stigrule_256459_parallel
+  ansible.builtin.debug:
+    msg: "VMCH-70-000010: Parallel port presence requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000010_Manage | default(true) | bool
+
+# --- VMCH-70-000011 / serial ---
+- name: stigrule_256460_serial
+  ansible.builtin.debug:
+    msg: "VMCH-70-000011: Serial port presence requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000011_Manage | default(true) | bool
+
+# --- VMCH-70-000012 / USB ---
+- name: stigrule_256461_usb
+  ansible.builtin.debug:
+    msg: "VMCH-70-000012: USB controller presence requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000012_Manage | default(true) | bool
+
+# --- VMCH-70-000006 / disk persistence ---
+- name: stigrule_256455_disk_persistence
+  ansible.builtin.debug:
+    msg: "VMCH-70-000006: Disk persistence mode requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000006_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP C: VM attribute assertions (audit-only stubs)
+# =========================================================================
+
+# --- VMCH-70-000024 / vMotion encryption ---
+- name: stigrule_256472_vmotion_encryption
+  ansible.builtin.debug:
+    msg: "VMCH-70-000024: vMotion encryption requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000024_Manage | default(true) | bool
+
+# --- VMCH-70-000025 / Logging ---
+- name: stigrule_256473_logging
+  ansible.builtin.debug:
+    msg: "VMCH-70-000025: VM logging status requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000025_Manage | default(true) | bool
+
+# --- VMCH-70-000029 / FT encryption ---
+- name: stigrule_256477_ft_encryption
+  ansible.builtin.debug:
+    msg: "VMCH-70-000029: FT encryption requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000029_Manage | default(true) | bool

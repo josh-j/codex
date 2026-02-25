@@ -1,34 +1,15 @@
-import importlib.util
 import pathlib
+import sys
 import unittest
-from typing import Any
 
-MODULE_PATH = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "collections"
-    / "ansible_collections"
-    / "internal"
-    / "core"
-    / "plugins"
-    / "module_utils"
-    / "report_view_models.py"
-)
+_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
+if _NCS_SRC not in sys.path:
+    sys.path.insert(0, _NCS_SRC)
 
-
-def _load_module():
-    spec = importlib.util.spec_from_file_location("report_view_models", MODULE_PATH)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from ncs_reporter.view_models.vmware import build_vmware_fleet_view, build_vmware_node_view  # noqa: E402
 
 
 class VmwareReportViewModelTests(unittest.TestCase):
-    module: Any
-    @classmethod
-    def setUpClass(cls):
-        cls.module = _load_module()
-
     def test_builds_fleet_totals_and_rows_from_mixed_shapes(self):
         hosts = {
             "Summary": {"ignore": True},
@@ -74,7 +55,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
             },
         }
 
-        view = self.module.build_vmware_fleet_view(
+        view = build_vmware_fleet_view(
             hosts, report_stamp="20260224", report_date="2026-02-24 00:00:00", report_id="RID"
         )
 
@@ -94,7 +75,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
         self.assertEqual(view["rows"][1]["status"]["raw"], "WARNING")
 
     def test_defaults_missing_fields_safely(self):
-        view = self.module.build_vmware_fleet_view({"vc03": {"vcenter_health": {}}})
+        view = build_vmware_fleet_view({"vc03": {"vcenter_health": {}}})
 
         self.assertEqual(view["fleet"]["vcenter_count"], 1)
         self.assertEqual(view["fleet"]["alerts"]["total"], 0)
@@ -142,7 +123,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
                 },
             },
         }
-        view = self.module.build_vmware_node_view("vc-node", bundle, report_id="RID")
+        view = build_vmware_node_view("vc-node", bundle, report_id="RID")
         node = view["node"]
 
         self.assertEqual(node["name"], "vc-node")
