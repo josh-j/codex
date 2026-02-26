@@ -11,12 +11,12 @@ MODULE_PATH = (
     / "vmware"
     / "plugins"
     / "filter"
-    / "snapshot.py"
+    / "discovery.py"
 )
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("vmware_snapshot_filter", MODULE_PATH)
+    spec = importlib.util.spec_from_file_location("vmware_discovery_filter", MODULE_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

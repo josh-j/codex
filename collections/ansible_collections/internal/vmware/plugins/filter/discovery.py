@@ -43,6 +43,7 @@ normalize_datacenters_result = _mod.normalize_datacenters_result
 parse_alarm_script_output = _mod.parse_alarm_script_output
 parse_esxi_ssh_facts = _mod.parse_esxi_ssh_facts
 normalize_alarm_result = _mod.normalize_alarm_result
+enrich_snapshots = _mod.enrich_snapshots
 snapshot_owner_map = _mod.snapshot_owner_map
 snapshot_no_datacenter_result = _mod.snapshot_no_datacenter_result
 normalize_snapshots_result = _mod.normalize_snapshots_result
@@ -65,6 +66,7 @@ class FilterModule:
             "parse_alarm_script_output": parse_alarm_script_output,
             "parse_esxi_ssh_facts": parse_esxi_ssh_facts,
             "normalize_alarm_result": normalize_alarm_result,
+            "enrich_snapshots": enrich_snapshots,
             "snapshot_owner_map": snapshot_owner_map,
             "snapshot_no_datacenter_result": snapshot_no_datacenter_result,
             "normalize_snapshots_result": normalize_snapshots_result,

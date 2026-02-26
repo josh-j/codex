@@ -1,0 +1,8 @@
+---
+# collections/ansible_collections/internal/vmware/roles/common/tasks/main.yaml
+#
+# Entry point for the common role. Required for Ansible meta dependency
+# resolution (e.g. roles/stig/meta/main.yaml depends on internal.vmware.common).
+
+- name: Initialize vCenter connection parameters
+  ansible.builtin.include_tasks: init_vcenter.yaml

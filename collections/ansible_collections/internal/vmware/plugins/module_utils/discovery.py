@@ -5,6 +5,7 @@
 import importlib.util
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
 try:
     from ansible_collections.internal.core.plugins.module_utils.loader import load_module_utils
@@ -28,6 +29,7 @@ _section_defaults = _norm.section_defaults
 _prim = load_module_utils(__file__, "reporting_primitives", "reporting_primitives.py")
 _safe_list = _prim.safe_list
 _to_int = _prim.to_int
+_to_float = _prim.to_float
 
 _BACKUP_TS_RE = re.compile(r"EndTime=([^,]+)")
 _SYSTEM_VM_RE = re.compile(r"^(vCLS-|vsanhealth|vmware-).*")
@@ -604,6 +606,34 @@ def normalize_alarm_result(parsed_result, site, collected_at=""):
         collected_at=collected_at,
         status=status,
     )
+
+
+def enrich_snapshots(snapshots, owner_map=None):
+    """
+    Enriches age-filtered snapshot dicts with vmware-specific fields.
+    Expects items already processed by internal.core.filter_by_age.
+
+    Normalises snapshot_name (urldecode), resolves owner_email from
+    owner_map, and casts size_gb to float.
+    """
+    owner_map = dict(owner_map or {})
+    results = []
+
+    for snap in _safe_list(snapshots):
+        if not isinstance(snap, dict):
+            continue
+        vm_name = snap.get("vm_name", "unknown")
+        results.append(
+            {
+                **snap,
+                "vm_name": vm_name,
+                "snapshot_name": unquote(snap.get("name", "unnamed")),
+                "size_gb": _to_float(snap.get("size_gb", 0)),
+                "owner_email": owner_map.get(vm_name, ""),
+            }
+        )
+
+    return results
 
 
 def snapshot_owner_map(vms_section):
