@@ -18,6 +18,7 @@
     fail_msg: "No ESXi hosts defined in esxi_stig_target_hosts"
 
 - name: "ESXi STIG | Phase 0 | Validate required STIG settings"
+  when: vmware_stig_enable_hardening | default(false) | bool
   ansible.builtin.assert:
     that:
       - (not (esxi_70_000004_Manage | default(true) | bool)) or (esxi_stig_syslog_host | default('') | length > 0)
@@ -56,7 +57,7 @@
         tasks_from: read_callback_artifacts_multi.yaml
       vars:
         _stig_target_hosts: "{{ esxi_stig_target_hosts }}"
-        _stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        _stig_artifacts_dir: "{{ vmware_stig_artifacts_dir | default('/tmp/ncs/artifacts/stig') }}"
         _stig_is_hardening: "{{ vmware_stig_enable_hardening | default(false) | bool }}"
 
     - name: "ESXi STIG | Phase 2b | Export reports via core finalize"
@@ -66,7 +67,8 @@
         name: internal.core.stig
         tasks_from: finalize.yaml
       vars:
-        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_esxi') }}"
+        ncs_export_path: "{{ ncs_export_path }}"
         stig_skeleton_path: "{{ role_path }}/files/cklb_skeleton_vsphere7_esxi_V1R4.json"
         stig_target_type: esxi
+        stig_audit_type: "stig_vmware_esxi"
         stig_export_cklb: "{{ vmware_config_export_cklb | default(true) }}"

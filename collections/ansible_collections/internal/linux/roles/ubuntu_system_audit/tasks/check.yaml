@@ -8,27 +8,27 @@
         (checks | internal.core.build_alerts) +
         (ubuntu_ctx.system.memory.used_pct | internal.core.threshold_alert(
           'capacity',
-          'Memory usage is high: ' ~ ubuntu_ctx.system.memory.used_pct ~ '%',
-          98,
-          ubuntu_mem_warning_pct | default(85),
+          'Memory Saturation: ' ~ ubuntu_ctx.system.memory.used_pct ~ '%',
+          98.0,
+          ubuntu_memory_warning_pct | default(85.0),
           {'total_mb': ubuntu_ctx.system.memory.total_mb}
-        )) + (_disk_alerts | default([]))
+        )) + (_storage_alerts | default([]))
       }}
   vars:
-    # Tiered Disk Logic: Evaluates every mount point independently
-    _disk_alerts: >-
-      {%- set d_alerts = [] -%}
+    # Tiered Storage Logic: Evaluates every mount point independently
+    _storage_alerts: >-
+      {%- set s_alerts = [] -%}
       {%- for disk in ubuntu_ctx.system.disks | default([]) -%}
         {%- set alert = disk.used_pct | internal.core.threshold_alert(
           'capacity',
-          'Storage saturation on ' ~ disk.mount ~ ': ' ~ disk.used_pct ~ '%',
-          95,
-          ubuntu_disk_warning_pct | default(80),
+          'Storage Saturation on ' ~ disk.mount ~ ': ' ~ disk.used_pct ~ '%',
+          95.0,
+          ubuntu_storage_warning_pct | default(80.0),
           {'device': disk.device, 'mount': disk.mount}
         ) -%}
-        {%- if alert -%}{%- set _ = d_alerts.extend(alert) -%}{%- endif -%}
+        {%- if alert -%}{%- set _ = s_alerts.extend(alert) -%}{%- endif -%}
       {%- endfor -%}
-      {{ d_alerts }}
+      {{ s_alerts }}
 
     # Standard Policy Checks
     checks:
@@ -47,9 +47,9 @@
       - condition: "{{ ubuntu_ctx.system.load_avg | float > (ansible_facts['processor_vcpus'] | default(2) | int * 1.5) }}"
         severity: WARNING
         category: performance
-        message: "System load is high relative to CPU count ({{ ubuntu_ctx.system.load_avg }})"
+        message: "System Load High: {{ ubuntu_ctx.system.load_avg }} (relative to CPU count)"
 
       - condition: "{{ ubuntu_ctx.system.uptime_days | int > 180 }}"
         severity: WARNING
         category: maintenance
-        message: "Legacy Uptime: Server has not rebooted in over 6 months"
+        message: "Uptime Policy Violation: Server has not rebooted in over 6 months"

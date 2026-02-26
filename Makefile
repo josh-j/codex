@@ -1,4 +1,4 @@
-.PHONY: lint format check test all jinja-lint ansible-lint setup
+.PHONY: lint format check test integration all jinja-lint ansible-lint setup
 
 all: setup lint check test jinja-lint ansible-lint
 
@@ -17,6 +17,9 @@ check:
 
 test:
 	pytest tests/unit
+
+integration:
+	pytest tests/integration -v
 
 jinja-lint:
 	find . -type d -name .venv -prune -o -name "*.j2" -print | xargs j2lint --ignore jinja-statements-indentation single-statement-per-line --

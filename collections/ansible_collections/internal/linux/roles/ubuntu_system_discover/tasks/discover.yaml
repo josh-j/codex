@@ -86,7 +86,7 @@
     _tmp_disks: >-
       {{
         (ansible_facts['mounts'] | default([]))
-        | internal.linux.build_disk_inventory
+        | internal.linux.build_storage_inventory
       }}
     _tmp_users: >-
       {{
@@ -132,4 +132,4 @@
 
 - name: Log discovery summary
   ansible.builtin.debug:
-    msg: "{{ inventory_hostname }} | Load: {{ ubuntu_ctx.system.load_avg }} | Mem: {{ ubuntu_ctx.system.memory.used_pct }}% | Updates: {{ ubuntu_ctx.updates.pending_count }}"
+    msg: "{{ inventory_hostname }} | Load: {{ ubuntu_ctx.system.load_avg }} | Memory: {{ ubuntu_ctx.system.memory.used_pct }}% | Updates: {{ ubuntu_ctx.updates.pending_count }}"

@@ -36,7 +36,7 @@ class VmwareDiscoveryDefaultsContractTests(unittest.TestCase):
 
         required_snippets = [
             "vmware_ctx:",
-            '  audit_type: "vcenter_health"',
+            '  audit_type: "vmware_vcenter"',
             "  checks_failed: false",
             "  system:",
             "  health:",

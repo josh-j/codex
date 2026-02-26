@@ -24,7 +24,7 @@ compute_audit_rollups = _alerts.compute_audit_rollups
 
 def build_system_audit_export_payload(ubuntu_ctx, ubuntu_alerts, health, summary):
     out = copy.deepcopy(dict(ubuntu_ctx or {}))
-    out["audit_type"] = "system"
+    out["audit_type"] = "linux_system"
     out["audit_failed"] = False
     out["health"] = health
     out["alerts"] = safe_list(ubuntu_alerts)

@@ -47,7 +47,7 @@
         name: internal.core.stig
         tasks_from: read_callback_artifact.yaml
       vars:
-        _stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        _stig_artifacts_dir: "{{ ubuntu_stig_artifacts_dir }}"
         _stig_artifact_host_hint: "{{ inventory_hostname }}"
         _stig_is_hardening: "{{ ubuntu_stig_enable_hardening | default(false) | bool }}"
 
@@ -58,3 +58,5 @@
       vars:
         stig_quiet_mode: "{{ ubuntu_stig_quiet_mode | default(false) }}"
         stig_target_type: "{{ ubuntu_stig_target_type | default('ubuntu_2404') }}"
+        stig_audit_type: "stig_linux"
+        ncs_export_path: "{{ ncs_export_path }}"

@@ -20,6 +20,6 @@ _vmware_audit_export_data:
     engine: ""
     timestamp: ""
     thresholds:
-      cpu_crit: 0
-      mem_crit: 0
-      storage_crit: 0
+      cpu_crit: 0.0
+      memory_crit: 0.0
+      storage_crit: 0.0

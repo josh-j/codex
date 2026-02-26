@@ -14,7 +14,7 @@
 <body>
 <div class="app-layout">
     <main class="content">
-        {% set _host_badge = (node.get('status', {}).get('raw', 'UNKNOWN')) | status_badge_meta(true) %}
+        {% set _host_badge = (node.get('status', {}).get('raw', 'UNKNOWN')) | status_badge_meta %}
         {% set sys_facts = node.get('sys_facts', {}) %}
         {% set audit_data = node.get('data', {}) %}
         {% set update_facts = audit_data.get('updates', {}) %}
@@ -57,7 +57,7 @@
             </div>
             <div class="card">
                 <h3>STIG Summary</h3>
-                {% set _stig_badge = (stig_health | default('UNKNOWN')) | status_badge_meta(true) %}
+                {% set _stig_badge = (stig_health | default('UNKNOWN')) | status_badge_meta %}
                 <table>
                     <tr><td>Compliance Health</td><td><span class="badge {{ _stig_badge.css_class }}">{{ _stig_badge.label }}</span></td></tr>
                     <tr><td>Open Findings</td><td><strong>{{ stig_findings_open }}</strong></td></tr>
@@ -73,7 +73,7 @@
                 <tbody>
                     {% for alert in alerts %}
                     <tr class="{{ 'alert-row-critical' if alert.severity|upper == 'CRITICAL' else 'alert-row-warning' }}">
-     {% set _badge = alert.severity | status_badge_meta(true) %}
+     {% set _badge = alert.severity | status_badge_meta %}
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>
                         <td style="font-weight: 700; color: var(--indigo); text-transform: uppercase;">{{ alert.category | default('SYSTEM') }}</td>
                         <td>{{ alert.message }}</td>

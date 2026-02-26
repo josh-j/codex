@@ -11,7 +11,7 @@ def _severity_to_alert(raw_severity):
 def _canonical_stig_status(value):
     text = str(value or "").strip().lower()
     if text in ("failed", "fail", "open", "finding", "non-compliant", "non_compliant"):
-        return "failed"
+        return "open"
     if text in ("fixed", "remediated"):
         return "pass"
     if text in ("pass", "passed", "compliant", "success", "closed", "notafinding"):
@@ -100,7 +100,7 @@ def normalize_stig_results(audit_full_list, stig_target_type=""):
 
         full_audit.append(normalized)
 
-        if status != "failed":
+        if status != "open":
             continue
 
         violations.append(normalized)
@@ -166,7 +166,7 @@ def stig_eval(rules, item=None):
         severity = rule.get("severity", "medium")
         check_passed = bool(rule.get("check", False))
 
-        status = "pass" if check_passed else "failed"
+        status = "pass" if check_passed else "open"
 
         if check_passed:
             details = rule.get("pass_msg") or "Check passed"

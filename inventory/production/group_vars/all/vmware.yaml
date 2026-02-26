@@ -15,23 +15,29 @@ vmware_config:
 
   # Thresholds
   snapshot_age_warning_days: 7
-  snapshot_size_warning_gb: 100
+  snapshot_size_warning_gb: 100.0
 
-  datastore_free_warning_pct: 15
-  datastore_free_critical_pct: 10
+  datastore_free_warning_pct: 15.0
+  datastore_free_critical_pct: 10.0
 
-  cpu_warning_pct: 80
-  cpu_critical_pct: 90
-  memory_warning_pct: 80
-  memory_critical_pct: 90
+  cpu_warning_pct: 80.0
+  cpu_critical_pct: 90.0
+  memory_warning_pct: 80.0
+  memory_critical_pct: 90.0
 
-  powered_off_ratio_warning_pct: 20
+  powered_off_ratio_warning_pct: 20.0
   backup_grace_period_days: 1
 
   backup_schedules:
     daily: 1
     weekly: 7
     monthly: 30
+
+  # STIG Settings
+  stig:
+    enable_audit: true
+    enable_hardening: false
+    export_cklb: true
 
   # Notifications (leave disabled unless you actively use them)
   enable_email_notifications: false

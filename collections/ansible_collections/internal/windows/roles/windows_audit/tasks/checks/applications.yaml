@@ -10,10 +10,10 @@
         structure: >-
           {{
             '' | internal.windows.build_app_inventory_structure(
-              startup_delay | default(0),
-              skip_startup_delay | default(false),
-              remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
-              local_report_path | default(playbook_dir + '/reports'),
+              windows_audit_startup_delay | default(0),
+              windows_audit_skip_startup_delay | default(false),
+              windows_audit_remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
+              windows_audit_local_report_path | default('./reports'),
               true
             )
           }}

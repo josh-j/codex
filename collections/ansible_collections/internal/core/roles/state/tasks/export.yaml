@@ -7,13 +7,7 @@
 
 - name: Ensure host state directory exists
   ansible.builtin.file:
-    # Resolve directory from ncs_export_path (if file path) or default to host folder
-    path: >-
-      {{
-        ncs_export_path | default('') | dirname
-        if ncs_export_path is defined
-        else (ncs_config | internal.core.resolve_ncs_path('platform', inventory_hostname, (_ncs_export_clean.audit_type | default('system')))) | dirname
-      }}
+    path: "{{ ncs_export_path | dirname }}"
     state: directory
     mode: "0755"
   delegate_to: localhost
@@ -21,12 +15,7 @@
 
 - name: Export host state to YAML
   ansible.builtin.copy:
-    dest: >-
-      {{
-        ncs_export_path
-        if ncs_export_path is defined
-        else (ncs_config | internal.core.resolve_ncs_path('platform', inventory_hostname, (_ncs_export_clean.audit_type | default('system'))))
-      }}
+    dest: "{{ ncs_export_path }}"
     mode: "0664"
     content: >-
       {{

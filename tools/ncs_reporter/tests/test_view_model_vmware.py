@@ -52,7 +52,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
             hosts, report_stamp="20260224", report_date="2026-02-24 00:00:00", report_id="RID"
         )
 
-        self.assertEqual(view["fleet"]["vcenter_count"], 2)
+        self.assertEqual(view["fleet"]["asset_count"], 2)
         self.assertEqual(view["fleet"]["totals"]["clusters"], 3)
         self.assertEqual(view["fleet"]["totals"]["hosts"], 15)
         self.assertEqual(view["fleet"]["totals"]["vms"], 150)
@@ -70,7 +70,7 @@ class VmwareReportViewModelTests(unittest.TestCase):
     def test_defaults_missing_fields_safely(self):
         view = build_vmware_fleet_view({"vc03": {"vcenter_health": {}}})
 
-        self.assertEqual(view["fleet"]["vcenter_count"], 1)
+        self.assertEqual(view["fleet"]["asset_count"], 1)
         self.assertEqual(view["fleet"]["alerts"]["total"], 0)
         self.assertEqual(view["fleet"]["utilization"]["cpu"]["pct"], 0.0)
         self.assertEqual(view["rows"][0]["version"], "N/A")

@@ -179,11 +179,8 @@ class CallbackModule(CallbackBase):
 
     def _paths_for_host(self, host: str):
         xml_path = os.path.join(self.artifact_dir, f"xccdf-results_{host}.xml")
-        json_full_path = os.path.join(self.artifact_dir, f"xccdf-results_{host}.json")
-        json_fail_path = os.path.join(
-            self.artifact_dir, f"xccdf-results_{host}_failures.json"
-        )
-        return xml_path, json_full_path, json_fail_path
+        json_path = os.path.join(self.artifact_dir, f"xccdf-results_{host}.json")
+        return xml_path, json_path
 
     def _ensure_rule_details(self, rule_num: str, task_name: str):
         if rule_num in self.rule_details:
@@ -199,15 +196,12 @@ class CallbackModule(CallbackBase):
 
     def _dump_json(self, host: str):
         """
-        Write BOTH:
-          - full list (pass/failed/na/fixed) to xccdf-results_<host>.json
-          - failures-only list (failed only) to xccdf-results_<host>_failures.json
+        Write the full list (pass/failed/na/fixed) to xccdf-results_<host>.json.
         """
-        _, json_full_path, json_fail_path = self._paths_for_host(host)
+        _, json_path = self._paths_for_host(host)
 
         host_rules = self.rules.get(host, {})
         full_report = []
-        fail_report = []
 
         for rule_num, status in host_rules.items():
             d = self.rule_details.get(rule_num, {})
@@ -222,14 +216,10 @@ class CallbackModule(CallbackBase):
                 "checktext": d.get("checktext", ""),
             }
             full_report.append(row)
-            if status == "failed":
-                fail_report.append(row)
 
         try:
-            with open(json_full_path, "w", encoding="utf-8") as f:
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(full_report, f, indent=2)
-            with open(json_fail_path, "w", encoding="utf-8") as f:
-                json.dump(fail_report, f, indent=2)
         except OSError as e:
             sys.stderr.write(f"[stig_xml] Failed to write JSON for host {host}: {e}\n")
 
@@ -240,7 +230,7 @@ class CallbackModule(CallbackBase):
         if host in self._xml_written:
             return
 
-        xml_path, _, _ = self._paths_for_host(host)
+        xml_path, _ = self._paths_for_host(host)
 
         stig_name = (
             os.path.basename(self.stig_path) if self.stig_path else "unknown_stig.xml"

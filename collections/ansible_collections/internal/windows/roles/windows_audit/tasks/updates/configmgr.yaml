@@ -10,15 +10,15 @@
         structure: >-
           {{
             '' | internal.windows.build_configmgr_update_structure(
-              startup_delay | default(0),
-              skip_startup_delay | default(false),
-              remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
-              update_log_directory | default('C:\\Temp\\ConfigMgrLogs'),
-              excluded_apps | default([]),
-              force_update | default(false),
-              allow_reboot | default(false),
-              enforce_preference | default('Immediate'),
-              update_priority | default('Normal'),
+              windows_audit_startup_delay | default(0),
+              windows_audit_skip_startup_delay | default(false),
+              windows_audit_remote_scripts_path | default('C:\\Temp\\AnsibleScripts'),
+              windows_audit_update_log_directory | default('C:\\Temp\\ConfigMgrLogs'),
+              windows_audit_excluded_apps | default([]),
+              windows_audit_force_update | default(false),
+              windows_audit_allow_reboot | default(false),
+              windows_audit_enforce_preference | default('Immediate'),
+              windows_audit_update_priority | default('Normal'),
               cleanup_old_logs | default(true),
               true
             )

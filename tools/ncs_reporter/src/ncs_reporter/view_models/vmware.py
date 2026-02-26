@@ -9,6 +9,7 @@ from .common import (
     _safe_pct,
     _severity_for_pct,
     _status_from_health,
+    canonical_severity,
     safe_list,
     to_int,
 )
@@ -25,7 +26,13 @@ def _coerce_vmware_bundle(bundle: Any) -> dict[str, Any]:
     # {"vcenter": {...}, "discovery": {...}}
     # OR it might be flat if only one audit type was loaded.
     discovery = dict(bundle.get("discovery") or {})
-    audit = dict(bundle.get("vcenter") or bundle.get("vcenter_health") or bundle.get("audit") or {})
+    audit = dict(
+        bundle.get("vmware_vcenter")
+        or bundle.get("vcenter")
+        or bundle.get("vcenter_health")
+        or bundle.get("audit")
+        or {}
+    )
 
     # If both are empty, check if the bundle ITSELF is the audit data (flat load)
     if not discovery and not audit:
@@ -141,7 +148,8 @@ def build_vmware_fleet_view(
         bundle_view = _coerce_vmware_bundle(bundle)
         inv = _extract_vmware_inventory_summary(bundle_view)
         util = _extract_vmware_utilization(bundle_view)
-        alerts = _count_alerts(bundle_view.get("alerts"))
+        alerts_list = safe_list(bundle_view.get("alerts"))
+        alert_counts = _count_alerts(alerts_list)
         vcenter_health = dict(bundle_view.get("vcenter_health") or {})
         status_raw = _status_from_health(vcenter_health.get("health") or bundle_view.get("audit", {}).get("health"))
 
@@ -152,8 +160,8 @@ def build_vmware_fleet_view(
         fleet_cpu_total += util["cpu"]["total_mhz"]
         fleet_mem_used += util["memory"]["used_mb"]
         fleet_mem_total += util["memory"]["total_mb"]
-        fleet_alerts["critical"] += alerts["critical"]
-        fleet_alerts["warning"] += alerts["warning"]
+        fleet_alerts["critical"] += alert_counts["critical"]
+        fleet_alerts["warning"] += alert_counts["warning"]
 
         fleet_rows.append(
             {
@@ -162,32 +170,34 @@ def build_vmware_fleet_view(
                 "version": _extract_vmware_version(bundle_view) or "N/A",
                 "links": {"node_report_latest": f"./{hostname}/health_report.html"},
                 "inventory": inv,
+                "summary": {
+                    "inventory": inv,
+                    "alerts": alert_counts,
+                },
                 "utilization": {
                     "cpu_pct": util["cpu"]["pct"],
                     "memory_pct": util["memory"]["pct"],
                     "cpu": util["cpu"],
                     "memory": util["memory"],
                 },
-                "alerts": alerts,
+                "alerts": alerts_list,
                 "vcenter_health": vcenter_health,
             }
         )
-        for alert in safe_list(bundle_view.get("alerts")):
+        for alert in alerts_list:
             if not isinstance(alert, dict):
                 continue
-            counts = _count_alerts([alert])
-            if counts.get("critical", 0) > 0:
-                sev = "CRITICAL"
-            elif counts.get("warning", 0) > 0:
-                sev = "WARNING"
-            else:
+            sev = canonical_severity(alert.get("severity"))
+            if sev not in ("CRITICAL", "WARNING"):
                 continue
             active_alerts.append(
                 {
                     "host": hostname,
                     "severity": sev,
                     "category": alert.get("category", "vmware"),
+                    "audit_type": "vmware_vcenter",
                     "message": alert.get("message", ""),
+                    "raw": alert,
                 }
             )
 
@@ -202,7 +212,7 @@ def build_vmware_fleet_view(
             "report_id": report_id,
         },
         "fleet": {
-            "vcenter_count": len(fleet_rows),
+            "asset_count": len(fleet_rows),
             "totals": fleet_totals,
             "utilization": {
                 "cpu": {

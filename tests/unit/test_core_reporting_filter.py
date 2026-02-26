@@ -22,8 +22,8 @@ class CoreReportingFilterTests(unittest.TestCase):
 
     def test_report_skip_keys_contains_canonical_entries(self):
         keys = default_report_skip_keys()
-        self.assertIn("Summary", keys)
-        self.assertIn("Split", keys)
+        self.assertIn("summary", keys)
+        self.assertIn("split", keys)
         self.assertIn("platform", keys)
         self.assertIn("history", keys)
         self.assertIn("linux_fleet_state.yaml", keys)

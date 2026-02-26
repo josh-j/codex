@@ -205,7 +205,7 @@ class AuditClusterAlertsTests(unittest.TestCase):
             {
                 "name": "prod",
                 "compliance": {"ha_enabled": True, "drs_enabled": True},
-                "utilization": {"cpu_pct": 50, "mem_pct": 60},
+                "utilization": {"cpu_pct": 50, "memory_pct": 60},
             }
         ]
         result = self.module.audit_cluster_configuration_alerts(clusters)
@@ -217,7 +217,7 @@ class AuditClusterAlertsTests(unittest.TestCase):
             {
                 "name": "dev",
                 "compliance": {"ha_enabled": False, "drs_enabled": True},
-                "utilization": {"cpu_pct": 10, "mem_pct": 10},
+                "utilization": {"cpu_pct": 10, "memory_pct": 10},
             }
         ]
         result = self.module.audit_cluster_configuration_alerts(clusters)
@@ -229,7 +229,7 @@ class AuditClusterAlertsTests(unittest.TestCase):
             {
                 "name": "hot",
                 "compliance": {"ha_enabled": True, "drs_enabled": True},
-                "utilization": {"cpu_pct": 95, "mem_pct": 50},
+                "utilization": {"cpu_pct": 95, "memory_pct": 50},
             }
         ]
         result = self.module.audit_cluster_configuration_alerts(clusters)
@@ -240,7 +240,7 @@ class AuditClusterAlertsTests(unittest.TestCase):
             {
                 "name": "bloat",
                 "compliance": {"ha_enabled": True, "drs_enabled": True},
-                "utilization": {"cpu_pct": 50, "mem_pct": 95},
+                "utilization": {"cpu_pct": 50, "memory_pct": 95},
             }
         ]
         result = self.module.audit_cluster_configuration_alerts(clusters)
@@ -436,15 +436,15 @@ class AuditResourceRollupTests(unittest.TestCase):
                 "utilization": {
                     "cpu_total_mhz": 10000,
                     "cpu_used_mhz": 5000,
-                    "mem_total_mb": 32000,
-                    "mem_used_mb": 16000,
+                    "memory_total_mb": 32000,
+                    "memory_used_mb": 16000,
                 }
             }
         ]
         result = self.module.audit_resource_rollup(clusters)
         self.assertEqual(result["alerts"], [])
         self.assertEqual(result["utilization"]["cpu_pct"], 50.0)
-        self.assertEqual(result["utilization"]["mem_pct"], 50.0)
+        self.assertEqual(result["utilization"]["memory_pct"], 50.0)
 
     def test_high_cpu_emits_alert(self):
         clusters = [
@@ -452,8 +452,8 @@ class AuditResourceRollupTests(unittest.TestCase):
                 "utilization": {
                     "cpu_total_mhz": 10000,
                     "cpu_used_mhz": 9500,
-                    "mem_total_mb": 32000,
-                    "mem_used_mb": 16000,
+                    "memory_total_mb": 32000,
+                    "memory_used_mb": 16000,
                 }
             }
         ]
@@ -466,29 +466,30 @@ class AuditResourceRollupTests(unittest.TestCase):
                 "utilization": {
                     "cpu_total_mhz": 10000,
                     "cpu_used_mhz": 5000,
-                    "mem_total_mb": 32000,
-                    "mem_used_mb": 30000,
+                    "memory_total_mb": 32000,
+                    "memory_used_mb": 30000,
                 }
             }
         ]
         result = self.module.audit_resource_rollup(clusters)
-        self.assertTrue(any("Mem" in a["message"] for a in result["alerts"]))
+        self.assertTrue(any("Memory Saturation" in a["message"] for a in result["alerts"]))
 
     def test_multiple_clusters_aggregated(self):
+        _util = {"cpu_total_mhz": 5000, "cpu_used_mhz": 2000, "memory_total_mb": 16000, "memory_used_mb": 8000}
         clusters = [
-            {"utilization": {"cpu_total_mhz": 5000, "cpu_used_mhz": 2000, "mem_total_mb": 16000, "mem_used_mb": 8000}},
-            {"utilization": {"cpu_total_mhz": 5000, "cpu_used_mhz": 2000, "mem_total_mb": 16000, "mem_used_mb": 8000}},
+            {"utilization": _util},
+            {"utilization": _util},
         ]
         result = self.module.audit_resource_rollup(clusters)
         self.assertEqual(result["utilization"]["cpu_total_mhz"], 10000)
         self.assertEqual(result["utilization"]["cpu_used_mhz"], 4000)
-        self.assertEqual(result["utilization"]["mem_total_mb"], 32000)
-        self.assertEqual(result["utilization"]["mem_used_mb"], 16000)
+        self.assertEqual(result["utilization"]["memory_total_mb"], 32000)
+        self.assertEqual(result["utilization"]["memory_used_mb"], 16000)
 
     def test_empty_clusters_returns_zero_utilization(self):
         result = self.module.audit_resource_rollup([])
         self.assertEqual(result["utilization"]["cpu_pct"], 0.0)
-        self.assertEqual(result["utilization"]["mem_pct"], 0.0)
+        self.assertEqual(result["utilization"]["memory_pct"], 0.0)
         self.assertEqual(result["alerts"], [])
 
 
@@ -499,22 +500,22 @@ class AttachAuditUtilizationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.module = _load_module()
 
-    def test_attaches_utilization_to_vcenter_health_data(self):
-        ctx = {"vcenter_health": {"data": {"existing": True}}}
-        util = {"cpu_pct": 45.0, "mem_pct": 60.0}
+    def test_attaches_utilization_to_vmware_vcenter_data(self):
+        ctx = {"vmware_vcenter": {"data": {"existing": True}}}
+        util = {"cpu_pct": 45.0, "memory_pct": 60.0}
         out = self.module.attach_audit_utilization(ctx, util)
-        self.assertEqual(out["vcenter_health"]["data"]["utilization"], util)
-        self.assertTrue(out["vcenter_health"]["data"]["existing"])
+        self.assertEqual(out["vmware_vcenter"]["data"]["utilization"], util)
+        self.assertTrue(out["vmware_vcenter"]["data"]["existing"])
 
     def test_creates_nested_structure_from_empty(self):
         out = self.module.attach_audit_utilization({}, {"cpu_pct": 10.0})
-        self.assertEqual(out["vcenter_health"]["data"]["utilization"]["cpu_pct"], 10.0)
+        self.assertEqual(out["vmware_vcenter"]["data"]["utilization"]["cpu_pct"], 10.0)
 
     def test_deep_copies_input(self):
-        ctx: dict[str, Any] = {"vcenter_health": {"data": {}}}
+        ctx: dict[str, Any] = {"vmware_vcenter": {"data": {}}}
         out = self.module.attach_audit_utilization(ctx, {"cpu_pct": 10.0})
         self.assertIsNot(out, ctx)
-        self.assertNotIn("utilization", ctx["vcenter_health"]["data"])
+        self.assertNotIn("utilization", ctx["vmware_vcenter"]["data"])
 
 
 class BuildAuditExportPayloadTests(unittest.TestCase):
@@ -527,18 +528,18 @@ class BuildAuditExportPayloadTests(unittest.TestCase):
     def test_basic_payload_structure(self):
         out = self.module.build_audit_export_payload(
             vmware_alerts=[{"severity": "WARNING"}],
-            vmware_ctx={"vcenter_health": {"data": {"some": "value"}}},
+            vmware_ctx={"vmware_vcenter": {"data": {"some": "value"}}},
             audit_failed=True,
             health="CRITICAL",
             summary={"total": 1, "critical_count": 1, "warning_count": 0, "info_count": 0, "by_category": {}},
             timestamp="2025-01-01T00:00:00",
             thresholds={"cpu": 90},
         )
-        self.assertEqual(out["audit_type"], "vcenter_health")
+        self.assertEqual(out["audit_type"], "vmware_vcenter")
         self.assertTrue(out["audit_failed"])
         self.assertEqual(len(out["alerts"]), 1)
-        self.assertEqual(out["vcenter_health"]["health"], "CRITICAL")
-        self.assertEqual(out["vcenter_health"]["summary"]["total"], 1)
+        self.assertEqual(out["vmware_vcenter"]["health"], "CRITICAL")
+        self.assertEqual(out["vmware_vcenter"]["summary"]["total"], 1)
         self.assertEqual(out["check_metadata"]["engine"], "ansible-ncs-vmware")
 
     def test_enforces_summary_defaults(self):
@@ -546,7 +547,7 @@ class BuildAuditExportPayloadTests(unittest.TestCase):
             vmware_alerts=[], vmware_ctx={}, audit_failed=False,
             health=None, summary=None, timestamp="", thresholds=None,
         )
-        s = out["vcenter_health"]["summary"]
+        s = out["vmware_vcenter"]["summary"]
         self.assertEqual(s["total"], 0)
         self.assertEqual(s["critical_count"], 0)
         self.assertIsInstance(s["by_category"], dict)
@@ -557,8 +558,8 @@ class BuildAuditExportPayloadTests(unittest.TestCase):
             health=None, summary="not_a_dict", timestamp=None, thresholds=None,
         )
         self.assertEqual(out["alerts"], [])
-        self.assertEqual(out["vcenter_health"]["health"], "UNKNOWN")
-        self.assertIsInstance(out["vcenter_health"]["summary"]["by_category"], dict)
+        self.assertEqual(out["vmware_vcenter"]["health"], "UNKNOWN")
+        self.assertIsInstance(out["vmware_vcenter"]["summary"]["by_category"], dict)
 
 
 if __name__ == "__main__":

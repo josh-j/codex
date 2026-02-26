@@ -140,7 +140,7 @@ esxi_stig_disabled_protocols: "tlsv1,tlsv1.1,sslv3"
 esxi_stig_suppress_shell_warning: 0
 esxi_stig_suppress_ht_warning: 0
 esxi_stig_syslog_check_ssl_certs: "true"
-esxi_stig_mem_eager_zero: 1
+esxi_stig_memory_eager_zero: 1
 esxi_stig_api_session_timeout: 30
 esxi_stig_host_client_timeout: 600
 esxi_stig_password_max_days: 90
@@ -220,65 +220,3 @@ vm_stig_256470_value: "TRUE"      # VMCH-70-000022 tools.guest.desktop.autolock
 vm_stig_256471_value: "FALSE"     # VMCH-70-000023 mks.enable3d
 vm_stig_256474_value: "2048000"   # VMCH-70-000026 vmx.log.rotateSize
 vm_stig_256475_value: "10"        # VMCH-70-000027 vmx.log.keepOld
-
-# Hardware and attribute reference data (for reporting)
-vm_stig_hardware_ids:
-  floppy:
-    {
-      id: "VMCH-70-000008",
-      severity: "medium",
-      title: "Floppy drives must be disconnected",
-    }
-  cdrom:
-    {
-      id: "VMCH-70-000009",
-      severity: "medium",
-      title: "CD-ROM drives must not use host device backing",
-    }
-  parallel:
-    {
-      id: "VMCH-70-000010",
-      severity: "medium",
-      title: "Parallel ports must not be present",
-    }
-  serial:
-    {
-      id: "VMCH-70-000011",
-      severity: "medium",
-      title: "Serial ports must not be present",
-    }
-  usb:
-    {
-      id: "VMCH-70-000012",
-      severity: "medium",
-      title: "USB controllers must not be present",
-    }
-  persistence:
-    {
-      id: "VMCH-70-000006",
-      severity: "high",
-      title: "Virtual disks must be set to persistent mode",
-    }
-
-vm_stig_attributes:
-  vmotion_encryption:
-    {
-      id: "VMCH-70-000024",
-      severity: "medium",
-      title: "vMotion must use encryption",
-      required: "opportunistic",
-    }
-  logging:
-    {
-      id: "VMCH-70-000025",
-      severity: "medium",
-      title: "Guest logging must be enabled",
-      required: true,
-    }
-  ft_encryption:
-    {
-      id: "VMCH-70-000029",
-      severity: "medium",
-      title: "FT must use encryption",
-      required: ["ftEncryptionOpportunistic", "ftEncryptionRequired"],
-    }

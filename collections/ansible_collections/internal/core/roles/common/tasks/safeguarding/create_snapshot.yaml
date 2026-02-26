@@ -5,53 +5,62 @@
 # REQUIRED VARS:
 #   - snapshot_prefix (e.g., "Ansible_Pre_Hardening")
 #   - snapshot_desc   (e.g., "Created before STIG application")
+
+- name: "Safety | Ensure virtualization facts are available"
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['virtualization_type'] is defined
+    fail_msg: "virtualization_type fact is missing. Ensure 'gather_facts: true' was run for this host."
+  changed_when: false
+
 - name: "Safety | Create VMware Snapshot"
   delegate_to: localhost
   become: false
-  # Self-contained check: Only runs if it's actually a VMware VM
-  when: ansible_facts['virtualization_type'] | default('NA') == "VMware"
+  when: ansible_facts['virtualization_type'] == "VMware"
   block:
-    - name: Discover VM location in vCenter
-      community.vmware.vmware_vm_info:
-        hostname: >-
+    - name: "Safety | Normalize vCenter hostname"
+      ansible.builtin.set_fact:
+        _vmware_normalized_host: >-
           {{
             vmware_hostname
             | regex_replace('^https?://', '')
             | regex_replace('/.*$', '')
           }}
+      changed_when: false
+
+    - name: "Safety | Discover VM location in vCenter"
+      community.vmware.vmware_vm_info:
+        hostname: "{{ _vmware_normalized_host }}"
         username: "{{ vmware_username | default(vault_vcenter_username) }}"
         password: "{{ vmware_password | default(vault_vcenter_password) }}"
-        validate_certs: false
+        validate_certs: "{{ vmware_validate_certs | default(false) }}"
         vm_name: "{{ inventory_hostname }}"
       register: vm_discovery
 
-    - name: Extract VM datacenter and folder
+    - name: "Safety | Validate VM discovery"
+      ansible.builtin.assert:
+        that:
+          - vm_discovery.virtual_machines | length > 0
+        fail_msg: "Could not find VM '{{ inventory_hostname }}' in vCenter '{{ _vmware_normalized_host }}'."
+      changed_when: false
+
+    - name: "Safety | Extract VM datacenter and folder"
       ansible.builtin.set_fact:
         vm_datacenter: "{{ vm_discovery.virtual_machines[0].datacenter }}"
         vm_folder: "{{ vm_discovery.virtual_machines[0].folder }}"
-      when: vm_discovery.virtual_machines | length > 0
+      changed_when: false
 
-    - name: Trigger vCenter Snapshot ({{ snapshot_prefix }})
+    - name: "Safety | Trigger vCenter Snapshot ({{ snapshot_prefix }})"
       vmware.vmware.vm_snapshot:
-        hostname: >-
-          {{
-            vmware_hostname
-            | regex_replace('^https?://', '')
-            | regex_replace('/.*$', '')
-          }}
+        hostname: "{{ _vmware_normalized_host }}"
         username: "{{ vmware_username | default(vault_vcenter_username) }}"
         password: "{{ vmware_password | default(vault_vcenter_password) }}"
-        validate_certs: false
-        # Use dynamically discovered location
+        validate_certs: "{{ vmware_validate_certs | default(false) }}"
         datacenter: "{{ vm_datacenter }}"
         name: "{{ inventory_hostname }}"
         folder: "{{ vm_folder }}"
         state: present
-        # Dynamic Naming
         snapshot_name: "{{ snapshot_prefix }}_{{ ansible_facts['date_time']['date'] }}"
         description: "{{ snapshot_desc }} on {{ ansible_facts['date_time']['iso8601'] }}"
-        # Quiesce: Flush filesystem buffers for crash-consistent snapshot (requires VMware Tools)
-        # Memory dump disabled: Faster snapshots, no live state needed for rollback scenarios
         quiesce: true
         memory_dump: false
-      # Fail-Fast: If snapshot fails, stop everything. Do not ignore errors.

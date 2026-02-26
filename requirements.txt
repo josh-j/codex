@@ -2,3 +2,4 @@ ansible
 pyVmomi
 pyVim
 aiohttp
+ansible-runner

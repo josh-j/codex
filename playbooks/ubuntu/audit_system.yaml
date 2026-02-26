@@ -10,7 +10,16 @@
   tags: ["ubuntu", "audit", "system"]
   roles:
     - role: internal.linux.ubuntu_system_discover
+      vars:
+        ubuntu_memory_warning_pct: "{{ ubuntu_config.memory_warning_pct | default(95.0) }}"
+        ubuntu_storage_warning_pct: "{{ ubuntu_config.storage_warning_pct | default(90.0) }}"
+        ubuntu_load_warning_threshold: "{{ ubuntu_config.load_warning_threshold | default(15) }}"
+        ubuntu_updates_critical_threshold: "{{ ubuntu_config.updates_critical_threshold | default(50) }}"
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'discovery') }}"
     - role: internal.linux.ubuntu_system_audit
+      vars:
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'system') }}"
+        ncs_checkpoint_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'discovery') }}"
 
 - name: "Phase 3: Aggregate and Report"
   ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml

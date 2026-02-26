@@ -48,10 +48,10 @@ class VmwareAuditFilterTests(unittest.TestCase):
     def setUpClass(cls):
         cls.module = _load_module()
 
-    def test_attach_audit_results_updates_nested_vcenter_health_and_preserves_data(self):
+    def test_attach_audit_results_updates_nested_vmware_vcenter_and_preserves_data(self):
         base: dict[str, Any] = {
             "alerts": [{"message": "old"}],
-            "vcenter_health": {"data": {"utilization": {"cpu_pct": 50.0}}},
+            "vmware_vcenter": {"data": {"utilization": {"cpu_pct": 50.0}}},
         }
         alerts = [{"severity": "WARNING", "message": "new"}]
         health = {"overall": "WARNING", "label": "Warning"}
@@ -61,11 +61,11 @@ class VmwareAuditFilterTests(unittest.TestCase):
 
         self.assertIsNot(out, base)
         self.assertEqual(out["alerts"], alerts)
-        self.assertEqual(out["vcenter_health"]["alerts"], alerts)
-        self.assertEqual(out["vcenter_health"]["health"], "WARNING")
-        self.assertEqual(out["vcenter_health"]["summary"], summary)
-        self.assertTrue(out["vcenter_health"]["audit_failed"])
-        self.assertEqual(out["vcenter_health"]["data"]["utilization"]["cpu_pct"], 50.0)
+        self.assertEqual(out["vmware_vcenter"]["alerts"], alerts)
+        self.assertEqual(out["vmware_vcenter"]["health"], "WARNING")
+        self.assertEqual(out["vmware_vcenter"]["summary"], summary)
+        self.assertTrue(out["vmware_vcenter"]["audit_failed"])
+        self.assertEqual(out["vmware_vcenter"]["data"]["utilization"]["cpu_pct"], 50.0)
         self.assertEqual(base["alerts"][0]["message"], "old")
 
     def test_append_alerts_handles_list_none_and_single_item(self):

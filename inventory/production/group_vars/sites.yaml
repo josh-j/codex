@@ -1,29 +1,10 @@
 ---
 # inventory/production/group_vars/sites.yaml
-# Site-specific connection parameters and credential mapping.
+# Site-specific connection parameters and endpoint patterns.
 
-# Canonical VMware Connection Info
+# Endpoint Naming Patterns
+# These are used by roles to derive the target API endpoints for each site.
 vmware_hostname: "vc-{{ inventory_hostname }}.local"
-
-# Legacy/Alternative mappings (if used by specific roles)
-vcenter:
-  url: "https://{{ vmware_hostname }}"
-  credential: "vc_{{ inventory_hostname }}"
-
-unisphere:
-  - {
-    type: "unity",
-    url: "https://unity-{{ inventory_hostname }}/api",
-    credential: "unity_{{ inventory_hostname }}",
-  }
-
-backup_unisphere:
-  - {
-    type: "ddve",
-    url: "https://dd-{{ inventory_hostname }}",
-    credential: "dd_{{ inventory_hostname }}",
-  }
-
-ucs_fi:
-  url: "ucs-{{ inventory_hostname }}"
-  credential: "ucs_{{ inventory_hostname }}"
+unity_endpoint: "https://unity-{{ inventory_hostname }}/api"
+dd_endpoint: "https://dd-{{ inventory_hostname }}"
+ucs_endpoint: "ucs-{{ inventory_hostname }}"

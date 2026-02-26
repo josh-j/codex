@@ -44,18 +44,18 @@ class LinuxAuditFilterTests(unittest.TestCase):
         self.assertEqual(out["summary"]["info_count"], 1)
 
     def test_build_system_audit_export_payload(self):
-        ctx = {"system": {"hostname": "u1"}}
+        ctx = {"linux_system": {"hostname": "u1"}}
         alerts = [{"severity": "WARNING"}]
         summary = {"total": 1}
         out = self.module.build_system_audit_export_payload(ctx, alerts, "WARNING", summary)
-        self.assertEqual(out["audit_type"], "system")
+        self.assertEqual(out["audit_type"], "linux_system")
         self.assertFalse(out["audit_failed"])
         self.assertEqual(out["health"], "WARNING")
         self.assertEqual(out["alerts"], alerts)
         self.assertEqual(out["summary"], summary)
         self.assertEqual(out["check_metadata"]["engine"], "ansible-ncs-linux")
         self.assertIn("timestamp", out["check_metadata"])
-        self.assertEqual(ctx, {"system": {"hostname": "u1"}})
+        self.assertEqual(ctx, {"linux_system": {"hostname": "u1"}})
 
 
 if __name__ == "__main__":

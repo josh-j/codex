@@ -1,55 +1,49 @@
-# Decoupling Reporting from Ansible: A Migration Plan
+# Decoupling Reporting from Ansible: Migration Status
 
-This document outlines the strategy for moving the Codex reporting pipeline from an Ansible-native (Jinja template tasks + custom Python filters) architecture to a fully decoupled, standalone Python CLI approach.
+This document tracks the migration of the NCS reporting pipeline from Ansible-native rendering to a standalone Python CLI (`ncs_reporter`).
 
-## 1. Executive Summary
+## Summary
 
-**The Problem:** Ansible is an excellent execution and orchestration engine, but it is not built to be a high-performance reporting engine. The current architecture forces Ansible to loop over hundreds of hosts, passing variables through complex custom Python filters just to render Jinja templates. This is slow, difficult to test natively, and tightly couples the presentation layer to the orchestration layer.
+Reporting stages 2–6 (aggregation, normalization, view-model building, rendering, presentation) have been migrated to `tools/ncs_reporter/`. Ansible collections are now solely responsible for auditing systems and emitting raw YAML data. The CLI is invoked by `playbooks/common/generate_fleet_reports.yaml`.
 
-**The Solution:** Extract all reporting logic (View Models, Jinja Templates, CSS) into a standalone Python CLI tool. Ansible collections will solely be responsible for auditing systems and emitting raw JSON/YAML data. The new tool will parse this data, apply the View Models, and render the final HTML reports in milliseconds.
+## Migration Phases
 
-## 2. Current State vs. Future State
+### Phase 1: Package Structure — Done
 
-### Current State (Coupled)
-1. **Emit:** Platform roles (`internal.linux`, `internal.vmware`, `internal.windows`) write host-level YAML reports.
-2. **Aggregate:** `aggregate_yaml_reports.py` collects host-level YAML into fleet state files.
-3. **Normalize & Render (Ansible):** Ansible runs `summary` roles. It calls custom Jinja filters (e.g., `vmware_fleet_view`) which internally call Python View Models in `internal.core`.
-4. **Output:** Ansible `template` module renders HTML files in a loop.
+- `tools/ncs_reporter/` created as a standard Python package with `pyproject.toml`
+- Dependencies: `Jinja2`, `PyYAML`, `Click`
 
-### Future State (Decoupled)
-1. **Emit:** Platform roles write host-level YAML reports. (Unchanged)
-2. **Aggregate:** `aggregate_yaml_reports.py` collects host-level YAML into fleet state files. (Unchanged)
-3. **Process & Render (Python CLI):** A new standalone CLI (e.g., `codex-reporter`) reads the fleet state files, applies the View Models directly in Python, uses native Jinja2 to render the templates, and writes the HTML output.
+### Phase 2: Migrate Core Logic — Done
 
-## 3. Step-by-Step Implementation Plan
+- View models moved to `tools/ncs_reporter/src/ncs_reporter/view_models/` (vmware, linux, windows, site, common)
+- Templates and shared CSS moved to `tools/ncs_reporter/src/ncs_reporter/templates/`
+- Aggregation logic in `tools/ncs_reporter/src/ncs_reporter/aggregation.py`
+- Unit tests in `tools/ncs_reporter/tests/`
 
-### Phase 1: Establish the Standalone Tool
-1. **Create Package Structure:** Create a new directory for the reporting tool (e.g., `tools/codex_reporter/` or as a standard Python package at the project root).
-2. **Setup Dependencies:** Ensure `Jinja2`, `PyYAML`, and any required CLI libraries (like `argparse` or `click`) are in the requirements file or `pyproject.toml`.
+### Phase 3: CLI Engine — Done
 
-### Phase 2: Migrate Core Logic
-1. **Move View Models:** Relocate the contents of `internal/core/plugins/module_utils/report_view_models*.py` and `reporting_primitives.py` into the new `codex_reporter` package. 
-2. **Move Templates:** Relocate all `.j2` reporting templates and associated CSS files from the various collections (e.g., `internal/vmware/roles/summary/templates/`, `playbooks/templates/site_health_report.html.j2`) into a `templates/` directory within the new package.
-3. **Migrate Tests:** Move the corresponding unit tests from `tests/unit/` (e.g., `test_report_view_model_vmware.py`, `test_reporting_view_contract.py`) to the new tool's test suite and update import paths.
+- `ncs_reporter.cli` provides commands: `all`, `collect`, `linux`, `vmware`, `windows`, `node`, `site`
+- Initializes native Jinja2 environment, loads YAML data, applies view models, renders HTML
 
-### Phase 3: Build the CLI Engine
-1. **Develop the CLI Entrypoint:** Write a main script that:
-   - Accepts input paths for the aggregated YAML files.
-   - Accepts an output directory for the HTML reports.
-   - Initializes a native Jinja2 environment pointing to the new `templates/` directory.
-   - Loads the YAML data, passes it through the migrated View Model functions to get the context dictionary.
-   - Renders the templates and writes the final HTML files to disk.
+### Phase 4: Integration — Done
 
-### Phase 4: Integration and Orchestration Updates
-1. **Update Make/CI:** Add a `make report` target or update CI/CD pipelines to run the new Python CLI after the Ansible playbooks complete.
-2. **Refactor Playbooks:** Remove the reporting playbook calls (e.g., `playbooks/common/generate_site_health_report.yaml` or parts of `master_audit.yaml` that trigger rendering). The playbooks should stop after aggregation.
+- `playbooks/common/generate_fleet_reports.yaml` invokes the CLI after Ansible audit playbooks complete
+- `master_audit.yaml` imports `generate_fleet_reports.yaml` as the final stage
 
-### Phase 5: Cleanup and Deprecation
-1. **Remove Ansible Reporting Roles:** Delete the `internal.core.roles.reporting` role and all `summary` roles in the platform collections.
-2. **Remove Custom Filters:** Delete the custom Jinja filter plugins (e.g., `internal/vmware/plugins/filter/reporting.py`, `internal/core/plugins/filter/reporting.py`) that were used solely to expose View Models to Ansible.
-3. **Update Documentation:** Revise `docs/REPORTING_ARCHITECTURE.md` to reflect the new decoupled workflow.
+### Phase 5: Cleanup — Done
 
-## 4. Expected Benefits
+- Deleted `core/roles/reporting/` (shared rendering role)
+- Deleted `core/plugins/filter/reporting.py` and platform summary filter plugins
+- Deleted `core/plugins/module_utils/report_view_models.py`
+- Updated `docs/REPORTING_ARCHITECTURE.md` to reflect new architecture
+- Migrated per-host STIG HTML rendering from Ansible (`core/roles/stig/tasks/finalize.yaml`) to `ncs_reporter` CLI with `stig_host_report.html.j2` and `stig_fleet_report.html.j2` templates
+
+## Architecture Reference
+
+See `docs/REPORTING_ARCHITECTURE.md` for the full pipeline description.
+
+## Benefits Realized
+
 - **Performance:** Native Python Jinja rendering is orders of magnitude faster than Ansible `template` loops.
 - **Maintainability:** True separation of concerns. Ansible playbooks are purely for infrastructure automation; Python handles data shaping and presentation.
 - **Testability:** The entire reporting pipeline can be tested locally using mock YAML data without invoking `ansible-playbook` or managing inventory contexts.

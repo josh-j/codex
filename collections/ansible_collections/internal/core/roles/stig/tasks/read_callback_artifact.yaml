@@ -17,6 +17,8 @@
     file_type: file
     patterns:
       - "xccdf-results_*.json"
+    excludes:
+      - "*_failures.json"
   register: _stig_cb_json_found
   delegate_to: localhost
   become: false

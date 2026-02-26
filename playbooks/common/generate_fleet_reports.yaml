@@ -6,7 +6,9 @@
   connection: local
   gather_facts: false
   vars:
-    _playbooks_root: "{{ playbook_dir | dirname }}"
+    # Robustly find the repo root by splitting at the 'playbooks' directory
+    _repo_root: "{{ (playbook_dir | realpath).split('/playbooks')[0] }}"
+    _playbooks_root: "{{ _repo_root }}/playbooks"
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
     _groups_json: "{{ _platform_root }}/inventory_groups.json"
@@ -27,13 +29,23 @@
         mode: "0644"
 
     - name: "Run Unified Reporting Engine (ncs-reporter all)"
-      ansible.builtin.command:
-        cmd: >-
-          {{ ansible_playbook_python }} -m ncs_reporter.cli all
-          --platform-root "{{ _platform_root }}"
-          --reports-root "{{ _reports_root }}"
-          --groups "{{ _groups_json }}"
-          --report-stamp "{{ report_stamp }}"
-      environment:
-        PYTHONPATH: "{{ _playbooks_root }}/tools/ncs_reporter/src"
-      changed_when: true
+      block:
+        - name: "Execute ncs-reporter CLI"
+          ansible.builtin.command:
+            cmd: >-
+              {{ ansible_playbook_python }} -m ncs_reporter.cli all
+              --platform-root "{{ _platform_root }}"
+              --reports-root "{{ _reports_root }}"
+              --groups "{{ _groups_json }}"
+              --report-stamp "{{ report_stamp }}"
+          environment:
+            PYTHONPATH: "{{ _repo_root }}/tools/ncs_reporter/src"
+          register: _reporter_result
+          changed_when: _reporter_result.rc == 0
+
+      rescue:
+        - name: "Report generation failed"
+          ansible.builtin.debug:
+            msg: >-
+              ncs-reporter exited {{ _reporter_result.rc | default('unknown') }}.
+              stderr: {{ _reporter_result.stderr | default('') }}

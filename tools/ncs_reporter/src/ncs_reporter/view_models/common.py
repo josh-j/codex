@@ -5,8 +5,8 @@ from typing import Any
 from ..primitives import canonical_severity as canonical_severity, safe_list as safe_list, to_float as to_float, to_int as to_int  # noqa: F401 (to_int re-exported)
 
 _DEFAULT_SKIP_KEYS = {
-    "Summary",
-    "Split",
+    "summary",
+    "split",
     "platform",
     "history",
     "raw_state",
@@ -88,7 +88,7 @@ def _count_alerts(alerts: Any) -> dict[str, int]:
     return counts
 
 
-def _iter_hosts(aggregated_hosts: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+def _iter_hosts(aggregated_hosts: dict[str, Any] | None) -> list[tuple[str, dict[str, Any]]]:
     if not isinstance(aggregated_hosts, dict):
         return []
     hosts_map = aggregated_hosts.get("hosts")
@@ -96,7 +96,7 @@ def _iter_hosts(aggregated_hosts: dict[str, Any]) -> list[tuple[str, dict[str, A
         aggregated_hosts = hosts_map
     rows: list[tuple[str, dict[str, Any]]] = []
     for hostname, bundle in aggregated_hosts.items():
-        if hostname in _DEFAULT_SKIP_KEYS:
+        if str(hostname).lower() in _DEFAULT_SKIP_KEYS:
             continue
         if not isinstance(bundle, dict):
             continue
@@ -105,27 +105,21 @@ def _iter_hosts(aggregated_hosts: dict[str, Any]) -> list[tuple[str, dict[str, A
     return rows
 
 
-def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, str]:
+def status_badge_meta(status: Any) -> dict[str, str]:
     """
     Normalize a status/severity string into badge presentation metadata.
     Returns a dict with:
       - css_class: one of status-ok/status-warn/status-fail
-      - label: display text
+      - label: display text (OK, WARNING, or CRITICAL)
     """
-    raw = str(status or "unknown").strip()
-    upper = raw.upper()
+    raw = str(status or "UNKNOWN").strip().upper()
 
-    ok_values = {"OK", "HEALTHY", "GREEN", "PASS", "RUNNING"}
-    fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED"}
+    ok_values = {"OK", "HEALTHY", "GREEN", "PASS", "RUNNING", "SUCCESS"}
+    fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED", "ERROR"}
 
-    if upper in ok_values:
-        css_class = "status-ok"
-        label = upper if preserve_label else "OK"
-    elif upper in fail_values:
-        css_class = "status-fail"
-        label = upper if preserve_label else "CRITICAL"
-    else:
-        css_class = "status-warn"
-        label = upper if preserve_label and upper else "WARN"
-
-    return {"css_class": css_class, "label": label}
+    if raw in ok_values:
+        return {"css_class": "status-ok", "label": "OK"}
+    if raw in fail_values:
+        return {"css_class": "status-fail", "label": "CRITICAL"}
+    
+    return {"css_class": "status-warn", "label": "WARNING"}

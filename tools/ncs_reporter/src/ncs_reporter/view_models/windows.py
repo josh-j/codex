@@ -11,7 +11,11 @@ from .common import (
 
 def _coerce_windows_audit(bundle: Any) -> dict[str, Any]:
     bundle = dict(bundle or {})
-    audit = dict(bundle.get("windows_audit") or bundle.get("windows") or {})
+    audit = dict(
+        bundle.get("windows_audit")
+        or bundle.get("windows")
+        or {}
+    )
     if not audit and ("data" in bundle or "health" in bundle):
         audit = bundle
     return audit
@@ -34,27 +38,42 @@ def build_windows_fleet_view(
         summary = dict(audit.get("summary") or {})
         apps = dict(summary.get("applications") or {})
         updates = dict(summary.get("updates") or {})
+        alerts_list = list(audit.get("alerts") or [])
+        alert_counts = {"critical": 0, "warning": 0, "total": 0}
+        
+        for alert in alerts_list:
+            sev = canonical_severity((alert or {}).get("severity"))
+            if sev == "CRITICAL":
+                alert_counts["critical"] += 1
+            elif sev == "WARNING":
+                alert_counts["warning"] += 1
+        alert_counts["total"] = alert_counts["critical"] + alert_counts["warning"]
+
         status = _status_from_health(audit.get("health"))
         if status == "CRITICAL":
             totals["critical"] += 1
         elif status == "WARNING":
             totals["warning"] += 1
         totals["hosts"] += 1
+        
+        row_summary = dict(summary)
+        row_summary["alerts"] = alert_counts
+
         rows.append(
             {
                 "name": hostname,
                 "status": {"raw": status},
-                "summary": summary,
+                "summary": row_summary,
                 "applications": apps,
                 "updates": updates,
-                "alerts": list(audit.get("alerts") or []),
+                "alerts": alerts_list,
                 "links": {
                     "node_report_latest": f"./{hostname}/health_report.html",
                     "node_report_stamped": f"./{hostname}/health_report_{report_stamp or ''}.html",
                 },
             }
         )
-        for alert in list(audit.get("alerts") or []):
+        for alert in alerts_list:
             sev = canonical_severity((alert or {}).get("severity"))
             if sev in ("CRITICAL", "WARNING"):
                 active_alerts.append(
@@ -62,7 +81,9 @@ def build_windows_fleet_view(
                         "host": hostname,
                         "severity": sev,
                         "category": (alert or {}).get("category", "windows"),
+                        "audit_type": "windows_audit",
                         "message": (alert or {}).get("message", ""),
+                        "raw": dict(alert or {}),
                     }
                 )
 
@@ -74,6 +95,7 @@ def build_windows_fleet_view(
             "report_id": report_id,
         },
         "fleet": {
+            "asset_count": totals["hosts"],
             "hosts": totals["hosts"],
             "alerts": {
                 "critical": totals["critical"],

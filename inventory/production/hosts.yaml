@@ -38,3 +38,12 @@ linux_servers:
 ubuntu_servers:
   children:
     linux_servers:
+
+windows_servers:
+  hosts:
+    win-srv-01.site1.local:
+    win-srv-02.site1.local:
+
+windows:
+  children:
+    windows_servers:

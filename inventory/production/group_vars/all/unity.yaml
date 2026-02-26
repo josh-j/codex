@@ -1,12 +1,12 @@
 # inventory/group_vars/all/unity.yaml
 unity_config:
   # Capacity thresholds (percent used)
-  capacity_warning_pct: 85
-  capacity_critical_pct: 90
+  capacity_warning_pct: 85.0
+  capacity_critical_pct: 90.0
 
   # Pool subscription threshold (percent)
-  subscription_warning_pct: 100
-  subscription_critical_pct: 120
+  subscription_warning_pct: 100.0
+  subscription_critical_pct: 120.0
 
   # Alert age threshold (hours)
   alert_age_threshold_hours: 24

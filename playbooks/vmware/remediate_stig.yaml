@@ -1,0 +1,171 @@
+---
+# playbooks/vmware/remediate_stig.yaml
+#
+# MUTATING — This playbook applies STIG hardening changes to ESXi hosts and/or VMs.
+# Changes are applied in normal mode (check_mode=false).
+#
+# Safety:
+#   - VM targets are snapshotted before hardening (via vCenter API)
+#   - ESXi hosts are bare-metal hypervisors and cannot be snapshotted;
+#     pre-flight assertions validate required variables before any changes
+#   - Post-remediation audit captures the new compliance state
+#
+# Pipeline:
+#   Phase 1: init_environment
+#   Phase 2a: VMware Discovery (read-only)
+#   Phase 2b: VM snapshots (safety — VM targets only)
+#   Phase 2c: ESXi STIG Hardening
+#   Phase 2d: VM STIG Hardening
+#   Phase 2e: Post-remediation audit (capture new state)
+#   Phase 3: Fleet report generation
+#
+# Required variables (set in inventory group_vars or extra-vars):
+#   esxi_stig_target_hosts: []   — list of ESXi FQDNs to harden
+#   vm_stig_target_vms: []       — list of VM names to harden
+#   esxi_stig_syslog_host, esxi_stig_welcome_message, esxi_stig_ntp_servers,
+#   esxi_stig_ad_admin_group, esxi_stig_log_dir — required when their rules are enabled
+
+- name: "Phase 1 | Prepare Environment"
+  ansible.builtin.import_playbook: ../common/init_environment.yaml
+  tags: ["always"]
+
+- name: "Phase 2a | VMware Discovery (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "discover"]
+
+  tasks:
+    - name: "Execute vCenter Discovery"
+      ansible.builtin.include_role:
+        name: internal.vmware.discovery
+      vars:
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'discovery') }}"
+
+# ---------------------------------------------------------------------------
+# Phase 2b: Safety snapshots for VM targets
+# ---------------------------------------------------------------------------
+- name: "Phase 2b | Pre-Hardening VM Snapshots"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "snapshot"]
+  vars:
+    _snapshot_prefix: "Ansible_Pre_STIG_Hardening"
+    _snapshot_desc: "Safety snapshot before STIG remediation"
+
+  tasks:
+    - name: "Resolve vCenter connection"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_vcenter
+
+    - name: "Snapshot | Create pre-hardening snapshot for each VM"
+      community.vmware.vmware_guest_snapshot:
+        hostname: "{{ _vcenter_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        name: "{{ item }}"
+        state: present
+        snapshot_name: "{{ _snapshot_prefix }}_{{ now(utc=true, fmt='%Y%m%d_%H%M%S') }}"
+        description: "{{ _snapshot_desc }}"
+        quiesce: true
+        memory_dump: false
+      loop: "{{ vm_stig_target_vms | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2c: ESXi STIG Hardening
+# ---------------------------------------------------------------------------
+- name: "Phase 2c | ESXi STIG Hardening (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "esxi"]
+  vars:
+    vmware_stig_enable_audit: "{{ vmware_config.stig.enable_audit | default(true) }}"
+    vmware_stig_enable_hardening: true    # MUTATING — applies changes
+    vmware_stig_target: "esxi"
+
+  tasks:
+    - name: "Execute ESXi STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+      vars:
+        vmware_validate_certs: "{{ vmware_config.validate_certs | default(false) }}"
+        vmware_stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_esxi') }}"
+      when: esxi_stig_target_hosts | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2d: VM STIG Hardening
+# ---------------------------------------------------------------------------
+- name: "Phase 2d | VM STIG Hardening (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "vm"]
+  vars:
+    vmware_stig_enable_audit: "{{ vmware_config.stig.enable_audit | default(true) }}"
+    vmware_stig_enable_hardening: true    # MUTATING — applies changes
+    vmware_stig_target: "vm"
+
+  tasks:
+    - name: "Execute VM STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+      vars:
+        vmware_validate_certs: "{{ vmware_config.validate_certs | default(false) }}"
+        vmware_stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_vm') }}"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2e: Post-remediation audit (capture new compliance state)
+# ---------------------------------------------------------------------------
+- name: "Phase 2e | Post-Remediation ESXi STIG Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "esxi"]
+  vars:
+    vmware_stig_enable_audit: "{{ vmware_config.stig.enable_audit | default(true) }}"
+    vmware_stig_enable_hardening: false   # READ-ONLY — capture post-hardening state
+    vmware_stig_target: "esxi"
+
+  tasks:
+    - name: "Execute Post-Remediation ESXi STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+      vars:
+        vmware_validate_certs: "{{ vmware_config.validate_certs | default(false) }}"
+        vmware_stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_esxi') }}"
+      when: esxi_stig_target_hosts | default([]) | length > 0
+
+- name: "Phase 2f | Post-Remediation VM STIG Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    vmware_stig_enable_audit: "{{ vmware_config.stig.enable_audit | default(true) }}"
+    vmware_stig_enable_hardening: false   # READ-ONLY — capture post-hardening state
+    vmware_stig_target: "vm"
+
+  tasks:
+    - name: "Execute Post-Remediation VM STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.stig
+      vars:
+        vmware_validate_certs: "{{ vmware_config.validate_certs | default(false) }}"
+        vmware_stig_artifacts_dir: "{{ ncs_config | internal.core.resolve_ncs_path('artifacts', audit_type='stig') | dirname }}"
+        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'stig_vm') }}"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+- name: "Phase 3 | Generate Fleet Reports"
+  ansible.builtin.import_playbook: ../common/generate_fleet_reports.yaml
+  tags: ["always"]

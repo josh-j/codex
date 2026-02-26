@@ -15,8 +15,20 @@ from .stig import build_stig_fleet_view
 def _coerce_linux_audit(bundle: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     bundle = dict(bundle or {})
     # Handle nested audit keys from recursive aggregator
-    linux_audit = dict(bundle.get("ubuntu_system_audit") or bundle.get("system") or bundle.get("audit") or {})
-    stig = dict(bundle.get("stig") or bundle.get("ubuntu_stig_audit") or bundle.get("stig_ubuntu") or {})
+    linux_audit = dict(
+        bundle.get("linux_system")
+        or bundle.get("ubuntu_system_audit")
+        or bundle.get("system")
+        or bundle.get("audit")
+        or {}
+    )
+    stig = dict(
+        bundle.get("stig_linux")
+        or bundle.get("stig")
+        or bundle.get("ubuntu_stig_audit")
+        or bundle.get("stig_ubuntu")
+        or {}
+    )
 
     # Fallback for flat loads
     if not linux_audit and ("data" in bundle or "health" in bundle):
@@ -50,6 +62,7 @@ def build_linux_fleet_view(
             crit = to_int(summary.get("critical_count", 0), 0)
             warn = to_int(summary.get("warning_count", 0), 0)
             alerts = safe_list(linux_audit.get("alerts"))
+            alert_counts = {"critical": crit, "warning": warn, "total": crit + warn}
             rows.append(
                 {
                     "name": hostname,
@@ -59,6 +72,7 @@ def build_linux_fleet_view(
                     "summary": {
                         "critical_count": crit,
                         "warning_count": warn,
+                        "alerts": alert_counts,
                     },
                     "alerts": alerts,
                     "links": {
@@ -71,18 +85,22 @@ def build_linux_fleet_view(
             totals["warning"] += warn
             totals["hosts"] += 1
             for alert in alerts:
+                sev = canonical_severity((alert or {}).get("severity"))
+                if sev not in ("CRITICAL", "WARNING"):
+                    continue
                 active_alerts.append(
                     {
                         "host": hostname,
-                        "severity": canonical_severity((alert or {}).get("severity")),
+                        "severity": sev,
                         "category": (alert or {}).get("category", "System"),
+                        "audit_type": "linux_system",
                         "message": (alert or {}).get("message", ""),
                         "raw": dict(alert or {}),
                     }
                 )
 
         if stig:
-            linux_stig_hosts[hostname] = {"stig_ubuntu": dict(stig)}
+            linux_stig_hosts[hostname] = {"stig_linux": dict(stig)}
 
     stig_fleet = build_stig_fleet_view(
         {"hosts": linux_stig_hosts},
@@ -98,6 +116,7 @@ def build_linux_fleet_view(
             "report_id": report_id,
         },
         "fleet": {
+            "asset_count": totals["hosts"],
             "hosts": totals["hosts"],
             "alerts": {
                 "critical": totals["critical"],

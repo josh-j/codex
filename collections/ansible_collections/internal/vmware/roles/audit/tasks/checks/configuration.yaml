@@ -8,7 +8,7 @@
         (vmware_ctx.inventory.clusters.list | default([]))
         | internal.vmware.audit_cluster_configuration_alerts(
           vmware_cluster_cpu_warning_pct | default(90) | float,
-          vmware_cluster_mem_warning_pct | default(90) | float
+          vmware_cluster_memory_warning_pct | default(90) | float
         )
       }}
   changed_when: false

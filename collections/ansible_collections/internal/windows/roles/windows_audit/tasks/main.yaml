@@ -4,9 +4,8 @@
 
 - name: Audit | Resolve Configuration Overrides
   ansible.builtin.set_fact:
-    # Source from windows_config (inventory) or use defaults from role
-    # Note: windows_config.include_system_apps etc. should be mapped here
-    force_update: "{{ windows_config.force_update | default(force_update | default(false)) }}"
+    # Use role variables directly (can be passed from playbook)
+    windows_audit_force_update: "{{ windows_audit_force_update | default(false) }}"
   changed_when: false
 
 - name: Audit | Initialize and Resolve Context
@@ -72,5 +71,5 @@
         name: internal.core.state
         tasks_from: export
       vars:
-        ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('windows', inventory_hostname, 'windows_audit') }}"
+        # ncs_export_path should be passed by the playbook
         ncs_export_data: "{{ _windows_audit_export_data }}"

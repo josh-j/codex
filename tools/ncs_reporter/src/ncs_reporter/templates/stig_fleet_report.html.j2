@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = stig_fleet_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set fleet = view.get('fleet', {}) %}
+    {% set totals = fleet.get('totals', {}) %}
+    {% set by_platform = fleet.get('by_platform', {}) %}
+    {% set rows = view.get('rows', []) %}
+    {% set findings_index = view.get('findings_index', {}) %}
+    {% set top_findings = findings_index.get('top_findings', []) %}
+    <title>STIG Fleet Compliance Overview</title>
+    <style>
+        {% include 'report_shared.css' %}
+        .sev-critical { color: var(--red); font-weight: bold; }
+        .sev-warning { color: var(--amber); font-weight: bold; }
+        .sev-info { color: var(--text-muted); }
+        .platform-row td:first-child { font-weight: 600; text-transform: capitalize; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>STIG Fleet Compliance Overview</h1>
+            <div class="meta">Cross-platform STIG compliance summary</div>
+        </div>
+        <div class="meta">Generated: {{ meta.get('report_date', now_datetime | default('N/A')) }}</div>
+    </div>
+
+    <div class="metrics-row">
+        <div class="metric-card">
+            <h3 class="metric-val">{{ totals.get('hosts', 0) }}</h3>
+            <p class="metric-label">Total Hosts</p>
+        </div>
+        <div class="metric-card">
+            <h3 class="metric-val" style="color: var(--red);">{{ totals.get('findings_open', 0) }}</h3>
+            <p class="metric-label">Open Findings</p>
+        </div>
+        <div class="metric-card">
+            <h3 class="metric-val" style="color: var(--red);">{{ totals.get('critical', 0) }}</h3>
+            <p class="metric-label">Critical</p>
+        </div>
+        <div class="metric-card">
+            <h3 class="metric-val" style="color: var(--amber);">{{ totals.get('warning', 0) }}</h3>
+            <p class="metric-label">Warning</p>
+        </div>
+    </div>
+
+    <h2 class="sub-title">Platform Breakdown</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Platform</th>
+                <th>Hosts</th>
+                <th>Open</th>
+                <th>Critical</th>
+                <th>Warning</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for platform_name in ['linux', 'vmware', 'windows'] %}
+            {% set p = by_platform.get(platform_name, {}) %}
+            {% if p.get('hosts', 0) > 0 %}
+            <tr class="platform-row">
+                <td>{{ platform_name }}</td>
+                <td>{{ p.get('hosts', 0) }}</td>
+                <td>{{ p.get('open', 0) }}</td>
+                <td class="{% if p.get('critical', 0) > 0 %}text-danger{% endif %}">{{ p.get('critical', 0) }}</td>
+                <td class="{% if p.get('warning', 0) > 0 %}text-warning{% endif %}">{{ p.get('warning', 0) }}</td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="sub-title">Host Details</h2>
+    {% if rows | length > 0 %}
+    <table>
+        <thead>
+            <tr>
+                <th>Host</th>
+                <th>Platform</th>
+                <th>Audit Type</th>
+                <th>Status</th>
+                <th>Open</th>
+                <th>Critical</th>
+                <th>Warning</th>
+                <th>Report</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            {% set row_badge = (row.get('status', {}).get('raw', 'UNKNOWN')) | status_badge_meta %}
+            <tr>
+                <td><strong>{{ row.get('host', '') }}</strong></td>
+                <td>{{ row.get('platform', '') }}</td>
+                <td>{{ row.get('audit_type', '') }}</td>
+                <td><span class="badge {{ row_badge.css_class }}">{{ row_badge.label }}</span></td>
+                <td>{{ row.get('findings_open', 0) }}</td>
+                <td class="{% if row.get('critical', 0) > 0 %}text-danger{% endif %}">{{ row.get('critical', 0) }}</td>
+                <td class="{% if row.get('warning', 0) > 0 %}text-warning{% endif %}">{{ row.get('warning', 0) }}</td>
+                <td>
+                    {% set link = row.get('links', {}).get('node_report_latest', '') %}
+                    {% if link %}
+                    <a href="{{ link }}" class="nav-link">View</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+        <p>No STIG audit data found.</p>
+    </div>
+    {% endif %}
+
+    {% if top_findings | length > 0 %}
+    <h2 class="sub-title">Top Findings (Most Affected Hosts)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th class="col-id">Rule ID</th>
+                <th class="col-sev">Severity</th>
+                <th>Affected Hosts</th>
+                <th>Title</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for f in top_findings %}
+            <tr>
+                <td class="col-id">{{ f.get('rule_id', '') }}</td>
+                <td>
+                    <span class="sev-{{ f.get('severity', 'info') | lower }}">
+                        {{ f.get('severity', 'INFO') | upper }}
+                    </span>
+                </td>
+                <td>{{ f.get('affected_hosts', 0) }}</td>
+                <td>{{ f.get('title', '') }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

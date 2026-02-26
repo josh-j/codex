@@ -74,7 +74,7 @@
                 </thead>
                 <tbody>
                     {% for row in rows %}
-     {% set _badge = row.status.raw | status_badge_meta(true) %}
+     {% set _badge = row.status.raw | status_badge_meta %}
      {% set inv = row.inventory | default({}) %}
      {% set util = row.utilization | default({}) %}
                         <tr>
@@ -107,7 +107,7 @@
                 </thead>
                 <tbody>
                     {% for alert in active_alerts %}
-     {% set _badge = (alert.severity | default('UNKNOWN')) | status_badge_meta(true) %}
+     {% set _badge = (alert.severity | default('UNKNOWN')) | status_badge_meta %}
                     <tr>
                         <td><strong>{{ alert.host }}</strong></td>
                         <td><span class="badge {{ _badge.css_class }}">{{ _badge.label }}</span></td>

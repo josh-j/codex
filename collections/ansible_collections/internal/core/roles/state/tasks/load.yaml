@@ -21,7 +21,7 @@
       block:
         - name: "State | Resolve checkpoint path"
           ansible.builtin.set_fact:
-            _checkpoint_path: "{{ ncs_config | internal.core.resolve_ncs_path(ncs_load_platform, inventory_hostname, ncs_load_type | default('discovery')) }}"
+            _checkpoint_path: "{{ ncs_checkpoint_path }}"
 
         - name: "State | Stat checkpoint file"
           ansible.builtin.stat:

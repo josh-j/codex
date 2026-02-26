@@ -37,7 +37,10 @@ def parse_json_command_result(command_result, object_only=True):
     Supports outputs where JSON is preceded or followed by login banners or shell noise.
     """
     command_result = command_result or {}
-    rc = int(command_result.get("rc", 1) or 1)
+    rc = command_result.get("rc")
+    if rc is None:
+        rc = 1
+    rc = int(rc)
     stdout = str(command_result.get("stdout", "") or "").strip()
     stderr = str(command_result.get("stderr", "") or "").strip()
 
@@ -45,16 +48,16 @@ def parse_json_command_result(command_result, object_only=True):
     script_valid = False
 
     if stdout:
-        # Find all blocks that look like JSON objects
-        # Using a non-greedy but balanced-ish approach: look for {} pairs
-        # This is a heuristic; json.loads will do the heavy lifting.
-        matches = re.finditer(r"(\{.*\})", stdout, re.DOTALL)
+        # Find all blocks that look like JSON objects or lists
+        # Using a non-greedy but balanced-ish approach
+        matches = re.finditer(r"([\{\[].*[\}\]])", stdout, re.DOTALL)
         for match in matches:
             candidate = match.group(1).strip()
             try:
-                payload = json.loads(candidate)
-                if object_only and not isinstance(payload, dict):
+                candidate_payload = json.loads(candidate)
+                if object_only and not isinstance(candidate_payload, dict):
                     continue
+                payload = candidate_payload
                 script_valid = rc == 0
                 break  # Found the first valid JSON block
             except (json.JSONDecodeError, TypeError):

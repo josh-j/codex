@@ -1,8 +1,8 @@
 # inventory/group_vars/all/datadomain.yaml
 datadomain_config:
   # Capacity thresholds (percent used)
-  capacity_warning_pct: 85
-  capacity_critical_pct: 90
+  capacity_warning_pct: 85.0
+  capacity_critical_pct: 90.0
 
   # Compression ratio warning
   compression_ratio_min: 10

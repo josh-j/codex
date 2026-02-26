@@ -101,10 +101,5 @@
   vars:
     stig_quiet_mode: "{{ windows_stig_quiet_mode | default(false) }}"
     stig_target_type: "{{ windows_stig_target_type | default('windows_server_2022') }}"
-    ncs_export_path: >-
-      {{
-        (ncs_config.report_directory | default('/srv/samba/reports'))
-        ~ '/platform/windows/'
-        ~ inventory_hostname
-        ~ '/stig.yaml'
-      }}
+    stig_audit_type: "stig_windows"
+    ncs_export_path: "{{ ncs_export_path }}"

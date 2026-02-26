@@ -14,7 +14,20 @@
       "Bash(PYTHONPATH=src python:*)",
       "WebFetch(domain:github.com)",
       "Bash(gh api:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(make lint:*)",
+      "Bash(make check:*)",
+      "Bash(make test:*)",
+      "Bash(make jinja-lint:*)",
+      "Bash(make ansible-lint:*)",
+      "Bash(pytest:*)",
+      "Bash(pip show:*)",
+      "Bash(/Users/joshj/dev/codex/.venv/bin/pip show:*)",
+      "Bash(/Users/joshj/dev/codex/.venv/bin/pip install:*)",
+      "Bash(/Users/joshj/dev/codex/.venv/bin/python:*)",
+      "Bash(make all:*)",
+      "Bash(ruff check:*)",
+      "Bash(test:*)"
     ]
   }
 }

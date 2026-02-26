@@ -6,12 +6,7 @@
     _stig_checked_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
     _stig_report_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
     _stig_target_type: "{{ stig_target_type | default('unknown') }}"
-    _stig_resolved_yaml_path: >-
-      {{
-        ncs_export_path | default(
-          ncs_config | internal.core.resolve_ncs_path('stig', inventory_hostname, 'stig_' ~ (stig_target_type | default('unknown')))
-        )
-      }}
+    _stig_resolved_yaml_path: "{{ ncs_export_path }}"
   changed_when: false
 
 - name: "STIG | Run normalization filter"
@@ -44,7 +39,7 @@
   vars:
     ncs_export_path: "{{ _stig_resolved_yaml_path }}"
     ncs_export_data:
-      audit_type: stig
+      audit_type: "{{ stig_audit_type | default('stig') }}"
       audit_failed: "{{ _stig_audit_failed | default(false) | bool }}"
       host: "{{ inventory_hostname }}"
       target_type: "{{ _stig_target_type }}"
@@ -94,23 +89,3 @@
     label: "{{ item.0 }}"
   delegate_to: localhost
 
-- name: "STIG | Render HTML report"
-  tags: [stig, reporting]
-  when: _stig_audit_full_list_normalized | length > 0
-  ansible.builtin.template:
-    src: "stig_report.html.j2"
-    dest: "{{ _stig_resolved_yaml_path | dirname }}/{{ inventory_hostname }}_stig_{{ _stig_target_type }}.html"
-    mode: "0664"
-  vars:
-    # Build the dictionary directly so the Python filter doesn't strip the lists
-    stig_host_view:
-      meta:
-        report_date: "{{ _stig_checked_at }}"
-        report_id: "{{ _stig_report_id }}"
-      target:
-        host: "{{ inventory_hostname }}"
-        target_type: "{{ _stig_target_type }}"
-      health: "{{ _stig_alerts_normalized | internal.core.health_rollup | default('UNKNOWN') }}"
-      violations: "{{ _stig_audit_violations_normalized }}"
-      full_audit: "{{ _stig_audit_full_list_normalized }}"
-  delegate_to: localhost

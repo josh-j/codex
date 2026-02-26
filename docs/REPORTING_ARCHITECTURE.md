@@ -1,12 +1,11 @@
 # Reporting Pipeline Architecture
 
-This repo now uses a layered reporting pipeline for Linux, VMware, Windows, site dashboards, and STIG reports.
+This repo uses a layered reporting pipeline for Linux, VMware, Windows, site dashboards, and STIG reports. Stages 2–6 are handled by the standalone `ncs_reporter` Python CLI; Ansible is responsible only for auditing systems and emitting raw data (Stage 1).
 
 ## Canonical Source Layout
 
-- Collection code lives under `/Users/joshj/dev/codex/collections/ansible_collections/internal/...`
-- Reporting helpers and shared tasks are centered in:
-  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core`
+- Collection code lives under `collections/ansible_collections/internal/...`
+- The standalone reporting CLI lives under `tools/ncs_reporter/`
 
 ## Pipeline Stages
 
@@ -21,14 +20,10 @@ Examples:
 
 These outputs are considered raw inputs for aggregation.
 
-### 2. Aggregation (Python)
+### 2. Aggregation
 
-The shared aggregation script collects host YAML files and builds an aggregated host map:
+The `ncs_reporter collect` command collects host YAML files and builds aggregated fleet state files:
 
-- `/Users/joshj/dev/codex/playbooks/scripts/aggregate_yaml_reports.py`
-
-Output is typically written as:
-- `all_hosts_state.yaml`
 - `linux_fleet_state.yaml`
 - `vmware_fleet_state.yaml`
 - `windows_fleet_state.yaml`
@@ -39,10 +34,9 @@ The aggregated shape is the handoff between emitters and reporting views.
 
 Normalization converts platform payload variants into canonical shapes for downstream builders.
 
-Examples:
-- Shared primitives and normalization helpers:
-  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/module_utils/reporting_primitives.py`
-  - `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/module_utils/report_view_models.py`
+Key modules:
+- `tools/ncs_reporter/src/ncs_reporter/aggregation.py`
+- `collections/ansible_collections/internal/core/plugins/module_utils/normalization.py`
 
 Goal:
 - keep payload adaptation out of playbooks and templates
@@ -50,62 +44,45 @@ Goal:
 
 ### 4. View-Model Builders (Python)
 
-Template-facing data is built in shared view-model builders:
+Template-facing data is built in view-model builders under:
 
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/module_utils/report_view_models.py`
+- `tools/ncs_reporter/src/ncs_reporter/view_models/`
 
-Key builders:
-- `build_vmware_fleet_view(...)`
-- `build_vmware_node_view(...)`
-- `build_linux_fleet_view(...)`
-- `build_linux_node_view(...)`
-- `build_site_dashboard_view(...)`
-- `build_stig_host_view(...)`
-- `build_stig_fleet_view(...)`
-
-Windows view-model builders currently live in the Windows collection filter layer (`internal.windows.windows_fleet_view`, `internal.windows.windows_node_view`) and may be promoted into shared module_utils if Windows reporting grows further.
+Platform modules:
+- `vmware.py` — `build_vmware_fleet_view(...)`, `build_vmware_node_view(...)`
+- `linux.py` — `build_linux_fleet_view(...)`, `build_linux_node_view(...)`
+- `windows.py` — `build_windows_fleet_view(...)`, `build_windows_node_view(...)`
+- `site.py` — `build_site_dashboard_view(...)`
+- `common.py` — shared primitives and skip-key logic
 
 Contract conventions:
 - `status.raw` for normalized status/health display state
 - `links.*` for template navigation links
 - precomputed fleet totals / alert rollups / STIG finding lists
 
-### 5. Rendering / Orchestration (Ansible)
+### 5. Rendering / Orchestration
 
-Ansible roles orchestrate:
-- directory creation
-- template rendering
-- latest symlink maintenance
-- archive/retention behavior
-
-Shared reporting task helpers:
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/roles/reporting/tasks/prepare_platform_state.yaml`
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/roles/reporting/tasks/host_loop_ensure_dirs.yaml`
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/roles/reporting/tasks/host_loop_render_template.yaml`
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/roles/reporting/tasks/host_loop_latest_symlink.yaml`
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/roles/reporting/tasks/site_dashboard.yaml`
-
-Platform summary roles (Linux/VMware/Windows) now build view models and pass them into templates.
+The `ncs_reporter` CLI handles rendering: directory creation, template rendering, latest symlink maintenance, and archive/retention behavior. Ansible invokes it via `playbooks/common/generate_fleet_reports.yaml`.
 
 ### 6. Presentation (Jinja + Shared CSS)
 
-Templates should focus on rendering, not aggregation.
+Templates and shared CSS live in:
 
-Examples:
+- `tools/ncs_reporter/src/ncs_reporter/templates/`
+
+Templates focus on rendering, not aggregation:
 - Linux fleet/node dashboards
 - VMware fleet/node dashboards
 - Windows fleet/node dashboards
 - Global site dashboard
-- Core STIG HTML report
-
-Shared CSS/filter helpers are provided via core filters to keep styling and formatting centralized.
+- STIG per-host and fleet compliance reports
 
 ## Skip Keys and Host Loops
 
 Aggregated host maps include structural/state entries that are not real hosts (for example `platform`, `history`, `*_fleet_state`, and platform container directories like `ubuntu` / `vmware` / `windows`).
 
 Canonical skip keys are centralized in:
-- `/Users/joshj/dev/codex/collections/ansible_collections/internal/core/plugins/module_utils/report_view_models.py`
+- `tools/ncs_reporter/src/ncs_reporter/view_models/common.py`
 
 And exposed via:
 - `internal.core.report_skip_keys`
@@ -153,9 +130,10 @@ ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inven
 - Use internal prefixes (e.g., `_`) for transient task-level variables (`set_fact`, `register`).
 - Avoid mutating global configuration objects directly; return new objects or specific facts instead.
 
-## Design Rules (current)
+## Design Rules
 
 - Prefer collection-path imports and collection-local code as canonical source of truth
 - Keep compatibility normalization in Python, not Jinja
 - Treat template-facing view models as contracts (test them)
 - Avoid repo-layout string parsing when deriving paths; use role vars / `playbook_dir | dirname`
+- Ansible handles audit/emit only; `ncs_reporter` CLI owns aggregation through presentation

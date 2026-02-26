@@ -10,3 +10,4 @@
     ncs_load_type: "discovery"
     ncs_load_schema_ref: "internal.linux:schemas/ubuntu_ctx.yaml"
     ncs_load_root_key: "ubuntu_ctx"
+    ncs_checkpoint_path: "{{ ncs_checkpoint_path | default('') }}"

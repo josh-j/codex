@@ -16,10 +16,10 @@
 
 - name: Audit | Resolve Configuration Overrides
   ansible.builtin.set_fact:
-    ubuntu_mem_warning_pct: "{{ ubuntu_config.mem_warning_pct | default(ubuntu_mem_warning_pct) }}"
-    ubuntu_disk_warning_pct: "{{ ubuntu_config.disk_warning_pct | default(ubuntu_disk_warning_pct) }}"
-    ubuntu_load_warning_threshold: "{{ ubuntu_config.load_warning_threshold | default(ubuntu_load_warning_threshold) }}"
-    ubuntu_updates_critical_threshold: "{{ ubuntu_config.updates_critical_threshold | default(ubuntu_updates_critical_threshold) }}"
+    ubuntu_memory_warning_pct: "{{ ubuntu_memory_warning_pct | default(95) }}"
+    ubuntu_storage_warning_pct: "{{ ubuntu_storage_warning_pct | default(90) }}"
+    ubuntu_load_warning_threshold: "{{ ubuntu_load_warning_threshold | default(15) }}"
+    ubuntu_updates_critical_threshold: "{{ ubuntu_updates_critical_threshold | default(50) }}"
   changed_when: false
 
 - name: Discovery - System, Updates, & Security
@@ -37,6 +37,6 @@
     name: internal.core.state
     tasks_from: export
   vars:
-    ncs_export_path: "{{ ncs_config | internal.core.resolve_ncs_path('ubuntu', inventory_hostname, 'discovery') }}"
+    # ncs_export_path should be passed by the playbook
     ncs_export_data: "{{ ubuntu_ctx }}"
   when: not (ubuntu_skip_export | default(false) | bool)

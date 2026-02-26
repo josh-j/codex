@@ -5,8 +5,8 @@ ubuntu_config:
   ansible_python_interpreter: /usr/bin/python3
 
   # Thresholds
-  disk_warning_pct: 90
-  mem_warning_pct: 95
+  storage_warning_pct: 90.0
+  memory_warning_pct: 95.0
   updates_critical_threshold: 50
   load_warning_threshold: 15
 

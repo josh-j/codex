@@ -1,0 +1,29 @@
+[
+  {
+    "id": "V-258702",
+    "title": "The ESXi host must verify the DCUI.Access list",
+    "status": "pass",
+    "severity": "high",
+    "checktext": "DCUI.Access is correctly configured",
+    "fixtext": "Set DCUI.Access to root only",
+    "name": "esxi-01.lab.local"
+  },
+  {
+    "id": "V-258703",
+    "title": "The ESXi host must configure NTP",
+    "status": "failed",
+    "severity": "medium",
+    "checktext": "NTP is not configured correctly",
+    "fixtext": "Configure NTP time synchronization",
+    "name": "esxi-01.lab.local"
+  },
+  {
+    "id": "V-258704",
+    "title": "The ESXi host must disable SSH",
+    "status": "fixed",
+    "severity": "high",
+    "checktext": "SSH was enabled and has been disabled",
+    "fixtext": "Disable SSH on the ESXi host",
+    "name": "esxi-01.lab.local"
+  }
+]

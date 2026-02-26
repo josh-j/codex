@@ -1,0 +1,18 @@
+---
+ubuntu_ctx:
+  system:
+    hostname: ubuntu-web-01
+    memory:
+      used_pct: 45.0
+      total_mb: 16384
+    disks:
+      - device: /dev/sda1
+        mount: /
+        used_pct: 55.0
+    services:
+      failed_count: 0
+      failed_list: []
+    load_avg: 0.5
+    uptime_days: 30
+  updates:
+    reboot_pending: false

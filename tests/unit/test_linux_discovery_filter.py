@@ -29,8 +29,8 @@ class LinuxDiscoveryFilterTests(unittest.TestCase):
     def setUpClass(cls):
         cls.module = _load_module()
 
-    def test_build_disk_inventory_filters_loop_and_computes_usage(self):
-        out = self.module.build_disk_inventory(
+    def test_build_storage_inventory_filters_loop_and_computes_usage(self):
+        out = self.module.build_storage_inventory(
             [
                 {"device": "/dev/sda1", "mount": "/", "fstype": "ext4", "size_total": 100, "size_available": 25},
                 {

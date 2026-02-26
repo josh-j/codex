@@ -2,7 +2,7 @@
 # Primary Data Model: vmware_ctx
 # This object is exported as the host's state for Phase 3.
 vmware_ctx:
-  audit_type: "vcenter_health"
+  audit_type: "vmware_vcenter"
   checks_failed: false
 
   # 1. Identity & Metadata

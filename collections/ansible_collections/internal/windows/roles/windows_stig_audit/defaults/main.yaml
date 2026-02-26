@@ -11,4 +11,4 @@ windows_stig_target_type: "windows_server_2022"
 
 # Optional sources for precomputed STIG findings rows
 windows_stig_input_rows: []
-windows_stig_artifact_file: "{{ playbook_dir | default('.') }}/../.artifacts/windows_stig_{{ inventory_hostname }}_failures.json"
+windows_stig_artifact_file: ""

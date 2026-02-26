@@ -17,7 +17,7 @@ _to_float = _prim.to_float
 safe_list = _prim.safe_list
 
 
-def build_disk_inventory(mounts):
+def build_storage_inventory(mounts):
     results = []
     for mount in safe_list(mounts):
         if not isinstance(mount, dict):
@@ -125,7 +125,7 @@ def parse_apt_simulate_output(stdout_lines):
 class FilterModule:
     def filters(self):
         return {
-            "build_disk_inventory": build_disk_inventory,
+            "build_storage_inventory": build_storage_inventory,
             "build_user_inventory": build_user_inventory,
             "parse_sshd_config": parse_sshd_config,
             "collect_existing_file_stats": collect_existing_file_stats,

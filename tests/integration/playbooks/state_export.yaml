@@ -1,0 +1,31 @@
+---
+# Integration test wrapper: core state export + slurp-back
+- name: State Export Integration Test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Export state via core state role
+      ansible.builtin.include_role:
+        name: internal.core.state
+        tasks_from: export
+      vars:
+        ncs_export_path: "{{ _state_export_path }}"
+        ncs_export_data: "{{ export_data }}"
+
+    - name: Slurp exported state
+      ansible.builtin.slurp:
+        src: "{{ _state_export_path }}"
+      register: _exported_raw
+
+    - name: Dump results to JSON
+      ansible.builtin.copy:
+        dest: "{{ _output_path }}"
+        mode: "0644"
+        content: >-
+          {{
+            {
+              'exported_yaml': (_exported_raw.content | b64decode | from_yaml)
+            } | to_json
+          }}

@@ -1,6 +1,6 @@
-# Codex Project Context
+# NCS Project Context
 
-Codex is a sophisticated Ansible-based automation and reporting system designed for managing and auditing a heterogeneous fleet of servers, including Linux (Ubuntu), VMware (ESXi/vCenter), and Windows.
+NCS is a sophisticated Ansible-based automation and reporting system designed for managing and auditing a heterogeneous fleet of servers, including Linux (Ubuntu), VMware (ESXi/vCenter), and Windows.
 
 ## Project Overview
 

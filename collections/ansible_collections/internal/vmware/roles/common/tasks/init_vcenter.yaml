@@ -20,7 +20,6 @@
     # Adapt vaulted credentials to role-standard names
     vmware_username: "{{ vmware_username | default(vault_vcenter_username | default('')) }}"
     vmware_password: "{{ vmware_password | default(vault_vcenter_password | default('')) }}"
-    # Adapt from structured vmware_config
-    vmware_validate_certs: "{{ vmware_config.validate_certs | default(vmware_validate_certs | default(false)) | bool }}"
+    vmware_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   changed_when: false
   no_log: true

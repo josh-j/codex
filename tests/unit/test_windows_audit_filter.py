@@ -95,7 +95,7 @@ class WindowsAuditFilterTests(unittest.TestCase):
         self.assertEqual(out["summary"]["updates"]["failed_count"], 1)
         self.assertEqual(out["check_metadata"]["engine"], "ansible-ncs-windows")
         self.assertIn("timestamp", out["check_metadata"])
-        self.assertIn("windows_ctx", out)
+        self.assertIn("windows_audit", out)
 
 
 if __name__ == "__main__":

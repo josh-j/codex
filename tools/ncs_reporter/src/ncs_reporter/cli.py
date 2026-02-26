@@ -14,6 +14,7 @@ from .view_models.linux import build_linux_fleet_view, build_linux_node_view
 from .view_models.vmware import build_vmware_fleet_view, build_vmware_node_view
 from .view_models.windows import build_windows_fleet_view, build_windows_node_view
 from .view_models.site import build_site_dashboard_view
+from .view_models.stig import build_stig_host_view, build_stig_fleet_view
 
 _VIEW_MODEL_KEYS = {"report_stamp", "report_date", "report_id"}
 
@@ -323,6 +324,11 @@ def all(platform_root: str, reports_root: str, groups_file: str | None, report_s
         
         click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
 
+        # 3. STIG Fleet Rendering
+        click.echo("--- Processing STIG Fleet Reports ---")
+        _render_stig(global_data.get("hosts", global_data), r_root, env, common_vars)
+        click.echo("STIG fleet reports generated.")
+
 
 @main.command()
 @click.option("--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type.")
@@ -444,6 +450,89 @@ def _render_platform_windows(hosts_data: dict[str, Any], output_path: Path, env:
         f.write(content)
     with open(output_path / "windows_health_report.html", "w") as f:
         f.write(content)
+
+
+def _render_stig(hosts_data: dict[str, Any], output_path: Path, env: Environment, common_vars: dict[str, Any]) -> None:
+    """Render per-host STIG reports and fleet overview."""
+    report_stamp = common_vars["report_stamp"]
+    host_tpl = env.get_template("stig_host_report.html.j2")
+    vm_kw = _vm_kwargs(common_vars)
+    all_hosts_data: dict[str, Any] = {}
+
+    for hostname, bundle in hosts_data.items():
+        if not isinstance(bundle, dict):
+            continue
+        for audit_type, payload in bundle.items():
+            if not str(audit_type).lower().startswith("stig"):
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            host_view = build_stig_host_view(hostname, audit_type, payload, **vm_kw)
+            target = host_view["target"]
+            platform = target.get("platform", "unknown")
+            target_type = target.get("target_type", "unknown")
+
+            if platform == "vmware":
+                platform_dir = "platform/vmware"
+            elif platform == "windows":
+                platform_dir = "platform/windows"
+            else:
+                platform_dir = "platform/ubuntu"
+
+            host_dir = output_path / platform_dir / hostname
+            host_dir.mkdir(parents=True, exist_ok=True)
+
+            content = host_tpl.render(stig_host_view=host_view, **common_vars)
+            dest_name = f"{hostname}_stig_{target_type}.html"
+            with open(host_dir / dest_name, "w") as f:
+                f.write(content)
+
+            # Track for fleet view
+            all_hosts_data.setdefault(hostname, {})[audit_type] = payload
+
+    if all_hosts_data:
+        fleet_view = build_stig_fleet_view(all_hosts_data, **vm_kw)
+        fleet_tpl = env.get_template("stig_fleet_report.html.j2")
+        content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
+        with open(output_path / f"stig_fleet_report_{report_stamp}.html", "w") as f:
+            f.write(content)
+        with open(output_path / "stig_fleet_report.html", "w") as f:
+            f.write(content)
+
+
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
+def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
+    """Generate STIG compliance reports (per-host and fleet overview)."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(input_file) as f:
+        data = yaml.safe_load(f)
+
+    hosts_data = data.get("hosts", data) if isinstance(data, dict) else {}
+
+    now = datetime.utcnow()
+    stamp = report_stamp or now.strftime("%Y%m%d")
+    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    rid = now.strftime("%Y%m%dT%H%M%SZ")
+    now_date = now.strftime("%Y-%m-%d")
+
+    env = get_jinja_env()
+    common_vars = {
+        "report_stamp": stamp,
+        "report_date": date_str,
+        "report_id": rid,
+        "now_date": now_date,
+        "now_datetime": date_str,
+    }
+
+    _render_stig(hosts_data, output_path, env, common_vars)
+
+    click.echo(f"Done! STIG reports generated in {output_dir}")
 
 
 if __name__ == "__main__":

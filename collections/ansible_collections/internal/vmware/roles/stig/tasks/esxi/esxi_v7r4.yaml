@@ -209,7 +209,7 @@
   community.vmware.vmware_host_config_manager:
     esxi_hostname: "{{ _current_esxi_host }}"
     options:
-      Mem.MemEagerZero: "{{ esxi_stig_mem_eager_zero | default(1) }}"
+      Mem.MemEagerZero: "{{ esxi_stig_memory_eager_zero | default(1) }}"
   when: esxi_70_000087_Manage | default(esxi_70_000087) | default(true) | bool
 
 # --- V-256440 / ESXI-70-000088: API session timeout ---
@@ -455,35 +455,1125 @@
     - not (_q_256417.failed | default(false))
 
 # =========================================================================
-# GROUP E: Audit-only stubs (require manual or SSH-based checks)
+# GROUP E: vSwitch / Port Group security (formerly stubs)
 # =========================================================================
 
-# --- V-256402 / ESXI-70-000037: Active Directory ---
-- name: stigrule_256402_active_directory
-  ansible.builtin.debug:
-    msg: "ESXI-70-000037: AD membership requires manual verification for {{ _current_esxi_host }}"
+# Gather vSwitch info for 000059/000060/000061 loop targets
+- name: "ESXi STIG | Gather vSwitch info"
+  community.vmware.vmware_vswitch_info:
+    esxi_hostname: "{{ _current_esxi_host }}"
+  register: _vswitch_info
+  check_mode: false
+  changed_when: false
+  when: >-
+    (esxi_70_000059_Manage | default(true) | bool) or
+    (esxi_70_000060_Manage | default(true) | bool) or
+    (esxi_70_000061_Manage | default(true) | bool)
+
+# --- V-256402 / ESXI-70-000037: Active Directory (audit-only) ---
+- name: stigrule_256402_ad_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$authInfo = \$vmhost | Get-VMHostAuthentication;
+      if (\$authInfo.Domain) { \$authInfo.Domain } else { 'NOT_JOINED' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256402
+  changed_when: false
+  check_mode: false
+  no_log: true
   when: esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
 
-# --- V-256414 / ESXI-70-000053: SNMP ---
+- name: stigrule_256402_ad_assert
+  ansible.builtin.assert:
+    that:
+      - _q_256402.stdout | default('NOT_JOINED') | trim != 'NOT_JOINED'
+    fail_msg: "ESXi host {{ _current_esxi_host }} is not joined to an AD domain"
+    success_msg: "ESXi host joined to domain: {{ _q_256402.stdout | default('') | trim }}"
+  when:
+    - esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
+    - _q_256402 is not skipped
+    - not (_q_256402.failed | default(false))
+
+# --- V-256414 / ESXI-70-000053: SNMP disabled ---
 - name: stigrule_256414_snmp
-  ansible.builtin.debug:
-    msg: "ESXI-70-000053: SNMP configuration requires direct ESXi connection for {{ _current_esxi_host }}"
+  community.vmware.vmware_host_snmp:
+    hostname: "{{ _current_esxi_host }}"
+    state: disabled
   when: esxi_70_000053_Manage | default(esxi_70_000053) | default(true) | bool
 
-# --- V-256420 / ESXI-70-000059: Forged transmits ---
-- name: stigrule_256420_forged_transmits
-  ansible.builtin.debug:
-    msg: "ESXI-70-000059: vSwitch forged transmits requires per-switch inspection for {{ _current_esxi_host }}"
-  when: esxi_70_000059_Manage | default(esxi_70_000059) | default(true) | bool
+# --- V-256420 / ESXI-70-000059: Forged transmits reject (vSwitch-level) ---
+- name: stigrule_256420_forged_transmits_vswitch
+  community.vmware.vmware_vswitch:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    switch: "{{ item }}"
+    security:
+      forged_transmits: false
+  loop: >-
+    {{ (_vswitch_info.hosts_vswitch_info | default({}))[_current_esxi_host] | default({}) | list }}
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - esxi_70_000059_Manage | default(esxi_70_000059) | default(true) | bool
+    - _vswitch_info is not skipped
 
-# --- V-256421 / ESXI-70-000060: MAC changes ---
-- name: stigrule_256421_mac_changes
-  ansible.builtin.debug:
-    msg: "ESXI-70-000060: vSwitch MAC changes requires per-switch inspection for {{ _current_esxi_host }}"
-  when: esxi_70_000060_Manage | default(esxi_70_000060) | default(true) | bool
+# --- V-256421 / ESXI-70-000060: MAC changes reject (vSwitch-level) ---
+- name: stigrule_256421_mac_changes_vswitch
+  community.vmware.vmware_vswitch:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    switch: "{{ item }}"
+    security:
+      mac_changes: false
+  loop: >-
+    {{ (_vswitch_info.hosts_vswitch_info | default({}))[_current_esxi_host] | default({}) | list }}
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - esxi_70_000060_Manage | default(esxi_70_000060) | default(true) | bool
+    - _vswitch_info is not skipped
 
-# --- V-256422 / ESXI-70-000061: Promiscuous mode ---
-- name: stigrule_256422_promiscuous_mode
+# --- V-256422 / ESXI-70-000061: Promiscuous mode reject (vSwitch-level) ---
+- name: stigrule_256422_promiscuous_mode_vswitch
+  community.vmware.vmware_vswitch:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    switch: "{{ item }}"
+    security:
+      promiscuous_mode: false
+  loop: >-
+    {{ (_vswitch_info.hosts_vswitch_info | default({}))[_current_esxi_host] | default({}) | list }}
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - esxi_70_000061_Manage | default(esxi_70_000061) | default(true) | bool
+    - _vswitch_info is not skipped
+
+# =========================================================================
+# GROUP F: Additional advanced settings (vmware_host_config_manager)
+# =========================================================================
+
+# --- V-256436 / ESXI-70-000084: Audit record storage validation ---
+- name: stigrule_256436_audit_record_validation
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.vimsvc.authValidateRecords: "true"
+  when: esxi_70_000084_Manage | default(true) | bool
+
+# --- V-256437 / ESXI-70-000085: Syslog x509 strict ---
+- name: stigrule_256437_syslog_x509_strict
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.certificate.checkSSLCerts: "true"
+  when: esxi_70_000085_Manage | default(true) | bool
+
+# --- V-256447 / ESXI-70-000095: Execute installed only ---
+- name: stigrule_256447_exec_installed_only
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      VMkernel.Boot.execInstalledOnly: "true"
+  when: esxi_70_000095_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP G: Network / port group audit rules (pwsh query+assert)
+# =========================================================================
+
+# --- V-256411 / ESXI-70-000048: Port group forged transmits reject ---
+- name: stigrule_256411_pg_forged_transmits_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.ForgedTransmits -eq \$true };
+      if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256411
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000048_Manage | default(true) | bool
+
+- name: stigrule_256411_pg_forged_transmits_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256411.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups allow forged transmits: {{ _q_256411.stdout | default('') }}"
+    success_msg: "All port groups reject forged transmits"
+  when:
+    - esxi_70_000048_Manage | default(true) | bool
+    - _q_256411 is not skipped
+    - not (_q_256411.failed | default(false))
+
+# --- V-256412 / ESXI-70-000049: Port group MAC changes reject ---
+- name: stigrule_256412_pg_mac_changes_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.MacChanges -eq \$true };
+      if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256412
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000049_Manage | default(true) | bool
+
+- name: stigrule_256412_pg_mac_changes_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256412.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups allow MAC changes: {{ _q_256412.stdout | default('') }}"
+    success_msg: "All port groups reject MAC changes"
+  when:
+    - esxi_70_000049_Manage | default(true) | bool
+    - _q_256412 is not skipped
+    - not (_q_256412.failed | default(false))
+
+# --- V-256413 / ESXI-70-000050: Port group promiscuous mode reject ---
+- name: stigrule_256413_pg_promiscuous_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.AllowPromiscuous -eq \$true };
+      if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256413
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000050_Manage | default(true) | bool
+
+- name: stigrule_256413_pg_promiscuous_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256413.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups allow promiscuous mode: {{ _q_256413.stdout | default('') }}"
+    success_msg: "All port groups reject promiscuous mode"
+  when:
+    - esxi_70_000050_Manage | default(true) | bool
+    - _q_256413 is not skipped
+    - not (_q_256413.failed | default(false))
+
+# --- V-256418 / ESXI-70-000057: Firewall default action deny ---
+- name: stigrule_256418_firewall_default_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$fw = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostFirewallDefaultPolicy;
+      if (\$fw.IncomingEnabled -or \$fw.OutgoingEnabled) { 'NON_COMPLIANT' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256418
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000057_Manage | default(false) | bool
+
+- name: stigrule_256418_firewall_default_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256418.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Firewall default policy allows traffic — should be deny"
+    success_msg: "Firewall default policy is deny"
+  when:
+    - esxi_70_000057_Manage | default(false) | bool
+    - _q_256418 is not skipped
+    - not (_q_256418.failed | default(false))
+
+# --- V-256424 / ESXI-70-000063: No VLAN 4095 (trunk) on port groups ---
+- name: stigrule_256424_vlan_4095_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { \$_.VLanId -eq 4095 };
+      if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256424
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000063_Manage | default(true) | bool
+
+- name: stigrule_256424_vlan_4095_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256424.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups using VLAN 4095 (trunk): {{ _q_256424.stdout | default('') }}"
+    success_msg: "No port groups use VLAN 4095"
+  when:
+    - esxi_70_000063_Manage | default(true) | bool
+    - _q_256424 is not skipped
+    - not (_q_256424.failed | default(false))
+
+# --- V-256425 / ESXI-70-000064: No reserved VLANs (1001-1024, 3968-4047, 4094) ---
+- name: stigrule_256425_reserved_vlans_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { (\$_.VLanId -ge 1001 -and \$_.VLanId -le 1024) -or
+                       (\$_.VLanId -ge 3968 -and \$_.VLanId -le 4047) -or
+                       (\$_.VLanId -eq 4094) };
+      if (\$bad) { (\$bad | ForEach-Object { \"\$(\$_.Name)=\$(\$_.VLanId)\" }) -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256425
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000064_Manage | default(true) | bool
+
+- name: stigrule_256425_reserved_vlans_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256425.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups using reserved VLANs: {{ _q_256425.stdout | default('') }}"
+    success_msg: "No port groups use reserved VLANs"
+  when:
+    - esxi_70_000064_Manage | default(true) | bool
+    - _q_256425 is not skipped
+    - not (_q_256425.failed | default(false))
+
+# --- V-256426 / ESXI-70-000065: Native VLAN not used for tagged traffic ---
+- name: stigrule_256426_native_vlan_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { \$_.VLanId -eq 1 };
+      if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256426
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000065_Manage | default(true) | bool
+
+- name: stigrule_256426_native_vlan_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256426.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "Port groups using native VLAN 1: {{ _q_256426.stdout | default('') }}"
+    success_msg: "No port groups use native VLAN 1"
+  when:
+    - esxi_70_000065_Manage | default(true) | bool
+    - _q_256426 is not skipped
+    - not (_q_256426.failed | default(false))
+
+# =========================================================================
+# GROUP H: Firmware / audit-only rules (pwsh query+assert)
+# =========================================================================
+
+# --- V-256427 / ESXI-70-000072: Patches current (HIGH) ---
+- name: stigrule_256427_patches_current_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      (Get-VMHost -Name '{{ _current_esxi_host }}').Build
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256427
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000072_Manage | default(true) | bool
+
+- name: stigrule_256427_patches_current_assert
+  ansible.builtin.assert:
+    that:
+      - esxi_stig_expected_build | default('') | length == 0 or
+        (_q_256427.stdout | default('') | trim) == (esxi_stig_expected_build | string)
+    fail_msg: >-
+      ESXi build {{ _q_256427.stdout | default('unknown') | trim }} does not match
+      expected {{ esxi_stig_expected_build | default('(not set)') }}
+    success_msg: "ESXi build: {{ _q_256427.stdout | default('unknown') | trim }}"
+  when:
+    - esxi_70_000072_Manage | default(true) | bool
+    - _q_256427 is not skipped
+    - not (_q_256427.failed | default(false))
+
+# --- V-256430 / ESXI-70-000076: Secure Boot ---
+- name: stigrule_256430_secure_boot_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      if (\$vmhost.Runtime.BootTime) {
+        try { \$vmhost.QueryTpmAttestationReport().TpmPcrValues | Out-Null; 'SUPPORTED' }
+        catch { 'UNKNOWN' }
+      } else { 'UNKNOWN' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256430
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000076_Manage | default(true) | bool
+
+- name: stigrule_256430_secure_boot_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256430.stdout | default('UNKNOWN') | trim) != 'DISABLED'
+    fail_msg: "Secure Boot is disabled on {{ _current_esxi_host }}"
+    success_msg: "Secure Boot status: {{ _q_256430.stdout | default('UNKNOWN') | trim }}"
+  when:
+    - esxi_70_000076_Manage | default(true) | bool
+    - _q_256430 is not skipped
+    - not (_q_256430.failed | default(false))
+
+# --- V-256431 / ESXI-70-000078: LDAP/AD uses TLS ---
+- name: stigrule_256431_ldap_tls_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$authInfo = \$vmhost | Get-VMHostAuthentication;
+      if (\$authInfo.Domain) {
+        \$adv = Get-AdvancedSetting -Entity \$vmhost -Name 'Config.HostAgent.plugins.hostsvc.esxAdminsGroupAutoAdd';
+        if (\$adv) { 'AD_JOINED' } else { 'AD_NO_TLS_INFO' }
+      } else { 'NOT_JOINED' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256431
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000078_Manage | default(true) | bool
+
+- name: stigrule_256431_ldap_tls_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256431.stdout | default('NOT_JOINED') | trim) in ['AD_JOINED', 'NOT_JOINED']
+    fail_msg: "LDAP/AD TLS configuration needs review: {{ _q_256431.stdout | default('') }}"
+    success_msg: "LDAP/AD TLS check: {{ _q_256431.stdout | default('') | trim }}"
+  when:
+    - esxi_70_000078_Manage | default(true) | bool
+    - _q_256431 is not skipped
+    - not (_q_256431.failed | default(false))
+
+# --- V-256442 / ESXI-70-000090: rhttpproxy FIPS ---
+- name: stigrule_256442_rhttpproxy_fips_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      \$result = \$esxcli.system.security.fips140.rhttpproxy.get.Invoke();
+      if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256442
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000090_Manage | default(true) | bool
+
+- name: stigrule_256442_rhttpproxy_fips_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256442.stdout | default('') | trim) == 'COMPLIANT'
+    fail_msg: "rhttpproxy FIPS 140-2 is not enabled"
+    success_msg: "rhttpproxy FIPS 140-2 is enabled"
+  when:
+    - esxi_70_000090_Manage | default(true) | bool
+    - _q_256442 is not skipped
+    - not (_q_256442.failed | default(false))
+
+# --- V-256444 / ESXI-70-000092: VM config override cleared ---
+- name: stigrule_256444_vm_override_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      \$overrides = \$vmhost.Config.Vm.SwapPlacement;
+      if (\$overrides) { 'HAS_OVERRIDES' } else { 'COMPLIANT' }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256444
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000092_Manage | default(true) | bool
+
+- name: stigrule_256444_vm_override_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256444.stdout | default('COMPLIANT') | trim) == 'COMPLIANT'
+    fail_msg: "VM config overrides found on {{ _current_esxi_host }}"
+    success_msg: "No VM config overrides"
+  when:
+    - esxi_70_000092_Manage | default(true) | bool
+    - _q_256444 is not skipped
+    - not (_q_256444.failed | default(false))
+
+# --- V-256445 / ESXI-70-000093: VM logger override cleared ---
+- name: stigrule_256445_vm_logger_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$adv = Get-AdvancedSetting -Entity \$vmhost -Name 'Config.HostAgent.log.level';
+      if (\$adv -and \$adv.Value -eq 'info') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$adv.Value }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256445
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000093_Manage | default(true) | bool
+
+- name: stigrule_256445_vm_logger_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256445.stdout | default('') | trim) is match('^COMPLIANT')
+    fail_msg: "VM logger override: {{ _q_256445.stdout | default('') }}"
+    success_msg: "VM logger level is compliant"
+  when:
+    - esxi_70_000093_Manage | default(true) | bool
+    - _q_256445 is not skipped
+    - not (_q_256445.failed | default(false))
+
+# --- V-256446 / ESXI-70-000094: TPM encryption ---
+- name: stigrule_256446_tpm_encryption_query
+  ansible.builtin.shell:
+    cmd: >-
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      \$enc = \$esxcli.system.settings.encryption.get.Invoke();
+      if (\$enc.Mode -eq 'TPM') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$enc.Mode }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password }}"
+  register: _q_256446
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: esxi_70_000094_Manage | default(true) | bool
+
+- name: stigrule_256446_tpm_encryption_assert
+  ansible.builtin.assert:
+    that:
+      - (_q_256446.stdout | default('') | trim) is match('^COMPLIANT')
+    fail_msg: "TPM encryption: {{ _q_256446.stdout | default('') }}"
+    success_msg: "TPM encryption is enabled"
+  when:
+    - esxi_70_000094_Manage | default(true) | bool
+    - _q_256446 is not skipped
+    - not (_q_256446.failed | default(false))
+
+# =========================================================================
+# GROUP I: Remaining audit-only rules
+# =========================================================================
+
+# --- V-256403 / ESXI-70-000038: Host profiles / auth proxy (manual) ---
+- name: stigrule_256403_host_profiles
   ansible.builtin.debug:
-    msg: "ESXI-70-000061: vSwitch promiscuous mode requires per-switch inspection for {{ _current_esxi_host }}"
-  when: esxi_70_000061_Manage | default(esxi_70_000061) | default(true) | bool
+    msg: >-
+      ESXI-70-000038: Host profile and auth proxy configuration requires manual
+      verification for {{ _current_esxi_host }}. Ensure the host is assigned a
+      host profile with proper authentication proxy configuration.
+  when: esxi_70_000038_Manage | default(true) | bool
+
+# --- V-256428 / ESXI-70-000070: CIM account access (manual) ---
+- name: stigrule_256428_cim_access
+  ansible.builtin.debug:
+    msg: >-
+      ESXI-70-000070: CIM account access requires manual verification for
+      {{ _current_esxi_host }}. Verify only authorized accounts have CIM access.
+  when: esxi_70_000070_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP J: SSH configuration rules (gated behind esxi_stig_enable_ssh_checks)
+# =========================================================================
+
+- name: "ESXi STIG | SSH checks block"
+  when: esxi_stig_enable_ssh_checks | default(false) | bool
+  block:
+    # --- V-256382 / ESXI-70-000008: Deploy /etc/issue banner ---
+    - name: stigrule_256382_ssh_banner_file
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$content = \$esxcli.software.vib.list.Invoke() | Select-Object -First 1;
+          if (\$content) { 'CHECK_SSH' } else { 'NO_ACCESS' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256382
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000008_Manage | default(true) | bool
+
+    - name: stigrule_256382_ssh_banner_assert
+      ansible.builtin.assert:
+        that:
+          - _q_256382.stdout | default('') | trim == 'CHECK_SSH'
+        fail_msg: "Cannot verify /etc/issue banner — SSH access required"
+        success_msg: "/etc/issue banner check requires SSH inspection"
+      when:
+        - esxi_70_000008_Manage | default(true) | bool
+        - _q_256382 is not skipped
+        - not (_q_256382.failed | default(false))
+
+    # --- V-256383 / ESXI-70-000009: Banner directive in sshd_config ---
+    - name: stigrule_256383_ssh_banner_directive_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$banner = \$config | Where-Object { \$_.Key -eq 'banner' };
+          if (\$banner) { \$banner.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256383
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000009_Manage | default(true) | bool
+
+    - name: stigrule_256383_ssh_banner_directive_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256383.stdout | default('NOT_SET') | trim) == '/etc/issue'
+        fail_msg: "SSH Banner not set to /etc/issue: {{ _q_256383.stdout | default('NOT_SET') }}"
+        success_msg: "SSH Banner set to /etc/issue"
+      when:
+        - esxi_70_000009_Manage | default(true) | bool
+        - _q_256383 is not skipped
+        - not (_q_256383.failed | default(false))
+
+    # --- V-256384 / ESXI-70-000010: SSH FIPS 140-2 ---
+    - name: stigrule_256384_ssh_fips_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$result = \$esxcli.system.security.fips140.ssh.get.Invoke();
+          if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256384
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000010_Manage | default(true) | bool
+
+    - name: stigrule_256384_ssh_fips_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256384.stdout | default('') | trim) == 'COMPLIANT'
+        fail_msg: "SSH FIPS 140-2 mode is not enabled"
+        success_msg: "SSH FIPS 140-2 mode is enabled"
+      when:
+        - esxi_70_000010_Manage | default(true) | bool
+        - _q_256384 is not skipped
+        - not (_q_256384.failed | default(false))
+
+    # --- V-256386 / ESXI-70-000012: IgnoreRhosts yes ---
+    - name: stigrule_256386_ssh_ignore_rhosts_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'ignorerhosts' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256386
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000012_Manage | default(true) | bool
+
+    - name: stigrule_256386_ssh_ignore_rhosts_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256386.stdout | default('NOT_SET') | trim | lower) == 'yes'
+        fail_msg: "SSH IgnoreRhosts is not set to yes: {{ _q_256386.stdout | default('NOT_SET') }}"
+        success_msg: "SSH IgnoreRhosts is yes"
+      when:
+        - esxi_70_000012_Manage | default(true) | bool
+        - _q_256386 is not skipped
+        - not (_q_256386.failed | default(false))
+
+    # --- V-256387 / ESXI-70-000013: HostbasedAuthentication no ---
+    - name: stigrule_256387_ssh_hostbased_auth_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'hostbasedauthentication' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256387
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000013_Manage | default(true) | bool
+
+    - name: stigrule_256387_ssh_hostbased_auth_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256387.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH HostbasedAuthentication is not disabled: {{ _q_256387.stdout | default('NOT_SET') }}"
+        success_msg: "SSH HostbasedAuthentication is disabled"
+      when:
+        - esxi_70_000013_Manage | default(true) | bool
+        - _q_256387 is not skipped
+        - not (_q_256387.failed | default(false))
+
+    # --- V-256388 / ESXI-70-000014: PermitRootLogin no ---
+    - name: stigrule_256388_ssh_permit_root_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'permitrootlogin' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256388
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000014_Manage | default(false) | bool
+
+    - name: stigrule_256388_ssh_permit_root_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256388.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH PermitRootLogin is not disabled: {{ _q_256388.stdout | default('NOT_SET') }}"
+        success_msg: "SSH PermitRootLogin is disabled"
+      when:
+        - esxi_70_000014_Manage | default(false) | bool
+        - _q_256388 is not skipped
+        - not (_q_256388.failed | default(false))
+
+    # --- V-256389 / ESXI-70-000015: PermitEmptyPasswords no ---
+    - name: stigrule_256389_ssh_permit_empty_pw_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'permitemptypasswords' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256389
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000015_Manage | default(true) | bool
+
+    - name: stigrule_256389_ssh_permit_empty_pw_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256389.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH PermitEmptyPasswords is not disabled: {{ _q_256389.stdout | default('NOT_SET') }}"
+        success_msg: "SSH PermitEmptyPasswords is disabled"
+      when:
+        - esxi_70_000015_Manage | default(true) | bool
+        - _q_256389 is not skipped
+        - not (_q_256389.failed | default(false))
+
+    # --- V-256390 / ESXI-70-000016: PermitUserEnvironment no ---
+    - name: stigrule_256390_ssh_permit_user_env_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'permituserenvironment' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256390
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000016_Manage | default(true) | bool
+
+    - name: stigrule_256390_ssh_permit_user_env_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256390.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH PermitUserEnvironment is not disabled: {{ _q_256390.stdout | default('NOT_SET') }}"
+        success_msg: "SSH PermitUserEnvironment is disabled"
+      when:
+        - esxi_70_000016_Manage | default(true) | bool
+        - _q_256390 is not skipped
+        - not (_q_256390.failed | default(false))
+
+    # --- V-256394 / ESXI-70-000020: StrictModes yes ---
+    - name: stigrule_256394_ssh_strict_modes_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'strictmodes' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256394
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000020_Manage | default(true) | bool
+
+    - name: stigrule_256394_ssh_strict_modes_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256394.stdout | default('NOT_SET') | trim | lower) == 'yes'
+        fail_msg: "SSH StrictModes is not enabled: {{ _q_256394.stdout | default('NOT_SET') }}"
+        success_msg: "SSH StrictModes is enabled"
+      when:
+        - esxi_70_000020_Manage | default(true) | bool
+        - _q_256394 is not skipped
+        - not (_q_256394.failed | default(false))
+
+    # --- V-256395 / ESXI-70-000021: Compression no ---
+    - name: stigrule_256395_ssh_compression_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'compression' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256395
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000021_Manage | default(true) | bool
+
+    - name: stigrule_256395_ssh_compression_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256395.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH Compression is not disabled: {{ _q_256395.stdout | default('NOT_SET') }}"
+        success_msg: "SSH Compression is disabled"
+      when:
+        - esxi_70_000021_Manage | default(true) | bool
+        - _q_256395 is not skipped
+        - not (_q_256395.failed | default(false))
+
+    # --- V-256396 / ESXI-70-000022: GatewayPorts no ---
+    - name: stigrule_256396_ssh_gateway_ports_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'gatewayports' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256396_ssh
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000022_Manage | default(true) | bool
+
+    - name: stigrule_256396_ssh_gateway_ports_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256396_ssh.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH GatewayPorts is not disabled: {{ _q_256396_ssh.stdout | default('NOT_SET') }}"
+        success_msg: "SSH GatewayPorts is disabled"
+      when:
+        - esxi_70_000022_Manage | default(true) | bool
+        - _q_256396_ssh is not skipped
+        - not (_q_256396_ssh.failed | default(false))
+
+    # --- V-256397 / ESXI-70-000023: X11Forwarding no ---
+    - name: stigrule_256397_ssh_x11_forwarding_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'x11forwarding' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256397_ssh
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000023_Manage | default(true) | bool
+
+    - name: stigrule_256397_ssh_x11_forwarding_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256397_ssh.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH X11Forwarding is not disabled: {{ _q_256397_ssh.stdout | default('NOT_SET') }}"
+        success_msg: "SSH X11Forwarding is disabled"
+      when:
+        - esxi_70_000023_Manage | default(true) | bool
+        - _q_256397_ssh is not skipped
+        - not (_q_256397_ssh.failed | default(false))
+
+    # --- V-256399 / ESXI-70-000025: PermitTunnel no ---
+    - name: stigrule_256399_ssh_permit_tunnel_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'permittunnel' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256399_ssh
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000025_Manage | default(true) | bool
+
+    - name: stigrule_256399_ssh_permit_tunnel_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256399_ssh.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH PermitTunnel is not disabled: {{ _q_256399_ssh.stdout | default('NOT_SET') }}"
+        success_msg: "SSH PermitTunnel is disabled"
+      when:
+        - esxi_70_000025_Manage | default(true) | bool
+        - _q_256399_ssh is not skipped
+        - not (_q_256399_ssh.failed | default(false))
+
+    # --- V-256400 / ESXI-70-000026: ClientAliveCountMax 3 ---
+    - name: stigrule_256400_ssh_client_alive_count_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'clientalivecountmax' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256400_ssh
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000026_Manage | default(true) | bool
+
+    - name: stigrule_256400_ssh_client_alive_count_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256400_ssh.stdout | default('NOT_SET') | trim) == (esxi_stig_ssh_client_alive_count_max | default(3) | string)
+        fail_msg: >-
+          SSH ClientAliveCountMax is {{ _q_256400_ssh.stdout | default('NOT_SET') }},
+          expected {{ esxi_stig_ssh_client_alive_count_max | default(3) }}
+        success_msg: "SSH ClientAliveCountMax is {{ _q_256400_ssh.stdout | default('') | trim }}"
+      when:
+        - esxi_70_000026_Manage | default(true) | bool
+        - _q_256400_ssh is not skipped
+        - not (_q_256400_ssh.failed | default(false))
+
+    # --- V-256401 / ESXI-70-000027: ClientAliveInterval 200 ---
+    - name: stigrule_256401_ssh_client_alive_interval_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'clientaliveinterval' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256401_ssh
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000027_Manage | default(true) | bool
+
+    - name: stigrule_256401_ssh_client_alive_interval_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256401_ssh.stdout | default('NOT_SET') | trim) == (esxi_stig_ssh_client_alive_interval | default(200) | string)
+        fail_msg: >-
+          SSH ClientAliveInterval is {{ _q_256401_ssh.stdout | default('NOT_SET') }},
+          expected {{ esxi_stig_ssh_client_alive_interval | default(200) }}
+        success_msg: "SSH ClientAliveInterval is {{ _q_256401_ssh.stdout | default('') | trim }}"
+      when:
+        - esxi_70_000027_Manage | default(true) | bool
+        - _q_256401_ssh is not skipped
+        - not (_q_256401_ssh.failed | default(false))
+
+    # --- V-256434 / ESXI-70-000082: AllowTcpForwarding no ---
+    - name: stigrule_256434_ssh_allow_tcp_fwd_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'allowtcpforwarding' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256434
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000082_Manage | default(true) | bool
+
+    - name: stigrule_256434_ssh_allow_tcp_fwd_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256434.stdout | default('NOT_SET') | trim | lower) == 'no'
+        fail_msg: "SSH AllowTcpForwarding is not disabled: {{ _q_256434.stdout | default('NOT_SET') }}"
+        success_msg: "SSH AllowTcpForwarding is disabled"
+      when:
+        - esxi_70_000082_Manage | default(true) | bool
+        - _q_256434 is not skipped
+        - not (_q_256434.failed | default(false))
+
+    # --- V-256449 / ESXI-70-000274: FIPS SSH ciphers ---
+    - name: stigrule_256449_ssh_fips_ciphers_query
+      ansible.builtin.shell:
+        cmd: >-
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$args = \$esxcli.system.ssh.server.config.list.CreateArgs();
+          \$config = \$esxcli.system.ssh.server.config.list.Invoke(\$args);
+          \$val = \$config | Where-Object { \$_.Key -eq 'ciphers' };
+          if (\$val) { \$val.Value } else { 'NOT_SET' }
+          "
+      environment:
+        VC_PASS: "{{ vmware_password }}"
+      register: _q_256449
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: esxi_70_000274_Manage | default(true) | bool
+
+    - name: stigrule_256449_ssh_fips_ciphers_assert
+      ansible.builtin.assert:
+        that:
+          - (_q_256449.stdout | default('NOT_SET') | trim) != 'NOT_SET'
+          - "'aes128-ctr' in (_q_256449.stdout | default('') | trim) or
+             'aes256-ctr' in (_q_256449.stdout | default('') | trim) or
+             'aes128-gcm' in (_q_256449.stdout | default('') | trim) or
+             'aes256-gcm' in (_q_256449.stdout | default('') | trim)"
+        fail_msg: "SSH ciphers not FIPS-compliant: {{ _q_256449.stdout | default('NOT_SET') }}"
+        success_msg: "SSH ciphers: {{ _q_256449.stdout | default('') | trim }}"
+      when:
+        - esxi_70_000274_Manage | default(true) | bool
+        - _q_256449 is not skipped
+        - not (_q_256449.failed | default(false))

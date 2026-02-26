@@ -22,7 +22,8 @@
     _report_subdirs:
       - "platform"
 
-    _smb_conf_template: "{{ playbook_dir }}/../templates/smb.conf.j2"
+    _repo_root: "{{ (playbook_dir | realpath).split('/playbooks')[0] }}"
+    _smb_conf_template: "{{ _repo_root }}/playbooks/templates/smb.conf.j2"
 
   pre_tasks:
     - name: Verify vault password is defined

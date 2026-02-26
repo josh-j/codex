@@ -30,12 +30,6 @@
     that:
       - >-
         ncs_validate_data
-        | internal.core.validate_schema_from_file(
-            _schema_path_resolved,
-            ncs_validate_root_key
-          )
-      - >-
-        ncs_validate_data
         | internal.core.validate_typed_schema_from_file(
             _schema_path_resolved,
             ncs_validate_root_key

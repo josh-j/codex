@@ -14,7 +14,7 @@
         name: internal.vmware.audit
       vars:
         vmware_snapshot_age_warning_days: 7
-        vmware_snapshot_size_warning_gb: 100
+        vmware_snapshot_size_warning_gb: 100.0
         vmware_enable_email_notifications: false
 
 - name: Phase 3 | Generate Fleet Reports

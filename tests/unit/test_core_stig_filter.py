@@ -40,7 +40,7 @@ class CoreStigFilterTests(unittest.TestCase):
             },
             {
                 "id": "V-2",
-                "status": "failed",
+                "status": "open",
                 "title": "Rule Two",
                 "severity": "CAT_I",
                 "checktext": "bad",
@@ -76,7 +76,7 @@ class CoreStigFilterTests(unittest.TestCase):
         out = self.module.normalize_stig_results(rows, "")
 
         self.assertEqual(len(out["full_audit"]), 2)
-        self.assertEqual(out["full_audit"][0]["status"], "failed")
+        self.assertEqual(out["full_audit"][0]["status"], "open")
         self.assertEqual(out["full_audit"][1]["status"], "")
         self.assertEqual(out["summary"]["violations"], 1)
         self.assertEqual(out["summary"]["critical_count"], 0)
@@ -144,7 +144,7 @@ class CoreStigFilterTests(unittest.TestCase):
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0]["status"], "pass")
         self.assertEqual(results[0]["checktext"], "OK")
-        self.assertEqual(results[1]["status"], "failed")
+        self.assertEqual(results[1]["status"], "open")
         self.assertEqual(results[1]["checktext"], "BAD")
         self.assertEqual(results[1]["severity"], "high")
 

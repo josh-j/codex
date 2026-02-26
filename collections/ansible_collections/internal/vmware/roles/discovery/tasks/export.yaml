@@ -7,12 +7,7 @@
 
 - name: "VMware Discovery | Resolve export path"
   ansible.builtin.set_fact:
-    _vmware_discovery_export_path: >-
-      {{
-        (ncs_export_path | default('', true))
-        if ((ncs_export_path | default('', true)) | length) > 0
-        else (ncs_config | internal.core.resolve_ncs_path('vmware', inventory_hostname, 'discovery'))
-      }}
+    _vmware_discovery_export_path: "{{ ncs_export_path }}"
   changed_when: false
 
 - name: "VMware Discovery | Export discovery state"

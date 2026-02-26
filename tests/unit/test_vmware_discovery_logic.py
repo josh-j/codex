@@ -55,7 +55,7 @@ class NormalizeComputeInventoryTests(unittest.TestCase):
         self.assertIn("prod-cluster", out["clusters_by_name"])
         cluster = out["clusters_by_name"]["prod-cluster"]
         self.assertEqual(cluster["utilization"]["cpu_pct"], 50.0)
-        self.assertEqual(cluster["utilization"]["mem_pct"], 50.0)
+        self.assertEqual(cluster["utilization"]["memory_pct"], 50.0)
         self.assertTrue(cluster["compliance"]["ha_enabled"])
         self.assertEqual(len(out["hosts_list"]), 2)
         self.assertEqual(out["hosts_list"][0]["cluster"], "prod-cluster")
