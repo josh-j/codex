@@ -46,15 +46,45 @@
       ansible.builtin.fail:
         msg: "{{ ansible_failed_result.msg | default('Windows audit failed') }}"
   always:
+    - name: Compute export summary
+      ansible.builtin.set_fact:
+        _windows_export_summary:
+          applications:
+            configmgr_count: "{{ windows_ctx.applications.configmgr_apps | length }}"
+            installed_count: "{{ windows_ctx.applications.installed_apps | length }}"
+            apps_to_update_count: "{{ windows_ctx.applications.apps_to_update | default([]) | length }}"
+            total_apps: "{{ windows_ctx.applications.total_apps | default(0) | int }}"
+          updates:
+            results_count: "{{ windows_ctx.updates.results | default([]) | length }}"
+            failed_count: "{{ windows_ctx.updates.results | default([]) | selectattr('failed', 'defined') | selectattr('failed') | list | length }}"
+          services:
+            ccmexec_running: "{{ windows_ctx.services.ccmexec_running | bool }}"
+
+    - name: Determine audit health status
+      ansible.builtin.set_fact:
+        _windows_export_health: >-
+          {% if _windows_audit_failed | bool -%}
+            CRITICAL
+          {%- elif (_windows_export_summary.updates.failed_count | int) > 0 -%}
+            WARNING
+          {%- elif not windows_ctx.services.ccmexec_running | bool -%}
+            WARNING
+          {%- else -%}
+            HEALTHY
+          {%- endif %}
+
     - name: Build Windows audit export payload
       ansible.builtin.set_fact:
-        _windows_audit_export_data: >-
-          {{
-            windows_ctx | default({})
-            | internal.windows.build_windows_audit_export_payload(
-              _windows_audit_failed | default(false) | bool
-            )
-          }}
+        _windows_audit_export_data:
+          audit_type: windows_audit
+          audit_failed: "{{ _windows_audit_failed | bool }}"
+          health: "{{ _windows_export_health | trim }}"
+          summary: "{{ _windows_export_summary }}"
+          alerts: "{{ windows_ctx.alerts | default([]) }}"
+          check_metadata:
+            engine: ansible-ncs-windows
+            timestamp: "{{ now(utc=true).strftime('%Y-%m-%dT%H:%M:%SZ') }}"
+          windows_audit: "{{ windows_ctx }}"
 
     - name: Validate Windows audit export payload schema
       ansible.builtin.include_role:
