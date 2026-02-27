@@ -504,17 +504,15 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
 
 @main.command("stig-apply")
 @click.argument("artifact", type=click.Path(exists=True, path_type=Path))
-@click.option("--playbook", default="playbooks/vmware_stig_remediate.yml", show_default=True, help="Ansible playbook path.")
 @click.option("--inventory", default="inventory/production/hosts.yaml", show_default=True, help="Ansible inventory path.")
 @click.option("--limit", required=True, help="Ansible --limit (e.g. vcenter1).")
 @click.option("--esxi-host", required=True, help="ESXi hostname to target (sets esxi_stig_target_hosts).")
 @click.option("--skip-snapshot", is_flag=True, help="Suppress the informational note that ESXi snapshots are not applicable.")
-@click.option("--post-audit", is_flag=True, help="Run the post-remediation ESXi audit after each rule (slower but confirms effect).")
+@click.option("--post-audit", is_flag=True, help="Reserved: run the ESXi audit after each rule (not yet implemented).")
 @click.option("--extra-vars", "-e", "extra_vars", multiple=True, help="Additional ansible extra-vars (may be repeated).")
-@click.option("--dry-run", is_flag=True, help="Print ansible commands without executing them.")
+@click.option("--dry-run", is_flag=True, help="Print the generated playbook without executing it.")
 def stig_apply(
     artifact: Path,
-    playbook: str,
     inventory: str,
     limit: str,
     esxi_host: str,
@@ -525,15 +523,14 @@ def stig_apply(
 ) -> None:
     """Apply ESXi STIG rules interactively, one at a time.
 
-    ARTIFACT is the path to a raw_stig_esxi.yaml audit artifact produced by
-    the ncs_collector callback.  Failing rules are extracted and presented
-    one-by-one with a confirmation prompt before each Ansible run.
+    ARTIFACT is the path to a raw_stig_esxi.yaml audit artifact.  A single
+    Ansible playbook is generated with ``pause`` tasks so the vCenter connection
+    stays warm across rules, keeping per-rule time to ~2-5 s.
     """
     from ._stig_apply import run_interactive_apply
 
     run_interactive_apply(
         artifact=artifact,
-        playbook=playbook,
         inventory=inventory,
         limit=limit,
         esxi_host=esxi_host,

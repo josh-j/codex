@@ -36,7 +36,8 @@
       "Bash(mypy:*)",
       "Bash(just test:*)",
       "Bash(.venv/bin/pytest:*)",
-      "Bash(/tmp/bug_report.txt:*)"
+      "Bash(/tmp/bug_report.txt:*)",
+      "Bash(.venv/bin/python:*)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 metadata:
   host: esxi1
   audit_type: stig_esxi
-  timestamp: '2026-02-27T00:47:58Z'
+  timestamp: '2026-02-27T01:21:49Z'
   engine: stig_xml_callback
 data:
   - id: V-256376
