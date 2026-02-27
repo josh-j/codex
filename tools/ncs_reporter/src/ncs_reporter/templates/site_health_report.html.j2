@@ -215,17 +215,19 @@
      {% for cluster in (node.clusters | default([])) %}
                                 <div class="cluster-card" style="padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                                     <label style="font-weight: 700; font-size: 0.85rem;">{{ cluster.name }}</label>
+                                    {% set c_cpu = cluster.utilization.get('cpu_pct', 0) %}
+                                    {% set c_mem = cluster.utilization.get('memory_pct', cluster.utilization.get('mem_pct', 0)) %}
                                     <div class="metric" style="margin-top: 8px;">
                                         <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
-                                            <span>CPU: {{ cluster.utilization.cpu_pct }}%</span>
+                                            <span>CPU: {{ c_cpu }}%</span>
                                         </div>
-                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ cluster.utilization.cpu_pct }}%; background: {{ 'var(--red)' if cluster.utilization.cpu_pct > 90 else 'var(--emerald)' }}"></div></div>
+                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ c_cpu }}%; background: {{ 'var(--red)' if c_cpu > 90 else 'var(--emerald)' }}"></div></div>
                                     </div>
                                     <div class="metric" style="margin-top: 8px;">
                                         <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px;">
-                                            <span>RAM: {{ cluster.utilization.mem_pct }}%</span>
+                                            <span>RAM: {{ c_mem }}%</span>
                                         </div>
-                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ cluster.utilization.mem_pct }}%; background: {{ 'var(--red)' if cluster.utilization.mem_pct > 90 else 'var(--emerald)' }}"></div></div>
+                                        <div class="mini-bar progress-track"><div class="fill progress-fill" style="width: {{ c_mem }}%; background: {{ 'var(--red)' if c_mem > 90 else 'var(--emerald)' }}"></div></div>
                                     </div>
                                 </div>
      {% endfor %}

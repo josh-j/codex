@@ -5,7 +5,8 @@ from typing import Any
 from .common import (
     _iter_hosts,
     _status_from_health,
-    canonical_severity,
+    build_meta,
+    collect_active_alerts,
     safe_list,
     to_int,
 )
@@ -39,7 +40,9 @@ def _coerce_linux_audit(bundle: Any) -> tuple[dict[str, Any], dict[str, Any]]:
 
 def _extract_linux_sys_facts(linux_audit: Any) -> dict[str, Any]:
     linux_audit = dict(linux_audit or {})
-    data = dict(linux_audit.get("data") or {})
+    # LinuxAuditModel.model_dump() stores system facts under ubuntu_ctx.system;
+    # older/flat formats store them under data.system.
+    data = linux_audit.get("data") or linux_audit.get("ubuntu_ctx") or {}
     return dict(data.get("system") or {})
 
 
@@ -51,7 +54,7 @@ def build_linux_fleet_view(
     report_id: str | None = None,
 ) -> dict[str, Any]:
     rows = []
-    active_alerts = []
+    active_alerts: list[dict[str, Any]] = []
     linux_stig_hosts = {}
     totals = {"critical": 0, "warning": 0, "hosts": 0}
 
@@ -84,20 +87,7 @@ def build_linux_fleet_view(
             totals["critical"] += crit
             totals["warning"] += warn
             totals["hosts"] += 1
-            for alert in alerts:
-                sev = canonical_severity((alert or {}).get("severity"))
-                if sev not in ("CRITICAL", "WARNING"):
-                    continue
-                active_alerts.append(
-                    {
-                        "host": hostname,
-                        "severity": sev,
-                        "category": (alert or {}).get("category", "System"),
-                        "audit_type": "linux_system",
-                        "message": (alert or {}).get("message", ""),
-                        "raw": dict(alert or {}),
-                    }
-                )
+            active_alerts.extend(collect_active_alerts(alerts, hostname, "linux_system", "System"))
 
         if stig:
             linux_stig_hosts[hostname] = {"stig_linux": dict(stig)}
@@ -110,11 +100,7 @@ def build_linux_fleet_view(
     )
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "fleet": {
             "asset_count": totals["hosts"],
             "hosts": totals["hosts"],
@@ -141,14 +127,10 @@ def build_linux_node_view(
     linux_audit, stig = _coerce_linux_audit(bundle)
     linux_audit = dict(linux_audit or {})
     sys_facts = _extract_linux_sys_facts(linux_audit)
-    audit_data = dict(linux_audit.get("data") or {})
+    audit_data = dict(linux_audit.get("data") or linux_audit.get("ubuntu_ctx") or {})
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "node": {
             "name": str(hostname),
             "status": {"raw": _status_from_health(linux_audit.get("health"))},

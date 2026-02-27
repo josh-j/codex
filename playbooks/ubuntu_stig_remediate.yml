@@ -1,0 +1,26 @@
+---
+# playbooks/ubuntu_stig_remediate.yml
+# Automated STIG security hardening and remediation for Ubuntu servers.
+# This playbook applies active security controls to bring systems into
+# compliance with DISA STIG standards. It enables kernel hardening,
+# configures secure SSH defaults, and enforces strict access controls.
+# The workflow includes an initial discovery, the hardening execution,
+# and a post-remediation STIG audit to verify the new compliance state.
+
+- name: "Phase 2: Ubuntu STIG Remediation"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  become: true
+  tags: ['ubuntu', 'remediate', 'stig', 'security']
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: remediate
+        ubuntu_enable_maintenance: true
+        ubuntu_enable_stig_hardening: true
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: stig # Capture post-remediation STIG state

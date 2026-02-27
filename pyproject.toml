@@ -20,7 +20,7 @@ ignore_missing_imports = true
 strict_optional = true
 check_untyped_defs = true
 explicit_package_bases = true
-mypy_path = "libs/ncs_core/src"
+mypy_path = "tools/ncs_reporter/src"
 exclude = "collections/ansible_collections/(cloud|community|vmware|windows)/"
 
 [tool.pytest.ini_options]
@@ -31,11 +31,11 @@ markers = ["integration: ansible-runner integration tests"]
 [tool.pyright]
 typeCheckingMode = "basic"
 pythonVersion = "3.10"
-extraPaths = ["tools/ncs_reporter/src", "libs/ncs_core/src"]
+extraPaths = ["tools/ncs_reporter/src"]
 exclude = [
     "**/node_modules",
     "**/__pycache__",
-    ".venv",
+    "**/.venv",
     ".direnv",
     "collections/ansible_collections/cloud",
     "collections/ansible_collections/community",

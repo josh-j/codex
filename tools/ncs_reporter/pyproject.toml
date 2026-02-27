@@ -11,7 +11,6 @@ dependencies = [
     "pyyaml>=6.0",
     "click>=8.0",
     "pydantic>=2.0",
-    "ncs-core",
 ]
 requires-python = ">=3.10"
 

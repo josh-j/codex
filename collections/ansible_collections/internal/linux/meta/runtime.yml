@@ -1,1 +1,5 @@
-{}
+---
+# internal.linux : meta/runtime.yml
+# Idiomatic collection metadata for NCS Linux collection.
+
+requires_ansible: ">=2.15.0"

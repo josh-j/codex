@@ -3,9 +3,12 @@
 from typing import Any
 
 from .common import (
+    _count_alerts,
     _iter_hosts,
     _status_from_health,
-    canonical_severity,
+    build_meta,
+    collect_active_alerts,
+    safe_list,
 )
 
 
@@ -28,7 +31,7 @@ def build_windows_fleet_view(
     report_id: str | None = None,
 ) -> dict[str, Any]:
     rows = []
-    active_alerts = []
+    active_alerts: list[dict[str, Any]] = []
     totals = {"hosts": 0, "critical": 0, "warning": 0}
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
@@ -38,16 +41,8 @@ def build_windows_fleet_view(
         summary = dict(audit.get("summary") or {})
         apps = dict(summary.get("applications") or {})
         updates = dict(summary.get("updates") or {})
-        alerts_list = list(audit.get("alerts") or [])
-        alert_counts = {"critical": 0, "warning": 0, "total": 0}
-        
-        for alert in alerts_list:
-            sev = canonical_severity((alert or {}).get("severity"))
-            if sev == "CRITICAL":
-                alert_counts["critical"] += 1
-            elif sev == "WARNING":
-                alert_counts["warning"] += 1
-        alert_counts["total"] = alert_counts["critical"] + alert_counts["warning"]
+        alerts_list = safe_list(audit.get("alerts"))
+        alert_counts = _count_alerts(alerts_list)
 
         status = _status_from_health(audit.get("health"))
         if status == "CRITICAL":
@@ -55,7 +50,7 @@ def build_windows_fleet_view(
         elif status == "WARNING":
             totals["warning"] += 1
         totals["hosts"] += 1
-        
+
         row_summary = dict(summary)
         row_summary["alerts"] = alert_counts
 
@@ -73,27 +68,11 @@ def build_windows_fleet_view(
                 },
             }
         )
-        for alert in alerts_list:
-            sev = canonical_severity((alert or {}).get("severity"))
-            if sev in ("CRITICAL", "WARNING"):
-                active_alerts.append(
-                    {
-                        "host": hostname,
-                        "severity": sev,
-                        "category": (alert or {}).get("category", "windows"),
-                        "audit_type": "windows_audit",
-                        "message": (alert or {}).get("message", ""),
-                        "raw": dict(alert or {}),
-                    }
-                )
+        active_alerts.extend(collect_active_alerts(alerts_list, hostname, "windows_audit", "windows"))
 
     rows.sort(key=lambda r: str(r["name"]))
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "fleet": {
             "asset_count": totals["hosts"],
             "hosts": totals["hosts"],
@@ -118,11 +97,7 @@ def build_windows_node_view(
     audit = _coerce_windows_audit(bundle)
     summary = dict(audit.get("summary") or {})
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "node": {
             "name": str(hostname or "unknown"),
             "status": {"raw": _status_from_health(audit.get("health"))},

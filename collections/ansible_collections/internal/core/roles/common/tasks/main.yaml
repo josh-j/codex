@@ -1,5 +1,0 @@
----
-# internal.core.common : tasks/main.yaml
-#
-# Placeholder entrypoint. This role is used primarily as a task library via
-# `include_role` + `tasks_from` from platform-specific roles.

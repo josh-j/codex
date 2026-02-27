@@ -1,9 +1,0 @@
----
-# internal.core.common : logging/info
-#
-# Lightweight logging helper for informational messages.
-
-- name: Log info message
-  ansible.builtin.debug:
-    msg: "{{ ncs_log_message | default('') }}"
-  changed_when: false

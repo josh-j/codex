@@ -54,24 +54,18 @@ playbook_syntax:
   script:
     - echo "dummy_password" > .vaultpass
     - |
-      for playbook in playbooks/*.yaml playbooks/common/*.yaml; do
+      for playbook in playbooks/*.yml; do
         [ -f "$playbook" ] || continue
         echo "Checking syntax for $playbook..."
         ansible-playbook -i inventory/production --syntax-check "$playbook"
       done
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3) TEST STAGE (Unit Tests)
+# 3) TEST STAGE (Unit & E2E Tests)
 # ─────────────────────────────────────────────────────────────────────────────
 unit_tests:
   stage: test
   script:
-    - python -m unittest
-        tests/unit/test_core_reporting_filter.py
-        tests/unit/test_core_stig_filter.py
-        tests/unit/test_report_css_single_source.py
-        tests/unit/test_report_view_model_vmware.py
-        tests/unit/test_report_view_model_linux.py
-        tests/unit/test_report_view_model_site.py
-        tests/unit/test_vmware_audit_export_contract.py
-        tests/unit/test_vmware_snapshot_filter.py
+    - pip install -e tools/ncs_reporter
+    - export PYTHONPATH="$PYTHONPATH:$CI_PROJECT_DIR/tools/ncs_reporter/src:$CI_PROJECT_DIR/libs/ncs_core/src"
+    - pytest tests/unit tools/ncs_reporter/tests

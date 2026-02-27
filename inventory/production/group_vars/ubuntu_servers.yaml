@@ -1,7 +1,0 @@
----
-# inventory/production/group_vars/ubuntu_servers.yaml
-# Connection parameters for Ubuntu Linux hosts.
-
-ansible_become: true
-ansible_become_method: sudo
-ansible_python_interpreter: /usr/bin/python3

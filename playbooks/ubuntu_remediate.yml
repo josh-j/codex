@@ -1,0 +1,23 @@
+---
+# playbooks/ubuntu_remediate.yml
+# General system maintenance and configuration remediation for Ubuntu.
+# This playbook targets non-STIG configuration drift and operational fixes.
+# It follows a 'Discover -> Remediate -> Verify' workflow to ensure all
+# maintenance tasks (e.g., service restarts, config fixes, log rotation)
+# are applied correctly and that the final state is captured in telemetry.
+# This is used for standardizing operational baselines across the fleet.
+
+- name: "Phase 2: Ubuntu System Remediation"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "remediate", "system"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: remediate
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover # Re-run discovery to capture the fixed state!

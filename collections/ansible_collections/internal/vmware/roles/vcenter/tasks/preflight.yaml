@@ -1,0 +1,46 @@
+---
+# internal.vmware.vcenter : tasks/preflight.yaml
+
+- name: Initialize shared vCenter connection context
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
+  tags: [always]
+
+- name: "vCenter | Initialize collection state"
+  ansible.builtin.set_fact:
+    vcenter_collect_failed: false
+    vcenter_connectivity_error: ""
+  tags: [always]
+
+- name: Check vCenter reachability
+  ansible.builtin.uri:
+    url: "https://{{ _vcenter_hostname }}/rest/com/vmware/cis/session"
+    method: POST
+    user: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    force_basic_auth: true
+    status_code: [200, 503]
+    timeout: 10
+  register: _vc_reachability
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true
+  tags: [always]
+
+- name: Handle reachability failure
+  when: (_vc_reachability.status | default(0)) not in [200, 503]
+  block:
+    - name: Stage connectivity failure
+      ansible.builtin.set_fact:
+        vcenter_collect_failed: true
+        vcenter_connectivity_error: "vCenter {{ _vcenter_hostname }} is unreachable (HTTP {{ _vc_reachability.status | default('Timeout') }})"
+      changed_when: false
+
+    - name: Export failure state
+      ansible.builtin.include_tasks: export.yaml
+
+    - name: Stop execution for this vCenter
+      ansible.builtin.meta: end_host

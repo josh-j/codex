@@ -1,0 +1,18 @@
+---
+# playbooks/vmware_audit.yml
+# Comprehensive health and policy audit for VMware vCenter environments.
+# This playbook connects to vCenter APIs to analyze ESXi host states,
+# VM configuration drift, and virtual networking compliance.
+# It evaluates system health, license status, and resource distribution.
+# Findings are collected per-vCenter and normalized for infrastructure
+# dashboards, providing a high-level view of the virtualization layer.
+
+- name: Phase 2 | VMware Health & Compliance Audit
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  roles:
+    - role: internal.vmware.vcenter
+      vars:
+        vcenter_action: collect
+        # Default thresholds are defined in roles/vcenter/defaults/main.yaml

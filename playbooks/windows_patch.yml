@@ -1,0 +1,18 @@
+---
+# playbooks/windows_patch.yml
+# Orchestrated software update management for Windows server environments.
+# This playbook coordinates with Microsoft Configuration Manager (ConfigMgr)
+# to trigger, monitor, and verify OS-level security updates.
+# It ensures systems are patched within compliance windows and provides
+# real-time feedback on update success or failure. Verification tasks
+# update the infrastructure reports with the new patching status.
+
+- name: "Phase 2: Windows ConfigMgr Updates"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ['windows', 'update']
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: audit
+        windows_audit_force_update: true

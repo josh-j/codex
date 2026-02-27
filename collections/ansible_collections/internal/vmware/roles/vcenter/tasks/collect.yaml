@@ -1,0 +1,38 @@
+---
+# internal.vmware.vcenter : tasks/collect.yaml
+
+- name: Collect | Initialize Collection State
+  block:
+    - name: Ensure local facts are available for timestamping
+      ansible.builtin.setup:
+        gather_subset:
+          - min
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Set shared controller timestamps
+      ansible.builtin.set_fact:
+        _vmware_controller_epoch: "{{ ansible_facts['date_time']['epoch'] | int }}"
+        _vmware_controller_collected_at: "{{ ansible_facts['date_time']['iso8601'] }}"
+      changed_when: false
+
+    - name: Collect | vCenter Appliance State
+      ansible.builtin.include_tasks: collect/appliance.yaml
+      tags: [collect, infrastructure]
+
+    - name: Collect | vCenter Inventory State
+      ansible.builtin.include_tasks: collect/inventory.yaml
+      tags: [collect, inventory]
+
+    - name: Collect | vCenter Active Alarms
+      ansible.builtin.include_tasks: collect/alarms.yaml
+      tags: [collect, alarms]
+
+  always:
+    - name: Finalize | Assemble Raw Context
+      ansible.builtin.include_tasks: assemble.yaml
+      tags: [collect]
+
+    - name: Finalize | Export Raw State
+      ansible.builtin.include_tasks: export.yaml
+      tags: [collect]

@@ -1,0 +1,53 @@
+---
+# internal.vmware.esxi : tasks/stig.yaml
+
+# Phase 0: Preconditions
+- name: "ESXi STIG | Phase 0 | Validate target hosts"
+  ansible.builtin.assert:
+    that: esxi_stig_target_hosts | default([]) | length > 0
+    fail_msg: "No ESXi hosts defined in esxi_stig_target_hosts"
+
+- name: "ESXi STIG | Phase 0 | Validate required STIG settings"
+  when: vmware_stig_enable_hardening | default(false) | bool
+  ansible.builtin.assert:
+    that:
+      - (not (esxi_70_000004_Manage | default(true) | bool)) or (esxi_stig_syslog_host | default('') | length > 0)
+      - (not (esxi_70_000007_Manage | default(true) | bool)) or (esxi_stig_welcome_message | default('') | length > 0)
+      - (not (esxi_70_000046_Manage | default(true) | bool)) or (esxi_stig_ntp_servers | default([]) | length > 0)
+      - (not (esxi_70_000039_Manage | default(true) | bool)) or (esxi_stig_ad_admin_group | default('') | length > 0)
+      - (not (esxi_70_000045_Manage | default(true) | bool)) or (esxi_stig_log_dir | default('') | length > 0)
+    fail_msg: >-
+      Required STIG variables are empty while their rules are enabled.
+      Set the variables or disable the rules via *_Manage: false.
+
+# Phase 1: Evaluate/Remediate
+- name: "ESXi STIG | Phase 1 | Execute audit/hardening"
+  block:
+    - name: "ESXi STIG | Run checks"
+      ansible.builtin.import_tasks: check.yaml
+      tags: [checks, stig, security]
+
+  rescue:
+    - name: "ESXi STIG | Mark audit as failed"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+  always:
+    - name: "ESXi STIG | Emit telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "vmware"
+            name: "stig_esxi"
+            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+            payload:
+              status: "{{ 'FAILED' if _stig_audit_failed | default(false) else 'SUCCESS' }}"
+              target_hosts: "{{ esxi_stig_target_hosts }}"
+        per_host: true
+      changed_when: false
+
+    - name: "ESXi STIG | Log completion"
+
+      ansible.builtin.debug:
+        msg: "ESXi STIG audit completed. Results emitted to .artifacts via callback."

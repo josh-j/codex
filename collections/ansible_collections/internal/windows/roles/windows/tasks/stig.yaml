@@ -1,0 +1,68 @@
+---
+# internal.windows.windows : tasks/stig.yaml
+
+# =============================================================================
+# Phase 0 | Initialize
+# =============================================================================
+
+- name: "Windows STIG | Phase 0 | Initialize state"
+  ansible.builtin.set_fact:
+    _stig_audit_ran: false
+    _stig_audit_failed: false
+    audit_full_list: []
+  changed_when: false
+
+# =============================================================================
+# Phase 1 | Ingest Inputs / Evaluate
+# =============================================================================
+
+- name: "Windows STIG | Phase 1a | Load findings from provided rows"
+  when: windows_stig_input_rows | default([]) | length > 0
+  ansible.builtin.set_fact:
+    audit_full_list: "{{ windows_stig_input_rows | default([]) | list }}"
+    _stig_audit_ran: true
+  changed_when: false
+
+- name: "Windows STIG | Phase 1b | Run native checks"
+  when:
+    - not (_stig_audit_ran | default(false))
+    - windows_stig_enable_audit | default(false) | bool
+  block:
+    - name: "Windows STIG | Phase 1b.1 | Execute native baseline checks"
+      ansible.builtin.import_tasks: stig_check.yaml
+      tags: [windows, stig, security, checks]
+  rescue:
+    - name: "Windows STIG | Phase 1b.r | Mark native check failure"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+    - name: "Windows STIG | Phase 1b.r | Fail native-only mode"
+      when: windows_stig_native_checks_only | default(false) | bool
+      ansible.builtin.fail:
+        msg: "Windows Server STIG native checks failed on {{ inventory_hostname }}."
+
+- name: "Windows STIG | Phase 1c.1 | Mark audit ran if checks performed"
+  when:
+    - audit_full_list is defined
+    - audit_full_list | default([]) | length > 0
+    - not (_stig_audit_ran | default(false))
+  ansible.builtin.set_fact:
+    _stig_audit_ran: true
+  changed_when: false
+
+# =============================================================================
+# Phase 2 | Export
+# =============================================================================
+
+- name: Windows STIG | Emit telemetry
+  ansible.builtin.set_stats:
+    data:
+      ncs_collect:
+        platform: "windows"
+        name: "stig_windows"
+        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+        payload: "{{ audit_full_list }}"
+    per_host: true
+  when: _stig_audit_ran | default(false)
+  changed_when: false

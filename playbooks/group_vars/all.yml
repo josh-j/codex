@@ -1,0 +1,13 @@
+---
+# playbooks/vars/ncs_global_config.yaml
+# Truly global configuration for the NCS fleet.
+
+ncs_config:
+  debug_mode: true
+  dry_run_mode: false
+  report_directory: /srv/samba/reports
+  logging:
+    export_to_file: true
+    file_path: "/var/log/ncs/ncs.log"
+    max_size_mb: 100
+    backup_count: 5

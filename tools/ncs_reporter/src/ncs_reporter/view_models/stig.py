@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from .common import _iter_hosts, _status_from_health, canonical_severity, safe_list
+from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
 
 
 def _canonical_stig_status(value: Any) -> str:
@@ -162,11 +162,7 @@ def build_stig_host_view(
     health = _status_from_health(stig_payload.get("health"))
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "target": {
             "host": str(hostname),
             "platform": platform_name,
@@ -290,11 +286,7 @@ def build_stig_fleet_view(
     rows.sort(key=lambda x: (str(x["platform"]), str(x["host"]), str(x["audit_type"])))
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "fleet": {
             "totals": totals,
             "by_platform": by_platform,

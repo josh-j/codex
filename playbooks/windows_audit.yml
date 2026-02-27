@@ -1,0 +1,18 @@
+---
+# playbooks/windows_audit.yml
+# Comprehensive health and inventory auditing for Windows Server fleet.
+# This playbook uses PowerShell-based discovery to collect system specs,
+# installed software, service health, and security configuration states.
+# It identifies missing patches and evaluates compliance against internal
+# server baselines. The resulting telemetry is processed by the NCS
+# reporting engine to provide a unified view of Windows environment health.
+
+- name: "Phase 2: Windows Audit (Inventory / Compliance, No Updates)"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ['windows', 'audit']
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: audit
+        # Default thresholds are defined in roles/windows/defaults/main.yaml

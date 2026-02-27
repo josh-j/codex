@@ -1,0 +1,123 @@
+---
+# internal.linux.ubuntu : tasks/discover.yaml
+
+- name: Ensure distribution facts are gathered
+  ansible.builtin.setup:
+    gather_subset:
+      - "distribution"
+  when: ansible_distribution is not defined
+  tags: [always]
+
+- name: Check OS Family
+  ansible.builtin.fail:
+    msg: "This role is for Ubuntu only. Found: {{ ansible_facts['distribution'] | default('Unknown') }}"
+  when: ansible_facts['distribution'] | default('') != 'Ubuntu'
+
+- name: Discovery - System, Updates, & Security
+  block:
+    - name: Gather system facts (hardware, disks, network)
+      ansible.builtin.setup:
+        gather_subset:
+          - hardware
+          - mounts
+          - network
+
+    - name: Get list of failed systemd services
+      ansible.builtin.command: systemctl list-units --state=failed --no-legend --plain # noqa command-instead-of-module
+      register: _failed_services_raw
+      changed_when: false
+      check_mode: false
+
+    - name: Get user accounts from /etc/passwd
+      ansible.builtin.getent:
+        database: passwd
+
+    - name: Get password aging data from /etc/shadow
+      ansible.builtin.command: cat /etc/shadow
+      register: _shadow_raw
+      become: true
+      changed_when: false
+      no_log: true
+      check_mode: false
+
+    - name: Get active SSH server configuration
+      ansible.builtin.command: sshd -T
+      register: _sshd_raw
+      become: true
+      changed_when: false
+      check_mode: false
+
+    - name: Find world-writable files in /etc and /var
+      ansible.builtin.command: find /etc /var -xdev -type f -perm -0002 -print
+      register: _world_writable_raw
+      become: true
+      changed_when: false
+      failed_when: _world_writable_raw.rc is defined and _world_writable_raw.rc != 0
+      async: 60
+      poll: 2
+      check_mode: false
+
+    - name: Refresh apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      changed_when: false
+      become: true
+
+    - name: Check if a reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: _reboot_stat
+      check_mode: false
+
+    - name: Check available updates
+      ansible.builtin.command: apt-get -s upgrade # noqa command-instead-of-module
+      register: _apt_simulate
+      changed_when: false
+      failed_when: _apt_simulate.rc != 0 and 'Could not get lock' not in _apt_simulate.stderr
+      check_mode: false
+
+    - name: Get permissions of sensitive files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: _file_stats_raw
+      loop:
+        - /etc/shadow
+        - /etc/passwd
+        - /etc/ssh/sshd_config
+      check_mode: false
+
+    - name: Assemble raw discovery context
+      ansible.builtin.set_fact:
+        ubuntu_raw_discovery:
+          ansible_facts: "{{ ansible_facts }}"
+          failed_services: "{{ _failed_services_raw }}"
+          shadow_raw: "{{ _shadow_raw }}"
+          sshd_raw: "{{ _sshd_raw }}"
+          world_writable: "{{ _world_writable_raw }}"
+          reboot_stat: "{{ _reboot_stat }}"
+          apt_simulate: "{{ _apt_simulate }}"
+          file_stats: "{{ _file_stats_raw }}"
+      changed_when: false
+
+  rescue:
+    - name: Log discovery failure
+      ansible.builtin.debug:
+        msg: "Discovery failed on {{ inventory_hostname }}. State will reflect defaults only."
+
+- name: Ubuntu | Emit discovery telemetry
+  ansible.builtin.set_stats:
+    data:
+      ncs_collect:
+        platform: "ubuntu"
+        name: "discovery"
+        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+        payload: "{{ ubuntu_raw_discovery | default({}) }}"
+        config:
+          ubuntu_memory_warning_pct: "{{ ubuntu_memory_warning_pct | default(95) }}"
+          ubuntu_storage_warning_pct: "{{ ubuntu_storage_warning_pct | default(90) }}"
+          ubuntu_load_warning_threshold: "{{ ubuntu_load_warning_threshold | default(15) }}"
+          ubuntu_updates_critical_threshold: "{{ ubuntu_updates_critical_threshold | default(50) }}"
+    per_host: true
+  when: not (ubuntu_skip_export | default(false) | bool)
+  changed_when: false

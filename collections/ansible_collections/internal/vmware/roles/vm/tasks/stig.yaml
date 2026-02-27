@@ -1,0 +1,40 @@
+---
+# internal.vmware.vm : tasks/stig.yaml
+
+# Phase 0: Preconditions
+- name: "VM STIG | Phase 0 | Validate target VMs"
+  ansible.builtin.assert:
+    that: vm_stig_target_vms | default([]) | length > 0
+    fail_msg: "No VMs defined in vm_stig_target_vms"
+
+# Phase 1: Evaluate/Remediate
+- name: "VM STIG | Phase 1 | Execute audit/hardening"
+  block:
+    - name: "VM STIG | Run checks"
+      ansible.builtin.import_tasks: check.yaml
+      tags: [checks, stig, security]
+
+  rescue:
+    - name: "VM STIG | Mark audit as failed"
+      ansible.builtin.set_fact:
+        _stig_audit_failed: true
+      changed_when: false
+
+  always:
+    - name: "VM STIG | Emit telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "vmware"
+            name: "stig_vm"
+            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+            payload:
+              status: "{{ 'FAILED' if _stig_audit_failed | default(false) else 'SUCCESS' }}"
+              target_vms: "{{ vm_stig_target_vms }}"
+        per_host: true
+      changed_when: false
+
+    - name: "VM STIG | Log completion"
+
+      ansible.builtin.debug:
+        msg: "VM STIG audit completed. Results emitted to .artifacts via callback."

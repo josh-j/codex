@@ -1,0 +1,20 @@
+---
+# playbooks/ubuntu_stig_audit.yml
+# Security Technical Implementation Guide (STIG) audit for Ubuntu.
+# This playbook evaluates target hosts against DISA STIG requirements
+# using the internal.linux.ubuntu collection's security audit engine.
+# It performs a non-mutating assessment of file permissions, kernel
+# settings, authentication policies, and network service configurations.
+# Compliance findings are emitted as telemetry for rich STIG reporting.
+
+- name: "Phase 2: Ubuntu STIG Audit"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "stig", "security"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: stig

@@ -1,9 +1,0 @@
----
-# internal.core.common : logging/error
-#
-# Lightweight logging helper for error messages (non-failing).
-
-- name: Log error message
-  ansible.builtin.debug:
-    msg: "ERROR: {{ ncs_log_message | default('') }}"
-  changed_when: false

@@ -1,0 +1,13 @@
+---
+# internal.vmware.esxi : tasks/main.yaml
+
+- name: "ESXi | Dispatch: {{ esxi_action | default('stig') }}"
+  module_defaults:
+    group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+    - name: "ESXi | Run: {{ esxi_action | default('stig') }}"
+      ansible.builtin.include_tasks: "{{ esxi_action | default('stig') }}.yaml"

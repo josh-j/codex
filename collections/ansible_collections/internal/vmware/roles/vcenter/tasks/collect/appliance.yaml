@@ -1,0 +1,23 @@
+---
+# internal.vmware.vcenter : collect/appliance.yaml
+
+- name: Appliance | Gather system data
+  vmware.vmware.appliance_info:
+    properties: [all]
+  register: _raw_appliance_health
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  retries: 2
+  delay: 5
+  until: _raw_appliance_health is succeeded
+  ignore_errors: true
+  changed_when: false
+
+- name: Appliance | Get backup schedule
+  vmware.vmware.vcsa_backup_schedule_info:
+  register: _raw_appliance_backup
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+  no_log: true

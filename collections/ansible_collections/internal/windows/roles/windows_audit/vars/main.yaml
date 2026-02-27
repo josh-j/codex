@@ -1,1 +1,0 @@
-windows_ctx: "{{ 'internal.windows:roles/windows_audit/defaults/context_init_schema.yaml' | internal.core.schema_to_skeleton('windows_ctx') }}"

@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Any
 
+import yaml
+
 # ---------------------------------------------------------------------------
 # Fake Ansible types (plain dataclasses, not unittest.mock)
 # ---------------------------------------------------------------------------
@@ -612,6 +614,215 @@ class TestNonStigTaskIgnored(unittest.TestCase):
         )
         self.cb.v2_runner_on_ok(result)
         self.assertEqual(self.cb.rules, {})
+
+
+class TestYamlEnvelopeOutput(unittest.TestCase):
+    """v2_playbook_on_stats writes a YAML envelope for ncs-reporter to consume.
+
+    The envelope is written to:
+        {NCS_REPORT_DIRECTORY}/{NCS_PLATFORM}/{host}/raw_stig_{target_type}.yaml
+    It must contain 'metadata', 'data' (list of rule rows), and 'target_type'.
+    """
+
+    tmpdir: str
+    platform_root: str
+    cb: Any
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.platform_root = tempfile.mkdtemp()
+        cls.cb, _ = _make_cb(cls.tmpdir)
+
+    def setUp(self) -> None:
+        self.cb.rules.clear()
+        self.cb.rule_details.clear()
+        self.cb._xml_written.clear()
+        os.environ["NCS_REPORT_DIRECTORY"] = self.platform_root
+        os.environ["NCS_PLATFORM"] = "vmware"
+        os.environ.pop("NCS_STIG_TARGET_TYPE", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("NCS_REPORT_DIRECTORY", None)
+        os.environ.pop("NCS_PLATFORM", None)
+        os.environ.pop("NCS_STIG_TARGET_TYPE", None)
+
+    def test_yaml_envelope_written_on_stats(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        self.assertTrue(os.path.exists(yaml_path), "YAML envelope must be written on stats")
+
+    def test_envelope_has_required_top_level_keys(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        self.assertIn("metadata", envelope)
+        self.assertIn("data", envelope)
+        self.assertIn("target_type", envelope)
+
+    def test_metadata_fields(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        meta = envelope["metadata"]
+        self.assertEqual(meta["host"], "esxi-01")
+        self.assertEqual(meta["audit_type"], "stig_esxi")
+        self.assertEqual(meta["engine"], "stig_xml_callback")
+        self.assertIn("timestamp", meta)
+
+    def test_data_contains_rule_rows_with_required_keys(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        self.assertIsInstance(envelope["data"], list)
+        self.assertEqual(len(envelope["data"]), 1)
+        row = envelope["data"][0]
+        for key in ("id", "rule_id", "name", "status", "title", "severity", "fixtext", "checktext"):
+            self.assertIn(key, row, f"Row missing key: {key!r}")
+
+    def test_data_status_matches_task_outcome(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui", check_mode=True),
+            _result={"changed": True, "check_mode": True},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        # check_mode + changed → "failed" in stig_xml; normalize_stig maps this to "open"
+        self.assertEqual(envelope["data"][0]["status"], "failed")
+
+    def test_target_type_defaults_to_esxi(self) -> None:
+        result = FakeResult(
+            _host=FakeHost("esxi-01"),
+            _task=FakeTask("stigrule_256376_dcui"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        self.assertEqual(envelope["target_type"], "esxi")
+
+    def test_target_type_override_via_env(self) -> None:
+        os.environ["NCS_STIG_TARGET_TYPE"] = "vm"
+        result = FakeResult(
+            _host=FakeHost("vm-01"),
+            _task=FakeTask("stigrule_256450_copy"),
+            _result={"changed": False},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "vm-01", "raw_stig_vm.yaml")
+        self.assertTrue(os.path.exists(yaml_path))
+        with open(yaml_path) as f:
+            envelope = yaml.safe_load(f)
+
+        self.assertEqual(envelope["target_type"], "vm")
+        self.assertEqual(envelope["metadata"]["audit_type"], "stig_vm")
+
+    def test_multiple_hosts_produce_separate_envelopes(self) -> None:
+        for host, rule, changed in [
+            ("esxi-01", "256376", True),
+            ("esxi-02", "256376", False),
+        ]:
+            result = FakeResult(
+                _host=FakeHost("localhost"),
+                _task=FakeTask(
+                    f"stigrule_{rule}_dcui",
+                    check_mode=True,
+                    vars={"stig_target_host": host},
+                ),
+                _result={"changed": changed, "check_mode": True},
+            )
+            self.cb.v2_runner_on_ok(result)
+
+        self.cb.v2_playbook_on_stats(None)
+
+        for host in ("esxi-01", "esxi-02"):
+            yaml_path = os.path.join(self.platform_root, "vmware", host, "raw_stig_esxi.yaml")
+            self.assertTrue(os.path.exists(yaml_path), f"Missing envelope for {host}")
+            with open(yaml_path) as f:
+                envelope = yaml.safe_load(f)
+            self.assertEqual(envelope["metadata"]["host"], host)
+
+    def test_envelope_readable_by_normalize_stig(self) -> None:
+        """The YAML envelope written by stig_xml must be parseable by normalize_stig.
+
+        This is the end-to-end proof that the bridge works: stig_xml writes a file
+        that ncs-reporter's normalization pipeline can ingest and produce a valid model.
+        """
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools", "ncs_reporter", "src"))
+        try:
+            from ncs_reporter.normalization.stig import normalize_stig
+        except ImportError:
+            self.skipTest("ncs_reporter not on PYTHONPATH — run under nix develop")
+
+
+        result = FakeResult(
+            _host=FakeHost("localhost"),
+            _task=FakeTask(
+                "stigrule_256376_dcui",
+                check_mode=True,
+                vars={"stig_target_host": "esxi-01"},
+            ),
+            _result={"changed": True, "check_mode": True},
+        )
+        self.cb.v2_runner_on_ok(result)
+        self.cb.v2_playbook_on_stats(None)
+
+        yaml_path = os.path.join(self.platform_root, "vmware", "esxi-01", "raw_stig_esxi.yaml")
+        with open(yaml_path) as f:
+            raw = yaml.safe_load(f)
+
+        model = normalize_stig(raw, stig_target_type="esxi")
+        self.assertIsNotNone(model)
+        self.assertIn(model.health, ("WARNING", "CRITICAL"))
+        self.assertEqual(len(model.full_audit), 1)
+        self.assertEqual(model.full_audit[0]["status"], "open")
 
 
 if __name__ == "__main__":

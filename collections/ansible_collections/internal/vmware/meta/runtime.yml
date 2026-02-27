@@ -1,1 +1,11 @@
-{}
+---
+# internal.vmware : meta/runtime.yml
+# Idiomatic collection metadata for NCS VMware collection.
+
+plugin_routing:
+  modules:
+    vmware_triggered_alarms_info:
+      deprecation:
+        warning_text: "This module is internal to NCS."
+
+requires_ansible: ">=2.15.0"

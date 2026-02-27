@@ -9,7 +9,8 @@ from .common import (
     _safe_pct,
     _severity_for_pct,
     _status_from_health,
-    canonical_severity,
+    build_meta,
+    collect_active_alerts,
     safe_list,
     to_int,
 )
@@ -33,6 +34,10 @@ def _coerce_vmware_bundle(bundle: Any) -> dict[str, Any]:
         or bundle.get("audit")
         or {}
     )
+
+    # If we have a normalized audit model, it contains the discovery context
+    if not discovery and audit.get("discovery"):
+        discovery = dict(audit.get("discovery") or {})
 
     # If both are empty, check if the bundle ITSELF is the audit data (flat load)
     if not discovery and not audit:
@@ -142,7 +147,7 @@ def build_vmware_fleet_view(
     fleet_mem_used = 0
     fleet_mem_total = 0
     fleet_alerts = {"critical": 0, "warning": 0, "total": 0}
-    active_alerts = []
+    active_alerts: list[dict[str, Any]] = []
 
     for hostname, bundle in _iter_vmware_hosts(aggregated_hosts):
         bundle_view = _coerce_vmware_bundle(bundle)
@@ -184,33 +189,14 @@ def build_vmware_fleet_view(
                 "vcenter_health": vcenter_health,
             }
         )
-        for alert in alerts_list:
-            if not isinstance(alert, dict):
-                continue
-            sev = canonical_severity(alert.get("severity"))
-            if sev not in ("CRITICAL", "WARNING"):
-                continue
-            active_alerts.append(
-                {
-                    "host": hostname,
-                    "severity": sev,
-                    "category": alert.get("category", "vmware"),
-                    "audit_type": "vmware_vcenter",
-                    "message": alert.get("message", ""),
-                    "raw": alert,
-                }
-            )
+        active_alerts.extend(collect_active_alerts(alerts_list, hostname, "vmware_vcenter", "vmware"))
 
     fleet_alerts["total"] = fleet_alerts["critical"] + fleet_alerts["warning"]
     fleet_cpu_pct = _safe_pct(fleet_cpu_used, fleet_cpu_total)
     fleet_mem_pct = _safe_pct(fleet_mem_used, fleet_mem_total)
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "fleet": {
             "asset_count": len(fleet_rows),
             "totals": fleet_totals,
@@ -255,11 +241,7 @@ def build_vmware_node_view(
     clusters = _extract_cluster_list(bundle_view)
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "node": {
             "name": str(hostname or "unknown"),
             "status": {"raw": status_raw},

@@ -1,1 +1,5 @@
-{}
+---
+# internal.windows : meta/runtime.yml
+# Idiomatic collection metadata for NCS Windows collection.
+
+requires_ansible: ">=2.15.0"

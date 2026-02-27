@@ -1,0 +1,27 @@
+---
+# internal.linux.ubuntu : tasks/maintain.yaml
+#
+# General Ubuntu system maintenance tasks:
+# 1. Update package cache (redundant if main.yaml has it, but safe)
+# 2. Upgrade packages (if enabled)
+# 3. Handle reboots (if required)
+
+- name: "Ubuntu Maintenance | Perform package upgrades"
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+  become: true
+  when: ubuntu_enable_maintenance | default(false) | bool
+
+- name: "Ubuntu Maintenance | Check if reboot is required"
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _reboot_required_stat
+
+- name: "Ubuntu Maintenance | Reboot if required"
+  ansible.builtin.reboot:
+    msg: "Rebooting for system updates (Ansible)"
+  become: true
+  when:
+    - _reboot_required_stat.stat.exists
+    - ubuntu_enable_upgrade_reboots | default(true) | bool

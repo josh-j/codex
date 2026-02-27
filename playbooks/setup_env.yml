@@ -1,0 +1,42 @@
+---
+# playbooks/setup_env.yml
+# Infrastructure readiness and reporting environment initialization.
+# This playbook ensures the local and remote filesystem structures are
+# correctly provisioned to store raw audit telemetry and final reports.
+# It validates directory permissions (SGID 2775), creates required
+# platform subdirectories, and ensures the Samba report share is accessible.
+# Failure at this stage prevents data corruption in subsequent audit phases.
+
+- name: Initialize Environment
+  hosts: localhost
+  gather_facts: false
+
+
+  vars:
+    _report_dir: "{{ ncs_config.report_directory }}"
+    _required_subdirs:
+      - "platform"
+
+  tasks:
+    - name: Verify report directory exists and is writable
+      ansible.builtin.file:
+        path: "{{ _report_dir }}"
+        state: directory
+        mode: "2775"
+      register: _dir_check
+      failed_when: false
+
+    - name: Fail if report directory is missing
+      ansible.builtin.fail:
+        msg: >-
+          Report directory '{{ _report_dir }}' is missing or inaccessible.
+          Ensure the Samba share is provisioned.
+          Run: ansible-playbook playbooks/setup_samba.yml
+      when: _dir_check is failed
+
+    - name: Ensure report subdirectories exist
+      ansible.builtin.file:
+        path: "{{ _report_dir }}/{{ item }}"
+        state: directory
+        mode: "2775"
+      loop: "{{ _required_subdirs }}"

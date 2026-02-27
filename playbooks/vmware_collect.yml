@@ -1,0 +1,17 @@
+---
+# playbooks/vmware_collect.yml
+# VMware infrastructure telemetry and metadata collection.
+# This playbook focuses on high-speed data collection from vCenter and
+# managed ESXi hosts. It gathers inventory details, hardware profiles,
+# and cluster-level configuration metrics. The collected data serves as
+# the primary input for both health dashboards and capacity planning
+# reports within the centralized NCS reporting architecture.
+
+- name: Phase 2 | VMware Health & Compliance Audit
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  roles:
+    - role: internal.vmware.vcenter
+      vars:
+        vcenter_action: collect

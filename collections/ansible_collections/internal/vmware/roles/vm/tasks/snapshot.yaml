@@ -1,0 +1,28 @@
+---
+# internal.vmware.vm : tasks/snapshot.yaml
+
+- name: "VM Snapshot | Resolve connection"
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
+
+- name: "VM Snapshot | Execute snapshots"
+  module_defaults:
+    group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+    - name: "VM Snapshot | Create pre-action snapshot for each VM"
+      community.vmware.vmware_guest_snapshot:
+        name: "{{ item }}"
+        state: present
+        snapshot_name: "{{ vm_snapshot_name | default('Ansible_Safety_Snapshot_' ~ now(utc=true, fmt='%Y%m%d_%H%M%S')) }}"
+        description: "{{ vm_snapshot_desc | default('Safety snapshot created by Ansible') }}"
+        quiesce: true
+        memory_dump: false
+      loop: "{{ vm_snapshot_targets | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: vm_snapshot_targets | default([]) | length > 0

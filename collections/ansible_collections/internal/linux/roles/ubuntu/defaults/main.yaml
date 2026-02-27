@@ -1,0 +1,23 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu/defaults/main.yaml
+
+# --- Actions ---
+ubuntu_action: discover
+
+# --- Feature Flags ---
+ubuntu_skip_discovery: false
+ubuntu_skip_export: false
+
+# --- Thresholds (Used by ncs-reporter) ---
+ubuntu_storage_warning_pct: 90.0
+ubuntu_memory_warning_pct: 95.0
+ubuntu_swap_warning_pct: 80.0
+ubuntu_load_warning_threshold: 15
+ubuntu_updates_critical_threshold: 50
+
+# --- Policy Toggles ---
+ubuntu_enable_maintenance: false
+ubuntu_enable_stig_audit: true
+ubuntu_enable_stig_hardening: false
+ubuntu_enable_password_rotation: false
+ubuntu_enable_upgrade_reboots: true

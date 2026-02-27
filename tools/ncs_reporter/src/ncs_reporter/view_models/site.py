@@ -6,7 +6,9 @@ from .common import (
     _count_alerts,
     _iter_hosts,
     _status_from_health,
-    canonical_severity,
+    aggregate_platform_status,
+    build_meta,
+    extract_platform_alerts,
     safe_list,
 )
 from .linux import _coerce_linux_audit
@@ -37,16 +39,7 @@ def build_site_dashboard_view(
         linux_audit, _stig = _coerce_linux_audit(bundle)
         if linux_audit:
             linux_alerts = list(linux_audit.get("alerts") or [])
-            for alert in linux_alerts:
-                sev = canonical_severity((alert or {}).get("severity"))
-                if sev in ("CRITICAL", "WARNING"):
-                    all_alerts.append({
-                        "severity": sev,
-                        "host": hostname,
-                        "audit_type": "linux_system",
-                        "category": (alert or {}).get("category", "System"),
-                        "message": (alert or {}).get("message", ""),
-                    })
+            all_alerts.extend(extract_platform_alerts(linux_alerts, hostname, "linux_system", "System"))
             # Fallback: if health is bad but no alerts, add a synthetic one
             if not linux_alerts:
                 l_status = _status_from_health(linux_audit.get("health"))
@@ -77,16 +70,7 @@ def build_site_dashboard_view(
                         "links": {"fleet_dashboard": "platform/vmware/vmware_health_report.html"},
                     }
                 )
-                for alert in vm_alerts_list:
-                    sev = canonical_severity((alert or {}).get("severity"))
-                    if sev in ("CRITICAL", "WARNING"):
-                        all_alerts.append({
-                            "severity": sev,
-                            "host": hostname,
-                            "audit_type": "vmware_vcenter",
-                            "category": (alert or {}).get("category", "vmware"),
-                            "message": (alert or {}).get("message", ""),
-                        })
+                all_alerts.extend(extract_platform_alerts(vm_alerts_list, hostname, "vmware_vcenter", "vmware"))
                 # Fallback
                 if not vm_alerts_list and status in ("CRITICAL", "WARNING"):
                     all_alerts.append({
@@ -102,17 +86,8 @@ def build_site_dashboard_view(
         if windows_audit:
             win_alerts = list(windows_audit.get("alerts") or [])
             win_status = _status_from_health(windows_audit.get("health"))
-            for alert in win_alerts:
-                sev = canonical_severity((alert or {}).get("severity"))
-                if sev in ("CRITICAL", "WARNING"):
-                    all_alerts.append({
-                        "severity": sev,
-                        "host": hostname,
-                        "audit_type": "windows_audit",
-                        "category": (alert or {}).get("category", "windows"),
-                        "message": (alert or {}).get("message", ""),
-                    })
-            # Fallback (matches old behavior for Windows)
+            all_alerts.extend(extract_platform_alerts(win_alerts, hostname, "windows_audit", "windows"))
+            # Fallback
             if not win_alerts and win_status in ("CRITICAL", "WARNING"):
                 all_alerts.append({
                     "severity": win_status,
@@ -122,16 +97,9 @@ def build_site_dashboard_view(
                     "message": f"Windows reported {win_status} health status.",
                 })
 
-    linux_critical = any(a["audit_type"] == "linux_system" and a["severity"] == "CRITICAL" for a in all_alerts)
-    linux_warning = any(a["audit_type"] == "linux_system" and a["severity"] == "WARNING" for a in all_alerts)
-    linux_status = "CRITICAL" if linux_critical else ("WARNING" if linux_warning else "OK")
-
-    vmware_critical = any(a["audit_type"] == "vmware_vcenter" and a["severity"] == "CRITICAL" for a in all_alerts)
-    vmware_warning = any(a["audit_type"] == "vmware_vcenter" and a["severity"] == "WARNING" for a in all_alerts)
-    vmware_status = "CRITICAL" if vmware_critical else ("WARNING" if vmware_warning else "OK")
-    windows_critical = any(a["audit_type"] == "windows_audit" and a["severity"] == "CRITICAL" for a in all_alerts)
-    windows_warning = any(a["audit_type"] == "windows_audit" and a["severity"] == "WARNING" for a in all_alerts)
-    windows_status = "CRITICAL" if windows_critical else ("WARNING" if windows_warning else "OK")
+    linux_status = aggregate_platform_status(all_alerts, "linux_system")
+    vmware_status = aggregate_platform_status(all_alerts, "vmware_vcenter")
+    windows_status = aggregate_platform_status(all_alerts, "windows_audit")
 
     linux_count = len(list(groups.get("ubuntu_servers") or []))
     vmware_count = len(list(groups.get("vcenters") or []))
@@ -139,11 +107,7 @@ def build_site_dashboard_view(
     totals = _count_alerts(all_alerts)
 
     return {
-        "meta": {
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
-        },
+        "meta": build_meta(report_stamp, report_date, report_id),
         "totals": totals,
         "alerts": sorted(all_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))),
         "platforms": {

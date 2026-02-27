@@ -8,21 +8,26 @@ NCS is an Ansible-based infrastructure health monitoring and STIG compliance aud
 ## Commands
 
 ```bash
-make all              # Run all checks (setup, lint, check, test, jinja-lint, ansible-lint)
-make lint             # Ruff linting
-make format           # Ruff formatting
-make check            # MyPy type checking
-make test             # Pytest unit tests
-make jinja-lint       # Jinja2 template validation
-make ansible-lint     # Ansible-lint
-make setup            # Install Ansible collections from requirements.yml
+just all              # Run all checks (setup, lint, check, test, jinja-lint, ansible-lint)
+just lint             # Ruff linting
+just format           # Ruff formatting
+just check            # MyPy & Basedpyright type checking
+just test             # Pytest unit & E2E tests
+just jinja-lint       # Jinja2 template validation
+just ansible-lint     # Ansible-lint
+just setup            # Install Ansible collections and tools
 
-# Single test file
-pytest tests/unit/test_core_reporting_filter.py
+# Orchestration
+just site             # Run full fleet audit
+just audit-vmware     # Targeted VMware audit
+just stig-vmware      # Targeted STIG audit
 
-# Single test
-pytest tests/unit/test_core_reporting_filter.py::TestClassName::test_method -v
+# Targeted Execution
+just stig-audit-vm <vcenter> <vm_name>
+just stig-harden-vm <vcenter> <vm_name>
+just audit-linux-host <hostname>
 ```
+
 
 ### ncs_reporter CLI (tools/ncs_reporter/)
 
@@ -40,37 +45,34 @@ just windows <input> [output]
 
 ### Collections (`collections/ansible_collections/internal/`)
 
-- **core** — Shared reporting, validation, state management, common roles. Contains custom Ansible filters (`plugins/filter/`) and Python module utilities (`plugins/module_utils/`) used across all platforms.
-- **linux** — Ubuntu audit, discovery, STIG compliance, remediation
-- **vmware** — VMware audit, discovery, STIG compliance, snapshot analysis
+- **core** — Shared state management, common roles, and path resolution filters.
+- **linux** — Ubuntu discovery, STIG compliance, remediation
+- **vmware** — VMware discovery, STIG compliance, snapshot collection
 - **windows** — Windows audit, STIG compliance, ConfigMgr integration
 
-### Reporting Pipeline (6 stages)
+### Decoupled Reporting Pipeline (2 stages)
 
-1. **Raw Report Emitters** — Platform roles write host-level YAML
-2. **Aggregation** — Collects host YAML into fleet state files
-3. **Normalization** — Python adapters normalize payloads to canonical shapes
-4. **View-Model Builders** — Python functions build template-ready dicts (`plugins/module_utils/report_view_models*.py`)
-5. **Rendering** — Ansible orchestrates directory/symlink/template management
-6. **Presentation** — Jinja templates + shared CSS render final HTML
+1. **Collection (Ansible)** — Platform roles run modules and save raw module results to disk as `raw_*.yaml`.
+2. **Processing (ncs-reporter)** — Standalone Python tool normalizes raw data, evaluates alerts, and renders HTML dashboards.
 
 ### Key Entry Points
 
-- `playbooks/master_audit.yaml` — Main orchestration playbook
-- `playbooks/{ubuntu,vmware,windows}/` — Platform-specific playbooks
-- `tools/ncs_reporter/` — Standalone Python CLI (Click-based)
+- `playbooks/site.yml` — Main orchestration playbook
+- `playbooks/*.yml` — Platform-specific and utility playbooks
+- `tools/ncs_reporter/` — Standalone Python CLI (`ncs-reporter`)
+
 
 ## Key Conventions
 
-**Context flow**: Discovery roles populate role-prefixed facts (e.g., `ubuntu_ctx`, `vmware_ctx`). Audit/reporting roles consume via `ncs_ctx` variable.
+**Data Collection**: Roles must focus purely on data collection. Use `ansible.builtin.set_stats` with the `ncs_collect` dictionary to emit telemetry.
 
-**Path resolution**: All output paths resolved via `internal.core.resolve_ncs_path` filter. Never hardcode paths.
+**Path resolution**: Never hardcode paths in Ansible. The `ncs_collector` callback plugin and the `ncs-reporter` tool handle directory structures automatically.
 
-**Skip keys**: Host loops must skip structural entries (`platform`, `history`, `*_fleet_state`, container dirs). Use `internal.core.report_skip_keys`.
 
-**View model contracts**: Builders return dicts with standardized keys (`status.raw`, `links.*`, `summary`, `alerts`). Tested via contract tests.
+**Logic in Python**: All health evaluation, status derivation, and view-model building MUST happen in `ncs_reporter.normalization` (Python), NOT in Ansible Jinja filters.
 
-**Test pattern**: Tests dynamically load collection modules via `importlib` from collection paths. See existing tests for the loader pattern.
+**View model contracts**: Builders return Pydantic models (see `ncs_reporter.models`) with standardized keys. Templates must only render the provided structure.
+
 
 ## Python Style
 

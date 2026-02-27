@@ -27,7 +27,16 @@
       "Bash(/Users/joshj/dev/codex/.venv/bin/python:*)",
       "Bash(make all:*)",
       "Bash(ruff check:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(PYTHONPATH=\"$PWD/tools/ncs_reporter/src:$PYTHONPATH\" ruff check:*)",
+      "Bash(PYTHONPATH=\"tools/ncs_reporter/src:$PYTHONPATH\" python3:*)",
+      "Bash(wc:*)",
+      "Bash(just lint:*)",
+      "Bash(just check:*)",
+      "Bash(mypy:*)",
+      "Bash(just test:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(/tmp/bug_report.txt:*)"
     ]
   }
 }

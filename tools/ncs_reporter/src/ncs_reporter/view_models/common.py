@@ -121,5 +121,81 @@ def status_badge_meta(status: Any) -> dict[str, str]:
         return {"css_class": "status-ok", "label": "OK"}
     if raw in fail_values:
         return {"css_class": "status-fail", "label": "CRITICAL"}
-    
+
     return {"css_class": "status-warn", "label": "WARNING"}
+
+
+# ---------------------------------------------------------------------------
+# Shared view-model helpers (DRY across fleet/site builders)
+# ---------------------------------------------------------------------------
+
+def build_meta(
+    report_stamp: str | None = None,
+    report_date: str | None = None,
+    report_id: str | None = None,
+) -> dict[str, str | None]:
+    """Standard meta block shared across all view-model builders."""
+    return {
+        "report_stamp": report_stamp,
+        "report_date": report_date,
+        "report_id": report_id,
+    }
+
+
+def extract_platform_alerts(
+    alerts_list: list[Any],
+    hostname: str,
+    audit_type: str,
+    category_default: str,
+) -> list[dict[str, Any]]:
+    """Extract CRITICAL/WARNING alerts from a list into site-dashboard format."""
+    result: list[dict[str, Any]] = []
+    for alert in safe_list(alerts_list):
+        if not isinstance(alert, dict):
+            continue
+        sev = canonical_severity(alert.get("severity"))
+        if sev in ("CRITICAL", "WARNING"):
+            result.append({
+                "severity": sev,
+                "host": hostname,
+                "audit_type": audit_type,
+                "category": alert.get("category", category_default),
+                "message": alert.get("message", ""),
+            })
+    return result
+
+
+def aggregate_platform_status(all_alerts: list[dict[str, Any]], audit_type: str) -> str:
+    """Derive OK/WARNING/CRITICAL from a list of site-dashboard alerts for a given audit_type."""
+    has_critical = any(a["audit_type"] == audit_type and a["severity"] == "CRITICAL" for a in all_alerts)
+    has_warning = any(a["audit_type"] == audit_type and a["severity"] == "WARNING" for a in all_alerts)
+    if has_critical:
+        return "CRITICAL"
+    if has_warning:
+        return "WARNING"
+    return "OK"
+
+
+def collect_active_alerts(
+    alerts_list: list[Any],
+    hostname: str,
+    audit_type: str,
+    category_default: str,
+) -> list[dict[str, Any]]:
+    """Build active_alerts entries for fleet views (includes raw dict)."""
+    result: list[dict[str, Any]] = []
+    for alert in safe_list(alerts_list):
+        if not isinstance(alert, dict):
+            continue
+        sev = canonical_severity(alert.get("severity"))
+        if sev not in ("CRITICAL", "WARNING"):
+            continue
+        result.append({
+            "host": hostname,
+            "severity": sev,
+            "category": alert.get("category", category_default),
+            "audit_type": audit_type,
+            "message": alert.get("message", ""),
+            "raw": dict(alert),
+        })
+    return result

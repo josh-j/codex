@@ -1,0 +1,36 @@
+---
+# playbooks/vmware_stig_audit.yml
+# Non-mutating STIG compliance assessment for VMware ESXi and VMs.
+# This playbook evaluates virtualization security controls in check_mode,
+# ensuring no infrastructure changes are applied during the audit.
+# It assesses ESXi host hardening, virtual machine 'vmx' security flags,
+# and vCenter-level security policies. The findings are exported for
+# detailed STIG compliance reporting and remediation planning.
+
+# ---------------------------------------------------------------------------
+# Phase 2a: ESXi STIG Audit
+# ---------------------------------------------------------------------------
+- name: "Phase 2a | ESXi STIG Audit (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "esxi"]
+  roles:
+    - role: internal.vmware.esxi
+      vars:
+        vmware_stig_enable_hardening: false   # READ-ONLY
+      when: esxi_stig_target_hosts | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2b: VM STIG Audit
+# ---------------------------------------------------------------------------
+- name: "Phase 2b | VM STIG Audit (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  roles:
+    - role: internal.vmware.vm
+      vars:
+        vmware_stig_enable_hardening: false   # READ-ONLY
+      when: vm_stig_target_vms | default([]) | length > 0

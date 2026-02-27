@@ -5,10 +5,20 @@ import os
 import platform
 import re
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from time import gmtime, strftime
 
+import yaml
 from ansible.plugins.callback import CallbackBase
+
+
+class _IndentedDumper(yaml.Dumper):
+    """PyYAML Dumper that indents block sequences under their parent key."""
+
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(flow=flow, indentless=False)
+
 
 XCCDF_NS = "http://checklists.nist.gov/xccdf/1.1"
 
@@ -218,10 +228,86 @@ class CallbackModule(CallbackBase):
             full_report.append(row)
 
         try:
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(full_report, f, indent=2)
+            dir_ = os.path.dirname(json_path) or "."
+            with tempfile.NamedTemporaryFile("w", dir=dir_, suffix=".tmp", delete=False, encoding="utf-8") as tmp:
+                json.dump(full_report, tmp, indent=2)
+                tmp_path = tmp.name
+            os.replace(tmp_path, json_path)
         except OSError as e:
             sys.stderr.write(f"[stig_xml] Failed to write JSON for host {host}: {e}\n")
+
+    def _detect_target_type(self) -> str:
+        """Infer STIG target type from STIG XML path, env override, or default."""
+        override = os.environ.get("NCS_STIG_TARGET_TYPE")
+        if override:
+            return override.lower()
+        if self.stig_path:
+            lower = self.stig_path.lower()
+            if "virtual_machine" in lower or "_vms_" in lower or "_vm_" in lower:
+                return "vm"
+            if "ubuntu" in lower or "linux" in lower:
+                return "ubuntu"
+        return "esxi"
+
+    def _dump_yaml_envelope(self, host: str) -> None:
+        """Write a ncs-reporter compatible YAML envelope for this host's STIG results.
+
+        The envelope is written to:
+            {NCS_REPORT_DIRECTORY or <repo_root>/platform}/<platform>/<host>/raw_stig_<target_type>.yaml
+
+        This bridges the gap between stig_xml's JSON output and the ncs-reporter
+        pipeline, which reads raw_*.yaml envelopes from the platform directory tree.
+        """
+        target_type = self._detect_target_type()
+        ncs_platform = os.environ.get("NCS_PLATFORM", "vmware").lower()
+
+        base = os.environ.get("NCS_REPORT_DIRECTORY") or os.path.join(
+            _find_repo_root(os.getcwd()), "platform"
+        )
+        host_dir = os.path.join(base, ncs_platform, host)
+
+        try:
+            os.makedirs(host_dir, exist_ok=True)
+        except OSError as e:
+            sys.stderr.write(f"[stig_xml] Cannot create platform dir {host_dir}: {e}\n")
+            return
+
+        host_rules = self.rules.get(host, {})
+        full_report = []
+        for rule_num, status in host_rules.items():
+            d = self.rule_details.get(rule_num, {})
+            full_report.append(
+                {
+                    "id": d.get("full_id", f"V-{rule_num}"),
+                    "rule_id": d.get("full_id", f"V-{rule_num}"),
+                    "name": host,
+                    "status": status,
+                    "title": d.get("title", f"Rule {rule_num}"),
+                    "severity": d.get("severity", "medium"),
+                    "fixtext": d.get("fixtext", ""),
+                    "checktext": d.get("checktext", ""),
+                }
+            )
+
+        envelope = {
+            "metadata": {
+                "host": host,
+                "audit_type": f"stig_{target_type}",
+                "timestamp": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+                "engine": "stig_xml_callback",
+            },
+            "data": full_report,
+            "target_type": target_type,
+        }
+
+        yaml_path = os.path.join(host_dir, f"raw_stig_{target_type}.yaml")
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=host_dir, suffix=".tmp", delete=False, encoding="utf-8") as tmp:
+                yaml.dump(envelope, tmp, Dumper=_IndentedDumper, default_flow_style=False, sort_keys=False)
+                tmp_path = tmp.name
+            os.replace(tmp_path, yaml_path)
+        except OSError as e:
+            sys.stderr.write(f"[stig_xml] Failed to write YAML envelope for {host}: {e}\n")
 
     def _dump_xml(self, host: str):
         """
@@ -264,8 +350,11 @@ class CallbackModule(CallbackBase):
                 rs.text = "pass"
 
         try:
-            with open(xml_path, "wb") as f:
-                f.write(ET.tostring(tr))
+            dir_ = os.path.dirname(xml_path) or "."
+            with tempfile.NamedTemporaryFile("wb", dir=dir_, suffix=".tmp", delete=False) as tmp:
+                tmp.write(ET.tostring(tr))
+                tmp_path = tmp.name
+            os.replace(tmp_path, xml_path)
         except OSError as e:
             sys.stderr.write(f"[stig_xml] Failed to write XML for host {host}: {e}\n")
         finally:
@@ -331,3 +420,4 @@ class CallbackModule(CallbackBase):
         for host in list(self.rules.keys()):
             self._dump_json(host)
             self._dump_xml(host)
+            self._dump_yaml_envelope(host)

@@ -1,0 +1,89 @@
+---
+# playbooks/vmware_stig_remediate.yml
+# Automated security hardening remediation for VMware environments.
+# This mutating playbook applies DISA STIG controls to ESXi hosts and VMs.
+# It includes safety mechanisms like pre-hardening snapshots for VMs,
+# applies host-level configuration changes, and concludes with a
+# post-remediation audit to capture the finalized compliance state.
+# Designed to bring large-scale VMware fleets into security compliance.
+
+- name: "Phase 2b | Pre-Hardening VM Snapshots"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "snapshot"]
+  tasks:
+    - name: Create safety snapshots
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+        tasks_from: snapshot
+      vars:
+        vm_snapshot_targets: "{{ vm_stig_target_vms | default([]) }}"
+        vm_snapshot_name: "Ansible_Pre_STIG_Hardening_{{ now(utc=true, fmt='%Y%m%d_%H%M%S') }}"
+        vm_snapshot_desc: "Safety snapshot before STIG remediation"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2c: ESXi STIG Hardening
+# ---------------------------------------------------------------------------
+- name: "Phase 2c | ESXi STIG Hardening (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "esxi"]
+  vars:
+    vmware_stig_enable_hardening: true    # MUTATING — applies changes
+
+  tasks:
+    - name: "Execute ESXi STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.esxi
+      when: esxi_stig_target_hosts | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2d: VM STIG Hardening
+# ---------------------------------------------------------------------------
+- name: "Phase 2d | VM STIG Hardening (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "vm"]
+  vars:
+    vmware_stig_enable_hardening: true    # MUTATING — applies changes
+
+  tasks:
+    - name: "Execute VM STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      when: vm_stig_target_vms | default([]) | length > 0
+
+# ---------------------------------------------------------------------------
+# Phase 2e: Post-remediation audit (capture new compliance state)
+# ---------------------------------------------------------------------------
+- name: "Phase 2e | Post-Remediation ESXi STIG Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "esxi"]
+  vars:
+    vmware_stig_enable_hardening: false   # READ-ONLY
+
+  tasks:
+    - name: "Execute Post-Remediation ESXi STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.esxi
+      when: esxi_stig_target_hosts | default([]) | length > 0
+
+- name: "Phase 2f | Post-Remediation VM STIG Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    vmware_stig_enable_hardening: false   # READ-ONLY
+
+  tasks:
+    - name: "Execute Post-Remediation VM STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      when: vm_stig_target_vms | default([]) | length > 0

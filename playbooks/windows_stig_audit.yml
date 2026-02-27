@@ -1,0 +1,19 @@
+---
+# playbooks/windows_stig_audit.yml
+# Security Technical Implementation Guide (STIG) audit for Windows Server.
+# This playbook performs a detailed security assessment against DISA
+# STIG requirements for Windows environments. It evaluates registry
+# settings, Group Policy objects, user rights assignments, and service
+# configurations. Findings are collected as raw telemetry for integration
+# into the centralized security compliance dashboards.
+
+- name: "Phase 3c: Windows Server STIG Audit (Optional)"
+  hosts: windows_servers
+  gather_facts: false
+  vars:
+    master_enable_windows_stig: false
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: stig
+      when: master_enable_windows_stig | bool

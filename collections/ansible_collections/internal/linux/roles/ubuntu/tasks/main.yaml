@@ -1,0 +1,5 @@
+---
+# internal.linux.ubuntu : tasks/main.yaml
+
+- name: "Ubuntu | Dispatch: {{ ubuntu_action | default('discover') }}"
+  ansible.builtin.include_tasks: "{{ ubuntu_action | default('discover') }}.yaml"

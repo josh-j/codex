@@ -1,49 +1,73 @@
 ---
 # inventory/production/hosts.yaml
-# Define your data center sites and infrastructure targets here.
+# Define your data center infrastructure targets here.
 
-sites:
-  hosts:
-    site1:
-      ansible_host: 10.10.10.10
-    site2:
-      ansible_host: 10.10.20.10
+# --- Platform Groups ---
 
 vcenters:
-  children:
-    sites:
+  hosts:
+    vc-site1.local:
+      site: site1
+    vc-site2.local:
+      site: site2
 
-esxi:
+esxi_hosts:
   hosts:
     esxi-01.site1.local:
+      site: site1
     esxi-02.site1.local:
+      site: site1
 
-sa:
-  children:
-    sites:
-
-dd:
-  children:
-    sites:
-
-ucsm:
-  children:
-    sites:
-
-linux_servers:
+unity_arrays:
   hosts:
-    ubuntu-svc-01:
-    ubuntu-svc-02:
+    unity-site1.local:
+      site: site1
+    unity-site2.local:
+      site: site2
+
+data_domains:
+  hosts:
+    dd-site1.local:
+      site: site1
+    dd-site2.local:
+      site: site2
+
+ucs_managers:
+  hosts:
+    ucs-site1.local:
+      site: site1
+    ucs-site2.local:
+      site: site2
 
 ubuntu_servers:
-  children:
-    linux_servers:
+  hosts:
+    ubuntu-svc-01:
+      site: site1
+    ubuntu-svc-02:
+      site: site1
 
 windows_servers:
   hosts:
     win-srv-01.site1.local:
+      site: site1
     win-srv-02.site1.local:
+      site: site1
 
-windows:
+# --- Site Groups (Logical aggregation) ---
+
+site1:
   children:
+    vcenters:
+    esxi_hosts:
+    unity_arrays:
+    data_domains:
+    ucs_managers:
+    ubuntu_servers:
     windows_servers:
+
+site2:
+  children:
+    vcenters:
+    unity_arrays:
+    data_domains:
+    ucs_managers:

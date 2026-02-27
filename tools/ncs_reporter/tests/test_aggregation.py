@@ -162,7 +162,9 @@ class LoadAllReportsTests(unittest.TestCase):
             result = load_all_reports(tmpdir, audit_filter="discovery")
             assert result is not None
             host_data = result["hosts"]["host1"]
-            self.assertEqual(host_data.get("audit_type"), "discovery")
+            # Filtered to only discovery; health should not be present
+            self.assertIn("discovery", host_data)
+            self.assertNotIn("health", host_data)
 
     def test_nonexistent_dir_returns_none(self):
         result = load_all_reports("/tmp/nonexistent_dir_12345")
@@ -192,7 +194,9 @@ class LoadAllReportsTests(unittest.TestCase):
 
             result = load_all_reports(tmpdir, normalizer=my_normalizer)
             assert result is not None
-            self.assertTrue(result["hosts"]["host1"].get("normalized"))
+            # Normalizer renames audit_type to "normalized_type"; data stored under that key
+            self.assertIn("normalized_type", result["hosts"]["host1"])
+            self.assertTrue(result["hosts"]["host1"]["normalized_type"].get("normalized"))
 
 
 class WriteOutputTests(unittest.TestCase):

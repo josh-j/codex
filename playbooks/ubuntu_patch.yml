@@ -1,0 +1,24 @@
+---
+# playbooks/ubuntu_patch.yml
+# Automated security patching and update lifecycle for Ubuntu systems.
+# This playbook performs an initial discovery to identify pending updates,
+# executes the remediation layer to apply OS-level patches via apt, and
+# performs a final post-patch discovery to verify successful application.
+# It ensures systems are running current security baselines while
+# capturing the updated state for the final infrastructure reports.
+
+- name: "Phase 2: Ubuntu OS Patching"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "patching", "updates"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: remediate
+      tags: ["patching"]
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover

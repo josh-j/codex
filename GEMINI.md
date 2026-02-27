@@ -13,45 +13,50 @@ The project provides comprehensive system auditing, STIG (Security Technical Imp
 - **Ruff & MyPy:** Used for Python code quality, formatting, and type safety.
 - **Pytest:** Unit testing framework for the Python-based reporting logic.
 
-## Architecture: The Reporting Pipeline
+## Architecture: The Totally Decoupled Reporting Pipeline
 
-Codex employs a layered architecture to ensure separation of concerns and maintainability in reporting:
+NCS employs a strictly decoupled architecture to ensure separation of concerns and peak performance:
 
-1.  **Raw Report Emitters (Platform Roles):** Ansible roles (e.g., `ubuntu_stig_audit`, `windows_audit`) write host-level YAML reports.
-2.  **Aggregation (Python):** `playbooks/scripts/aggregate_yaml_reports.py` collects host-level YAML files into a unified fleet state.
-3.  **Normalization (Python):** Python adapters in `internal.core` normalize varied platform payloads into canonical shapes.
-4.  **View-Model Builders (Python):** `internal.core.plugins.module_utils.report_view_models` builds template-ready data structures (contracts), isolating logic from presentation.
-5.  **Rendering & Orchestration (Ansible):** Shared roles and tasks manage directories, template rendering, and symlink maintenance.
-6.  **Presentation (Jinja + CSS):** Templates focus exclusively on rendering the pre-computed view models.
+1.  **Raw Report Emitters (Ansible):** Ansible roles (e.g., `ubuntu_system_discover`, `vmware.discovery`) collect raw data from modules and write it directly to disk as `raw_*.yaml`.
+2.  **Normalization (Python):** The `ncs_reporter.normalization` layer in Python converts these raw payloads into canonical shapes.
+3.  **Alert Logic (Python):** Business logic for health checks, alert generation, and status derivation happens in Python normalizers, not Jinja.
+4.  **View-Model Builders (Python):** `ncs_reporter.view_models` shapes data into template-ready contracts, isolating logic from presentation.
+5.  **Rendering (Python/Jinja):** `ncs_reporter` renders "dumb" templates into rich HTML dashboards.
+
 
 ## Development & Operations
 
 ### Key Commands
 
-- `make all`: Execute all quality checks (linting, type-checking, tests).
-- `make test`: Run unit tests for Python modules and builders.
-- `make lint`: Run `ruff` for Python linting.
-- `make format`: Run `ruff` for Python formatting.
-- `make check`: Run `mypy` for static type checking.
-- `make ansible-lint`: Run `ansible-lint` for Ansible best practices.
-- `make jinja-lint`: Run `j2lint` for template validation.
+- `just all`: Execute all quality checks (linting, type-checking, tests).
+- `just test`: Run all unit and E2E tests.
+- `just lint`: Run `ruff` for Python linting.
+- `just format`: Run `ruff` for Python formatting.
+- `just check`: Run type checking (mypy + basedpyright).
+- `just ansible-lint`: Run `ansible-lint` for Ansible best practices.
+- `just jinja-lint`: Run `j2lint` for template validation.
+- `just site`: Execute the full audit pipeline.
+- `just stig-audit-vm <vcenter> <vm_name>`: Audit a specific VM.
+- `just audit-linux-host <hostname>`: Audit a specific Linux server.
+
 
 ### Canonical Paths
 - **Internal Collections:** `collections/ansible_collections/internal/`
   - `core/`: Shared reporting logic, view-models, and common roles.
   - `linux/`, `vmware/`, `windows/`: Platform-specific roles and plugins.
 - **Playbooks:** `playbooks/`
-  - `ubuntu/`, `vmware/`, `windows/`: Platform-specific orchestration.
-  - `common/`: Shared utility playbooks (e.g., site health generation).
+  - `site.yml`: Main orchestration entry point.
+  - `*_audit.yml`, `*_patch.yml`, etc.: Task-specific playbooks.
 - **Inventory:** `inventory/production/`
 
 ## Engineering Standards & Conventions
 
-- **Logic in Python, not Jinja:** Complex data shaping, alert counting, and status derivation must happen in Python view-model builders. Templates should be "dumb" and only render the provided structure.
-- **Contract Testing:** All reporting view-models and platform adapters must have corresponding unit tests in `tests/unit/` to prevent regressions.
-- **Type Safety:** Use type hints in all Python code and ensure `mypy` passes.
-- **Avoid Path Hardcoding:** Do not use brittle string parsing for repository paths. Use `playbook_dir | dirname` or role variables to derive paths relative to the project root.
-- **Skip Keys:** Use `internal.core.report_skip_keys` for filtering host loops in reporting tasks to avoid including metadata/fleet entries.
-- **Collection-First:** Prefer importing code via collection paths (e.g., `ansible_collections.internal.core.plugins.module_utils`) to ensure consistency.
-- **STIG Compliance:** STIG reporting should follow the shared view-model architecture (`stig_host_view`, `stig_fleet_view`).
-- **No Console Logs:** Use a logger for Python scripts; do not use `print()` or `console.log` equivalent in non-CLI contexts.
+- **Logic in Python, not Jinja:** All data shaping, alert logic, and status derivation must happen in the `ncs-reporter` normalization layer. Ansible roles must remain "dumb" collectors.
+- **Emit Telemetry:** Use `ansible.builtin.set_stats` with the `ncs_collect` dictionary to emit module outputs. The `ncs_collector` callback plugin automatically persists this to disk. Do not attempt to normalize data within Ansible tasks.
+- **Pydantic Models:** All reporting contracts must be defined as Pydantic models in `ncs_reporter.models`.
+
+- **Contract Testing:** All normalization logic must have corresponding unit tests in `tools/ncs_reporter/tests/` to prevent regressions.
+- **Type Safety:** Use type hints in all Python code and ensure `mypy` and `basedpyright` pass.
+- **Declarative Playbooks:** Never hardcode paths or credentials in playbooks. Use role defaults and the `ncs_collector` callback for automated data lake management.
+- **Collection-First:** Prefer standard collection structures and avoid custom `module_utils` hacks inside Ansible unless absolutely necessary for module execution.
+

@@ -1,0 +1,5 @@
+---
+# internal.windows.windows : tasks/main.yaml
+
+- name: "Windows | Dispatch: {{ windows_action | default('audit') }}"
+  ansible.builtin.include_tasks: "{{ windows_action | default('audit') }}.yaml"

@@ -1,0 +1,28 @@
+---
+# playbooks/site.yml
+# Primary orchestrator for the National Compliance System (NCS) audit pipeline.
+# This playbook manages the end-to-end lifecycle of infrastructure discovery,
+# health assessment, and STIG compliance reporting across a hybrid fleet.
+# It coordinates environment setup, VMware infrastructure analysis, and
+# targeted audits for both Linux (Ubuntu) and Windows server environments.
+# The final phase triggers the decoupled reporting engine to build dashboards.
+
+# Phase 1: Environment Readiness
+- name: "Phase 1: Initialize Reporting Environment"
+  ansible.builtin.import_playbook: setup_env.yml
+
+# Phase 2: VMware Discovery & Audit
+- name: "Phase 2: VMware Infrastructure Inventory & Health"
+  ansible.builtin.import_playbook: vmware_audit.yml
+
+# Phase 3: Linux Fleet Audit
+- name: "Phase 3: Linux System Health Audit"
+  ansible.builtin.import_playbook: ubuntu_audit.yml
+
+# Phase 3b: Windows Fleet Audit
+- name: "Phase 3b: Windows System Audit"
+  ansible.builtin.import_playbook: windows_audit.yml
+
+# Phase 4: Reporting & Dashboards (Decoupled Engine)
+- name: "Phase 4: Unified Infrastructure Reporting"
+  ansible.builtin.import_playbook: generate_reports.yml

@@ -1,0 +1,13 @@
+---
+# internal.vmware.vm : tasks/main.yaml
+
+- name: "VM | Dispatch: {{ vm_action | default('stig') }}"
+  module_defaults:
+    group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+    - name: "VM | Run: {{ vm_action | default('stig') }}"
+      ansible.builtin.include_tasks: "{{ vm_action | default('stig') }}.yaml"

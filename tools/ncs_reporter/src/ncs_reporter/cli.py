@@ -1,33 +1,35 @@
 import json
-from datetime import datetime
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
 import click
 import yaml
-from jinja2 import Environment, FileSystemLoader
 
-from .aggregation import load_all_reports, write_output
+from ._report_context import (
+    generate_timestamps,
+    get_jinja_env,
+    load_hosts_data,
+    load_yaml,
+    vm_kwargs,
+    write_report,
+)
+from .aggregation import load_all_reports, normalize_host_bundle, write_output
+from .cklb_export import generate_cklb
 from .csv_definitions import get_definitions, resolve_data_path
 from .csv_export import export_csv as export_csv_fn
 from .view_models.linux import build_linux_fleet_view, build_linux_node_view
+from .view_models.site import build_site_dashboard_view
+from .view_models.stig import build_stig_fleet_view, build_stig_host_view
 from .view_models.vmware import build_vmware_fleet_view, build_vmware_node_view
 from .view_models.windows import build_windows_fleet_view, build_windows_node_view
-from .view_models.site import build_site_dashboard_view
-from .view_models.stig import build_stig_host_view, build_stig_fleet_view
 
-_VIEW_MODEL_KEYS = {"report_stamp", "report_date", "report_id"}
-
-
-def _vm_kwargs(common_vars: dict) -> dict:
-    """Extract only the keys accepted by view-model builder functions."""
-    return {k: v for k, v in common_vars.items() if k in _VIEW_MODEL_KEYS}
+logger = logging.getLogger("ncs_reporter")
 
 
 def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, str]:
-    """
-    Normalize a status/severity string into badge presentation metadata.
-    """
+    """Normalize a status/severity string into badge presentation metadata."""
     raw = str(status or "unknown").strip()
     upper = raw.upper()
 
@@ -47,416 +49,97 @@ def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, st
     return {"css_class": css_class, "label": label}
 
 
-def get_jinja_env() -> Environment:
-    template_dir = Path(__file__).parent / "templates"
-    env = Environment(
-        loader=FileSystemLoader(template_dir),
-        autoescape=True,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    env.filters["status_badge_meta"] = status_badge_meta
-    # Add int filter if not present (Jinja2 usually has it)
-    return env
+# ---------------------------------------------------------------------------
+# Generic platform renderer
+# ---------------------------------------------------------------------------
+
+_PLATFORM_CONFIG: dict[str, dict[str, Any]] = {
+    "linux": {
+        "node_builder": build_linux_node_view,
+        "fleet_builder": build_linux_fleet_view,
+        "node_template": "ubuntu_host_health_report.html.j2",
+        "fleet_template": "ubuntu_health_report.html.j2",
+        "fleet_report_name": "ubuntu_health_report",
+        "node_ctx_key": "linux_node_view",
+        "fleet_ctx_key": "linux_fleet_view",
+        "node_builder_style": "positional",  # (hostname, bundle, **kw)
+    },
+    "vmware": {
+        "node_builder": build_vmware_node_view,
+        "fleet_builder": build_vmware_fleet_view,
+        "node_template": "vcenter_health_report.html.j2",
+        "fleet_template": "vmware_health_report.html.j2",
+        "fleet_report_name": "vmware_health_report",
+        "node_ctx_key": "vmware_node_view",
+        "fleet_ctx_key": "vmware_fleet_view",
+        "node_builder_style": "positional",
+    },
+    "windows": {
+        "node_builder": build_windows_node_view,
+        "fleet_builder": build_windows_fleet_view,
+        "node_template": "windows_host_health_report.html.j2",
+        "fleet_template": "windows_health_report.html.j2",
+        "fleet_report_name": "windows_health_report",
+        "node_ctx_key": "windows_node_view",
+        "fleet_ctx_key": "windows_fleet_view",
+        "node_builder_style": "keyword",  # (bundle, hostname=..., **kw)
+    },
+}
 
 
-@click.group()
-def main() -> None:
-    """NCS Reporter: Standalone reporting CLI for Codex."""
-    pass
-
-
-@main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
-def linux(input_file: str, output_dir: str, report_stamp: str | None) -> None:
-    """Generate Linux fleet and node reports."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        data = yaml.safe_load(f)
-
-    # Aggregated data might be under 'hosts' key or at root
-    hosts_data = data.get("hosts", data) if isinstance(data, dict) else {}
-
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
-
+def _render_platform(
+    platform: str,
+    hosts_data: dict[str, Any],
+    output_path: Path,
+    common_vars: dict[str, str],
+    *,
+    export_csv: bool = False,
+) -> None:
+    """Render node + fleet reports for a given platform."""
+    cfg = _PLATFORM_CONFIG[platform]
     env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
-    }
+    stamp = common_vars["report_stamp"]
+    kw = vm_kwargs(common_vars)
 
-    # 1. Render Host Reports
-    _render_platform_linux(hosts_data, output_path, env, common_vars)
-
-    click.echo(f"Done! Reports generated in {output_dir}")
-
-
-@main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
-def vmware(input_file: str, output_dir: str, report_stamp: str | None) -> None:
-    """Generate VMware fleet and vCenter reports."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        data = yaml.safe_load(f)
-
-    hosts_data = data.get("hosts", data) if isinstance(data, dict) else {}
-
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
-
-    env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
-    }
-
-    # 1. Render Host Reports
-    _render_platform_vmware(hosts_data, output_path, env, common_vars)
-
-    click.echo(f"Done! Reports generated in {output_dir}")
-
-
-@main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
-@click.option("--csv/--no-csv", "export_csv", default=True, help="Generate CSV exports (default: enabled).")
-def windows(input_file: str, output_dir: str, report_stamp: str | None, export_csv: bool) -> None:
-    """Generate Windows fleet and node reports."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        data = yaml.safe_load(f)
-
-    hosts_data = data.get("hosts", data) if isinstance(data, dict) else {}
-
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
-
-    env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
-    }
-
-    _render_platform_windows(hosts_data, output_path, env, common_vars, export_csv=export_csv)
-
-    click.echo(f"Done! Reports generated in {output_dir}")
-
-
-@main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to global aggregated YAML state.")
-@click.option("--groups", "-g", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
-def site(input_file: str, groups_file: str | None, output_dir: str, report_stamp: str | None) -> None:
-    """Generate Global Site Health dashboard."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        data = yaml.safe_load(f)
-
-    groups_data = {}
-    if groups_file:
-        with open(groups_file) as f:
-            if groups_file.endswith(".json"):
-                groups_data = json.load(f)
-            else:
-                groups_data = yaml.safe_load(f)
-
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
-
-    env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
-    }
-
-    click.echo("Rendering Global Site Health dashboard...")
-    site_view = build_site_dashboard_view(
-        data,
-        inventory_groups=groups_data,
-        report_stamp=stamp,
-        report_date=date_str,
-        report_id=rid,
-    )
-    
-    tpl = env.get_template("site_health_report.html.j2")
-    content = tpl.render(site_dashboard_view=site_view, **common_vars)
-    
-    with open(output_path / "site_health_report.html", "w") as f:
-        f.write(content)
-
-    click.echo(f"Done! Global dashboard generated in {output_dir}")
-
-
-@main.command()
-@click.option("--report-dir", required=True, type=click.Path(exists=True), help="Directory containing host YAML reports.")
-@click.option("--output", required=True, type=click.Path(), help="Path to write aggregated YAML.")
-@click.option("--filter", "audit_filter", help="Optional audit type filter.")
-def collect(report_dir: str, output: str, audit_filter: str | None) -> None:
-    """Aggregate host YAML reports into a single fleet state file."""
-    click.echo(f"Aggregating reports from {report_dir}...")
-    data = load_all_reports(report_dir, audit_filter=audit_filter)
-    if data:
-        write_output(data, output)
-        click.echo(f"Success: Aggregated {len(data['hosts'])} hosts into {output}")
-    else:
-        click.echo("Error: No data found or directory invalid.")
-
-
-@main.command()
-@click.option("--platform-root", required=True, type=click.Path(exists=True), help="Root directory for platforms (contains ubuntu, vmware, windows dirs).")
-@click.option("--reports-root", required=True, type=click.Path(), help="Root directory for generated HTML reports.")
-@click.option("--groups", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
-@click.option("--csv/--no-csv", "export_csv", default=True, help="Generate CSV exports (default: enabled).")
-def all(platform_root: str, reports_root: str, groups_file: str | None, report_stamp: str | None, export_csv: bool) -> None:
-    """Run full aggregation and rendering for all platforms and the site dashboard."""
-    p_root = Path(platform_root)
-    r_root = Path(reports_root)
-    
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
-    
-    env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
-    }
-
-    platforms = [
-        {"name": "ubuntu", "cmd": "linux", "state_file": "linux_fleet_state.yaml"},
-        {"name": "vmware", "cmd": "vmware", "state_file": "vmware_fleet_state.yaml"},
-        {"name": "windows", "cmd": "windows", "state_file": "windows_fleet_state.yaml"},
-    ]
-
-    # 1. Platform Aggregation & Rendering
-    for p in platforms:
-        p_dir = p_root / p["name"]
-        if not p_dir.is_dir():
-            continue
-            
-        state_path = p_dir / p["state_file"]
-        click.echo(f"--- Processing Platform: {p['name']} ---")
-        
-        # Aggregate
-        p_data = load_all_reports(str(p_dir))
-        if not p_data or not p_data["hosts"]:
-            click.echo(f"No data for {p['name']}, skipping.")
-            continue
-        write_output(p_data, str(state_path))
-        
-        # Render
-        output_dir = r_root / "platform" / p["name"]
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Use existing logic by calling internal functions or just re-implementing briefly
-        # For 'linux'
-        if p["cmd"] == "linux":
-            _render_platform_linux(p_data["hosts"], output_dir, env, common_vars)
-        elif p["cmd"] == "vmware":
-            _render_platform_vmware(p_data["hosts"], output_dir, env, common_vars)
-        elif p["cmd"] == "windows":
-            _render_platform_windows(p_data["hosts"], output_dir, env, common_vars, export_csv=export_csv)
-
-    # 2. Global Site Aggregation & Rendering
-    click.echo("--- Processing Global Site Dashboard ---")
-    all_hosts_state = p_root / "all_hosts_state.yaml"
-    global_data = load_all_reports(str(p_root))
-    if global_data:
-        write_output(global_data, str(all_hosts_state))
-        
-        groups_data = {}
-        if groups_file:
-            with open(groups_file) as f:
-                groups_data = json.load(f) if groups_file.endswith(".json") else yaml.safe_load(f)
-        
-        site_view = build_site_dashboard_view(
-            global_data, inventory_groups=groups_data, **_vm_kwargs(common_vars)
-        )
-        tpl = env.get_template("site_health_report.html.j2")
-        content = tpl.render(site_dashboard_view=site_view, **common_vars)
-        with open(r_root / "site_health_report.html", "w") as f:
-            f.write(content)
-        
-        click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
-
-        # 3. STIG Fleet Rendering
-        click.echo("--- Processing STIG Fleet Reports ---")
-        _render_stig(global_data.get("hosts", global_data), r_root, env, common_vars)
-        click.echo("STIG fleet reports generated.")
-
-
-@main.command()
-@click.option("--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type.")
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw audit/discovery YAML file.")
-@click.option("--hostname", "-n", required=True, help="Hostname to use in the report.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write the report.")
-def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None:
-    """Generate a report for a single host from a raw YAML file."""
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        bundle = yaml.safe_load(f)
-
-    now = datetime.utcnow()
-    common_vars = {
-        "report_stamp": now.strftime("%Y%m%d"),
-        "report_date": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "report_id": now.strftime("%Y%m%dT%H%M%SZ"),
-        "now_date": now.strftime("%Y-%m-%d"),
-        "now_datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
-    }
-
-    env = get_jinja_env()
-    
-    vm_kw = _vm_kwargs(common_vars)
-    if platform == "linux":
-        view = build_linux_node_view(hostname, bundle, **vm_kw)
-        tpl = env.get_template("ubuntu_host_health_report.html.j2")
-        content = tpl.render(linux_node_view=view, **common_vars)
-    elif platform == "vmware":
-        view = build_vmware_node_view(hostname, bundle, **vm_kw)
-        tpl = env.get_template("vcenter_health_report.html.j2")
-        content = tpl.render(vmware_node_view=view, **common_vars)
-    elif platform == "windows":
-        view = build_windows_node_view(bundle, hostname=hostname, **vm_kw)
-        tpl = env.get_template("windows_host_health_report.html.j2")
-        content = tpl.render(windows_node_view=view, **common_vars)
-
-    dest = output_path / f"{hostname}_health_report.html"
-    with open(dest, "w") as f:
-        f.write(content)
-    
-    click.echo(f"Success: Report generated at {dest}")
-
-
-def _render_platform_linux(hosts_data: dict[str, Any], output_path: Path, env: Environment, common_vars: dict[str, Any]) -> None:
-    report_stamp = common_vars["report_stamp"]
-    host_tpl = env.get_template("ubuntu_host_health_report.html.j2")
-    for hostname, bundle in hosts_data.items():
-        node_view = build_linux_node_view(hostname, bundle, **_vm_kwargs(common_vars))
-        host_dir = output_path / hostname
-        host_dir.mkdir(exist_ok=True)
-        content = host_tpl.render(linux_node_view=node_view, **common_vars)
-        with open(host_dir / f"health_report_{report_stamp}.html", "w") as f:
-            f.write(content)
-        with open(host_dir / "health_report.html", "w") as f:
-            f.write(content)
-
-    fleet_view = build_linux_fleet_view(hosts_data, **_vm_kwargs(common_vars))
-    fleet_tpl = env.get_template("ubuntu_health_report.html.j2")
-    content = fleet_tpl.render(linux_fleet_view=fleet_view, **common_vars)
-    with open(output_path / f"ubuntu_health_report_{report_stamp}.html", "w") as f:
-        f.write(content)
-    with open(output_path / "ubuntu_health_report.html", "w") as f:
-        f.write(content)
-
-
-def _render_platform_vmware(hosts_data: dict[str, Any], output_path: Path, env: Environment, common_vars: dict[str, Any]) -> None:
-    report_stamp = common_vars["report_stamp"]
-    host_tpl = env.get_template("vcenter_health_report.html.j2")
-    for hostname, bundle in hosts_data.items():
-        node_view = build_vmware_node_view(hostname, bundle, **_vm_kwargs(common_vars))
-        host_dir = output_path / hostname
-        host_dir.mkdir(exist_ok=True)
-        content = host_tpl.render(vmware_node_view=node_view, **common_vars)
-        with open(host_dir / f"health_report_{report_stamp}.html", "w") as f:
-            f.write(content)
-        with open(host_dir / "health_report.html", "w") as f:
-            f.write(content)
-
-    fleet_view = build_vmware_fleet_view(hosts_data, **_vm_kwargs(common_vars))
-    fleet_tpl = env.get_template("vmware_health_report.html.j2")
-    content = fleet_tpl.render(vmware_fleet_view=fleet_view, **common_vars)
-    with open(output_path / f"vmware_health_report_{report_stamp}.html", "w") as f:
-        f.write(content)
-    with open(output_path / "vmware_health_report.html", "w") as f:
-        f.write(content)
-
-
-def _render_platform_windows(hosts_data: dict[str, Any], output_path: Path, env: Environment, common_vars: dict[str, Any], export_csv: bool = True) -> None:
-    report_stamp = common_vars["report_stamp"]
-    host_tpl = env.get_template("windows_host_health_report.html.j2")
-    csv_defs = get_definitions("windows") if export_csv else []
+    node_tpl = env.get_template(cfg["node_template"])
+    csv_defs = get_definitions("windows") if (export_csv and platform == "windows") else []
 
     for hostname, bundle in hosts_data.items():
-        node_view = build_windows_node_view(bundle, hostname=hostname, **_vm_kwargs(common_vars))
+        if cfg["node_builder_style"] == "keyword":
+            node_view = cfg["node_builder"](bundle, hostname=hostname, **kw)
+        else:
+            node_view = cfg["node_builder"](hostname, bundle, **kw)
+
         host_dir = output_path / hostname
         host_dir.mkdir(exist_ok=True)
-        content = host_tpl.render(windows_node_view=node_view, **common_vars)
-        with open(host_dir / f"health_report_{report_stamp}.html", "w") as f:
-            f.write(content)
-        with open(host_dir / "health_report.html", "w") as f:
-            f.write(content)
+        content = node_tpl.render(**{cfg["node_ctx_key"]: node_view}, **common_vars)
+        write_report(host_dir, "health_report.html", content, stamp)
 
+        # Windows-specific CSV export per host
         for defn in csv_defs:
             rows = resolve_data_path(bundle, defn["data_path"])
             if not rows:
                 continue
-            # Inject hostname as "Server" into each row
             rows = [{**r, "server": hostname} for r in rows]
             csv_path = host_dir / f"{defn['report_name']}_{hostname}.csv"
             export_csv_fn(rows, defn["headers"], csv_path, sort_by=defn.get("sort_by"))
 
-    fleet_view = build_windows_fleet_view(hosts_data, **_vm_kwargs(common_vars))
-    fleet_tpl = env.get_template("windows_health_report.html.j2")
-    content = fleet_tpl.render(windows_fleet_view=fleet_view, **common_vars)
-    with open(output_path / f"windows_health_report_{report_stamp}.html", "w") as f:
-        f.write(content)
-    with open(output_path / "windows_health_report.html", "w") as f:
-        f.write(content)
+    fleet_view = cfg["fleet_builder"](hosts_data, **kw)
+    fleet_tpl = env.get_template(cfg["fleet_template"])
+    content = fleet_tpl.render(**{cfg["fleet_ctx_key"]: fleet_view}, **common_vars)
+    write_report(output_path, f"{cfg['fleet_report_name']}.html", content, stamp)
 
 
-def _render_stig(hosts_data: dict[str, Any], output_path: Path, env: Environment, common_vars: dict[str, Any]) -> None:
+# ---------------------------------------------------------------------------
+# STIG renderer (shared between `stig` and `all` commands)
+# ---------------------------------------------------------------------------
+
+def _render_stig(hosts_data: dict[str, Any], output_path: Path, common_vars: dict[str, str]) -> None:
     """Render per-host STIG reports and fleet overview."""
-    report_stamp = common_vars["report_stamp"]
+    env = get_jinja_env()
+    stamp = common_vars["report_stamp"]
+    kw = vm_kwargs(common_vars)
     host_tpl = env.get_template("stig_host_report.html.j2")
-    vm_kw = _vm_kwargs(common_vars)
     all_hosts_data: dict[str, Any] = {}
 
     for hostname, bundle in hosts_data.items():
@@ -468,7 +151,7 @@ def _render_stig(hosts_data: dict[str, Any], output_path: Path, env: Environment
             if not isinstance(payload, dict):
                 continue
 
-            host_view = build_stig_host_view(hostname, audit_type, payload, **vm_kw)
+            host_view = build_stig_host_view(hostname, audit_type, payload, **kw)
             target = host_view["target"]
             platform = target.get("platform", "unknown")
             target_type = target.get("target_type", "unknown")
@@ -488,18 +171,273 @@ def _render_stig(hosts_data: dict[str, Any], output_path: Path, env: Environment
             with open(host_dir / dest_name, "w") as f:
                 f.write(content)
 
-            # Track for fleet view
             all_hosts_data.setdefault(hostname, {})[audit_type] = payload
 
     if all_hosts_data:
-        fleet_view = build_stig_fleet_view(all_hosts_data, **vm_kw)
+        fleet_view = build_stig_fleet_view(all_hosts_data, **kw)
         fleet_tpl = env.get_template("stig_fleet_report.html.j2")
         content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
-        with open(output_path / f"stig_fleet_report_{report_stamp}.html", "w") as f:
-            f.write(content)
-        with open(output_path / "stig_fleet_report.html", "w") as f:
+        write_report(output_path, "stig_fleet_report.html", content, stamp)
+
+
+# ---------------------------------------------------------------------------
+# CLI group
+# ---------------------------------------------------------------------------
+
+@click.group()
+@click.option("--verbose", "-v", is_flag=True, default=False, help="Enable debug-level logging.")
+def main(verbose: bool) -> None:
+    """NCS Reporter: Standalone reporting CLI for Codex."""
+    level = logging.DEBUG if verbose else logging.WARNING
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        force=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Platform commands (linux, vmware, windows)
+# ---------------------------------------------------------------------------
+
+def _platform_command(platform: str, input_file: str, output_dir: str, report_stamp: str | None, export_csv: bool = False) -> None:
+    """Shared implementation for single-platform report commands."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    hosts_data = load_hosts_data(input_file)
+    common_vars = generate_timestamps(report_stamp)
+    _render_platform(platform, hosts_data, output_path, common_vars, export_csv=export_csv)
+    click.echo(f"Done! Reports generated in {output_dir}")
+
+
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
+def linux(input_file: str, output_dir: str, report_stamp: str | None) -> None:
+    """Generate Linux fleet and node reports."""
+    _platform_command("linux", input_file, output_dir, report_stamp)
+
+
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
+def vmware(input_file: str, output_dir: str, report_stamp: str | None) -> None:
+    """Generate VMware fleet and vCenter reports."""
+    _platform_command("vmware", input_file, output_dir, report_stamp)
+
+
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
+@click.option("--csv/--no-csv", "export_csv", default=True, help="Generate CSV exports (default: enabled).")
+def windows(input_file: str, output_dir: str, report_stamp: str | None, export_csv: bool) -> None:
+    """Generate Windows fleet and node reports."""
+    _platform_command("windows", input_file, output_dir, report_stamp, export_csv=export_csv)
+
+
+# ---------------------------------------------------------------------------
+# site command
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to global aggregated YAML state.")
+@click.option("--groups", "-g", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
+def site(input_file: str, groups_file: str | None, output_dir: str, report_stamp: str | None) -> None:
+    """Generate Global Site Health dashboard."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    data = load_yaml(input_file)
+    common_vars = generate_timestamps(report_stamp)
+
+    groups_data: dict[str, Any] = {}
+    if groups_file:
+        with open(groups_file) as f:
+            if groups_file.endswith(".json"):
+                groups_data = json.load(f)
+            else:
+                groups_data = yaml.safe_load(f)
+
+    click.echo("Rendering Global Site Health dashboard...")
+    site_view = build_site_dashboard_view(data, inventory_groups=groups_data, **vm_kwargs(common_vars))
+
+    env = get_jinja_env()
+    tpl = env.get_template("site_health_report.html.j2")
+    content = tpl.render(site_dashboard_view=site_view, **common_vars)
+
+    with open(output_path / "site_health_report.html", "w") as f:
+        f.write(content)
+
+    click.echo(f"Done! Global dashboard generated in {output_dir}")
+
+
+# ---------------------------------------------------------------------------
+# collect command
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--report-dir", required=True, type=click.Path(exists=True), help="Directory containing host YAML reports.")
+@click.option("--output", required=True, type=click.Path(), help="Path to write aggregated YAML.")
+@click.option("--filter", "audit_filter", help="Optional audit type filter.")
+def collect(report_dir: str, output: str, audit_filter: str | None) -> None:
+    """Aggregate host YAML reports into a single fleet state file."""
+    click.echo(f"Aggregating reports from {report_dir}...")
+    data = load_all_reports(report_dir, audit_filter=audit_filter)
+    if data:
+        write_output(data, output)
+        click.echo(f"Success: Aggregated {len(data['hosts'])} hosts into {output}")
+    else:
+        click.echo("Error: No data found or directory invalid.")
+
+
+# ---------------------------------------------------------------------------
+# all command
+# ---------------------------------------------------------------------------
+
+@main.command("all")
+@click.option("--platform-root", required=True, type=click.Path(exists=True), help="Root directory for platforms.")
+@click.option("--reports-root", required=True, type=click.Path(), help="Root directory for generated HTML reports.")
+@click.option("--groups", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
+@click.option("--csv/--no-csv", "export_csv", default=True, help="Generate CSV exports (default: enabled).")
+def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, report_stamp: str | None, export_csv: bool) -> None:
+    """Run full aggregation and rendering for all platforms and the site dashboard."""
+    p_root = Path(platform_root)
+    r_root = Path(reports_root)
+    common_vars = generate_timestamps(report_stamp)
+
+    platforms = [
+        {"name": "ubuntu", "platform": "linux", "state_file": "linux_fleet_state.yaml"},
+        {"name": "vmware", "platform": "vmware", "state_file": "vmware_fleet_state.yaml"},
+        {"name": "windows", "platform": "windows", "state_file": "windows_fleet_state.yaml"},
+    ]
+
+    # 1. Platform Aggregation (sequential — I/O bound directory walk)
+    render_tasks: list[dict[str, Any]] = []
+    for p in platforms:
+        p_dir = p_root / p["name"]
+        if not p_dir.is_dir():
+            continue
+
+        state_path = p_dir / p["state_file"]
+        click.echo(f"--- Processing Platform: {p['name']} ---")
+
+        p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
+        if not p_data or not p_data["hosts"]:
+            click.echo(f"No data for {p['name']}, skipping.")
+            continue
+        write_output(p_data, str(state_path))
+
+        output_dir = r_root / "platform" / p["name"]
+        output_dir.mkdir(parents=True, exist_ok=True)
+        render_tasks.append({
+            "platform": p["platform"],
+            "hosts_data": p_data["hosts"],
+            "output_path": output_dir,
+            "export_csv": export_csv and p["platform"] == "windows",
+        })
+
+    # 2. Parallel platform rendering
+    if render_tasks:
+        with ThreadPoolExecutor(max_workers=min(len(render_tasks), 3)) as pool:
+            futures = {
+                pool.submit(
+                    _render_platform,
+                    t["platform"],
+                    t["hosts_data"],
+                    t["output_path"],
+                    common_vars,
+                    export_csv=t["export_csv"],
+                ): t["platform"]
+                for t in render_tasks
+            }
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    future.result()
+                    click.echo(f"  Rendered {name} reports.")
+                except Exception as exc:
+                    logger.error("Failed to render %s: %s", name, exc)
+                    click.echo(f"  ERROR rendering {name}: {exc}")
+
+    # 3. Global Site Aggregation & Rendering
+    click.echo("--- Processing Global Site Dashboard ---")
+    all_hosts_state = p_root / "all_hosts_state.yaml"
+    global_data = load_all_reports(str(p_root), host_normalizer=normalize_host_bundle)
+    if global_data:
+        write_output(global_data, str(all_hosts_state))
+
+        groups_data: dict[str, Any] = {}
+        if groups_file:
+            with open(groups_file) as f:
+                groups_data = json.load(f) if groups_file.endswith(".json") else yaml.safe_load(f)
+
+        site_view = build_site_dashboard_view(global_data, inventory_groups=groups_data, **vm_kwargs(common_vars))
+        env = get_jinja_env()
+        tpl = env.get_template("site_health_report.html.j2")
+        content = tpl.render(site_dashboard_view=site_view, **common_vars)
+        with open(r_root / "site_health_report.html", "w") as f:
             f.write(content)
 
+        click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
+
+        # 4. STIG Fleet Rendering
+        click.echo("--- Processing STIG Fleet Reports ---")
+        _render_stig(global_data.get("hosts", global_data), r_root, common_vars)
+
+        # 5. CKLB Export
+        click.echo("--- Generating CKLB Artifacts ---")
+        ctx = click.get_current_context()
+        ctx.invoke(cklb, input_file=str(all_hosts_state), output_dir=str(r_root / "cklb"))
+
+        click.echo("STIG fleet reports and CKLB artifacts generated.")
+
+
+# ---------------------------------------------------------------------------
+# node command
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type.")
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw audit/discovery YAML file.")
+@click.option("--hostname", "-n", required=True, help="Hostname to use in the report.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write the report.")
+def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None:
+    """Generate a report for a single host from a raw YAML file."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(input_file) as f:
+        bundle = yaml.safe_load(f)
+
+    common_vars = generate_timestamps()
+    env = get_jinja_env()
+    kw = vm_kwargs(common_vars)
+
+    cfg = _PLATFORM_CONFIG[platform]
+    if cfg["node_builder_style"] == "keyword":
+        view = cfg["node_builder"](bundle, hostname=hostname, **kw)
+    else:
+        view = cfg["node_builder"](hostname, bundle, **kw)
+
+    tpl = env.get_template(cfg["node_template"])
+    content = tpl.render(**{cfg["node_ctx_key"]: view}, **common_vars)
+
+    dest = output_path / f"{hostname}_health_report.html"
+    with open(dest, "w") as f:
+        f.write(content)
+
+    click.echo(f"Success: Report generated at {dest}")
+
+
+# ---------------------------------------------------------------------------
+# stig command
+# ---------------------------------------------------------------------------
 
 @main.command()
 @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
@@ -509,30 +447,101 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
     """Generate STIG compliance reports (per-host and fleet overview)."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    hosts_data = load_hosts_data(input_file)
+    common_vars = generate_timestamps(report_stamp)
+    _render_stig(hosts_data, output_path, common_vars)
+    click.echo(f"Done! STIG reports generated in {output_dir}")
 
-    with open(input_file) as f:
-        data = yaml.safe_load(f)
 
-    hosts_data = data.get("hosts", data) if isinstance(data, dict) else {}
+# ---------------------------------------------------------------------------
+# cklb command
+# ---------------------------------------------------------------------------
 
-    now = datetime.utcnow()
-    stamp = report_stamp or now.strftime("%Y%m%d")
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    rid = now.strftime("%Y%m%dT%H%M%SZ")
-    now_date = now.strftime("%Y-%m-%d")
+@main.command()
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for CKLB files.")
+@click.option("--skeleton-dir", type=click.Path(exists=True), help="Directory containing CKLB skeleton files.")
+def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
+    """Generate CKLB artifacts for STIG results."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
-    env = get_jinja_env()
-    common_vars = {
-        "report_stamp": stamp,
-        "report_date": date_str,
-        "report_id": rid,
-        "now_date": now_date,
-        "now_datetime": date_str,
+    s_dir = Path(skeleton_dir) if skeleton_dir else Path(__file__).parent / "cklb_skeletons"
+    hosts_data = load_hosts_data(input_file)
+
+    skeleton_map = {
+        "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
+        "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
     }
 
-    _render_stig(hosts_data, output_path, env, common_vars)
+    for hostname, bundle in hosts_data.items():
+        if not isinstance(bundle, dict):
+            continue
+        for audit_type, payload in bundle.items():
+            if not str(audit_type).lower().startswith("stig"):
+                continue
+            if not isinstance(payload, dict):
+                continue
 
-    click.echo(f"Done! STIG reports generated in {output_dir}")
+            target_type = str(payload.get("target_type", ""))
+            skeleton_file = skeleton_map.get(target_type)
+            if not skeleton_file:
+                continue
+
+            sk_path = s_dir / skeleton_file
+            if not sk_path.exists():
+                click.echo(f"Warning: Skeleton not found for {target_type} at {sk_path}")
+                continue
+
+            dest = output_path / f"{hostname}_{target_type}.cklb"
+            generate_cklb(hostname, payload.get("full_audit", []), sk_path, dest)
+            click.echo(f"Generated CKLB: {dest}")
+
+
+# ---------------------------------------------------------------------------
+# stig-apply command
+# ---------------------------------------------------------------------------
+
+@main.command("stig-apply")
+@click.argument("artifact", type=click.Path(exists=True, path_type=Path))
+@click.option("--playbook", default="playbooks/vmware_stig_remediate.yml", show_default=True, help="Ansible playbook path.")
+@click.option("--inventory", default="inventory/production/hosts.yaml", show_default=True, help="Ansible inventory path.")
+@click.option("--limit", required=True, help="Ansible --limit (e.g. vcenter1).")
+@click.option("--esxi-host", required=True, help="ESXi hostname to target (sets esxi_stig_target_hosts).")
+@click.option("--skip-snapshot", is_flag=True, help="Suppress the informational note that ESXi snapshots are not applicable.")
+@click.option("--post-audit", is_flag=True, help="Run the post-remediation ESXi audit after each rule (slower but confirms effect).")
+@click.option("--extra-vars", "-e", "extra_vars", multiple=True, help="Additional ansible extra-vars (may be repeated).")
+@click.option("--dry-run", is_flag=True, help="Print ansible commands without executing them.")
+def stig_apply(
+    artifact: Path,
+    playbook: str,
+    inventory: str,
+    limit: str,
+    esxi_host: str,
+    skip_snapshot: bool,
+    post_audit: bool,
+    extra_vars: tuple[str, ...],
+    dry_run: bool,
+) -> None:
+    """Apply ESXi STIG rules interactively, one at a time.
+
+    ARTIFACT is the path to a raw_stig_esxi.yaml audit artifact produced by
+    the ncs_collector callback.  Failing rules are extracted and presented
+    one-by-one with a confirmation prompt before each Ansible run.
+    """
+    from ._stig_apply import run_interactive_apply
+
+    run_interactive_apply(
+        artifact=artifact,
+        playbook=playbook,
+        inventory=inventory,
+        limit=limit,
+        esxi_host=esxi_host,
+        skip_snapshot=skip_snapshot,
+        post_audit=post_audit,
+        extra_vars=extra_vars,
+        dry_run=dry_run,
+    )
 
 
 if __name__ == "__main__":

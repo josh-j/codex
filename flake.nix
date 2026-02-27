@@ -21,6 +21,7 @@
             aiohttp
             pytest
             click
+            pydantic
             mypy
             pytest-cov
             types-pyyaml
@@ -38,6 +39,7 @@
             ruff
             basedpyright
             gnumake
+            just
             pandoc
             git
             shellcheck
@@ -49,7 +51,7 @@
 
             export ANSIBLE_CONFIG="$PWD/ansible.cfg"
             export ANSIBLE_COLLECTIONS_PATH="$PWD/collections:$HOME/.ansible/collections''${ANSIBLE_COLLECTIONS_PATH:+:$ANSIBLE_COLLECTIONS_PATH}"
-            export PYTHONPATH="$PWD:$PWD/libs/ncs_core/src''${PYTHONPATH:+:$PYTHONPATH}"
+            export PYTHONPATH="$PWD:$PWD/tools/ncs_reporter/src''${PYTHONPATH:+:$PYTHONPATH}"
           '';
         };
       });

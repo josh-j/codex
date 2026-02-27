@@ -1,0 +1,20 @@
+---
+# internal.vmware.vcenter : tasks/export.yaml
+
+- name: "vCenter | Emit collection telemetry"
+  ansible.builtin.set_stats:
+    data:
+      ncs_collect:
+        platform: "vmware"
+        name: "vcenter"
+        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+        payload: "{{ vmware_raw_vcenter }}"
+        config:
+          vmware_cpu_critical_pct: "{{ vmware_cpu_critical_pct | default(90) }}"
+          vmware_memory_critical_pct: "{{ vmware_memory_critical_pct | default(90) }}"
+          vmware_datastore_free_critical_pct: "{{ vmware_datastore_free_critical_pct | default(10) }}"
+          vmware_datastore_free_warning_pct: "{{ vmware_datastore_free_warning_pct | default(15) }}"
+          vmware_snapshot_age_warning_days: "{{ vmware_snapshot_age_warning_days | default(7) }}"
+          vmware_snapshot_size_warning_gb: "{{ vmware_snapshot_size_warning_gb | default(100) }}"
+    per_host: true
+  changed_when: false

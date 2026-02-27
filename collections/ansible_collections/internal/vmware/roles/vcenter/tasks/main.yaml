@@ -1,0 +1,34 @@
+---
+# internal.vmware.vcenter : tasks/main.yaml
+
+- name: Phase 0 | Preflight & Connection Check
+  ansible.builtin.include_tasks: preflight.yaml
+  tags: [always]
+
+- name: "vCenter | Action Dispatcher"
+  tags: [always]
+  module_defaults:
+    group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vmware.vmware.cluster_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vmware.vmware_rest.vcenter_datacenter_info:
+      vcenter_hostname: "{{ _vcenter_hostname }}"
+      vcenter_username: "{{ vmware_username }}"
+      vcenter_password: "{{ vmware_password }}"
+      vcenter_validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    internal.vmware.vmware_triggered_alarms_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+
+    - name: "vCenter | Dispatch Action: {{ vcenter_action | default('collect') }}"
+      ansible.builtin.include_tasks: "{{ vcenter_action | default('collect') }}.yaml"
