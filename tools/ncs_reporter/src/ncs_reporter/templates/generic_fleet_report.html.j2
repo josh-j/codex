@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = generic_fleet_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set nav = view.get('nav', {}) %}
+    {% set hosts = view.get('hosts', []) %}
+    {% set active_alerts = view.get('active_alerts', []) %}
+    {% set crit_hosts  = hosts | selectattr('critical_count', 'gt', 0) | list | length %}
+    {% set warn_hosts  = hosts | selectattr('warning_count',  'gt', 0) | list | length %}
+    {% set ok_hosts    = hosts | selectattr('health', 'eq', 'OK') | list | length %}
+    <title>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; font-size: 13px; margin: 0; background: #fff; color: #111; }
+        a { color: #00c; }
+        h2 { font-size: 13px; font-weight: bold; margin: 16px 0 0 0; padding: 4px 8px; background: #e8e8e8; border: 1px solid #bbb; text-transform: uppercase; letter-spacing: 0.04em; }
+        table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        th { background: #f2f2f2; border: 1px solid #ccc; padding: 3px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; font-weight: bold; }
+        td { border: 1px solid #ddd; padding: 4px 8px; vertical-align: top; }
+        tr:nth-child(even) { background: #fafafa; }
+        tr:hover td { background: #f0f4ff; }
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+        .page-header { border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .page-header h1 { font-size: 15px; margin: 0; }
+        .page-header .right { text-align: right; font-size: 12px; color: #444; }
+        .sv-critical { color: #991b1b; font-weight: bold; }
+        .sv-warning  { color: #92400e; font-weight: bold; }
+        .sv-ok       { color: #166534; }
+        .sv-info     { color: #444; }
+        .alert-crit td { background: #fff5f5; }
+        .alert-warn td { background: #fffbeb; }
+        .section { margin-bottom: 18px; }
+        .summary-line { font-size: 12px; margin-bottom: 12px; color: #333; }
+        .summary-line span { margin-right: 16px; }
+        .breadcrumb { font-size: 11px; color: #555; margin-bottom: 10px; }
+        .breadcrumb a { color: #00c; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { margin: 0 4px; color: #999; }
+    </style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation #}
+    {% if nav.get('site_report') %}
+    <div class="breadcrumb">
+        <a href="{{ nav.site_report }}">Site Dashboard</a><span>&rsaquo;</span>
+        {{ meta.get('display_name', 'Fleet') }} — Fleet Report
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</h1>
+            <span style="font-size:11px; color:#555;">Platform: {{ meta.get('platform', '') | upper }} &nbsp;&middot;&nbsp; {{ meta.get('total_hosts', 0) }} hosts</span>
+        </div>
+        <div class="right">
+            {{ meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    <div class="summary-line">
+        <span class="sv-ok">&#10003; {{ ok_hosts }} healthy</span>
+        {% if warn_hosts > 0 %}<span class="sv-warning">&#9888; {{ warn_hosts }} warning</span>{% endif %}
+        {% if crit_hosts > 0 %}<span class="sv-critical">&#10007; {{ crit_hosts }} critical</span>{% endif %}
+        {% if active_alerts | length > 0 %}
+        &nbsp;&middot;&nbsp; <a href="#alerts">{{ active_alerts | length }} active alert{{ 's' if active_alerts | length != 1 else '' }}</a>
+        {% endif %}
+    </div>
+
+    <div class="section" id="hosts">
+        <h2>Host Status</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th style="width:80px;">Health</th>
+                    <th style="width:70px;">Critical</th>
+                    <th style="width:70px;">Warning</th>
+                    <th style="width:80px;">Total Alerts</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for host in hosts %}
+                <tr>
+                    <td><a href="{{ host.node_report }}" style="font-weight:bold; color:#00c; text-decoration:none;">{{ host.hostname }}</a></td>
+                    <td>
+                        {% if host.health == 'OK' %}<span class="sv-ok">OK</span>
+                        {% elif host.health == 'WARNING' %}<span class="sv-warning">WARNING</span>
+                        {% elif host.health == 'CRITICAL' %}<span class="sv-critical">CRITICAL</span>
+                        {% else %}{{ host.health }}{% endif %}
+                    </td>
+                    <td class="{{ 'sv-critical' if host.critical_count > 0 else '' }}">{{ host.critical_count if host.critical_count > 0 else '' }}</td>
+                    <td class="{{ 'sv-warning' if host.warning_count > 0 else '' }}">{{ host.warning_count if host.warning_count > 0 else '' }}</td>
+                    <td>{{ host.total_alerts if host.total_alerts > 0 else '' }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" style="color:#888;">No hosts found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if active_alerts %}
+    <div class="section" id="alerts">
+        <h2>Active Alerts ({{ active_alerts | length }})</h2>
+        <table>
+            <thead>
+                <tr><th style="width:140px;">Host</th><th style="width:90px;">Severity</th><th style="width:160px;">Category</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+            {% for alert in active_alerts | sort(attribute='severity') %}
+                <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
+                    <td><strong>{{ alert.get('host', '') }}</strong></td>
+                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }}" style="white-space:nowrap;">{{ alert.severity }}</td>
+                    <td style="font-size:11px; color:#555; text-transform:uppercase; font-weight:600; white-space:nowrap;">{{ alert.get('category', '') }}</td>
+                    <td>{{ alert.get('message', '') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

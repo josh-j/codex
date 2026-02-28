@@ -9,11 +9,10 @@ from typing import Any
 
 import yaml
 
-from ncs_reporter.normalization.linux import normalize_linux
+from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.normalization.stig import normalize_stig
-from ncs_reporter.normalization.vmware import normalize_vmware
-from ncs_reporter.normalization.windows import normalize_windows
 from ncs_reporter.primitives import canonical_severity  # noqa: F401
+from ncs_reporter.schema_loader import detect_schemas_for_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -52,24 +51,10 @@ def read_report(file_path: str) -> tuple[dict[str, Any] | None, dict[str, Any] |
         or os.path.basename(file_path).replace(".yaml", "")
     )
 
-    if isinstance(payload, list):
-        merged = {k: v for k, v in raw.items() if k != "data"}
-        merged["data"] = payload
-    elif isinstance(payload, dict):
-        merged = dict(payload)
-    else:
-        merged = {}
-
-    if "health" in raw and "health" not in merged:
-        merged["health"] = raw.get("health")
-    if "summary" in raw and "summary" not in merged:
-        merged["summary"] = raw.get("summary")
-    if "alerts" in raw and "alerts" not in merged:
-        merged["alerts"] = raw.get("alerts")
-    if metadata and "metadata" not in merged:
-        merged["metadata"] = metadata
-
-    return raw, merged, audit_type
+    # Return the raw document as-is so schema paths match the file exactly.
+    # No data unwrapping — vmware_raw_vcenter.data.appliance_health_info maps
+    # directly to what is written on disk.
+    return raw, raw, audit_type
 
 
 def _apply_report_normalizer(
@@ -218,70 +203,38 @@ def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, An
     """
     Normalizes a host bundle if it contains raw data.
 
-    Each normalizer branch works on its own input copy so the original bundle
-    dict is never mutated.  Key overlap (e.g. "raw_discovery" appears in both
-    Linux and VMware Ansible output) is resolved by keeping the trigger lists
-    mutually exclusive: only VMware-specific keys trigger VMware normalization.
+    Platform normalization is entirely schema-driven.  STIG normalization retains
+    its bespoke Python path because the STIG data model is orthogonal to the
+    health-report schema system.
     """
-    config = bundle.get("config", {})
     output = dict(bundle)
 
-    # Check for VMware raw data — only VMware-specific keys trigger this branch.
-    # "raw_discovery" is intentionally excluded: it is the Linux discovery filename
-    # and must not cause the VMware normalizer to run on Linux host bundles.
-    if any(k in bundle for k in ["vmware_raw_vcenter", "raw_vcenter", "vcenter", "vmware"]):
-        # Build a private copy with "raw_discovery" set to whichever VMware key is
-        # present — the normalizer internally looks for that key.
-        vmware_input = dict(bundle)
-        if "vmware_raw_vcenter" in bundle:
-            vmware_input["raw_discovery"] = bundle["vmware_raw_vcenter"]
-        elif "raw_vcenter" in bundle:
-            vmware_input["raw_discovery"] = bundle["raw_vcenter"]
-        elif "vcenter" in bundle:
-            vmware_input["raw_discovery"] = bundle["vcenter"]
+    # Normalize legacy key aliases so schema detection always finds canonical keys.
+    if "raw_discovery" in bundle and "ubuntu_raw_discovery" not in bundle:
+        output["ubuntu_raw_discovery"] = bundle["raw_discovery"]
+    if "raw_vcenter" in bundle and "vmware_raw_vcenter" not in bundle:
+        output["vmware_raw_vcenter"] = bundle["raw_vcenter"]
+    if "raw_audit" in bundle and "windows_raw_audit" not in bundle:
+        output["windows_raw_audit"] = bundle["raw_audit"]
 
-        normalized = normalize_vmware(vmware_input, config=config)
-        output["vmware_vcenter"] = normalized.model_dump()
-
-    # Check for Linux raw data
-    if any(k in bundle for k in ["ubuntu_raw_discovery", "raw_discovery", "ansible_facts", "ubuntu", "linux"]):
-        linux_input = dict(bundle)
-        if "raw_discovery" in bundle:
-            linux_input["ubuntu_raw_discovery"] = bundle["raw_discovery"]
-        elif "ubuntu" in bundle:
-            linux_input["ubuntu_raw_discovery"] = bundle["ubuntu"]
-        elif "linux" in bundle:
-            linux_input["ubuntu_raw_discovery"] = bundle["linux"]
-
-        linux_normalized = normalize_linux(linux_input, config=config)
-        output["linux_system"] = linux_normalized.model_dump()
-
-    # Check for Windows raw data
-    if any(k in bundle for k in ["windows_raw_audit", "raw_audit", "ccm_service", "windows"]):
-        windows_input = dict(bundle)
-        if "raw_audit" in bundle:
-            windows_input["windows_raw_audit"] = bundle["raw_audit"]
-        elif "windows" in bundle:
-            windows_input["windows_raw_audit"] = bundle["windows"]
-
-        windows_normalized = normalize_windows(windows_input, config=config)
-        output["windows_audit"] = windows_normalized.model_dump()
-
-    # Check for STIG raw data
+    # STIG normalization (kept in Python — orthogonal to schema system)
     stig_keys = [k for k in bundle.keys() if str(k).lower().startswith("stig")]
-    if stig_keys:
-        for k in stig_keys:
-            raw_data = bundle[k]
-            target_type = ""
-            if isinstance(raw_data, dict):
-                target_type = raw_data.get("target_type") or ""
-                if not target_type:
-                    data_val = raw_data.get("data")
-                    if isinstance(data_val, dict):
-                        target_type = data_val.get("target_type", "")
-            
-            normalized_stig = normalize_stig(raw_data, stig_target_type=target_type)
-            output[k] = normalized_stig.model_dump()
+    for k in stig_keys:
+        raw_data = bundle[k]
+        target_type = ""
+        if isinstance(raw_data, dict):
+            target_type = raw_data.get("target_type") or ""
+            if not target_type:
+                data_val = raw_data.get("data")
+                if isinstance(data_val, dict):
+                    target_type = data_val.get("target_type", "")
+        normalized_stig = normalize_stig(raw_data, stig_target_type=target_type)
+        output[k] = normalized_stig.model_dump()
+
+    # Schema-driven normalization for all other platforms
+    for schema in detect_schemas_for_bundle(output):
+        result = normalize_from_schema(schema, output)
+        output[f"schema_{schema.name}"] = result
 
     return output
 

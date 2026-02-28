@@ -51,7 +51,9 @@ class ReadReportTests(unittest.TestCase):
             assert merged is not None
             assert audit_type is not None
             self.assertEqual(audit_type, "discovery")
-            self.assertIn("alerts", merged)
+            # merged is now the full raw document — data is NOT unwrapped
+            self.assertIn("data", merged)
+            self.assertIn("alerts", merged["data"])
             self.assertIn("metadata", merged)
         finally:
             os.remove(path)
@@ -125,21 +127,19 @@ class LoadAllReportsTests(unittest.TestCase):
 
     def test_aggregates_host_reports(self):
         with tempfile.TemporaryDirectory() as tmpdir:
+            # Fleet stats are populated from normalized outputs (summary at top level),
+            # not from raw files (summary inside data). Use normalized-style fixtures.
             self._create_report_tree(tmpdir, {
                 "host1": {
                     "discovery.yaml": {
-                        "data": {
-                            "audit_type": "discovery",
-                            "summary": {"critical_count": 1, "warning_count": 2},
-                        }
+                        "audit_type": "discovery",
+                        "summary": {"critical_count": 1, "warning_count": 2},
                     }
                 },
                 "host2": {
                     "audit.yaml": {
-                        "data": {
-                            "audit_type": "audit",
-                            "summary": {"critical_count": 0, "warning_count": 1},
-                        }
+                        "audit_type": "audit",
+                        "summary": {"critical_count": 0, "warning_count": 1},
                     }
                 },
             })

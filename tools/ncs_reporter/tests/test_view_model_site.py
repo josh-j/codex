@@ -75,7 +75,7 @@ class TestBuildSiteDashboardView:
         view = build_site_dashboard_view(hosts)
         assert view["platforms"]["windows"]["status"]["raw"] == "CRITICAL"
         assert len(view["alerts"]) >= 1
-        assert view["alerts"][0]["audit_type"] == "windows_audit"
+        assert view["alerts"][0]["audit_type"] == "schema_windows"
 
     def test_empty_hosts(self):
         view = build_site_dashboard_view({})

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = generic_node_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set nav = view.get('nav', {}) %}
+    {% set health = view.get('health', 'UNKNOWN') %}
+    {% set summary = view.get('summary', {}) %}
+    {% set alerts = view.get('alerts', []) %}
+    {% set sections = view.get('sections', []) %}
+    {% set crit = summary.get('critical_count', 0) %}
+    {% set warn = summary.get('warning_count', 0) %}
+    <title>{{ meta.get('display_name', 'Report') }} — Node Report — {{ meta.get('host', 'host') }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; font-size: 13px; margin: 0; background: #fff; color: #111; }
+        a { color: #00f; }
+        h2 { font-size: 13px; font-weight: bold; margin: 16px 0 0 0; padding: 4px 8px; background: #e8e8e8; border: 1px solid #bbb; text-transform: uppercase; letter-spacing: 0.04em; }
+        table { border-collapse: collapse; width: 100%; font-size: 13px; margin-bottom: 0; }
+        th { background: #f2f2f2; border: 1px solid #ccc; padding: 3px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; font-weight: bold; }
+        td { border: 1px solid #ddd; padding: 4px 8px; vertical-align: top; }
+        tr:nth-child(even) { background: #fafafa; }
+        tr:hover td { background: #f0f4ff; }
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+        .page-header { border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .page-header h1 { font-size: 15px; margin: 0; }
+        .page-header .right { text-align: right; font-size: 12px; color: #444; }
+        .health-ok    { color: #166534; font-weight: bold; }
+        .health-warn  { color: #92400e; font-weight: bold; }
+        .health-crit  { color: #991b1b; font-weight: bold; }
+        .health-unk   { color: #555; font-weight: bold; }
+        .sv-critical { color: #991b1b; font-weight: bold; }
+        .sv-warning  { color: #92400e; font-weight: bold; }
+        .sv-info     { color: #444; }
+        .sv-ok       { color: #166534; }
+        .alert-crit td { background: #fff5f5; }
+        .alert-warn td { background: #fffbeb; }
+        .toc { background: #f8f8f8; border: 1px solid #ddd; padding: 5px 10px; margin-bottom: 14px; font-size: 12px; }
+        .toc a { margin-right: 10px; color: #00c; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .section { margin-bottom: 18px; }
+        .kv td:first-child { width: 38%; color: #444; font-size: 12px; }
+        .kv td:last-child  { font-weight: 500; }
+        .no-data { color: #888; padding: 8px; border: 1px solid #ddd; border-top: none; font-size: 12px; }
+        .alert-banner { border: 1px solid #ccc; margin-bottom: 14px; }
+        .alert-banner-hdr { background: #f2f2f2; border-bottom: 1px solid #ccc; padding: 4px 8px; font-weight: bold; font-size: 12px; }
+        .breadcrumb { font-size: 11px; color: #555; margin-bottom: 10px; }
+        .breadcrumb a { color: #00c; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { margin: 0 4px; color: #999; }
+        @media print { .toc { display: none; } }
+    </style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation #}
+    {% if nav.get('site_report') or nav.get('fleet_report') %}
+    <div class="breadcrumb">
+        {% if nav.get('site_report') %}
+        <a href="{{ nav.site_report }}">Site Dashboard</a><span>&rsaquo;</span>
+        {% endif %}
+        {% if nav.get('fleet_report') %}
+        <a href="{{ nav.fleet_report }}">{{ nav.get('fleet_label', 'Fleet Report') }}</a><span>&rsaquo;</span>
+        {% endif %}
+        {{ meta.get('host', 'host') }}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>{{ meta.get('display_name', 'Report') }} — Node Report &mdash; <code>{{ meta.get('host', 'host') }}</code></h1>
+            <span style="font-size:11px; color:#555;">Platform: {{ meta.get('platform', '') | upper }}</span>
+        </div>
+        <div class="right">
+            {% if health == 'OK' %}<span class="health-ok">&#10003; OK</span>
+            {% elif health == 'WARNING' %}<span class="health-warn">&#9888; WARNING</span>
+            {% elif health == 'CRITICAL' %}<span class="health-crit">&#10007; CRITICAL</span>
+            {% else %}<span class="health-unk">{{ health }}</span>{% endif %}
+            {% if crit > 0 or warn > 0 %}
+            &nbsp;&mdash;&nbsp;
+            {% if crit > 0 %}<span class="sv-critical">{{ crit }} critical</span>{% endif %}
+            {% if crit > 0 and warn > 0 %} &middot; {% endif %}
+            {% if warn > 0 %}<span class="sv-warning">{{ warn }} warning</span>{% endif %}
+            {% endif %}
+            <br>{{ meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    {# --- Alerts first --- #}
+    {% if alerts %}
+    <div class="alert-banner">
+        <div class="alert-banner-hdr">
+            Active Alerts &mdash; {{ summary.get('total', 0) }}
+            {% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}
+        </div>
+        <table>
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th style="width:160px;">Category</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+            {% for alert in alerts %}
+                <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
+                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }}" style="white-space:nowrap;">{{ alert.severity }}</td>
+                    <td style="white-space:nowrap; font-size:11px; color:#555; text-transform:uppercase; font-weight:600;">{{ alert.get('category', '') }}</td>
+                    <td>{{ alert.get('message', '') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# --- Section navigation --- #}
+    {% set data_sections = sections | selectattr('type', 'ne', 'alert_panel') | list %}
+    {% if data_sections | length > 1 %}
+    <div class="toc">
+        Jump to:
+        {% for section in data_sections %}
+        <a href="#{{ section.id }}">{{ section.title }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# --- Data sections --- #}
+    {% for section in data_sections %}
+    <div class="section" id="{{ section.id }}">
+        <h2>{{ section.title }}</h2>
+
+        {% if section.type == 'key_value' %}
+        {% if section.get('rows', []) %}
+        <table class="kv">
+            <tbody>
+            {% for row in section.rows %}
+                <tr><td>{{ row.label }}</td><td>{{ row.value }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No data.</div>
+        {% endif %}
+
+        {% elif section.type == 'table' %}
+        {% if section.get('rows', []) %}
+        <table>
+            <thead>
+                <tr>
+                {% for col in section.get('columns', []) %}
+                    <th>{{ col.label }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in section.rows %}
+                <tr>
+                {% for cell in row %}
+                    <td>
+                    {% if cell.badge %}
+                        {% if cell.value | lower in ('ok', 'up', 'running', 'connected', 'healthy') %}
+                            <span class="sv-ok">{{ cell.value }}</span>
+                        {% elif cell.value | lower in ('critical', 'down', 'error', 'failed') %}
+                            <span class="sv-critical">{{ cell.value }}</span>
+                        {% elif cell.value | lower in ('warning', 'degraded', 'unknown') %}
+                            <span class="sv-warning">{{ cell.value }}</span>
+                        {% else %}
+                            {{ cell.value }}
+                        {% endif %}
+                    {% else %}
+                        {{ cell.value }}
+                    {% endif %}
+                    </td>
+                {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No rows.</div>
+        {% endif %}
+
+        {% endif %}
+    </div>
+    {% endfor %}
+
+</div>
+</body>
+</html>

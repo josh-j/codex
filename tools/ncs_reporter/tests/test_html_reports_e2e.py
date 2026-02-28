@@ -128,9 +128,9 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertIn("win-01", content)
 
         # Check Platform Reports
-        self.assertTrue((self.reports_root / "platform" / "ubuntu" / "ubuntu_health_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vmware_health_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "windows" / "windows_health_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "ubuntu" / "linux_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
 
         # Check Node Reports
         self.assertTrue((self.reports_root / "platform" / "ubuntu" / "linux-01" / "health_report.html").exists())

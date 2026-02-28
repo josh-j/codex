@@ -221,8 +221,8 @@ class LinuxCommandTests(unittest.TestCase):
             self.assertIn("Done", result.output)
 
             # Fleet report should exist
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_health_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "linux_fleet_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "linux_fleet_report.html")))
             # Host report
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report.html")))
@@ -244,7 +244,7 @@ class VmwareCommandTests(unittest.TestCase):
             result = runner.invoke(main, ["vmware", "-i", input_path, "-o", output_dir, "--report-stamp", "20250101"])
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "vmware_health_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "vcenter_fleet_report_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01", "health_report.html")))
 
 
@@ -264,7 +264,7 @@ class WindowsCommandTests(unittest.TestCase):
             result = runner.invoke(main, ["windows", "-i", input_path, "-o", output_dir, "--report-stamp", "20250101"])
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "windows_health_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "windows_fleet_report_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "win01", "health_report.html")))
 
     def test_windows_no_csv_flag(self):
@@ -434,7 +434,7 @@ class ReportContentTests(unittest.TestCase):
             output_dir = os.path.join(tmpdir, "reports")
             runner.invoke(main, ["vmware", "-i", input_path, "-o", output_dir])
 
-            report = os.path.join(output_dir, "vmware_health_report.html")
+            report = os.path.join(output_dir, "vcenter_fleet_report.html")
             with open(report) as f:
                 content = f.read()
             self.assertIn("<!DOCTYPE html>", content)

@@ -75,6 +75,17 @@ h3 {
   flex-direction: column;
 }
 
+.count-pill {
+  float: right;
+  background: var(--red);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
 .sidebar-brand {
   display: flex;
   align-items: center;

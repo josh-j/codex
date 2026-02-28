@@ -19,11 +19,10 @@ from .aggregation import load_all_reports, normalize_host_bundle, write_output
 from .cklb_export import generate_cklb
 from .csv_definitions import get_definitions, resolve_data_path
 from .csv_export import export_csv as export_csv_fn
-from .view_models.linux import build_linux_fleet_view, build_linux_node_view
+from .schema_loader import discover_schemas, load_example_bundle, load_schema_from_file, validate_schema_paths
+from .view_models.generic import build_generic_fleet_view, build_generic_node_view
 from .view_models.site import build_site_dashboard_view
 from .view_models.stig import build_stig_fleet_view, build_stig_host_view
-from .view_models.vmware import build_vmware_fleet_view, build_vmware_node_view
-from .view_models.windows import build_windows_fleet_view, build_windows_node_view
 
 logger = logging.getLogger("ncs_reporter")
 
@@ -50,40 +49,14 @@ def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, st
 
 
 # ---------------------------------------------------------------------------
-# Generic platform renderer
+# Schema-driven platform renderer
 # ---------------------------------------------------------------------------
 
-_PLATFORM_CONFIG: dict[str, dict[str, Any]] = {
-    "linux": {
-        "node_builder": build_linux_node_view,
-        "fleet_builder": build_linux_fleet_view,
-        "node_template": "ubuntu_host_health_report.html.j2",
-        "fleet_template": "ubuntu_health_report.html.j2",
-        "fleet_report_name": "ubuntu_health_report",
-        "node_ctx_key": "linux_node_view",
-        "fleet_ctx_key": "linux_fleet_view",
-        "node_builder_style": "positional",  # (hostname, bundle, **kw)
-    },
-    "vmware": {
-        "node_builder": build_vmware_node_view,
-        "fleet_builder": build_vmware_fleet_view,
-        "node_template": "vcenter_health_report.html.j2",
-        "fleet_template": "vmware_health_report.html.j2",
-        "fleet_report_name": "vmware_health_report",
-        "node_ctx_key": "vmware_node_view",
-        "fleet_ctx_key": "vmware_fleet_view",
-        "node_builder_style": "positional",
-    },
-    "windows": {
-        "node_builder": build_windows_node_view,
-        "fleet_builder": build_windows_fleet_view,
-        "node_template": "windows_host_health_report.html.j2",
-        "fleet_template": "windows_health_report.html.j2",
-        "fleet_report_name": "windows_health_report",
-        "node_ctx_key": "windows_node_view",
-        "fleet_ctx_key": "windows_fleet_view",
-        "node_builder_style": "keyword",  # (bundle, hostname=..., **kw)
-    },
+# Maps CLI platform name → schema name(s) to try (in preference order)
+_PLATFORM_SCHEMA_NAMES: dict[str, list[str]] = {
+    "linux": ["linux"],
+    "vmware": ["vcenter"],
+    "windows": ["windows"],
 }
 
 
@@ -94,28 +67,58 @@ def _render_platform(
     common_vars: dict[str, str],
     *,
     export_csv: bool = False,
+    site_report_relative: str | None = None,
 ) -> None:
-    """Render node + fleet reports for a given platform."""
-    cfg = _PLATFORM_CONFIG[platform]
+    """Render node + fleet reports for a platform using the schema engine.
+
+    *site_report_relative* is the path from *output_path* to the site dashboard
+    (e.g. ``"../../site_health_report.html"`` when inside ``platform/{name}/``).
+    When provided, navigation breadcrumbs are generated for all reports.
+    """
+    from .normalization.schema_driven import normalize_from_schema
+
+    schema_names = _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+    all_schemas = discover_schemas()
+
+    schema = None
+    for name in schema_names:
+        schema = all_schemas.get(name)
+        if schema:
+            break
+
+    if schema is None:
+        logger.warning("No schema found for platform '%s' (tried: %s)", platform, schema_names)
+        return
+
     env = get_jinja_env()
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
+    node_tpl = env.get_template("generic_node_report.html.j2")
+    fleet_filename = f"{schema.name}_fleet_report.html"
 
-    node_tpl = env.get_template(cfg["node_template"])
     csv_defs = get_definitions("windows") if (export_csv and platform == "windows") else []
 
-    for hostname, bundle in hosts_data.items():
-        if cfg["node_builder_style"] == "keyword":
-            node_view = cfg["node_builder"](bundle, hostname=hostname, **kw)
-        else:
-            node_view = cfg["node_builder"](hostname, bundle, **kw)
+    # Nav for node reports: back to fleet, and optionally site (one dir deeper than fleet)
+    node_nav: dict[str, str] = {
+        "fleet_report": f"../{fleet_filename}",
+        "fleet_label": f"{schema.display_name} Fleet",
+    }
+    if site_report_relative:
+        node_nav["site_report"] = f"../{site_report_relative}"
 
+    # Nav for fleet report: optionally back to site
+    fleet_nav: dict[str, str] = {}
+    if site_report_relative:
+        fleet_nav["site_report"] = site_report_relative
+
+    for hostname, bundle in hosts_data.items():
+        node_view = build_generic_node_view(schema, hostname, bundle, nav=node_nav, **kw)
         host_dir = output_path / hostname
         host_dir.mkdir(exist_ok=True)
-        content = node_tpl.render(**{cfg["node_ctx_key"]: node_view}, **common_vars)
+        content = node_tpl.render(generic_node_view=node_view, **common_vars)
         write_report(host_dir, "health_report.html", content, stamp)
 
-        # Windows-specific CSV export per host
+        # Windows CSV export (uses pre-normalised schema fields)
         for defn in csv_defs:
             rows = resolve_data_path(bundle, defn["data_path"])
             if not rows:
@@ -124,10 +127,10 @@ def _render_platform(
             csv_path = host_dir / f"{defn['report_name']}_{hostname}.csv"
             export_csv_fn(rows, defn["headers"], csv_path, sort_by=defn.get("sort_by"))
 
-    fleet_view = cfg["fleet_builder"](hosts_data, **kw)
-    fleet_tpl = env.get_template(cfg["fleet_template"])
-    content = fleet_tpl.render(**{cfg["fleet_ctx_key"]: fleet_view}, **common_vars)
-    write_report(output_path, f"{cfg['fleet_report_name']}.html", content, stamp)
+    fleet_view = build_generic_fleet_view(schema, hosts_data, nav=fleet_nav, **kw)
+    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
+    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
+    write_report(output_path, fleet_filename, content, stamp)
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +160,7 @@ def _render_stig(hosts_data: dict[str, Any], output_path: Path, common_vars: dic
             target_type = target.get("target_type", "unknown")
 
             if platform == "vmware":
-                platform_dir = "platform/vmware"
+                platform_dir = "platform/vcenter"
             elif platform == "windows":
                 platform_dir = "platform/windows"
             else:
@@ -312,28 +315,28 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
     common_vars = generate_timestamps(report_stamp)
 
     platforms = [
-        {"name": "ubuntu", "platform": "linux", "state_file": "linux_fleet_state.yaml"},
-        {"name": "vmware", "platform": "vmware", "state_file": "vmware_fleet_state.yaml"},
-        {"name": "windows", "platform": "windows", "state_file": "windows_fleet_state.yaml"},
+        {"input_dir": "ubuntu",  "report_dir": "ubuntu",  "platform": "linux",   "state_file": "linux_fleet_state.yaml"},
+        {"input_dir": "vmware",  "report_dir": "vcenter", "platform": "vmware",  "state_file": "vmware_fleet_state.yaml"},
+        {"input_dir": "windows", "report_dir": "windows", "platform": "windows", "state_file": "windows_fleet_state.yaml"},
     ]
 
     # 1. Platform Aggregation (sequential — I/O bound directory walk)
     render_tasks: list[dict[str, Any]] = []
     for p in platforms:
-        p_dir = p_root / p["name"]
+        p_dir = p_root / p["input_dir"]
         if not p_dir.is_dir():
             continue
 
         state_path = p_dir / p["state_file"]
-        click.echo(f"--- Processing Platform: {p['name']} ---")
+        click.echo(f"--- Processing Platform: {p['input_dir']} ---")
 
         p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
         if not p_data or not p_data["hosts"]:
-            click.echo(f"No data for {p['name']}, skipping.")
+            click.echo(f"No data for {p['input_dir']}, skipping.")
             continue
         write_output(p_data, str(state_path))
 
-        output_dir = r_root / "platform" / p["name"]
+        output_dir = r_root / "platform" / p["report_dir"]
         output_dir.mkdir(parents=True, exist_ok=True)
         render_tasks.append({
             "platform": p["platform"],
@@ -353,6 +356,7 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
                     t["output_path"],
                     common_vars,
                     export_csv=t["export_csv"],
+                    site_report_relative="../../site_health_report.html",
                 ): t["platform"]
                 for t in render_tasks
             }
@@ -419,20 +423,76 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
     env = get_jinja_env()
     kw = vm_kwargs(common_vars)
 
-    cfg = _PLATFORM_CONFIG[platform]
-    if cfg["node_builder_style"] == "keyword":
-        view = cfg["node_builder"](bundle, hostname=hostname, **kw)
-    else:
-        view = cfg["node_builder"](hostname, bundle, **kw)
+    schema_names = _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+    all_schemas = discover_schemas()
+    schema = next((all_schemas[n] for n in schema_names if n in all_schemas), None)
+    if schema is None:
+        click.echo(f"ERROR: no schema found for platform '{platform}'", err=True)
+        raise SystemExit(1)
 
-    tpl = env.get_template(cfg["node_template"])
-    content = tpl.render(**{cfg["node_ctx_key"]: view}, **common_vars)
+    view = build_generic_node_view(schema, hostname, bundle, **kw)
+    tpl = env.get_template("generic_node_report.html.j2")
+    content = tpl.render(generic_node_view=view, **common_vars)
 
     dest = output_path / f"{hostname}_health_report.html"
     with open(dest, "w") as f:
         f.write(content)
 
     click.echo(f"Success: Report generated at {dest}")
+
+
+# ---------------------------------------------------------------------------
+# schema command group
+# ---------------------------------------------------------------------------
+
+@main.group()
+def schema() -> None:
+    """Inspect and validate YAML report schemas."""
+
+
+@schema.command("list")
+def schema_list() -> None:
+    """List all discovered schemas and their source paths."""
+    schemas = discover_schemas()
+    if not schemas:
+        click.echo("No schemas found.")
+        return
+    for name, s in sorted(schemas.items()):
+        source = getattr(s, "_source_path", "unknown")
+        example = load_example_bundle(s)
+        example_status = "example OK" if example else "no example file"
+        click.echo(f"  {name:20s}  platform={s.platform:10s}  {example_status:14s}  {source}")
+
+
+@schema.command("validate")
+@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
+def schema_validate(schema_file: Path) -> None:
+    """Validate a schema file and check all field paths against its example data.
+
+    SCHEMA_FILE: path to a *.yaml schema file.
+    """
+    try:
+        s = load_schema_from_file(schema_file)
+    except ValueError as exc:
+        click.echo(f"INVALID: {exc}", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"Schema '{s.name}' loaded OK  ({len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.sections)} sections)")
+
+    example = load_example_bundle(s)
+    if example is None:
+        click.echo(f"WARNING: no example file found ({s.name}.example.yaml) — path validation skipped")
+        return
+
+    errors = validate_schema_paths(s, example)
+    if errors:
+        click.echo(f"FAIL: {len(errors)} field path(s) do not resolve against the example bundle:")
+        for msg in errors.values():
+            click.echo(f"  {msg}")
+        raise SystemExit(1)
+
+    path_fields = sum(1 for spec in s.fields.values() if spec.path is not None)
+    click.echo(f"OK: all {path_fields} path field(s) resolve against {s.name}.example.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -539,6 +599,90 @@ def stig_apply(
         extra_vars=extra_vars,
         dry_run=dry_run,
     )
+
+
+# ---------------------------------------------------------------------------
+# schema subcommand group
+# ---------------------------------------------------------------------------
+
+@main.group()
+def schema() -> None:
+    """Manage and run YAML-driven report schemas."""
+
+
+@schema.command("validate")
+@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
+def schema_validate(schema_file: Path) -> None:
+    """Validate a schema YAML file and report any errors."""
+    try:
+        s = load_schema_from_file(schema_file)
+        click.echo(f"OK: schema '{s.name}' is valid (platform={s.platform}, {len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.sections)} sections)")
+    except ValueError as exc:
+        click.echo(f"ERROR: {exc}", err=True)
+        raise SystemExit(1)
+
+
+@schema.command("list")
+def schema_list() -> None:
+    """List all discovered schemas and their source paths."""
+    schemas = discover_schemas()
+    if not schemas:
+        click.echo("No schemas discovered.")
+        return
+    for name, s in sorted(schemas.items()):
+        source = getattr(s, "_source_path", "unknown")
+        click.echo(f"  {name:30s}  platform={s.platform:15s}  source={source}")
+
+
+@schema.command("run")
+@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw YAML bundle.")
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write reports.")
+@click.option("--hostname", "-n", default="host", show_default=True, help="Hostname label for node report.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
+@click.option("--site-report", "site_report_href", default=None, help="Relative path from output-dir to site report (enables site breadcrumb).")
+def schema_run(schema_file: Path, input_file: str, output_dir: str, hostname: str, report_stamp: str | None, site_report_href: str | None) -> None:
+    """Run a single schema-driven report against a raw YAML bundle."""
+    try:
+        s = load_schema_from_file(schema_file)
+    except ValueError as exc:
+        click.echo(f"ERROR: {exc}", err=True)
+        raise SystemExit(1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(input_file) as f:
+        import yaml as _yaml
+        bundle = _yaml.safe_load(f) or {}
+
+    common_vars = generate_timestamps(report_stamp)
+    kw = vm_kwargs(common_vars)
+    env = get_jinja_env()
+
+    fleet_filename = f"{s.name}_fleet_report.html"
+    node_nav: dict[str, str] = {"fleet_report": f"../{fleet_filename}", "fleet_label": f"{s.display_name} Fleet"}
+    fleet_nav: dict[str, str] = {}
+    if site_report_href:
+        fleet_nav["site_report"] = site_report_href
+        node_nav["site_report"] = f"../{site_report_href}"
+
+    # Node report
+    node_view = build_generic_node_view(s, hostname, bundle, nav=node_nav, **kw)
+    node_tpl = env.get_template("generic_node_report.html.j2")
+    content = node_tpl.render(generic_node_view=node_view, **common_vars)
+    host_dir = output_path / hostname
+    host_dir.mkdir(exist_ok=True)
+    write_report(host_dir, "health_report.html", content, common_vars["report_stamp"])
+    click.echo(f"Node report: {host_dir}/health_report.html")
+
+    # Fleet report (single host)
+    fleet_view = build_generic_fleet_view(s, {hostname: bundle}, nav=fleet_nav, **kw)
+    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
+    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
+    write_report(output_path, fleet_filename, content, common_vars["report_stamp"])
+    click.echo(f"Fleet report: {output_path}/{fleet_filename}")
+    click.echo("Done!")
 
 
 if __name__ == "__main__":

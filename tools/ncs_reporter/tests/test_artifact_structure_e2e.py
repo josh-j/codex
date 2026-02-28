@@ -176,25 +176,25 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
     def test_platform_fleet_reports_created(self):
         self._run_all()
         self.assertTrue(
-            (self.reports_root / "platform" / "ubuntu" / "ubuntu_health_report.html").exists()
+            (self.reports_root / "platform" / "ubuntu" / "linux_fleet_report.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "vmware_health_report.html").exists()
+            (self.reports_root / "platform" / "vcenter" / "vcenter_fleet_report.html").exists()
         )
 
     def test_stamped_fleet_reports_created(self):
         self._run_all()
         self.assertTrue(
-            (self.reports_root / "platform" / "ubuntu" / f"ubuntu_health_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "ubuntu" / f"linux_fleet_report_{STAMP}.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / f"vmware_health_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "vcenter" / f"vcenter_fleet_report_{STAMP}.html").exists()
         )
 
     def test_node_reports_under_platform_subdirectory(self):
         self._run_all()
         linux_node = self.reports_root / "platform" / "ubuntu" / "linux-01" / "health_report.html"
-        vmware_node = self.reports_root / "platform" / "vmware" / "vc-01" / "health_report.html"
+        vmware_node = self.reports_root / "platform" / "vcenter" / "vc-01" / "health_report.html"
         self.assertTrue(linux_node.exists(), f"Linux node report not found: {linux_node}")
         self.assertTrue(vmware_node.exists(), f"VMware node report not found: {vmware_node}")
 
@@ -205,7 +205,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_stig_host_report_under_platform_vmware(self):
         self._run_all()
-        host_report = self.reports_root / "platform" / "vmware" / "vc-01" / "vc-01_stig_esxi.html"
+        host_report = self.reports_root / "platform" / "vcenter" / "vc-01" / "vc-01_stig_esxi.html"
         self.assertTrue(host_report.exists(), f"STIG host report not found: {host_report}")
         content = host_report.read_text()
         self.assertIn("vc-01", content)
@@ -298,7 +298,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
             self.reports_root / "platform" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
         )
         vmware_report = (
-            self.reports_root / "platform" / "vmware" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
         )
         self.assertTrue(linux_report.exists(), f"Linux node report missing: {linux_report}")
         self.assertTrue(vmware_report.exists(), f"VMware node report missing: {vmware_report}")
@@ -312,7 +312,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
             self.reports_root / "platform" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
         ).read_text()
         vmware_content = (
-            self.reports_root / "platform" / "vmware" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
         ).read_text()
         # The two files must differ — same hostname but different platform data
         self.assertNotEqual(linux_content, vmware_content)
@@ -355,7 +355,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         self._run_all()
         stig_report = (
             self.reports_root
-            / "platform" / "vmware"
+            / "platform" / "vcenter"
             / self.SHARED_HOSTNAME
             / f"{self.SHARED_HOSTNAME}_stig_esxi.html"
         )
