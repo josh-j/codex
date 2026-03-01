@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = generic_node_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set nav = view.get('nav', {}) %}
+    {% set health = view.get('health', 'UNKNOWN') %}
+    {% set summary = view.get('summary', {}) %}
+    {% set alerts = view.get('alerts', []) %}
+    {% set widgets = view.get('widgets', []) %}
+    {% set crit = summary.get('critical_count', 0) %}
+    {% set warn = summary.get('warning_count', 0) %}
+    <title>{{ meta.get('display_name', 'Report') }} — Node Report — {{ meta.get('host', 'host') }}</title>
+    <style>{% include 'report_shared.css' %}</style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation tree #}
+    {% if nav.get('site_report') or nav.get('fleet_report') %}
+    <div class="breadcrumb">
+        {% if nav.get('site_report') %}
+        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        {% endif %}
+        
+        {% if nav.get('tree_fleets') %}
+        <div class="nav-tree">
+            <a href="{{ nav.fleet_report or '#' }}" class="tree-label">{{ (nav.get('fleet_label') or 'Fleet') | replace(' Fleet', '') }} Fleet</a>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                {% for f in nav.tree_fleets %}
+                <a href="{{ f.report }}" class="{{ 'active' if f.name in (nav.get('fleet_label') or '') else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
+                    {{ f.name }} Fleet
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        <span class="sep">&rsaquo;</span>
+        {% elif nav.get('fleet_report') %}
+        <a href="{{ nav.fleet_report }}">{{ nav.get('fleet_label', 'Fleet Report') }}</a><span class="sep">&rsaquo;</span>
+        {% endif %}
+
+        {% if nav.get('tree_siblings') %}
+        <div class="nav-tree">
+            <span class="tree-label">{{ meta.get('host', 'host') }}</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown" style="max-height: 400px; overflow-y: auto;">
+                <div class="dropdown-group">Hosts</div>
+                {% for s in nav.tree_siblings %}
+                <a href="{{ s.report }}" class="{{ 'active' if s.name == meta.get('host') else '' }}">{{ s.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        {{ meta.get('host', 'host') }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>{{ meta.get('display_name', 'Report') }} &mdash; <code>{{ meta.get('host', 'host') }}</code></h1>
+            <span style="font-size:11px; color:#9db4cc;">Platform: {{ meta.get('platform', '') | upper }}</span>
+        </div>
+        <div class="right">
+            {% if health == 'OK' %}<span class="health-ok">OK</span>
+            {% elif health == 'WARNING' %}<span class="health-warn">WARNING</span>
+            {% elif health == 'CRITICAL' %}<span class="health-crit">CRITICAL</span>
+            {% else %}<span class="health-unk">{{ health }}</span>{% endif %}
+            <br>{{ meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-left">
+            {% for widget in widgets %}
+            <a href="#{{ widget.id }}">{{ widget.title }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# --- Data widgets --- #}
+    {% for widget in widgets %}
+    <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.id }}">
+        <div class="widget-titlebar">
+            {% if widget.type == 'alert_panel' %}
+            <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+            {% else %}
+            <span class="widget-title">{{ widget.title }}</span>
+            {% endif %}
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.title }}"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        {% if widget.type == 'alert_panel' %}
+        {% if alerts %}
+        <table>
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th style="width:160px;">Category</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+            {% for alert in alerts %}
+                <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
+                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }}" style="white-space:nowrap;">{{ alert.severity }}</td>
+                    <td style="white-space:nowrap; font-size:11px; color:#555; text-transform:uppercase; font-weight:600;">{{ alert.get('category', '') }}</td>
+                    <td>
+                        {{ alert.get('message', '') }}
+                        {% if alert.get('detail') %}
+                        <div class="alert-details">
+                            {% for dk, dv in alert.detail.items() %}
+                            <span><strong>{{ dk }}:</strong> {{ dv }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No active alerts.</div>
+        {% endif %}
+
+        {% elif widget.type == 'key_value' %}
+        {% if widget.get('rows', []) %}
+        <table class="kv">
+            <tbody>
+            {% for row in widget.rows %}
+                <tr><td>{{ row.label }}</td><td>{{ row.value }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No data.</div>
+        {% endif %}
+
+        {% elif widget.type == 'table' %}
+        {% if widget.get('rows', []) %}
+        <table>
+            <thead>
+                <tr>
+                {% for col in widget.get('columns', []) %}
+                    <th>{{ col.label }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in widget.rows %}
+                <tr>
+                {% for cell in row %}
+                    <td>
+                    {% if cell.link %}<a href="{{ cell.link }}" style="color:#00c; text-decoration:none;">{% endif %}
+                    {% if cell.badge %}
+                        {% if cell.value | lower in ('ok', 'up', 'running', 'connected', 'healthy') %}
+                            <span class="sv-ok">{{ cell.value }}</span>
+                        {% elif cell.value | lower in ('critical', 'down', 'error', 'failed') %}
+                            <span class="sv-critical">{{ cell.value }}</span>
+                        {% elif cell.value | lower in ('warning', 'degraded', 'unknown') %}
+                            <span class="sv-warning">{{ cell.value }}</span>
+                        {% else %}
+                            {{ cell.value }}
+                        {% endif %}
+                    {% else %}
+                        {{ cell.value }}
+                    {% endif %}
+                    {% if cell.link %}</a>{% endif %}
+                    </td>
+                {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No rows.</div>
+        {% endif %}
+
+        {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+<script>{% include 'collapsible.js' %}</script>
+</body>
+</html>

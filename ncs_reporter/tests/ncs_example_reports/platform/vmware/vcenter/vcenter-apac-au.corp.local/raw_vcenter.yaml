@@ -1,0 +1,1371 @@
+metadata:
+  host: vcenter-apac-au.corp.local
+  raw_type: vcenter
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  appliance_health_info:
+    appliance:
+      access:
+        consolecli: false
+        dcui: false
+        shell:
+          enabled: 'False'
+          timeout: '0'
+        ssh: false
+      firewall:
+        inbound:
+        - address: 1.2.3.6
+          interface_name: '*'
+          policy: ACCEPT
+          prefix: '32'
+        - address: 1.2.4.5
+          interface_name: nic0
+          policy: IGNORE
+          prefix: '24'
+      networking:
+        network:
+          dns_servers: []
+          hostname:
+          - vcenter.local
+          nics:
+            nic0:
+              ipv4: '{configurable : True, mode : STATIC, address : 10.185.246.4,
+                prefix : 26, default_gateway : 10.185.246.1}'
+              ipv6: None
+              mac: 00:50:56:cd:e7:2e
+              name: nic0
+              status: up
+        proxy:
+          ftp:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          http:
+            enabled: 'True'
+            password: None
+            port: '80'
+            server: http://localhost
+            username: None
+          https:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          noproxy:
+          - localhost
+          - 127.0.0.1
+      services:
+        appliance-shutdown:
+          description: /etc/rc.local.shutdown Compatibility
+          state: STOPPED
+      summary:
+        build_number: '22617221'
+        health:
+          cpu: green
+          database: green
+          memory: green
+          overall: green
+          storage: green
+          swap: green
+        hostname:
+        - vcenter-apac-au.corp.local
+        product: VMware vCenter Server
+        sso: {}
+        uptime: '2592000.0'
+        version: 8.0.2.00200
+      syslog:
+        forwarding: []
+      time:
+        time_sync:
+          current:
+            date: Tue 03-26-2024
+            seconds_since_epoch: '1711465124.5183642'
+            time: 02:58:44 PM
+            timezone: UTC
+          mode: NTP
+          servers:
+          - time.google.com
+        time_zone: Etc/UTC
+  appliance_backup_info:
+    schedules: []
+  datacenters_info:
+    datacenter_info:
+    - name: DC-APAC-AU-1
+      moid: datacenter-60
+      config_status: green
+      overall_status: green
+  clusters_info:
+    results:
+    - item: DC-APAC-AU-1
+      clusters:
+        AU-Prod-Cluster:
+          datacenter: DC-APAC-AU-1
+          moid: domain-c601
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: true
+          drs_default_vm_behavior: fullyAutomated
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi01.apau.corp.local
+            folder: /DC-APAC-AU-1/host/AU-Prod-Cluster
+          - name: esxi02.apau.corp.local
+            folder: /DC-APAC-AU-1/host/AU-Prod-Cluster
+          - name: esxi03.apau.corp.local
+            folder: /DC-APAC-AU-1/host/AU-Prod-Cluster
+          - name: esxi04.apau.corp.local
+            folder: /DC-APAC-AU-1/host/AU-Prod-Cluster
+          resource_summary:
+            cpuCapacityMHz: 256000
+            cpuUsedMHz: 51200
+            memCapacityMB: 524288
+            memUsedMB: 104857
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 20480000
+            storageUsedMB: 4096000
+          tags: []
+      failed: false
+      failed_when_result: false
+  datastores_info:
+    datastores:
+    - accessible: true
+      capacity: 10995116277760
+      datastore_cluster: datacluster0
+      freeSpace: 8796093022208
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APAU-VMFS-SSD-01
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 10995116277760
+      datastore_cluster: datacluster0
+      freeSpace: 7696581394432
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APAU-VMFS-SSD-02
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 17592186044416
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APAU-NFS-01
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+  vms_info:
+    virtual_machines:
+    - guest_name: web-apau-001
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apau-0001-3bd5-64dc-903fd3a0000001
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0001
+      allocated: &id001
+        cpu: 2
+        memory: 4096
+        storage: 107374182400
+      tools_status: toolsOk
+      instance_uuid: 4207apau00013bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apau-002
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apau-0002-3bd5-64dc-903fd3a0000002
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0002
+      allocated: &id002
+        cpu: 4
+        memory: 8192
+        storage: 214748364800
+      tools_status: toolsOk
+      instance_uuid: 4207apau00023bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apau-003
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apau-0003-3bd5-64dc-903fd3a0000003
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0003
+      allocated: &id003
+        cpu: 8
+        memory: 16384
+        storage: 429496729600
+      tools_status: toolsOk
+      instance_uuid: 4207apau00033bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apau-004
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.4
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0004-3bd5-64dc-903fd3a0000004
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0004
+      allocated: &id004
+        cpu: 16
+        memory: 32768
+        storage: 858993459200
+      tools_status: toolsOk
+      instance_uuid: 4207apau00043bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apau-005
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.5
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0005-3bd5-64dc-903fd3a0000005
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0005
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00053bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apau-006
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.6
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0006-3bd5-64dc-903fd3a0000006
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0006
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00063bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apau-007
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.7
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0007-3bd5-64dc-903fd3a0000007
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0007
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00073bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apau-008
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.8
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0008-3bd5-64dc-903fd3a0000008
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0008
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00083bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apau-009
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.9
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0009-3bd5-64dc-903fd3a0000009
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0009
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00093bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apau-010
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.10
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0010-3bd5-64dc-903fd3a0000010
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0010
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00103bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apau-011
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.11
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0011-3bd5-64dc-903fd3a0000011
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0011
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00113bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apau-012
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.12
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0012-3bd5-64dc-903fd3a0000012
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0012
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00123bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apau-013
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.13
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0013-3bd5-64dc-903fd3a0000013
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0013
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00133bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apau-014
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.14
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0014-3bd5-64dc-903fd3a0000014
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0014
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00143bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apau-015
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.15
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0015-3bd5-64dc-903fd3a0000015
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0015
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00153bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apau-016
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.16
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0016-3bd5-64dc-903fd3a0000016
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0016
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00163bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apau-017
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.17
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0017-3bd5-64dc-903fd3a0000017
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0017
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00173bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apau-018
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.18
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0018-3bd5-64dc-903fd3a0000018
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0018
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00183bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apau-019
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.19
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0019-3bd5-64dc-903fd3a0000019
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0019
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00193bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apau-020
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.20
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0020-3bd5-64dc-903fd3a0000020
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0020
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00203bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apau-021
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.21
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0021-3bd5-64dc-903fd3a0000021
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0021
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00213bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apau-022
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.22
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0022-3bd5-64dc-903fd3a0000022
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0022
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00223bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apau-023
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.23
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0023-3bd5-64dc-903fd3a0000023
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0023
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00233bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apau-024
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.24
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0024-3bd5-64dc-903fd3a0000024
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0024
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00243bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apau-025
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.25
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0025-3bd5-64dc-903fd3a0000025
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0025
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00253bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apau-026
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.26
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0026-3bd5-64dc-903fd3a0000026
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0026
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00263bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apau-027
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.27
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0027-3bd5-64dc-903fd3a0000027
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0027
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00273bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apau-028
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.28
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0028-3bd5-64dc-903fd3a0000028
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0028
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00283bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apau-029
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.29
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0029-3bd5-64dc-903fd3a0000029
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0029
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00293bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apau-030
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.30
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0030-3bd5-64dc-903fd3a0000030
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0030
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00303bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apau-031
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.31
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0031-3bd5-64dc-903fd3a0000031
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0031
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00313bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apau-032
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi04.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.32
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0032-3bd5-64dc-903fd3a0000032
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0032
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apau00323bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apau-033
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi01.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.25.1.33
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0033-3bd5-64dc-903fd3a0000033
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0033
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apau00333bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apau-034
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi02.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.34
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0034-3bd5-64dc-903fd3a0000034
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0034
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apau00343bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apau-035
+      datacenter: DC-APAC-AU-1
+      cluster: AU-Prod-Cluster
+      esxi_hostname: esxi03.apau.corp.local
+      folder: /DC-APAC-AU-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.25.1.35
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apau-0035-3bd5-64dc-903fd3a0000035
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-au-prod-cluster-01
+        url: /vmfs/volumes/apau-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apau-0035
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apau00353bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+  snapshots_info:
+    snapshots: []
+  alarms_info:
+    alarms: []
+    count: 0
+    python: /usr/bin/python3
+  config:
+    infrastructure_vm_patterns:
+    - ^vCenter$
+    - ^ESXi-.*$

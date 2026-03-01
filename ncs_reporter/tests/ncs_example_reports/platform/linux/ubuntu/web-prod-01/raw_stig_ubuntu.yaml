@@ -1,0 +1,39 @@
+metadata:
+  host: web-prod-01
+  raw_type: stig_ubuntu
+  audit_type: stig_ubuntu
+  timestamp: '2026-03-01T14:31:24+00:00'
+target_type: ubuntu
+data:
+- id: UBTU-22-010000
+  status: failed
+  severity: high
+  title: Ubuntu must disable root login.
+- id: UBTU-22-010001
+  status: pass
+  severity: high
+  title: Ubuntu must require strong passwords.
+- id: UBTU-22-010002
+  status: failed
+  severity: medium
+  title: Ubuntu must configure auditd.
+- id: UBTU-22-010003
+  status: pass
+  severity: medium
+  title: Ubuntu must use FIPS mode.
+- id: UBTU-22-010004
+  status: pass
+  severity: low
+  title: Ubuntu must clear tmp.
+- id: UBTU-22-010005
+  status: pass
+  severity: low
+  title: Ubuntu must disable unneeded services.
+- id: UBTU-22-010006
+  status: na
+  severity: medium
+  title: Ubuntu NA check.
+- id: UBTU-22-010007
+  status: pass
+  severity: high
+  title: Ubuntu final check.

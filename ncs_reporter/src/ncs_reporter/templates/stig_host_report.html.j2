@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = stig_host_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set target = view.get('target', {}) %}
+    {% set summary = view.get('summary', {}) %}
+    {% set by_status = summary.get('by_status', {}) %}
+    {% set findings_summary = summary.get('findings', {}) %}
+    {% set findings = view.get('findings', []) %}
+    {% set nav = view.get('nav', {}) %}
+    <title>STIG Report - {{ target.get('host', 'unknown') }}</title>
+    <style>
+        {% include 'report_shared.css' %}
+    </style>
+    <script>
+        function toggleDetails(id) {
+            var x = document.getElementById(id);
+            if (!x) return;
+            x.style.display = (x.style.display === "block") ? "none" : "block";
+        }
+    </script>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation #}
+    {% if nav.get('site_report') or nav.get('fleet_report') %}
+    <div class="breadcrumb">
+        {% if nav.get('site_report') %}
+        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        {% endif %}
+        
+        {% if nav.get('tree_fleets') %}
+        <div class="nav-tree">
+            <a href="{{ nav.fleet_report or '#' }}" class="tree-label">STIG Fleet</a>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                {% for f in nav.tree_fleets %}
+                <a href="{{ f.report }}" class="{{ 'active' if f.name == 'STIG' else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
+                    {{ f.name }} Fleet
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        <span class="sep">&rsaquo;</span>
+        {% elif nav.get('fleet_report') %}
+        <a href="{{ nav.fleet_report }}">{{ nav.get('fleet_label', 'STIG Fleet Dashboard') }}</a><span class="sep">&rsaquo;</span>
+        {% endif %}
+
+        {% if nav.get('tree_siblings') %}
+        <div class="nav-tree">
+            <span class="tree-label">{{ target.get('target_type', 'unknown') | upper }} STIG</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Audits for {{ target.get('host', 'host') }}</div>
+                <a href="#" class="active">{{ target.get('target_type', 'unknown') | upper }} STIG</a>
+                {% for s in nav.tree_siblings %}
+                <a href="{{ s.report }}">{{ s.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        {{ target.get('host', 'unknown') }} (STIG)
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>STIG Compliance — Node Report &mdash; <code>{{ target.get('host', 'unknown') }}</code></h1>
+            <span style="font-size:11px; color:#9db4cc;">Platform: {{ target.get('platform', 'unknown') | upper }} &nbsp;&middot;&nbsp; Target: {{ target.get('target_type', 'unknown') | upper }}</span>
+        </div>
+        <div class="right">
+            {% set s_raw = target.get('status', {}).get('raw', 'UNKNOWN') | upper %}
+            {% if s_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="health-ok">COMPLIANT</span>
+            {% elif s_raw in ('FAIL', 'OPEN', 'NON-COMPLIANT', 'CRITICAL') %}<span class="health-crit">NON-COMPLIANT</span>
+            {% else %}<span class="health-warn">{{ s_raw }}</span>{% endif %}
+            <br>{{ meta.get('report_date', now_datetime | default('N/A')) }}
+        </div>
+    </div>
+
+    {% set open_findings = findings | selectattr('status', 'eq', 'open') | list %}
+
+    <div class="toc">
+        <div class="toc-left">
+            <a href="#evaluation">Evaluation Summary</a>
+            {% if open_findings | length > 0 %}<a href="#open-findings">Open Findings</a>{% endif %}
+            {% if findings | length > 0 %}<a href="#all-findings">All Findings</a>{% endif %}
+        </div>
+    </div>
+
+    {% if findings | length == 0 %}
+    <div style="padding: 16px; border: 1px solid #e67e22; background: #fff6e5; border-radius: 10px; margin: 10px 0 20px 0;">
+        <strong>No STIG checks were recorded.</strong>
+        <div style="margin-top: 8px;">
+            This usually means the audit produced no findings.
+            Verify that the discovery tasks ran successfully and were not skipped.
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="widget" id="evaluation">
+        <div class="widget-titlebar">
+            <span class="widget-title">Evaluation Summary</span>
+        </div>
+        <div class="widget-body widget-subgroup">
+            <div class="widget-grid">
+                
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">By Status</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table style="border:0;">
+                            <tbody>
+                                <tr><td style="width:50%; color:#444;">Total Findings</td><td><strong>{{ findings_summary.get('total', 0) }}</strong></td></tr>
+                                <tr><td style="color:#444;">Passed</td><td><span class="sv-ok">{{ by_status.get('pass', 0) }}</span></td></tr>
+                                <tr><td style="color:#444;">Open</td><td><span class="sv-critical">{{ by_status.get('open', 0) }}</span></td></tr>
+                                <tr><td style="color:#444;">N/A</td><td><span class="sv-info">{{ by_status.get('na', 0) }}</span></td></tr>
+                                {% set not_reviewed = by_status.get('not_reviewed', 0) + by_status.get('unknown', 0) %}
+                                {% if not_reviewed > 0 %}<tr><td style="color:#444;">Not Reviewed</td><td><span class="sv-warning">{{ not_reviewed }}</span></td></tr>{% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">By Severity</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table style="border:0;">
+                            <tbody>
+                                <tr><td style="width:50%; color:#444;">CAT I</td><td><span class="{{ 'sv-critical' if findings_summary.get('critical', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('critical', 0) }}</span></td></tr>
+                                <tr><td style="color:#444;">CAT II</td><td><span class="{{ 'sv-warning' if findings_summary.get('warning', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('warning', 0) }}</span></td></tr>
+                                <tr><td style="color:#444;">CAT III</td><td><span class="sv-info">{{ findings_summary.get('info', 0) }}</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {% if open_findings | length > 0 %}
+    <div class="widget" id="open-findings">
+        <div class="widget-titlebar">
+            <span class="widget-title">Open Findings ({{ open_findings | length }})</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Open Findings"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id">Rule ID</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-sev">Severity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for rule in open_findings %}
+                {% set rule_detail = rule.get('detail', {}) %}
+                <tr>
+                    <td class="col-id">{{ rule.get('rule_id', '') }}</td>
+                    <td><span class="sv-critical" style="font-weight: 600;">OPEN</span></td>
+                    <td>
+                        {% set sev = rule.get('severity', 'info') | lower %}
+                        {% set cat_label = 'CAT I' if sev in ['high', 'critical'] else 'CAT II' if sev in ['medium', 'warning'] else 'CAT III' %}
+                        <span class="{{ 'sv-critical' if sev in ['high', 'critical'] else 'sv-warning' if sev in ['medium', 'warning'] else 'sv-info' }}">
+                            {{ cat_label }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="font-weight: bold; margin-bottom: 5px;">
+                            {{ rule.get('title', 'No Title Provided') }}
+                        </div>
+                        {% if rule.get('message') and rule.get('message') != rule.get('title') %}
+                        <div style="font-size: 0.92rem; margin-bottom: 8px;">
+                            {{ rule.get('message', '') }}
+                        </div>
+                        {% endif %}
+
+                        <button class="toggle-btn" onclick="toggleDetails('d-{{ loop.index }}')">
+                            &#9654; View Technical Details
+                        </button>
+                        <div id="d-{{ loop.index }}" class="details-box">
+                            {% if rule_detail.get('description') or rule.get('message') %}
+                            <strong>DESCRIPTION / DISCUSSION:</strong>
+                            <div style="background: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; color: #444; line-height: 1.4;">
+                                {{ rule_detail.get('description', rule.get('message', '')) }}
+                            </div>
+                            {% endif %}
+
+                            {% if rule_detail.get('checktext') %}
+                            <strong>CHECK CONTENT:</strong>
+                            <pre>{{ rule_detail.get('checktext', '') }}</pre>
+                            {% endif %}
+
+                            {% if rule_detail.get('fixtext') %}
+                            <strong>REMEDIATION / FIX:</strong>
+                            <pre>{{ rule_detail.get('fixtext', '') }}</pre>
+                            {% endif %}
+
+                            <strong>FULL DETAIL:</strong>
+                            <pre>{{ rule_detail | tojson(indent=2) }}</pre>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% elif findings | length > 0 %}
+    <div class="empty-state">
+        <p>No open findings. Host is compliant with all evaluated rules.</p>
+    </div>
+    {% endif %}
+
+    {% if findings | length > 0 %}
+    <div class="widget" id="all-findings">
+        <div class="widget-titlebar">
+            <span class="widget-title">All Findings ({{ findings | length }})</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse All Findings"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id">Rule ID</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-sev">Severity</th>
+                    <th>Title</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for rule in findings %}
+                <tr>
+                    <td class="col-id">{{ rule.get('rule_id', '') }}</td>
+                    <td>
+                        {% set status_raw = rule.get('status', 'unknown') | upper %}
+                        {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok" style="font-weight: 600;">{{ status_raw }}</span>
+                        {% elif status_raw == 'N/A' %}<span class="sv-info" style="font-weight: 600;">N/A</span>
+                        {% elif status_raw in ('OPEN', 'FAIL', 'NON-COMPLIANT') %}<span class="sv-critical" style="font-weight: 600;">OPEN</span>
+                        {% else %}<span class="sv-warning" style="font-weight: 600;">{{ status_raw }}</span>{% endif %}
+                    </td>
+                    <td>
+                        {% set sev = rule.get('severity', 'info') | lower %}
+                        {% set cat_label = 'CAT I' if sev in ['high', 'critical'] else 'CAT II' if sev in ['medium', 'warning'] else 'CAT III' %}
+                        <span class="{{ 'sv-critical' if sev in ['high', 'critical'] else 'sv-warning' if sev in ['medium', 'warning'] else 'sv-info' }}">
+                            {{ cat_label }}
+                        </span>
+                    </td>
+                    <td>{{ rule.get('title', '') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script>{% include 'collapsible.js' %}</script>
+</body>
+</html>

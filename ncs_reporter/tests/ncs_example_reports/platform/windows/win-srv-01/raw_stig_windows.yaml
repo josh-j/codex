@@ -1,0 +1,39 @@
+metadata:
+  host: win-srv-01
+  raw_type: stig_windows
+  audit_type: stig_windows
+  timestamp: '2026-03-01T14:31:24+00:00'
+target_type: windows
+data:
+- id: WN22-00-000000
+  status: failed
+  severity: high
+  title: Windows must disable Guest account.
+- id: WN22-00-000001
+  status: pass
+  severity: high
+  title: Windows must enforce password history.
+- id: WN22-00-000002
+  status: failed
+  severity: medium
+  title: Windows must enable Firewall.
+- id: WN22-00-000003
+  status: pass
+  severity: medium
+  title: Windows must disable SMBv1.
+- id: WN22-00-000004
+  status: pass
+  severity: low
+  title: Windows must set legal notice.
+- id: WN22-00-000005
+  status: pass
+  severity: low
+  title: Windows must disable autorun.
+- id: WN22-00-000006
+  status: na
+  severity: medium
+  title: Windows NA check.
+- id: WN22-00-000007
+  status: pass
+  severity: high
+  title: Windows final check.

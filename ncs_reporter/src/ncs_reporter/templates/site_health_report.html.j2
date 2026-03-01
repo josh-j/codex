@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set site = site_dashboard_view | default({}) %}
+    {% set site_meta = site.get('meta', {}) %}
+    {% set totals = site.get('totals', {}) %}
+    {% set platforms = site.get('platforms', {}) %}
+    {% set linux_platform = platforms.get('linux', {}) %}
+    {% set vmware_platform = platforms.get('vmware', {}) %}
+    {% set windows_platform = platforms.get('windows', {}) %}
+    {% set security = site.get('security', {}) %}
+    {% set stig_fleet = security.get('stig_fleet', {}) %}
+    {% set stig_fleet_rows = stig_fleet.get('rows', []) %}
+    {% set stig_fleet_meta = stig_fleet.get('fleet', {}) %}
+    {% set stig_fleet_totals = stig_fleet_meta.get('totals', {}) %}
+    {% set stig_by_platform = stig_fleet_meta.get('by_platform', {}) %}
+    {% set stig_top_findings = stig_fleet.get('findings_index', {}).get('top_findings', []) %}
+    {% set alert_queue = site.get('alerts', []) %}
+    {% set alert_groups = site.get('alert_groups', []) %}
+    {% set infra = site.get('infra', {}) %}
+    {% set crit_count = totals.get('critical', 0) | int %}
+    {% set warn_count = totals.get('warning', 0) | int %}
+    <title>Site Dashboard — {{ site_meta.get('report_date', report_date | default('')) }}</title>
+    <style>{% include 'report_shared.css' %}</style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation tree #}
+    <div class="breadcrumb">
+        <span class="site-home">&#x2302;</span><strong>Site Dashboard</strong>
+        {% if site.get('nav', {}).get('tree_fleets') %}
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">Select Fleet</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                {% for f in site.nav.tree_fleets %}
+                <a href="{{ f.report }}" class="{{ 'stig-link' if f.name == 'STIG' else '' }}">
+                    {{ f.name }} Fleet
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="page-header">
+        <div>
+            <h1>Site Dashboard</h1>
+            <span style="font-size:11px; color:#9db4cc;">Global Fleet Health</span>
+        </div>
+        <div class="right">
+            {{ site_meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-left">
+            {% if alert_groups %}<a href="#alerts">Active Alerts</a>{% endif %}
+            <a href="#platforms">Fleet Summary</a>
+            <a href="#inventory">Inventory Summary</a>
+            {% if stig_fleet_meta %}<a href="#stig">STIG Compliance</a>{% endif %}
+        </div>
+    </div>
+
+    {# --- Active alerts widget --- #}
+    {% if alert_groups %}
+    <div class="widget widget-alert" id="alerts">
+        <div class="widget-titlebar">
+            <span class="widget-title">Active Alerts &mdash; {{ alert_queue | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active Alerts"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+            {% for group in alert_groups %}
+                {% set gid = loop.index %}
+                <tr class="group-hdr" data-group="{{ gid }}">
+                    <td colspan="2">
+                        <span class="group-toggle"></span>
+                        <strong>{{ group.host }}</strong>
+                        <span class="group-platform">{{ group.platform }}</span>
+                    </td>
+                </tr>
+                {% for alert in group.alerts %}
+                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}" data-group="{{ gid }}">
+                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} severity-cell">{{ alert.severity }}</td>
+                    <td>{{ alert.get('message', '') }}</td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {# --- Fleet Summary widget --- #}
+    <div class="widget" id="platforms">
+        <div class="widget-titlebar">
+            <span class="widget-title">Fleet Summary</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Fleet Summary"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th>Platform</th>
+                    <th style="width:100px;">Assets</th>
+                    <th style="width:70px;">Alerts</th>
+                    <th style="width:70px;">Alarms</th>
+                    <th style="width:90px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="row-interactive">
+                    <td><a href="{{ linux_platform.get('links', {}).get('fleet_dashboard', 'platform/ubuntu/linux_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">Linux</a></td>
+                    <td>{{ linux_platform.get('asset_count', 0) }} {{ linux_platform.get('asset_label', 'Nodes') }}</td>
+                    <td>{{ linux_platform.get('alert_count', 0) }}</td>
+                    <td style="color:#ccc;">&mdash;</td>
+                    <td>
+                        {% set ls = linux_platform.get('status', {}).get('raw', 'OK') %}
+                        {% if ls == 'OK' %}<span class="sv-ok">OK</span>
+                        {% elif ls == 'CRITICAL' %}<span class="sv-critical">CRITICAL</span>
+                        {% elif ls == 'WARNING' %}<span class="sv-warning">WARNING</span>
+                        {% else %}{{ ls }}{% endif %}
+                    </td>
+                </tr>
+                <tr class="row-interactive">
+                    <td><a href="{{ vmware_platform.get('links', {}).get('fleet_dashboard', 'platform/vcenter/vcenter_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">VMware vCenter</a></td>
+                    <td>{{ vmware_platform.get('asset_count', 0) }} {{ vmware_platform.get('asset_label', 'vCenters') }}</td>
+                    <td>{{ vmware_platform.get('alert_count', 0) }}</td>
+                    <td>{{ vmware_platform.get('alarm_count', 0) }}</td>
+                    <td>
+                        {% set vs = vmware_platform.get('status', {}).get('raw', 'OK') %}
+                        {% if vs == 'OK' %}<span class="sv-ok">OK</span>
+                        {% elif vs == 'CRITICAL' %}<span class="sv-critical">CRITICAL</span>
+                        {% elif vs == 'WARNING' %}<span class="sv-warning">WARNING</span>
+                        {% else %}{{ vs }}{% endif %}
+                    </td>
+                </tr>
+                <tr class="row-interactive">
+                    <td><a href="{{ windows_platform.get('links', {}).get('fleet_dashboard', 'platform/windows/windows_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">Windows</a></td>
+                    <td>{{ windows_platform.get('asset_count', 0) }} {{ windows_platform.get('asset_label', 'Nodes') }}</td>
+                    <td>{{ windows_platform.get('alert_count', 0) }}</td>
+                    <td style="color:#ccc;">&mdash;</td>
+                    <td>
+                        {% set ws = windows_platform.get('status', {}).get('raw', 'OK') %}
+                        {% if ws == 'OK' %}<span class="sv-ok">OK</span>
+                        {% elif ws == 'CRITICAL' %}<span class="sv-critical">CRITICAL</span>
+                        {% elif ws == 'WARNING' %}<span class="sv-warning">WARNING</span>
+                        {% else %}{{ ws }}{% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {# --- Inventory Summary widget --- #}
+    <div class="widget" id="inventory">
+        <div class="widget-titlebar">
+            <span class="widget-title">Inventory Summary</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Inventory Summary"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <tbody>
+                <tr><td style="width:50%; color:#444;">Linux Nodes</td><td><strong>{{ linux_platform.get('asset_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">Windows Nodes</td><td><strong>{{ windows_platform.get('asset_count', 0) }}</strong></td></tr>
+                {% if infra.get('vcenter_count', 0) > 0 %}
+                <tr><td style="border-top:1px solid #eee; color:#444;">vCenters</td><td><strong>{{ infra.get('vcenter_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">Datacenters</td><td><strong>{{ infra.get('datacenter_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">Clusters</td><td><strong>{{ infra.get('cluster_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">ESXi Hosts</td><td><strong>{{ infra.get('esxi_host_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">Virtual Machines</td><td><strong>{{ infra.get('vm_count', 0) }}</strong></td></tr>
+                <tr><td style="color:#444;">Datastores</td><td><strong>{{ infra.get('datastore_count', 0) }}</strong></td></tr>
+                {% if infra.get('snapshot_count', 0) > 0 %}
+                <tr><td style="color:#444;">Snapshots</td><td><strong>{{ infra.get('snapshot_count', 0) }}</strong></td></tr>
+                {% endif %}
+                {% endif %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {# --- STIG Compliance widget --- #}
+    {% if stig_fleet_meta %}
+    <div class="widget" id="stig">
+        <div class="widget-titlebar">
+            <span class="widget-title">
+                STIG Compliance Overview
+                <span style="font-weight:normal; margin-left:10px; font-size:11px;">
+                    <a href="stig_fleet_report.html" class="titlebar-link">View Detailed STIG Fleet Report &rsaquo;</a>
+                </span>
+            </span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse STIG Compliance"></button>
+        </div>
+        <div class="widget-body widget-subgroup">
+            <div class="widget-grid">
+                
+                {# Subwidget: Global Metrics #}
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">Compliance Summary</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table>
+                            <tbody>
+                                <tr><td style="width:55%; color:#444;">STIG Hosts Audited</td><td><strong>{{ stig_fleet_totals.get('hosts', 0) }}</strong></td></tr>
+                                <tr><td style="color:#444;">STIG Open Findings</td><td><strong>{{ stig_fleet_totals.get('findings_open', 0) }}</strong></td></tr>
+                                {% if stig_fleet_totals.get('critical', 0) > 0 %}<tr><td style="color:#444;">CAT I findings</td><td><span class="sv-critical">{{ stig_fleet_totals.get('critical', 0) }}</span></td></tr>{% endif %}
+                                {% if stig_fleet_totals.get('warning', 0) > 0 %}<tr><td style="color:#444;">CAT II findings</td><td><span class="sv-warning">{{ stig_fleet_totals.get('warning', 0) }}</span></td></tr>{% endif %}
+                                {% if stig_fleet_totals.get('info', 0) > 0 %}<tr><td style="color:#444;">CAT III findings</td><td><span class="sv-info">{{ stig_fleet_totals.get('info', 0) }}</span></td></tr>{% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {# Subwidget: Platform Breakdown #}
+                {% if stig_by_platform %}
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">Platform Open Findings</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table>
+                            <thead>
+                                <tr><th>Platform</th><th style="width:80px;">Hosts</th><th style="width:80px;">Open</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for platform_name, pdata in stig_by_platform.items() %}
+                                <tr>
+                                    <td class="platform-name"><strong>{{ platform_name }}</strong></td>
+                                    <td>{{ pdata.get('hosts', 0) }}</td>
+                                    <td>{{ pdata.get('open', 0) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+<script>{% include 'collapsible.js' %}</script>
+</body>
+</html>

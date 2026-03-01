@@ -1,0 +1,27 @@
+metadata:
+  host: web-prod-01
+  raw_type: stig_vm
+  audit_type: stig_vm
+  timestamp: '2026-03-01T14:31:24+00:00'
+target_type: vm
+data:
+- id: V-256400
+  status: failed
+  severity: high
+  title: VM must disable unneeded hardware.
+- id: V-256401
+  status: pass
+  severity: high
+  title: VM must use encryption.
+- id: V-256402
+  status: failed
+  severity: medium
+  title: VM must restrict console access.
+- id: V-256403
+  status: pass
+  severity: medium
+  title: VM must use latest tools.
+- id: V-256404
+  status: pass
+  severity: low
+  title: VM must limit logging.

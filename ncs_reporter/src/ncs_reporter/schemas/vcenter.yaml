@@ -1,0 +1,556 @@
+name: vcenter
+platform: vmware
+display_name: "VMware vCenter"
+
+# Detects the key emitted by the internal.vmware.vcenter role via set_stats.
+# Alternative raw keys (raw_vcenter, vcenter) require their own schema variant
+# because the top-level key is part of every field path below.
+detection:
+  keys_any: [vmware_raw_vcenter]
+
+fleet_columns:
+  - { label: "Version", field: appliance_version, width: "120px" }
+  - { label: "Health", field: appliance_health_overall, width: "100px" }
+  - { label: "Clusters", field: cluster_count, width: "80px" }
+  - { label: "ESXi Hosts", field: esxi_host_count, width: "80px" }
+  - { label: "VMs", field: vm_count, width: "80px" }
+
+# ---------------------------------------------------------------------------
+# Fields
+#
+# Paths traverse:  vmware_raw_vcenter → data → <module result key> → ...
+# ---------------------------------------------------------------------------
+
+fields:
+  # --- Appliance ---
+
+  appliance_version:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.version"
+    type: str
+    fallback: "unknown"
+
+  appliance_build:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.build_number"
+    type: str
+    fallback: "unknown"
+
+  # String; one of green / yellow / red / gray.
+  # Used for display only — threshold alerting on strings is not supported.
+  appliance_health_overall:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.overall"
+    type: str
+    fallback: "gray"
+
+  appliance_health_cpu:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.cpu"
+    type: str
+    fallback: "gray"
+
+  appliance_health_memory:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.memory"
+    type: str
+    fallback: "gray"
+
+  appliance_health_database:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.database"
+    type: str
+    fallback: "gray"
+
+  appliance_health_storage:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.storage"
+    type: str
+    fallback: "gray"
+
+  appliance_uptime_seconds:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.uptime"
+    type: float
+    fallback: 0.0
+
+  appliance_uptime_days:
+    compute: "{appliance_uptime_seconds} / 86400"
+    type: float
+    fallback: 0.0
+
+  # bool; True == 1.0 for threshold comparison
+  ssh_enabled:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.access.ssh"
+    type: bool
+    fallback: false
+
+  shell_enabled:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.access.shell.enabled"
+    type: bool
+    fallback: false
+
+  ntp_mode:
+    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.time.time_sync.mode"
+    type: str
+    fallback: "unknown"
+
+  # --- Backup ---
+
+  backup_schedules:
+    path: "vmware_raw_vcenter.data.appliance_backup_info.schedules"
+    type: list
+    fallback: []
+
+  backup_schedule_count:
+    path: "vmware_raw_vcenter.data.appliance_backup_info.schedules | len_if_list"
+    type: int
+    fallback: 0
+
+  # --- Infrastructure inventory ---
+
+  datacenters:
+    path: "vmware_raw_vcenter.data.datacenters_info.datacenter_info"
+    type: list
+    fallback: []
+
+  datacenter_count:
+    path: "vmware_raw_vcenter.data.datacenters_info.datacenter_info | len_if_list"
+    type: int
+    fallback: 0
+
+  # Raw Ansible loop results from cluster_info — consumed by count_clusters_and_hosts.py
+  clusters_info_results:
+    path: "vmware_raw_vcenter.data.clusters_info.results"
+    type: list
+    fallback: []
+
+  cluster_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_count
+    type: int
+    fallback: 0
+
+  esxi_host_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: esxi_host_count
+    type: int
+    fallback: 0
+
+  datastores_raw:
+    path: "vmware_raw_vcenter.data.datastores_info.datastores"
+    type: list
+    fallback: []
+
+  datastores:
+    script: "normalize_datastores.py"
+    type: list
+    fallback: []
+
+  datastore_count:
+    path: "vmware_raw_vcenter.data.datastores_info.datastores | len_if_list"
+    type: int
+    fallback: 0
+
+  vms_info_raw:
+    path: "vmware_raw_vcenter.data.vms_info"
+    type: dict
+    fallback: {}
+
+  infra_patterns:
+    path: "vmware_raw_vcenter.data.config.infrastructure_vm_patterns"
+    type: list
+    fallback: []
+
+  virtual_machines:
+    script: "get_vms_list.py"
+    script_args:
+      exclude_patterns: "{infra_patterns}"
+    type: list
+    fallback: []
+
+  vm_count:
+    path: "vmware_raw_vcenter.data.vms_info.virtual_machines | len_if_list"
+    type: int
+    fallback: 0
+
+  clusters:
+    script: "get_clusters_list.py"
+    type: list
+    fallback: []
+
+  snapshots_raw:
+    path: "vmware_raw_vcenter.data.snapshots_info.snapshots"
+    type: list
+    fallback: []
+
+  snapshots:
+    script: "normalize_snapshots.py"
+    script_args:
+      mode: list
+      age_days: 7
+    type: list
+    fallback: []
+
+  snapshot_count:
+    path: "vmware_raw_vcenter.data.snapshots_info.snapshots | len_if_list"
+    type: int
+    fallback: 0
+
+  # ISO timestamp of the collection run — passed to the snapshot age script as the
+  # reference time so that age is calculated against collection time, not report time.
+  collected_at:
+    path: "vmware_raw_vcenter.metadata.timestamp"
+    type: str
+    fallback: ""
+
+  # Count of snapshots older than age_days.
+  aged_snapshot_count:
+    script: "normalize_snapshots.py"
+    script_args:
+      mode: count
+      age_days: 7
+    type: int
+    fallback: 0
+
+  # Derived field for mutually exclusive info alert
+  recent_snapshot_count:
+    compute: "{snapshot_count} - {aged_snapshot_count}"
+    type: int
+    fallback: 0
+
+  # --- Alarms ---
+  # Raw triggered alarms from internal.vmware.vmware_triggered_alarms_info.
+  # Each item: {alarm_name, entity, severity (lowercase), status, time, description}
+
+  active_alarms:
+    path: "vmware_raw_vcenter.data.alarms_info.alarms"
+    type: list
+    fallback: []
+
+  alarms_result:
+    script: "normalize_vcenter_alarms.py"
+    type: dict
+    fallback: {"critical": 0, "warning": 0, "total": 0}
+
+  active_critical_alarm_count:
+    path: "{alarms_result}.critical"
+    type: int
+    fallback: 0
+
+  active_warning_alarm_count:
+    path: "{alarms_result}.warning"
+    type: int
+    fallback: 0
+
+  # Failsafe for mutual exclusivity in alerts
+  # (active_critical_alarm_count == 0) is roughly (1 - min(active_critical_alarm_count, 1))
+  # But we don't have min().
+  # We'll use the 'range' operator in the alert condition instead, it's cleaner.
+  
+  # To ensure we only fire WARNING if there are actually warnings AND no criticals:
+  # We'll use a hack where we subtract 1000 if critical > 0
+  warnings_exclusive:
+    compute: "{active_warning_alarm_count} - ({active_critical_alarm_count} * 1000)"
+    type: int
+    fallback: 0
+
+  alarm_count:
+    path: "{alarms_result}.total"
+    type: int
+    fallback: 0
+
+# ---------------------------------------------------------------------------
+# Alerts
+# ---------------------------------------------------------------------------
+
+alerts:
+  # ---- Appliance health (string comparison) ----
+
+  - id: appliance_health_red
+    category: "Appliance Health"
+    severity: CRITICAL
+    condition:
+      op: eq_str
+      field: appliance_health_overall
+      value: "red"
+    message: "VCSA component failure: overall health is RED"
+
+  - id: appliance_health_yellow
+    category: "Appliance Health"
+    severity: WARNING
+    condition:
+      op: eq_str
+      field: appliance_health_overall
+      value: "yellow"
+    message: "VCSA degraded: overall health is YELLOW"
+
+  - id: appliance_health_gray
+    category: "Data Quality"
+    severity: WARNING
+    condition:
+      op: eq_str
+      field: appliance_health_overall
+      value: "gray"
+    message: "VCSA health unknown: overall health is GRAY — check permissions and API availability"
+
+  # ---- Infrastructure ----
+
+  - id: no_datacenters
+    category: "Infrastructure"
+    severity: CRITICAL
+    condition:
+      op: lte
+      field: datacenter_count
+      threshold: 0
+    message: "Inventory gap: no datacenters detected in vCenter"
+
+  # ---- Appliance security ----
+
+  # ssh_enabled is bool; float(True) == 1.0
+  - id: ssh_enabled
+    category: "Security"
+    severity: WARNING
+    condition:
+      op: eq
+      field: ssh_enabled
+      threshold: 1.0
+    message: "Hardening violation: SSH is enabled on VCSA"
+
+  - id: shell_enabled
+    category: "Security"
+    severity: WARNING
+    condition:
+      op: eq
+      field: shell_enabled
+      threshold: 1.0
+    message: "Hardening violation: interactive shell is enabled on VCSA"
+
+  # ---- Backup ----
+
+  - id: no_backup_schedule
+    category: "Data Protection"
+    severity: CRITICAL
+    condition:
+      op: lte
+      field: backup_schedule_count
+      threshold: 0
+    message: "DR risk: no file-based backup schedule configured on VCSA"
+
+  # Fires when any schedule exists but is disabled
+  - id: backup_schedule_disabled
+    category: "Data Protection"
+    severity: CRITICAL
+    condition:
+      op: filter_count
+      field: backup_schedules
+      filter_field: enabled
+      filter_value: false
+      threshold: 0
+    message: "DR risk: a configured backup schedule is DISABLED on VCSA"
+
+  # ---- Storage capacity (computed free % per datastore) ----
+
+  - id: datastore_critical_space
+    category: "Storage Capacity"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{freeSpace} / {capacity} * 100"
+      cmp: lte
+      threshold: 10.0
+    message: "One or more datastores have critically low free space (≤10%)"
+    affected_items_field: datastores_raw
+
+  - id: datastore_warning_space
+    category: "Storage Capacity"
+    severity: WARNING
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{freeSpace} / {capacity} * 100"
+      cmp: lte
+      threshold: 15.0
+    message: "One or more datastores have low free space (≤15%)"
+    affected_items_field: datastores_raw
+
+  # ---- Storage connectivity ----
+
+  - id: datastore_inaccessible
+    category: "Storage Connectivity"
+    severity: CRITICAL
+    condition:
+      op: filter_count
+      field: datastores_raw
+      filter_field: accessible
+      filter_value: false
+      threshold: 0
+    message: "One or more datastores are INACCESSIBLE"
+    affected_items_field: datastores_raw
+
+  # ---- Active vCenter alarms ----
+
+  - id: active_critical_alarms
+    category: "vCenter Alarms"
+    severity: CRITICAL
+    condition:
+      op: gt
+      field: active_critical_alarm_count
+      threshold: 0
+    message: "Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered)"
+    affected_items_field: active_alarms
+
+  - id: active_warning_alarms
+    category: "vCenter Alarms"
+    severity: WARNING
+    condition:
+      op: gt
+      field: warnings_exclusive
+      threshold: 0
+    # WARNING fires only if active_warning_alarm_count > 0 AND active_critical_alarm_count == 0.
+    message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
+    affected_items_field: active_alarms
+
+  # ---- VM tools compliance (multi-field AND filter) ----
+
+  - id: vm_tools_not_running
+    category: "Workload Compliance"
+    severity: WARNING
+    condition:
+      op: filter_multi
+      field: virtual_machines
+      filters:
+        - { filter_field: power_state, filter_value: "poweredOn" }
+        - { filter_field: tools_status, filter_value: "toolsNotRunning" }
+      threshold: 0
+    message: "Powered-on VMs detected with VMware Tools not running"
+    affected_items_field: virtual_machines
+
+  - id: vm_tools_not_installed
+    category: "Workload Compliance"
+    severity: WARNING
+    condition:
+      op: filter_multi
+      field: virtual_machines
+      filters:
+        - { filter_field: power_state, filter_value: "poweredOn" }
+        - { filter_field: tools_status, filter_value: "toolsNotInstalled" }
+      threshold: 0
+    message: "Powered-on VMs detected with VMware Tools not installed"
+    affected_items_field: virtual_machines
+
+  # ---- Snapshots ----
+
+  - id: snapshots_present
+    category: "Snapshots"
+    severity: INFO
+    condition:
+      op: gt
+      field: recent_snapshot_count
+      threshold: 0
+    message: "VM snapshots present: {snapshot_count} snapshot(s) found"
+
+  - id: aged_snapshots
+    category: "Snapshots"
+    severity: WARNING
+    condition:
+      op: gt
+      field: aged_snapshot_count
+      threshold: 0
+    message: "{aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
+
+# ---------------------------------------------------------------------------
+# Sections (template rendering)
+# ---------------------------------------------------------------------------
+
+widgets:
+  - id: alerts
+    title: "Active Alerts"
+    type: alert_panel
+
+  - id: appliance_overview
+    title: "Appliance Overview"
+    type: key_value
+    fields:
+      - { label: "Version", field: appliance_version }
+      - { label: "Build", field: appliance_build }
+      - { label: "Health Overall", field: appliance_health_overall }
+      - { label: "Health CPU", field: appliance_health_cpu }
+      - { label: "Health Memory", field: appliance_health_memory }
+      - { label: "Health DB", field: appliance_health_database }
+      - { label: "Health Storage", field: appliance_health_storage }
+      - { label: "Uptime (days)", field: appliance_uptime_days }
+      - { label: "SSH Enabled", field: ssh_enabled }
+      - { label: "NTP Mode", field: ntp_mode }
+
+  - id: inventory_summary
+    title: "Inventory Summary"
+    type: key_value
+    fields:
+      - { label: "Datacenters", field: datacenter_count }
+      - { label: "Datastores", field: datastore_count }
+      - { label: "Virtual Machines", field: vm_count }
+      - { label: "Snapshots", field: snapshot_count }
+      - { label: "Aged Snapshots", field: aged_snapshot_count }
+      - { label: "Active Alarms", field: alarm_count }
+      - { label: "Backup Schedules", field: backup_schedule_count }
+
+  - id: datastores
+    title: "Datastores"
+    type: table
+    rows_field: datastores
+    columns:
+      - { label: "Name", field: name }
+      - { label: "Type", field: type }
+      - { label: "Capacity (GB)", field: capacity_gb }
+      - { label: "Free (GB)", field: free_gb }
+      - { label: "Used %", field: used_pct }
+      - { label: "Accessible", field: accessible, badge: true }
+      - { label: "Maintenance", field: maintenanceMode }
+
+  - id: clusters
+    title: "Clusters"
+    type: table
+    rows_field: clusters
+    columns:
+      - { label: "Name", field: name }
+      - { label: "Datacenter", field: datacenter }
+      - { label: "DRS", field: drs_enabled, badge: true }
+      - { label: "HA", field: ha_enabled, badge: true }
+      - { label: "Hosts", field: host_count }
+      - { label: "CPU %", field: cpu_usage_pct }
+      - { label: "Mem %", field: mem_usage_pct }
+
+  - id: virtual_machines
+    title: "Virtual Machines"
+    type: table
+    rows_field: virtual_machines
+    columns:
+      - { label: "Name", field: guest_name, link_field: guest_name }
+      - { label: "Power State", field: power_state, badge: true }
+      - { label: "Tools Status", field: tools_status }
+      - { label: "Cluster", field: cluster }
+      - { label: "IP Address", field: ip_address }
+      - { label: "Memory (MB)", field: "allocated.memory" }
+      - { label: "vCPU", field: "allocated.cpu" }
+      - { label: "Owner Email", field: owner_email }
+      - { label: "Last Backup", field: backup_info }
+
+  - id: snapshots
+    title: "Snapshots"
+    type: table
+    rows_field: snapshots
+    columns:
+      - { label: "VM", field: vm_name }
+      - { label: "Owner Email", field: owner_email }
+      - { label: "Snapshot", field: name }
+      - { label: "Created", field: creation_time }
+      - { label: "State", field: state }
+      - { label: "Days Old", field: days_old }
+
+  - id: active_alarms
+    title: "Active vCenter Alarms"
+    type: table
+    rows_field: active_alarms
+    columns:
+      - { label: "Alarm", field: alarm_name }
+      - { label: "Entity", field: entity }
+      - { label: "Severity", field: severity, badge: true }
+      - { label: "Status", field: status }
+      - { label: "Time", field: time }
+      - { label: "Description", field: description }

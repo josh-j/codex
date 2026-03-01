@@ -1,0 +1,102 @@
+[
+  {
+    "id": "V-256379",
+    "rule_id": "V-256379",
+    "name": "vcenter-prod",
+    "status": "failed",
+    "title": "ESXi must separate management networks.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256380",
+    "rule_id": "V-256380",
+    "name": "vcenter-prod",
+    "status": "pass",
+    "title": "ESXi must restrict access.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256381",
+    "rule_id": "V-256381",
+    "name": "vcenter-prod",
+    "status": "failed",
+    "title": "ESXi must use NTP.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256382",
+    "rule_id": "V-256382",
+    "name": "vcenter-prod",
+    "status": "pass",
+    "title": "ESXi must use syslog.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256383",
+    "rule_id": "V-256383",
+    "name": "vcenter-prod",
+    "status": "failed",
+    "title": "ESXi must have lockdown mode.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256384",
+    "rule_id": "V-256384",
+    "name": "vcenter-prod",
+    "status": "pass",
+    "title": "ESXi must configure SSH timeout.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256385",
+    "rule_id": "V-256385",
+    "name": "vcenter-prod",
+    "status": "na",
+    "title": "ESXi some N/A check.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256386",
+    "rule_id": "V-256386",
+    "name": "vcenter-prod",
+    "status": "pass",
+    "title": "ESXi another pass check.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256387",
+    "rule_id": "V-256387",
+    "name": "vcenter-prod",
+    "status": "pass",
+    "title": "ESXi yet another pass.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256388",
+    "rule_id": "V-256388",
+    "name": "vcenter-prod",
+    "status": "na",
+    "title": "ESXi another N/A check.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  }
+]

@@ -1,0 +1,2894 @@
+metadata:
+  host: vcenter-us-east.corp.local
+  raw_type: vcenter
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  appliance_health_info:
+    appliance:
+      access:
+        consolecli: false
+        dcui: false
+        shell:
+          enabled: 'False'
+          timeout: '0'
+        ssh: false
+      firewall:
+        inbound:
+        - address: 1.2.3.6
+          interface_name: '*'
+          policy: ACCEPT
+          prefix: '32'
+        - address: 1.2.4.5
+          interface_name: nic0
+          policy: IGNORE
+          prefix: '24'
+      networking:
+        network:
+          dns_servers: []
+          hostname:
+          - vcenter.local
+          nics:
+            nic0:
+              ipv4: '{configurable : True, mode : STATIC, address : 10.185.246.4,
+                prefix : 26, default_gateway : 10.185.246.1}'
+              ipv6: None
+              mac: 00:50:56:cd:e7:2e
+              name: nic0
+              status: up
+        proxy:
+          ftp:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          http:
+            enabled: 'True'
+            password: None
+            port: '80'
+            server: http://localhost
+            username: None
+          https:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          noproxy:
+          - localhost
+          - 127.0.0.1
+      services:
+        appliance-shutdown:
+          description: /etc/rc.local.shutdown Compatibility
+          state: STOPPED
+      summary:
+        build_number: '24022515'
+        health:
+          cpu: green
+          database: green
+          memory: green
+          overall: green
+          storage: green
+          swap: green
+        hostname:
+        - vcenter-us-east.corp.local
+        product: VMware vCenter Server
+        sso: {}
+        uptime: '2592000.0'
+        version: 8.0.3.00300
+      syslog:
+        forwarding: []
+      time:
+        time_sync:
+          current:
+            date: Tue 03-26-2024
+            seconds_since_epoch: '1711465124.5183642'
+            time: 02:58:44 PM
+            timezone: UTC
+          mode: NTP
+          servers:
+          - time.google.com
+        time_zone: Etc/UTC
+  appliance_backup_info:
+    schedules:
+    - name: daily-backup
+      enabled: true
+      fast_backup: false
+      location: nfs://10.0.0.100:/nfs/vcenter-backup/
+      location_user: vcbackup
+      includes_stats_events_and_tasks: true
+      includes_supervisors_control_plane: false
+      retain_count: 5
+      schedule:
+        days_of_week:
+        - SUNDAY
+        hour: 1
+        minute: 30
+  datacenters_info:
+    datacenter_info:
+    - name: DC-US-East-1
+      moid: datacenter-10
+      config_status: green
+      overall_status: green
+  clusters_info:
+    results:
+    - item: DC-US-East-1
+      clusters:
+        Prod-Cluster-A:
+          datacenter: DC-US-East-1
+          moid: domain-c101
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: true
+          drs_default_vm_behavior: fullyAutomated
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi01.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-A
+          - name: esxi02.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-A
+          - name: esxi03.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-A
+          - name: esxi04.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-A
+          resource_summary:
+            cpuCapacityMHz: 512000
+            cpuUsedMHz: 220000
+            memCapacityMB: 1572864
+            memUsedMB: 900000
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 40960000
+            storageUsedMB: 17600000
+          tags: []
+        Prod-Cluster-B:
+          datacenter: DC-US-East-1
+          moid: domain-c102
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: true
+          drs_default_vm_behavior: fullyAutomated
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi05.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-B
+          - name: esxi06.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-B
+          - name: esxi07.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-B
+          - name: esxi08.use1.corp.local
+            folder: /DC-US-East-1/host/Prod-Cluster-B
+          resource_summary:
+            cpuCapacityMHz: 512000
+            cpuUsedMHz: 280000
+            memCapacityMB: 1572864
+            memUsedMB: 1100000
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 40960000
+            storageUsedMB: 22400000
+          tags: []
+        DR-Cluster:
+          datacenter: DC-US-East-1
+          moid: domain-c103
+          ha_enabled: false
+          ha_admission_control_enabled: false
+          ha_failover_level: 1
+          ha_host_monitoring: disabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: false
+          drs_default_vm_behavior: manual
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi09.use1.corp.local
+            folder: /DC-US-East-1/host/DR-Cluster
+          - name: esxi10.use1.corp.local
+            folder: /DC-US-East-1/host/DR-Cluster
+          resource_summary:
+            cpuCapacityMHz: 128000
+            cpuUsedMHz: 20000
+            memCapacityMB: 393216
+            memUsedMB: 49152
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 10240000
+            storageUsedMB: 1600000
+          tags: []
+      failed: false
+      failed_when_result: false
+  datastores_info:
+    datastores:
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 10995116277760
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-VMFS-SSD-01
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 10995116277760
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-VMFS-SSD-02
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 2199023255552
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-VMFS-SSD-03
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 3298534883328
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-VMFS-SSD-04
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 43980465111040
+      datastore_cluster: datacluster0
+      freeSpace: 21990232555520
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-NFS-01
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 43980465111040
+      datastore_cluster: datacluster0
+      freeSpace: 30786325577728
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-NFS-02
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 10995116277760
+      datastore_cluster: datacluster0
+      freeSpace: 8796093022208
+      maintenanceMode: normal
+      multipleHostAccess: false
+      name: USE1-DR-VMFS-01
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 87960930222080
+      datastore_cluster: datacluster0
+      freeSpace: 70368744177664
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: USE1-NFS-BACKUP
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+  vms_info:
+    virtual_machines:
+    - guest_name: web-use1-001
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207use1-0001-3bd5-64dc-903fd3a0000001
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0001
+      allocated: &id001
+        cpu: 2
+        memory: 4096
+        storage: 107374182400
+      tools_status: toolsOk
+      instance_uuid: 4207use100013bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-002
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207use1-0002-3bd5-64dc-903fd3a0000002
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0002
+      allocated: &id002
+        cpu: 4
+        memory: 8192
+        storage: 214748364800
+      tools_status: toolsOk
+      instance_uuid: 4207use100023bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-003
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207use1-0003-3bd5-64dc-903fd3a0000003
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0003
+      allocated: &id003
+        cpu: 8
+        memory: 16384
+        storage: 429496729600
+      tools_status: toolsOk
+      instance_uuid: 4207use100033bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-004
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207use1-0004-3bd5-64dc-903fd3a0000004
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0004
+      allocated: &id004
+        cpu: 16
+        memory: 32768
+        storage: 858993459200
+      tools_status: toolsOk
+      instance_uuid: 4207use100043bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-005
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207use1-0005-3bd5-64dc-903fd3a0000005
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0005
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100053bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-006
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.6
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0006-3bd5-64dc-903fd3a0000006
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0006
+      allocated: *id002
+      tools_status: toolsNotRunning
+      instance_uuid: 4207use100063bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-007
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.7
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0007-3bd5-64dc-903fd3a0000007
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0007
+      allocated: *id003
+      tools_status: toolsNotRunning
+      instance_uuid: 4207use100073bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-008
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.8
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0008-3bd5-64dc-903fd3a0000008
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0008
+      allocated: *id004
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207use100083bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-009
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.9
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0009-3bd5-64dc-903fd3a0000009
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0009
+      allocated: *id001
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207use100093bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-010
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.10
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0010-3bd5-64dc-903fd3a0000010
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0010
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100103bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-011
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.11
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0011-3bd5-64dc-903fd3a0000011
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0011
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100113bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-012
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.12
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0012-3bd5-64dc-903fd3a0000012
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0012
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100123bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-013
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.13
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0013-3bd5-64dc-903fd3a0000013
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0013
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100133bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-014
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.14
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0014-3bd5-64dc-903fd3a0000014
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0014
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100143bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-015
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.15
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0015-3bd5-64dc-903fd3a0000015
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0015
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100153bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-016
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.16
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0016-3bd5-64dc-903fd3a0000016
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0016
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100163bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-017
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.17
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0017-3bd5-64dc-903fd3a0000017
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0017
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100173bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-018
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.18
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0018-3bd5-64dc-903fd3a0000018
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0018
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100183bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-019
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.19
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0019-3bd5-64dc-903fd3a0000019
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0019
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100193bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-020
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.20
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0020-3bd5-64dc-903fd3a0000020
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0020
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100203bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-021
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.21
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0021-3bd5-64dc-903fd3a0000021
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0021
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100213bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-022
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.22
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0022-3bd5-64dc-903fd3a0000022
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0022
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100223bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-023
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.23
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0023-3bd5-64dc-903fd3a0000023
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0023
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100233bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-024
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.24
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0024-3bd5-64dc-903fd3a0000024
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0024
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100243bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-025
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.25
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0025-3bd5-64dc-903fd3a0000025
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0025
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100253bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-026
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.26
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0026-3bd5-64dc-903fd3a0000026
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0026
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100263bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-027
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.27
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0027-3bd5-64dc-903fd3a0000027
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0027
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100273bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-028
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.28
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0028-3bd5-64dc-903fd3a0000028
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0028
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100283bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-029
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.29
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0029-3bd5-64dc-903fd3a0000029
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0029
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100293bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-030
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.30
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0030-3bd5-64dc-903fd3a0000030
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0030
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100303bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-031
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.31
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0031-3bd5-64dc-903fd3a0000031
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0031
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100313bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-032
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.32
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0032-3bd5-64dc-903fd3a0000032
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0032
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100323bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-033
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.33
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0033-3bd5-64dc-903fd3a0000033
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0033
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100333bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-034
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.34
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0034-3bd5-64dc-903fd3a0000034
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0034
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100343bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-035
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.35
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0035-3bd5-64dc-903fd3a0000035
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0035
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100353bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-036
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.36
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0036-3bd5-64dc-903fd3a0000036
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0036
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100363bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-037
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.37
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0037-3bd5-64dc-903fd3a0000037
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0037
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100373bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-038
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.38
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0038-3bd5-64dc-903fd3a0000038
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0038
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100383bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-039
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.39
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0039-3bd5-64dc-903fd3a0000039
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0039
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100393bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-040
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.40
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0040-3bd5-64dc-903fd3a0000040
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0040
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100403bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-041
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.41
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0041-3bd5-64dc-903fd3a0000041
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0041
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100413bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-042
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.42
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0042-3bd5-64dc-903fd3a0000042
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0042
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100423bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-043
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.43
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0043-3bd5-64dc-903fd3a0000043
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0043
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100433bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-044
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.44
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0044-3bd5-64dc-903fd3a0000044
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0044
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100443bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-045
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.45
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0045-3bd5-64dc-903fd3a0000045
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0045
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100453bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-046
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.46
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0046-3bd5-64dc-903fd3a0000046
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0046
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100463bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-047
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.47
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0047-3bd5-64dc-903fd3a0000047
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0047
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100473bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-048
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.48
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0048-3bd5-64dc-903fd3a0000048
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0048
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100483bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-049
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.49
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0049-3bd5-64dc-903fd3a0000049
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0049
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100493bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-050
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.50
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0050-3bd5-64dc-903fd3a0000050
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0050
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100503bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-051
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.51
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0051-3bd5-64dc-903fd3a0000051
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0051
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100513bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-052
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.52
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0052-3bd5-64dc-903fd3a0000052
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0052
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100523bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-053
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.53
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0053-3bd5-64dc-903fd3a0000053
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0053
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100533bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-054
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.54
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0054-3bd5-64dc-903fd3a0000054
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0054
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100543bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-055
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.55
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0055-3bd5-64dc-903fd3a0000055
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0055
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100553bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-056
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.56
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0056-3bd5-64dc-903fd3a0000056
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0056
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100563bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-057
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.57
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0057-3bd5-64dc-903fd3a0000057
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0057
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100573bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-058
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.58
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0058-3bd5-64dc-903fd3a0000058
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0058
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100583bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-059
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.59
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0059-3bd5-64dc-903fd3a0000059
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0059
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100593bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-060
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.60
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0060-3bd5-64dc-903fd3a0000060
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0060
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100603bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-061
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.61
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0061-3bd5-64dc-903fd3a0000061
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0061
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100613bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-062
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.62
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0062-3bd5-64dc-903fd3a0000062
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0062
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100623bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-063
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.63
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0063-3bd5-64dc-903fd3a0000063
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0063
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100633bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-use1-064
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.64
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0064-3bd5-64dc-903fd3a0000064
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0064
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100643bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-use1-065
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.65
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0065-3bd5-64dc-903fd3a0000065
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0065
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100653bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-use1-066
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi06.use1.corp.local
+      folder: /DC-US-East-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.66
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0066-3bd5-64dc-903fd3a0000066
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0066
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100663bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-use1-067
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi07.use1.corp.local
+      folder: /DC-US-East-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.67
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0067-3bd5-64dc-903fd3a0000067
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0067
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100673bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-use1-068
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi08.use1.corp.local
+      folder: /DC-US-East-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.68
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0068-3bd5-64dc-903fd3a0000068
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0068
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100683bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-use1-069
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi09.use1.corp.local
+      folder: /DC-US-East-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.69
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0069-3bd5-64dc-903fd3a0000069
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0069
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100693bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-use1-070
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi10.use1.corp.local
+      folder: /DC-US-East-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.70
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0070-3bd5-64dc-903fd3a0000070
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0070
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100703bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-use1-071
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi01.use1.corp.local
+      folder: /DC-US-East-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.71
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0071-3bd5-64dc-903fd3a0000071
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0071
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100713bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-use1-072
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi02.use1.corp.local
+      folder: /DC-US-East-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.72
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0072-3bd5-64dc-903fd3a0000072
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0072
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207use100723bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-use1-073
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-A
+      esxi_hostname: esxi03.use1.corp.local
+      folder: /DC-US-East-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.73
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0073-3bd5-64dc-903fd3a0000073
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-a-01
+        url: /vmfs/volumes/use1-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0073
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207use100733bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-use1-074
+      datacenter: DC-US-East-1
+      cluster: Prod-Cluster-B
+      esxi_hostname: esxi04.use1.corp.local
+      folder: /DC-US-East-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.20.1.74
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0074-3bd5-64dc-903fd3a0000074
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-prod-cluster-b-01
+        url: /vmfs/volumes/use1-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0074
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207use100743bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-use1-075
+      datacenter: DC-US-East-1
+      cluster: DR-Cluster
+      esxi_hostname: esxi05.use1.corp.local
+      folder: /DC-US-East-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.20.1.75
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207use1-0075-3bd5-64dc-903fd3a0000075
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-dr-cluster-01
+        url: /vmfs/volumes/use1-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-use1-0075
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207use100753bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+  snapshots_info:
+    snapshots:
+    - vm_name: db-use1-004
+      folder: /DC-US-East-1/vm/db
+      name: pre-migration
+      description: Pre-DB migration snapshot
+      creation_time: '2026-02-17T14:31:24+00:00'
+      state: poweredOn
+      id: 1
+      quiesced: true
+    - vm_name: app-use1-009
+      folder: /DC-US-East-1/vm/app
+      name: pre-patch-q1
+      description: Q1 patching baseline
+      creation_time: '2026-01-25T14:31:24+00:00'
+      state: poweredOn
+      id: 2
+      quiesced: false
+    - vm_name: web-use1-001
+      folder: /DC-US-East-1/vm/web
+      name: rollback
+      description: Emergency rollback point
+      creation_time: '2026-02-26T14:31:24+00:00'
+      state: poweredOn
+      id: 3
+      quiesced: false
+  alarms_info:
+    alarms:
+    - alarm_name: Datastore Free Space
+      description: USE1-VMFS-SSD-03 <10% free
+      entity: USE1-VMFS-SSD-03
+      entity_type: Datastore
+      status: red
+      severity: critical
+      time: '2026-03-01T02:31:24+00:00'
+      acknowledged: false
+    - alarm_name: Host Memory Usage
+      description: esxi06.use1 memory >95%
+      entity: esxi06.use1.corp.local
+      entity_type: HostSystem
+      status: yellow
+      severity: warning
+      time: '2026-02-27T14:31:24+00:00'
+      acknowledged: false
+    count: 2
+    python: /usr/bin/python3
+  config:
+    infrastructure_vm_patterns:
+    - ^vCenter$
+    - ^ESXi-.*$

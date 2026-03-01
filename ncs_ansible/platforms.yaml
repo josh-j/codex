@@ -1,0 +1,29 @@
+# Default platform configuration for ncs-reporter `all` command.
+# Copy this file to ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml,
+# or pass --platforms-config <path> to customize the platform list.
+platforms:
+  - input_dir: linux/ubuntu
+    report_dir: linux/ubuntu
+    platform: linux
+    state_file: linux_fleet_state.yaml
+    render: true
+  - input_dir: vmware/vcenter
+    report_dir: vmware/vcenter
+    platform: vmware
+    state_file: vmware_fleet_state.yaml
+    render: true
+  - input_dir: vmware/esxi
+    report_dir: vmware/esxi
+    platform: vmware
+    state_file: esxi_fleet_state.yaml
+    render: false
+  - input_dir: vmware/vm
+    report_dir: vmware/vm
+    platform: vmware
+    state_file: vm_fleet_state.yaml
+    render: false
+  - input_dir: windows
+    report_dir: windows
+    platform: windows
+    state_file: windows_fleet_state.yaml
+    render: true

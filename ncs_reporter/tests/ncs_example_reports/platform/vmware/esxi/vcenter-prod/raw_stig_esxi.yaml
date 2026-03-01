@@ -1,0 +1,47 @@
+metadata:
+  host: vcenter-prod
+  raw_type: stig_esxi
+  audit_type: stig_esxi
+  timestamp: '2026-03-01T14:31:24+00:00'
+target_type: esxi
+data:
+- id: V-256379
+  status: failed
+  severity: high
+  title: ESXi must separate management networks.
+- id: V-256380
+  status: pass
+  severity: high
+  title: ESXi must restrict access.
+- id: V-256381
+  status: failed
+  severity: medium
+  title: ESXi must use NTP.
+- id: V-256382
+  status: pass
+  severity: medium
+  title: ESXi must use syslog.
+- id: V-256383
+  status: failed
+  severity: low
+  title: ESXi must have lockdown mode.
+- id: V-256384
+  status: pass
+  severity: low
+  title: ESXi must configure SSH timeout.
+- id: V-256385
+  status: na
+  severity: low
+  title: ESXi some N/A check.
+- id: V-256386
+  status: pass
+  severity: medium
+  title: ESXi another pass check.
+- id: V-256387
+  status: pass
+  severity: high
+  title: ESXi yet another pass.
+- id: V-256388
+  status: na
+  severity: high
+  title: ESXi another N/A check.

@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMware vCenter — Node Report — vcenter-apac-au.corp.local</title>
+    <style>* { box-sizing: border-box; }
+body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; font-size: 13px; margin: 0; background: #fff; color: #111; }
+a { color: #00c; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin-bottom: 0; }
+th { background: #f2f2f2; border: 1px solid #ccc; padding: 3px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; font-weight: bold; }
+td { border: 1px solid #ddd; padding: 4px 8px; vertical-align: top; }
+tr:nth-child(even) { background: #fafafa; }
+.js tr.group-hdr:hover td, tr.row-interactive:hover td { background: #f0f4ff; }
+.page-wrap { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+.page-header { background: #1e2a3a; color: #fff; padding: 10px 14px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; }
+.page-header h1 { font-size: 15px; margin: 0; color: #fff; }
+.page-header .right { text-align: right; font-size: 12px; color: #ccc; }
+.page-header span { color: #fff; }
+.sv-critical { color: #dc2626; font-weight: bold; }
+.sv-warning  { color: #d97706; font-weight: bold; }
+.sv-ok       { color: #166534; }
+.sv-info     { color: #444; }
+.alert-crit td { background: #fff5f5; }
+.alert-warn td { background: #fffbeb; }
+.toc { background: #f8f8f8; border: 1px solid #ddd; border-top: none; padding: 5px 12px; margin-bottom: 14px; font-size: 12px; border-radius: 0 0 3px 3px; display: flex; align-items: center; justify-content: space-between; }
+.toc-left { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.toc-right { display: flex; align-items: center; gap: 12px; }
+.toc a { color: #00c; text-decoration: none; display: inline-flex; align-items: center; }
+.toc-left a:not(:first-of-type)::before { content: "\b7"; margin-right: 12px; color: #999; font-weight: bold; flex-shrink: 0; }
+.toc-left a { margin-right: 0; }
+.toc a:hover { text-decoration: underline; }
+.breadcrumb { font-size: 11px; color: #555; margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; background: #fcfcfc; padding: 4px 8px; border: 1px solid #eee; border-radius: 4px; }
+.breadcrumb a { color: #0056b3; text-decoration: none; display: flex; align-items: center; font-weight: 500; }
+.breadcrumb a:hover { color: #003d82; text-decoration: none; }
+.breadcrumb .sep { margin: 0 8px; color: #ccc; font-size: 14px; font-weight: 300; }
+.breadcrumb .site-home { margin-right: 6px; font-size: 16px; line-height: 1; margin-top: -2px; color: #666; }
+
+/* Navigation Tree / Dropdown */
+.nav-tree { position: relative; display: inline-flex; align-items: center; cursor: pointer; padding: 2px 8px; border-radius: 4px; background: #fff; border: 1px solid #ddd; margin-left: -4px; transition: all 0.15s ease; }
+.nav-tree:hover { background: #f8f9fa; border-color: #0056b3; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.nav-tree .tree-label { color: #333; font-weight: 600; font-size: 11px; }
+.nav-tree .tree-trigger { margin-left: 6px; color: #0056b3; font-size: 9px; transition: transform 0.2s; }
+.nav-tree:hover .tree-trigger { transform: translateY(1px); }
+
+.nav-dropdown { 
+    display: none; position: absolute; top: 100%; left: 0; 
+    background: #fff; border: 1px solid #ccc; box-shadow: 0 6px 16px rgba(0,0,0,0.12); 
+    z-index: 1000; min-width: 200px; border-radius: 6px; padding: 6px 0;
+    overflow: hidden;
+}
+.nav-tree:hover .nav-dropdown { display: block; }
+.nav-dropdown .dropdown-group { padding: 6px 12px 2px 12px; font-size: 9px; text-transform: uppercase; color: #888; font-weight: 700; letter-spacing: 0.05em; border-top: 1px solid #eee; margin-top: 4px; }
+.nav-dropdown .dropdown-group:first-child { border-top: none; margin-top: 0; padding-top: 4px; }
+.nav-dropdown a { 
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px; color: #444; text-decoration: none; 
+    font-size: 12px; transition: all 0.1s;
+}
+.nav-dropdown a:hover { background: #f0f7ff; color: #0056b3; }
+.nav-dropdown a.active { background: #f8f9fa; color: #000; font-weight: 700; cursor: default; }
+.nav-dropdown a.active::after { content: "\2713"; font-size: 10px; color: #28a745; }
+.nav-dropdown a.stig-link { color: #5f2e43; }
+.nav-dropdown a.stig-link:hover { background: #fff0f5; color: #800040; }
+.summary-line { font-size: 12px; margin-bottom: 12px; color: #333; }
+.summary-line span { margin-right: 16px; }
+.kv td:first-child { width: 38%; color: #444; font-size: 12px; }
+.kv td:last-child  { font-weight: 500; }
+.no-data { color: #888; padding: 8px; border: 1px solid #ddd; font-size: 12px; }
+.health-ok    { color: #166534; font-weight: bold; }
+.health-warn  { color: #d97706; font-weight: bold; }
+.health-crit  { color: #dc2626; font-weight: bold; }
+.health-unk   { color: #555; font-weight: bold; }
+.empty-state  { text-align: center; padding: 40px; color: #7f8c8d; }
+.text-right   { text-align: right; }
+.mt-14        { margin-top: 14px; }
+.severity-cell { white-space: nowrap; padding-left: 20px; }
+ 
+/* --- Widgets --- */
+.widget { margin-bottom: 14px; }
+.widget-titlebar { background: #1e2a3a; color: #fff; border: 1px solid #0f1820; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; }
+.titlebar-link { color: #9db4cc; text-decoration: none; font-weight: normal; }
+.titlebar-link:hover { color: #fff; text-decoration: underline; }
+.widget-title { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; flex: 1; }
+.js .widget-titlebar:has(.widget-toggle) { cursor: pointer; user-select: none; }
+.js .widget-titlebar:has(.widget-toggle):hover { background: #2a3a4a; }
+.js .widget-grid .widget-titlebar:has(.widget-toggle):hover { background: #eee; }
+.widget-toggle { display: none; }
+.js .widget-toggle { display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff; cursor: pointer; border-radius: 2px; width: 18px; height: 18px; padding: 0; font-size: 10px; flex-shrink: 0; line-height: 1; }
+.js .widget-toggle:hover { background: rgba(255,255,255,0.15); }
+.js .widget-toggle::before { content: '\2212'; }
+.js .widget-toggle[aria-expanded="false"]::before { content: '+'; }
+.widget-body { }
+.widget-body table { margin-bottom: 0; }
+ 
+/* Subwidgets (Nested Cards) */
+.widget-subgroup { padding: 7px; background: #fafafa; display: flex; flex-direction: column; gap: 14px; border: 1px #eee solid; }
+.widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.widget-grid .widget { margin-bottom: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.widget-grid .widget-titlebar { background: #fff; color: #333; border-color: #ddd; }
+.widget-grid .widget-body table { border: 0; }
+ 
+/* Alert widget variant */
+.widget-alert { border: 1px solid #5f2e43; margin-bottom: 14px; }
+.widget-alert .widget-titlebar { background: #5f2e43; border-bottom: 1px solid #5f2e43; border-left: none; border-right: none; border-top: none; }
+ 
+/* --- Group rows (site report alert host groups) --- */
+.group-hdr td { padding: 5px 8px; border-bottom: 1px solid #ccc; }
+.group-platform { margin-left: 8px; font-size: 11px; color: #555; font-weight: 600; text-transform: uppercase; }
+.platform-name { text-transform: capitalize; }
+ 
+.js tr.group-hdr { cursor: pointer; user-select: none; }
+.group-toggle { display: none; }
+.js .group-toggle { display: inline-flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #ccc; color: #333; cursor: pointer; border-radius: 2px; width: 16px; height: 16px; padding: 0; font-size: 10px; margin-right: 6px; line-height: 1; vertical-align: middle; }
+.group-toggle::before { content: '\2212'; }
+.group-hdr-collapsed .group-toggle::before { content: '+'; }
+
+@media print {
+  .widget-body { display: block !important; }
+  .widget-toggle { display: none !important; }
+  .header-actions { display: none; }
+  tr.group-row { display: table-row !important; }
+  .toc { display: none; }
+}
+
+
+
+
+/* Details Panels */
+.details-box { background-color: #fafafa; border: 1px solid #eee; padding: 15px; margin-top: 10px; border-radius: 4px; font-size: 0.9rem; display: none; }
+.details-box pre { white-space: pre-wrap; background: #fff; border: 1px solid #ddd; padding: 10px; font-family: monospace; color: #444; overflow-x: auto; }
+.toggle-btn { background: none; border: none; color: #3498db; cursor: pointer; text-decoration: none; font-size: 0.85rem; margin-top: 5px; padding: 0; text-align: left; }
+.toggle-btn:hover { text-decoration: underline; }
+.col-id { width: 130px; font-weight: bold; font-family: monospace; }
+.col-status { width: 120px; }
+.col-sev { width: 80px; }</style>
+</head>
+<body>
+<div class="page-wrap">
+
+    <div class="breadcrumb">
+        <a href="../../../../site_health_report.html" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        
+        <div class="nav-tree">
+            <a href="../vcenter_fleet_report.html" class="tree-label">VMware vCenter Fleet</a>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                <a href="../../../../platform/linux/ubuntu/linux_fleet_report.html" class=" ">
+                    Linux Fleet
+                </a>
+                <a href="../../../../platform/vmware/esxi/esxi_fleet_report.html" class=" ">
+                    Esxi Fleet
+                </a>
+                <a href="../../../../platform/vmware/vcenter/vcenter_fleet_report.html" class="active ">
+                    VMware Fleet
+                </a>
+                <a href="../../../../platform/vmware/vm/vm_fleet_report.html" class=" ">
+                    Vm Fleet
+                </a>
+                <a href="../../../../platform/windows/windows_fleet_report.html" class=" ">
+                    Windows Fleet
+                </a>
+                <a href="../../../../stig_fleet_report.html" class=" stig-link">
+                    STIG Fleet
+                </a>
+            </div>
+        </div>
+        <span class="sep">&rsaquo;</span>
+
+        <div class="nav-tree">
+            <span class="tree-label">vcenter-apac-au.corp.local</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown" style="max-height: 400px; overflow-y: auto;">
+                <div class="dropdown-group">Hosts</div>
+                <a href="#" class="active">vcenter-apac-au.corp.local</a>
+                <a href="../vcenter-apac-sg.corp.local/health_report.html" class="">vcenter-apac-sg.corp.local</a>
+                <a href="../vcenter-eu-de.corp.local/health_report.html" class="">vcenter-eu-de.corp.local</a>
+                <a href="../vcenter-eu-uk.corp.local/health_report.html" class="">vcenter-eu-uk.corp.local</a>
+                <a href="../vcenter-us-east.corp.local/health_report.html" class="">vcenter-us-east.corp.local</a>
+                <a href="../vcenter-us-west.corp.local/health_report.html" class="">vcenter-us-west.corp.local</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <h1>VMware vCenter &mdash; <code>vcenter-apac-au.corp.local</code></h1>
+            <span style="font-size:11px; color:#9db4cc;">Platform: VMWARE</span>
+        </div>
+        <div class="right">
+<span class="health-crit">CRITICAL</span>
+            <br>2026-03-01 14:31:25
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-left">
+            <a href="#alerts">Active Alerts</a>
+            <a href="#appliance_overview">Appliance Overview</a>
+            <a href="#inventory_summary">Inventory Summary</a>
+            <a href="#datastores">Datastores</a>
+            <a href="#clusters">Clusters</a>
+            <a href="#virtual_machines">Virtual Machines</a>
+            <a href="#snapshots">Snapshots</a>
+            <a href="#active_alarms">Active vCenter Alarms</a>
+        </div>
+    </div>
+
+    <div class="widget widget-alert" id="alerts">
+        <div class="widget-titlebar">
+            <span class="widget-title">Active Alerts &mdash; 1 (1 CRITICAL)</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active Alerts"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table>
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th style="width:160px;">Category</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+                <tr class="alert-crit">
+                    <td class="sv-critical" style="white-space:nowrap;">CRITICAL</td>
+                    <td style="white-space:nowrap; font-size:11px; color:#555; text-transform:uppercase; font-weight:600;">Data Protection</td>
+                    <td>
+                        DR risk: no file-based backup schedule configured on VCSA
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="appliance_overview">
+        <div class="widget-titlebar">
+            <span class="widget-title">Appliance Overview</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Appliance Overview"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table class="kv">
+            <tbody>
+                <tr><td>Version</td><td>8.0.2.00200</td></tr>
+                <tr><td>Build</td><td>22617221</td></tr>
+                <tr><td>Health Overall</td><td>green</td></tr>
+                <tr><td>Health CPU</td><td>green</td></tr>
+                <tr><td>Health Memory</td><td>green</td></tr>
+                <tr><td>Health DB</td><td>green</td></tr>
+                <tr><td>Health Storage</td><td>green</td></tr>
+                <tr><td>Uptime (days)</td><td>30.0</td></tr>
+                <tr><td>SSH Enabled</td><td>False</td></tr>
+                <tr><td>NTP Mode</td><td>NTP</td></tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="inventory_summary">
+        <div class="widget-titlebar">
+            <span class="widget-title">Inventory Summary</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Inventory Summary"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table class="kv">
+            <tbody>
+                <tr><td>Datacenters</td><td>1</td></tr>
+                <tr><td>Datastores</td><td>3</td></tr>
+                <tr><td>Virtual Machines</td><td>35</td></tr>
+                <tr><td>Snapshots</td><td>0</td></tr>
+                <tr><td>Aged Snapshots</td><td>0</td></tr>
+                <tr><td>Active Alarms</td><td>0</td></tr>
+                <tr><td>Backup Schedules</td><td>0</td></tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="datastores">
+        <div class="widget-titlebar">
+            <span class="widget-title">Datastores</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Datastores"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Capacity (GB)</th>
+                    <th>Free (GB)</th>
+                    <th>Used %</th>
+                    <th>Accessible</th>
+                    <th>Maintenance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        APAU-VMFS-SSD-01
+                    </td>
+                    <td>
+                        VMFS
+                    </td>
+                    <td>
+                        10240.0
+                    </td>
+                    <td>
+                        8192.0
+                    </td>
+                    <td>
+                        20.0
+                    </td>
+                    <td>
+                            True
+                    </td>
+                    <td>
+                        normal
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        APAU-VMFS-SSD-02
+                    </td>
+                    <td>
+                        VMFS
+                    </td>
+                    <td>
+                        10240.0
+                    </td>
+                    <td>
+                        7168.0
+                    </td>
+                    <td>
+                        30.0
+                    </td>
+                    <td>
+                            True
+                    </td>
+                    <td>
+                        normal
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        APAU-NFS-01
+                    </td>
+                    <td>
+                        NFS
+                    </td>
+                    <td>
+                        20480.0
+                    </td>
+                    <td>
+                        16384.0
+                    </td>
+                    <td>
+                        20.0
+                    </td>
+                    <td>
+                            True
+                    </td>
+                    <td>
+                        normal
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="clusters">
+        <div class="widget-titlebar">
+            <span class="widget-title">Clusters</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Clusters"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Datacenter</th>
+                    <th>DRS</th>
+                    <th>HA</th>
+                    <th>Hosts</th>
+                    <th>CPU %</th>
+                    <th>Mem %</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        DC-APAC-AU-1
+                    </td>
+                    <td>
+                            True
+                    </td>
+                    <td>
+                            True
+                    </td>
+                    <td>
+                        4
+                    </td>
+                    <td>
+                        20.0
+                    </td>
+                    <td>
+                        20.0
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="virtual_machines">
+        <div class="widget-titlebar">
+            <span class="widget-title">Virtual Machines</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Virtual Machines"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Power State</th>
+                    <th>Tools Status</th>
+                    <th>Cluster</th>
+                    <th>IP Address</th>
+                    <th>Memory (MB)</th>
+                    <th>vCPU</th>
+                    <th>Owner Email</th>
+                    <th>Last Backup</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        web-apau-001
+                    </td>
+                    <td>
+                            poweredOff
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        db-apau-002
+                    </td>
+                    <td>
+                            poweredOff
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        app-apau-003
+                    </td>
+                    <td>
+                            poweredOff
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        cache-apau-004
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.4
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        monitoring-apau-005
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.5
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        backup-apau-006
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.6
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        proxy-apau-007
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.7
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        auth-apau-008
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.8
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        api-apau-009
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.9
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        worker-apau-010
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.10
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        scheduler-apau-011
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.11
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        log-apau-012
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.12
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        web-apau-013
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.13
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        db-apau-014
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.14
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        app-apau-015
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.15
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        cache-apau-016
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.16
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        monitoring-apau-017
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.17
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        backup-apau-018
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.18
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        proxy-apau-019
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.19
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        auth-apau-020
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.20
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        api-apau-021
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.21
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        worker-apau-022
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.22
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        scheduler-apau-023
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.23
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        log-apau-024
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.24
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        web-apau-025
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.25
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        db-apau-026
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.26
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        app-apau-027
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.27
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        cache-apau-028
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.28
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        monitoring-apau-029
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.29
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        backup-apau-030
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.30
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        proxy-apau-031
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.31
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        auth-apau-032
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.32
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        api-apau-033
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.33
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        worker-apau-034
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.34
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        scheduler-apau-035
+                    </td>
+                    <td>
+                            poweredOn
+                    </td>
+                    <td>
+                        toolsOk
+                    </td>
+                    <td>
+                        AU-Prod-Cluster
+                    </td>
+                    <td>
+                        10.25.1.35
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        
+                    </td>
+                    <td>
+                        platform-alerts@corp.local
+                    </td>
+                    <td>
+                        2026-03-01T02:31:24+00:00
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        </div>
+    </div>
+    <div class="widget " id="snapshots">
+        <div class="widget-titlebar">
+            <span class="widget-title">Snapshots</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Snapshots"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <div class="no-data">No rows.</div>
+
+        </div>
+    </div>
+    <div class="widget " id="active_alarms">
+        <div class="widget-titlebar">
+            <span class="widget-title">Active vCenter Alarms</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active vCenter Alarms"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+
+        <div class="no-data">No rows.</div>
+
+        </div>
+    </div>
+
+</div>
+<script>(function () {
+  'use strict';
+
+  // Signal to CSS that JS is active; scopes all collapsible affordances
+  document.documentElement.classList.add('js');
+
+  // ---- widget toggle (titlebar button) ----
+
+  function initWidgetToggles() {
+    var titlebars = document.querySelectorAll('.widget-titlebar');
+    for (var i = 0; i < titlebars.length; i++) {
+      (function (bar) {
+        var btn = bar.querySelector('.widget-toggle');
+        if (!btn) return;
+
+        bar.addEventListener('click', function (e) {
+          // If the user clicked a link inside the titlebar, don't toggle
+          if (e.target.closest('a')) return;
+
+          var widget = bar.closest('.widget');
+          if (!widget) return;
+          var body = widget.querySelector('.widget-body');
+          if (!body) return;
+
+          var expanded = btn.getAttribute('aria-expanded') !== 'false';
+          body.style.display = expanded ? 'none' : '';
+          btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        });
+      })(titlebars[i]);
+    }
+  }
+
+  // ---- .group-hdr / .group-row (site report alert groups) ----
+
+  function initGroupToggles() {
+    var headers = document.querySelectorAll('tr.group-hdr');
+    for (var i = 0; i < headers.length; i++) {
+      (function (hdr) {
+        hdr.addEventListener('click', function () {
+          var gid = hdr.getAttribute('data-group');
+          if (!gid) return;
+          var rows = document.querySelectorAll('tr.group-row[data-group="' + gid + '"]');
+          var anyVisible = false;
+          for (var j = 0; j < rows.length; j++) {
+            if (rows[j].style.display !== 'none') { anyVisible = true; break; }
+          }
+          for (var k = 0; k < rows.length; k++) {
+            rows[k].style.display = anyVisible ? 'none' : '';
+          }
+          hdr.classList.toggle('group-hdr-collapsed', anyVisible);
+        });
+      })(headers[i]);
+    }
+  }
+
+  // ---- expand / collapse all ----
+
+  function expandAll() {
+    document.querySelectorAll('.widget-body').forEach(function (el) { el.style.display = ''; });
+    document.querySelectorAll('.widget-toggle').forEach(function (btn) { btn.setAttribute('aria-expanded', 'true'); });
+    document.querySelectorAll('tr.group-row').forEach(function (el) { el.style.display = ''; });
+    document.querySelectorAll('tr.group-hdr.group-hdr-collapsed').forEach(function (el) { el.classList.remove('group-hdr-collapsed'); });
+  }
+
+  function collapseAll() {
+    document.querySelectorAll('.widget-body').forEach(function (el) { el.style.display = 'none'; });
+    document.querySelectorAll('.widget-toggle').forEach(function (btn) { btn.setAttribute('aria-expanded', 'false'); });
+    document.querySelectorAll('tr.group-row').forEach(function (el) { el.style.display = 'none'; });
+    document.querySelectorAll('tr.group-hdr').forEach(function (el) { el.classList.add('group-hdr-collapsed'); });
+  }
+
+  // ---- TOC actions (expand / collapse all) ----
+ 
+  function injectTOCActions() {
+    var toc = document.querySelector('.toc');
+    if (!toc) return;
+ 
+    var actions = document.createElement('div');
+    actions.className = 'toc-right';
+ 
+    var lkExpand = document.createElement('a');
+    lkExpand.href = '#';
+    lkExpand.textContent = 'Expand all';
+    lkExpand.addEventListener('click', function(e) { e.preventDefault(); expandAll(); });
+ 
+    var lkCollapse = document.createElement('a');
+    lkCollapse.href = '#';
+    lkCollapse.textContent = 'Collapse all';
+    lkCollapse.addEventListener('click', function(e) { e.preventDefault(); collapseAll(); });
+ 
+    actions.appendChild(lkExpand);
+    actions.appendChild(lkCollapse);
+    toc.appendChild(actions);
+  }
+ 
+  // ---- init ----
+ 
+  document.addEventListener('DOMContentLoaded', function () {
+    initWidgetToggles();
+    initGroupToggles();
+    injectTOCActions();
+  });
+}());</script>
+</body>
+</html>

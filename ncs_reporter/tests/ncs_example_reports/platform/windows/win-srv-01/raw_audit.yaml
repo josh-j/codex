@@ -1,0 +1,115 @@
+metadata:
+  host: win-srv-01
+  raw_type: audit
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  ansible_facts: {}
+  ccm_service:
+    exists: true
+    name: CcmExec
+    display_name: SMS Agent Host
+    state: stopped
+    start_mode: auto
+    path: C:\Windows\CCM\CcmExec.exe
+    can_pause_and_continue: true
+    description: Configuration Manager client agent
+    username: LocalSystem
+    desktop_interact: false
+    dependencies:
+    - RpcSs
+    depended_by: []
+  configmgr_apps:
+    AllApps:
+    - Name: Microsoft Office 365 ProPlus
+      Version: 16.0.17628.20006
+      Publisher: Microsoft Corporation
+    - Name: Microsoft Visual Studio Code
+      Version: 1.86.2
+      Publisher: Microsoft Corporation
+    - Name: Google Chrome
+      Version: 121.0.6167.185
+      Publisher: Google LLC
+    - Name: Mozilla Firefox ESR
+      Version: 115.7.0
+      Publisher: Mozilla
+    - Name: 7-Zip 23.01 (x64)
+      Version: 23.01.00.0
+      Publisher: Igor Pavlov
+    - Name: Python 3.11.7
+      Version: 3.11.7150.0
+      Publisher: Python Software Foundation
+    - Name: Notepad++
+      Version: 8.6.2
+      Publisher: Notepad++ Team
+    - Name: WinRAR 6.24 (64-bit)
+      Version: 6.24.0
+      Publisher: win.rar GmbH
+    - Name: Adobe Acrobat Reader DC
+      Version: 23.008.20533
+      Publisher: Adobe
+    - Name: Microsoft Teams
+      Version: 1.6.00.33362
+      Publisher: Microsoft Corporation
+    AppsToUpdate: &id001
+    - Name: Google Chrome
+      CurrentVersion: 121.0.6167.185
+      TargetVersion: 122.0.6261.57
+    - Name: Adobe Acrobat Reader DC
+      CurrentVersion: 23.008.20533
+      TargetVersion: 24.001.20604
+  installed_apps:
+  - Name: Microsoft Office 365 ProPlus
+    Version: 16.0.17628.20006
+    Publisher: Microsoft Corporation
+  - Name: Google Chrome
+    Version: 121.0.6167.185
+    Publisher: Google LLC
+  - Name: 7-Zip 23.01 (x64)
+    Version: 23.01.00.0
+    Publisher: Igor Pavlov
+  - Name: Microsoft Visual C++ 2015-2022 Redistributable (x64)
+    Version: 14.38.33130.0
+    Publisher: Microsoft Corporation
+  - Name: Microsoft Visual C++ 2015-2022 Redistributable (x86)
+    Version: 14.38.33130.0
+    Publisher: Microsoft Corporation
+  - Name: Mozilla Firefox ESR 115.7.0 (x64 en-US)
+    Version: 115.7.0
+    Publisher: Mozilla
+  - Name: Python 3.11.7 (64-bit)
+    Version: 3.11.7150.0
+    Publisher: Python Software Foundation
+  - Name: Windows Admin Center
+    Version: 2306.2306.16001.0
+    Publisher: Microsoft Corporation
+  - Name: Notepad++ (64-bit x64)
+    Version: 8.6.2
+    Publisher: Notepad++ Team
+  - Name: Git version 2.43.0
+    Version: 2.43.0
+    Publisher: The Git Development Community
+  - Name: Microsoft Teams classic
+    Version: 1.6.00.33362
+    Publisher: Microsoft Corporation
+  - Name: Adobe Acrobat Reader DC (64-bit)
+    Version: 23.008.20533
+    Publisher: Adobe
+  - Name: PowerShell 7.4.1.500
+    Version: 7.4.1.500
+    Publisher: Microsoft Corporation
+  - Name: WinRAR 6.24 (64-bit)
+    Version: 6.24.0
+    Publisher: win.rar GmbH
+  - Name: Sysinternals Suite
+    Version: 2024.01.01
+    Publisher: Microsoft Corporation
+  apps_to_update: *id001
+  update_results:
+  - application: Microsoft Visual C++ 2019 Redistributable (x64)
+    status: failed
+    failed: true
+  - application: Windows Defender ATP
+    status: succeeded
+    failed: false
+  audit_failed: false

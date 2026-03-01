@@ -1,0 +1,511 @@
+metadata:
+  host: vcenter-prod
+  raw_type: vcenter
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  appliance_health_info:
+    appliance:
+      access:
+        consolecli: false
+        dcui: false
+        shell:
+          enabled: 'True'
+          timeout: '0'
+        ssh: true
+      firewall:
+        inbound:
+        - address: 1.2.3.6
+          interface_name: '*'
+          policy: ACCEPT
+          prefix: '32'
+        - address: 1.2.4.5
+          interface_name: nic0
+          policy: IGNORE
+          prefix: '24'
+      networking:
+        network:
+          dns_servers: []
+          hostname:
+          - vcenter.local
+          nics:
+            nic0:
+              ipv4: '{configurable : True, mode : STATIC, address : 10.185.246.4,
+                prefix : 26, default_gateway : 10.185.246.1}'
+              ipv6: None
+              mac: 00:50:56:cd:e7:2e
+              name: nic0
+              status: up
+        proxy:
+          ftp:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          http:
+            enabled: 'True'
+            password: None
+            port: '80'
+            server: http://localhost
+            username: None
+          https:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          noproxy:
+          - localhost
+          - 127.0.0.1
+      services:
+        appliance-shutdown:
+          description: /etc/rc.local.shutdown Compatibility
+          state: STOPPED
+      summary:
+        build_number: '24022515'
+        health:
+          cpu: green
+          database: green
+          memory: yellow
+          overall: yellow
+          storage: green
+          swap: green
+        hostname:
+        - vcenter-prod.corp.local
+        product: VMware vCenter Server
+        sso: {}
+        uptime: '2592000.0'
+        version: 8.0.3.00300
+      syslog:
+        forwarding: []
+      time:
+        time_sync:
+          current:
+            date: Tue 03-26-2024
+            seconds_since_epoch: '1711465124.5183642'
+            time: 02:58:44 PM
+            timezone: UTC
+          mode: NTP
+          servers:
+          - time.google.com
+        time_zone: Etc/UTC
+  appliance_backup_info:
+    schedules:
+    - name: default
+      enabled: false
+      fast_backup: false
+      location: nfs://10.10.10.10:/nfs/backup/vcenter/
+      location_user: backupuser
+      includes_stats_events_and_tasks: true
+      includes_supervisors_control_plane: false
+      retain_count: 3
+      schedule:
+        days_of_week:
+        - SATURDAY
+        hour: 2
+        minute: 0
+  datacenters_info:
+    datacenter_info:
+    - name: DC-Production
+      moid: datacenter-1
+      config_status: green
+      overall_status: green
+    - name: DC-DR
+      moid: datacenter-2
+      config_status: green
+      overall_status: green
+  clusters_info:
+    results:
+    - item: DC-Production
+      clusters:
+        Prod-Cluster-01:
+          datacenter: DC-Production
+          drs_enabled: true
+          drs_default_vm_behavior: fullyAutomated
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_vm_monitoring: vmMonitoringDisabled
+          moid: domain-c10
+          vsan_enabled: false
+          hosts:
+          - name: esxi01.corp.local
+            folder: /DC-Production/host/Prod-Cluster-01
+          - name: esxi02.corp.local
+            folder: /DC-Production/host/Prod-Cluster-01
+          - name: esxi03.corp.local
+            folder: /DC-Production/host/Prod-Cluster-01
+          resource_summary:
+            cpuCapacityMHz: 192000
+            cpuUsedMHz: 48000
+            memCapacityMB: 786432
+            memUsedMB: 524288
+            storageCapacityMB: 76800000
+            storageUsedMB: 25600000
+          tags: []
+        DR-Cluster-01:
+          datacenter: DC-Production
+          drs_enabled: false
+          drs_default_vm_behavior: manual
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          ha_enabled: false
+          ha_admission_control_enabled: false
+          ha_failover_level: 1
+          ha_host_monitoring: disabled
+          ha_vm_monitoring: vmMonitoringDisabled
+          moid: domain-c20
+          vsan_enabled: false
+          hosts:
+          - name: esxi04.corp.local
+            folder: /DC-Production/host/DR-Cluster-01
+          resource_summary:
+            cpuCapacityMHz: 64000
+            cpuUsedMHz: 4000
+            memCapacityMB: 262144
+            memUsedMB: 32768
+            storageCapacityMB: 20480000
+            storageUsedMB: 2048000
+          tags: []
+  datastores_info:
+    datastores:
+    - accessible: true
+      capacity: 10995116277760
+      datastore_cluster: datacluster0
+      freeSpace: 3298534883328
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: PROD-VMFS-SSD-01
+      provisioned: 8796093022208
+      type: VMFS
+      uncommitted: 1099511627776
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 10995116277760
+      datastore_cluster: datacluster0
+      freeSpace: 769727561728
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: PROD-VMFS-SSD-02
+      provisioned: 10500000000000
+      type: VMFS
+      uncommitted: 274877906944
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 2857749006336
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: PROD-NFS-01
+      provisioned: 20000000000000
+      type: NFS
+      uncommitted: 0
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 7696581394432
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: PROD-NFS-BACKUP
+      provisioned: 15000000000000
+      type: NFS
+      uncommitted: 0
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 5497558138880
+      datastore_cluster: datacluster0
+      freeSpace: 2748779069440
+      maintenanceMode: normal
+      multipleHostAccess: false
+      name: DR-VMFS-01
+      provisioned: 2500000000000
+      type: VMFS
+      uncommitted: 248779069440
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: false
+      capacity: 5497558138880
+      datastore_cluster: datacluster0
+      freeSpace: 0
+      maintenanceMode: normal
+      multipleHostAccess: false
+      name: CRASH-NFS-01
+      provisioned: 0
+      type: NFS
+      uncommitted: 0
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+  vms_info:
+    virtual_machines:
+    - guest_name: web-prod-01
+      datacenter: DC-Production
+      cluster: Prod-Cluster-01
+      esxi_hostname: esxi01.corp.local
+      folder: /Datacenter-1/vm
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.10.20.45
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207072c-edd8-3bd5-64dc-903fd3a0db01
+      vm_network:
+        00:50:56:87:a5:9a:
+          ipv4:
+          - 10.76.33.228/24
+          ipv6: []
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: t880-o2g
+        url: /vmfs/volumes/e074264a-e5c82a58
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-101
+      allocated:
+        storage: 500000000
+        cpu: 2
+        memory: 16
+      tools_status: toolsOk
+      instance_uuid: 4207072cedd83bd564dc903fd3a0db01
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-prod-01
+      datacenter: DC-Production
+      cluster: Prod-Cluster-01
+      esxi_hostname: esxi02.corp.local
+      folder: /Datacenter-1/vm
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.10.20.46
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207072c-edd8-3bd5-64dc-903fd3a0db02
+      vm_network:
+        00:50:56:87:a5:9a:
+          ipv4:
+          - 10.76.33.228/24
+          ipv6: []
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: t880-o2g
+        url: /vmfs/volumes/e074264a-e5c82a58
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-102
+      allocated:
+        storage: 500000000
+        cpu: 2
+        memory: 16
+      tools_status: toolsNotRunning
+      instance_uuid: 4207072cedd83bd564dc903fd3a0db02
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-01
+      datacenter: DC-Production
+      cluster: Prod-Cluster-01
+      esxi_hostname: esxi01.corp.local
+      folder: /Datacenter-1/vm
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.10.20.47
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207072c-edd8-3bd5-64dc-903fd3a0db03
+      vm_network:
+        00:50:56:87:a5:9a:
+          ipv4:
+          - 10.76.33.228/24
+          ipv6: []
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: t880-o2g
+        url: /vmfs/volumes/e074264a-e5c82a58
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-103
+      allocated:
+        storage: 500000000
+        cpu: 2
+        memory: 16
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207072cedd83bd564dc903fd3a0db03
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-prod-01
+      datacenter: DC-Production
+      cluster: Prod-Cluster-01
+      esxi_hostname: esxi01.corp.local
+      folder: /Datacenter-1/vm
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.10.20.48
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207072c-edd8-3bd5-64dc-903fd3a0db05
+      vm_network:
+        00:50:56:87:a5:9a:
+          ipv4:
+          - 10.76.33.228/24
+          ipv6: []
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: t880-o2g
+        url: /vmfs/volumes/e074264a-e5c82a58
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-105
+      allocated:
+        storage: 500000000
+        cpu: 2
+        memory: 16
+      tools_status: toolsOk
+      instance_uuid: 4207072cedd83bd564dc903fd3a0db05
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: dr-vm-01
+      datacenter: DC-Production
+      cluster: Prod-Cluster-01
+      esxi_hostname: esxi03.corp.local
+      folder: /Datacenter-1/vm
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207072c-edd8-3bd5-64dc-903fd3a0db04
+      vm_network:
+        00:50:56:87:a5:9a:
+          ipv4:
+          - 10.76.33.228/24
+          ipv6: []
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: t880-o2g
+        url: /vmfs/volumes/e074264a-e5c82a58
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-104
+      allocated:
+        storage: 500000000
+        cpu: 2
+        memory: 16
+      tools_status: toolsOk
+      instance_uuid: 4207072cedd83bd564dc903fd3a0db04
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+  snapshots_info:
+    snapshots:
+    - vm_name: test-vm-01
+      folder: /DC-Production/vm
+      name: pre-upgrade-snapshot
+      description: Before kernel upgrade
+      creation_time: '2026-02-02T14:31:24+00:00'
+      state: poweredOff
+      id: 12
+      quiesced: false
+    - vm_name: app-prod-01
+      folder: /DC-Production/vm
+      name: pre-patch-jan
+      description: Pre-January patching window
+      creation_time: '2026-01-16T14:31:24+00:00'
+      state: poweredOn
+      id: 7
+      quiesced: false
+    - vm_name: app-prod-01
+      folder: /DC-Production/vm
+      name: rollback-checkpoint
+      description: Emergency rollback point
+      creation_time: '2026-02-21T14:31:24+00:00'
+      state: poweredOn
+      id: 15
+      quiesced: true
+  alarms_info:
+    alarms:
+    - alarm_name: Host CPU Usage
+      description: CPU on Prod-ESXi-03 exceeded 90% for 15 min
+      entity: Prod-ESXi-03
+      entity_type: HostSystem
+      status: red
+      severity: critical
+      time: '2026-03-01T08:31:24+00:00'
+      acknowledged: false
+    - alarm_name: Datastore Free Space
+      description: PROD-VMFS-SSD-02 has less than 10% free space
+      entity: PROD-VMFS-SSD-02
+      entity_type: Datastore
+      status: yellow
+      severity: warning
+      time: '2026-02-28T14:31:24+00:00'
+      acknowledged: false
+    count: 2
+    python: /usr/bin/python3
+  config:
+    infrastructure_vm_patterns:
+    - ^vCenter$
+    - ^ESXi-.*$

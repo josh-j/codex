@@ -1,0 +1,145 @@
+metadata:
+  host: web-prod-01
+  raw_type: discovery
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  ansible_facts:
+    hostname: web-prod-01
+    default_ipv4:
+      address: 10.10.20.45
+    kernel: 6.8.0-48-generic
+    os_family: Debian
+    distribution: Ubuntu
+    distribution_version: '24.04'
+    uptime_seconds: 1468800
+    loadavg:
+      15m: 3.8
+    memtotal_mb: 32768
+    memfree_mb: 328
+    swaptotal_mb: 8192
+    swapfree_mb: 7372
+    mounts:
+    - mount: /
+      device: /dev/sda1
+      fstype: ext4
+      size_total: 107374182400
+      size_available: 56371445760
+    - mount: /var
+      device: /dev/sda2
+      fstype: ext4
+      size_total: 214748364800
+      size_available: 8589934592
+    - mount: /opt
+      device: /dev/sda3
+      fstype: ext4
+      size_total: 53687091200
+      size_available: 9663676416
+    - mount: /tmp
+      device: tmpfs
+      fstype: tmpfs
+      size_total: 8589934592
+      size_available: 8052867072
+    - mount: /boot
+      device: /dev/sda4
+      fstype: ext4
+      size_total: 1073741824
+      size_available: 536870912
+    getent_passwd:
+      root:
+      - x
+      - '0'
+      - '0'
+      - root
+      - /root
+      - /bin/bash
+      ubuntu:
+      - x
+      - '1000'
+      - '1000'
+      - Ubuntu
+      - /home/ubuntu
+      - /bin/bash
+      syslog:
+      - x
+      - '104'
+      - '110'
+      - ''
+      - /home/syslog
+      - /usr/sbin/nologin
+      deploy:
+      - x
+      - '1001'
+      - '1001'
+      - deploy
+      - /home/deploy
+      - /bin/bash
+    date_time:
+      epoch: '1772375484'
+  failed_services:
+    stdout_lines:
+    - '  ssh.service      loaded failed failed  OpenBSD Secure Shell server'
+    - '  rsyslog.service  loaded failed failed  System Logging Service'
+    rc: 0
+  apt_simulate:
+    stdout_lines:
+    - Reading package lists...
+    - Building dependency tree...
+    - 12 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+    rc: 0
+  reboot_stat:
+    stat:
+      exists: true
+      path: /var/run/reboot-required
+  shadow_raw:
+    stdout_lines:
+    - 'root:!:19700:0:99999:7:::'
+    - 'ubuntu:$6$rounds=5000$salt$hash:19600:0:99999:7:::'
+    - 'syslog:*:18000:0:99999:7:::'
+    - 'deploy:$6$rounds=5000$salt$hash2:19620:0:99999:7:::'
+    rc: 0
+  sshd_raw:
+    stdout_lines:
+    - port 22
+    - addressfamily any
+    - listenaddress 0.0.0.0
+    - permitemptypasswords no
+    - permituserenvironment no
+    - passwordauthentication no
+    - permitrootlogin no
+    - usepam yes
+    - x11forwarding no
+    - maxauthtries 4
+    - clientaliveinterval 600
+    - clientalivecountmax 0
+    - banner /etc/issue.net
+    - logingracetime 60
+    - strictmodes yes
+    - pubkeyauthentication yes
+    rc: 0
+  world_writable:
+    stdout_lines:
+    - /var/log/app/runtime.log
+    - /var/spool/custom/queue
+    - /var/tmp/legacy-socket
+    rc: 0
+  file_stats:
+    results:
+    - item: /etc/shadow
+      stat:
+        exists: true
+        mode: '0640'
+        pw_name: root
+        gr_name: shadow
+    - item: /etc/passwd
+      stat:
+        exists: true
+        mode: '0644'
+        pw_name: root
+        gr_name: root
+    - item: /etc/ssh/sshd_config
+      stat:
+        exists: true
+        mode: '0600'
+        pw_name: root
+        gr_name: root

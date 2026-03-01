@@ -37,7 +37,9 @@
       "Bash(just test:*)",
       "Bash(.venv/bin/pytest:*)",
       "Bash(/tmp/bug_report.txt:*)",
-      "Bash(.venv/bin/python:*)"
+      "Bash(.venv/bin/python:*)",
+      "WebFetch(domain:docs.ansible.com)",
+      "Bash(/Users/joshj/dev/codex/tools/ncs_reporter/.venv/bin/python:*)"
     ]
   }
 }

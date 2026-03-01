@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = generic_fleet_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set nav = view.get('nav', {}) %}
+    {% set hosts = view.get('hosts', []) %}
+    {% set active_alerts = view.get('active_alerts', []) %}
+    {% set crit_hosts  = hosts | selectattr('critical_count', 'gt', 0) | list | length %}
+    {% set warn_hosts  = hosts | selectattr('warning_count',  'gt', 0) | list | length %}
+    {% set ok_hosts    = hosts | selectattr('health', 'eq', 'OK') | list | length %}
+    <title>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</title>
+    <style>{% include 'report_shared.css' %}</style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation tree #}
+    {% if nav.get('site_report') %}
+    <div class="breadcrumb">
+        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        
+        {% if nav.get('tree_fleets') %}
+        <div class="nav-tree">
+            <span class="tree-label">{{ (view.get('meta', {}).get('display_name') or 'Fleet') | replace(' Fleet', '') }} Fleet</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                {% for f in nav.tree_fleets %}
+                <a href="{{ f.report }}" class="{{ 'active' if f.name in (meta.get('display_name') or '') else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
+                    {{ f.name }} Fleet
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        {{ meta.get('display_name', 'Fleet') }} — Fleet Report
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</h1>
+            <span style="font-size:11px; color:#9db4cc;">Platform: {{ meta.get('platform', '') | upper }} &nbsp;&middot;&nbsp; {{ meta.get('total_hosts', 0) }} hosts</span>
+        </div>
+        <div class="right">
+            {{ meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-left">
+            {% if active_alerts %}<a href="#alerts">Active Alerts</a>{% endif %}
+            <a href="#hosts">Host Status</a>
+        </div>
+    </div>
+
+    {# --- Active alerts widget --- #}
+    {% if alert_groups %}
+    <div class="widget widget-alert" id="alerts">
+        <div class="widget-titlebar">
+            <span class="widget-title">Active Alerts &mdash; {{ active_alerts | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active Alerts"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+            {% for group in alert_groups %}
+                {% set gid = loop.index %}
+                <tr class="group-hdr" data-group="{{ gid }}">
+                    <td colspan="2">
+                        <span class="group-toggle"></span>
+                        <strong>{{ group.host }}</strong>
+                    </td>
+                </tr>
+                {% for alert in group.alerts %}
+                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}" data-group="{{ gid }}">
+                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} severity-cell">{{ alert.severity }}</td>
+                    <td>{{ alert.get('message', '') }}</td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="widget" id="hosts">
+        <div class="widget-titlebar">
+            <span class="widget-title">Host Status</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Host Status"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th style="width:80px;">Health</th>
+                    {% for col in generic_fleet_view.get('fleet_columns', []) %}
+                        <th style="{% if col.get('width') %}width:{{ col.width }};{% endif %}">{{ col.label }}</th>
+                    {% endfor %}
+                    {# Keep alert counts as optional default if no columns defined? No, stay 100% schema. #}
+                </tr>
+            </thead>
+            <tbody>
+            {% for host in hosts %}
+                <tr>
+                    <td><a href="{{ host.node_report }}" style="font-weight:bold; color:#00c; text-decoration:none;">{{ host.hostname }}</a></td>
+                    <td>
+                        {% if host.health == 'OK' %}<span class="sv-ok">OK</span>
+                        {% elif host.health == 'WARNING' %}<span class="sv-warning">WARNING</span>
+                        {% elif host.health == 'CRITICAL' %}<span class="sv-critical">CRITICAL</span>
+                        {% else %}{{ host.health }}{% endif %}
+                    </td>
+                    {% for col in generic_fleet_view.get('fleet_columns', []) %}
+                        <td>{{ host.get('col_' ~ col.field, '') }}</td>
+                    {% endfor %}
+                </tr>
+            {% else %}
+                <tr><td colspan="{{ 2 + generic_fleet_view.get('fleet_columns', []) | length }}" style="color:#888;">No hosts found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+
+
+</div>
+<script>{% include 'collapsible.js' %}</script>
+</body>
+</html>

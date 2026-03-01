@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-NCS is an Ansible-based infrastructure health monitoring and STIG compliance auditing system for heterogeneous fleets (Ubuntu Linux, VMware ESXi/vCenter, Windows). It generates HTML dashboards, STIG compliance reports (CKLB), and CSV exports. A standalone Python CLI (`ncs_reporter`) is being developed to decouple reporting from Ansible execution.
+NCS is an Ansible-based infrastructure health monitoring and STIG compliance auditing system for heterogeneous fleets (Ubuntu Linux, VMware ESXi/vCenter, Windows). It generates HTML dashboards and STIG compliance reports (CKLB). A standalone Python CLI (`ncs_reporter`) is being developed to decouple reporting from Ansible execution.
 
 ## Commands
 

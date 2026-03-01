@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = stig_fleet_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set fleet = view.get('fleet', {}) %}
+    {% set totals = fleet.get('totals', {}) %}
+    {% set by_platform = fleet.get('by_platform', {}) %}
+    {% set rows = view.get('rows', []) %}
+    {% set findings_index = view.get('findings_index', {}) %}
+    {% set top_findings = findings_index.get('top_findings', []) %}
+    {% set nav = view.get('nav', {}) %}
+    <title>STIG Fleet Compliance Overview</title>
+    <style>
+        {% include 'report_shared.css' %}
+        .platform-row td:first-child { font-weight: 600; text-transform: capitalize; }
+    </style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb navigation tree #}
+    {% if nav.get('site_report') %}
+    <div class="breadcrumb">
+        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        
+        {% if nav.get('tree_fleets') %}
+        <div class="nav-tree">
+            <span class="tree-label">STIG Fleet Overview</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                {% for f in nav.tree_fleets %}
+                <a href="{{ f.report }}" class="{{ 'active' if f.name == 'STIG' else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
+                    {{ f.name }} Fleet
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        STIG Fleet Compliance Overview
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="page-header">
+        <div>
+            <h1>STIG Compliance — Fleet Report</h1>
+            <span style="font-size:11px; color:#9db4cc;">Cross-platform STIG compliance summary</span>
+        </div>
+        <div class="right">
+            {{ meta.get('report_date', now_datetime | default('N/A')) }}
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-left">
+            <a href="#overview">Fleet Compliance Overview</a>
+            <a href="#host-details">Host Details</a>
+            {% if top_findings | length > 0 %}<a href="#top-findings">Top Findings</a>{% endif %}
+        </div>
+    </div>
+
+    <div class="widget" id="overview">
+        <div class="widget-titlebar">
+            <span class="widget-title">Fleet Compliance Overview</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Fleet Compliance Overview"></button>
+        </div>
+        <div class="widget-body widget-subgroup">
+            <div class="widget-grid">
+
+                <div class="widget" id="metrics">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">Global Metrics</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table>
+                            <tbody>
+                                <tr><td style="width:50%; color:#444;">Hosts audited</td><td><strong>{{ totals.get('hosts', 0) }}</strong></td></tr>
+                                <tr><td style="color:#444;">Open findings</td><td><strong>{{ totals.get('findings_open', 0) }}</strong></td></tr>
+                                {% if totals.get('critical', 0) > 0 %}<tr><td style="color:#444;">CAT I findings</td><td><span class="sv-critical">{{ totals.get('critical', 0) }}</span></td></tr>{% endif %}
+                                {% if totals.get('warning', 0) > 0 %}<tr><td style="color:#444;">CAT II findings</td><td><span class="sv-warning">{{ totals.get('warning', 0) }}</span></td></tr>{% endif %}
+                                {% if totals.get('info', 0) > 0 %}<tr><td style="color:#444;">CAT III findings</td><td><span class="sv-info">{{ totals.get('info', 0) }}</span></td></tr>{% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="widget" id="platform-breakdown">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">Platform Breakdown</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Hosts</th>
+                                <th>Open</th>
+                                <th>CAT I</th>
+                                <th>CAT II</th>
+                                <th>CAT III</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for platform_name in ['linux', 'vmware', 'windows'] %}
+                            {% set p = by_platform.get(platform_name, {}) %}
+                            {% if p.get('hosts', 0) > 0 %}
+                            <tr class="platform-row">
+                                <td>{{ platform_name }}</td>
+                                <td>{{ p.get('hosts', 0) }}</td>
+                                <td>{{ p.get('open', 0) }}</td>
+                                <td class="{% if p.get('critical', 0) > 0 %}sv-critical{% endif %}">{{ p.get('critical', 0) }}</td>
+                                <td class="{% if p.get('warning', 0) > 0 %}sv-warning{% endif %}">{{ p.get('warning', 0) }}</td>
+                                <td class="{% if p.get('info', 0) > 0 %}sv-info{% endif %}">{{ p.get('info', 0) }}</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="widget" id="host-details">
+        <div class="widget-titlebar">
+            <span class="widget-title">Host Details</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Host Details"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        {% if rows | length > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Host</th>
+                    <th>Platform</th>
+                    <th>Audit Type</th>
+                    <th>Status</th>
+                    <th>Open</th>
+                    <th>CAT I</th>
+                    <th>CAT II</th>
+                    <th>CAT III</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr class="row-interactive">
+                    <td>
+                        {% set link = row.get('links', {}).get('node_report_latest', '') %}
+                        {% if link %}
+                            <a href="{{ link }}" style="font-weight:bold; color:#00c; text-decoration:none;">{{ row.get('host', '') }}</a>
+                        {% else %}
+                            <strong>{{ row.get('host', '') }}</strong>
+                        {% endif %}
+                    </td>
+                    <td>{{ row.get('platform', '') }}</td>
+                    <td>{{ row.get('audit_type', '') }}</td>
+                    <td>
+                        {% set status_raw = row.get('status', {}).get('raw', 'UNKNOWN') | upper %}
+                        {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok">{{ status_raw }}</span>
+                        {% elif status_raw in ('FAIL', 'OPEN', 'NON-COMPLIANT') %}<span class="sv-critical">{{ status_raw }}</span>
+                        {% else %}<span class="sv-info">{{ status_raw }}</span>{% endif %}
+                    </td>
+                    <td>{{ row.get('findings_open', 0) }}</td>
+                    <td class="{% if row.get('critical', 0) > 0 %}sv-critical{% endif %}">{{ row.get('critical', 0) }}</td>
+                    <td class="{% if row.get('warning', 0) > 0 %}sv-warning{% endif %}">{{ row.get('warning', 0) }}</td>
+                    <td class="{% if row.get('info', 0) > 0 %}sv-info{% endif %}">{{ row.get('info', 0) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>No STIG audit data found.</p>
+        </div>
+        {% endif %}
+        </div>
+    </div>
+
+    {% if top_findings | length > 0 %}
+    <div class="widget" id="top-findings">
+        <div class="widget-titlebar">
+            <span class="widget-title">Top Findings (Most Affected Hosts)</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Top Findings"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id">Rule ID</th>
+                    <th class="col-sev">Severity</th>
+                    <th>Affected Hosts</th>
+                    <th>Title</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for f in top_findings %}
+                <tr>
+                    <td class="col-id">{{ f.get('rule_id', '') }}</td>
+                    <td>
+                        {% set sev = f.get('severity', 'info') | lower %}
+                        {% set cat_label = 'CAT I' if sev in ['high', 'critical'] else 'CAT II' if sev in ['medium', 'warning'] else 'CAT III' %}
+                        <span class="{{ 'sv-critical' if sev in ['high', 'critical'] else 'sv-warning' if sev in ['medium', 'warning'] else 'sv-info' }}">
+                            {{ cat_label }}
+                        </span>
+                    </td>
+                    <td>{{ f.get('affected_hosts', 0) }}</td>
+                    <td>{{ f.get('title', '') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script>{% include 'collapsible.js' %}</script>
+</body>
+</html>

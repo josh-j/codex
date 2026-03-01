@@ -1,0 +1,92 @@
+# justfile for ncs-reporter
+
+set dotenv-load
+
+python := if path_exists(".venv/bin/python") == "true" { ".venv/bin/python" } else { "python3" }
+pytest := if path_exists(".venv/bin/pytest") == "true" { ".venv/bin/pytest" } else { "pytest" }
+ruff   := if path_exists(".venv/bin/ruff")   == "true" { ".venv/bin/ruff" }   else { "ruff" }
+mypy   := if path_exists(".venv/bin/mypy")   == "true" { ".venv/bin/mypy" }   else { "mypy" }
+
+export PYTHONPATH := "src"
+
+# Default task: list all commands
+default:
+    @just --list
+
+# Install dependencies into a virtual environment
+setup:
+    python3 -m venv .venv
+    .venv/bin/pip install --upgrade pip
+    .venv/bin/pip install -e .
+    .venv/bin/pip install ruff mypy pytest basedpyright
+
+# Run linting checks
+lint:
+    {{ ruff }} check .
+
+# Format code
+format:
+    {{ ruff }} format .
+
+# Run type checking
+check:
+    {{ mypy }} src
+    .venv/bin/basedpyright src
+
+# Run unit tests
+test:
+    {{ python }} -m pytest tests
+
+# Run full end-to-end simulation (all platforms + global site)
+# Example: just run-all /srv/samba/reports/platform /srv/samba/reports platform/inventory_groups.json
+run-all platform_root reports_root groups:
+    {{ python }} -m ncs_reporter.cli all \
+        --platform-root {{ platform_root }} \
+        --reports-root {{ reports_root }} \
+        --groups {{ groups }}
+
+# Generate STIG compliance reports (fleet + node)
+stig input output="reports/stig":
+    {{ python }} -m ncs_reporter.cli stig --input {{ input }} --output-dir {{ output }}
+
+# Generate CKLB artifacts for STIG Viewer
+cklb input output="reports/cklb":
+    {{ python }} -m ncs_reporter.cli cklb --input {{ input }} --output-dir {{ output }}
+
+# Generate global site health dashboard
+site input groups output="reports":
+    {{ python }} -m ncs_reporter.cli site --input {{ input }} --groups {{ groups }} --output-dir {{ output }}
+
+# Generate linux fleet report
+linux input output="reports/platform/ubuntu":
+    {{ python }} -m ncs_reporter.cli linux --input {{ input }} --output-dir {{ output }}
+
+# Generate vmware fleet report
+vmware input output="reports/platform/vmware":
+    {{ python }} -m ncs_reporter.cli vmware --input {{ input }} --output-dir {{ output }}
+
+# Generate windows fleet report
+windows input output="reports/platform/windows":
+    {{ python }} -m ncs_reporter.cli windows --input {{ input }} --output-dir {{ output }}
+
+# Generate a single node report from raw YAML
+node platform input hostname output=".":
+    {{ python }} -m ncs_reporter.cli node --platform {{ platform }} --input {{ input }} --hostname {{ hostname }} --output-dir {{ output }}
+
+# Apply ESXi STIG rules interactively, one rule at a time (MUTATING)
+# Example: just stig-apply artifacts/vcenter1/raw_stig_esxi.yaml vcenter1 esxi-01.local
+stig-apply artifact limit esxi_host:
+    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --esxi-host {{ esxi_host }}
+
+# Dry-run stig-apply: print generated ansible commands without executing
+# Example: just stig-apply-dry artifacts/vcenter1/raw_stig_esxi.yaml vcenter1 esxi-01.local
+stig-apply-dry artifact limit esxi_host:
+    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --esxi-host {{ esxi_host }} --skip-snapshot --dry-run
+
+# Clean up temporary build/cache artifacts
+clean:
+    rm -rf .venv .mypy_cache .ruff_cache .pytest_cache
+    find . -type d -name "__pycache__" -exec rm -rf {} +
+
+# Run all quality checks
+test-all: lint check test

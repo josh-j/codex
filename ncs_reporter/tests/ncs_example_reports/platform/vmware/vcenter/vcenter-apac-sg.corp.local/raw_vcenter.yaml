@@ -1,0 +1,2152 @@
+metadata:
+  host: vcenter-apac-sg.corp.local
+  raw_type: vcenter
+  timestamp: '2026-03-01T14:31:24+00:00'
+  engine: ncs_collector_callback
+data:
+  appliance_health_info:
+    appliance:
+      access:
+        consolecli: false
+        dcui: false
+        shell:
+          enabled: 'False'
+          timeout: '0'
+        ssh: false
+      firewall:
+        inbound:
+        - address: 1.2.3.6
+          interface_name: '*'
+          policy: ACCEPT
+          prefix: '32'
+        - address: 1.2.4.5
+          interface_name: nic0
+          policy: IGNORE
+          prefix: '24'
+      networking:
+        network:
+          dns_servers: []
+          hostname:
+          - vcenter.local
+          nics:
+            nic0:
+              ipv4: '{configurable : True, mode : STATIC, address : 10.185.246.4,
+                prefix : 26, default_gateway : 10.185.246.1}'
+              ipv6: None
+              mac: 00:50:56:cd:e7:2e
+              name: nic0
+              status: up
+        proxy:
+          ftp:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          http:
+            enabled: 'True'
+            password: None
+            port: '80'
+            server: http://localhost
+            username: None
+          https:
+            enabled: 'False'
+            password: None
+            port: '-1'
+            server: ''
+            username: None
+          noproxy:
+          - localhost
+          - 127.0.0.1
+      services:
+        appliance-shutdown:
+          description: /etc/rc.local.shutdown Compatibility
+          state: STOPPED
+      summary:
+        build_number: '24022515'
+        health:
+          cpu: green
+          database: green
+          memory: green
+          overall: green
+          storage: green
+          swap: green
+        hostname:
+        - vcenter-apac-sg.corp.local
+        product: VMware vCenter Server
+        sso: {}
+        uptime: '2592000.0'
+        version: 8.0.3.00300
+      syslog:
+        forwarding: []
+      time:
+        time_sync:
+          current:
+            date: Tue 03-26-2024
+            seconds_since_epoch: '1711465124.5183642'
+            time: 02:58:44 PM
+            timezone: UTC
+          mode: NTP
+          servers:
+          - time.google.com
+        time_zone: Etc/UTC
+  appliance_backup_info:
+    schedules:
+    - name: daily-backup
+      enabled: true
+      fast_backup: false
+      location: nfs://10.0.0.100:/nfs/vcenter-backup/
+      location_user: vcbackup
+      includes_stats_events_and_tasks: true
+      includes_supervisors_control_plane: false
+      retain_count: 5
+      schedule:
+        days_of_week:
+        - SUNDAY
+        hour: 1
+        minute: 30
+  datacenters_info:
+    datacenter_info:
+    - name: DC-APAC-SG-1
+      moid: datacenter-50
+      config_status: green
+      overall_status: green
+  clusters_info:
+    results:
+    - item: DC-APAC-SG-1
+      clusters:
+        APAC-Prod-Cluster:
+          datacenter: DC-APAC-SG-1
+          moid: domain-c501
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: true
+          drs_default_vm_behavior: fullyAutomated
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi01.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          - name: esxi02.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          - name: esxi03.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          - name: esxi04.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          - name: esxi05.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          - name: esxi06.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Prod-Cluster
+          resource_summary:
+            cpuCapacityMHz: 768000
+            cpuUsedMHz: 360000
+            memCapacityMB: 1572864
+            memUsedMB: 786432
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 61440000
+            storageUsedMB: 28800000
+          tags: []
+        APAC-Edge-Cluster:
+          datacenter: DC-APAC-SG-1
+          moid: domain-c502
+          ha_enabled: true
+          ha_admission_control_enabled: true
+          ha_failover_level: 1
+          ha_host_monitoring: enabled
+          ha_restart_priority: medium
+          ha_vm_failure_interval: 30
+          ha_vm_max_failure_window: -1
+          ha_vm_max_failures: 3
+          ha_vm_min_up_time: 120
+          ha_vm_monitoring: vmMonitoringDisabled
+          ha_vm_tools_monitoring: vmMonitoringDisabled
+          drs_enabled: false
+          drs_default_vm_behavior: manual
+          drs_enable_vm_behavior_overrides: true
+          drs_vmotion_rate: 3
+          dpm_enabled: false
+          dpm_default_dpm_behavior: automated
+          dpm_host_power_action_rate: 3
+          vsan_enabled: false
+          vsan_auto_claim_storage: false
+          hosts:
+          - name: esxi07.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Edge-Cluster
+          - name: esxi08.apsg.corp.local
+            folder: /DC-APAC-SG-1/host/APAC-Edge-Cluster
+          resource_summary:
+            cpuCapacityMHz: 192000
+            cpuUsedMHz: 48000
+            memCapacityMB: 393216
+            memUsedMB: 98304
+            pMemAvailableMB: 0
+            pMemCapacityMB: 0
+            storageCapacityMB: 15360000
+            storageUsedMB: 3840000
+          tags: []
+      failed: false
+      failed_when_result: false
+  datastores_info:
+    datastores:
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 10995116277760
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APSG-VMFS-SSD-01
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 10995116277760
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APSG-VMFS-SSD-02
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 21990232555520
+      datastore_cluster: datacluster0
+      freeSpace: 2857749006336
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APSG-VMFS-SSD-03
+      provisioned: 12289211488
+      type: VMFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 43980465111040
+      datastore_cluster: datacluster0
+      freeSpace: 26388279066624
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APSG-NFS-01
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: true
+      capacity: 65970697666560
+      datastore_cluster: datacluster0
+      freeSpace: 52776558133248
+      maintenanceMode: normal
+      multipleHostAccess: true
+      name: APSG-NFS-BACKUP
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+    - accessible: false
+      capacity: 5497558138880
+      datastore_cluster: datacluster0
+      freeSpace: 0
+      maintenanceMode: normal
+      multipleHostAccess: false
+      name: APSG-CRASH-NFS
+      provisioned: 12289211488
+      type: NFS
+      uncommitted: 9246243936
+      url: ds:///vmfs/volumes/5a69b18a-c03cd88c-36ae-5254001249ce/
+      vmfs_blockSize: 1024
+      vmfs_uuid: 5a69b18a-c03cd88c-36ae-5254001249ce
+      vmfs_version: '6.81'
+  vms_info:
+    virtual_machines:
+    - guest_name: web-apsg-001
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apsg-0001-3bd5-64dc-903fd3a0000001
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0001
+      allocated: &id001
+        cpu: 2
+        memory: 4096
+        storage: 107374182400
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00013bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apsg-002
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apsg-0002-3bd5-64dc-903fd3a0000002
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0002
+      allocated: &id002
+        cpu: 4
+        memory: 8192
+        storage: 214748364800
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00023bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apsg-003
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: ''
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOff
+      uuid: 4207apsg-0003-3bd5-64dc-903fd3a0000003
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0003
+      allocated: &id003
+        cpu: 8
+        memory: 16384
+        storage: 429496729600
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00033bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apsg-004
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.4
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0004-3bd5-64dc-903fd3a0000004
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0004
+      allocated: &id004
+        cpu: 16
+        memory: 32768
+        storage: 858993459200
+      tools_status: toolsNotRunning
+      instance_uuid: 4207apsg00043bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apsg-005
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.5
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0005-3bd5-64dc-903fd3a0000005
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0005
+      allocated: *id001
+      tools_status: toolsNotRunning
+      instance_uuid: 4207apsg00053bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apsg-006
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.6
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0006-3bd5-64dc-903fd3a0000006
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0006
+      allocated: *id002
+      tools_status: toolsNotRunning
+      instance_uuid: 4207apsg00063bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apsg-007
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.7
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0007-3bd5-64dc-903fd3a0000007
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0007
+      allocated: *id003
+      tools_status: toolsNotRunning
+      instance_uuid: 4207apsg00073bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apsg-008
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.8
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0008-3bd5-64dc-903fd3a0000008
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0008
+      allocated: *id004
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207apsg00083bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apsg-009
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.9
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0009-3bd5-64dc-903fd3a0000009
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0009
+      allocated: *id001
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207apsg00093bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apsg-010
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.10
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0010-3bd5-64dc-903fd3a0000010
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0010
+      allocated: *id002
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207apsg00103bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apsg-011
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.11
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0011-3bd5-64dc-903fd3a0000011
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0011
+      allocated: *id003
+      tools_status: toolsNotInstalled
+      instance_uuid: 4207apsg00113bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apsg-012
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.12
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0012-3bd5-64dc-903fd3a0000012
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0012
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00123bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apsg-013
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.13
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0013-3bd5-64dc-903fd3a0000013
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0013
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00133bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apsg-014
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.14
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0014-3bd5-64dc-903fd3a0000014
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0014
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00143bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apsg-015
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.15
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0015-3bd5-64dc-903fd3a0000015
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0015
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00153bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apsg-016
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.16
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0016-3bd5-64dc-903fd3a0000016
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0016
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00163bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apsg-017
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.17
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0017-3bd5-64dc-903fd3a0000017
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0017
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00173bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apsg-018
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.18
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0018-3bd5-64dc-903fd3a0000018
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0018
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00183bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apsg-019
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.19
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0019-3bd5-64dc-903fd3a0000019
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0019
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00193bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apsg-020
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.20
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0020-3bd5-64dc-903fd3a0000020
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0020
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00203bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apsg-021
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.21
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0021-3bd5-64dc-903fd3a0000021
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0021
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00213bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apsg-022
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.22
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0022-3bd5-64dc-903fd3a0000022
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0022
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00223bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apsg-023
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.23
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0023-3bd5-64dc-903fd3a0000023
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0023
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00233bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apsg-024
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.24
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0024-3bd5-64dc-903fd3a0000024
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0024
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00243bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apsg-025
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.25
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0025-3bd5-64dc-903fd3a0000025
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0025
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00253bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apsg-026
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.26
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0026-3bd5-64dc-903fd3a0000026
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0026
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00263bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apsg-027
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.27
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0027-3bd5-64dc-903fd3a0000027
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0027
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00273bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apsg-028
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.28
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0028-3bd5-64dc-903fd3a0000028
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0028
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00283bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apsg-029
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.29
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0029-3bd5-64dc-903fd3a0000029
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0029
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00293bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apsg-030
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.30
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0030-3bd5-64dc-903fd3a0000030
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0030
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00303bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apsg-031
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.31
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0031-3bd5-64dc-903fd3a0000031
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0031
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00313bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apsg-032
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.32
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0032-3bd5-64dc-903fd3a0000032
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0032
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00323bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apsg-033
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.33
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0033-3bd5-64dc-903fd3a0000033
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0033
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00333bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apsg-034
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.34
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0034-3bd5-64dc-903fd3a0000034
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0034
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00343bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apsg-035
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.35
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0035-3bd5-64dc-903fd3a0000035
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0035
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00353bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apsg-036
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.36
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0036-3bd5-64dc-903fd3a0000036
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0036
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00363bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apsg-037
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.37
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0037-3bd5-64dc-903fd3a0000037
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0037
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00373bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apsg-038
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.38
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0038-3bd5-64dc-903fd3a0000038
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0038
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00383bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apsg-039
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.39
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0039-3bd5-64dc-903fd3a0000039
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0039
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00393bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apsg-040
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.40
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0040-3bd5-64dc-903fd3a0000040
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0040
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00403bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apsg-041
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.41
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0041-3bd5-64dc-903fd3a0000041
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0041
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00413bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apsg-042
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.42
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0042-3bd5-64dc-903fd3a0000042
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0042
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00423bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apsg-043
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.43
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0043-3bd5-64dc-903fd3a0000043
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0043
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00433bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: auth-apsg-044
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/auth
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.44
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0044-3bd5-64dc-903fd3a0000044
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-auth
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0044
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00443bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: api-apsg-045
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/api
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.45
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0045-3bd5-64dc-903fd3a0000045
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-api
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0045
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00453bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: worker-apsg-046
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/worker
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.46
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0046-3bd5-64dc-903fd3a0000046
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-worker
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0046
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00463bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: scheduler-apsg-047
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/scheduler
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.47
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0047-3bd5-64dc-903fd3a0000047
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-scheduler
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0047
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00473bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: log-apsg-048
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi08.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/log
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.48
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0048-3bd5-64dc-903fd3a0000048
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-log
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0048
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00483bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: web-apsg-049
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi01.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/web
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.49
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0049-3bd5-64dc-903fd3a0000049
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-web
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0049
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00493bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: db-apsg-050
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi02.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/db
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.50
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0050-3bd5-64dc-903fd3a0000050
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-db
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0050
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00503bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: app-apsg-051
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi03.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/app
+      guest_fullname: Ubuntu Linux (64-bit)
+      ip_address: 10.24.1.51
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0051-3bd5-64dc-903fd3a0000051
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-app
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0051
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00513bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: cache-apsg-052
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi04.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/cache
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.52
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0052-3bd5-64dc-903fd3a0000052
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-cache
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0052
+      allocated: *id004
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00523bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: monitoring-apsg-053
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi05.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/monitoring
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.53
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0053-3bd5-64dc-903fd3a0000053
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-monitoring
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0053
+      allocated: *id001
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00533bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: backup-apsg-054
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Edge-Cluster
+      esxi_hostname: esxi06.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/backup
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.54
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0054-3bd5-64dc-903fd3a0000054
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-edge-cluster-01
+        url: /vmfs/volumes/apsg-backup
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0054
+      allocated: *id002
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00543bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+    - guest_name: proxy-apsg-055
+      datacenter: DC-APAC-SG-1
+      cluster: APAC-Prod-Cluster
+      esxi_hostname: esxi07.apsg.corp.local
+      folder: /DC-APAC-SG-1/vm/proxy
+      guest_fullname: Microsoft Windows Server 2022 (64-bit)
+      ip_address: 10.24.1.55
+      mac_address:
+      - 00:50:56:87:a5:9a
+      power_state: poweredOn
+      uuid: 4207apsg-0055-3bd5-64dc-903fd3a0000055
+      vm_network: {}
+      attributes:
+        Owner Email: platform-alerts@corp.local
+        Owner Name: Platform Team
+        Last Dell PowerProtect Backup: '2026-03-01T02:31:24+00:00'
+      datastore_url:
+      - name: ds-apac-prod-cluster-01
+        url: /vmfs/volumes/apsg-proxy
+      tags:
+      - category_name: Owner
+        name: Platform Team
+        description: Shared Platform Resources
+      - category_name: Backup Schedule
+        name: Daily-Prod
+        description: Standard Daily Retention
+      moid: vm-apsg-0055
+      allocated: *id003
+      tools_status: toolsOk
+      instance_uuid: 4207apsg00553bd564dc903fd3a00000
+      resource_pool: null
+      num_cpu: 2
+      memory_mb: 4096
+  snapshots_info:
+    snapshots:
+    - vm_name: db-apsg-004
+      folder: /DC-APAC-SG-1/vm/db
+      name: pre-release-2.4
+      description: Pre-release 2.4 snapshot
+      creation_time: '2026-02-20T14:31:24+00:00'
+      state: poweredOn
+      id: 20
+      quiesced: true
+  alarms_info:
+    alarms:
+    - alarm_name: Datastore Inaccessible
+      description: APSG-CRASH-NFS is inaccessible
+      entity: APSG-CRASH-NFS
+      entity_type: Datastore
+      status: red
+      severity: critical
+      time: '2026-03-01T12:07:24+00:00'
+      acknowledged: false
+    - alarm_name: Host Network Connectivity
+      description: esxi08.apsg NIC teaming failure
+      entity: esxi08.apsg.corp.local
+      entity_type: HostSystem
+      status: yellow
+      severity: warning
+      time: '2026-03-01T07:19:24+00:00'
+      acknowledged: false
+    count: 2
+    python: /usr/bin/python3
+  config:
+    infrastructure_vm_patterns:
+    - ^vCenter$
+    - ^ESXi-.*$

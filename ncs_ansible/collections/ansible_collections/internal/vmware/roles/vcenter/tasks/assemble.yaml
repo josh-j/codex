@@ -1,0 +1,22 @@
+---
+# internal.vmware.vcenter : tasks/assemble.yaml
+
+- name: Assemble raw vCenter context
+  ansible.builtin.set_fact:
+    vmware_raw_vcenter:
+      metadata:
+        status: "{{ 'FAILED' if vcenter_collect_failed | bool else 'SUCCESS' }}"
+        error: "{{ vcenter_connectivity_error | default('') }}"
+      data:
+        appliance_health_info: "{{ _raw_appliance_health | default({}) }}"
+        appliance_backup_info: "{{ _raw_appliance_backup | default({}) }}"
+        datacenters_info: "{{ _raw_datacenters | default({}) }}"
+        clusters_info: "{{ _raw_clusters | default({}) }}"
+        datastores_info:
+          datastores: "{{ _raw_datastores.results | map(attribute='datastores') | flatten | list if (_raw_datastores.results is defined) else [] }}"
+        vms_info: "{{ _raw_vms | default({}) }}"
+        snapshots_info:
+          snapshots: "{{ _raw_snapshots.results | map(attribute='vmware_all_snapshots_info') | flatten | list if (_raw_snapshots.results is defined) else [] }}"
+        alarms_info: "{{ _raw_alarms | default({}) }}"
+        config: "{{ vcenter.config | default({}) }}"
+  changed_when: false
