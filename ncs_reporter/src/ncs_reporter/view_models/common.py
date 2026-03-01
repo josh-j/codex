@@ -2,7 +2,12 @@
 
 from typing import Any
 
-from ..primitives import canonical_severity as canonical_severity, safe_list as safe_list, to_float as to_float, to_int as to_int  # noqa: F401 (to_int re-exported)
+from ..primitives import (
+    canonical_severity as canonical_severity,
+    safe_list as safe_list,
+    to_float as to_float,
+    to_int as to_int,
+)  # noqa: F401 (to_int re-exported)
 
 _DEFAULT_SKIP_KEYS = {
     "summary",
@@ -105,7 +110,7 @@ def _iter_hosts(aggregated_hosts: dict[str, Any] | None) -> list[tuple[str, dict
     return rows
 
 
-def status_badge_meta(status: Any) -> dict[str, str]:
+def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, str]:
     """
     Normalize a status/severity string into badge presentation metadata.
     Returns a dict with:
@@ -118,16 +123,17 @@ def status_badge_meta(status: Any) -> dict[str, str]:
     fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED", "ERROR"}
 
     if raw in ok_values:
-        return {"css_class": "status-ok", "label": "OK"}
+        return {"css_class": "status-ok", "label": raw if preserve_label else "OK"}
     if raw in fail_values:
-        return {"css_class": "status-fail", "label": "CRITICAL"}
+        return {"css_class": "status-fail", "label": raw if preserve_label else "CRITICAL"}
 
-    return {"css_class": "status-warn", "label": "WARNING"}
+    return {"css_class": "status-warn", "label": raw if preserve_label and raw != "UNKNOWN" else "WARNING"}
 
 
 # ---------------------------------------------------------------------------
 # Shared view-model helpers (DRY across fleet/site builders)
 # ---------------------------------------------------------------------------
+
 
 def build_meta(
     report_stamp: str | None = None,
@@ -157,14 +163,16 @@ def extract_platform_alerts(
             continue
         sev = canonical_severity(alert.get("severity"))
         if sev in ("CRITICAL", "WARNING"):
-            result.append({
-                "severity": sev,
-                "host": hostname,
-                "audit_type": audit_type,
-                "platform": platform_label or audit_type,
-                "category": alert.get("category", category_default),
-                "message": alert.get("message", ""),
-            })
+            result.append(
+                {
+                    "severity": sev,
+                    "host": hostname,
+                    "audit_type": audit_type,
+                    "platform": platform_label or audit_type,
+                    "category": alert.get("category", category_default),
+                    "message": alert.get("message", ""),
+                }
+            )
     return result
 
 
@@ -193,12 +201,14 @@ def collect_active_alerts(
         sev = canonical_severity(alert.get("severity"))
         if sev not in ("CRITICAL", "WARNING"):
             continue
-        result.append({
-            "host": hostname,
-            "severity": sev,
-            "category": alert.get("category", category_default),
-            "audit_type": audit_type,
-            "message": alert.get("message", ""),
-            "raw": dict(alert),
-        })
+        result.append(
+            {
+                "host": hostname,
+                "severity": sev,
+                "category": alert.get("category", category_default),
+                "audit_type": audit_type,
+                "message": alert.get("message", ""),
+                "raw": dict(alert),
+            }
+        )
     return result

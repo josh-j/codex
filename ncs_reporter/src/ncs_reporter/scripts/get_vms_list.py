@@ -2,11 +2,14 @@ import sys
 import json
 import re
 
-def get_vms_list(vms_info, exclude_patterns: list[str] | None = None):
+from typing import Any
+
+
+def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = None) -> list[dict[str, Any]]:
     """Normalize VM list with enriched data from tags and attributes, filtering by name patterns."""
     if not isinstance(vms_info, dict):
         return []
-    
+
     raw_vms = vms_info.get("virtual_machines", [])
     if not isinstance(raw_vms, list):
         return []
@@ -17,8 +20,9 @@ def get_vms_list(vms_info, exclude_patterns: list[str] | None = None):
         if isinstance(exclude_patterns, str):
             try:
                 # If it looks like a Python list representation, parse it
-                if exclude_patterns.startswith('[') and exclude_patterns.endswith(']'):
+                if exclude_patterns.startswith("[") and exclude_patterns.endswith("]"):
                     import ast
+
                     exclude_patterns = ast.literal_eval(exclude_patterns)
                 else:
                     # Single pattern string
@@ -42,36 +46,38 @@ def get_vms_list(vms_info, exclude_patterns: list[str] | None = None):
             continue
 
         guest_name = item.get("guest_name", "Unknown")
-        
+
         # Skip infrastructure VMs
         if exclude_re and exclude_re.search(guest_name):
             continue
 
         # Parse tags
-        tags = item.get("tags", [])
-        owner_tag_obj = next((t for t in tags if t.get("category_name") == "Owner"), {})
-        backup_tag_obj = next((t for t in tags if t.get("category_name") == "Backup Schedule"), {})
-        email_tag_obj = next((t for t in tags if t.get("category_name") in ("Owner Email", "OwnerEmail")), {})
+        tags: list[dict[str, Any]] = item.get("tags", [])
+        owner_tag_obj: dict[str, Any] = next((t for t in tags if t.get("category_name") == "Owner"), {})
+        backup_tag_obj: dict[str, Any] = next((t for t in tags if t.get("category_name") == "Backup Schedule"), {})
+        email_tag_obj: dict[str, Any] = next(
+            (t for t in tags if t.get("category_name") in ("Owner Email", "OwnerEmail")), {}
+        )
 
         # Parse attributes
         attributes = item.get("attributes", {})
-        
+
         # Robust extraction for Owner Email
         owner_email = (
-            attributes.get("Owner Email") or 
-            attributes.get("OwnerEmail") or 
-            attributes.get("owner_email") or
-            email_tag_obj.get("name") or
-            ""
+            attributes.get("Owner Email")
+            or attributes.get("OwnerEmail")
+            or attributes.get("owner_email")
+            or email_tag_obj.get("name")
+            or ""
         )
 
         # Robust extraction for Last Backup
         last_backup = (
-            attributes.get("Last Dell PowerProtect Backup") or
-            attributes.get("Last Backup") or
-            attributes.get("LastBackup") or
-            attributes.get("backup_date") or
-            ""
+            attributes.get("Last Dell PowerProtect Backup")
+            or attributes.get("Last Backup")
+            or attributes.get("LastBackup")
+            or attributes.get("backup_date")
+            or ""
         )
 
         vm_normalized = {
@@ -91,14 +97,12 @@ def get_vms_list(vms_info, exclude_patterns: list[str] | None = None):
             "owner_email": owner_email,
             "owner_tag": owner_tag_obj.get("name", ""),
             "owner_description": owner_tag_obj.get("description", ""),
-            "allocated": {
-                "cpu": item.get("num_cpu", 0),
-                "memory": item.get("memory_mb", 0)
-            }
+            "allocated": {"cpu": item.get("num_cpu", 0), "memory": item.get("memory_mb", 0)},
         }
         normalized_vms.append(vm_normalized)
 
     return normalized_vms
+
 
 if __name__ == "__main__":
     try:
@@ -106,10 +110,10 @@ if __name__ == "__main__":
         input_data = json.load(sys.stdin)
         fields = input_data.get("fields", {})
         args = input_data.get("args", {})
-        
+
         vms_info = fields.get("vms_info_raw", {})
         exclude_patterns = args.get("exclude_patterns", [])
-        
+
         result = get_vms_list(vms_info, exclude_patterns=exclude_patterns)
         print(json.dumps(result))
     except Exception as e:

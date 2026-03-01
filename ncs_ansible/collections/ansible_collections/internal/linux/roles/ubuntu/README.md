@@ -16,7 +16,7 @@ Applies system hardening and maintenance tasks.
 
 ### `stig`
 Performs STIG compliance evaluation.
-- **Handoff:** Emits JSON results to `.artifacts/` via the `stig_xml` callback.
+- **Handoff:** Emits STIG telemetry via `ansible.builtin.set_stats` and `ncs_collector`.
 
 ### `passwords`
 Manages user passwords and aging policies.

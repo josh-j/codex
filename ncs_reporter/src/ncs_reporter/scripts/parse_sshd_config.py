@@ -8,7 +8,7 @@ stdin  — JSON: {"fields": {"sshd_lines": [...]}, "args": {}}
 stdout — JSON object: {"PermitRootLogin": "no", "PasswordAuthentication": "yes", ...}
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import re
@@ -21,7 +21,7 @@ def main() -> None:
     payload = json.load(sys.stdin)
     fields = payload.get("fields", {})
 
-    lines: list = fields.get("sshd_lines") or []
+    lines: list[Any] = fields.get("sshd_lines") or []
     result: dict[str, str] = {}
 
     for line in lines:

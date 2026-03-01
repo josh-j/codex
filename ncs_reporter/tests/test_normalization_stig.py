@@ -110,7 +110,11 @@ class TestNormalizeStig:
         assert len(result.full_audit) == 1
 
     def test_alert_detail_contains_rule_info(self):
-        raw = {"data": [{"id": "V-001", "title": "SSH Rule", "status": "open", "severity": "CAT_I", "checktext": "Verify SSH"}]}
+        raw = {
+            "data": [
+                {"id": "V-001", "title": "SSH Rule", "status": "open", "severity": "CAT_I", "checktext": "Verify SSH"}
+            ]
+        }
         result = normalize_stig(raw, stig_target_type="vm")
         assert len(result.alerts) == 1
         alert = result.alerts[0]

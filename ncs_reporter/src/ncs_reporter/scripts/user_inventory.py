@@ -18,7 +18,7 @@ stdout — JSON list of user dicts:
          password_age_days == -1 means no shadow entry / locked
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import sys
@@ -28,8 +28,8 @@ def main() -> None:
     payload = json.load(sys.stdin)
     fields = payload.get("fields", {})
 
-    getent_passwd: dict = fields.get("getent_passwd") or {}
-    shadow_lines: list = fields.get("shadow_lines") or []
+    getent_passwd: dict[str, Any] = fields.get("getent_passwd") or {}
+    shadow_lines: list[Any] = fields.get("shadow_lines") or []
     epoch_seconds: int = int(fields.get("epoch_seconds") or 0)
     epoch_days = epoch_seconds // 86400
 
@@ -53,14 +53,16 @@ def main() -> None:
         info = list(info) if isinstance(info, list) else []
         last_change = shadow_map.get(str(user), 0)
         password_age_days = (epoch_days - last_change) if last_change > 0 else -1
-        result.append({
-            "name": str(user),
-            "uid": info[1] if len(info) > 1 else "",
-            "gid": info[2] if len(info) > 2 else "",
-            "home": info[4] if len(info) > 4 else "",
-            "shell": info[5] if len(info) > 5 else "",
-            "password_age_days": password_age_days,
-        })
+        result.append(
+            {
+                "name": str(user),
+                "uid": info[1] if len(info) > 1 else "",
+                "gid": info[2] if len(info) > 2 else "",
+                "home": info[4] if len(info) > 4 else "",
+                "shell": info[5] if len(info) > 5 else "",
+                "password_age_days": password_age_days,
+            }
+        )
 
     print(json.dumps(result))
 

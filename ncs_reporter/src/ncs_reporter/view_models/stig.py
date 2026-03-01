@@ -1,5 +1,6 @@
 """STIG reporting view-model builders."""
 
+from collections.abc import Mapping
 from typing import Any
 
 from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
@@ -123,11 +124,11 @@ def _summarize_stig_findings(findings: Any) -> dict[str, dict[str, int]]:
         sev = str((f or {}).get("severity") or "INFO").upper()
         status = str((f or {}).get("status") or "unknown")
         out["findings"]["total"] += 1
-        
+
         if status not in out["by_status"]:
             status = "unknown"
         out["by_status"][status] += 1
-        
+
         if status == "open":
             if sev in ("CRITICAL", "HIGH"):
                 out["findings"]["critical"] += 1
@@ -149,7 +150,7 @@ def build_stig_host_view(
     report_stamp: str | None = None,
     report_date: str | None = None,
     report_id: str | None = None,
-    nav: dict[str, str] | None = None,
+    nav: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     stig_payload = dict(stig_payload or {})
     platform_name = platform or _infer_stig_platform(audit_type, stig_payload)
@@ -173,13 +174,13 @@ def build_stig_host_view(
         key=lambda f: (
             _status_order.get(str(f.get("status") or "").lower(), 3),
             _sev_order.get(str(f.get("severity") or "").lower(), 3),
-            str(f.get("rule_id") or "")
+            str(f.get("rule_id") or ""),
         )
     )
 
     # Build nav tree information
     nav_with_tree = {**nav} if nav else {}
-    
+
     # Sibling STIG audits for the same host (e.g. if a host has both ESXi and VM STIGs)
     siblings = []
     if host_bundle:
@@ -188,19 +189,16 @@ def build_stig_host_view(
                 # Determine target type for the link
                 p = host_bundle[k]
                 t_type = _infer_stig_target_type(k, p)
-                siblings.append({
-                    "name": f"{t_type.upper()} STIG",
-                    "report": f"{hostname}_stig_{t_type}.html"
-                })
+                siblings.append({"name": f"{t_type.upper()} STIG", "report": f"{hostname}_stig_{t_type}.html"})
     siblings.sort(key=lambda x: x["name"])
     nav_with_tree["tree_siblings"] = siblings
 
     # Global fleets dropdown
     if hosts_data:
         current_plt_dir = hosts_data.get(hostname)
-        depth = len(current_plt_dir.split('/')) + 1 if current_plt_dir else 3
-        back_to_root = "../" * (depth + 1) # back to site root
-        
+        depth = len(current_plt_dir.split("/")) + 1 if current_plt_dir else 3
+        back_to_root = "../" * (depth + 1)  # back to site root
+
         fleets = []
         p_dirs = sorted(list(set(hosts_data.values())))
         for plt_dir in p_dirs:
@@ -211,20 +209,16 @@ def build_stig_host_view(
                 label = "Linux"
                 schema_name = "linux"
             else:
-                label = plt_dir.split('/')[-1].capitalize()
-                schema_name = plt_dir.split('/')[-1]
-            
-            fleets.append({
-                "name": label, 
-                "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"
-            })
-        
-        fleets.append({
-            "name": "STIG",
-            "report": f"{back_to_root}stig_fleet_report.html"
-        })
+                label = plt_dir.split("/")[-1].capitalize()
+                schema_name = plt_dir.split("/")[-1]
+
+            fleets.append(
+                {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+            )
+
+        fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
         nav_with_tree["tree_fleets"] = fleets
-    
+
     return {
         "meta": build_meta(report_stamp, report_date, report_id),
         "nav": nav_with_tree,
@@ -251,7 +245,7 @@ def build_stig_fleet_view(
     report_stamp: str | None = None,
     report_date: str | None = None,
     report_id: str | None = None,
-    nav: dict[str, str] | None = None,
+    nav: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     rows = []
     top_index: dict[str, dict[str, Any]] = {}
@@ -363,7 +357,7 @@ def build_stig_fleet_view(
         key=lambda x: (
             -int(x["affected_hosts"]),
             _sev_order.get(str(x.get("severity") or "").lower(), 3),
-            str(x["rule_id"])
+            str(x["rule_id"]),
         )
     )
     rows.sort(key=lambda x: (str(x["platform"]), str(x["host"]), str(x["audit_type"])))
@@ -380,7 +374,7 @@ def build_stig_fleet_view(
     for p_key in ["linux", "vmware", "windows"]:
         if by_platform.get(p_key, {}).get("hosts", 0) > 0:
             tree_fleets.append({"name": p_config[p_key]["label"], "report": p_config[p_key]["link"]})
-    
+
     # Add STIG fleet
     tree_fleets.append({"name": "STIG", "report": "stig_fleet_report.html"})
     nav_with_tree["tree_fleets"] = tree_fleets

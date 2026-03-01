@@ -22,7 +22,7 @@ The clusters_info field stored in raw_vcenter is an Ansible loop result:
   }
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import sys
@@ -34,7 +34,7 @@ def main() -> None:
     args = payload.get("args", {})
 
     metric = str(args.get("metric", "cluster_count"))
-    results: list = fields.get("clusters_info_results", [])
+    results: list[Any] = fields.get("clusters_info_results", [])
 
     cluster_count = 0
     esxi_host_count = 0

@@ -18,6 +18,7 @@ src/ncs_reporter.egg-info/requires.txt
 src/ncs_reporter.egg-info/top_level.txt
 src/ncs_reporter/models/__init__.py
 src/ncs_reporter/models/base.py
+src/ncs_reporter/models/platforms_config.py
 src/ncs_reporter/models/report_schema.py
 src/ncs_reporter/models/stig.py
 src/ncs_reporter/normalization/__init__.py

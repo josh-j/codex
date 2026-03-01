@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ncs_reporter.models.report_schema import (
@@ -14,7 +15,13 @@ from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, status_badge_meta
 
 
-def _render_widget(widget: Any, fields: dict[str, Any], alerts: list[dict[str, Any]], hosts_data: dict[str, Any] | None = None, current_platform_dir: str | None = None) -> dict[str, Any]:
+def _render_widget(
+    widget: Any,
+    fields: dict[str, Any],
+    alerts: list[dict[str, Any]],
+    hosts_data: dict[str, Any] | None = None,
+    current_platform_dir: str | None = None,
+) -> dict[str, Any]:
     """Render a single schema widget into a template-ready dict."""
     if isinstance(widget, KeyValueWidget):
         rows = []
@@ -54,7 +61,7 @@ def _render_widget(widget: Any, fields: dict[str, Any], alerts: list[dict[str, A
                         # link_val is the hostname, hosts_data[link_val] is the platform directory
                         target_platform = hosts_data[link_val]
                         # Calculate steps back to 'platform' root
-                        depth = len(current_platform_dir.split('/')) + 1 if current_platform_dir else 2
+                        depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
                         back_to_root = "../" * (depth + 1)
                         link = f"{back_to_root}platform/{target_platform}/{link_val}/health_report.html"
 
@@ -69,11 +76,7 @@ def _render_widget(widget: Any, fields: dict[str, Any], alerts: list[dict[str, A
                 else:
                     rendered_value = value
 
-                rendered_cells.append({
-                    "value": rendered_value,
-                    "badge": col.badge,
-                    "link": link
-                })
+                rendered_cells.append({"value": rendered_value, "badge": col.badge, "link": link})
             table_rows.append(rendered_cells)
         return {
             "id": widget.id,
@@ -96,7 +99,7 @@ def build_generic_node_view(
     report_stamp: str | None = None,
     report_date: str | None = None,
     report_id: str | None = None,
-    nav: dict[str, str] | None = None,
+    nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single host report."""
@@ -105,35 +108,35 @@ def build_generic_node_view(
     alerts = normalized["alerts"]
     # Sort alerts by severity (CRITICAL first)
     alerts.sort(key=lambda a: (a.get("severity") != "CRITICAL", a.get("category", ""), a.get("message", "")))
-    
+
     health = normalized["health"]
     summary = normalized["summary"]
 
     # siblings in the same platform (as indexed in hosts_data)
     current_plt_dir = hosts_data.get(hostname) if hosts_data else None
-    widgets_rendered = [_render_widget(w, fields, alerts, hosts_data=hosts_data, current_platform_dir=current_plt_dir) for w in schema.widgets]
+    widgets_rendered = [
+        _render_widget(w, fields, alerts, hosts_data=hosts_data, current_platform_dir=current_plt_dir)
+        for w in schema.widgets
+    ]
 
     # Build nav tree information if possible
     nav_with_tree = {**nav} if nav else {}
     if hosts_data and hostname in hosts_data:
         current_plt_dir = hosts_data[hostname]
-        depth = len(current_plt_dir.split('/')) + 1
+        depth = len(current_plt_dir.split("/")) + 1
         back_to_root = "../" * (depth + 1)
-        
+
         siblings = []
         for h, plt_dir in hosts_data.items():
             if plt_dir == current_plt_dir:
-                siblings.append({
-                    "name": h, 
-                    "report": f"../{h}/health_report.html" if h != hostname else "#"
-                })
+                siblings.append({"name": h, "report": f"../{h}/health_report.html" if h != hostname else "#"})
         siblings.sort(key=lambda x: x["name"])
         nav_with_tree["tree_siblings"] = siblings
 
         # fleets
         fleets = []
         p_dirs = sorted(list(set(hosts_data.values())))
-        
+
         for plt_dir in p_dirs:
             # Map directory/internal names to labels and schema names
             if "vcenter" in plt_dir:
@@ -143,19 +146,15 @@ def build_generic_node_view(
                 label = "Linux"
                 schema_name = "linux"
             else:
-                label = plt_dir.split('/')[-1].capitalize()
-                schema_name = plt_dir.split('/')[-1]
-            
-            fleets.append({
-                "name": label, 
-                "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"
-            })
-        
+                label = plt_dir.split("/")[-1].capitalize()
+                schema_name = plt_dir.split("/")[-1]
+
+            fleets.append(
+                {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+            )
+
         # Add STIG fleet
-        fleets.append({
-            "name": "STIG",
-            "report": f"{back_to_root}stig_fleet_report.html"
-        })
+        fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
         nav_with_tree["tree_fleets"] = fleets
 
     return {
@@ -183,7 +182,7 @@ def build_generic_fleet_view(
     report_stamp: str | None = None,
     report_date: str | None = None,
     report_id: str | None = None,
-    nav: dict[str, str] | None = None,
+    nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a fleet-level report."""
@@ -220,7 +219,7 @@ def build_generic_fleet_view(
         # Add quick access for schema-driven columns
         for col in schema.fleet_columns:
             row[f"col_{col.field}"] = fields.get(col.field, "")
-        
+
         host_rows.append(row)
 
     host_rows.sort(key=lambda r: r["hostname"])
@@ -242,11 +241,9 @@ def build_generic_fleet_view(
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
             }
-        _host_groups[host]["alerts"].append({
-            "severity": alert["severity"],
-            "message": alert.get("message", ""),
-            "category": alert.get("category", "")
-        })
+        _host_groups[host]["alerts"].append(
+            {"severity": alert["severity"], "message": alert.get("message", ""), "category": alert.get("category", "")}
+        )
 
     alert_groups = [_host_groups[h] for h in _host_order]
     totals = _count_alerts(queued_alerts)
@@ -257,9 +254,9 @@ def build_generic_fleet_view(
         # fleets
         current_plt_dir = hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if aggregated_hosts else None
         if current_plt_dir:
-            depth = len(current_plt_dir.split('/'))
+            depth = len(current_plt_dir.split("/"))
             back_to_root = "../" * (depth + 1)
-            
+
             fleets = []
             p_dirs = sorted(list(set(hosts_data.values())))
             for plt_dir in p_dirs:
@@ -270,19 +267,15 @@ def build_generic_fleet_view(
                     label = "Linux"
                     schema_name = "linux"
                 else:
-                    label = plt_dir.split('/')[-1].capitalize()
-                    schema_name = plt_dir.split('/')[-1]
-                
-                fleets.append({
-                    "name": label, 
-                    "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"
-                })
-            
+                    label = plt_dir.split("/")[-1].capitalize()
+                    schema_name = plt_dir.split("/")[-1]
+
+                fleets.append(
+                    {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                )
+
             # Add STIG fleet
-            fleets.append({
-                "name": "STIG",
-                "report": f"{back_to_root}stig_fleet_report.html"
-            })
+            fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
             nav_with_tree["tree_fleets"] = fleets
 
     return {

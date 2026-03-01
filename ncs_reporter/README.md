@@ -17,7 +17,14 @@ Stage 2 — Report (ncs-reporter)
 ## Setup
 
 ```bash
-cd tools/ncs_reporter
+cd ncs_reporter
+uv sync --dev   # installs runtime + dev deps (including pytest)
+```
+
+Alternative (existing venv flow):
+
+```bash
+cd ncs_reporter
 just setup        # creates .venv, installs ncs-reporter in editable mode
 ```
 

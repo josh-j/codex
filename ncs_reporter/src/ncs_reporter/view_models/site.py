@@ -10,6 +10,7 @@ from .common import (
     build_meta,
     extract_platform_alerts,
     safe_list,
+    to_int,
 )
 from .stig import build_stig_fleet_view
 
@@ -69,18 +70,22 @@ def build_site_dashboard_view(
         linux_audit = _get_schema_audit(bundle, "linux")
         if linux_audit:
             linux_alerts = list(linux_audit.get("alerts") or [])
-            all_alerts.extend(extract_platform_alerts(linux_alerts, hostname, "schema_linux", "System", platform_label="Linux"))
+            all_alerts.extend(
+                extract_platform_alerts(linux_alerts, hostname, "schema_linux", "System", platform_label="Linux")
+            )
             if not linux_alerts:
                 l_status = _status_from_health(linux_audit.get("health"))
                 if l_status in ("CRITICAL", "WARNING"):
-                    all_alerts.append({
-                        "severity": l_status,
-                        "host": hostname,
-                        "audit_type": "schema_linux",
-                        "platform": "Linux",
-                        "category": "System",
-                        "message": f"System reported {l_status} health status.",
-                    })
+                    all_alerts.append(
+                        {
+                            "severity": l_status,
+                            "host": hostname,
+                            "audit_type": "schema_linux",
+                            "platform": "Linux",
+                            "category": "System",
+                            "message": f"System reported {l_status} health status.",
+                        }
+                    )
 
         # 2. VMware vCenter
         vmware_audit = _get_schema_audit(bundle, "vcenter")
@@ -89,22 +94,30 @@ def build_site_dashboard_view(
             vm_counts = _count_alerts(vm_alerts_list)
             status = _status_from_health(vmware_audit.get("health"))
             if vm_counts["total"] or vmware_audit.get("health"):
-                compute_nodes.append({
-                    "host": hostname,
-                    "status": {"raw": status},
-                    "clusters": [],
-                    "links": {"fleet_dashboard": "platform/vmware/vcenter/vcenter_fleet_report.html"},
-                })
-                all_alerts.extend(extract_platform_alerts(vm_alerts_list, hostname, "schema_vcenter", "VMware", platform_label="VMware vCenter"))
-                if not vm_alerts_list and status in ("CRITICAL", "WARNING"):
-                    all_alerts.append({
-                        "severity": status,
+                compute_nodes.append(
+                    {
                         "host": hostname,
-                        "audit_type": "schema_vcenter",
-                        "platform": "VMware vCenter",
-                        "category": "VMware",
-                        "message": f"vCenter reported {status} health status.",
-                    })
+                        "status": {"raw": status},
+                        "clusters": [],
+                        "links": {"fleet_dashboard": "platform/vmware/vcenter/vcenter_fleet_report.html"},
+                    }
+                )
+                all_alerts.extend(
+                    extract_platform_alerts(
+                        vm_alerts_list, hostname, "schema_vcenter", "VMware", platform_label="VMware vCenter"
+                    )
+                )
+                if not vm_alerts_list and status in ("CRITICAL", "WARNING"):
+                    all_alerts.append(
+                        {
+                            "severity": status,
+                            "host": hostname,
+                            "audit_type": "schema_vcenter",
+                            "platform": "VMware vCenter",
+                            "category": "VMware",
+                            "message": f"vCenter reported {status} health status.",
+                        }
+                    )
             # Accumulate fleet-wide infra totals from schema fields sub-dict
             _f = vmware_audit.get("fields") or {}
             infra["vcenter_count"] += 1
@@ -121,16 +134,20 @@ def build_site_dashboard_view(
         if windows_audit:
             win_alerts = list(windows_audit.get("alerts") or [])
             win_status = _status_from_health(windows_audit.get("health"))
-            all_alerts.extend(extract_platform_alerts(win_alerts, hostname, "schema_windows", "Windows", platform_label="Windows"))
+            all_alerts.extend(
+                extract_platform_alerts(win_alerts, hostname, "schema_windows", "Windows", platform_label="Windows")
+            )
             if not win_alerts and win_status in ("CRITICAL", "WARNING"):
-                all_alerts.append({
-                    "severity": win_status,
-                    "host": hostname,
-                    "audit_type": "schema_windows",
-                    "platform": "Windows",
-                    "category": "Windows",
-                    "message": f"Windows reported {win_status} health status.",
-                })
+                all_alerts.append(
+                    {
+                        "severity": win_status,
+                        "host": hostname,
+                        "audit_type": "schema_windows",
+                        "platform": "Windows",
+                        "category": "Windows",
+                        "message": f"Windows reported {win_status} health status.",
+                    }
+                )
 
     linux_status = aggregate_platform_status(all_alerts, "schema_linux")
     vmware_status = aggregate_platform_status(all_alerts, "schema_vcenter")
@@ -149,45 +166,44 @@ def build_site_dashboard_view(
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
             }
-        _host_groups[host]["alerts"].append({"severity": alert["severity"], "message": alert.get("message", ""), "category": alert.get("category", "")})
+        _host_groups[host]["alerts"].append(
+            {"severity": alert["severity"], "message": alert.get("message", ""), "category": alert.get("category", "")}
+        )
     alert_groups = [_host_groups[h] for h in _host_order]
 
-    linux_count = len(list(groups.get("ubuntu_servers") or []))
-    vmware_count = len(list(groups.get("vcenters") or []))
-    windows_count = len(list(groups.get("windows_servers") or groups.get("windows") or []))
+    linux_count = to_int(len(list(groups.get("ubuntu_servers") or [])))
+    vmware_count = to_int(len(list(groups.get("vcenters") or [])))
+    windows_count = to_int(len(list(groups.get("windows_servers") or groups.get("windows") or [])))
     totals = _count_alerts(all_alerts)
 
-    l_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_linux"])
-    v_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_vcenter"])
-    w_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_windows"])
-
-    platforms_meta = {
-        "linux": {
-            "name": "Linux",
-            "report": "platform/linux/ubuntu/linux_fleet_report.html",
-        },
-        "vmware": {
-            "name": "VMware",
-            "report": "platform/vmware/vcenter/vcenter_fleet_report.html",
-        },
-        "windows": {
-            "name": "Windows",
-            "report": "platform/windows/windows_fleet_report.html",
-        },
-    }
+    l_counts: dict[str, int] = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_linux"])
+    v_counts: dict[str, int] = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_vcenter"])
+    w_counts: dict[str, int] = _count_alerts([a for a in all_alerts if a.get("audit_type") == "schema_windows"])
 
     # Only include platforms that actually have assets in tree
     tree_fleets = []
     _p_order = ["linux", "vmware", "windows"]
     p_config = {
-        "linux": {"asset_count": linux_count, "label": "Linux", "link": "platform/linux/ubuntu/linux_fleet_report.html"},
-        "vmware": {"asset_count": vmware_count, "label": "VMware", "link": "platform/vmware/vcenter/vcenter_fleet_report.html"},
-        "windows": {"asset_count": windows_count, "label": "Windows", "link": "platform/windows/windows_fleet_report.html"},
+        "linux": {
+            "asset_count": to_int(linux_count),
+            "label": "Linux",
+            "link": "platform/linux/ubuntu/linux_fleet_report.html",
+        },
+        "vmware": {
+            "asset_count": to_int(vmware_count),
+            "label": "VMware",
+            "link": "platform/vmware/vcenter/vcenter_fleet_report.html",
+        },
+        "windows": {
+            "asset_count": to_int(windows_count),
+            "label": "Windows",
+            "link": "platform/windows/windows_fleet_report.html",
+        },
     }
-    
+
     for p_key in _p_order:
         cfg = p_config[p_key]
-        if cfg["asset_count"] > 0:
+        if to_int(cfg["asset_count"]) > 0:
             tree_fleets.append({"name": cfg["label"], "report": cfg["link"]})
 
     # Add STIG fleet to navigation
@@ -199,7 +215,7 @@ def build_site_dashboard_view(
         "nav": {"tree_fleets": tree_fleets},
         "alerts": sorted(all_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))),
         "alert_groups": alert_groups,
-# ... (rest of the dict)
+        # ... (rest of the dict)
         "infra": infra,
         "platforms": {
             "linux": {

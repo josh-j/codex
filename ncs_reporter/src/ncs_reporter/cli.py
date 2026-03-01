@@ -26,27 +26,6 @@ from .view_models.stig import build_stig_fleet_view, build_stig_host_view
 logger = logging.getLogger("ncs_reporter")
 
 
-def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, str]:
-    """Normalize a status/severity string into badge presentation metadata."""
-    raw = str(status or "unknown").strip()
-    upper = raw.upper()
-
-    ok_values = {"OK", "HEALTHY", "GREEN", "PASS", "RUNNING"}
-    fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED"}
-
-    if upper in ok_values:
-        css_class = "status-ok"
-        label = upper if preserve_label else "OK"
-    elif upper in fail_values:
-        css_class = "status-fail"
-        label = upper if preserve_label else "CRITICAL"
-    else:
-        css_class = "status-warn"
-        label = upper if preserve_label and upper else "WARN"
-
-    return {"css_class": css_class, "label": label}
-
-
 # ---------------------------------------------------------------------------
 # Schema-driven platform renderer
 # ---------------------------------------------------------------------------
@@ -61,12 +40,121 @@ _PLATFORM_SCHEMA_NAMES: dict[str, list[str]] = {
 _USER_PLATFORMS_CONFIG = Path.home() / ".config" / "ncs_reporter" / "platforms.yaml"
 
 _BUILTIN_PLATFORMS: list[dict[str, Any]] = [
-    {"input_dir": "linux/ubuntu",   "report_dir": "linux/ubuntu",   "platform": "linux",   "state_file": "linux_fleet_state.yaml",   "render": True},
-    {"input_dir": "vmware/vcenter", "report_dir": "vmware/vcenter", "platform": "vmware",  "state_file": "vmware_fleet_state.yaml",  "render": True},
-    {"input_dir": "vmware/esxi",    "report_dir": "vmware/esxi",    "platform": "vmware",  "state_file": "esxi_fleet_state.yaml",    "render": False},
-    {"input_dir": "vmware/vm",      "report_dir": "vmware/vm",      "platform": "vmware",  "state_file": "vm_fleet_state.yaml",      "render": False},
-    {"input_dir": "windows",        "report_dir": "windows",        "platform": "windows", "state_file": "windows_fleet_state.yaml", "render": True},
+    {
+        "input_dir": "linux/ubuntu",
+        "report_dir": "linux/ubuntu",
+        "platform": "linux",
+        "state_file": "linux_fleet_state.yaml",
+        "render": True,
+    },
+    {
+        "input_dir": "vmware/vcenter",
+        "report_dir": "vmware/vcenter",
+        "platform": "vmware",
+        "state_file": "vmware_fleet_state.yaml",
+        "render": True,
+    },
+    {
+        "input_dir": "vmware/esxi",
+        "report_dir": "vmware/esxi",
+        "platform": "vmware",
+        "state_file": "esxi_fleet_state.yaml",
+        "render": False,
+    },
+    {
+        "input_dir": "vmware/vm",
+        "report_dir": "vmware/vm",
+        "platform": "vmware",
+        "state_file": "vm_fleet_state.yaml",
+        "render": False,
+    },
+    {
+        "input_dir": "windows",
+        "report_dir": "windows",
+        "platform": "windows",
+        "state_file": "windows_fleet_state.yaml",
+        "render": True,
+    },
 ]
+
+
+def _resolve_path_from_config_root(config_dir: str | None, value: str) -> str:
+    p = Path(value)
+    if p.is_absolute() or not config_dir:
+        return str(p)
+    return str(Path(config_dir) / p)
+
+
+def _load_config_yaml(config_dir: str | None) -> dict[str, Any]:
+    """Load optional config.yaml from config_dir."""
+    if not config_dir:
+        return {}
+    cfg_path = Path(config_dir) / "config.yaml"
+    if not cfg_path.is_file():
+        return {}
+    with open(cfg_path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    if not isinstance(raw, dict):
+        raise click.ClickException(f"Invalid config file: {cfg_path} (expected YAML mapping)")
+    return raw
+
+
+def _unique_preserve_order(values: list[str]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for v in values:
+        if v in seen:
+            continue
+        seen.add(v)
+        out.append(v)
+    return tuple(out)
+
+
+def _resolve_config_dir(
+    config_dir: str | None,
+    extra_schema_dir: tuple[str, ...],
+    platforms_config: str | None,
+    config_yaml: dict[str, Any],
+) -> tuple[tuple[str, ...], str | None]:
+    """Resolve schema dirs + platforms config from a single config directory.
+
+    Supported layouts:
+      1. <config_dir>/platforms.yaml + <config_dir>/*.yaml schemas
+      2. <config_dir>/schemas/platforms.yaml + <config_dir>/schemas/*.yaml schemas
+    """
+    resolved_schema_dirs = list(extra_schema_dir)
+    resolved_platforms = platforms_config
+
+    if not config_dir:
+        return _unique_preserve_order(resolved_schema_dirs), resolved_platforms
+
+    root = Path(config_dir)
+
+    cfg_extra = config_yaml.get("extra_schema_dirs")
+    if isinstance(cfg_extra, list):
+        for entry in cfg_extra:
+            if isinstance(entry, str) and entry.strip():
+                resolved_schema_dirs.append(_resolve_path_from_config_root(config_dir, entry.strip()))
+
+    if resolved_platforms is None:
+        cfg_platforms = config_yaml.get("platforms_config")
+        if isinstance(cfg_platforms, str) and cfg_platforms.strip():
+            resolved_platforms = _resolve_path_from_config_root(config_dir, cfg_platforms.strip())
+
+    # Support both root-level schemas and nested schemas/ layout.
+    schema_candidates = [root / "schemas", root]
+    for cand in schema_candidates:
+        if cand.is_dir():
+            resolved_schema_dirs.append(str(cand))
+
+    if resolved_platforms is None:
+        platform_candidates = [root / "platforms.yaml", root / "schemas" / "platforms.yaml"]
+        for cand in platform_candidates:
+            if cand.is_file():
+                resolved_platforms = str(cand)
+                break
+
+    return _unique_preserve_order(resolved_schema_dirs), resolved_platforms
 
 
 def _load_platforms(explicit_path: str | None) -> list[dict[str, Any]]:
@@ -107,9 +195,9 @@ def _render_platform(
     (e.g. ``"../../site_health_report.html"`` when inside ``platform/{name}/``).
     When provided, navigation breadcrumbs are generated for all reports.
     """
-    from .normalization.schema_driven import normalize_from_schema
-
-    schema_names = schema_names_override if schema_names_override is not None else _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+    schema_names = (
+        schema_names_override if schema_names_override is not None else _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+    )
     all_schemas = discover_schemas(extra_dirs=extra_schema_dirs)
 
     schema = None
@@ -131,8 +219,8 @@ def _render_platform(
     if report_dir:
         # If report_dir is linux/ubuntu, we want 'linux'
         # If report_dir is vmware/vcenter, we want 'vcenter'
-        schema_name_for_file = report_dir.split('/')[-1]
-        if schema_name_for_file == "ubuntu": 
+        schema_name_for_file = report_dir.split("/")[-1]
+        if schema_name_for_file == "ubuntu":
             schema_name_for_file = "linux"
 
     fleet_filename = f"{schema_name_for_file}_fleet_report.html"
@@ -169,7 +257,13 @@ def _render_platform(
 # STIG renderer (shared between `stig` and `all` commands)
 # ---------------------------------------------------------------------------
 
-def _render_stig(hosts_data: dict[str, Any], output_path: Path, common_vars: dict[str, str], global_inventory_index: dict[str, str] | None = None) -> None:
+
+def _render_stig(
+    hosts_data: dict[str, Any],
+    output_path: Path,
+    common_vars: dict[str, str],
+    global_inventory_index: dict[str, str] | None = None,
+) -> None:
     """Render per-host STIG reports and fleet overview."""
     env = get_jinja_env()
     stamp = common_vars["report_stamp"]
@@ -207,16 +301,9 @@ def _render_stig(hosts_data: dict[str, Any], output_path: Path, common_vars: dic
                 "site_report": f"{depth_prefix}site_health_report.html",
             }
             host_view = build_stig_host_view(
-                hostname, 
-                audit_type, 
-                payload, 
-                nav=host_nav, 
-                host_bundle=bundle,
-                hosts_data=global_inventory_index,
-                **kw
+                hostname, audit_type, payload, nav=host_nav, host_bundle=bundle, hosts_data=global_inventory_index, **kw
             )
-            target = host_view["target"]
-            # platform = target.get("platform", "unknown") # already used for path
+            # platform = host_view["target"].get("platform", "unknown") # already used for path
 
             host_dir = output_path / platform_dir / hostname
             host_dir.mkdir(parents=True, exist_ok=True)
@@ -239,6 +326,7 @@ def _render_stig(hosts_data: dict[str, Any], output_path: Path, common_vars: dic
 # CLI group
 # ---------------------------------------------------------------------------
 
+
 @click.group()
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Enable debug-level logging.")
 def main(verbose: bool) -> None:
@@ -255,6 +343,7 @@ def main(verbose: bool) -> None:
 # Platform commands (linux, vmware, windows)
 # ---------------------------------------------------------------------------
 
+
 def _platform_command(platform: str, input_file: str, output_dir: str, report_stamp: str | None) -> None:
     """Shared implementation for single-platform report commands."""
     output_path = Path(output_dir)
@@ -266,7 +355,9 @@ def _platform_command(platform: str, input_file: str, output_dir: str, report_st
 
 
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state."
+)
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
 def linux(input_file: str, output_dir: str, report_stamp: str | None) -> None:
@@ -275,7 +366,9 @@ def linux(input_file: str, output_dir: str, report_stamp: str | None) -> None:
 
 
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state."
+)
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
 def vmware(input_file: str, output_dir: str, report_stamp: str | None) -> None:
@@ -284,7 +377,9 @@ def vmware(input_file: str, output_dir: str, report_stamp: str | None) -> None:
 
 
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state."
+)
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
 def windows(input_file: str, output_dir: str, report_stamp: str | None) -> None:
@@ -296,8 +391,16 @@ def windows(input_file: str, output_dir: str, report_stamp: str | None) -> None:
 # site command
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to global aggregated YAML state.")
+@click.option(
+    "--input",
+    "-i",
+    "input_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to global aggregated YAML state.",
+)
 @click.option("--groups", "-g", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
@@ -334,8 +437,11 @@ def site(input_file: str, groups_file: str | None, output_dir: str, report_stamp
 # collect command
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--report-dir", required=True, type=click.Path(exists=True), help="Directory containing host YAML reports.")
+@click.option(
+    "--report-dir", required=True, type=click.Path(exists=True), help="Directory containing host YAML reports."
+)
 @click.option("--output", required=True, type=click.Path(), help="Path to write aggregated YAML.")
 @click.option("--filter", "audit_filter", help="Optional audit type filter.")
 def collect(report_dir: str, output: str, audit_filter: str | None) -> None:
@@ -353,24 +459,56 @@ def collect(report_dir: str, output: str, audit_filter: str | None) -> None:
 # all command
 # ---------------------------------------------------------------------------
 
+
 @main.command("all")
 @click.option("--platform-root", required=True, type=click.Path(exists=True), help="Root directory for platforms.")
 @click.option("--reports-root", required=True, type=click.Path(), help="Root directory for generated HTML reports.")
 @click.option("--groups", "groups_file", type=click.Path(exists=True), help="Path to inventory groups JSON/YAML.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
-@click.option("--extra-schema-dir", "-S", multiple=True, metavar="DIR", help="Additional schema directory to search (repeatable).")
-@click.option("--platforms-config", "-P", default=None, type=click.Path(exists=True),
-              help="Path to platforms.yaml config. Defaults: ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml, built-in.")
-def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, report_stamp: str | None, extra_schema_dir: tuple[str, ...], platforms_config: str | None) -> None:
+@click.option(
+    "--config-dir",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help="Single config directory containing schemas and platforms.yaml.",
+)
+@click.option(
+    "--extra-schema-dir", "-S", multiple=True, metavar="DIR", help="Additional schema directory to search (repeatable)."
+)
+@click.option(
+    "--platforms-config",
+    "-P",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to platforms.yaml config. Defaults: ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml, built-in.",
+)
+def all_cmd(
+    platform_root: str,
+    reports_root: str,
+    groups_file: str | None,
+    report_stamp: str | None,
+    config_dir: str | None,
+    extra_schema_dir: tuple[str, ...],
+    platforms_config: str | None,
+) -> None:
     """Run full aggregation and rendering for all platforms and the site dashboard."""
     p_root = Path(platform_root)
     r_root = Path(reports_root)
-    common_vars = generate_timestamps(report_stamp)
+    r_root.mkdir(parents=True, exist_ok=True)
+    config_yaml = _load_config_yaml(config_dir)
+    effective_stamp = report_stamp or (
+        str(config_yaml.get("report_stamp")) if config_yaml.get("report_stamp") is not None else None
+    )
+    effective_groups_file = groups_file
+    if effective_groups_file is None:
+        cfg_groups = config_yaml.get("groups_file")
+        if isinstance(cfg_groups, str) and cfg_groups.strip():
+            effective_groups_file = _resolve_path_from_config_root(config_dir, cfg_groups.strip())
+    common_vars = generate_timestamps(effective_stamp)
 
-    platforms = _load_platforms(platforms_config)
+    _extra_dirs, _platforms_cfg = _resolve_config_dir(config_dir, extra_schema_dir, platforms_config, config_yaml)
+    platforms = _load_platforms(_platforms_cfg)
 
     # Append custom schemas (platforms not already in the loaded config)
-    _extra_dirs = tuple(extra_schema_dir)
     _configured_platforms = {p["platform"] for p in platforms}
     _custom_platforms_seen: set[str] = set()
     for _schema in discover_schemas(extra_dirs=_extra_dirs).values():
@@ -381,14 +519,16 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
             logger.debug("Custom schema '%s' (platform=%s): no data dir, skipping", _schema.name, _schema.platform)
             continue
         _custom_platforms_seen.add(_schema.platform)
-        platforms.append({
-            "input_dir": _schema.platform,
-            "report_dir": _schema.platform,
-            "platform": _schema.platform,
-            "state_file": f"{_schema.platform}_fleet_state.yaml",
-            "render": True,
-            "schema_name": _schema.name,
-        })
+        platforms.append(
+            {
+                "input_dir": _schema.platform,
+                "report_dir": _schema.platform,
+                "platform": _schema.platform,
+                "state_file": f"{_schema.platform}_fleet_state.yaml",
+                "render": True,
+                "schema_name": _schema.name,
+            }
+        )
 
     # 1. Platform Aggregation (sequential — I/O bound directory walk)
     render_tasks: list[dict[str, Any]] = []
@@ -437,7 +577,9 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
                     t["hosts_data"],
                     t["output_path"],
                     common_vars,
-                    site_report_relative="../../../site_health_report.html" if "/" in str(t["report_dir"]) else "../../site_health_report.html",
+                    site_report_relative="../../../site_health_report.html"
+                    if "/" in str(t["report_dir"])
+                    else "../../site_health_report.html",
                     global_inventory_index=global_inventory_index,
                     report_dir=t["report_dir"],
                     extra_schema_dirs=t.get("extra_schema_dirs", ()),
@@ -462,9 +604,9 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
         write_output(global_data, str(all_hosts_state))
 
         groups_data: dict[str, Any] = {}
-        if groups_file:
-            with open(groups_file) as f:
-                groups_data = json.load(f) if groups_file.endswith(".json") else yaml.safe_load(f)
+        if effective_groups_file:
+            with open(effective_groups_file) as f:
+                groups_data = json.load(f) if str(effective_groups_file).endswith(".json") else yaml.safe_load(f)
 
         site_view = build_site_dashboard_view(global_data, inventory_groups=groups_data, **vm_kwargs(common_vars))
         env = get_jinja_env()
@@ -477,7 +619,9 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
 
         # 4. STIG Fleet Rendering
         click.echo("--- Processing STIG Fleet Reports ---")
-        _render_stig(global_data.get("hosts", global_data), r_root, common_vars, global_inventory_index=global_inventory_index)
+        _render_stig(
+            global_data.get("hosts", global_data), r_root, common_vars, global_inventory_index=global_inventory_index
+        )
 
         # 5. CKLB Export
         click.echo("--- Generating CKLB Artifacts ---")
@@ -491,9 +635,19 @@ def all_cmd(platform_root: str, reports_root: str, groups_file: str | None, repo
 # node command
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type.")
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw audit/discovery YAML file.")
+@click.option(
+    "--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type."
+)
+@click.option(
+    "--input",
+    "-i",
+    "input_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to raw audit/discovery YAML file.",
+)
 @click.option("--hostname", "-n", required=True, help="Hostname to use in the report.")
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write the report.")
 def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None:
@@ -530,15 +684,19 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
 # schema command group
 # ---------------------------------------------------------------------------
 
+
 @main.group()
 def schema() -> None:
     """Inspect and validate YAML report schemas."""
 
 
 @schema.command("list")
-def schema_list() -> None:
+@click.option(
+    "--extra-schema-dir", "-S", multiple=True, metavar="DIR", help="Additional schema directory to search (repeatable)."
+)
+def schema_list(extra_schema_dir: tuple[str, ...]) -> None:
     """List all discovered schemas and their source paths."""
-    schemas = discover_schemas()
+    schemas = discover_schemas(extra_dirs=tuple(extra_schema_dir))
     if not schemas:
         click.echo("No schemas found.")
         return
@@ -562,7 +720,9 @@ def schema_validate(schema_file: Path) -> None:
         click.echo(f"INVALID: {exc}", err=True)
         raise SystemExit(1)
 
-    click.echo(f"Schema '{s.name}' loaded OK  ({len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.sections)} sections)")
+    click.echo(
+        f"Schema '{s.name}' loaded OK  ({len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.widgets)} widgets)"
+    )
 
     example = load_example_bundle(s)
     if example is None:
@@ -580,12 +740,81 @@ def schema_validate(schema_file: Path) -> None:
     click.echo(f"OK: all {path_fields} path field(s) resolve against {s.name}.example.yaml")
 
 
+@schema.command("run")
+@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw YAML bundle."
+)
+@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write reports.")
+@click.option("--hostname", "-n", default="host", show_default=True, help="Hostname label for node report.")
+@click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
+@click.option(
+    "--site-report",
+    "site_report_href",
+    default=None,
+    help="Relative path from output-dir to site report (enables site breadcrumb).",
+)
+def schema_run(
+    schema_file: Path,
+    input_file: str,
+    output_dir: str,
+    hostname: str,
+    report_stamp: str | None,
+    site_report_href: str | None,
+) -> None:
+    """Run a single schema-driven report against a raw YAML bundle."""
+    try:
+        s = load_schema_from_file(schema_file)
+    except ValueError as exc:
+        click.echo(f"ERROR: {exc}", err=True)
+        raise SystemExit(1)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    with open(input_file) as f:
+        import yaml as _yaml
+
+        bundle = _yaml.safe_load(f) or {}
+
+    common_vars = generate_timestamps(report_stamp)
+    kw = vm_kwargs(common_vars)
+    env = get_jinja_env()
+
+    fleet_filename = f"{s.name}_fleet_report.html"
+    node_nav: dict[str, str] = {"fleet_report": f"../{fleet_filename}", "fleet_label": f"{s.display_name} Fleet"}
+    fleet_nav: dict[str, str] = {}
+    if site_report_href:
+        fleet_nav["site_report"] = site_report_href
+        node_nav["site_report"] = f"../{site_report_href}"
+
+    # Node report
+    node_view = build_generic_node_view(s, hostname, bundle, nav=node_nav, **kw)
+    node_tpl = env.get_template("generic_node_report.html.j2")
+    content = node_tpl.render(generic_node_view=node_view, **common_vars)
+    host_dir = output_path / hostname
+    host_dir.mkdir(exist_ok=True)
+    write_report(host_dir, "health_report.html", content, common_vars["report_stamp"])
+    click.echo(f"Node report: {host_dir}/health_report.html")
+
+    # Fleet report (single host)
+    fleet_view = build_generic_fleet_view(s, {hostname: bundle}, nav=fleet_nav, **kw)
+    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
+    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
+    write_report(output_path, fleet_filename, content, common_vars["report_stamp"])
+    click.echo(f"Fleet report: {output_path}/{fleet_filename}")
+    click.echo("Done!")
+
+
 # ---------------------------------------------------------------------------
 # stig command
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state."
+)
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for HTML reports.")
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD). Defaults to today.")
 def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
@@ -602,8 +831,11 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
 # cklb command
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state.")
+@click.option(
+    "--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to aggregated YAML state."
+)
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory for CKLB files.")
 @click.option("--skeleton-dir", type=click.Path(exists=True), help="Directory containing CKLB skeleton files.")
 def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
@@ -638,20 +870,10 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
                 click.echo(f"Warning: Skeleton not found for {target_type} at {sk_path}")
                 continue
 
-            # Determine output directory (mirroring report structure)
-            if target_type == "esxi":
-                platform_dir = "platform/vmware/esxi"
-            elif target_type == "vm":
-                platform_dir = "platform/vmware/vm"
-            else:
-                # Currently only esxi and vm have skeleton maps
-                continue
+            ip_addr = str(payload.get("ip_address") or bundle.get("ip_address") or "")
 
-            host_dir = output_path / platform_dir / hostname
-            host_dir.mkdir(parents=True, exist_ok=True)
-
-            dest = host_dir / f"{hostname}_{target_type}.cklb"
-            generate_cklb(hostname, payload.get("full_audit", []), sk_path, dest)
+            dest = output_path / f"{hostname}_{target_type}.cklb"
+            generate_cklb(hostname, payload.get("full_audit", []), sk_path, dest, ip_address=ip_addr)
             click.echo(f"Generated CKLB: {dest}")
 
 
@@ -659,14 +881,21 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
 # stig-apply command
 # ---------------------------------------------------------------------------
 
+
 @main.command("stig-apply")
 @click.argument("artifact", type=click.Path(exists=True, path_type=Path))
-@click.option("--inventory", default="inventory/production/hosts.yaml", show_default=True, help="Ansible inventory path.")
+@click.option(
+    "--inventory", default="inventory/production/hosts.yaml", show_default=True, help="Ansible inventory path."
+)
 @click.option("--limit", required=True, help="Ansible --limit (e.g. vcenter1).")
 @click.option("--esxi-host", required=True, help="ESXi hostname to target (sets esxi_stig_target_hosts).")
-@click.option("--skip-snapshot", is_flag=True, help="Suppress the informational note that ESXi snapshots are not applicable.")
+@click.option(
+    "--skip-snapshot", is_flag=True, help="Suppress the informational note that ESXi snapshots are not applicable."
+)
 @click.option("--post-audit", is_flag=True, help="Reserved: run the ESXi audit after each rule (not yet implemented).")
-@click.option("--extra-vars", "-e", "extra_vars", multiple=True, help="Additional ansible extra-vars (may be repeated).")
+@click.option(
+    "--extra-vars", "-e", "extra_vars", multiple=True, help="Additional ansible extra-vars (may be repeated)."
+)
 @click.option("--dry-run", is_flag=True, help="Print the generated playbook without executing it.")
 def stig_apply(
     artifact: Path,
@@ -696,91 +925,6 @@ def stig_apply(
         extra_vars=extra_vars,
         dry_run=dry_run,
     )
-
-
-# ---------------------------------------------------------------------------
-# schema subcommand group
-# ---------------------------------------------------------------------------
-
-@main.group()
-def schema() -> None:
-    """Manage and run YAML-driven report schemas."""
-
-
-@schema.command("validate")
-@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
-def schema_validate(schema_file: Path) -> None:
-    """Validate a schema YAML file and report any errors."""
-    try:
-        s = load_schema_from_file(schema_file)
-        click.echo(f"OK: schema '{s.name}' is valid (platform={s.platform}, {len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.sections)} sections)")
-    except ValueError as exc:
-        click.echo(f"ERROR: {exc}", err=True)
-        raise SystemExit(1)
-
-
-@schema.command("list")
-@click.option("--extra-schema-dir", "-S", multiple=True, metavar="DIR", help="Additional schema directory to search (repeatable).")
-def schema_list(extra_schema_dir: tuple[str, ...]) -> None:
-    """List all discovered schemas and their source paths."""
-    schemas = discover_schemas(extra_dirs=tuple(extra_schema_dir))
-    if not schemas:
-        click.echo("No schemas discovered.")
-        return
-    for name, s in sorted(schemas.items()):
-        source = getattr(s, "_source_path", "unknown")
-        click.echo(f"  {name:30s}  platform={s.platform:15s}  source={source}")
-
-
-@schema.command("run")
-@click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True), help="Path to raw YAML bundle.")
-@click.option("--output-dir", "-o", required=True, type=click.Path(), help="Directory to write reports.")
-@click.option("--hostname", "-n", default="host", show_default=True, help="Hostname label for node report.")
-@click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
-@click.option("--site-report", "site_report_href", default=None, help="Relative path from output-dir to site report (enables site breadcrumb).")
-def schema_run(schema_file: Path, input_file: str, output_dir: str, hostname: str, report_stamp: str | None, site_report_href: str | None) -> None:
-    """Run a single schema-driven report against a raw YAML bundle."""
-    try:
-        s = load_schema_from_file(schema_file)
-    except ValueError as exc:
-        click.echo(f"ERROR: {exc}", err=True)
-        raise SystemExit(1)
-
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        import yaml as _yaml
-        bundle = _yaml.safe_load(f) or {}
-
-    common_vars = generate_timestamps(report_stamp)
-    kw = vm_kwargs(common_vars)
-    env = get_jinja_env()
-
-    fleet_filename = f"{s.name}_fleet_report.html"
-    node_nav: dict[str, str] = {"fleet_report": f"../{fleet_filename}", "fleet_label": f"{s.display_name} Fleet"}
-    fleet_nav: dict[str, str] = {}
-    if site_report_href:
-        fleet_nav["site_report"] = site_report_href
-        node_nav["site_report"] = f"../{site_report_href}"
-
-    # Node report
-    node_view = build_generic_node_view(s, hostname, bundle, nav=node_nav, **kw)
-    node_tpl = env.get_template("generic_node_report.html.j2")
-    content = node_tpl.render(generic_node_view=node_view, **common_vars)
-    host_dir = output_path / hostname
-    host_dir.mkdir(exist_ok=True)
-    write_report(host_dir, "health_report.html", content, common_vars["report_stamp"])
-    click.echo(f"Node report: {host_dir}/health_report.html")
-
-    # Fleet report (single host)
-    fleet_view = build_generic_fleet_view(s, {hostname: bundle}, nav=fleet_nav, **kw)
-    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
-    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
-    write_report(output_path, fleet_filename, content, common_vars["report_stamp"])
-    click.echo(f"Fleet report: {output_path}/{fleet_filename}")
-    click.echo("Done!")
 
 
 if __name__ == "__main__":

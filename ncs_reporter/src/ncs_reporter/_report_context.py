@@ -20,10 +20,11 @@ _VIEW_MODEL_KEYS = {"report_stamp", "report_date", "report_id"}
 # Cached Jinja environment
 # ---------------------------------------------------------------------------
 
+
 @functools.lru_cache(maxsize=1)
 def get_jinja_env() -> Environment:
     """Return a cached Jinja2 Environment configured for NCS templates."""
-    from .cli import status_badge_meta as _badge  # avoid circular at module level
+    from .view_models.common import status_badge_meta as _badge  # avoid circular
 
     template_dir = Path(__file__).parent / "templates"
     env = Environment(
@@ -39,6 +40,7 @@ def get_jinja_env() -> Environment:
 # ---------------------------------------------------------------------------
 # YAML loading
 # ---------------------------------------------------------------------------
+
 
 def load_hosts_data(input_file: str) -> dict[str, Any]:
     """Load a YAML file and extract the hosts mapping."""
@@ -60,7 +62,8 @@ def load_yaml(input_file: str) -> dict[str, Any]:
 # Timestamps
 # ---------------------------------------------------------------------------
 
-def generate_timestamps(report_stamp: str | None = None) -> dict[str, str]:
+
+def generate_timestamps(report_stamp: str | None = None) -> dict[str, Any]:
     """Build the full set of timestamp strings used by report commands."""
     now = datetime.now(tz=timezone.utc)
     stamp = report_stamp or now.strftime("%Y%m%d")
@@ -76,7 +79,7 @@ def generate_timestamps(report_stamp: str | None = None) -> dict[str, str]:
     }
 
 
-def vm_kwargs(common_vars: dict[str, str]) -> dict[str, str]:
+def vm_kwargs(common_vars: dict[str, Any]) -> dict[str, Any]:
     """Extract only the keys accepted by view-model builder functions."""
     return {k: v for k, v in common_vars.items() if k in _VIEW_MODEL_KEYS}
 
@@ -84,6 +87,7 @@ def vm_kwargs(common_vars: dict[str, str]) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # Report writing
 # ---------------------------------------------------------------------------
+
 
 def write_report(output_path: Path, base_name: str, content: str, stamp: str) -> None:
     """Write a stamped report and a 'latest' (un-stamped) copy."""

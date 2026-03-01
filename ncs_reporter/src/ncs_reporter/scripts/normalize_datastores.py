@@ -36,11 +36,11 @@ def main() -> None:
     for ds in datastores:
         if not isinstance(ds, dict):
             continue
-        
-        # Clone to avoid mutating input if that matters, 
+
+        # Clone to avoid mutating input if that matters,
         # though subprocess stdin/stdout means we have our own copy anyway.
         item = dict(ds)
-        
+
         try:
             capacity_bytes = float(item.get("capacity") or 0)
             free_bytes = float(item.get("freeSpace") or 0)
@@ -52,14 +52,10 @@ def main() -> None:
         gb_factor = 1024 * 1024 * 1024
         capacity_gb = round(capacity_bytes / gb_factor, 2)
         free_gb = round(free_bytes / gb_factor, 2)
-        
+
         # Compute used percentage
         used_bytes = capacity_bytes - free_bytes
-        used_pct = (
-            round((used_bytes / capacity_bytes) * 100.0, 1)
-            if capacity_bytes > 0
-            else 0.0
-        )
+        used_pct = round((used_bytes / capacity_bytes) * 100.0, 1) if capacity_bytes > 0 else 0.0
 
         item["capacity_gb"] = capacity_gb
         item["free_gb"] = free_gb
@@ -73,6 +69,6 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except Exception:
         # Script errors are caught by schema_driven.py and logged
         sys.exit(2)

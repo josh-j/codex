@@ -46,9 +46,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 
 from fixtures.example_data import (
-    make_linux_bundle, make_vcenter_bundle, make_vcenter_site_bundle,
-    make_windows_bundle, ALL_VCENTER_SITES,
-    make_stig_esxi_bundle, make_stig_vm_bundle, make_stig_ubuntu_bundle, make_stig_windows_bundle,
+    make_linux_bundle,
+    make_vcenter_bundle,
+    make_vcenter_site_bundle,
+    make_windows_bundle,
+    ALL_VCENTER_SITES,
+    make_stig_esxi_bundle,
+    make_stig_vm_bundle,
+    make_stig_ubuntu_bundle,
+    make_stig_windows_bundle,
 )
 from ncs_reporter._report_context import generate_timestamps, get_jinja_env, vm_kwargs
 from ncs_reporter.aggregation import load_all_reports, normalize_host_bundle
@@ -62,11 +68,11 @@ PLATFORM_ROOT = OUT_ROOT / "platform"
 #   input_dir  — where ncs_collector writes raw_*.yaml files
 #   report_dir — where ncs-reporter renders HTML reports
 _PLATFORMS = [
-    {"input_dir": "linux/ubuntu",  "report_dir": "linux/ubuntu",  "platform": "linux", "render": True},
+    {"input_dir": "linux/ubuntu", "report_dir": "linux/ubuntu", "platform": "linux", "render": True},
     {"input_dir": "vmware/vcenter", "report_dir": "vmware/vcenter", "platform": "vmware", "render": True},
-    {"input_dir": "vmware/esxi",    "report_dir": "vmware/esxi",    "platform": "vmware", "render": False},
-    {"input_dir": "vmware/vm",      "report_dir": "vmware/vm",      "platform": "vmware", "render": False},
-    {"input_dir": "windows", "report_dir": "windows",       "platform": "windows", "render": True},
+    {"input_dir": "vmware/esxi", "report_dir": "vmware/esxi", "platform": "vmware", "render": False},
+    {"input_dir": "vmware/vm", "report_dir": "vmware/vm", "platform": "vmware", "render": False},
+    {"input_dir": "windows", "report_dir": "windows", "platform": "windows", "render": True},
 ]
 
 _PLATFORM_BY_KEY_PREFIX: dict[str, str] = {
@@ -99,7 +105,7 @@ def _write_raw_yaml(bundle: dict) -> None:
             platform = "vmware/vm"
         elif raw_type == "vcenter":
             platform = "vmware/vcenter"
-            
+
         host_dir = PLATFORM_ROOT / platform / host
         host_dir.mkdir(parents=True, exist_ok=True)
         raw_path = host_dir / f"raw_{raw_type}.yaml"
@@ -108,19 +114,22 @@ def _write_raw_yaml(bundle: dict) -> None:
 
         if "stig" in bundle_key:
             import json
+
             data = envelope.get("data", [])
             stig_xml_rows = []
             for item in data:
-                stig_xml_rows.append({
-                    "id": item.get("id"),
-                    "rule_id": item.get("id"),
-                    "name": host,
-                    "status": item.get("status"),
-                    "title": item.get("title"),
-                    "severity": item.get("severity"),
-                    "fixtext": "",
-                    "checktext": "",
-                })
+                stig_xml_rows.append(
+                    {
+                        "id": item.get("id"),
+                        "rule_id": item.get("id"),
+                        "name": host,
+                        "status": item.get("status"),
+                        "title": item.get("title"),
+                        "severity": item.get("severity"),
+                        "fixtext": "",
+                        "checktext": "",
+                    }
+                )
             json_path = host_dir / f"xccdf-results_{host}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(stig_xml_rows, f, indent=2)
@@ -167,7 +176,7 @@ def main() -> None:
     for p in _PLATFORMS:
         if not p.get("render", True):
             continue
-            
+
         p_dir = PLATFORM_ROOT / p["input_dir"]
         if not p_dir.is_dir():
             continue
@@ -182,7 +191,9 @@ def main() -> None:
             p_hosts,
             output_dir,
             common_vars,
-            site_report_relative="../../../site_health_report.html" if "/" in p["report_dir"] else "../../site_health_report.html",
+            site_report_relative="../../../site_health_report.html"
+            if "/" in p["report_dir"]
+            else "../../site_health_report.html",
             global_inventory_index=global_inventory_index,
         )
 
@@ -223,30 +234,44 @@ def main() -> None:
     import json
     from ncs_reporter.normalization.stig import normalize_stig
     from ncs_reporter.cklb_export import generate_cklb
+
     s_dir = Path(__file__).parent.parent / "src/ncs_reporter/cklb_skeletons"
     skeleton_map = {
         "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
         "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
     }
-    
+
     for json_file in PLATFORM_ROOT.glob("**/xccdf-results_*.json"):
         host = json_file.stem.split("_")[-1]
-        t_type = "esxi"
-        p_dir = "vmware/esxi"
-        if "ubuntu" in str(json_file): 
+
+        # Determine platform directory from filename/path hints
+        if "ubuntu" in str(json_file):
             t_type = "ubuntu"
             p_dir = "linux/ubuntu"
-        elif "windows" in str(json_file): 
+        elif "windows" in str(json_file):
             t_type = "windows"
             p_dir = "windows"
-        elif "web-prod-01" in str(json_file) and "vm" in str(json_file): # hack for example data
+        elif "esxi" in str(json_file):
+            t_type = "esxi"
+            p_dir = "vmware/esxi"
+        elif "vm" in str(json_file):
             t_type = "vm"
             p_dir = "vmware/vm"
-        
+        else:
+            # Fallback for generic STIG artifacts
+            t_type = ""
+            p_dir = "unknown"
+
         raw_list = json.loads(json_file.read_text())
         model = normalize_stig(raw_list, stig_target_type=t_type)
-        
-        skel = skeleton_map.get(t_type)
+
+        # Use the detected/normalized type for CKLB lookup
+        final_type = t_type or ""
+        # If we couldn't guess from filename, we might have it in alerts metadata now
+        if not final_type and model.alerts:
+            final_type = model.alerts[0].get("detail", {}).get("target_type", "")
+
+        skel = skeleton_map.get(final_type)
         if skel:
             sk_path = s_dir / skel
             if sk_path.exists():
@@ -254,7 +279,9 @@ def main() -> None:
                 out_dir = OUT_ROOT / "platform" / p_dir / host
                 out_dir.mkdir(parents=True, exist_ok=True)
                 out_path = out_dir / f"{host}_{t_type}.cklb"
-                generate_cklb(host, model.full_audit, sk_path, out_path)
+                # Best effort IP extraction for example reports
+                ip_addr = model.host_data.get("ip_address") if hasattr(model, "host_data") else ""
+                generate_cklb(host, model.full_audit, sk_path, out_path, ip_address=str(ip_addr or ""))
 
     # ------------------------------------------------------------------
     # Summary

@@ -19,7 +19,7 @@ stdout — JSON list of enriched mount dicts, each with added keys:
          total_gb, free_gb, used_pct
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import sys
@@ -30,10 +30,8 @@ def main() -> None:
     fields = payload.get("fields", {})
     args = payload.get("args", {})
 
-    mounts: list = fields.get("mounts", [])
-    exclude_device_patterns: list[str] = args.get(
-        "exclude_device_patterns", ["loop", "tmpfs", "devtmpfs", "squashfs"]
-    )
+    mounts: list[Any] = fields.get("mounts", [])
+    exclude_device_patterns: list[str] = args.get("exclude_device_patterns", ["loop", "tmpfs", "devtmpfs", "squashfs"])
     exclude_fstypes: list[str] = args.get(
         "exclude_fstypes", ["tmpfs", "devtmpfs", "squashfs", "overlay", "proc", "sysfs", "devpts"]
     )
@@ -57,20 +55,18 @@ def main() -> None:
             size_total = 0.0
             size_available = 0.0
 
-        used_pct = (
-            round((size_total - size_available) / size_total * 100.0, 1)
-            if size_total > 0
-            else 0.0
-        )
+        used_pct = round((size_total - size_available) / size_total * 100.0, 1) if size_total > 0 else 0.0
         total_gb = round(size_total / 1_073_741_824.0, 1)
         free_gb = round(size_available / 1_073_741_824.0, 1)
 
-        result.append({
-            **mount,
-            "total_gb": total_gb,
-            "free_gb": free_gb,
-            "used_pct": used_pct,
-        })
+        result.append(
+            {
+                **mount,
+                "total_gb": total_gb,
+                "free_gb": free_gb,
+                "used_pct": used_pct,
+            }
+        )
 
     print(json.dumps(result))
 

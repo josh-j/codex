@@ -38,6 +38,7 @@ from ncs_reporter.normalization.stig import normalize_stig
 # Rules use group_id = V-XXXXXX, matching stig_xml's id/rule_id field.
 # ---------------------------------------------------------------------------
 
+
 def _make_skeleton(*group_ids: str) -> dict[str, Any]:
     """Build a minimal CKLB skeleton with rules keyed by group_id (V-number)."""
     rules = [
@@ -77,6 +78,7 @@ def _make_skeleton(*group_ids: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Sample stig_xml JSON output (as _dump_json produces it)
 # ---------------------------------------------------------------------------
+
 
 def _stig_xml_row(
     rule_num: str,
@@ -170,15 +172,14 @@ class TestGenerateCklbFromStigXmlOutput(unittest.TestCase):
 
     def setUp(self) -> None:
         import tempfile
+
         self._tmpdir = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmpdir.name)
 
     def tearDown(self) -> None:
         self._tmpdir.cleanup()
 
-    def _run(
-        self, rows: list[dict[str, Any]], *group_ids: str
-    ) -> dict[str, Any]:
+    def _run(self, rows: list[dict[str, Any]], *group_ids: str) -> dict[str, Any]:
         """Write skeleton, run generate_cklb, return parsed CKLB."""
         skel_path = self.tmp / "skeleton.json"
         skel_path.write_text(json.dumps(_make_skeleton(*group_ids)))
@@ -246,6 +247,7 @@ class TestStigXmlToCklbPipeline(unittest.TestCase):
 
     def setUp(self) -> None:
         import tempfile
+
         self._tmpdir = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmpdir.name)
 
@@ -327,11 +329,11 @@ class TestStigXmlToCklbPipeline(unittest.TestCase):
     def test_large_audit_all_statuses_roundtrip(self) -> None:
         """A realistic mixed-result audit roundtrips all status types correctly."""
         rule_data = [
-            ("256376", "failed"),   # non-compliant → open
-            ("256378", "pass"),     # compliant → not_a_finding
-            ("256379", "pass"),     # compliant → not_a_finding
-            ("256380", "fixed"),    # remediated → not_a_finding
-            ("256381", "na"),       # not applicable → not_reviewed
+            ("256376", "failed"),  # non-compliant → open
+            ("256378", "pass"),  # compliant → not_a_finding
+            ("256379", "pass"),  # compliant → not_a_finding
+            ("256380", "fixed"),  # remediated → not_a_finding
+            ("256381", "na"),  # not applicable → not_reviewed
         ]
         rows = [_stig_xml_row(num, status) for num, status in rule_data]
         group_ids = [f"V-{num}" for num, _ in rule_data]

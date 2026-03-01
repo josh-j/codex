@@ -63,6 +63,8 @@ def _scan_dir(directory: Path, result: dict[str, ReportSchema]) -> None:
     for path in sorted(directory.iterdir()):
         if path.suffix not in {".yaml", ".yml"}:
             continue
+        if path.stem in {"platforms", "config"}:
+            continue  # platforms.yaml/config.yaml are CLI config files, not report schemas
         if path.stem.endswith(".example"):
             continue  # Skip example bundles — they are not schemas
         schema = _load_schema_file(path)
@@ -178,8 +180,5 @@ def validate_schema_paths(schema: ReportSchema, example_bundle: dict[str, Any]) 
             continue
         value = resolve_field(spec.path, example_bundle)
         if value is None:
-            errors[name] = (
-                f"field '{name}': path '{spec.path}' → None "
-                f"(check path segments against the example file)"
-            )
+            errors[name] = f"field '{name}': path '{spec.path}' → None (check path segments against the example file)"
     return errors

@@ -118,12 +118,12 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         self.reports_root = root / "reports"
 
         # --- Ubuntu: linux-01 ---
-        linux_dir = self.platform_root / "ubuntu" / "linux-01"
+        linux_dir = self.platform_root / "linux" / "ubuntu" / "linux-01"
         linux_dir.mkdir(parents=True)
         (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
 
         # --- VMware: vc-01 (with ESXi STIG data) ---
-        vmware_dir = self.platform_root / "vmware" / "vc-01"
+        vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
         vmware_dir.mkdir(parents=True)
         (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw("vc-01")))
         (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw("vc-01")))
@@ -143,13 +143,20 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run_all(self) -> str:
-        result = self.runner.invoke(main, [
-            "all",
-            "--platform-root", str(self.platform_root),
-            "--reports-root", str(self.reports_root),
-            "--groups", str(self.groups_path),
-            "--report-stamp", STAMP,
-        ])
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(self.groups_path),
+                "--report-stamp",
+                STAMP,
+            ],
+        )
         self.assertEqual(result.exit_code, 0, f"CLI failed:\n{result.output}")
         return result.output
 
@@ -175,26 +182,22 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_platform_fleet_reports_created(self):
         self._run_all()
-        self.assertTrue(
-            (self.reports_root / "platform" / "ubuntu" / "linux_fleet_report.html").exists()
-        )
-        self.assertTrue(
-            (self.reports_root / "platform" / "vcenter" / "vcenter_fleet_report.html").exists()
-        )
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter" / "vcenter_fleet_report.html").exists())
 
     def test_stamped_fleet_reports_created(self):
         self._run_all()
         self.assertTrue(
-            (self.reports_root / "platform" / "ubuntu" / f"linux_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "linux" / "ubuntu" / f"linux_fleet_report_{STAMP}.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vcenter" / f"vcenter_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "vmware" / "vcenter" / f"vcenter_fleet_report_{STAMP}.html").exists()
         )
 
     def test_node_reports_under_platform_subdirectory(self):
         self._run_all()
-        linux_node = self.reports_root / "platform" / "ubuntu" / "linux-01" / "health_report.html"
-        vmware_node = self.reports_root / "platform" / "vcenter" / "vc-01" / "health_report.html"
+        linux_node = self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
+        vmware_node = self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html"
         self.assertTrue(linux_node.exists(), f"Linux node report not found: {linux_node}")
         self.assertTrue(vmware_node.exists(), f"VMware node report not found: {vmware_node}")
 
@@ -205,7 +208,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_stig_host_report_under_platform_vmware(self):
         self._run_all()
-        host_report = self.reports_root / "platform" / "vcenter" / "vc-01" / "vc-01_stig_esxi.html"
+        host_report = self.reports_root / "platform" / "vmware" / "esxi" / "vc-01" / "vc-01_stig_esxi.html"
         self.assertTrue(host_report.exists(), f"STIG host report not found: {host_report}")
         content = host_report.read_text()
         self.assertIn("vc-01", content)
@@ -219,8 +222,8 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_platform_state_files_created(self):
         self._run_all()
-        self.assertTrue((self.platform_root / "ubuntu" / "linux_fleet_state.yaml").exists())
-        self.assertTrue((self.platform_root / "vmware" / "vmware_fleet_state.yaml").exists())
+        self.assertTrue((self.platform_root / "linux" / "ubuntu" / "linux_fleet_state.yaml").exists())
+        self.assertTrue((self.platform_root / "vmware" / "vcenter" / "vmware_fleet_state.yaml").exists())
         self.assertTrue((self.platform_root / "all_hosts_state.yaml").exists())
 
     def test_no_windows_directories_created_when_no_windows_data(self):
@@ -244,20 +247,14 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         self.reports_root = root / "reports"
 
         # Same hostname on both Ubuntu and VMware
-        linux_dir = self.platform_root / "ubuntu" / self.SHARED_HOSTNAME
+        linux_dir = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME
         linux_dir.mkdir(parents=True)
-        (linux_dir / "raw_discovery.yaml").write_text(
-            yaml.dump(_linux_raw(self.SHARED_HOSTNAME))
-        )
+        (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
 
-        vmware_dir = self.platform_root / "vmware" / self.SHARED_HOSTNAME
+        vmware_dir = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME
         vmware_dir.mkdir(parents=True)
-        (vmware_dir / "raw_vcenter.yaml").write_text(
-            yaml.dump(_vmware_raw(self.SHARED_HOSTNAME))
-        )
-        (vmware_dir / "raw_stig_esxi.yaml").write_text(
-            yaml.dump(_esxi_stig_raw(self.SHARED_HOSTNAME))
-        )
+        (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw(self.SHARED_HOSTNAME)))
+        (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw(self.SHARED_HOSTNAME)))
 
         groups = {
             "all": [self.SHARED_HOSTNAME],
@@ -273,19 +270,26 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run_all(self) -> None:
-        result = self.runner.invoke(main, [
-            "all",
-            "--platform-root", str(self.platform_root),
-            "--reports-root", str(self.reports_root),
-            "--groups", str(self.groups_path),
-            "--report-stamp", STAMP,
-        ])
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(self.groups_path),
+                "--report-stamp",
+                STAMP,
+            ],
+        )
         self.assertEqual(result.exit_code, 0, f"CLI failed:\n{result.output}")
 
     def test_data_files_in_separate_platform_directories(self):
-        """Raw data files under ubuntu/ and vmware/ never share a directory."""
-        linux_data = self.platform_root / "ubuntu" / self.SHARED_HOSTNAME / "raw_discovery.yaml"
-        vmware_data = self.platform_root / "vmware" / self.SHARED_HOSTNAME / "raw_vcenter.yaml"
+        """Raw data files under linux/ubuntu/ and vmware/vcenter/ never share a directory."""
+        linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "raw_discovery.yaml"
+        vmware_data = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "raw_vcenter.yaml"
         # Both exist before running — they live in separate paths
         self.assertTrue(linux_data.exists())
         self.assertTrue(vmware_data.exists())
@@ -294,11 +298,9 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
     def test_node_reports_do_not_collide(self):
         """Node reports for the same hostname land in separate platform trees."""
         self._run_all()
-        linux_report = (
-            self.reports_root / "platform" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
-        )
+        linux_report = self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
         vmware_report = (
-            self.reports_root / "platform" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
         )
         self.assertTrue(linux_report.exists(), f"Linux node report missing: {linux_report}")
         self.assertTrue(vmware_report.exists(), f"VMware node report missing: {vmware_report}")
@@ -309,30 +311,30 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         VMware-specific content — they are not the same file."""
         self._run_all()
         linux_content = (
-            self.reports_root / "platform" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
         ).read_text()
         vmware_content = (
-            self.reports_root / "platform" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "health_report.html"
         ).read_text()
         # The two files must differ — same hostname but different platform data
         self.assertNotEqual(linux_content, vmware_content)
         # Linux report should reference filesystem/disk concepts
         self.assertTrue(
             any(term in linux_content for term in ["Ubuntu", "disk", "mount", "ext4", "/"]),
-            "Linux node report should contain Linux-specific content"
+            "Linux node report should contain Linux-specific content",
         )
         # VMware report should reference vCenter/appliance concepts
         self.assertTrue(
             any(term in vmware_content for term in ["vCenter", "VMware", "datacenter", "Datacenter", "appliance"]),
-            "VMware node report should contain VMware-specific content"
+            "VMware node report should contain VMware-specific content",
         )
 
     def test_state_files_are_platform_scoped(self):
         """Each platform writes its own state file; same-named hosts in different
         platforms do not clobber each other's state."""
         self._run_all()
-        linux_state_path = self.platform_root / "ubuntu" / "linux_fleet_state.yaml"
-        vmware_state_path = self.platform_root / "vmware" / "vmware_fleet_state.yaml"
+        linux_state_path = self.platform_root / "linux" / "ubuntu" / "linux_fleet_state.yaml"
+        vmware_state_path = self.platform_root / "vmware" / "vcenter" / "vmware_fleet_state.yaml"
         self.assertTrue(linux_state_path.exists())
         self.assertTrue(vmware_state_path.exists())
 
@@ -351,25 +353,29 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         self.assertNotEqual(linux_host, vmware_host)
 
     def test_stig_host_report_scoped_to_vmware_platform(self):
-        """STIG reports for ESXi land under platform/vmware/, not platform/ubuntu/."""
+        """STIG reports for ESXi land under platform/vmware/esxi/, not platform/linux/ubuntu/."""
         self._run_all()
         stig_report = (
             self.reports_root
-            / "platform" / "vcenter"
+            / "platform"
+            / "vmware"
+            / "esxi"
             / self.SHARED_HOSTNAME
             / f"{self.SHARED_HOSTNAME}_stig_esxi.html"
         )
         wrong_path = (
             self.reports_root
-            / "platform" / "ubuntu"
+            / "platform"
+            / "linux"
+            / "ubuntu"
             / self.SHARED_HOSTNAME
             / f"{self.SHARED_HOSTNAME}_stig_esxi.html"
         )
         self.assertTrue(stig_report.exists(), f"STIG report missing at expected path: {stig_report}")
-        self.assertFalse(wrong_path.exists(), "STIG report must not appear under ubuntu platform")
+        self.assertFalse(wrong_path.exists(), "STIG report must not appear under linux/ubuntu platform")
 
     def test_cklb_artifact_uses_hostname_only_no_platform_ambiguity(self):
-        """CKLB is keyed by hostname+target_type, not platform, so it is unambiguous."""
+        """CKLB output is a flat directory — hostname+target_type is unambiguous without nesting."""
         self._run_all()
         cklb_path = self.reports_root / "cklb" / f"{self.SHARED_HOSTNAME}_esxi.cklb"
         self.assertTrue(cklb_path.exists(), f"CKLB not found: {cklb_path}")

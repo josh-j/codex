@@ -14,6 +14,7 @@ from ncs_reporter.cli import get_jinja_env, main, status_badge_meta
 # Minimal fixture data that satisfies view-model builders + Jinja templates
 # ---------------------------------------------------------------------------
 
+
 def _linux_host_bundle():
     return {
         "system": {
@@ -97,8 +98,8 @@ def _write_aggregated_yaml(path, hosts_data):
 # status_badge_meta
 # ---------------------------------------------------------------------------
 
-class StatusBadgeMetaTests(unittest.TestCase):
 
+class StatusBadgeMetaTests(unittest.TestCase):
     def test_ok_values(self):
         for val in ("OK", "HEALTHY", "GREEN", "PASS", "RUNNING"):
             result = status_badge_meta(val)
@@ -135,8 +136,8 @@ class StatusBadgeMetaTests(unittest.TestCase):
 # get_jinja_env
 # ---------------------------------------------------------------------------
 
-class GetJinjaEnvTests(unittest.TestCase):
 
+class GetJinjaEnvTests(unittest.TestCase):
     def test_returns_environment_with_status_filter(self):
         env = get_jinja_env()
         self.assertIn("status_badge_meta", env.filters)
@@ -157,8 +158,8 @@ class GetJinjaEnvTests(unittest.TestCase):
 # collect command
 # ---------------------------------------------------------------------------
 
-class CollectCommandTests(unittest.TestCase):
 
+class CollectCommandTests(unittest.TestCase):
     def test_collect_aggregates_host_reports(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -170,7 +171,9 @@ class CollectCommandTests(unittest.TestCase):
 
             output_path = os.path.join(tmpdir, "output", "fleet_state.yaml")
 
-            result = runner.invoke(main, ["collect", "--report-dir", os.path.join(tmpdir, "reports"), "--output", output_path])
+            result = runner.invoke(
+                main, ["collect", "--report-dir", os.path.join(tmpdir, "reports"), "--output", output_path]
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertIn("Success", result.output)
             self.assertTrue(os.path.exists(output_path))
@@ -190,15 +193,25 @@ class CollectCommandTests(unittest.TestCase):
                 yaml.dump({"data": {"audit_type": "audit", "checked": True}}, f)
 
             output_path = os.path.join(tmpdir, "fleet.yaml")
-            result = runner.invoke(main, [
-                "collect", "--report-dir", os.path.join(tmpdir, "reports"),
-                "--output", output_path, "--filter", "discovery",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "collect",
+                    "--report-dir",
+                    os.path.join(tmpdir, "reports"),
+                    "--output",
+                    output_path,
+                    "--filter",
+                    "discovery",
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
     def test_collect_invalid_dir(self):
         runner = CliRunner()
-        result = runner.invoke(main, ["collect", "--report-dir", "/tmp/nonexistent_ncs_test", "--output", "/tmp/out.yaml"])
+        result = runner.invoke(
+            main, ["collect", "--report-dir", "/tmp/nonexistent_ncs_test", "--output", "/tmp/out.yaml"]
+        )
         # Click should reject non-existent path
         self.assertNotEqual(result.exit_code, 0)
 
@@ -207,8 +220,8 @@ class CollectCommandTests(unittest.TestCase):
 # linux command
 # ---------------------------------------------------------------------------
 
-class LinuxCommandTests(unittest.TestCase):
 
+class LinuxCommandTests(unittest.TestCase):
     def test_linux_generates_reports(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -232,8 +245,8 @@ class LinuxCommandTests(unittest.TestCase):
 # vmware command
 # ---------------------------------------------------------------------------
 
-class VmwareCommandTests(unittest.TestCase):
 
+class VmwareCommandTests(unittest.TestCase):
     def test_vmware_generates_reports(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -252,8 +265,8 @@ class VmwareCommandTests(unittest.TestCase):
 # windows command
 # ---------------------------------------------------------------------------
 
-class WindowsCommandTests(unittest.TestCase):
 
+class WindowsCommandTests(unittest.TestCase):
     def test_windows_generates_reports(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -268,13 +281,12 @@ class WindowsCommandTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(output_dir, "win01", "health_report.html")))
 
 
-
 # ---------------------------------------------------------------------------
 # site command
 # ---------------------------------------------------------------------------
 
-class SiteCommandTests(unittest.TestCase):
 
+class SiteCommandTests(unittest.TestCase):
     def test_site_generates_dashboard(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -291,9 +303,18 @@ class SiteCommandTests(unittest.TestCase):
                 yaml.dump(all_data, f, default_flow_style=False)
 
             output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(main, [
-                "site", "-i", input_path, "-o", output_dir, "--report-stamp", "20250101",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "site",
+                    "-i",
+                    input_path,
+                    "-o",
+                    output_dir,
+                    "--report-stamp",
+                    "20250101",
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertTrue(os.path.exists(os.path.join(output_dir, "site_health_report.html")))
 
@@ -310,9 +331,18 @@ class SiteCommandTests(unittest.TestCase):
                 yaml.dump({"linux": {"hosts": ["host1"]}}, f)
 
             output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(main, [
-                "site", "-i", input_path, "-g", groups_path, "-o", output_dir,
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "site",
+                    "-i",
+                    input_path,
+                    "-g",
+                    groups_path,
+                    "-o",
+                    output_dir,
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
 
@@ -320,8 +350,8 @@ class SiteCommandTests(unittest.TestCase):
 # node command
 # ---------------------------------------------------------------------------
 
-class NodeCommandTests(unittest.TestCase):
 
+class NodeCommandTests(unittest.TestCase):
     def test_node_linux(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -330,9 +360,20 @@ class NodeCommandTests(unittest.TestCase):
                 yaml.dump(_linux_host_bundle(), f)
 
             output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(main, [
-                "node", "-p", "linux", "-i", input_path, "-n", "host1", "-o", output_dir,
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "node",
+                    "-p",
+                    "linux",
+                    "-i",
+                    input_path,
+                    "-n",
+                    "host1",
+                    "-o",
+                    output_dir,
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1_health_report.html")))
 
@@ -344,9 +385,20 @@ class NodeCommandTests(unittest.TestCase):
                 yaml.dump(_vmware_host_bundle(), f)
 
             output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(main, [
-                "node", "-p", "vmware", "-i", input_path, "-n", "vc01", "-o", output_dir,
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "node",
+                    "-p",
+                    "vmware",
+                    "-i",
+                    input_path,
+                    "-n",
+                    "vc01",
+                    "-o",
+                    output_dir,
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01_health_report.html")))
 
@@ -358,17 +410,39 @@ class NodeCommandTests(unittest.TestCase):
                 yaml.dump(_windows_host_bundle(), f)
 
             output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(main, [
-                "node", "-p", "windows", "-i", input_path, "-n", "win01", "-o", output_dir,
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "node",
+                    "-p",
+                    "windows",
+                    "-i",
+                    input_path,
+                    "-n",
+                    "win01",
+                    "-o",
+                    output_dir,
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertTrue(os.path.exists(os.path.join(output_dir, "win01_health_report.html")))
 
     def test_node_invalid_platform_rejected(self):
         runner = CliRunner()
-        result = runner.invoke(main, [
-            "node", "-p", "solaris", "-i", "/dev/null", "-n", "x", "-o", "/tmp",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "node",
+                "-p",
+                "solaris",
+                "-i",
+                "/dev/null",
+                "-n",
+                "x",
+                "-o",
+                "/tmp",
+            ],
+        )
         self.assertNotEqual(result.exit_code, 0)
 
 
@@ -376,8 +450,8 @@ class NodeCommandTests(unittest.TestCase):
 # Report content validation
 # ---------------------------------------------------------------------------
 
-class ReportContentTests(unittest.TestCase):
 
+class ReportContentTests(unittest.TestCase):
     def test_linux_report_contains_hostname(self):
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -412,8 +486,8 @@ class ReportContentTests(unittest.TestCase):
 # all command --platforms-config
 # ---------------------------------------------------------------------------
 
-class AllCommandPlatformsConfigTests(unittest.TestCase):
 
+class AllCommandPlatformsConfigTests(unittest.TestCase):
     def test_platforms_config_overrides_builtin(self):
         """--platforms-config with a single linux entry should be accepted and used."""
         runner = CliRunner()
@@ -443,13 +517,20 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             with open(platforms_cfg, "w") as f:
                 yaml.dump(config_data, f)
 
-            result = runner.invoke(main, [
-                "all",
-                "--platform-root", platform_root,
-                "--reports-root", reports_root,
-                "--platforms-config", platforms_cfg,
-                "--report-stamp", "20260101",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "all",
+                    "--platform-root",
+                    platform_root,
+                    "--reports-root",
+                    reports_root,
+                    "--platforms-config",
+                    platforms_cfg,
+                    "--report-stamp",
+                    "20260101",
+                ],
+            )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             # Fleet report for linux should be generated
             fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
@@ -468,16 +549,118 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             with open(bad_cfg, "w") as f:
                 f.write("not_platforms_key: []\n")
 
-            result = runner.invoke(main, [
-                "--verbose",
-                "all",
-                "--platform-root", platform_root,
-                "--reports-root", reports_root,
-                "--platforms-config", bad_cfg,
-                "--report-stamp", "20260101",
-            ])
+            result = runner.invoke(
+                main,
+                [
+                    "--verbose",
+                    "all",
+                    "--platform-root",
+                    platform_root,
+                    "--reports-root",
+                    reports_root,
+                    "--platforms-config",
+                    bad_cfg,
+                    "--report-stamp",
+                    "20260101",
+                ],
+            )
             # Should not crash (exit 0 even if no data found)
             self.assertEqual(result.exit_code, 0, msg=result.output)
+
+    def test_config_dir_loads_platforms_and_schemas(self):
+        """--config-dir should resolve platforms.yaml + schema dir from one directory."""
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            platform_root = os.path.join(tmpdir, "platform_root")
+            reports_root = os.path.join(tmpdir, "reports")
+            host_dir = os.path.join(platform_root, "linux", "ubuntu", "host1")
+            os.makedirs(host_dir, exist_ok=True)
+            with open(os.path.join(host_dir, "raw_system.yaml"), "w") as f:
+                yaml.dump(_linux_host_bundle(), f)
+
+            config_dir = os.path.join(tmpdir, "cfg")
+            schemas_dir = os.path.join(config_dir, "schemas")
+            os.makedirs(schemas_dir, exist_ok=True)
+            with open(os.path.join(schemas_dir, "platforms.yaml"), "w") as f:
+                yaml.dump(
+                    {
+                        "platforms": [
+                            {
+                                "input_dir": "linux/ubuntu",
+                                "report_dir": "linux/ubuntu",
+                                "platform": "linux",
+                                "state_file": "linux_fleet_state.yaml",
+                                "render": True,
+                            }
+                        ]
+                    },
+                    f,
+                )
+
+            result = runner.invoke(
+                main,
+                [
+                    "all",
+                    "--platform-root",
+                    platform_root,
+                    "--reports-root",
+                    reports_root,
+                    "--config-dir",
+                    config_dir,
+                    "--report-stamp",
+                    "20260101",
+                ],
+            )
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
+            self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
+
+    def test_config_yaml_in_config_dir_is_applied(self):
+        """config.yaml under --config-dir should provide defaults for platforms config."""
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            platform_root = os.path.join(tmpdir, "platform_root")
+            reports_root = os.path.join(tmpdir, "reports")
+            host_dir = os.path.join(platform_root, "linux", "ubuntu", "host1")
+            os.makedirs(host_dir, exist_ok=True)
+            with open(os.path.join(host_dir, "raw_system.yaml"), "w") as f:
+                yaml.dump(_linux_host_bundle(), f)
+
+            config_dir = os.path.join(tmpdir, "cfg")
+            os.makedirs(config_dir, exist_ok=True)
+            with open(os.path.join(config_dir, "platforms.yaml"), "w") as f:
+                yaml.dump(
+                    {
+                        "platforms": [
+                            {
+                                "input_dir": "linux/ubuntu",
+                                "report_dir": "linux/ubuntu",
+                                "platform": "linux",
+                                "state_file": "linux_fleet_state.yaml",
+                                "render": True,
+                            }
+                        ]
+                    },
+                    f,
+                )
+            with open(os.path.join(config_dir, "config.yaml"), "w") as f:
+                yaml.dump({"platforms_config": "platforms.yaml", "extra_schema_dirs": ["."]}, f)
+
+            result = runner.invoke(
+                main,
+                [
+                    "all",
+                    "--platform-root",
+                    platform_root,
+                    "--reports-root",
+                    reports_root,
+                    "--config-dir",
+                    config_dir,
+                ],
+            )
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
+            self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
 
 if __name__ == "__main__":

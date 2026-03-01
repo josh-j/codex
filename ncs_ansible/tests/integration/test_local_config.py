@@ -1,4 +1,4 @@
-"""Integration tests verifying ncs_ansible's local schemas/ and platforms.yaml
+"""Integration tests verifying ncs_ansible's local reporter config directory and platforms.yaml
 are compatible with ncs_reporter's schema loader and platform config parser.
 
 These tests assert that ncs_ansible can call ncs_reporter as an installed tool
@@ -15,7 +15,7 @@ import yaml
 from ncs_reporter.models.platforms_config import PlatformsConfig
 from ncs_reporter.schema_loader import discover_schemas, load_schema_from_file
 
-from _paths import PLATFORMS_YAML, SCHEMAS_DIR
+from _paths import CONFIG_YAML, PLATFORMS_YAML, SCHEMAS_DIR
 
 EXPECTED_SCHEMA_NAMES = {"linux", "vcenter", "windows"}
 EXPECTED_PLATFORMS = {"linux", "vmware", "windows"}
@@ -50,11 +50,26 @@ class TestPlatformsYaml(unittest.TestCase):
             self.assertTrue(entry.state_file, f"Empty state_file for platform {entry.platform}")
 
 
+class TestReporterConfigYaml(unittest.TestCase):
+    """config.yaml should exist and reference local platforms config."""
+
+    def test_config_yaml_exists(self) -> None:
+        self.assertTrue(CONFIG_YAML.exists(), f"config.yaml not found at {CONFIG_YAML}")
+
+    def test_config_yaml_parses_as_mapping(self) -> None:
+        raw = yaml.safe_load(CONFIG_YAML.read_text())
+        self.assertIsInstance(raw, dict)
+
+    def test_config_yaml_points_to_platforms_yaml(self) -> None:
+        raw = yaml.safe_load(CONFIG_YAML.read_text()) or {}
+        self.assertEqual(raw.get("platforms_config"), "platforms.yaml")
+
+
 class TestLocalSchemas(unittest.TestCase):
-    """Each schema YAML in ncs_ansible/schemas/ must load cleanly via ncs_reporter."""
+    """Each schema YAML in ncs_ansible/files/ncs_reporter_configs/ must load cleanly."""
 
     def test_schemas_dir_exists(self) -> None:
-        self.assertTrue(SCHEMAS_DIR.exists(), f"schemas/ not found at {SCHEMAS_DIR}")
+        self.assertTrue(SCHEMAS_DIR.exists(), f"ncs_reporter_configs/ not found at {SCHEMAS_DIR}")
 
     def test_all_expected_schema_files_present(self) -> None:
         found = {p.stem for p in SCHEMAS_DIR.glob("*.yaml")}
@@ -80,12 +95,16 @@ class TestLocalSchemas(unittest.TestCase):
 
     def test_all_schemas_have_detection_keys(self) -> None:
         for schema_file in SCHEMAS_DIR.glob("*.yaml"):
+            if schema_file.stem not in EXPECTED_SCHEMA_NAMES:
+                continue
             schema = load_schema_from_file(schema_file)
             has_detection = bool(schema.detection.keys_any or schema.detection.keys_all)
             self.assertTrue(has_detection, f"{schema_file.name} has no detection keys")
 
     def test_all_schemas_have_at_least_one_field(self) -> None:
         for schema_file in SCHEMAS_DIR.glob("*.yaml"):
+            if schema_file.stem not in EXPECTED_SCHEMA_NAMES:
+                continue
             schema = load_schema_from_file(schema_file)
             self.assertGreater(len(schema.fields), 0, f"{schema_file.name} has no fields")
 

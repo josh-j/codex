@@ -66,6 +66,6 @@ playbook_syntax:
 unit_tests:
   stage: test
   script:
-    - pip install -e tools/ncs_reporter
-    - export PYTHONPATH="$PYTHONPATH:$CI_PROJECT_DIR/tools/ncs_reporter/src:$CI_PROJECT_DIR/libs/ncs_core/src"
-    - pytest tests/unit tools/ncs_reporter/tests
+    - pip install -e "$CI_PROJECT_DIR/../ncs_reporter"
+    - export PYTHONPATH="$PYTHONPATH:$CI_PROJECT_DIR/libs/ncs_core/src"
+    - pytest tests/unit "$CI_PROJECT_DIR/../ncs_reporter/tests"

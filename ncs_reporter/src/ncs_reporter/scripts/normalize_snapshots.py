@@ -6,7 +6,7 @@ stdin  — JSON: {"fields": {"snapshots": [...], "collected_at": "ISO"}, "args":
 stdout — JSON dict: {"snapshots": [...], "aged_count": N}
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import sys
@@ -16,11 +16,11 @@ from datetime import datetime, timezone
 def _parse_iso(ts: str) -> datetime | None:
     if not ts:
         return None
-    
+
     # Normalise Z suffix to +00:00 for fromisoformat compatibility in 3.10
     if ts.endswith("Z"):
         ts = ts[:-1] + "+00:00"
-        
+
     try:
         return datetime.fromisoformat(ts)
     except ValueError:
@@ -43,10 +43,10 @@ def main() -> None:
     fields = payload.get("fields", {})
     args = payload.get("args", {})
 
-    snapshots: list = fields.get("snapshots_raw") or fields.get("snapshots") or []
+    snapshots: list[Any] = fields.get("snapshots_raw") or fields.get("snapshots") or []
     if not isinstance(snapshots, list):
         snapshots = []
-        
+
     # Build VM -> Owner Email lookup map from already processed virtual_machines field
     vm_owners = {}
     vms_list = fields.get("virtual_machines") or []
@@ -64,20 +64,20 @@ def main() -> None:
 
     enriched_snapshots = []
     aged_count = 0
-    
+
     for snap in snapshots:
         if not isinstance(snap, dict):
             continue
-        
+
         item = dict(snap)
-        
+
         # Inject owner email from our lookup map
         vm_name = item.get("vm_name")
         item["owner_email"] = vm_owners.get(vm_name, "") if vm_name else ""
 
         ts = str(item.get("creation_time") or item.get("createTime") or "")
         dt = _parse_iso(ts)
-        
+
         if dt is not None:
             diff_seconds = (ref - dt).total_seconds()
             days_old = round(diff_seconds / 86400.0, 1)

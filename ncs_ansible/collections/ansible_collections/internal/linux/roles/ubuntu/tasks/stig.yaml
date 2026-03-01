@@ -29,20 +29,7 @@
         msg: "STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
 
   always:
-    - name: "Ubuntu STIG | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "ubuntu"
-            name: "stig"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              status: "{{ 'FAILED' if _stig_audit_failed | default(false) else 'SUCCESS' }}"
-              target_type: "{{ ubuntu_stig_target_type | default('ubuntu_2404') }}"
-        per_host: true
-      changed_when: false
-
     - name: "Ubuntu STIG | Log completion"
 
       ansible.builtin.debug:
-        msg: "Ubuntu STIG audit completed. Raw JSON artifacts generated in .artifacts/"
+        msg: "Ubuntu STIG audit completed. Results emitted via ncs_collector."

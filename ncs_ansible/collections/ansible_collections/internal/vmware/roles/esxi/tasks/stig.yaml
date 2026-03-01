@@ -34,20 +34,7 @@
       changed_when: false
 
   always:
-    - name: "ESXi STIG | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "vmware"
-            name: "stig_esxi"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              status: "{{ 'FAILED' if _stig_audit_failed | default(false) else 'SUCCESS' }}"
-              target_hosts: "{{ esxi_stig_target_hosts }}"
-        per_host: true
-      changed_when: false
-
     - name: "ESXi STIG | Log completion"
 
       ansible.builtin.debug:
-        msg: "ESXi STIG audit completed. Results emitted to .artifacts via callback."
+        msg: "ESXi STIG audit completed. Results emitted via ncs_collector."

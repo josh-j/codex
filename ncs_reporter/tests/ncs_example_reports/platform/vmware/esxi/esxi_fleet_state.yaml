@@ -1,0 +1,118 @@
+metadata:
+  generated_at: '2026-03-01T18:24:34.966549'
+  fleet_stats:
+    total_hosts: 1
+    critical_alerts: 1
+    warning_alerts: 1
+hosts:
+  vcenter-prod:
+    stig_esxi:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-01T17:17:25+00:00'
+        generated_at: '2026-03-01T18:24:34.968485'
+      health: CRITICAL
+      summary:
+        total: 10
+        critical_count: 1
+        warning_count: 1
+        info_count: 1
+        by_category:
+          security_compliance: 3
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: ESXi must separate management networks.'
+        detail:
+          rule_id: V-256379
+          description: ''
+          original_severity: HIGH
+          target_type: esxi
+        affected_items: []
+        recommendation: null
+        remediation: null
+      - severity: WARNING
+        category: security_compliance
+        message: 'STIG Violation: ESXi must use NTP.'
+        detail:
+          rule_id: V-256381
+          description: ''
+          original_severity: MEDIUM
+          target_type: esxi
+        affected_items: []
+        recommendation: null
+        remediation: null
+      - severity: INFO
+        category: security_compliance
+        message: 'STIG Violation: ESXi must have lockdown mode.'
+        detail:
+          rule_id: V-256383
+          description: ''
+          original_severity: LOW
+          target_type: esxi
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: esxi
+      full_audit:
+      - id: V-256379
+        status: open
+        severity: high
+        title: ESXi must separate management networks.
+        rule_id: V-256379
+        description: ''
+      - id: V-256380
+        status: pass
+        severity: high
+        title: ESXi must restrict access.
+        rule_id: V-256380
+        description: ''
+      - id: V-256381
+        status: open
+        severity: medium
+        title: ESXi must use NTP.
+        rule_id: V-256381
+        description: ''
+      - id: V-256382
+        status: pass
+        severity: medium
+        title: ESXi must use syslog.
+        rule_id: V-256382
+        description: ''
+      - id: V-256383
+        status: open
+        severity: low
+        title: ESXi must have lockdown mode.
+        rule_id: V-256383
+        description: ''
+      - id: V-256384
+        status: pass
+        severity: low
+        title: ESXi must configure SSH timeout.
+        rule_id: V-256384
+        description: ''
+      - id: V-256385
+        status: na
+        severity: low
+        title: ESXi some N/A check.
+        rule_id: V-256385
+        description: ''
+      - id: V-256386
+        status: pass
+        severity: medium
+        title: ESXi another pass check.
+        rule_id: V-256386
+        description: ''
+      - id: V-256387
+        status: pass
+        severity: high
+        title: ESXi yet another pass.
+        rule_id: V-256387
+        description: ''
+      - id: V-256388
+        status: na
+        severity: high
+        title: ESXi another N/A check.
+        rule_id: V-256388
+        description: ''

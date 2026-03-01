@@ -104,7 +104,6 @@ class TestFieldExtraction:
         raw = {"tags": []}
         assert resolve_field("tags | first", raw) is None
 
-
     def test_extract_fields_with_schema(self) -> None:
         schema = _simple_schema()
         raw = {
@@ -182,17 +181,23 @@ class TestConditionEvaluation:
         assert evaluate_condition(cond, {"error_msg": "present"}) is False
 
     def test_filter_count_fires(self) -> None:
-        cond = FilterCountCondition(op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0)
+        cond = FilterCountCondition(
+            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0
+        )
         ifaces = [{"name": "eth0", "status": "down"}, {"name": "eth1", "status": "up"}]
         assert evaluate_condition(cond, {"ifaces": ifaces}) is True
 
     def test_filter_count_no_fire(self) -> None:
-        cond = FilterCountCondition(op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0)
+        cond = FilterCountCondition(
+            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0
+        )
         ifaces = [{"name": "eth0", "status": "up"}]
         assert evaluate_condition(cond, {"ifaces": ifaces}) is False
 
     def test_filter_count_threshold_respected(self) -> None:
-        cond = FilterCountCondition(op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=2)
+        cond = FilterCountCondition(
+            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=2
+        )
         ifaces = [
             {"name": "eth0", "status": "down"},
             {"name": "eth1", "status": "down"},
@@ -528,7 +533,7 @@ class TestMultiFilterCondition:
 class TestComputedFilterCondition:
     def _make_datastores(self) -> list[dict]:
         return [
-            {"name": "ds1", "capacity": 1000, "freeSpace": 50},   # 5% free — critical
+            {"name": "ds1", "capacity": 1000, "freeSpace": 50},  # 5% free — critical
             {"name": "ds2", "capacity": 1000, "freeSpace": 120},  # 12% free — warning only
             {"name": "ds3", "capacity": 1000, "freeSpace": 500},  # 50% free — ok
         ]
@@ -557,12 +562,18 @@ class TestComputedFilterCondition:
 
     def test_warning_threshold_fires_but_critical_does_not(self) -> None:
         crit = ComputedFilterCondition(
-            op="computed_filter", field="datastores",
-            expression="{freeSpace} / {capacity} * 100", cmp="lte", threshold=10.0,
+            op="computed_filter",
+            field="datastores",
+            expression="{freeSpace} / {capacity} * 100",
+            cmp="lte",
+            threshold=10.0,
         )
         warn = ComputedFilterCondition(
-            op="computed_filter", field="datastores",
-            expression="{freeSpace} / {capacity} * 100", cmp="lte", threshold=15.0,
+            op="computed_filter",
+            field="datastores",
+            expression="{freeSpace} / {capacity} * 100",
+            cmp="lte",
+            threshold=15.0,
         )
         # ds2 is at 12% — warn fires, crit does not
         only_warning = [{"name": "ds2", "capacity": 1000, "freeSpace": 120}]
@@ -571,8 +582,11 @@ class TestComputedFilterCondition:
 
     def test_division_by_zero_skips_item(self) -> None:
         cond = ComputedFilterCondition(
-            op="computed_filter", field="datastores",
-            expression="{freeSpace} / {capacity} * 100", cmp="lte", threshold=10.0,
+            op="computed_filter",
+            field="datastores",
+            expression="{freeSpace} / {capacity} * 100",
+            cmp="lte",
+            threshold=10.0,
         )
         bad = [{"name": "ds0", "capacity": 0, "freeSpace": 0}]
         # 0 / 0 → 0.0 ≤ 10.0 would actually fire; expression yields 0.0
@@ -581,8 +595,11 @@ class TestComputedFilterCondition:
 
     def test_empty_list_no_fire(self) -> None:
         cond = ComputedFilterCondition(
-            op="computed_filter", field="datastores",
-            expression="{freeSpace} / {capacity} * 100", cmp="lte", threshold=10.0,
+            op="computed_filter",
+            field="datastores",
+            expression="{freeSpace} / {capacity} * 100",
+            cmp="lte",
+            threshold=10.0,
         )
         assert evaluate_condition(cond, {"datastores": []}) is False
 
@@ -650,6 +667,7 @@ class TestVcenterSchema:
     def test_vcenter_schema_loads_and_validates(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
+
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vcenter"
@@ -667,6 +685,7 @@ class TestVcenterSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
         s = load_schema_from_file(schema_path)
 
@@ -698,12 +717,24 @@ class TestVcenterSchema:
                     "datacenters_info": {"value": [{"name": "DC1", "datacenter": "dc-1"}]},
                     "datastores_info": {
                         "datastores": [
-                            {"name": "ds-prod", "type": "VMFS", "capacity": 1000, "freeSpace": 80, "accessible": True, "maintenanceMode": "normal"},
+                            {
+                                "name": "ds-prod",
+                                "type": "VMFS",
+                                "capacity": 1000,
+                                "freeSpace": 80,
+                                "accessible": True,
+                                "maintenanceMode": "normal",
+                            },
                         ]
                     },
                     "vms_info": {
                         "virtual_machines": [
-                            {"guest_name": "vm1", "power_state": "poweredOn", "tools_status": "toolsNotRunning", "cluster": "cluster1"},
+                            {
+                                "guest_name": "vm1",
+                                "power_state": "poweredOn",
+                                "tools_status": "toolsNotRunning",
+                                "cluster": "cluster1",
+                            },
                         ]
                     },
                     "snapshots_info": {"snapshots": []},
@@ -768,7 +799,7 @@ class TestScriptFields:
         )
 
     def test_count_aged_snapshots_none_old(self) -> None:
-        schema = self._schema_with_script("count_aged_snapshots.py", {"age_days": 7})
+        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [{"creation_time": "2026-02-27T00:00:00Z"}],
             "collected_at": "2026-02-27T06:00:00Z",
@@ -777,7 +808,7 @@ class TestScriptFields:
         assert fields["aged_count"] == 0
 
     def test_count_aged_snapshots_one_old(self) -> None:
-        schema = self._schema_with_script("count_aged_snapshots.py", {"age_days": 7})
+        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
         raw = {
             # snapshot created 10 days before collection
             "snapshots": [{"creation_time": "2026-02-17T00:00:00Z"}],
@@ -787,12 +818,12 @@ class TestScriptFields:
         assert fields["aged_count"] == 1
 
     def test_count_aged_snapshots_mixed(self) -> None:
-        schema = self._schema_with_script("count_aged_snapshots.py", {"age_days": 7})
+        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [
-                {"creation_time": "2026-02-26T00:00:00Z"},   # 1 day — NOT old
-                {"creation_time": "2026-02-10T00:00:00Z"},   # 17 days — old
-                {"creation_time": "2026-02-05T00:00:00Z"},   # 22 days — old
+                {"creation_time": "2026-02-26T00:00:00Z"},  # 1 day — NOT old
+                {"creation_time": "2026-02-10T00:00:00Z"},  # 17 days — old
+                {"creation_time": "2026-02-05T00:00:00Z"},  # 22 days — old
             ],
             "collected_at": "2026-02-27T00:00:00Z",
         }
@@ -800,7 +831,7 @@ class TestScriptFields:
         assert fields["aged_count"] == 2
 
     def test_aged_snapshot_alert_fires(self) -> None:
-        schema = self._schema_with_script("count_aged_snapshots.py", {"age_days": 7})
+        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [{"creation_time": "2026-01-01T00:00:00Z"}],
             "collected_at": "2026-02-27T00:00:00Z",
@@ -816,6 +847,7 @@ class TestScriptFields:
 
     def test_filter_mounts_script(self) -> None:
         from ncs_reporter.models.report_schema import DetectionSpec, FieldSpec, ReportSchema
+
         schema = ReportSchema(
             name="mounts_test",
             platform="linux",
@@ -846,11 +878,12 @@ class TestScriptFields:
     def test_vcenter_schema_aged_snapshot_field_exists(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
+
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
         s = load_schema_from_file(schema_path)
         assert "aged_snapshot_count" in s.fields
         spec = s.fields["aged_snapshot_count"]
-        assert spec.script == "count_aged_snapshots.py"
+        assert spec.script == "normalize_snapshots.py"
         assert spec.script_args.get("age_days") == 7
         assert any(a.id == "aged_snapshots" for a in s.alerts)
 
@@ -863,7 +896,7 @@ class TestScriptFields:
 class TestDateThresholdCondition:
     """Tests for native ISO timestamp age comparison conditions."""
 
-    REF = "2026-02-27T12:00:00Z"   # fixed reference timestamp
+    REF = "2026-02-27T12:00:00Z"  # fixed reference timestamp
 
     def _schema(self, op: str, days: float, reference_field: str | None = None) -> ReportSchema:
         return ReportSchema(

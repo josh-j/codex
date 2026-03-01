@@ -1,15 +1,15 @@
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-TEMPLATES_DIR = ROOT / "tools" / "ncs_reporter" / "src" / "ncs_reporter" / "templates"
+ROOT = Path(__file__).resolve().parents[3]
+TEMPLATES_DIR = ROOT / "ncs_reporter" / "src" / "ncs_reporter" / "templates"
 
 REPORT_TEMPLATES = [
     TEMPLATES_DIR / "site_health_report.html.j2",
-    TEMPLATES_DIR / "vmware_health_report.html.j2",
-    TEMPLATES_DIR / "vcenter_health_report.html.j2",
-    TEMPLATES_DIR / "ubuntu_health_report.html.j2",
-    TEMPLATES_DIR / "ubuntu_host_health_report.html.j2",
+    TEMPLATES_DIR / "generic_fleet_report.html.j2",
+    TEMPLATES_DIR / "generic_node_report.html.j2",
+    TEMPLATES_DIR / "stig_fleet_report.html.j2",
+    TEMPLATES_DIR / "stig_host_report.html.j2",
     ROOT / "collections/ansible_collections/internal/core/roles/stig/templates/stig_report.html.j2",
 ]
 

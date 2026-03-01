@@ -13,8 +13,12 @@
         apply:
           check_mode: true
           tags: [stig_task]
-      # We rely on the stig_xml callback artifacts for reporting; include_tasks
-      # does not reliably return per-task results for export.
+          vars:
+            stig_target_host: "{{ inventory_hostname }}"
+            stig_target_type: "ubuntu"
+            stig_platform: "linux/ubuntu"
+      # ncs_collector captures per-task STIG results from runner events; include_tasks
+      # does not reliably return per-task results for direct export here.
       ignore_errors: true # noqa: ignore-errors
 
     - name: "Ubuntu STIG | Flag audit as complete"

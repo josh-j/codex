@@ -33,9 +33,7 @@ def parse_iso_epoch(raw: Any) -> int | None:
         if not match:
             return None
         try:
-            dt = datetime.strptime(
-                f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S"
-            )
+            dt = datetime.strptime(f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S")
             return int(dt.replace(tzinfo=timezone.utc).timestamp())
         except ValueError:
             return None

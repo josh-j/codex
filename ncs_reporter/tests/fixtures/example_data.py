@@ -21,7 +21,12 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fixtures._static_samples import APPLIANCE_BASE as _APPLIANCE_BASE, DS_BASE as _DS_BASE, VM_BASE as _VM_BASE, WIN_SVC_BASE as _WIN_SVC_BASE
+from fixtures._static_samples import (
+    APPLIANCE_BASE as _APPLIANCE_BASE,
+    DS_BASE as _DS_BASE,
+    VM_BASE as _VM_BASE,
+    WIN_SVC_BASE as _WIN_SVC_BASE,
+)
 
 
 def _now_iso() -> str:
@@ -78,15 +83,25 @@ def _make_vm(
             "resource_pool": None,
             "num_cpu": extra.get("num_cpu", 2),
             "memory_mb": extra.get("memory_mb", 4096),
-            "tags": extra.get("tags", [
-                {"category_name": "Owner", "name": "Platform Team", "description": "Shared Platform Resources"},
-                {"category_name": "Backup Schedule", "name": "Daily-Prod", "description": "Standard Daily Retention"},
-            ]),
-            "attributes": extra.get("attributes", {
-                "Owner Email": "platform-alerts@corp.local",
-                "Owner Name": "Platform Team",
-                "Last Dell PowerProtect Backup": _days_ago_iso(0.5),
-            }),
+            "tags": extra.get(
+                "tags",
+                [
+                    {"category_name": "Owner", "name": "Platform Team", "description": "Shared Platform Resources"},
+                    {
+                        "category_name": "Backup Schedule",
+                        "name": "Daily-Prod",
+                        "description": "Standard Daily Retention",
+                    },
+                ],
+            ),
+            "attributes": extra.get(
+                "attributes",
+                {
+                    "Owner Email": "platform-alerts@corp.local",
+                    "Owner Name": "Platform Team",
+                    "Last Dell PowerProtect Backup": _days_ago_iso(0.5),
+                },
+            ),
         }
     )
     # Remove keys from extra that we've already handled or don't want in top-level update
@@ -132,35 +147,70 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
         ]
         mounts: list[dict] = [
             # 47% used — OK
-            {"mount": "/", "device": "/dev/sda1", "fstype": "ext4",
-             "size_total": 107374182400, "size_available": 56371445760},
+            {
+                "mount": "/",
+                "device": "/dev/sda1",
+                "fstype": "ext4",
+                "size_total": 107374182400,
+                "size_available": 56371445760,
+            },
             # 96% used — CRITICAL
-            {"mount": "/var", "device": "/dev/sda2", "fstype": "ext4",
-             "size_total": 214748364800, "size_available": 8589934592},
+            {
+                "mount": "/var",
+                "device": "/dev/sda2",
+                "fstype": "ext4",
+                "size_total": 214748364800,
+                "size_available": 8589934592,
+            },
             # 82% used — WARNING
-            {"mount": "/opt", "device": "/dev/sda3", "fstype": "ext4",
-             "size_total": 53687091200, "size_available": 9663676416},
+            {
+                "mount": "/opt",
+                "device": "/dev/sda3",
+                "fstype": "ext4",
+                "size_total": 53687091200,
+                "size_available": 9663676416,
+            },
             # tmpfs — filtered out by disk_inventory.py
-            {"mount": "/tmp", "device": "tmpfs", "fstype": "tmpfs",
-             "size_total": 8589934592, "size_available": 8052867072},
+            {
+                "mount": "/tmp",
+                "device": "tmpfs",
+                "fstype": "tmpfs",
+                "size_total": 8589934592,
+                "size_available": 8052867072,
+            },
             # 50% used — OK
-            {"mount": "/boot", "device": "/dev/sda4", "fstype": "ext4",
-             "size_total": 1073741824, "size_available": 536870912},
+            {
+                "mount": "/boot",
+                "device": "/dev/sda4",
+                "fstype": "ext4",
+                "size_total": 1073741824,
+                "size_available": 536870912,
+            },
         ]
         load_avg = 3.8
     elif variety:
         # Fires: memory_warning (90% used), uptime_violation (200 days)
-        memfree_mb = 3276   # ~90% of 32768 used → WARNING (not critical)
+        memfree_mb = 3276  # ~90% of 32768 used → WARNING (not critical)
         uptime_seconds = 17280000  # 200 days → uptime_violation
         failed_svc_lines = []
         apt_lines = ["0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."]
         reboot_exists = False
         world_writable = []
         mounts = [
-            {"mount": "/", "device": "/dev/sda1", "fstype": "ext4",
-             "size_total": 107374182400, "size_available": 64424509440},
-            {"mount": "/var", "device": "/dev/sda2", "fstype": "ext4",
-             "size_total": 214748364800, "size_available": 150000000000},
+            {
+                "mount": "/",
+                "device": "/dev/sda1",
+                "fstype": "ext4",
+                "size_total": 107374182400,
+                "size_available": 64424509440,
+            },
+            {
+                "mount": "/var",
+                "device": "/dev/sda2",
+                "fstype": "ext4",
+                "size_total": 214748364800,
+                "size_available": 150000000000,
+            },
         ]
         load_avg = 1.2
     else:
@@ -171,10 +221,20 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
         reboot_exists = False
         world_writable = []
         mounts = [
-            {"mount": "/", "device": "/dev/sda1", "fstype": "ext4",
-             "size_total": 107374182400, "size_available": 75000000000},
-            {"mount": "/var", "device": "/dev/sda2", "fstype": "ext4",
-             "size_total": 214748364800, "size_available": 150000000000},
+            {
+                "mount": "/",
+                "device": "/dev/sda1",
+                "fstype": "ext4",
+                "size_total": 107374182400,
+                "size_available": 75000000000,
+            },
+            {
+                "mount": "/var",
+                "device": "/dev/sda2",
+                "fstype": "ext4",
+                "size_total": 214748364800,
+                "size_available": 150000000000,
+            },
         ]
         load_avg = 0.4
 
@@ -205,9 +265,9 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
                     "swapfree_mb": 7372,
                     "mounts": mounts,
                     "getent_passwd": {
-                        "root":   ["x", "0",    "0",    "root",   "/root",        "/bin/bash"],
+                        "root": ["x", "0", "0", "root", "/root", "/bin/bash"],
                         "ubuntu": ["x", "1000", "1000", "Ubuntu", "/home/ubuntu", "/bin/bash"],
-                        "syslog": ["x", "104",  "110",  "",       "/home/syslog", "/usr/sbin/nologin"],
+                        "syslog": ["x", "104", "110", "", "/home/syslog", "/usr/sbin/nologin"],
                         "deploy": ["x", "1001", "1001", "deploy", "/home/deploy", "/bin/bash"],
                     },
                     "date_time": {"epoch": str(int(time.time()))},
@@ -236,13 +296,22 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
                 },
                 "sshd_raw": {
                     "stdout_lines": [
-                        "port 22", "addressfamily any", "listenaddress 0.0.0.0",
-                        "permitemptypasswords no", "permituserenvironment no",
-                        "passwordauthentication no", "permitrootlogin no",
-                        "usepam yes", "x11forwarding no", "maxauthtries 4",
-                        "clientaliveinterval 600", "clientalivecountmax 0",
-                        "banner /etc/issue.net", "logingracetime 60",
-                        "strictmodes yes", "pubkeyauthentication yes",
+                        "port 22",
+                        "addressfamily any",
+                        "listenaddress 0.0.0.0",
+                        "permitemptypasswords no",
+                        "permituserenvironment no",
+                        "passwordauthentication no",
+                        "permitrootlogin no",
+                        "usepam yes",
+                        "x11forwarding no",
+                        "maxauthtries 4",
+                        "clientaliveinterval 600",
+                        "clientalivecountmax 0",
+                        "banner /etc/issue.net",
+                        "logingracetime 60",
+                        "strictmodes yes",
+                        "pubkeyauthentication yes",
                     ],
                     "rc": 0,
                 },
@@ -252,12 +321,18 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
                 },
                 "file_stats": {
                     "results": [
-                        {"item": "/etc/shadow",
-                         "stat": {"exists": True, "mode": "0640", "pw_name": "root", "gr_name": "shadow"}},
-                        {"item": "/etc/passwd",
-                         "stat": {"exists": True, "mode": "0644", "pw_name": "root", "gr_name": "root"}},
-                        {"item": "/etc/ssh/sshd_config",
-                         "stat": {"exists": True, "mode": "0600", "pw_name": "root", "gr_name": "root"}},
+                        {
+                            "item": "/etc/shadow",
+                            "stat": {"exists": True, "mode": "0640", "pw_name": "root", "gr_name": "shadow"},
+                        },
+                        {
+                            "item": "/etc/passwd",
+                            "stat": {"exists": True, "mode": "0644", "pw_name": "root", "gr_name": "root"},
+                        },
+                        {
+                            "item": "/etc/ssh/sshd_config",
+                            "stat": {"exists": True, "mode": "0600", "pw_name": "root", "gr_name": "root"},
+                        },
                     ],
                 },
             },
@@ -292,8 +367,12 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     """
     if unhealthy:
         health = {
-            "cpu": "green", "database": "green", "memory": "yellow",
-            "overall": "yellow", "storage": "green", "swap": "green",
+            "cpu": "green",
+            "database": "green",
+            "memory": "yellow",
+            "overall": "yellow",
+            "storage": "green",
+            "swap": "green",
         }
         # no_backup_schedule: empty list fires it
         # backup_schedule_disabled: a disabled schedule ALSO fires when present
@@ -315,92 +394,199 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 },
             }
         ]
-        ssh_enabled = True            # ssh_enabled WARNING
-        shell_enabled_str = "True"    # shell_enabled WARNING (str from real module)
+        ssh_enabled = True  # ssh_enabled WARNING
+        shell_enabled_str = "True"  # shell_enabled WARNING (str from real module)
         datastores: list[dict] = [
             # 30% free — OK
-            _make_ds("PROD-VMFS-SSD-01", 10995116277760, 3298534883328,
-                     maintenanceMode="normal", multipleHostAccess=True,
-                     provisioned=8796093022208, uncommitted=1099511627776),
+            _make_ds(
+                "PROD-VMFS-SSD-01",
+                10995116277760,
+                3298534883328,
+                maintenanceMode="normal",
+                multipleHostAccess=True,
+                provisioned=8796093022208,
+                uncommitted=1099511627776,
+            ),
             # 7% free → datastore_critical_space
-            _make_ds("PROD-VMFS-SSD-02", 10995116277760, 769727561728,
-                     maintenanceMode="normal", multipleHostAccess=True,
-                     provisioned=10500000000000, uncommitted=274877906944),
+            _make_ds(
+                "PROD-VMFS-SSD-02",
+                10995116277760,
+                769727561728,
+                maintenanceMode="normal",
+                multipleHostAccess=True,
+                provisioned=10500000000000,
+                uncommitted=274877906944,
+            ),
             # 13% free → datastore_warning_space
-            _make_ds("PROD-NFS-01", 21990232555520, 2857749006336, ds_type="NFS",
-                     maintenanceMode="normal", multipleHostAccess=True,
-                     provisioned=20000000000000, uncommitted=0),
+            _make_ds(
+                "PROD-NFS-01",
+                21990232555520,
+                2857749006336,
+                ds_type="NFS",
+                maintenanceMode="normal",
+                multipleHostAccess=True,
+                provisioned=20000000000000,
+                uncommitted=0,
+            ),
             # 35% free — OK
-            _make_ds("PROD-NFS-BACKUP", 21990232555520, 7696581394432, ds_type="NFS",
-                     maintenanceMode="normal", multipleHostAccess=True,
-                     provisioned=15000000000000, uncommitted=0),
+            _make_ds(
+                "PROD-NFS-BACKUP",
+                21990232555520,
+                7696581394432,
+                ds_type="NFS",
+                maintenanceMode="normal",
+                multipleHostAccess=True,
+                provisioned=15000000000000,
+                uncommitted=0,
+            ),
             # 50% free — OK
-            _make_ds("DR-VMFS-01", 5497558138880, 2748779069440,
-                     maintenanceMode="normal", multipleHostAccess=False,
-                     provisioned=2500000000000, uncommitted=248779069440),
+            _make_ds(
+                "DR-VMFS-01",
+                5497558138880,
+                2748779069440,
+                maintenanceMode="normal",
+                multipleHostAccess=False,
+                provisioned=2500000000000,
+                uncommitted=248779069440,
+            ),
             # inaccessible → datastore_inaccessible CRITICAL
-            _make_ds("CRASH-NFS-01", 5497558138880, 0, ds_type="NFS",
-                     accessible=False, maintenanceMode="normal", multipleHostAccess=False,
-                     provisioned=0, uncommitted=0),
+            _make_ds(
+                "CRASH-NFS-01",
+                5497558138880,
+                0,
+                ds_type="NFS",
+                accessible=False,
+                maintenanceMode="normal",
+                multipleHostAccess=False,
+                provisioned=0,
+                uncommitted=0,
+            ),
         ]
         vms: list[dict] = [
             # clean
-            _make_vm("web-prod-01", "poweredOn", "toolsOk", "10.10.20.45",
-                     "vm-101", "4207072c-edd8-3bd5-64dc-903fd3a0db01",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi01.corp.local"),
+            _make_vm(
+                "web-prod-01",
+                "poweredOn",
+                "toolsOk",
+                "10.10.20.45",
+                "vm-101",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db01",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi01.corp.local",
+            ),
             # toolsNotRunning + poweredOn → vm_tools_not_running
-            _make_vm("db-prod-01", "poweredOn", "toolsNotRunning", "10.10.20.46",
-                     "vm-102", "4207072c-edd8-3bd5-64dc-903fd3a0db02",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi02.corp.local"),
+            _make_vm(
+                "db-prod-01",
+                "poweredOn",
+                "toolsNotRunning",
+                "10.10.20.46",
+                "vm-102",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db02",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi02.corp.local",
+            ),
             # toolsNotInstalled + poweredOn → vm_tools_not_installed
-            _make_vm("monitoring-01", "poweredOn", "toolsNotInstalled", "10.10.20.47",
-                     "vm-103", "4207072c-edd8-3bd5-64dc-903fd3a0db03",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi01.corp.local"),
+            _make_vm(
+                "monitoring-01",
+                "poweredOn",
+                "toolsNotInstalled",
+                "10.10.20.47",
+                "vm-103",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db03",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi01.corp.local",
+            ),
             # clean
-            _make_vm("app-prod-01", "poweredOn", "toolsOk", "10.10.20.48",
-                     "vm-105", "4207072c-edd8-3bd5-64dc-903fd3a0db05",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi01.corp.local"),
+            _make_vm(
+                "app-prod-01",
+                "poweredOn",
+                "toolsOk",
+                "10.10.20.48",
+                "vm-105",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db05",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi01.corp.local",
+            ),
             # powered off for DR — tools issues on poweredOff don't alert
-            _make_vm("dr-vm-01", "poweredOff", "toolsOk", "",
-                     "vm-104", "4207072c-edd8-3bd5-64dc-903fd3a0db04",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi03.corp.local"),
+            _make_vm(
+                "dr-vm-01",
+                "poweredOff",
+                "toolsOk",
+                "",
+                "vm-104",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db04",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi03.corp.local",
+            ),
         ]
         # All 3 snapshots > 7 days old → aged_snapshot_count = 3
         snapshots: list[dict] = [
-            {"vm_name": "test-vm-01", "folder": "/DC-Production/vm",
-             "name": "pre-upgrade-snapshot", "description": "Before kernel upgrade",
-             "creation_time": _days_ago_iso(27), "state": "poweredOff",
-             "id": 12, "quiesced": False},
-            {"vm_name": "app-prod-01", "folder": "/DC-Production/vm",
-             "name": "pre-patch-jan", "description": "Pre-January patching window",
-             "creation_time": _days_ago_iso(44), "state": "poweredOn",
-             "id": 7, "quiesced": False},
-            {"vm_name": "app-prod-01", "folder": "/DC-Production/vm",
-             "name": "rollback-checkpoint", "description": "Emergency rollback point",
-             "creation_time": _days_ago_iso(8), "state": "poweredOn",
-             "id": 15, "quiesced": True},
+            {
+                "vm_name": "test-vm-01",
+                "folder": "/DC-Production/vm",
+                "name": "pre-upgrade-snapshot",
+                "description": "Before kernel upgrade",
+                "creation_time": _days_ago_iso(27),
+                "state": "poweredOff",
+                "id": 12,
+                "quiesced": False,
+            },
+            {
+                "vm_name": "app-prod-01",
+                "folder": "/DC-Production/vm",
+                "name": "pre-patch-jan",
+                "description": "Pre-January patching window",
+                "creation_time": _days_ago_iso(44),
+                "state": "poweredOn",
+                "id": 7,
+                "quiesced": False,
+            },
+            {
+                "vm_name": "app-prod-01",
+                "folder": "/DC-Production/vm",
+                "name": "rollback-checkpoint",
+                "description": "Emergency rollback point",
+                "creation_time": _days_ago_iso(8),
+                "state": "poweredOn",
+                "id": 15,
+                "quiesced": True,
+            },
         ]
         alarms: list[dict] = [
-            {"alarm_name": "Host CPU Usage",
-             "description": "CPU on Prod-ESXi-03 exceeded 90% for 15 min",
-             "entity": "Prod-ESXi-03", "entity_type": "HostSystem",
-             "status": "red", "severity": "critical",
-             "time": _days_ago_iso(0.25), "acknowledged": False},
-            {"alarm_name": "Datastore Free Space",
-             "description": "PROD-VMFS-SSD-02 has less than 10% free space",
-             "entity": "PROD-VMFS-SSD-02", "entity_type": "Datastore",
-             "status": "yellow", "severity": "warning",
-             "time": _days_ago_iso(1), "acknowledged": False},
+            {
+                "alarm_name": "Host CPU Usage",
+                "description": "CPU on Prod-ESXi-03 exceeded 90% for 15 min",
+                "entity": "Prod-ESXi-03",
+                "entity_type": "HostSystem",
+                "status": "red",
+                "severity": "critical",
+                "time": _days_ago_iso(0.25),
+                "acknowledged": False,
+            },
+            {
+                "alarm_name": "Datastore Free Space",
+                "description": "PROD-VMFS-SSD-02 has less than 10% free space",
+                "entity": "PROD-VMFS-SSD-02",
+                "entity_type": "Datastore",
+                "status": "yellow",
+                "severity": "warning",
+                "time": _days_ago_iso(1),
+                "acknowledged": False,
+            },
         ]
     else:
         health = {
-            "cpu": "green", "database": "green", "memory": "green",
-            "overall": "green", "storage": "green", "swap": "green",
+            "cpu": "green",
+            "database": "green",
+            "memory": "green",
+            "overall": "green",
+            "storage": "green",
+            "swap": "green",
         }
         ssh_enabled = False
         shell_enabled_str = "False"
@@ -423,14 +609,22 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
             }
         ]
         datastores = [
-            _make_ds("PROD-VMFS-SSD-01", 10995116277760, 5497558138880,
-                     maintenanceMode="normal", multipleHostAccess=True),
+            _make_ds(
+                "PROD-VMFS-SSD-01", 10995116277760, 5497558138880, maintenanceMode="normal", multipleHostAccess=True
+            ),
         ]
         vms = [
-            _make_vm("web-prod-01", "poweredOn", "toolsOk", "10.10.20.45",
-                     "vm-101", "4207072c-edd8-3bd5-64dc-903fd3a0db01",
-                     datacenter="DC-Production", cluster="Prod-Cluster-01",
-                     esxi_hostname="esxi01.corp.local"),
+            _make_vm(
+                "web-prod-01",
+                "poweredOn",
+                "toolsOk",
+                "10.10.20.45",
+                "vm-101",
+                "4207072c-edd8-3bd5-64dc-903fd3a0db01",
+                datacenter="DC-Production",
+                cluster="Prod-Cluster-01",
+                esxi_hostname="esxi01.corp.local",
+            ),
         ]
         snapshots = []
         alarms = []
@@ -440,7 +634,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     appliance_health_info = copy.deepcopy(_APPLIANCE_BASE)
     _appl = appliance_health_info["appliance"]
     _appl["summary"]["health"] = health
-    _appl["summary"]["uptime"] = "2592000.0"       # STRING — real module returns str
+    _appl["summary"]["uptime"] = "2592000.0"  # STRING — real module returns str
     _appl["summary"]["hostname"] = [f"{hostname}.corp.local"]
     _appl["summary"]["build_number"] = "24022515"
     _appl["summary"]["version"] = "8.0.3.00300"
@@ -465,10 +659,13 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 "datacenters_info": {
                     # vmware.vmware_rest.vcenter_datacenter_info returns datacenter_info list
                     "datacenter_info": [
-                        {"name": "DC-Production", "moid": "datacenter-1",
-                         "config_status": "green", "overall_status": "green"},
-                        {"name": "DC-DR", "moid": "datacenter-2",
-                         "config_status": "green", "overall_status": "green"},
+                        {
+                            "name": "DC-Production",
+                            "moid": "datacenter-1",
+                            "config_status": "green",
+                            "overall_status": "green",
+                        },
+                        {"name": "DC-DR", "moid": "datacenter-2", "config_status": "green", "overall_status": "green"},
                     ]
                 },
                 "clusters_info": {
@@ -557,14 +754,24 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
 # ---------------------------------------------------------------------------
 
 _VM_ROLES = [
-    "web", "db", "app", "cache", "monitoring", "backup",
-    "proxy", "auth", "api", "worker", "scheduler", "log",
+    "web",
+    "db",
+    "app",
+    "cache",
+    "monitoring",
+    "backup",
+    "proxy",
+    "auth",
+    "api",
+    "worker",
+    "scheduler",
+    "log",
 ]
 
 _VM_SIZES: list[dict] = [
-    {"allocated": {"cpu": 2,  "memory": 4096,  "storage": 107374182400}},
-    {"allocated": {"cpu": 4,  "memory": 8192,  "storage": 214748364800}},
-    {"allocated": {"cpu": 8,  "memory": 16384, "storage": 429496729600}},
+    {"allocated": {"cpu": 2, "memory": 4096, "storage": 107374182400}},
+    {"allocated": {"cpu": 4, "memory": 8192, "storage": 214748364800}},
+    {"allocated": {"cpu": 8, "memory": 16384, "storage": 429496729600}},
     {"allocated": {"cpu": 16, "memory": 32768, "storage": 858993459200}},
 ]
 
@@ -600,9 +807,18 @@ def _make_site_vms(
             power_state, tools, ip_addr = "poweredOn", "toolsOk", ip
 
         vm = _make_vm(
-            name, power_state, tools, ip_addr, moid, uuid,
-            datacenter=datacenter, cluster=cluster, esxi_hostname=esxi,
-            guest_fullname="Ubuntu Linux (64-bit)" if role in ("web", "app", "api") else "Microsoft Windows Server 2022 (64-bit)",
+            name,
+            power_state,
+            tools,
+            ip_addr,
+            moid,
+            uuid,
+            datacenter=datacenter,
+            cluster=cluster,
+            esxi_hostname=esxi,
+            guest_fullname="Ubuntu Linux (64-bit)"
+            if role in ("web", "app", "api")
+            else "Microsoft Windows Server 2022 (64-bit)",
             folder=f"/{datacenter}/vm/{role}",
             vm_network={},
             datastore_url=[{"name": f"ds-{cluster.lower()}-01", "url": f"/vmfs/volumes/{site_code}-{role}"}],
@@ -617,7 +833,7 @@ _SITE_IP_OCTET: dict[str, int] = {
     "use1": 10,
     "usw2": 11,
     "eude": 12,
-    "euk":  13,
+    "euk": 13,
     "apsg": 14,
     "apau": 15,
 }
@@ -705,10 +921,17 @@ def make_vcenter_site_bundle(cfg: dict) -> dict:
     hostname = cfg["hostname"]
     site_code = cfg["site_code"]
 
-    health = cfg.get("health", {
-        "cpu": "green", "database": "green", "memory": "green",
-        "overall": "green", "storage": "green", "swap": "green",
-    })
+    health = cfg.get(
+        "health",
+        {
+            "cpu": "green",
+            "database": "green",
+            "memory": "green",
+            "overall": "green",
+            "storage": "green",
+            "swap": "green",
+        },
+    )
     ssh_enabled: bool = cfg.get("ssh", False)
     shell_str: str = "True" if cfg.get("shell", False) else "False"
 
@@ -778,6 +1001,7 @@ def make_vcenter_site_bundle(cfg: dict) -> dict:
 # Site definitions — 6 sites, ~300 VMs total
 # ---------------------------------------------------------------------------
 
+
 def _backup_sched(enabled: bool = True) -> dict:
     return {
         "name": "daily-backup",
@@ -799,8 +1023,14 @@ SITE_US_EAST: dict = {
     "country": "USA (Virginia)",
     "version": "8.0.3.00300",
     "build": "24022515",
-    "health": {"cpu": "green", "database": "green", "memory": "green",
-               "overall": "green", "storage": "green", "swap": "green"},
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "green",
+        "overall": "green",
+        "storage": "green",
+        "swap": "green",
+    },
     "ssh": False,
     "shell": False,
     "backup_schedules": [_backup_sched(enabled=True)],
@@ -810,42 +1040,90 @@ SITE_US_EAST: dict = {
     "clusters": {
         "DC-US-East-1": {
             "Prod-Cluster-A": _make_site_cluster(
-                "Prod-Cluster-A", "DC-US-East-1", "domain-c101",
-                ["esxi01.use1.corp.local", "esxi02.use1.corp.local",
-                 "esxi03.use1.corp.local", "esxi04.use1.corp.local"],
+                "Prod-Cluster-A",
+                "DC-US-East-1",
+                "domain-c101",
+                [
+                    "esxi01.use1.corp.local",
+                    "esxi02.use1.corp.local",
+                    "esxi03.use1.corp.local",
+                    "esxi04.use1.corp.local",
+                ],
                 "/DC-US-East-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=512000, cpu_used_mhz=220000,
-                mem_capacity_mb=1572864, mem_used_mb=900000,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=512000,
+                cpu_used_mhz=220000,
+                mem_capacity_mb=1572864,
+                mem_used_mb=900000,
             ),
             "Prod-Cluster-B": _make_site_cluster(
-                "Prod-Cluster-B", "DC-US-East-1", "domain-c102",
-                ["esxi05.use1.corp.local", "esxi06.use1.corp.local",
-                 "esxi07.use1.corp.local", "esxi08.use1.corp.local"],
+                "Prod-Cluster-B",
+                "DC-US-East-1",
+                "domain-c102",
+                [
+                    "esxi05.use1.corp.local",
+                    "esxi06.use1.corp.local",
+                    "esxi07.use1.corp.local",
+                    "esxi08.use1.corp.local",
+                ],
                 "/DC-US-East-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=512000, cpu_used_mhz=280000,
-                mem_capacity_mb=1572864, mem_used_mb=1100000,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=512000,
+                cpu_used_mhz=280000,
+                mem_capacity_mb=1572864,
+                mem_used_mb=1100000,
             ),
             "DR-Cluster": _make_site_cluster(
-                "DR-Cluster", "DC-US-East-1", "domain-c103",
+                "DR-Cluster",
+                "DC-US-East-1",
+                "domain-c103",
                 ["esxi09.use1.corp.local", "esxi10.use1.corp.local"],
                 "/DC-US-East-1/host",
-                ha_enabled=False, drs_enabled=False,
-                cpu_capacity_mhz=128000, cpu_used_mhz=20000,
-                mem_capacity_mb=393216, mem_used_mb=49152,
+                ha_enabled=False,
+                drs_enabled=False,
+                cpu_capacity_mhz=128000,
+                cpu_used_mhz=20000,
+                mem_capacity_mb=393216,
+                mem_used_mb=49152,
             ),
         }
     },
     "datastores": [
         _make_ds("USE1-VMFS-SSD-01", 21990232555520, 10995116277760, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("USE1-VMFS-SSD-02", 21990232555520, 10995116277760, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("USE1-VMFS-SSD-03", 21990232555520, 2199023255552,  maintenanceMode="normal", multipleHostAccess=True),   # 10% → critical
-        _make_ds("USE1-VMFS-SSD-04", 21990232555520, 3298534883328,  maintenanceMode="normal", multipleHostAccess=True),   # 15% → warning
-        _make_ds("USE1-NFS-01", 43980465111040, 21990232555520, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("USE1-NFS-02", 43980465111040, 30786325577728, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "USE1-VMFS-SSD-03", 21990232555520, 2199023255552, maintenanceMode="normal", multipleHostAccess=True
+        ),  # 10% → critical
+        _make_ds(
+            "USE1-VMFS-SSD-04", 21990232555520, 3298534883328, maintenanceMode="normal", multipleHostAccess=True
+        ),  # 15% → warning
+        _make_ds(
+            "USE1-NFS-01",
+            43980465111040,
+            21990232555520,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "USE1-NFS-02",
+            43980465111040,
+            30786325577728,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
         _make_ds("USE1-DR-VMFS-01", 10995116277760, 8796093022208, maintenanceMode="normal", multipleHostAccess=False),
-        _make_ds("USE1-NFS-BACKUP", 87960930222080, 70368744177664, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "USE1-NFS-BACKUP",
+            87960930222080,
+            70368744177664,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
     ],
     "vm_count": 75,
     "vm_datacenter": "DC-US-East-1",
@@ -854,23 +1132,58 @@ SITE_US_EAST: dict = {
     "tools_issues": 4,
     "powered_off": 5,
     "snapshots": [
-        {"vm_name": "db-use1-004", "folder": "/DC-US-East-1/vm/db", "name": "pre-migration",
-         "description": "Pre-DB migration snapshot", "creation_time": _days_ago_iso(12),
-         "state": "poweredOn", "id": 1, "quiesced": True},
-        {"vm_name": "app-use1-009", "folder": "/DC-US-East-1/vm/app", "name": "pre-patch-q1",
-         "description": "Q1 patching baseline", "creation_time": _days_ago_iso(35),
-         "state": "poweredOn", "id": 2, "quiesced": False},
-        {"vm_name": "web-use1-001", "folder": "/DC-US-East-1/vm/web", "name": "rollback",
-         "description": "Emergency rollback point", "creation_time": _days_ago_iso(3),
-         "state": "poweredOn", "id": 3, "quiesced": False},
+        {
+            "vm_name": "db-use1-004",
+            "folder": "/DC-US-East-1/vm/db",
+            "name": "pre-migration",
+            "description": "Pre-DB migration snapshot",
+            "creation_time": _days_ago_iso(12),
+            "state": "poweredOn",
+            "id": 1,
+            "quiesced": True,
+        },
+        {
+            "vm_name": "app-use1-009",
+            "folder": "/DC-US-East-1/vm/app",
+            "name": "pre-patch-q1",
+            "description": "Q1 patching baseline",
+            "creation_time": _days_ago_iso(35),
+            "state": "poweredOn",
+            "id": 2,
+            "quiesced": False,
+        },
+        {
+            "vm_name": "web-use1-001",
+            "folder": "/DC-US-East-1/vm/web",
+            "name": "rollback",
+            "description": "Emergency rollback point",
+            "creation_time": _days_ago_iso(3),
+            "state": "poweredOn",
+            "id": 3,
+            "quiesced": False,
+        },
     ],
     "alarms": [
-        {"alarm_name": "Datastore Free Space", "description": "USE1-VMFS-SSD-03 <10% free",
-         "entity": "USE1-VMFS-SSD-03", "entity_type": "Datastore",
-         "status": "red", "severity": "critical", "time": _days_ago_iso(0.5), "acknowledged": False},
-        {"alarm_name": "Host Memory Usage", "description": "esxi06.use1 memory >95%",
-         "entity": "esxi06.use1.corp.local", "entity_type": "HostSystem",
-         "status": "yellow", "severity": "warning", "time": _days_ago_iso(2), "acknowledged": False},
+        {
+            "alarm_name": "Datastore Free Space",
+            "description": "USE1-VMFS-SSD-03 <10% free",
+            "entity": "USE1-VMFS-SSD-03",
+            "entity_type": "Datastore",
+            "status": "red",
+            "severity": "critical",
+            "time": _days_ago_iso(0.5),
+            "acknowledged": False,
+        },
+        {
+            "alarm_name": "Host Memory Usage",
+            "description": "esxi06.use1 memory >95%",
+            "entity": "esxi06.use1.corp.local",
+            "entity_type": "HostSystem",
+            "status": "yellow",
+            "severity": "warning",
+            "time": _days_ago_iso(2),
+            "acknowledged": False,
+        },
     ],
 }
 
@@ -881,8 +1194,14 @@ SITE_US_WEST: dict = {
     "country": "USA (Oregon)",
     "version": "8.0.2.00200",
     "build": "22617221",
-    "health": {"cpu": "green", "database": "green", "memory": "green",
-               "overall": "green", "storage": "green", "swap": "green"},
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "green",
+        "overall": "green",
+        "storage": "green",
+        "swap": "green",
+    },
     "ssh": False,
     "shell": False,
     "backup_schedules": [_backup_sched(enabled=True)],
@@ -892,29 +1211,52 @@ SITE_US_WEST: dict = {
     "clusters": {
         "DC-US-West-1": {
             "Prod-Cluster-Main": _make_site_cluster(
-                "Prod-Cluster-Main", "DC-US-West-1", "domain-c201",
-                ["esxi01.usw2.corp.local", "esxi02.usw2.corp.local",
-                 "esxi03.usw2.corp.local"],
+                "Prod-Cluster-Main",
+                "DC-US-West-1",
+                "domain-c201",
+                ["esxi01.usw2.corp.local", "esxi02.usw2.corp.local", "esxi03.usw2.corp.local"],
                 "/DC-US-West-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=384000, cpu_used_mhz=120000,
-                mem_capacity_mb=786432, mem_used_mb=262144,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=384000,
+                cpu_used_mhz=120000,
+                mem_capacity_mb=786432,
+                mem_used_mb=262144,
             ),
             "Edge-Cluster": _make_site_cluster(
-                "Edge-Cluster", "DC-US-West-1", "domain-c202",
+                "Edge-Cluster",
+                "DC-US-West-1",
+                "domain-c202",
                 ["esxi04.usw2.corp.local", "esxi05.usw2.corp.local"],
                 "/DC-US-West-1/host",
-                ha_enabled=True, drs_enabled=False,
-                cpu_capacity_mhz=128000, cpu_used_mhz=32000,
-                mem_capacity_mb=262144, mem_used_mb=65536,
+                ha_enabled=True,
+                drs_enabled=False,
+                cpu_capacity_mhz=128000,
+                cpu_used_mhz=32000,
+                mem_capacity_mb=262144,
+                mem_used_mb=65536,
             ),
         }
     },
     "datastores": [
         _make_ds("USW2-VMFS-SSD-01", 21990232555520, 13194139533312, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("USW2-VMFS-SSD-02", 21990232555520, 15393162788864, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("USW2-NFS-01", 43980465111040, 35184372088832, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("USW2-NFS-BACKUP", 43980465111040, 39582418599936, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "USW2-NFS-01",
+            43980465111040,
+            35184372088832,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "USW2-NFS-BACKUP",
+            43980465111040,
+            39582418599936,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
     ],
     "vm_count": 40,
     "vm_datacenter": "DC-US-West-1",
@@ -933,8 +1275,14 @@ SITE_EU_DE: dict = {
     "country": "Germany (Frankfurt)",
     "version": "8.0.3.00300",
     "build": "24022515",
-    "health": {"cpu": "green", "database": "green", "memory": "yellow",
-               "overall": "yellow", "storage": "green", "swap": "green"},
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "yellow",
+        "overall": "yellow",
+        "storage": "green",
+        "swap": "green",
+    },
     "ssh": False,
     "shell": False,
     "backup_schedules": [_backup_sched(enabled=True)],
@@ -944,30 +1292,63 @@ SITE_EU_DE: dict = {
     "clusters": {
         "DC-EU-Central-1": {
             "EU-Prod-Cluster-01": _make_site_cluster(
-                "EU-Prod-Cluster-01", "DC-EU-Central-1", "domain-c301",
+                "EU-Prod-Cluster-01",
+                "DC-EU-Central-1",
+                "domain-c301",
                 [f"esxi{i:02d}.eude.corp.local" for i in range(1, 7)],
                 "/DC-EU-Central-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=768000, cpu_used_mhz=490000,
-                mem_capacity_mb=2097152, mem_used_mb=1835008,  # ~87% — causes yellow health
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=768000,
+                cpu_used_mhz=490000,
+                mem_capacity_mb=2097152,
+                mem_used_mb=1835008,  # ~87% — causes yellow health
             ),
             "EU-Dev-Cluster": _make_site_cluster(
-                "EU-Dev-Cluster", "DC-EU-Central-1", "domain-c302",
+                "EU-Dev-Cluster",
+                "DC-EU-Central-1",
+                "domain-c302",
                 ["esxi07.eude.corp.local", "esxi08.eude.corp.local"],
                 "/DC-EU-Central-1/host",
-                ha_enabled=False, drs_enabled=False,
-                cpu_capacity_mhz=128000, cpu_used_mhz=40000,
-                mem_capacity_mb=262144, mem_used_mb=73728,
+                ha_enabled=False,
+                drs_enabled=False,
+                cpu_capacity_mhz=128000,
+                cpu_used_mhz=40000,
+                mem_capacity_mb=262144,
+                mem_used_mb=73728,
             ),
         }
     },
     "datastores": [
         _make_ds("EUDE-VMFS-SSD-01", 32985348833280, 16492674416640, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("EUDE-VMFS-SSD-02", 32985348833280, 18691697671168, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("EUDE-VMFS-SSD-03", 32985348833280, 14293651161088, maintenanceMode="normal", multipleHostAccess=True),  # 43% — OK
-        _make_ds("EUDE-NFS-01", 65970697666560, 42949672960000, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("EUDE-NFS-02", 65970697666560, 52428800000000, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("EUDE-NFS-BACKUP", 131941395333120, 105553116266496, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "EUDE-VMFS-SSD-03", 32985348833280, 14293651161088, maintenanceMode="normal", multipleHostAccess=True
+        ),  # 43% — OK
+        _make_ds(
+            "EUDE-NFS-01",
+            65970697666560,
+            42949672960000,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "EUDE-NFS-02",
+            65970697666560,
+            52428800000000,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "EUDE-NFS-BACKUP",
+            131941395333120,
+            105553116266496,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
     ],
     "vm_count": 65,
     "vm_datacenter": "DC-EU-Central-1",
@@ -976,26 +1357,68 @@ SITE_EU_DE: dict = {
     "tools_issues": 0,
     "powered_off": 8,
     "snapshots": [
-        {"vm_name": "db-eude-002", "folder": "/DC-EU-Central-1/vm/db", "name": "pre-gdpr-audit",
-         "description": "GDPR compliance audit baseline", "creation_time": _days_ago_iso(55),
-         "state": "poweredOff", "id": 10, "quiesced": False},
-        {"vm_name": "app-eude-006", "folder": "/DC-EU-Central-1/vm/app", "name": "q4-baseline",
-         "description": "Q4 application baseline", "creation_time": _days_ago_iso(90),
-         "state": "poweredOn", "id": 11, "quiesced": False},
-        {"vm_name": "api-eude-003", "folder": "/DC-EU-Central-1/vm/api", "name": "api-v2-rollback",
-         "description": "API v2 deployment rollback", "creation_time": _days_ago_iso(14),
-         "state": "poweredOn", "id": 12, "quiesced": True},
-        {"vm_name": "web-eude-001", "folder": "/DC-EU-Central-1/vm/web", "name": "web-pre-upgrade",
-         "description": "Before web stack upgrade", "creation_time": _days_ago_iso(21),
-         "state": "poweredOn", "id": 13, "quiesced": False},
+        {
+            "vm_name": "db-eude-002",
+            "folder": "/DC-EU-Central-1/vm/db",
+            "name": "pre-gdpr-audit",
+            "description": "GDPR compliance audit baseline",
+            "creation_time": _days_ago_iso(55),
+            "state": "poweredOff",
+            "id": 10,
+            "quiesced": False,
+        },
+        {
+            "vm_name": "app-eude-006",
+            "folder": "/DC-EU-Central-1/vm/app",
+            "name": "q4-baseline",
+            "description": "Q4 application baseline",
+            "creation_time": _days_ago_iso(90),
+            "state": "poweredOn",
+            "id": 11,
+            "quiesced": False,
+        },
+        {
+            "vm_name": "api-eude-003",
+            "folder": "/DC-EU-Central-1/vm/api",
+            "name": "api-v2-rollback",
+            "description": "API v2 deployment rollback",
+            "creation_time": _days_ago_iso(14),
+            "state": "poweredOn",
+            "id": 12,
+            "quiesced": True,
+        },
+        {
+            "vm_name": "web-eude-001",
+            "folder": "/DC-EU-Central-1/vm/web",
+            "name": "web-pre-upgrade",
+            "description": "Before web stack upgrade",
+            "creation_time": _days_ago_iso(21),
+            "state": "poweredOn",
+            "id": 13,
+            "quiesced": False,
+        },
     ],
     "alarms": [
-        {"alarm_name": "vCenter Memory Usage", "description": "VCSA appliance memory >80%",
-         "entity": "vcenter-eu-de.corp.local", "entity_type": "VirtualMachine",
-         "status": "yellow", "severity": "warning", "time": _days_ago_iso(1), "acknowledged": False},
-        {"alarm_name": "Cluster Memory Usage", "description": "EU-Prod-Cluster-01 memory utilisation >85%",
-         "entity": "EU-Prod-Cluster-01", "entity_type": "ClusterComputeResource",
-         "status": "yellow", "severity": "warning", "time": _days_ago_iso(0.5), "acknowledged": False},
+        {
+            "alarm_name": "vCenter Memory Usage",
+            "description": "VCSA appliance memory >80%",
+            "entity": "vcenter-eu-de.corp.local",
+            "entity_type": "VirtualMachine",
+            "status": "yellow",
+            "severity": "warning",
+            "time": _days_ago_iso(1),
+            "acknowledged": False,
+        },
+        {
+            "alarm_name": "Cluster Memory Usage",
+            "description": "EU-Prod-Cluster-01 memory utilisation >85%",
+            "entity": "EU-Prod-Cluster-01",
+            "entity_type": "ClusterComputeResource",
+            "status": "yellow",
+            "severity": "warning",
+            "time": _days_ago_iso(0.5),
+            "acknowledged": False,
+        },
     ],
 }
 
@@ -1006,31 +1429,56 @@ SITE_EU_UK: dict = {
     "country": "United Kingdom (London)",
     "version": "7.0.3.01800",
     "build": "21784236",
-    "health": {"cpu": "green", "database": "green", "memory": "green",
-               "overall": "green", "storage": "green", "swap": "green"},
-    "ssh": True,      # ssh_enabled WARNING
-    "shell": True,    # shell_enabled WARNING
-    "backup_schedules": [_backup_sched(enabled=False)],   # backup_schedule_disabled CRITICAL
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "green",
+        "overall": "green",
+        "storage": "green",
+        "swap": "green",
+    },
+    "ssh": True,  # ssh_enabled WARNING
+    "shell": True,  # shell_enabled WARNING
+    "backup_schedules": [_backup_sched(enabled=False)],  # backup_schedule_disabled CRITICAL
     "datacenters": [
         {"name": "DC-EU-West-1", "moid": "datacenter-40", "config_status": "green", "overall_status": "green"},
     ],
     "clusters": {
         "DC-EU-West-1": {
             "UK-Prod-Cluster": _make_site_cluster(
-                "UK-Prod-Cluster", "DC-EU-West-1", "domain-c401",
+                "UK-Prod-Cluster",
+                "DC-EU-West-1",
+                "domain-c401",
                 [f"esxi{i:02d}.euk.corp.local" for i in range(1, 5)],
                 "/DC-EU-West-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=256000, cpu_used_mhz=89600,
-                mem_capacity_mb=524288, mem_used_mb=183500,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=256000,
+                cpu_used_mhz=89600,
+                mem_capacity_mb=524288,
+                mem_used_mb=183500,
             ),
         }
     },
     "datastores": [
         _make_ds("EUK-VMFS-SSD-01", 10995116277760, 7696581394432, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("EUK-VMFS-SSD-02", 10995116277760, 5497558138880, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("EUK-NFS-01", 21990232555520, 3298534883328, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),   # 15% → warning
-        _make_ds("EUK-NFS-BACKUP", 21990232555520, 17592186044416, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "EUK-NFS-01",
+            21990232555520,
+            3298534883328,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),  # 15% → warning
+        _make_ds(
+            "EUK-NFS-BACKUP",
+            21990232555520,
+            17592186044416,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
     ],
     "vm_count": 30,
     "vm_datacenter": "DC-EU-West-1",
@@ -1049,8 +1497,14 @@ SITE_APAC_SG: dict = {
     "country": "Singapore",
     "version": "8.0.3.00300",
     "build": "24022515",
-    "health": {"cpu": "green", "database": "green", "memory": "green",
-               "overall": "green", "storage": "green", "swap": "green"},
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "green",
+        "overall": "green",
+        "storage": "green",
+        "swap": "green",
+    },
     "ssh": False,
     "shell": False,
     "backup_schedules": [_backup_sched(enabled=True)],
@@ -1060,50 +1514,104 @@ SITE_APAC_SG: dict = {
     "clusters": {
         "DC-APAC-SG-1": {
             "APAC-Prod-Cluster": _make_site_cluster(
-                "APAC-Prod-Cluster", "DC-APAC-SG-1", "domain-c501",
+                "APAC-Prod-Cluster",
+                "DC-APAC-SG-1",
+                "domain-c501",
                 [f"esxi{i:02d}.apsg.corp.local" for i in range(1, 7)],
                 "/DC-APAC-SG-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=768000, cpu_used_mhz=360000,
-                mem_capacity_mb=1572864, mem_used_mb=786432,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=768000,
+                cpu_used_mhz=360000,
+                mem_capacity_mb=1572864,
+                mem_used_mb=786432,
             ),
             "APAC-Edge-Cluster": _make_site_cluster(
-                "APAC-Edge-Cluster", "DC-APAC-SG-1", "domain-c502",
+                "APAC-Edge-Cluster",
+                "DC-APAC-SG-1",
+                "domain-c502",
                 ["esxi07.apsg.corp.local", "esxi08.apsg.corp.local"],
                 "/DC-APAC-SG-1/host",
-                ha_enabled=True, drs_enabled=False,
-                cpu_capacity_mhz=192000, cpu_used_mhz=48000,
-                mem_capacity_mb=393216, mem_used_mb=98304,
+                ha_enabled=True,
+                drs_enabled=False,
+                cpu_capacity_mhz=192000,
+                cpu_used_mhz=48000,
+                mem_capacity_mb=393216,
+                mem_used_mb=98304,
             ),
         }
     },
     "datastores": [
         _make_ds("APSG-VMFS-SSD-01", 21990232555520, 10995116277760, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("APSG-VMFS-SSD-02", 21990232555520, 10995116277760, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("APSG-VMFS-SSD-03", 21990232555520, 2857749006336, maintenanceMode="normal", multipleHostAccess=True),   # 13% → warning
-        _make_ds("APSG-NFS-01", 43980465111040, 26388279066624, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("APSG-NFS-BACKUP", 65970697666560, 52776558133248, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("APSG-CRASH-NFS", 5497558138880, 0, ds_type="NFS",
-                 accessible=False, maintenanceMode="normal", multipleHostAccess=False),  # inaccessible → CRITICAL
+        _make_ds(
+            "APSG-VMFS-SSD-03", 21990232555520, 2857749006336, maintenanceMode="normal", multipleHostAccess=True
+        ),  # 13% → warning
+        _make_ds(
+            "APSG-NFS-01",
+            43980465111040,
+            26388279066624,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "APSG-NFS-BACKUP",
+            65970697666560,
+            52776558133248,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
+        _make_ds(
+            "APSG-CRASH-NFS",
+            5497558138880,
+            0,
+            ds_type="NFS",
+            accessible=False,
+            maintenanceMode="normal",
+            multipleHostAccess=False,
+        ),  # inaccessible → CRITICAL
     ],
     "vm_count": 55,
     "vm_datacenter": "DC-APAC-SG-1",
     "vm_clusters": ["APAC-Prod-Cluster", "APAC-Edge-Cluster"],
     "vm_esxi": [f"esxi{i:02d}.apsg.corp.local" for i in range(1, 9)],
-    "tools_issues": 8,   # vm_tools_not_running + vm_tools_not_installed
+    "tools_issues": 8,  # vm_tools_not_running + vm_tools_not_installed
     "powered_off": 3,
     "snapshots": [
-        {"vm_name": "db-apsg-004", "folder": "/DC-APAC-SG-1/vm/db", "name": "pre-release-2.4",
-         "description": "Pre-release 2.4 snapshot", "creation_time": _days_ago_iso(9),
-         "state": "poweredOn", "id": 20, "quiesced": True},
+        {
+            "vm_name": "db-apsg-004",
+            "folder": "/DC-APAC-SG-1/vm/db",
+            "name": "pre-release-2.4",
+            "description": "Pre-release 2.4 snapshot",
+            "creation_time": _days_ago_iso(9),
+            "state": "poweredOn",
+            "id": 20,
+            "quiesced": True,
+        },
     ],
     "alarms": [
-        {"alarm_name": "Datastore Inaccessible", "description": "APSG-CRASH-NFS is inaccessible",
-         "entity": "APSG-CRASH-NFS", "entity_type": "Datastore",
-         "status": "red", "severity": "critical", "time": _days_ago_iso(0.1), "acknowledged": False},
-        {"alarm_name": "Host Network Connectivity", "description": "esxi08.apsg NIC teaming failure",
-         "entity": "esxi08.apsg.corp.local", "entity_type": "HostSystem",
-         "status": "yellow", "severity": "warning", "time": _days_ago_iso(0.3), "acknowledged": False},
+        {
+            "alarm_name": "Datastore Inaccessible",
+            "description": "APSG-CRASH-NFS is inaccessible",
+            "entity": "APSG-CRASH-NFS",
+            "entity_type": "Datastore",
+            "status": "red",
+            "severity": "critical",
+            "time": _days_ago_iso(0.1),
+            "acknowledged": False,
+        },
+        {
+            "alarm_name": "Host Network Connectivity",
+            "description": "esxi08.apsg NIC teaming failure",
+            "entity": "esxi08.apsg.corp.local",
+            "entity_type": "HostSystem",
+            "status": "yellow",
+            "severity": "warning",
+            "time": _days_ago_iso(0.3),
+            "acknowledged": False,
+        },
     ],
 }
 
@@ -1114,30 +1622,48 @@ SITE_APAC_AU: dict = {
     "country": "Australia (Sydney)",
     "version": "8.0.2.00200",
     "build": "22617221",
-    "health": {"cpu": "green", "database": "green", "memory": "green",
-               "overall": "green", "storage": "green", "swap": "green"},
+    "health": {
+        "cpu": "green",
+        "database": "green",
+        "memory": "green",
+        "overall": "green",
+        "storage": "green",
+        "swap": "green",
+    },
     "ssh": False,
     "shell": False,
-    "backup_schedules": [],    # no_backup_schedule CRITICAL
+    "backup_schedules": [],  # no_backup_schedule CRITICAL
     "datacenters": [
         {"name": "DC-APAC-AU-1", "moid": "datacenter-60", "config_status": "green", "overall_status": "green"},
     ],
     "clusters": {
         "DC-APAC-AU-1": {
             "AU-Prod-Cluster": _make_site_cluster(
-                "AU-Prod-Cluster", "DC-APAC-AU-1", "domain-c601",
+                "AU-Prod-Cluster",
+                "DC-APAC-AU-1",
+                "domain-c601",
                 [f"esxi{i:02d}.apau.corp.local" for i in range(1, 5)],
                 "/DC-APAC-AU-1/host",
-                ha_enabled=True, drs_enabled=True,
-                cpu_capacity_mhz=256000, cpu_used_mhz=51200,
-                mem_capacity_mb=524288, mem_used_mb=104857,
+                ha_enabled=True,
+                drs_enabled=True,
+                cpu_capacity_mhz=256000,
+                cpu_used_mhz=51200,
+                mem_capacity_mb=524288,
+                mem_used_mb=104857,
             ),
         }
     },
     "datastores": [
         _make_ds("APAU-VMFS-SSD-01", 10995116277760, 8796093022208, maintenanceMode="normal", multipleHostAccess=True),
         _make_ds("APAU-VMFS-SSD-02", 10995116277760, 7696581394432, maintenanceMode="normal", multipleHostAccess=True),
-        _make_ds("APAU-NFS-01", 21990232555520, 17592186044416, ds_type="NFS", maintenanceMode="normal", multipleHostAccess=True),
+        _make_ds(
+            "APAU-NFS-01",
+            21990232555520,
+            17592186044416,
+            ds_type="NFS",
+            maintenanceMode="normal",
+            multipleHostAccess=True,
+        ),
     ],
     "vm_count": 35,
     "vm_datacenter": "DC-APAC-AU-1",
@@ -1176,15 +1702,17 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         ccm_state = "stopped"
         audit_failed = False
         update_results: list[dict] = [
-            {"application": "Microsoft Visual C++ 2019 Redistributable (x64)",
-             "status": "failed", "failed": True},
-            {"application": "Windows Defender ATP",
-             "status": "succeeded", "failed": False},
+            {"application": "Microsoft Visual C++ 2019 Redistributable (x64)", "status": "failed", "failed": True},
+            {"application": "Windows Defender ATP", "status": "succeeded", "failed": False},
         ]
         # Pre-parsed dict — matches what applications.yaml stores via from_json
         configmgr_apps: dict = {
             "AllApps": [
-                {"Name": "Microsoft Office 365 ProPlus", "Version": "16.0.17628.20006", "Publisher": "Microsoft Corporation"},
+                {
+                    "Name": "Microsoft Office 365 ProPlus",
+                    "Version": "16.0.17628.20006",
+                    "Publisher": "Microsoft Corporation",
+                },
                 {"Name": "Microsoft Visual Studio Code", "Version": "1.86.2", "Publisher": "Microsoft Corporation"},
                 {"Name": "Google Chrome", "Version": "121.0.6167.185", "Publisher": "Google LLC"},
                 {"Name": "Mozilla Firefox ESR", "Version": "115.7.0", "Publisher": "Mozilla"},
@@ -1208,7 +1736,11 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         ]
         configmgr_apps = {
             "AllApps": [
-                {"Name": "Microsoft Office 365 ProPlus", "Version": "16.0.17628.20006", "Publisher": "Microsoft Corporation"},
+                {
+                    "Name": "Microsoft Office 365 ProPlus",
+                    "Version": "16.0.17628.20006",
+                    "Publisher": "Microsoft Corporation",
+                },
                 {"Name": "Google Chrome", "Version": "122.0.6261.57", "Publisher": "Google LLC"},
             ],
             "AppsToUpdate": [],
@@ -1219,8 +1751,16 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         {"Name": "Microsoft Office 365 ProPlus", "Version": "16.0.17628.20006", "Publisher": "Microsoft Corporation"},
         {"Name": "Google Chrome", "Version": "121.0.6167.185", "Publisher": "Google LLC"},
         {"Name": "7-Zip 23.01 (x64)", "Version": "23.01.00.0", "Publisher": "Igor Pavlov"},
-        {"Name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)", "Version": "14.38.33130.0", "Publisher": "Microsoft Corporation"},
-        {"Name": "Microsoft Visual C++ 2015-2022 Redistributable (x86)", "Version": "14.38.33130.0", "Publisher": "Microsoft Corporation"},
+        {
+            "Name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
+            "Version": "14.38.33130.0",
+            "Publisher": "Microsoft Corporation",
+        },
+        {
+            "Name": "Microsoft Visual C++ 2015-2022 Redistributable (x86)",
+            "Version": "14.38.33130.0",
+            "Publisher": "Microsoft Corporation",
+        },
         {"Name": "Mozilla Firefox ESR 115.7.0 (x64 en-US)", "Version": "115.7.0", "Publisher": "Mozilla"},
         {"Name": "Python 3.11.7 (64-bit)", "Version": "3.11.7150.0", "Publisher": "Python Software Foundation"},
         {"Name": "Windows Admin Center", "Version": "2306.2306.16001.0", "Publisher": "Microsoft Corporation"},
@@ -1236,19 +1776,21 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     # Build ccm_service from win_service RETURN sample keys, then override for scenario.
     # win_service RETURN has flat top-level keys: exists, name, state, start_mode, etc.
     ccm_service = copy.deepcopy(_WIN_SVC_BASE)
-    ccm_service.update({
-        "exists": True,
-        "name": "CcmExec",
-        "display_name": "SMS Agent Host",
-        "state": ccm_state,          # "running" or "stopped" (lowercase, as module returns)
-        "start_mode": "auto",
-        "path": "C:\\Windows\\CCM\\CcmExec.exe",
-        "description": "Configuration Manager client agent",
-        "username": "LocalSystem",
-        "desktop_interact": False,
-        "dependencies": ["RpcSs"],   # module sample has False; override to real list
-        "depended_by": [],
-    })
+    ccm_service.update(
+        {
+            "exists": True,
+            "name": "CcmExec",
+            "display_name": "SMS Agent Host",
+            "state": ccm_state,  # "running" or "stopped" (lowercase, as module returns)
+            "start_mode": "auto",
+            "path": "C:\\Windows\\CCM\\CcmExec.exe",
+            "description": "Configuration Manager client agent",
+            "username": "LocalSystem",
+            "desktop_interact": False,
+            "dependencies": ["RpcSs"],  # module sample has False; override to real list
+            "depended_by": [],
+        }
+    )
 
     return {
         "windows_raw_audit": {
@@ -1278,11 +1820,26 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
 
 def make_stig_esxi_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     findings = [
-        {"id": "V-256379", "status": "failed" if unhealthy else "pass", "severity": "high", "title": "ESXi must separate management networks."},
+        {
+            "id": "V-256379",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "high",
+            "title": "ESXi must separate management networks.",
+        },
         {"id": "V-256380", "status": "pass", "severity": "high", "title": "ESXi must restrict access."},
-        {"id": "V-256381", "status": "failed" if unhealthy else "pass", "severity": "medium", "title": "ESXi must use NTP."},
+        {
+            "id": "V-256381",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "medium",
+            "title": "ESXi must use NTP.",
+        },
         {"id": "V-256382", "status": "pass", "severity": "medium", "title": "ESXi must use syslog."},
-        {"id": "V-256383", "status": "failed" if unhealthy else "pass", "severity": "low", "title": "ESXi must have lockdown mode."},
+        {
+            "id": "V-256383",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "low",
+            "title": "ESXi must have lockdown mode.",
+        },
         {"id": "V-256384", "status": "pass", "severity": "low", "title": "ESXi must configure SSH timeout."},
         {"id": "V-256385", "status": "na", "severity": "low", "title": "ESXi some N/A check."},
         {"id": "V-256386", "status": "pass", "severity": "medium", "title": "ESXi another pass check."},
@@ -1305,9 +1862,19 @@ def make_stig_esxi_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
 
 def make_stig_vm_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     findings = [
-        {"id": "V-256400", "status": "failed" if unhealthy else "pass", "severity": "high", "title": "VM must disable unneeded hardware."},
+        {
+            "id": "V-256400",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "high",
+            "title": "VM must disable unneeded hardware.",
+        },
         {"id": "V-256401", "status": "pass", "severity": "high", "title": "VM must use encryption."},
-        {"id": "V-256402", "status": "failed" if unhealthy else "pass", "severity": "medium", "title": "VM must restrict console access."},
+        {
+            "id": "V-256402",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "medium",
+            "title": "VM must restrict console access.",
+        },
         {"id": "V-256403", "status": "pass", "severity": "medium", "title": "VM must use latest tools."},
         {"id": "V-256404", "status": "pass", "severity": "low", "title": "VM must limit logging."},
     ]
@@ -1327,12 +1894,32 @@ def make_stig_vm_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
 
 def make_stig_ubuntu_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     findings = [
-        {"id": "UBTU-22-010000", "status": "failed" if unhealthy else "pass", "severity": "high", "title": "Ubuntu must disable root login."},
-        {"id": "UBTU-22-010001", "status": "pass", "severity": "high", "title": "Ubuntu must require strong passwords."},
-        {"id": "UBTU-22-010002", "status": "failed" if unhealthy else "pass", "severity": "medium", "title": "Ubuntu must configure auditd."},
+        {
+            "id": "UBTU-22-010000",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "high",
+            "title": "Ubuntu must disable root login.",
+        },
+        {
+            "id": "UBTU-22-010001",
+            "status": "pass",
+            "severity": "high",
+            "title": "Ubuntu must require strong passwords.",
+        },
+        {
+            "id": "UBTU-22-010002",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "medium",
+            "title": "Ubuntu must configure auditd.",
+        },
         {"id": "UBTU-22-010003", "status": "pass", "severity": "medium", "title": "Ubuntu must use FIPS mode."},
         {"id": "UBTU-22-010004", "status": "pass", "severity": "low", "title": "Ubuntu must clear tmp."},
-        {"id": "UBTU-22-010005", "status": "pass", "severity": "low", "title": "Ubuntu must disable unneeded services."},
+        {
+            "id": "UBTU-22-010005",
+            "status": "pass",
+            "severity": "low",
+            "title": "Ubuntu must disable unneeded services.",
+        },
         {"id": "UBTU-22-010006", "status": "na", "severity": "medium", "title": "Ubuntu NA check."},
         {"id": "UBTU-22-010007", "status": "pass", "severity": "high", "title": "Ubuntu final check."},
     ]
@@ -1352,9 +1939,24 @@ def make_stig_ubuntu_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
 
 def make_stig_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     findings = [
-        {"id": "WN22-00-000000", "status": "failed" if unhealthy else "pass", "severity": "high", "title": "Windows must disable Guest account."},
-        {"id": "WN22-00-000001", "status": "pass", "severity": "high", "title": "Windows must enforce password history."},
-        {"id": "WN22-00-000002", "status": "failed" if unhealthy else "pass", "severity": "medium", "title": "Windows must enable Firewall."},
+        {
+            "id": "WN22-00-000000",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "high",
+            "title": "Windows must disable Guest account.",
+        },
+        {
+            "id": "WN22-00-000001",
+            "status": "pass",
+            "severity": "high",
+            "title": "Windows must enforce password history.",
+        },
+        {
+            "id": "WN22-00-000002",
+            "status": "failed" if unhealthy else "pass",
+            "severity": "medium",
+            "title": "Windows must enable Firewall.",
+        },
         {"id": "WN22-00-000003", "status": "pass", "severity": "medium", "title": "Windows must disable SMBv1."},
         {"id": "WN22-00-000004", "status": "pass", "severity": "low", "title": "Windows must set legal notice."},
         {"id": "WN22-00-000005", "status": "pass", "severity": "low", "title": "Windows must disable autorun."},

@@ -42,6 +42,7 @@ def _register_transform(name: str) -> Callable[[Callable[[Any], Any]], Callable[
     def decorator(fn: Callable[[Any], Any]) -> Callable[[Any], Any]:
         _TRANSFORMS[name] = fn
         return fn
+
     return decorator
 
 
@@ -55,8 +56,6 @@ def _first(value: Any) -> Any:
     if isinstance(value, list) and value:
         return value[0]
     return None
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -174,11 +173,7 @@ def _run_script_field(
     is required for built-in scripts.
     """
     payload = json.dumps({"fields": fields, "args": args})
-    cmd: list[str] = (
-        [sys.executable, str(script_path)]
-        if script_path.suffix == ".py"
-        else [str(script_path)]
-    )
+    cmd: list[str] = [sys.executable, str(script_path)] if script_path.suffix == ".py" else [str(script_path)]
     # Return-code convention:
     #   0  — success; stdout is the JSON value
     #   1  — data not available on this host (normal); use fallback, no warning
@@ -317,9 +312,7 @@ def _coerce(value: Any, type_name: str, fallback: Any) -> Any:
         return fallback
 
 
-def extract_fields(
-    schema: ReportSchema, raw: dict[str, Any]
-) -> tuple[dict[str, Any], dict[str, int]]:
+def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
     """
     Walk schema.fields, resolve each from *raw*, coerce types, apply fallbacks.
 
@@ -402,6 +395,7 @@ def extract_fields(
 # Condition evaluation
 # ---------------------------------------------------------------------------
 
+
 def _parse_iso(ts: str) -> datetime | None:
     """Parse an ISO-8601 timestamp, returning a UTC-aware datetime or None."""
     ts = ts.rstrip("Z")
@@ -447,8 +441,7 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
     if isinstance(condition, FilterCountCondition):
         lst = safe_list(fields.get(condition.field, []))
         count = sum(
-            1 for item in lst
-            if isinstance(item, dict) and item.get(condition.filter_field) == condition.filter_value
+            1 for item in lst if isinstance(item, dict) and item.get(condition.filter_field) == condition.filter_value
         )
         return count > condition.threshold
 
@@ -469,9 +462,9 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
     if isinstance(condition, MultiFilterCondition):
         lst = safe_list(fields.get(condition.field, []))
         count = sum(
-            1 for item in lst
-            if isinstance(item, dict)
-            and all(item.get(f.filter_field) == f.filter_value for f in condition.filters)
+            1
+            for item in lst
+            if isinstance(item, dict) and all(item.get(f.filter_field) == f.filter_value for f in condition.filters)
         )
         return count > condition.threshold
 
@@ -567,15 +560,17 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
         if rule.affected_items_field:
             affected_items = safe_list(fields.get(rule.affected_items_field, []))
 
-        alerts.append({
-            "id": rule.id,
-            "severity": canonical_severity(rule.severity),
-            "category": rule.category,
-            "message": message,
-            "detail": detail,
-            "affected_items": affected_items,
-            "condition": True,
-        })
+        alerts.append(
+            {
+                "id": rule.id,
+                "severity": canonical_severity(rule.severity),
+                "category": rule.category,
+                "message": message,
+                "detail": detail,
+                "affected_items": affected_items,
+                "condition": True,
+            }
+        )
 
     return alerts
 

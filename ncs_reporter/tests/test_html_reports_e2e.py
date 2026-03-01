@@ -16,13 +16,13 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.runner = CliRunner()
         self.test_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.test_dir.name)
-        
+
         # Setup telemetry lake structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        
+
         # 1. Linux Data (Trigger a disk warning)
-        self.linux_dir = self.platform_root / "ubuntu" / "linux-01"
+        self.linux_dir = self.platform_root / "linux" / "ubuntu" / "linux-01"
         self.linux_dir.mkdir(parents=True)
         linux_data = {
             "metadata": {"host": "linux-01", "timestamp": "2026-02-26T23:00:00Z"},
@@ -33,46 +33,74 @@ class TestHtmlReportsE2E(unittest.TestCase):
                     "ansible_kernel": "6.8.0-lowlatency",
                     "mounts": [
                         {
-                            "mount": "/", 
-                            "device": "/dev/sda1", 
+                            "mount": "/",
+                            "device": "/dev/sda1",
                             "fstype": "ext4",
-                            "size_total": 107374182400, # 100GB
-                            "size_available": 2147483648 # 2GB (98% used -> CRITICAL)
+                            "size_total": 107374182400,  # 100GB
+                            "size_available": 2147483648,  # 2GB (98% used -> CRITICAL)
                         }
                     ],
-                    "date_time": {"epoch": "1740610800"}
+                    "date_time": {"epoch": "1740610800"},
                 }
-            }
+            },
         }
         with open(self.linux_dir / "raw_discovery.yaml", "w") as f:
             yaml.dump(linux_data, f)
 
         # 2. VMware Data (Trigger a health warning)
-        self.vmware_dir = self.platform_root / "vmware" / "vc-01"
+        self.vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
         self.vmware_dir.mkdir(parents=True)
         vmware_data = {
             "metadata": {"host": "vc-01", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
                 "appliance_health_info": {
                     "appliance": {
-                        "summary": {"product": "vCenter Server", "version": "8.0.2", "build_number": "23319199", "uptime": 864000},
-                        "health": {"overall": "yellow", "cpu": "green", "memory": "yellow", "database": "green", "storage": "green", "swap": "green"},
+                        "summary": {
+                            "product": "vCenter Server",
+                            "version": "8.0.2",
+                            "build_number": "23319199",
+                            "uptime": 864000,
+                        },
+                        "health": {
+                            "overall": "yellow",
+                            "cpu": "green",
+                            "memory": "yellow",
+                            "database": "green",
+                            "storage": "green",
+                            "swap": "green",
+                        },
                         "access": {"ssh": False},
-                        "backup": {"enabled": True, "status": "SUCCEEDED"}
+                        "backup": {"enabled": True, "status": "SUCCEEDED"},
                     }
                 },
                 "datacenters_info": {"value": [{"name": "DC1", "datacenter": "datacenter-1"}]},
-                "clusters_info": {"results": [
-                    {"item": "DC1", "clusters": {"Cluster-A": {
-                        "resource_summary": {"cpuCapacityMHz": 10000, "cpuUsedMHz": 2000, "memCapacityMB": 32768, "memUsedMB": 8192},
-                        "hosts": ["esxi-01.local"]
-                    }}}
-                ]},
-                "datastores_info": {"datastores": [{"name": "ds1", "capacity": 107374182400, "freeSpace": 53687091200, "accessible": True}]},
+                "clusters_info": {
+                    "results": [
+                        {
+                            "item": "DC1",
+                            "clusters": {
+                                "Cluster-A": {
+                                    "resource_summary": {
+                                        "cpuCapacityMHz": 10000,
+                                        "cpuUsedMHz": 2000,
+                                        "memCapacityMB": 32768,
+                                        "memUsedMB": 8192,
+                                    },
+                                    "hosts": ["esxi-01.local"],
+                                }
+                            },
+                        }
+                    ]
+                },
+                "datastores_info": {
+                    "datastores": [
+                        {"name": "ds1", "capacity": 107374182400, "freeSpace": 53687091200, "accessible": True}
+                    ]
+                },
                 "vms_info": {"virtual_machines": []},
                 "snapshots_info": {"snapshots": []},
-                "alarms_info": {"alarms": []}
-            }
+                "alarms_info": {"alarms": []},
+            },
         }
         with open(self.vmware_dir / "raw_vcenter.yaml", "w") as f:
             yaml.dump(vmware_data, f)
@@ -86,8 +114,8 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "os_info": {"caption": "Microsoft Windows Server 2022 Standard", "version": "10.0.20348"},
                 "ccm_service": {"state": "Running", "start_mode": "Auto"},
                 "updates": {"installed_count": 50, "failed_count": 1, "pending_count": 2},
-                "applications": [{"name": "7-Zip 22.01 (x64)", "version": "22.01", "vendor": "Igor Pavlov"}]
-            }
+                "applications": [{"name": "7-Zip 22.01 (x64)", "version": "22.01", "vendor": "Igor Pavlov"}],
+            },
         }
         with open(self.windows_dir / "raw_audit.yaml", "w") as f:
             yaml.dump(windows_data, f)
@@ -97,7 +125,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
             "all": ["linux-01", "vc-01", "win-01"],
             "ubuntu_servers": ["linux-01"],
             "vcenters": ["vc-01"],
-            "windows_servers": ["win-01"]
+            "windows_servers": ["win-01"],
         }
         with open(self.platform_root / "inventory_groups.json", "w") as f:
             json.dump(groups, f)
@@ -107,15 +135,22 @@ class TestHtmlReportsE2E(unittest.TestCase):
 
     def test_full_report_generation_at_all_levels(self):
         """Verify site, platform, and node reports are created with correct data."""
-        
-        result = self.runner.invoke(main, [
-            "all",
-            "--platform-root", str(self.platform_root),
-            "--reports-root", str(self.reports_root),
-            "--groups", str(self.platform_root / "inventory_groups.json"),
-            "--report-stamp", "20260226"
-        ])
-        
+
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(self.platform_root / "inventory_groups.json"),
+                "--report-stamp",
+                "20260226",
+            ],
+        )
+
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         # Check Site Report
@@ -128,32 +163,38 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertIn("win-01", content)
 
         # Check Platform Reports
-        self.assertTrue((self.reports_root / "platform" / "ubuntu" / "linux_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vcenter" / "vcenter_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter" / "vcenter_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
 
         # Check Node Reports
-        self.assertTrue((self.reports_root / "platform" / "ubuntu" / "linux-01" / "health_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vcenter" / "vc-01" / "health_report.html").exists())
+        self.assertTrue(
+            (self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html").exists()
+        )
+        self.assertTrue(
+            (self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html").exists()
+        )
         self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").exists())
 
         # Verify alert data appears in rendered HTML
-        linux_report = (self.reports_root / "platform" / "ubuntu" / "linux-01" / "health_report.html").read_text()
+        linux_report = (
+            self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
+        ).read_text()
         self.assertTrue(
-            "CRITICAL" in linux_report or "/" in linux_report,
-            "Linux node report should reflect critical disk alert"
+            "CRITICAL" in linux_report or "/" in linux_report, "Linux node report should reflect critical disk alert"
         )
 
-        vmware_report = (self.reports_root / "platform" / "vcenter" / "vc-01" / "health_report.html").read_text()
+        vmware_report = (
+            self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html"
+        ).read_text()
         self.assertTrue(
-            "WARNING" in vmware_report or "yellow" in vmware_report,
-            "VMware node report should reflect health warning"
+            "WARNING" in vmware_report or "yellow" in vmware_report, "VMware node report should reflect health warning"
         )
 
         windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").read_text()
         self.assertTrue(
             "failed" in windows_report.lower() or "1" in windows_report,
-            "Windows node report should reflect update failure count"
+            "Windows node report should reflect update failure count",
         )
 
     def test_site_security_compliance_tab_renders_stig_data(self):
@@ -200,13 +241,20 @@ class TestHtmlReportsE2E(unittest.TestCase):
         with open(self.platform_root / "inventory_groups.json", "w") as f:
             json.dump(groups, f)
 
-        result = self.runner.invoke(main, [
-            "all",
-            "--platform-root", str(self.platform_root),
-            "--reports-root", str(self.reports_root),
-            "--groups", str(self.platform_root / "inventory_groups.json"),
-            "--report-stamp", "20260226",
-        ])
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(self.platform_root / "inventory_groups.json"),
+                "--report-stamp",
+                "20260226",
+            ],
+        )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         site_html = (self.reports_root / "site_health_report.html").read_text()

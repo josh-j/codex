@@ -74,9 +74,7 @@ def build_alert(
     **extra: Any,
 ) -> dict[str, Any]:
     sl = safe_list(affected_items)
-    if affected_items is None and sl is None:
-        print("CRITICAL BUG: safe_list(None) returned None")
-    
+
     out: dict[str, Any] = {
         "severity": severity,
         "category": category,

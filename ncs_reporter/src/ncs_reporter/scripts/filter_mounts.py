@@ -12,7 +12,7 @@ stdin  — JSON: {
 stdout — JSON list (filtered mounts, same structure as input)
 """
 
-from __future__ import annotations
+from typing import Any
 
 import json
 import sys
@@ -23,10 +23,8 @@ def main() -> None:
     fields = payload.get("fields", {})
     args = payload.get("args", {})
 
-    mounts: list = fields.get("mounts", [])
-    exclude_device_patterns: list[str] = args.get(
-        "exclude_device_patterns", ["loop", "tmpfs", "devtmpfs", "squashfs"]
-    )
+    mounts: list[Any] = fields.get("mounts", [])
+    exclude_device_patterns: list[str] = args.get("exclude_device_patterns", ["loop", "tmpfs", "devtmpfs", "squashfs"])
     exclude_fstypes: list[str] = args.get(
         "exclude_fstypes", ["tmpfs", "devtmpfs", "squashfs", "overlay", "proc", "sysfs", "devpts"]
     )

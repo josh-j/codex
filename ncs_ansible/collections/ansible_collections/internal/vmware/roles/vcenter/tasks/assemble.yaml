@@ -1,22 +1,104 @@
 ---
 # internal.vmware.vcenter : tasks/assemble.yaml
 
+- name: Normalize raw vCenter module payloads
+  ansible.builtin.set_fact:
+    _raw_appliance_health_unwrapped: >-
+      {{
+        _raw_appliance_health.data
+        if (
+          _raw_appliance_health is mapping
+          and _raw_appliance_health.metadata is defined
+          and _raw_appliance_health.data is defined
+        )
+        else (_raw_appliance_health | default({}))
+      }}
+    _raw_appliance_backup_unwrapped: >-
+      {{
+        _raw_appliance_backup.data
+        if (
+          _raw_appliance_backup is mapping
+          and _raw_appliance_backup.metadata is defined
+          and _raw_appliance_backup.data is defined
+        )
+        else (_raw_appliance_backup | default({}))
+      }}
+    _raw_datacenters_unwrapped: >-
+      {{
+        _raw_datacenters.data
+        if (
+          _raw_datacenters is mapping
+          and _raw_datacenters.metadata is defined
+          and _raw_datacenters.data is defined
+        )
+        else (_raw_datacenters | default({}))
+      }}
+    _raw_clusters_unwrapped: >-
+      {{
+        _raw_clusters.data
+        if (
+          _raw_clusters is mapping
+          and _raw_clusters.metadata is defined
+          and _raw_clusters.data is defined
+        )
+        else (_raw_clusters | default({}))
+      }}
+    _raw_datastores_unwrapped: >-
+      {{
+        _raw_datastores.data
+        if (
+          _raw_datastores is mapping
+          and _raw_datastores.metadata is defined
+          and _raw_datastores.data is defined
+        )
+        else (_raw_datastores | default({}))
+      }}
+    _raw_vms_unwrapped: >-
+      {{
+        _raw_vms.data
+        if (
+          _raw_vms is mapping
+          and _raw_vms.metadata is defined
+          and _raw_vms.data is defined
+        )
+        else (_raw_vms | default({}))
+      }}
+    _raw_snapshots_unwrapped: >-
+      {{
+        _raw_snapshots.data
+        if (
+          _raw_snapshots is mapping
+          and _raw_snapshots.metadata is defined
+          and _raw_snapshots.data is defined
+        )
+        else (_raw_snapshots | default({}))
+      }}
+    _raw_alarms_unwrapped: >-
+      {{
+        _raw_alarms.data
+        if (
+          _raw_alarms is mapping
+          and _raw_alarms.metadata is defined
+          and _raw_alarms.data is defined
+        )
+        else (_raw_alarms | default({}))
+      }}
+  changed_when: false
+
 - name: Assemble raw vCenter context
   ansible.builtin.set_fact:
     vmware_raw_vcenter:
-      metadata:
-        status: "{{ 'FAILED' if vcenter_collect_failed | bool else 'SUCCESS' }}"
-        error: "{{ vcenter_connectivity_error | default('') }}"
-      data:
-        appliance_health_info: "{{ _raw_appliance_health | default({}) }}"
-        appliance_backup_info: "{{ _raw_appliance_backup | default({}) }}"
-        datacenters_info: "{{ _raw_datacenters | default({}) }}"
-        clusters_info: "{{ _raw_clusters | default({}) }}"
-        datastores_info:
-          datastores: "{{ _raw_datastores.results | map(attribute='datastores') | flatten | list if (_raw_datastores.results is defined) else [] }}"
-        vms_info: "{{ _raw_vms | default({}) }}"
-        snapshots_info:
-          snapshots: "{{ _raw_snapshots.results | map(attribute='vmware_all_snapshots_info') | flatten | list if (_raw_snapshots.results is defined) else [] }}"
-        alarms_info: "{{ _raw_alarms | default({}) }}"
-        config: "{{ vcenter.config | default({}) }}"
+      appliance_health_info: "{{ _raw_appliance_health_unwrapped | default({}) }}"
+      appliance_backup_info: "{{ _raw_appliance_backup_unwrapped | default({}) }}"
+      datacenters_info: "{{ _raw_datacenters_unwrapped | default({}) }}"
+      clusters_info: "{{ _raw_clusters_unwrapped | default({}) }}"
+      datastores_info:
+        datastores: "{{ _raw_datastores_unwrapped.results | map(attribute='datastores') | flatten | list if (_raw_datastores_unwrapped.results is defined) else [] }}"
+      vms_info: "{{ _raw_vms_unwrapped | default({}) }}"
+      snapshots_info:
+        snapshots: "{{ _raw_snapshots_unwrapped.results | map(attribute='vmware_all_snapshots_info') | flatten | list if (_raw_snapshots_unwrapped.results is defined) else [] }}"
+      alarms_info: "{{ _raw_alarms_unwrapped | default({}) }}"
+      config: "{{ vcenter.config | default({}) }}"
+      collection_status: "{{ 'FAILED' if vcenter_collect_failed | bool else 'SUCCESS' }}"
+      collection_error: "{{ vcenter_connectivity_error | default('') }}"
   changed_when: false

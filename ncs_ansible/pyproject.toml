@@ -1,3 +1,26 @@
+[project]
+name = "ncs-ansible"
+version = "0.1.0"
+description = "Ansible collection and orchestration for NCS"
+requires-python = ">=3.10"
+dependencies = [
+    "ncs-reporter",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+ncs-reporter = { path = "../ncs_reporter", editable = true }
+
+[dependency-groups]
+dev = [
+    "basedpyright",
+    "mypy",
+    "pytest>=8.0",
+    "ruff",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"
@@ -20,18 +43,19 @@ ignore_missing_imports = true
 strict_optional = true
 check_untyped_defs = true
 explicit_package_bases = true
-mypy_path = "tools/ncs_reporter/src"
+mypy_path = "../ncs_reporter/src"
 exclude = "collections/ansible_collections/(cloud|community|vmware|windows)/"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+pythonpath = ["tests/integration"]
 markers = ["integration: ansible-runner integration tests"]
 
 [tool.pyright]
 typeCheckingMode = "basic"
 pythonVersion = "3.10"
-extraPaths = ["tools/ncs_reporter/src"]
+extraPaths = ["../ncs_reporter/src"]
 exclude = [
     "**/node_modules",
     "**/__pycache__",

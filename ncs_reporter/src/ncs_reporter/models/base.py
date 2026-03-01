@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class MetadataModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
+
     host: Optional[str] = None
     audit_type: str
     timestamp: str
@@ -14,7 +14,7 @@ class MetadataModel(BaseModel):
 
 class AlertModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
+
     severity: str
     category: str
     message: str
@@ -26,7 +26,7 @@ class AlertModel(BaseModel):
 
 class SummaryModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
+
     total: int = 0
     critical_count: int = 0
     warning_count: int = 0
@@ -36,7 +36,7 @@ class SummaryModel(BaseModel):
 
 class BaseAuditModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
+
     metadata: MetadataModel
     health: str = "UNKNOWN"
     summary: SummaryModel

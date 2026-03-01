@@ -14,6 +14,7 @@ must be caught and warned, not raised.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
@@ -91,10 +92,37 @@ def _load_callback() -> Any:
 class FakeStats:
     def __init__(self, host_data: dict[str, Any]) -> None:
         self.processed: dict[str, Any] = {h: True for h in host_data}
-        self._data = host_data
+        self.custom = host_data
 
-    def get_custom_stats(self, host: str) -> Any:
-        return self._data.get(host)
+
+class FakeHost:
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def get_name(self) -> str:
+        return self._name
+
+
+class FakeTask:
+    def __init__(self, name: str, *, check_mode: bool = False, vars: dict[str, Any] | None = None) -> None:
+        self.name = name
+        self.check_mode = check_mode
+        self.vars = vars or {}
+
+
+class FakeResult:
+    def __init__(
+        self,
+        host: str,
+        task_name: str,
+        *,
+        check_mode: bool = True,
+        changed: bool = False,
+        vars: dict[str, Any] | None = None,
+    ) -> None:
+        self._host = FakeHost(host)
+        self._task = FakeTask(task_name, check_mode=check_mode, vars=vars)
+        self._result = {"changed": changed}
 
 
 # ---------------------------------------------------------------------------
@@ -454,6 +482,178 @@ class TestMultipleHosts(unittest.TestCase):
                 Path(self.tmpdir) / "platform" / "vmware" / host / "raw_stig_esxi.yaml"
             )
             self.assertEqual(envelope["metadata"]["host"], host)
+
+
+# ===========================================================================
+# Tests: STIG task-event capture (migrated from stig_xml callback)
+# ===========================================================================
+
+
+class TestStigTaskEventCapture(unittest.TestCase):
+    def test_writes_raw_stig_from_task_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = tmp
+            try:
+                cb.v2_runner_on_ok(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256376_dcui_access",
+                        check_mode=True,
+                        changed=True,
+                        vars={
+                            "stig_target_host": "esxi-01",
+                            "stig_target_type": "esxi",
+                            "stig_platform": "vmware",
+                        },
+                    )
+                )
+                cb.v2_playbook_on_stats(FakeStats({}))
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi-01" / "raw_stig_esxi.yaml"
+            self.assertTrue(artifact.exists(), f"Expected STIG artifact not found: {artifact}")
+            envelope = _read_yaml(artifact)
+            self.assertEqual(envelope["metadata"]["engine"], "ncs_collector_callback")
+            self.assertEqual(envelope["metadata"]["audit_type"], "stig_esxi")
+            self.assertEqual(envelope["target_type"], "esxi")
+            self.assertEqual(envelope["data"][0]["status"], "failed")
+
+    def test_failed_event_maps_to_failed_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = tmp
+            try:
+                cb.v2_runner_on_failed(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256378_syslog",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-02",
+                            "stig_target_type": "esxi",
+                            "stig_platform": "vmware",
+                        },
+                    ),
+                    ignore_errors=False,
+                )
+                cb.v2_playbook_on_stats(FakeStats({}))
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi-02" / "raw_stig_esxi.yaml"
+            envelope = _read_yaml(artifact)
+            self.assertEqual(envelope["data"][0]["status"], "failed")
+
+    def test_stig_task_uses_host_report_directory_from_stats(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            cb.v2_runner_on_ok(
+                FakeResult(
+                    "localhost",
+                    "stigrule_256376_dcui_access",
+                    check_mode=True,
+                    changed=False,
+                    vars={
+                        "stig_target_host": "esxi-03",
+                        "stig_target_type": "esxi",
+                        "stig_platform": "vmware",
+                    },
+                )
+            )
+            stats = FakeStats(
+                {
+                    "esxi-03": {
+                        "ncs_collect": {
+                            "platform": "vmware",
+                            "name": "vcenter",
+                            "payload": {"k": "v"},
+                            "report_directory": tmp,
+                        }
+                    }
+                }
+            )
+            cb.v2_playbook_on_stats(stats)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi-03" / "raw_stig_esxi.yaml"
+            self.assertTrue(artifact.exists(), f"Expected STIG artifact not found: {artifact}")
+
+    def test_host_report_directory_takes_precedence_over_env(self) -> None:
+        with tempfile.TemporaryDirectory() as host_tmp, tempfile.TemporaryDirectory() as env_tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = env_tmp
+            try:
+                cb.v2_runner_on_ok(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256376_dcui_access",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-04",
+                            "stig_target_type": "esxi",
+                            "stig_platform": "vmware",
+                        },
+                    )
+                )
+                stats = FakeStats(
+                    {
+                        "esxi-04": {
+                            "ncs_collect": {
+                                "platform": "vmware",
+                                "name": "vcenter",
+                                "payload": {"k": "v"},
+                                "report_directory": host_tmp,
+                            }
+                        }
+                    }
+                )
+                cb.v2_playbook_on_stats(stats)
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            expected = Path(host_tmp) / "platform" / "vmware" / "esxi-04" / "raw_stig_esxi.yaml"
+            unexpected = Path(env_tmp) / "platform" / "vmware" / "esxi-04" / "raw_stig_esxi.yaml"
+            self.assertTrue(expected.exists(), f"Expected STIG artifact not found: {expected}")
+            self.assertFalse(unexpected.exists(), f"STIG artifact should not be written to env dir: {unexpected}")
+
+    def test_task_event_stig_payload_wins_over_legacy_stig_stats_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            cb.v2_runner_on_ok(
+                FakeResult(
+                    "localhost",
+                    "stigrule_256379_account_lock_failures",
+                    check_mode=True,
+                    changed=True,
+                    vars={
+                        "stig_target_host": "esxi-05",
+                        "stig_target_type": "esxi",
+                        "stig_platform": "vmware",
+                    },
+                )
+            )
+            stats = FakeStats(
+                {
+                    "esxi-05": {
+                        "ncs_collect": {
+                            "platform": "vmware",
+                            "name": "stig_esxi",
+                            "payload": {"legacy": "payload"},
+                            "report_directory": tmp,
+                        }
+                    }
+                }
+            )
+            cb.v2_playbook_on_stats(stats)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi-05" / "raw_stig_esxi.yaml"
+            envelope = _read_yaml(artifact)
+            self.assertIsInstance(envelope.get("data"), list)
+            self.assertEqual(envelope["data"][0]["status"], "failed")
+            self.assertNotEqual(envelope["data"], {"legacy": "payload"})
 
 
 # ===========================================================================

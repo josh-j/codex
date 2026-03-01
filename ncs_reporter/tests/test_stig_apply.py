@@ -84,8 +84,20 @@ class TestGetFailingRules(unittest.TestCase):
 
     def test_returns_only_open_rules(self) -> None:
         rows = [
-            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "failed", "severity": "medium", "title": "Lockdown"},
-            {"id": "V-256376", "rule_version": "ESXI-70-000002", "status": "pass", "severity": "medium", "title": "Passed rule"},
+            {
+                "id": "V-256375",
+                "rule_version": "ESXI-70-000001",
+                "status": "failed",
+                "severity": "medium",
+                "title": "Lockdown",
+            },
+            {
+                "id": "V-256376",
+                "rule_version": "ESXI-70-000002",
+                "status": "pass",
+                "severity": "medium",
+                "title": "Passed rule",
+            },
         ]
         with tempfile.TemporaryDirectory() as tmp:
             artifact = self._write_artifact(tmp, rows)
@@ -401,8 +413,10 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 [
                     "stig-apply",
                     str(artifact),
-                    "--limit", "vcenter1",
-                    "--esxi-host", "esxi-01.local",
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
                 ],
@@ -429,8 +443,10 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 [
                     "stig-apply",
                     str(artifact),
-                    "--limit", "vcenter1",
-                    "--esxi-host", "esxi-01.local",
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
                 ],
@@ -453,8 +469,10 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 [
                     "stig-apply",
                     str(artifact),
-                    "--limit", "vcenter1",
-                    "--esxi-host", "esxi-01.local",
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
                     "--dry-run",
                 ],
                 input="y\ny\n",
@@ -475,8 +493,10 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 [
                     "stig-apply",
                     str(artifact),
-                    "--limit", "vcenter1",
-                    "--esxi-host", "esxi-01.local",
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
                 ],
@@ -487,13 +507,15 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
 
     def _write_config_var_artifact(self, tmp_dir: str) -> Path:
         """Artifact with a rule that requires esxi_stig_syslog_host (ESXI-70-000004)."""
-        rows = [{
-            "id": "V-256378",
-            "rule_version": "ESXI-70-000004",
-            "status": "failed",
-            "severity": "medium",
-            "title": "Syslog",
-        }]
+        rows = [
+            {
+                "id": "V-256378",
+                "rule_version": "ESXI-70-000004",
+                "status": "failed",
+                "severity": "medium",
+                "title": "Syslog",
+            }
+        ]
         artifact = Path(tmp_dir) / "raw_stig_esxi.yaml"
         data = {
             "metadata": {"host": "esxi-01", "audit_type": "stig_esxi", "timestamp": "2026-02-27T00:00:00Z"},
@@ -513,8 +535,16 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             artifact = self._write_config_var_artifact(tmp)
             result = runner.invoke(
                 main,
-                ["stig-apply", str(artifact), "--limit", "vcenter1",
-                 "--esxi-host", "esxi-01.local", "--skip-snapshot", "--dry-run"],
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
+                    "--skip-snapshot",
+                    "--dry-run",
+                ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         self.assertIn("esxi_stig_syslog_host", result.output)
@@ -529,9 +559,18 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             artifact = self._write_config_var_artifact(tmp)
             result = runner.invoke(
                 main,
-                ["stig-apply", str(artifact), "--limit", "vcenter1",
-                 "--esxi-host", "esxi-01.local", "--skip-snapshot", "--dry-run",
-                 "-e", "esxi_stig_syslog_host=syslog.site1.local"],
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
+                    "--skip-snapshot",
+                    "--dry-run",
+                    "-e",
+                    "esxi_stig_syslog_host=syslog.site1.local",
+                ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         self.assertNotIn("Warning", result.output)
@@ -541,7 +580,9 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
         from click.testing import CliRunner
         from ncs_reporter.cli import main
 
-        rows = [{"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "title": "OK"}]
+        rows = [
+            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "title": "OK"}
+        ]
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "raw_stig_esxi.yaml"
             data = {
@@ -555,7 +596,16 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             runner = CliRunner()
             result = runner.invoke(
                 main,
-                ["stig-apply", str(artifact), "--limit", "vcenter1", "--esxi-host", "esxi-01.local", "--skip-snapshot", "--dry-run"],
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "vcenter1",
+                    "--esxi-host",
+                    "esxi-01.local",
+                    "--skip-snapshot",
+                    "--dry-run",
+                ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         self.assertIn("No failing", result.output)

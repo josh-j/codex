@@ -310,8 +310,14 @@ class ReportSchema(BaseModel):
             for f in rule.detail_fields:
                 if not f.startswith("_") and f not in declared:
                     errors.append(f"alert '{rule.id}': detail_fields references undeclared field '{f}'")
-            if rule.affected_items_field and not rule.affected_items_field.startswith("_") and rule.affected_items_field not in declared:
-                errors.append(f"alert '{rule.id}': affected_items_field references undeclared field '{rule.affected_items_field}'")
+            if (
+                rule.affected_items_field
+                and not rule.affected_items_field.startswith("_")
+                and rule.affected_items_field not in declared
+            ):
+                errors.append(
+                    f"alert '{rule.id}': affected_items_field references undeclared field '{rule.affected_items_field}'"
+                )
 
         for widget in self.widgets:
             if isinstance(widget, KeyValueWidget):

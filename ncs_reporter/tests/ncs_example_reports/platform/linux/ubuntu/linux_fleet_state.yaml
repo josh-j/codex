@@ -1,0 +1,992 @@
+metadata:
+  generated_at: '2026-03-01T18:24:32.413151'
+  fleet_stats:
+    total_hosts: 2
+    critical_alerts: 4
+    warning_alerts: 7
+hosts:
+  web-prod-01:
+    stig_ubuntu:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-01T17:17:25+00:00'
+        generated_at: '2026-03-01T18:24:32.418916'
+      health: CRITICAL
+      summary:
+        total: 8
+        critical_count: 1
+        warning_count: 1
+        info_count: 0
+        by_category:
+          security_compliance: 2
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: Ubuntu must disable root login.'
+        detail:
+          rule_id: UBTU-22-010000
+          description: ''
+          original_severity: HIGH
+          target_type: ubuntu
+        affected_items: []
+        recommendation: null
+        remediation: null
+      - severity: WARNING
+        category: security_compliance
+        message: 'STIG Violation: Ubuntu must configure auditd.'
+        detail:
+          rule_id: UBTU-22-010002
+          description: ''
+          original_severity: MEDIUM
+          target_type: ubuntu
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: ubuntu
+      full_audit:
+      - id: UBTU-22-010000
+        status: open
+        severity: high
+        title: Ubuntu must disable root login.
+        rule_id: UBTU-22-010000
+        description: ''
+      - id: UBTU-22-010001
+        status: pass
+        severity: high
+        title: Ubuntu must require strong passwords.
+        rule_id: UBTU-22-010001
+        description: ''
+      - id: UBTU-22-010002
+        status: open
+        severity: medium
+        title: Ubuntu must configure auditd.
+        rule_id: UBTU-22-010002
+        description: ''
+      - id: UBTU-22-010003
+        status: pass
+        severity: medium
+        title: Ubuntu must use FIPS mode.
+        rule_id: UBTU-22-010003
+        description: ''
+      - id: UBTU-22-010004
+        status: pass
+        severity: low
+        title: Ubuntu must clear tmp.
+        rule_id: UBTU-22-010004
+        description: ''
+      - id: UBTU-22-010005
+        status: pass
+        severity: low
+        title: Ubuntu must disable unneeded services.
+        rule_id: UBTU-22-010005
+        description: ''
+      - id: UBTU-22-010006
+        status: na
+        severity: medium
+        title: Ubuntu NA check.
+        rule_id: UBTU-22-010006
+        description: ''
+      - id: UBTU-22-010007
+        status: pass
+        severity: high
+        title: Ubuntu final check.
+        rule_id: UBTU-22-010007
+        description: ''
+    raw_discovery: &id001
+      metadata:
+        host: web-prod-01
+        raw_type: discovery
+        timestamp: '2026-03-01T17:17:25+00:00'
+        engine: ncs_collector_callback
+      data:
+        ansible_facts:
+          hostname: web-prod-01
+          default_ipv4:
+            address: 10.10.20.45
+          kernel: 6.8.0-48-generic
+          os_family: Debian
+          distribution: Ubuntu
+          distribution_version: '24.04'
+          uptime_seconds: 1468800
+          loadavg:
+            15m: 3.8
+          memtotal_mb: 32768
+          memfree_mb: 328
+          swaptotal_mb: 8192
+          swapfree_mb: 7372
+          mounts:
+          - &id006
+            mount: /
+            device: /dev/sda1
+            fstype: ext4
+            size_total: 107374182400
+            size_available: 56371445760
+          - &id007
+            mount: /var
+            device: /dev/sda2
+            fstype: ext4
+            size_total: 214748364800
+            size_available: 8589934592
+          - &id008
+            mount: /opt
+            device: /dev/sda3
+            fstype: ext4
+            size_total: 53687091200
+            size_available: 9663676416
+          - &id009
+            mount: /tmp
+            device: tmpfs
+            fstype: tmpfs
+            size_total: 8589934592
+            size_available: 8052867072
+          - &id010
+            mount: /boot
+            device: /dev/sda4
+            fstype: ext4
+            size_total: 1073741824
+            size_available: 536870912
+          getent_passwd: &id011
+            root:
+            - x
+            - '0'
+            - '0'
+            - root
+            - /root
+            - /bin/bash
+            ubuntu:
+            - x
+            - '1000'
+            - '1000'
+            - Ubuntu
+            - /home/ubuntu
+            - /bin/bash
+            syslog:
+            - x
+            - '104'
+            - '110'
+            - ''
+            - /home/syslog
+            - /usr/sbin/nologin
+            deploy:
+            - x
+            - '1001'
+            - '1001'
+            - deploy
+            - /home/deploy
+            - /bin/bash
+          date_time:
+            epoch: '1772385445'
+        failed_services:
+          stdout_lines:
+          - '  ssh.service      loaded failed failed  OpenBSD Secure Shell server'
+          - '  rsyslog.service  loaded failed failed  System Logging Service'
+          rc: 0
+        apt_simulate:
+          stdout_lines:
+          - Reading package lists...
+          - Building dependency tree...
+          - 12 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+          rc: 0
+        reboot_stat:
+          stat:
+            exists: true
+            path: /var/run/reboot-required
+        shadow_raw:
+          stdout_lines:
+          - 'root:!:19700:0:99999:7:::'
+          - 'ubuntu:$6$rounds=5000$salt$hash:19600:0:99999:7:::'
+          - 'syslog:*:18000:0:99999:7:::'
+          - 'deploy:$6$rounds=5000$salt$hash2:19620:0:99999:7:::'
+          rc: 0
+        sshd_raw:
+          stdout_lines:
+          - port 22
+          - addressfamily any
+          - listenaddress 0.0.0.0
+          - permitemptypasswords no
+          - permituserenvironment no
+          - passwordauthentication no
+          - permitrootlogin no
+          - usepam yes
+          - x11forwarding no
+          - maxauthtries 4
+          - clientaliveinterval 600
+          - clientalivecountmax 0
+          - banner /etc/issue.net
+          - logingracetime 60
+          - strictmodes yes
+          - pubkeyauthentication yes
+          rc: 0
+        world_writable:
+          stdout_lines:
+          - /var/log/app/runtime.log
+          - /var/spool/custom/queue
+          - /var/tmp/legacy-socket
+          rc: 0
+        file_stats:
+          results:
+          - item: /etc/shadow
+            stat:
+              exists: true
+              mode: '0640'
+              pw_name: root
+              gr_name: shadow
+          - item: /etc/passwd
+            stat:
+              exists: true
+              mode: '0644'
+              pw_name: root
+              gr_name: root
+          - item: /etc/ssh/sshd_config
+            stat:
+              exists: true
+              mode: '0600'
+              pw_name: root
+              gr_name: root
+    ubuntu_raw_discovery: *id001
+    schema_linux:
+      metadata:
+        audit_type: schema_linux
+        schema_name: linux
+        platform: linux
+        display_name: Linux
+        generated_at: '2026-03-01T18:24:32.607559'
+        field_coverage:
+          resolved: 24
+          total: 24
+          broken: 0
+      health: CRITICAL
+      summary:
+        total: 7
+        critical_count: 3
+        warning_count: 4
+        info_count: 0
+        by_category:
+          capacity: 3
+          availability: 1
+          patching: 2
+          security: 1
+      alerts:
+      - id: memory_critical
+        severity: CRITICAL
+        category: Capacity
+        message: 'Memory saturation: 99.0% used'
+        detail: {}
+        affected_items: []
+        condition: true
+      - id: disk_critical
+        severity: CRITICAL
+        category: Capacity
+        message: "One or more filesystems critically full (\u226595%)"
+        detail: {}
+        affected_items:
+        - &id002
+          mount: /
+          device: /dev/sda1
+          fstype: ext4
+          size_total: 107374182400
+          size_available: 56371445760
+          total_gb: 100.0
+          free_gb: 52.5
+          used_pct: 47.5
+        - &id003
+          mount: /var
+          device: /dev/sda2
+          fstype: ext4
+          size_total: 214748364800
+          size_available: 8589934592
+          total_gb: 200.0
+          free_gb: 8.0
+          used_pct: 96.0
+        - &id004
+          mount: /opt
+          device: /dev/sda3
+          fstype: ext4
+          size_total: 53687091200
+          size_available: 9663676416
+          total_gb: 50.0
+          free_gb: 9.0
+          used_pct: 82.0
+        - &id005
+          mount: /boot
+          device: /dev/sda4
+          fstype: ext4
+          size_total: 1073741824
+          size_available: 536870912
+          total_gb: 1.0
+          free_gb: 0.5
+          used_pct: 50.0
+        condition: true
+      - id: disk_warning
+        severity: WARNING
+        category: Capacity
+        message: "One or more filesystems reaching capacity (\u226580%)"
+        detail: {}
+        affected_items:
+        - *id002
+        - *id003
+        - *id004
+        - *id005
+        condition: true
+      - id: services_failed
+        severity: CRITICAL
+        category: Availability
+        message: 2 systemd service(s) failed
+        detail: {}
+        affected_items: []
+        condition: true
+      - id: reboot_pending
+        severity: WARNING
+        category: Patching
+        message: System requires a reboot to apply kernel or security updates
+        detail: {}
+        affected_items: []
+        condition: true
+      - id: pending_updates
+        severity: WARNING
+        category: Patching
+        message: 12 package update(s) pending
+        detail: {}
+        affected_items: []
+        condition: true
+      - id: world_writable_files
+        severity: WARNING
+        category: Security
+        message: 3 world-writable file(s) detected
+        detail: {}
+        affected_items:
+        - /var/log/app/runtime.log
+        - /var/spool/custom/queue
+        - /var/tmp/legacy-socket
+        condition: true
+      fields:
+        hostname: web-prod-01
+        ip_address: 10.10.20.45
+        kernel: 6.8.0-48-generic
+        os_family: Debian
+        distribution: Ubuntu
+        distribution_version: '24.04'
+        uptime_seconds: 1468800.0
+        load_avg_15m: 3.8
+        memory_total_mb: 32768.0
+        memory_free_mb: 328.0
+        swap_total_mb: 8192.0
+        swap_free_mb: 7372.0
+        failed_services:
+        - '  ssh.service      loaded failed failed  OpenBSD Secure Shell server'
+        - '  rsyslog.service  loaded failed failed  System Logging Service'
+        failed_services_count: 2
+        apt_lines:
+        - Reading package lists...
+        - Building dependency tree...
+        - 12 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+        reboot_pending: true
+        collected_at: '2026-03-01T17:17:25+00:00'
+        mounts:
+        - *id006
+        - *id007
+        - *id008
+        - *id009
+        - *id010
+        getent_passwd: *id011
+        shadow_lines:
+        - 'root:!:19700:0:99999:7:::'
+        - 'ubuntu:$6$rounds=5000$salt$hash:19600:0:99999:7:::'
+        - 'syslog:*:18000:0:99999:7:::'
+        - 'deploy:$6$rounds=5000$salt$hash2:19620:0:99999:7:::'
+        epoch_seconds: 1772385445.0
+        sshd_lines:
+        - port 22
+        - addressfamily any
+        - listenaddress 0.0.0.0
+        - permitemptypasswords no
+        - permituserenvironment no
+        - passwordauthentication no
+        - permitrootlogin no
+        - usepam yes
+        - x11forwarding no
+        - maxauthtries 4
+        - clientaliveinterval 600
+        - clientalivecountmax 0
+        - banner /etc/issue.net
+        - logingracetime 60
+        - strictmodes yes
+        - pubkeyauthentication yes
+        world_writable_files:
+        - /var/log/app/runtime.log
+        - /var/spool/custom/queue
+        - /var/tmp/legacy-socket
+        world_writable_count: 3
+        uptime_days: 17.0
+        memory_used_pct: 98.9990234375
+        swap_used_pct: 10.009765625
+        pending_updates_count: 12
+        disks:
+        - *id002
+        - *id003
+        - *id004
+        - *id005
+        sshd_config:
+          port: '22'
+          addressfamily: any
+          listenaddress: 0.0.0.0
+          permitemptypasswords: 'no'
+          permituserenvironment: 'no'
+          passwordauthentication: 'no'
+          permitrootlogin: 'no'
+          usepam: 'yes'
+          x11forwarding: 'no'
+          maxauthtries: '4'
+          clientaliveinterval: '600'
+          clientalivecountmax: '0'
+          banner: /etc/issue.net
+          logingracetime: '60'
+          strictmodes: 'yes'
+          pubkeyauthentication: 'yes'
+        users:
+        - name: root
+          uid: '0'
+          gid: '0'
+          home: /root
+          shell: /bin/bash
+          password_age_days: 813
+        - name: ubuntu
+          uid: '1000'
+          gid: '1000'
+          home: /home/ubuntu
+          shell: /bin/bash
+          password_age_days: 913
+        - name: syslog
+          uid: '104'
+          gid: '110'
+          home: /home/syslog
+          shell: /usr/sbin/nologin
+          password_age_days: 2513
+        - name: deploy
+          uid: '1001'
+          gid: '1001'
+          home: /home/deploy
+          shell: /bin/bash
+          password_age_days: 893
+        _critical_count: 3
+        _warning_count: 4
+        _total_alerts: 7
+      widgets_meta:
+        alerts:
+          id: alerts
+          title: Active Alerts
+          type: alert_panel
+        system_overview:
+          id: system_overview
+          title: System Overview
+          type: key_value
+        memory:
+          id: memory
+          title: Memory
+          type: key_value
+        disks:
+          id: disks
+          title: Filesystems
+          type: table
+        patching:
+          id: patching
+          title: Patching & Services
+          type: key_value
+      schema:
+        name: linux
+        display_name: Linux
+        widgets:
+        - id: alerts
+          title: Active Alerts
+          type: alert_panel
+        - id: system_overview
+          title: System Overview
+          type: key_value
+          fields:
+          - label: Hostname
+            field: hostname
+            format: null
+          - label: IP Address
+            field: ip_address
+            format: null
+          - label: Distribution
+            field: distribution
+            format: null
+          - label: Version
+            field: distribution_version
+            format: null
+          - label: Kernel
+            field: kernel
+            format: null
+          - label: Uptime (days)
+            field: uptime_days
+            format: '{value:.1f}'
+          - label: Load Avg (15m)
+            field: load_avg_15m
+            format: '{value:.2f}'
+        - id: memory
+          title: Memory
+          type: key_value
+          fields:
+          - label: Total (MB)
+            field: memory_total_mb
+            format: '{value:.1f}'
+          - label: Free (MB)
+            field: memory_free_mb
+            format: '{value:.1f}'
+          - label: Used %
+            field: memory_used_pct
+            format: '{value:.1f}'
+          - label: Swap Total (MB)
+            field: swap_total_mb
+            format: '{value:.1f}'
+          - label: Swap Used %
+            field: swap_used_pct
+            format: '{value:.1f}'
+        - id: disks
+          title: Filesystems
+          type: table
+          rows_field: disks
+          columns:
+          - label: Mount
+            field: mount
+            badge: false
+            format: null
+            link_field: null
+          - label: Device
+            field: device
+            badge: false
+            format: null
+            link_field: null
+          - label: FS Type
+            field: fstype
+            badge: false
+            format: null
+            link_field: null
+          - label: Total (GB)
+            field: total_gb
+            badge: false
+            format: null
+            link_field: null
+          - label: Free (GB)
+            field: free_gb
+            badge: false
+            format: null
+            link_field: null
+          - label: Used %
+            field: used_pct
+            badge: true
+            format: null
+            link_field: null
+        - id: patching
+          title: Patching & Services
+          type: key_value
+          fields:
+          - label: Failed Services
+            field: failed_services_count
+            format: null
+          - label: Pending Updates
+            field: pending_updates_count
+            format: null
+          - label: Reboot Required
+            field: reboot_pending
+            format: null
+  web-prod-02:
+    raw_discovery: &id012
+      metadata:
+        host: web-prod-02
+        raw_type: discovery
+        timestamp: '2026-03-01T17:17:25+00:00'
+        engine: ncs_collector_callback
+      data:
+        ansible_facts:
+          hostname: web-prod-02
+          default_ipv4:
+            address: 10.10.20.46
+          kernel: 6.8.0-48-generic
+          os_family: Debian
+          distribution: Ubuntu
+          distribution_version: '24.04'
+          uptime_seconds: 17280000
+          loadavg:
+            15m: 1.2
+          memtotal_mb: 32768
+          memfree_mb: 3276
+          swaptotal_mb: 8192
+          swapfree_mb: 7372
+          mounts:
+          - &id013
+            mount: /
+            device: /dev/sda1
+            fstype: ext4
+            size_total: 107374182400
+            size_available: 64424509440
+          - &id014
+            mount: /var
+            device: /dev/sda2
+            fstype: ext4
+            size_total: 214748364800
+            size_available: 150000000000
+          getent_passwd: &id015
+            root:
+            - x
+            - '0'
+            - '0'
+            - root
+            - /root
+            - /bin/bash
+            ubuntu:
+            - x
+            - '1000'
+            - '1000'
+            - Ubuntu
+            - /home/ubuntu
+            - /bin/bash
+            syslog:
+            - x
+            - '104'
+            - '110'
+            - ''
+            - /home/syslog
+            - /usr/sbin/nologin
+            deploy:
+            - x
+            - '1001'
+            - '1001'
+            - deploy
+            - /home/deploy
+            - /bin/bash
+          date_time:
+            epoch: '1772385445'
+        failed_services:
+          stdout_lines: []
+          rc: 0
+        apt_simulate:
+          stdout_lines:
+          - 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+          rc: 0
+        reboot_stat:
+          stat:
+            exists: false
+            path: /var/run/reboot-required
+        shadow_raw:
+          stdout_lines:
+          - 'root:!:19700:0:99999:7:::'
+          - 'ubuntu:$6$rounds=5000$salt$hash:19600:0:99999:7:::'
+          - 'syslog:*:18000:0:99999:7:::'
+          - 'deploy:$6$rounds=5000$salt$hash2:19620:0:99999:7:::'
+          rc: 0
+        sshd_raw:
+          stdout_lines:
+          - port 22
+          - addressfamily any
+          - listenaddress 0.0.0.0
+          - permitemptypasswords no
+          - permituserenvironment no
+          - passwordauthentication no
+          - permitrootlogin no
+          - usepam yes
+          - x11forwarding no
+          - maxauthtries 4
+          - clientaliveinterval 600
+          - clientalivecountmax 0
+          - banner /etc/issue.net
+          - logingracetime 60
+          - strictmodes yes
+          - pubkeyauthentication yes
+          rc: 0
+        world_writable:
+          stdout_lines: []
+          rc: 0
+        file_stats:
+          results:
+          - item: /etc/shadow
+            stat:
+              exists: true
+              mode: '0640'
+              pw_name: root
+              gr_name: shadow
+          - item: /etc/passwd
+            stat:
+              exists: true
+              mode: '0644'
+              pw_name: root
+              gr_name: root
+          - item: /etc/ssh/sshd_config
+            stat:
+              exists: true
+              mode: '0600'
+              pw_name: root
+              gr_name: root
+    ubuntu_raw_discovery: *id012
+    schema_linux:
+      metadata:
+        audit_type: schema_linux
+        schema_name: linux
+        platform: linux
+        display_name: Linux
+        generated_at: '2026-03-01T18:24:32.709969'
+        field_coverage:
+          resolved: 24
+          total: 24
+          broken: 0
+      health: WARNING
+      summary:
+        total: 2
+        critical_count: 0
+        warning_count: 2
+        info_count: 0
+        by_category:
+          capacity: 1
+          maintenance: 1
+      alerts:
+      - id: memory_warning
+        severity: WARNING
+        category: Capacity
+        message: 'Memory pressure: 90.0% used'
+        detail: {}
+        affected_items: []
+        condition: true
+      - id: uptime_violation
+        severity: WARNING
+        category: Maintenance
+        message: 'Uptime policy violation: server has not rebooted in over 6 months
+          (200 days)'
+        detail: {}
+        affected_items: []
+        condition: true
+      fields:
+        hostname: web-prod-02
+        ip_address: 10.10.20.46
+        kernel: 6.8.0-48-generic
+        os_family: Debian
+        distribution: Ubuntu
+        distribution_version: '24.04'
+        uptime_seconds: 17280000.0
+        load_avg_15m: 1.2
+        memory_total_mb: 32768.0
+        memory_free_mb: 3276.0
+        swap_total_mb: 8192.0
+        swap_free_mb: 7372.0
+        failed_services: []
+        failed_services_count: 0
+        apt_lines:
+        - 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+        reboot_pending: false
+        collected_at: '2026-03-01T17:17:25+00:00'
+        mounts:
+        - *id013
+        - *id014
+        getent_passwd: *id015
+        shadow_lines:
+        - 'root:!:19700:0:99999:7:::'
+        - 'ubuntu:$6$rounds=5000$salt$hash:19600:0:99999:7:::'
+        - 'syslog:*:18000:0:99999:7:::'
+        - 'deploy:$6$rounds=5000$salt$hash2:19620:0:99999:7:::'
+        epoch_seconds: 1772385445.0
+        sshd_lines:
+        - port 22
+        - addressfamily any
+        - listenaddress 0.0.0.0
+        - permitemptypasswords no
+        - permituserenvironment no
+        - passwordauthentication no
+        - permitrootlogin no
+        - usepam yes
+        - x11forwarding no
+        - maxauthtries 4
+        - clientaliveinterval 600
+        - clientalivecountmax 0
+        - banner /etc/issue.net
+        - logingracetime 60
+        - strictmodes yes
+        - pubkeyauthentication yes
+        world_writable_files: []
+        world_writable_count: 0
+        uptime_days: 200.0
+        memory_used_pct: 90.00244140625
+        swap_used_pct: 10.009765625
+        pending_updates_count: 0
+        disks:
+        - mount: /
+          device: /dev/sda1
+          fstype: ext4
+          size_total: 107374182400
+          size_available: 64424509440
+          total_gb: 100.0
+          free_gb: 60.0
+          used_pct: 40.0
+        - mount: /var
+          device: /dev/sda2
+          fstype: ext4
+          size_total: 214748364800
+          size_available: 150000000000
+          total_gb: 200.0
+          free_gb: 139.7
+          used_pct: 30.2
+        sshd_config:
+          port: '22'
+          addressfamily: any
+          listenaddress: 0.0.0.0
+          permitemptypasswords: 'no'
+          permituserenvironment: 'no'
+          passwordauthentication: 'no'
+          permitrootlogin: 'no'
+          usepam: 'yes'
+          x11forwarding: 'no'
+          maxauthtries: '4'
+          clientaliveinterval: '600'
+          clientalivecountmax: '0'
+          banner: /etc/issue.net
+          logingracetime: '60'
+          strictmodes: 'yes'
+          pubkeyauthentication: 'yes'
+        users:
+        - name: root
+          uid: '0'
+          gid: '0'
+          home: /root
+          shell: /bin/bash
+          password_age_days: 813
+        - name: ubuntu
+          uid: '1000'
+          gid: '1000'
+          home: /home/ubuntu
+          shell: /bin/bash
+          password_age_days: 913
+        - name: syslog
+          uid: '104'
+          gid: '110'
+          home: /home/syslog
+          shell: /usr/sbin/nologin
+          password_age_days: 2513
+        - name: deploy
+          uid: '1001'
+          gid: '1001'
+          home: /home/deploy
+          shell: /bin/bash
+          password_age_days: 893
+        _critical_count: 0
+        _warning_count: 2
+        _total_alerts: 2
+      widgets_meta:
+        alerts:
+          id: alerts
+          title: Active Alerts
+          type: alert_panel
+        system_overview:
+          id: system_overview
+          title: System Overview
+          type: key_value
+        memory:
+          id: memory
+          title: Memory
+          type: key_value
+        disks:
+          id: disks
+          title: Filesystems
+          type: table
+        patching:
+          id: patching
+          title: Patching & Services
+          type: key_value
+      schema:
+        name: linux
+        display_name: Linux
+        widgets:
+        - id: alerts
+          title: Active Alerts
+          type: alert_panel
+        - id: system_overview
+          title: System Overview
+          type: key_value
+          fields:
+          - label: Hostname
+            field: hostname
+            format: null
+          - label: IP Address
+            field: ip_address
+            format: null
+          - label: Distribution
+            field: distribution
+            format: null
+          - label: Version
+            field: distribution_version
+            format: null
+          - label: Kernel
+            field: kernel
+            format: null
+          - label: Uptime (days)
+            field: uptime_days
+            format: '{value:.1f}'
+          - label: Load Avg (15m)
+            field: load_avg_15m
+            format: '{value:.2f}'
+        - id: memory
+          title: Memory
+          type: key_value
+          fields:
+          - label: Total (MB)
+            field: memory_total_mb
+            format: '{value:.1f}'
+          - label: Free (MB)
+            field: memory_free_mb
+            format: '{value:.1f}'
+          - label: Used %
+            field: memory_used_pct
+            format: '{value:.1f}'
+          - label: Swap Total (MB)
+            field: swap_total_mb
+            format: '{value:.1f}'
+          - label: Swap Used %
+            field: swap_used_pct
+            format: '{value:.1f}'
+        - id: disks
+          title: Filesystems
+          type: table
+          rows_field: disks
+          columns:
+          - label: Mount
+            field: mount
+            badge: false
+            format: null
+            link_field: null
+          - label: Device
+            field: device
+            badge: false
+            format: null
+            link_field: null
+          - label: FS Type
+            field: fstype
+            badge: false
+            format: null
+            link_field: null
+          - label: Total (GB)
+            field: total_gb
+            badge: false
+            format: null
+            link_field: null
+          - label: Free (GB)
+            field: free_gb
+            badge: false
+            format: null
+            link_field: null
+          - label: Used %
+            field: used_pct
+            badge: true
+            format: null
+            link_field: null
+        - id: patching
+          title: Patching & Services
+          type: key_value
+          fields:
+          - label: Failed Services
+            field: failed_services_count
+            format: null
+          - label: Pending Updates
+            field: pending_updates_count
+            format: null
+          - label: Reboot Required
+            field: reboot_pending
+            format: null

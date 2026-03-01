@@ -19,8 +19,8 @@
 - name: "ESXi STIG | Set PowerCLI preamble"
   ansible.builtin.set_fact:
     _pwsh_preamble: >-
-      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null;
-      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password $env:VC_PASS -Force | Out-Null;
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:\$false | Out-Null;
+      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force | Out-Null;
   check_mode: false
   changed_when: false
 
@@ -305,8 +305,15 @@
 - name: stigrule_256410_acceptance_level
   community.vmware.vmware_host_acceptance:
     esxi_hostname: "{{ _current_esxi_host }}"
-    acceptance_level: "{{ esxi_stig_acceptance_level | default('PartnerSupported') }}"
-    state: present
+    state: >-
+      {{
+        (esxi_stig_acceptance_level | default('partner') | string)
+        | replace('PartnerSupported', 'partner')
+        | replace('CommunitySupported', 'community')
+        | replace('VMwareAccepted', 'vmware_accepted')
+        | replace('VMwareCertified', 'vmware_certified')
+        | lower
+      }}
   when: esxi_70_000047_Manage | default(esxi_70_000047) | default(true) | bool
 
 # =========================================================================
@@ -325,7 +332,7 @@
       (Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View).Config.LockdownMode
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256375
   changed_when: false
   check_mode: false
@@ -356,13 +363,14 @@
       \$lockdown.ChangeLockdownMode('{{ esxi_stig_lockdown_level | default('lockdownNormal') }}')
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _r_256375
   changed_when: false
   when:
     - vmware_stig_enable_hardening | default(false) | bool
     - esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
-    - _q_256375.failed | default(false)
+    - not (_q_256375.failed | default(false))
+    - _q_256375.stdout | default('') | lower == 'lockdowndisabled'
   check_mode: false
   no_log: true
 
@@ -379,7 +387,7 @@
       (\$lockdown.QueryLockdownExceptions()) -join ','
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256377
   changed_when: false
   check_mode: false
@@ -409,7 +417,7 @@
       if (\$hbas) { \$hbas.AuthenticationProperties.ChapType -join ',' } else { 'NO_ISCSI' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256415
   changed_when: false
   check_mode: false
@@ -441,7 +449,7 @@
       if (\$open) { \$open.Name -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256417
   changed_when: false
   check_mode: false
@@ -488,7 +496,7 @@
       if (\$authInfo.Domain) { \$authInfo.Domain } else { 'NOT_JOINED' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256402
   changed_when: false
   check_mode: false
@@ -603,7 +611,7 @@
       if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256411
   changed_when: false
   check_mode: false
@@ -634,7 +642,7 @@
       if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256412
   changed_when: false
   check_mode: false
@@ -665,7 +673,7 @@
       if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256413
   changed_when: false
   check_mode: false
@@ -695,7 +703,7 @@
       if (\$fw.IncomingEnabled -or \$fw.OutgoingEnabled) { 'NON_COMPLIANT' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256418
   changed_when: false
   check_mode: false
@@ -726,7 +734,7 @@
       if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256424
   changed_when: false
   check_mode: false
@@ -759,7 +767,7 @@
       if (\$bad) { (\$bad | ForEach-Object { \"\$(\$_.Name)=\$(\$_.VLanId)\" }) -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256425
   changed_when: false
   check_mode: false
@@ -790,7 +798,7 @@
       if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256426
   changed_when: false
   check_mode: false
@@ -823,7 +831,7 @@
       (Get-VMHost -Name '{{ _current_esxi_host }}').Build
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256427
   changed_when: false
   check_mode: false
@@ -859,7 +867,7 @@
       } else { 'UNKNOWN' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256430
   changed_when: false
   check_mode: false
@@ -893,7 +901,7 @@
       } else { 'NOT_JOINED' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256431
   changed_when: false
   check_mode: false
@@ -925,7 +933,7 @@
       if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256442
   changed_when: false
   check_mode: false
@@ -956,7 +964,7 @@
       if (\$overrides) { 'HAS_OVERRIDES' } else { 'COMPLIANT' }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256444
   changed_when: false
   check_mode: false
@@ -987,7 +995,7 @@
       if (\$adv -and \$adv.Value -eq 'info') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$adv.Value }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256445
   changed_when: false
   check_mode: false
@@ -1019,7 +1027,7 @@
       if (\$enc.Mode -eq 'TPM') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$enc.Mode }
       "
   environment:
-    VC_PASS: "{{ vmware_password }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
   register: _q_256446
   changed_when: false
   check_mode: false
@@ -1079,7 +1087,7 @@
           if (\$content) { 'CHECK_SSH' } else { 'NO_ACCESS' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256382
       changed_when: false
       check_mode: false
@@ -1113,7 +1121,7 @@
           if (\$banner) { \$banner.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256383
       changed_when: false
       check_mode: false
@@ -1145,7 +1153,7 @@
           if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256384
       changed_when: false
       check_mode: false
@@ -1179,7 +1187,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256386
       changed_when: false
       check_mode: false
@@ -1213,7 +1221,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256387
       changed_when: false
       check_mode: false
@@ -1247,7 +1255,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256388
       changed_when: false
       check_mode: false
@@ -1281,7 +1289,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256389
       changed_when: false
       check_mode: false
@@ -1315,7 +1323,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256390
       changed_when: false
       check_mode: false
@@ -1349,7 +1357,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256394
       changed_when: false
       check_mode: false
@@ -1383,7 +1391,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256395
       changed_when: false
       check_mode: false
@@ -1417,7 +1425,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256396_ssh
       changed_when: false
       check_mode: false
@@ -1451,7 +1459,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256397_ssh
       changed_when: false
       check_mode: false
@@ -1485,7 +1493,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256399_ssh
       changed_when: false
       check_mode: false
@@ -1519,7 +1527,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256400_ssh
       changed_when: false
       check_mode: false
@@ -1555,7 +1563,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256401_ssh
       changed_when: false
       check_mode: false
@@ -1591,7 +1599,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256434
       changed_when: false
       check_mode: false
@@ -1625,7 +1633,7 @@
           if (\$val) { \$val.Value } else { 'NOT_SET' }
           "
       environment:
-        VC_PASS: "{{ vmware_password }}"
+        VC_PASS: "{{ vmware_password | string | trim }}"
       register: _q_256449
       changed_when: false
       check_mode: false

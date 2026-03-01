@@ -17,6 +17,8 @@
       tags: [stig_task]
       vars:
         stig_target_host: "{{ _current_esxi_host }}"
+        stig_target_type: "esxi"
+        stig_platform: "vmware"
 
 - name: "ESXi STIG | Flag audit as complete"
   ansible.builtin.set_fact:

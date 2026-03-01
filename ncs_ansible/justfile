@@ -3,9 +3,10 @@
 set dotenv-load := true
 
 # --- Variables ---
-python           := if path_exists(".venv/bin/pytest") == "true" { ".venv/bin/python" } else { "python3" }
+python           := if path_exists(".venv/bin/python") == "true" { ".venv/bin/python" } else { "python3" }
 ansible_playbook := "ansible-playbook"
-export PYTHONPATH := "tools/ncs_reporter/src:libs/ncs_core/src"
+ncs_reporter     := if path_exists(".venv/bin/ncs-reporter") == "true" { ".venv/bin/ncs-reporter" } else { "ncs-reporter" }
+reporter_flags   := "--config-dir files/ncs_reporter_configs"
 
 # --- Default ---
 default:
@@ -20,9 +21,19 @@ setup: setup-collections setup-tools
 setup-collections:
     ansible-galaxy collection install -r requirements.yml
 
-# Install internal python tools in editable mode
-setup-tools:
-    {{ python }} -m pip install -e tools/ncs_reporter
+# Create local .venv and install ncs-reporter plus dev tools
+setup-venv:
+    python3 -m venv .venv
+    .venv/bin/pip install --upgrade pip
+    .venv/bin/pip install -e ../ncs_reporter
+    .venv/bin/pip install ruff mypy pytest basedpyright
+
+# Install local dev dependencies via uv (preferred)
+setup-uv:
+    UV_CACHE_DIR=/tmp/uv-cache uv sync --dev
+
+# Install internal python tools in editable mode (uses .venv if present)
+setup-tools: setup-venv
 
 # --- Quality Control ---
 
@@ -44,9 +55,9 @@ check:
 
 # Run all unit and E2E tests
 test:
-    {{ python }} -m pytest tests/unit tools/ncs_reporter/tests
+    {{ python }} -m pytest tests/unit
 
-# Run integration tests
+# Run integration tests (requires ncs-reporter installed: just setup-tools)
 integration:
     {{ python }} -m pytest tests/integration -v
 
@@ -99,7 +110,27 @@ stig-harden-esxi vcenter host:
 # Apply ESXi STIG rules interactively, one at a time, from a prior audit artifact (MUTATING)
 # Requires ncs-reporter installed (just setup-tools). Example: just stig-apply-esxi artifacts/vc1/raw_stig_esxi.yaml vc1 esxi-01.local
 stig-apply-esxi artifact vcenter esxi_host:
-    ncs-reporter stig-apply {{ artifact }} --limit {{ vcenter }} --esxi-host {{ esxi_host }}
+    {{ ncs_reporter }} stig-apply {{ artifact }} --limit {{ vcenter }} --esxi-host {{ esxi_host }}
+
+# --- Reporting ---
+
+# Generate all platform and site reports from collected artifacts
+# Example: just report /srv/samba/reports/platform /srv/samba/reports platform/inventory_groups.json
+report platform_root reports_root groups:
+    {{ ncs_reporter }} all {{ reporter_flags }} \
+        --platform-root {{ platform_root }} \
+        --reports-root {{ reports_root }} \
+        --groups {{ groups }}
+
+# Generate STIG compliance reports
+# Example: just report-stig /srv/samba/reports/platform/vmware/vcenter reports/stig
+report-stig input output="reports/stig":
+    {{ ncs_reporter }} stig {{ reporter_flags }} --input {{ input }} --output-dir {{ output }}
+
+# Generate CKLB artifacts for STIG Viewer
+# Example: just report-cklb /srv/samba/reports/platform/vmware/vcenter reports/cklb
+report-cklb input output="reports/cklb":
+    {{ ncs_reporter }} cklb {{ reporter_flags }} --input {{ input }} --output-dir {{ output }}
 
 # Audit a specific Linux host
 audit-linux-host hostname:

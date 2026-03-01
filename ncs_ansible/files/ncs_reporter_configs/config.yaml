@@ -1,0 +1,7 @@
+# ncs-reporter base config for --config-dir files/ncs_reporter_configs
+#
+# Paths are resolved relative to this directory unless absolute.
+
+platforms_config: platforms.yaml
+extra_schema_dirs:
+  - .

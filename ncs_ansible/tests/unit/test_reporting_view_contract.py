@@ -1,81 +1,142 @@
-import pathlib
-import sys
+from __future__ import annotations
+
 import unittest
+from pathlib import Path
 
-_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
-if _NCS_SRC not in sys.path:
-    sys.path.insert(0, _NCS_SRC)
+from ncs_reporter.schema_loader import load_schema_from_file
+from ncs_reporter.view_models.generic import build_generic_fleet_view
 
-from ncs_reporter.view_models.linux import build_linux_fleet_view  # noqa: E402
-from ncs_reporter.view_models.vmware import build_vmware_fleet_view  # noqa: E402
-from ncs_reporter.view_models.windows import build_windows_fleet_view  # noqa: E402
+SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "files" / "ncs_reporter_configs"
+
+
+def _linux_bundle(hostname: str) -> dict:
+    return {
+        "ubuntu_raw_discovery": {
+            "metadata": {"host": hostname, "timestamp": "2026-03-01T00:00:00Z"},
+            "data": {
+                "ansible_facts": {
+                    "hostname": hostname,
+                    "default_ipv4": {"address": "10.0.0.10"},
+                    "kernel": "6.8.0",
+                    "os_family": "Debian",
+                    "distribution": "Ubuntu",
+                    "distribution_version": "24.04",
+                    "uptime_seconds": 86400,
+                    "loadavg": {"15m": 0.2},
+                    "memtotal_mb": 1024,
+                    "memfree_mb": 256,
+                    "swaptotal_mb": 512,
+                    "swapfree_mb": 128,
+                    "mounts": [],
+                    "getent_passwd": {},
+                    "date_time": {"epoch": "1740787200"},
+                },
+                "failed_services": {"stdout_lines": []},
+                "apt_simulate": {"stdout_lines": []},
+                "reboot_stat": {"stat": {"exists": False}},
+                "shadow_raw": {"stdout_lines": []},
+                "sshd_raw": {"stdout_lines": []},
+                "world_writable": {"stdout_lines": []},
+            },
+        }
+    }
+
+
+def _vcenter_bundle(hostname: str) -> dict:
+    return {
+        "vmware_raw_vcenter": {
+            "metadata": {"host": hostname, "timestamp": "2026-03-01T00:00:00Z"},
+            "data": {
+                "appliance_health_info": {
+                    "appliance": {
+                        "summary": {
+                            "product": "vCenter Server",
+                            "version": "8.0.2",
+                            "build_number": "23319199",
+                            "uptime": 172800,
+                            "health": {
+                                "overall": "green",
+                                "cpu": "green",
+                                "memory": "green",
+                                "database": "green",
+                                "storage": "green",
+                            },
+                        },
+                        "access": {"ssh": False, "shell": {"enabled": False}},
+                        "time": {"time_sync": {"mode": "NTP"}},
+                    }
+                },
+                "appliance_backup_info": {"schedules": []},
+                "datacenters_info": {"datacenter_info": [{"name": "DC1", "datacenter": "dc-1"}]},
+                "clusters_info": {"results": [{"item": "DC1", "clusters": {}}]},
+                "datastores_info": {"datastores": []},
+                "vms_info": {"virtual_machines": []},
+                "snapshots_info": {"snapshots": []},
+                "alarms_info": {"alarms": []},
+                "config": {"infrastructure_vm_patterns": []},
+            },
+        }
+    }
+
+
+def _windows_bundle(hostname: str) -> dict:
+    return {
+        "windows_raw_audit": {
+            "metadata": {"host": hostname, "timestamp": "2026-03-01T00:00:00Z"},
+            "data": {
+                "ccm_service": {"state": "Running"},
+                "configmgr_apps": {},
+                "installed_apps": [],
+                "update_results": [],
+            },
+        }
+    }
 
 
 class ReportingViewContractTests(unittest.TestCase):
-    def assert_fleet_contract(self, view):
+    def setUp(self) -> None:
+        self.schemas = {
+            "linux": load_schema_from_file(SCHEMAS_DIR / "linux.yaml"),
+            "vmware": load_schema_from_file(SCHEMAS_DIR / "vcenter.yaml"),
+            "windows": load_schema_from_file(SCHEMAS_DIR / "windows.yaml"),
+        }
+
+    def _assert_fleet_contract(self, view: dict) -> None:
         self.assertIsInstance(view, dict)
         self.assertIsInstance(view.get("meta"), dict)
-        self.assertIsInstance(view.get("fleet"), dict)
-        self.assertIsInstance(view.get("rows"), list)
+        self.assertIsInstance(view.get("hosts"), list)
         self.assertIsInstance(view.get("active_alerts"), list)
+        self.assertIsInstance(view.get("fleet_columns"), list)
+        self.assertIn("crit_count", view)
+        self.assertIn("warn_count", view)
         self.assertIn("report_stamp", view["meta"])
 
-    def test_linux_vmware_windows_fleet_views_share_core_contract(self):
-        linux_hosts = {
-            "host1": {
-                "system": {
-                    "health": "WARNING",
-                    "summary": {"critical_count": 0, "warning_count": 1},
-                    "alerts": [{"severity": "WARNING", "category": "updates", "message": "Pending updates"}],
-                    "data": {"system": {"services": {"failed_list": []}, "disks": []}},
-                }
-            }
-        }
-        vmware_hosts = {
-            "vc01": {
-                "discovery": {"summary": {"clusters": 1, "hosts": 2, "vms": 10}},
-                "audit": {
-                    "alerts": [{"severity": "WARNING", "category": "capacity", "message": "High CPU"}],
-                    "vcenter_health": {
-                        "health": {"overall": "yellow"},
-                        "data": {
-                            "utilization": {
-                                "cpu_total_mhz": 1000,
-                                "cpu_used_mhz": 750,
-                                "mem_total_mb": 2000,
-                                "mem_used_mb": 1000,
-                            }
-                        },
-                    },
-                },
-            }
-        }
-        windows_hosts = {
-            "hosts": {
-                "win01": {
-                    "windows_audit": {
-                        "health": "WARNING",
-                        "summary": {
-                            "applications": {"configmgr_count": 1, "installed_count": 2, "apps_to_update_count": 1},
-                            "updates": {"failed_count": 1},
-                            "services": {"ccmexec_running": True},
-                        },
-                        "alerts": [{"severity": "WARNING", "message": "Update failed"}],
-                    }
-                }
-            }
-        }
-
-        linux_view = build_linux_fleet_view(linux_hosts, report_stamp="20260224")
-        vmware_view = build_vmware_fleet_view(vmware_hosts, report_stamp="20260224")
-        windows_view = build_windows_fleet_view(windows_hosts, report_stamp="20260224")
+    def test_generic_fleet_views_share_core_contract(self) -> None:
+        linux_view = build_generic_fleet_view(
+            self.schemas["linux"],
+            {"hosts": {"linux-01": _linux_bundle("linux-01")}},
+            report_stamp="20260301",
+        )
+        vmware_view = build_generic_fleet_view(
+            self.schemas["vmware"],
+            {"hosts": {"vc-01": _vcenter_bundle("vc-01")}},
+            report_stamp="20260301",
+        )
+        windows_view = build_generic_fleet_view(
+            self.schemas["windows"],
+            {"hosts": {"win-01": _windows_bundle("win-01")}},
+            report_stamp="20260301",
+        )
 
         for view in (linux_view, vmware_view, windows_view):
-            self.assert_fleet_contract(view)
+            self._assert_fleet_contract(view)
 
-        self.assertEqual(linux_view["fleet"]["hosts"], 1)
-        self.assertEqual(vmware_view["fleet"]["alerts"]["warning"], 1)
-        self.assertEqual(windows_view["rows"][0]["status"]["raw"], "WARNING")
+        self.assertEqual(linux_view["meta"]["platform"], "linux")
+        self.assertEqual(vmware_view["meta"]["platform"], "vmware")
+        self.assertEqual(windows_view["meta"]["platform"], "windows")
+        self.assertEqual(linux_view["meta"]["total_hosts"], 1)
+        self.assertEqual(vmware_view["meta"]["total_hosts"], 1)
+        self.assertEqual(windows_view["meta"]["total_hosts"], 1)
 
 
 if __name__ == "__main__":

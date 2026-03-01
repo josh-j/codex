@@ -9,12 +9,13 @@ exit 0 on success, 2 on error
 
 import json
 import sys
+from typing import Any
 
 
 def main() -> None:
     payload = json.load(sys.stdin)
     fields = payload.get("fields", {})
-    results: list = fields.get("clusters_info_results", [])
+    results: list[Any] = fields.get("clusters_info_results", [])
 
     clusters_list = []
 
@@ -29,25 +30,27 @@ def main() -> None:
         for cname, cdata in dc_clusters.items():
             if not isinstance(cdata, dict):
                 continue
-            
+
             hosts = cdata.get("hosts", [])
             host_count = len(hosts) if isinstance(hosts, list) else 0
-            
+
             res = cdata.get("resource_summary", {})
             cpu_used = float(res.get("cpuUsedMHz") or 0)
             cpu_cap = float(res.get("cpuCapacityMHz") or 1)
             mem_used = float(res.get("memUsedMB") or 0)
             mem_cap = float(res.get("memCapacityMB") or 1)
 
-            clusters_list.append({
-                "name": cname,
-                "datacenter": dc_name,
-                "drs_enabled": cdata.get("drs_enabled", False),
-                "ha_enabled": cdata.get("ha_enabled", False),
-                "host_count": host_count,
-                "cpu_usage_pct": round((cpu_used / cpu_cap) * 100, 1) if cpu_cap > 0 else 0,
-                "mem_usage_pct": round((mem_used / mem_cap) * 100, 1) if mem_cap > 0 else 0,
-            })
+            clusters_list.append(
+                {
+                    "name": cname,
+                    "datacenter": dc_name,
+                    "drs_enabled": cdata.get("drs_enabled", False),
+                    "ha_enabled": cdata.get("ha_enabled", False),
+                    "host_count": host_count,
+                    "cpu_usage_pct": round((cpu_used / cpu_cap) * 100, 1) if cpu_cap > 0 else 0,
+                    "mem_usage_pct": round((mem_used / mem_cap) * 100, 1) if mem_cap > 0 else 0,
+                }
+            )
 
     print(json.dumps(clusters_list))
 

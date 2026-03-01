@@ -1,0 +1,77 @@
+metadata:
+  generated_at: '2026-03-01T18:17:48.049260'
+  fleet_stats:
+    total_hosts: 1
+    critical_alerts: 1
+    warning_alerts: 1
+hosts:
+  web-prod-01:
+    stig_vm:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-01T17:17:25+00:00'
+        generated_at: '2026-03-01T18:17:48.050345'
+      health: CRITICAL
+      summary:
+        total: 5
+        critical_count: 1
+        warning_count: 1
+        info_count: 0
+        by_category:
+          security_compliance: 2
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: VM must disable unneeded hardware.'
+        detail:
+          rule_id: V-256400
+          description: ''
+          original_severity: HIGH
+          target_type: vm
+        affected_items: []
+        recommendation: null
+        remediation: null
+      - severity: WARNING
+        category: security_compliance
+        message: 'STIG Violation: VM must restrict console access.'
+        detail:
+          rule_id: V-256402
+          description: ''
+          original_severity: MEDIUM
+          target_type: vm
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vm
+      full_audit:
+      - id: V-256400
+        status: open
+        severity: high
+        title: VM must disable unneeded hardware.
+        rule_id: V-256400
+        description: ''
+      - id: V-256401
+        status: pass
+        severity: high
+        title: VM must use encryption.
+        rule_id: V-256401
+        description: ''
+      - id: V-256402
+        status: open
+        severity: medium
+        title: VM must restrict console access.
+        rule_id: V-256402
+        description: ''
+      - id: V-256403
+        status: pass
+        severity: medium
+        title: VM must use latest tools.
+        rule_id: V-256403
+        description: ''
+      - id: V-256404
+        status: pass
+        severity: low
+        title: VM must limit logging.
+        rule_id: V-256404
+        description: ''

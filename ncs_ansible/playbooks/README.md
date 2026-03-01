@@ -22,7 +22,7 @@ These playbooks are purely collectors that gather un-normalized state via the `n
 
 Security-focused playbooks for baseline verification and automated enforcement.
 
-- **`*_stig_audit.yml`**: Read-only compliance verification. Executes checks against DISA STIG requirements and generates XCCDF-compliant JSON/XML results via the `stig_xml` callback.
+- **`*_stig_audit.yml`**: Read-only compliance verification. Executes checks against DISA STIG requirements and emits raw STIG telemetry via `ncs_collector`.
 - **`*_stig_remediate.yml`**: State enforcement. Applies configuration changes to align systems with STIG security requirements.
 - **`ubuntu_remediate.yml`**: General security hardening and configuration enforcement for Ubuntu hosts outside the formal STIG baseline.
 

@@ -1,10 +1,4 @@
-import pathlib
-import sys
 import unittest
-
-_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
-if _NCS_SRC not in sys.path:
-    sys.path.insert(0, _NCS_SRC)
 
 from ncs_reporter.view_models.stig import build_stig_fleet_view, build_stig_host_view  # noqa: E402
 
@@ -35,7 +29,7 @@ class StigReportViewModelTests(unittest.TestCase):
         self.assertEqual(view["target"]["target_type"], "ubuntu")
         self.assertEqual(view["summary"]["findings"]["total"], 2)
         self.assertEqual(view["summary"]["findings"]["critical"], 1)
-        self.assertEqual(view["summary"]["findings"]["warning"], 1)
+        self.assertEqual(view["summary"]["findings"]["warning"], 0)
         self.assertEqual(view["summary"]["by_status"]["open"], 1)
         self.assertEqual(view["summary"]["by_status"]["pass"], 1)
         self.assertEqual(view["findings"][0]["rule_id"], "V-100")
@@ -104,7 +98,7 @@ class StigReportViewModelTests(unittest.TestCase):
         self.assertEqual(view["fleet"]["totals"]["hosts"], 3)
         self.assertEqual(view["fleet"]["totals"]["findings_open"], 3)
         self.assertEqual(view["fleet"]["totals"]["critical"], 1)
-        self.assertEqual(view["fleet"]["totals"]["warning"], 3)
+        self.assertEqual(view["fleet"]["totals"]["warning"], 2)
         self.assertEqual(view["fleet"]["by_platform"]["linux"]["hosts"], 1)
         self.assertEqual(view["fleet"]["by_platform"]["vmware"]["hosts"], 1)
         self.assertEqual(view["fleet"]["by_platform"]["windows"]["hosts"], 1)

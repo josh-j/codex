@@ -39,7 +39,9 @@
       "Bash(/tmp/bug_report.txt:*)",
       "Bash(.venv/bin/python:*)",
       "WebFetch(domain:docs.ansible.com)",
-      "Bash(/Users/joshj/dev/codex/tools/ncs_reporter/.venv/bin/python:*)"
+      "Bash(/Users/joshj/dev/codex/tools/ncs_reporter/.venv/bin/python:*)",
+      "Bash(PYTHONPATH=\"/Users/joshj/dev/codex/ncs_reporter/src\" /Users/joshj/dev/codex/ncs_reporter/.venv/bin/python:*)",
+      "Bash(.venv/bin/pip install:*)"
     ]
   }
 }

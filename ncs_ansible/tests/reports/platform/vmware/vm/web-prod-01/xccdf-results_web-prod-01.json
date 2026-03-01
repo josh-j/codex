@@ -1,0 +1,52 @@
+[
+  {
+    "id": "V-256400",
+    "rule_id": "V-256400",
+    "name": "web-prod-01",
+    "status": "failed",
+    "title": "VM must disable unneeded hardware.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256401",
+    "rule_id": "V-256401",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "VM must use encryption.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256402",
+    "rule_id": "V-256402",
+    "name": "web-prod-01",
+    "status": "failed",
+    "title": "VM must restrict console access.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256403",
+    "rule_id": "V-256403",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "VM must use latest tools.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "V-256404",
+    "rule_id": "V-256404",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "VM must limit logging.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  }
+]

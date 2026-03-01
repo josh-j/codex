@@ -1,10 +1,4 @@
-import pathlib
-import sys
 import unittest
-
-_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
-if _NCS_SRC not in sys.path:
-    sys.path.insert(0, _NCS_SRC)
 
 from ncs_reporter.view_models.site import build_site_dashboard_view  # noqa: E402
 
@@ -14,7 +8,7 @@ class SiteReportViewModelTests(unittest.TestCase):
         aggregated = {
             "hosts": {
                 "host1": {
-                    "system": {
+                    "schema_linux": {
                         "alerts": [{"severity": "CRITICAL", "message": "disk", "category": "disk"}],
                         "health": "CRITICAL",
                     },
@@ -24,19 +18,24 @@ class SiteReportViewModelTests(unittest.TestCase):
                     },
                 },
                 "vc01": {
-                    "discovery": {
-                        "inventory": {
-                            "clusters": {"list": [{"name": "ClusterA", "utilization": {"cpu_pct": 50, "mem_pct": 60}}]}
-                        }
-                    },
-                    "vcenter": {
-                        "vcenter_health": {"health": "green", "alerts": [{"severity": "WARNING"}]},
+                    "schema_vcenter": {
+                        "health": "green",
+                        "alerts": [{"severity": "WARNING", "message": "cpu", "category": "capacity"}],
+                        "fields": {
+                            "datacenter_count": 1,
+                            "cluster_count": 1,
+                            "esxi_host_count": 2,
+                            "vm_count": 10,
+                            "datastore_count": 3,
+                            "snapshot_count": 0,
+                            "alarm_count": 0,
+                        },
                     },
                 },
                 "win01": {
-                    "windows_audit": {
+                    "schema_windows": {
                         "health": "WARNING",
-                        "summary": {"services": {"ccmexec_running": False}},
+                        "alerts": [],
                     }
                 },
             }

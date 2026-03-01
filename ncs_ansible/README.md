@@ -66,7 +66,7 @@ Reports are persisted to a central directory (default `/srv/samba/reports/`).
 
 ### CKLB Generation
 The `ncs-reporter` tool includes a specialized `cklb` command that generates STIG Checklist files:
-- **Input:** Raw JSON/YAML audit results collected by the `stig_xml` callback.
+- **Input:** Raw JSON/YAML audit results collected via `ncs_collect` and persisted by `ncs_collector`.
 - **Processing:** Results are mapped against STIG XCCDF skeletons.
 - **Output:** Native `.cklb` files compatible with STIG Viewer, containing status (Pass/Fail/Open), finding details, and fix actions.
 
@@ -89,8 +89,9 @@ Commands are managed via `just`:
 ## Usage
 
 1.  **Environment:** Requires Nix and Direnv.
-2.  **Dependencies:** `ansible-galaxy collection install -r requirements.yml`.
-3.  **Inventory:** Define targets in `inventory/production/hosts.yaml`.
-4.  **Execution:** `just site`.
+2.  **Python deps (preferred):** `uv sync --dev` (installs dev tools including `pytest`).
+3.  **Ansible collections:** `ansible-galaxy collection install -r requirements.yml`.
+4.  **Inventory:** Define targets in `inventory/production/hosts.yaml`.
+5.  **Execution:** `just site`.
 
 Refer to `docs/REPORTING_ARCHITECTURE.md` and `GEMINI.md` for technical specifications.

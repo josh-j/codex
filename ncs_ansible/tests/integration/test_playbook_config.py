@@ -2,8 +2,8 @@
 
 These tests parse playbook YAML as data and assert structural invariants:
 - All playbooks are valid YAML
-- generate_reports.yml passes --extra-schema-dir and --platforms-config so
-  ncs_ansible's local configuration is used rather than ncs_reporter's bundled defaults
+- generate_reports.yml passes --config-dir so ncs_ansible's local configuration
+  is used rather than ncs_reporter's bundled defaults
 - All roles referenced in playbooks exist in the internal collections
 """
 
@@ -100,22 +100,13 @@ class TestGenerateReportsPlaybook(unittest.TestCase):
         cmds = self._ncs_reporter_commands()
         self.assertGreater(len(cmds), 0, "generate_reports.yml has no ncs-reporter invocation")
 
-    def test_ncs_reporter_passes_extra_schema_dir(self) -> None:
+    def test_ncs_reporter_passes_config_dir(self) -> None:
         cmds = self._ncs_reporter_commands()
-        has_flag = any("--extra-schema-dir" in cmd for cmd in cmds)
+        has_flag = any("--config-dir" in cmd for cmd in cmds)
         self.assertTrue(
             has_flag,
-            "ncs-reporter invocation is missing --extra-schema-dir; "
-            "ncs_ansible's local schemas/ will not be used",
-        )
-
-    def test_ncs_reporter_passes_platforms_config(self) -> None:
-        cmds = self._ncs_reporter_commands()
-        has_flag = any("--platforms-config" in cmd for cmd in cmds)
-        self.assertTrue(
-            has_flag,
-            "ncs-reporter invocation is missing --platforms-config; "
-            "ncs_ansible's local platforms.yaml will not be used",
+            "ncs-reporter invocation is missing --config-dir; "
+            "ncs_ansible local report config will not be used",
         )
 
     def test_ncs_reporter_passes_platform_root(self) -> None:

@@ -10,7 +10,7 @@ import json
 import sys
 
 
-def main():
+def main() -> None:
     try:
         payload = json.load(sys.stdin)
     except json.JSONDecodeError:
@@ -19,7 +19,7 @@ def main():
 
     fields = payload.get("fields", {})
     alarms = fields.get("active_alarms") or []
-    
+
     if not isinstance(alarms, list):
         alarms = []
 
@@ -34,11 +34,7 @@ def main():
         elif sev == "warning":
             warn += 1
 
-    print(json.dumps({
-        "critical": crit,
-        "warning": warn,
-        "total": len(alarms)
-    }))
+    print(json.dumps({"critical": crit, "warning": warn, "total": len(alarms)}))
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@
       tags: [stig_task]
       vars:
         stig_target_host: "{{ _current_vm_name }}"
+        stig_target_type: "vm"
+        stig_platform: "vmware"
 
 - name: "VM STIG | Flag audit as complete"
   ansible.builtin.set_fact:

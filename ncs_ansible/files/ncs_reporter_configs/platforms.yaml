@@ -1,4 +1,5 @@
 # Default platform configuration for ncs-reporter `all` command.
+# ncs_ansible consumes this file from files/ncs_reporter_configs/platforms.yaml.
 # Copy this file to ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml,
 # or pass --platforms-config <path> to customize the platform list.
 platforms:

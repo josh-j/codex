@@ -1,0 +1,478 @@
+metadata:
+  generated_at: '2026-03-01T18:17:48.051962'
+  fleet_stats:
+    total_hosts: 1
+    critical_alerts: 1
+    warning_alerts: 4
+hosts:
+  win-srv-01:
+    raw_audit: &id002
+      metadata:
+        host: win-srv-01
+        raw_type: audit
+        timestamp: '2026-03-01T17:17:25+00:00'
+        engine: ncs_collector_callback
+      data:
+        ansible_facts: {}
+        ccm_service:
+          exists: true
+          name: CcmExec
+          display_name: SMS Agent Host
+          state: stopped
+          start_mode: auto
+          path: C:\Windows\CCM\CcmExec.exe
+          can_pause_and_continue: true
+          description: Configuration Manager client agent
+          username: LocalSystem
+          desktop_interact: false
+          dependencies:
+          - RpcSs
+          depended_by: []
+        configmgr_apps: &id005
+          AllApps:
+          - Name: Microsoft Office 365 ProPlus
+            Version: 16.0.17628.20006
+            Publisher: Microsoft Corporation
+          - Name: Microsoft Visual Studio Code
+            Version: 1.86.2
+            Publisher: Microsoft Corporation
+          - Name: Google Chrome
+            Version: 121.0.6167.185
+            Publisher: Google LLC
+          - Name: Mozilla Firefox ESR
+            Version: 115.7.0
+            Publisher: Mozilla
+          - Name: 7-Zip 23.01 (x64)
+            Version: 23.01.00.0
+            Publisher: Igor Pavlov
+          - Name: Python 3.11.7
+            Version: 3.11.7150.0
+            Publisher: Python Software Foundation
+          - Name: Notepad++
+            Version: 8.6.2
+            Publisher: Notepad++ Team
+          - Name: WinRAR 6.24 (64-bit)
+            Version: 6.24.0
+            Publisher: win.rar GmbH
+          - Name: Adobe Acrobat Reader DC
+            Version: 23.008.20533
+            Publisher: Adobe
+          - Name: Microsoft Teams
+            Version: 1.6.00.33362
+            Publisher: Microsoft Corporation
+          AppsToUpdate: &id001
+          - Name: Google Chrome
+            CurrentVersion: 121.0.6167.185
+            TargetVersion: 122.0.6261.57
+          - Name: Adobe Acrobat Reader DC
+            CurrentVersion: 23.008.20533
+            TargetVersion: 24.001.20604
+        installed_apps:
+        - &id006
+          Name: Microsoft Office 365 ProPlus
+          Version: 16.0.17628.20006
+          Publisher: Microsoft Corporation
+        - &id007
+          Name: Google Chrome
+          Version: 121.0.6167.185
+          Publisher: Google LLC
+        - &id008
+          Name: 7-Zip 23.01 (x64)
+          Version: 23.01.00.0
+          Publisher: Igor Pavlov
+        - &id009
+          Name: Microsoft Visual C++ 2015-2022 Redistributable (x64)
+          Version: 14.38.33130.0
+          Publisher: Microsoft Corporation
+        - &id010
+          Name: Microsoft Visual C++ 2015-2022 Redistributable (x86)
+          Version: 14.38.33130.0
+          Publisher: Microsoft Corporation
+        - &id011
+          Name: Mozilla Firefox ESR 115.7.0 (x64 en-US)
+          Version: 115.7.0
+          Publisher: Mozilla
+        - &id012
+          Name: Python 3.11.7 (64-bit)
+          Version: 3.11.7150.0
+          Publisher: Python Software Foundation
+        - &id013
+          Name: Windows Admin Center
+          Version: 2306.2306.16001.0
+          Publisher: Microsoft Corporation
+        - &id014
+          Name: Notepad++ (64-bit x64)
+          Version: 8.6.2
+          Publisher: Notepad++ Team
+        - &id015
+          Name: Git version 2.43.0
+          Version: 2.43.0
+          Publisher: The Git Development Community
+        - &id016
+          Name: Microsoft Teams classic
+          Version: 1.6.00.33362
+          Publisher: Microsoft Corporation
+        - &id017
+          Name: Adobe Acrobat Reader DC (64-bit)
+          Version: 23.008.20533
+          Publisher: Adobe
+        - &id018
+          Name: PowerShell 7.4.1.500
+          Version: 7.4.1.500
+          Publisher: Microsoft Corporation
+        - &id019
+          Name: WinRAR 6.24 (64-bit)
+          Version: 6.24.0
+          Publisher: win.rar GmbH
+        - &id020
+          Name: Sysinternals Suite
+          Version: 2024.01.01
+          Publisher: Microsoft Corporation
+        apps_to_update: *id001
+        update_results:
+        - &id003
+          application: Microsoft Visual C++ 2019 Redistributable (x64)
+          status: failed
+          failed: true
+        - &id004
+          application: Windows Defender ATP
+          status: succeeded
+          failed: false
+        audit_failed: false
+    stig_windows:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-01T17:17:25+00:00'
+        generated_at: '2026-03-01T18:17:48.057625'
+      health: CRITICAL
+      summary:
+        total: 8
+        critical_count: 1
+        warning_count: 1
+        info_count: 0
+        by_category:
+          security_compliance: 2
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: Windows must disable Guest account.'
+        detail:
+          rule_id: WN22-00-000000
+          description: ''
+          original_severity: HIGH
+          target_type: windows
+        affected_items: []
+        recommendation: null
+        remediation: null
+      - severity: WARNING
+        category: security_compliance
+        message: 'STIG Violation: Windows must enable Firewall.'
+        detail:
+          rule_id: WN22-00-000002
+          description: ''
+          original_severity: MEDIUM
+          target_type: windows
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: windows
+      full_audit:
+      - id: WN22-00-000000
+        status: open
+        severity: high
+        title: Windows must disable Guest account.
+        rule_id: WN22-00-000000
+        description: ''
+      - id: WN22-00-000001
+        status: pass
+        severity: high
+        title: Windows must enforce password history.
+        rule_id: WN22-00-000001
+        description: ''
+      - id: WN22-00-000002
+        status: open
+        severity: medium
+        title: Windows must enable Firewall.
+        rule_id: WN22-00-000002
+        description: ''
+      - id: WN22-00-000003
+        status: pass
+        severity: medium
+        title: Windows must disable SMBv1.
+        rule_id: WN22-00-000003
+        description: ''
+      - id: WN22-00-000004
+        status: pass
+        severity: low
+        title: Windows must set legal notice.
+        rule_id: WN22-00-000004
+        description: ''
+      - id: WN22-00-000005
+        status: pass
+        severity: low
+        title: Windows must disable autorun.
+        rule_id: WN22-00-000005
+        description: ''
+      - id: WN22-00-000006
+        status: na
+        severity: medium
+        title: Windows NA check.
+        rule_id: WN22-00-000006
+        description: ''
+      - id: WN22-00-000007
+        status: pass
+        severity: high
+        title: Windows final check.
+        rule_id: WN22-00-000007
+        description: ''
+    windows_raw_audit: *id002
+    schema_windows:
+      metadata:
+        audit_type: schema_windows
+        schema_name: windows
+        platform: windows
+        display_name: Windows
+        generated_at: '2026-03-01T18:17:48.129996'
+        field_coverage:
+          resolved: 5
+          total: 5
+          broken: 0
+      health: WARNING
+      summary:
+        total: 3
+        critical_count: 0
+        warning_count: 3
+        info_count: 0
+        by_category:
+          services: 1
+          patching: 2
+      alerts:
+      - id: ccmexec_not_running
+        severity: WARNING
+        category: Services
+        message: 'ConfigMgr client service (CCMExec) is not running (state: stopped)'
+        detail:
+          ccm_service_state: stopped
+        affected_items: []
+        condition: true
+      - id: failed_updates
+        severity: WARNING
+        category: Patching
+        message: One or more ConfigMgr application updates failed
+        detail: {}
+        affected_items:
+        - *id003
+        - *id004
+        condition: true
+      - id: apps_pending_update
+        severity: WARNING
+        category: Patching
+        message: ConfigMgr applications have pending updates
+        detail: {}
+        affected_items:
+        - &id021
+          Name: Google Chrome
+          CurrentVersion: 121.0.6167.185
+          TargetVersion: 122.0.6261.57
+        - &id022
+          Name: Adobe Acrobat Reader DC
+          CurrentVersion: 23.008.20533
+          TargetVersion: 24.001.20604
+        condition: true
+      fields:
+        collected_at: '2026-03-01T17:17:25+00:00'
+        ccm_service_state: stopped
+        raw_configmgr_apps: *id005
+        raw_installed_apps:
+        - *id006
+        - *id007
+        - *id008
+        - *id009
+        - *id010
+        - *id011
+        - *id012
+        - *id013
+        - *id014
+        - *id015
+        - *id016
+        - *id017
+        - *id018
+        - *id019
+        - *id020
+        update_results:
+        - *id003
+        - *id004
+        configmgr_apps:
+        - Name: Microsoft Office 365 ProPlus
+          Version: 16.0.17628.20006
+          Publisher: Microsoft Corporation
+        - Name: Microsoft Visual Studio Code
+          Version: 1.86.2
+          Publisher: Microsoft Corporation
+        - Name: Google Chrome
+          Version: 121.0.6167.185
+          Publisher: Google LLC
+        - Name: Mozilla Firefox ESR
+          Version: 115.7.0
+          Publisher: Mozilla
+        - Name: 7-Zip 23.01 (x64)
+          Version: 23.01.00.0
+          Publisher: Igor Pavlov
+        - Name: Python 3.11.7
+          Version: 3.11.7150.0
+          Publisher: Python Software Foundation
+        - Name: Notepad++
+          Version: 8.6.2
+          Publisher: Notepad++ Team
+        - Name: WinRAR 6.24 (64-bit)
+          Version: 6.24.0
+          Publisher: win.rar GmbH
+        - Name: Adobe Acrobat Reader DC
+          Version: 23.008.20533
+          Publisher: Adobe
+        - Name: Microsoft Teams
+          Version: 1.6.00.33362
+          Publisher: Microsoft Corporation
+        apps_to_update:
+        - *id021
+        - *id022
+        installed_apps:
+        - Name: Microsoft Office 365 ProPlus
+          Version: 16.0.17628.20006
+          Publisher: Microsoft Corporation
+        - Name: Google Chrome
+          Version: 121.0.6167.185
+          Publisher: Google LLC
+        - Name: 7-Zip 23.01 (x64)
+          Version: 23.01.00.0
+          Publisher: Igor Pavlov
+        - Name: Microsoft Visual C++ 2015-2022 Redistributable (x64)
+          Version: 14.38.33130.0
+          Publisher: Microsoft Corporation
+        - Name: Microsoft Visual C++ 2015-2022 Redistributable (x86)
+          Version: 14.38.33130.0
+          Publisher: Microsoft Corporation
+        - Name: Mozilla Firefox ESR 115.7.0 (x64 en-US)
+          Version: 115.7.0
+          Publisher: Mozilla
+        - Name: Python 3.11.7 (64-bit)
+          Version: 3.11.7150.0
+          Publisher: Python Software Foundation
+        - Name: Windows Admin Center
+          Version: 2306.2306.16001.0
+          Publisher: Microsoft Corporation
+        - Name: Notepad++ (64-bit x64)
+          Version: 8.6.2
+          Publisher: Notepad++ Team
+        - Name: Git version 2.43.0
+          Version: 2.43.0
+          Publisher: The Git Development Community
+        - Name: Microsoft Teams classic
+          Version: 1.6.00.33362
+          Publisher: Microsoft Corporation
+        - Name: Adobe Acrobat Reader DC (64-bit)
+          Version: 23.008.20533
+          Publisher: Adobe
+        - Name: PowerShell 7.4.1.500
+          Version: 7.4.1.500
+          Publisher: Microsoft Corporation
+        - Name: WinRAR 6.24 (64-bit)
+          Version: 6.24.0
+          Publisher: win.rar GmbH
+        - Name: Sysinternals Suite
+          Version: 2024.01.01
+          Publisher: Microsoft Corporation
+        _critical_count: 0
+        _warning_count: 3
+        _total_alerts: 3
+      widgets_meta:
+        alerts:
+          id: alerts
+          title: Active Alerts
+          type: alert_panel
+        services:
+          id: services
+          title: Services
+          type: key_value
+        configmgr_apps:
+          id: configmgr_apps
+          title: ConfigMgr Applications
+          type: table
+        apps_to_update:
+          id: apps_to_update
+          title: Applications Pending Update
+          type: table
+        update_results:
+          id: update_results
+          title: Update Results
+          type: table
+      schema:
+        name: windows
+        display_name: Windows
+        widgets:
+        - id: alerts
+          title: Active Alerts
+          type: alert_panel
+        - id: services
+          title: Services
+          type: key_value
+          fields:
+          - label: CCMExec State
+            field: ccm_service_state
+            format: null
+        - id: configmgr_apps
+          title: ConfigMgr Applications
+          type: table
+          rows_field: configmgr_apps
+          columns:
+          - label: Name
+            field: Name
+            badge: false
+            format: null
+            link_field: null
+          - label: Version
+            field: Version
+            badge: false
+            format: null
+            link_field: null
+        - id: apps_to_update
+          title: Applications Pending Update
+          type: table
+          rows_field: apps_to_update
+          columns:
+          - label: Name
+            field: Name
+            badge: false
+            format: null
+            link_field: null
+          - label: Current Version
+            field: CurrentVersion
+            badge: false
+            format: null
+            link_field: null
+          - label: Target Version
+            field: TargetVersion
+            badge: false
+            format: null
+            link_field: null
+        - id: update_results
+          title: Update Results
+          type: table
+          rows_field: update_results
+          columns:
+          - label: Application
+            field: application
+            badge: false
+            format: null
+            link_field: null
+          - label: Status
+            field: status
+            badge: true
+            format: null
+            link_field: null
+          - label: Failed
+            field: failed
+            badge: true
+            format: null
+            link_field: null

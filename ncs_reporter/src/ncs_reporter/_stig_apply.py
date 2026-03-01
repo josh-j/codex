@@ -106,11 +106,7 @@ def check_rule_config_vars(
             key, _, _ = ev.partition("=")
             supplied.add(key.strip())
 
-    return [
-        (rv, var)
-        for rv in rule_versions
-        if (var := RULE_REQUIRED_VARS.get(rv)) and var not in supplied
-    ]
+    return [(rv, var) for rv in rule_versions if (var := RULE_REQUIRED_VARS.get(rv)) and var not in supplied]
 
 
 def get_failing_rules(artifact_path: Path) -> list[dict[str, Any]]:
@@ -167,8 +163,10 @@ def build_ansible_args(
     cmd = [
         "ansible-playbook",
         playbook,
-        "-i", inventory,
-        "-l", limit,
+        "-i",
+        inventory,
+        "-l",
+        limit,
         f"-e@{all_disabled_file}",
         f"-e{manage_var}=true",
         "-evmware_stig_enable_hardening=true",
@@ -225,22 +223,28 @@ def build_interactive_playbook(
         banner = _rule_banner(idx, total, rule_version, meta, row)
         prompt = f"{banner}\nApply rule {idx}/{total} {rule_version} ({severity})? [y/n/abort]"
 
-        tasks.append({
-            "name": f"NCS | Confirm: {rule_version} [{severity}]",
-            "ansible.builtin.pause": {"prompt": prompt},
-            "register": pause_var,
-        })
-        tasks.append({
-            "name": f"NCS | Abort check: {rule_version}",
-            "ansible.builtin.fail": {"msg": "Aborted by user."},
-            "when": f"{pause_var}.user_input | lower in ['a', 'abort', 'q', 'quit']",
-        })
-        tasks.append({
-            "name": f"NCS | Apply {rule_version}",
-            "ansible.builtin.include_role": {"name": "internal.vmware.esxi"},
-            "vars": {manage_var: True},
-            "when": f"{pause_var}.user_input | lower in ['y', 'yes']",
-        })
+        tasks.append(
+            {
+                "name": f"NCS | Confirm: {rule_version} [{severity}]",
+                "ansible.builtin.pause": {"prompt": prompt},
+                "register": pause_var,
+            }
+        )
+        tasks.append(
+            {
+                "name": f"NCS | Abort check: {rule_version}",
+                "ansible.builtin.fail": {"msg": "Aborted by user."},
+                "when": f"{pause_var}.user_input | lower in ['a', 'abort', 'q', 'quit']",
+            }
+        )
+        tasks.append(
+            {
+                "name": f"NCS | Apply {rule_version}",
+                "ansible.builtin.include_role": {"name": "internal.vmware.esxi"},
+                "vars": {manage_var: True},
+                "when": f"{pause_var}.user_input | lower in ['y', 'yes']",
+            }
+        )
 
     play: dict[str, Any] = {
         "name": f"NCS ESXi STIG Apply — {total} failing rule(s) on {esxi_host}",
@@ -255,7 +259,7 @@ def build_interactive_playbook(
         "tasks": tasks,
     }
 
-    return yaml.dump([play], default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return str(yaml.dump([play], default_flow_style=False, sort_keys=False, allow_unicode=True))
 
 
 def run_ansible_streaming(args: list[str]) -> int:
@@ -277,7 +281,7 @@ def _rule_banner(index: int, total: int, rule_version: str, meta: RuleMetadata |
     """Return a formatted rule banner string."""
     sep = "─" * 65
     severity = (meta.severity if meta else row.get("severity", "unknown")).upper()
-    title = (meta.rule_title if meta else row.get("title", "Unknown Rule"))
+    title = meta.rule_title if meta else row.get("title", "Unknown Rule")
     finding = row.get("description") or row.get("checktext") or row.get("details") or ""
     fix = (meta.fix_text[:120] + "…") if meta and len(meta.fix_text) > 120 else (meta.fix_text if meta else "")
 
@@ -355,9 +359,7 @@ def run_interactive_apply(
         click.echo(playbook_yaml)
         return
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", prefix="ncs_stig_apply_", delete=False
-    ) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", prefix="ncs_stig_apply_", delete=False) as tmp:
         tmp.write(playbook_yaml)
         playbook_file = tmp.name
 

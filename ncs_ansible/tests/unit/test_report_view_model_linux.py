@@ -1,71 +1,76 @@
-import pathlib
-import sys
+from __future__ import annotations
+
 import unittest
+from pathlib import Path
 
-# Make ncs_reporter importable without installing the package.
-_NCS_SRC = str(pathlib.Path(__file__).resolve().parents[2] / "tools" / "ncs_reporter" / "src")
-if _NCS_SRC not in sys.path:
-    sys.path.insert(0, _NCS_SRC)
+from ncs_reporter.schema_loader import load_schema_from_file
+from ncs_reporter.view_models.generic import build_generic_fleet_view, build_generic_node_view
 
-from ncs_reporter.view_models.linux import build_linux_fleet_view, build_linux_node_view  # noqa: E402
+SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "files" / "ncs_reporter_configs"
+
+
+def _linux_bundle(hostname: str) -> dict:
+    return {
+        "ubuntu_raw_discovery": {
+            "metadata": {"host": hostname, "timestamp": "2026-03-01T00:00:00Z"},
+            "data": {
+                "ansible_facts": {
+                    "hostname": hostname,
+                    "default_ipv4": {"address": "10.0.0.10"},
+                    "kernel": "6.8.0",
+                    "os_family": "Debian",
+                    "distribution": "Ubuntu",
+                    "distribution_version": "24.04",
+                    "uptime_seconds": 86400,
+                    "loadavg": {"15m": 0.2},
+                    "memtotal_mb": 1024,
+                    "memfree_mb": 256,
+                    "swaptotal_mb": 512,
+                    "swapfree_mb": 128,
+                    "mounts": [],
+                    "getent_passwd": {},
+                    "date_time": {"epoch": "1740787200"},
+                },
+                "failed_services": {"stdout_lines": []},
+                "apt_simulate": {"stdout_lines": []},
+                "reboot_stat": {"stat": {"exists": False}},
+                "shadow_raw": {"stdout_lines": []},
+                "sshd_raw": {"stdout_lines": []},
+                "world_writable": {"stdout_lines": []},
+            },
+        }
+    }
 
 
 class LinuxReportViewModelTests(unittest.TestCase):
-    def test_builds_linux_fleet_and_node_views(self):
-        hosts = {
-            "host1": {
-                "system": {
-                    "health": "WARNING",
-                    "distribution": "Ubuntu",
-                    "distribution_version": "24.04",
-                    "summary": {"critical_count": 1, "warning_count": 2},
-                    "alerts": [
-                        {"severity": "CRITICAL", "category": "disk", "message": "Disk full"},
-                        {"severity": "warn", "category": "updates", "message": "Updates pending"},
-                    ],
-                    "data": {
-                        "system": {
-                            "services": {"failed_list": ["foo.service failed"]},
-                            "disks": [
-                                {
-                                    "mount": "/",
-                                    "device": "/dev/sda1",
-                                    "free_gb": 1,
-                                    "total_gb": 100,
-                                    "used_pct": 99,
-                                }
-                            ],
-                        }
-                    },
-                },
-                "stig": {
-                    "health": "CRITICAL",
-                    "alerts": [{"severity": "CRITICAL"}],
-                },
-            },
-            "platform": {"ignore": True},
-        }
+    def setUp(self) -> None:
+        self.schema = load_schema_from_file(SCHEMAS_DIR / "linux.yaml")
 
-        fleet = build_linux_fleet_view(hosts, report_stamp="20260224")
-        self.assertEqual(len(fleet["rows"]), 1)
-        self.assertEqual(fleet["fleet"]["hosts"], 1)
-        self.assertEqual(fleet["fleet"]["alerts"]["critical"], 1)
-        self.assertEqual(fleet["fleet"]["alerts"]["warning"], 2)
-        self.assertEqual(len(fleet["active_alerts"]), 2)
-        self.assertEqual(fleet["rows"][0]["status"]["raw"], "WARNING")
-        self.assertIn("node_report_latest", fleet["rows"][0]["links"])
-        self.assertIn("stig_fleet", fleet)
-        self.assertEqual(len(fleet["stig_fleet"]["rows"]), 1)
-        self.assertEqual(fleet["stig_fleet"]["rows"][0]["findings_open"], 1)
-        self.assertEqual(len(fleet["stig_fleet"]["rows"][0]["findings"]), 1)
-        self.assertEqual(fleet["stig_fleet"]["rows"][0]["status"]["raw"], "CRITICAL")
+    def test_builds_linux_fleet_view(self) -> None:
+        aggregated = {"hosts": {"linux-01": _linux_bundle("linux-01")}}
+        view = build_generic_fleet_view(self.schema, aggregated, report_stamp="20260301")
 
-        node = build_linux_node_view("host1", hosts["host1"])
-        self.assertEqual(node["node"]["name"], "host1")
-        self.assertEqual(node["node"]["status"]["raw"], "WARNING")
-        self.assertEqual(len(node["node"]["alerts"]), 2)
-        self.assertIn("fleet_dashboard", node["node"]["links"])
-        self.assertIn("services", node["node"]["sys_facts"])
+        self.assertEqual(view["meta"]["platform"], "linux")
+        self.assertEqual(view["meta"]["total_hosts"], 1)
+        self.assertEqual(view["meta"]["report_stamp"], "20260301")
+        self.assertEqual(len(view["hosts"]), 1)
+        self.assertEqual(view["hosts"][0]["hostname"], "linux-01")
+        self.assertIn("fleet_columns", view)
+        self.assertIn("active_alerts", view)
+        self.assertIn("crit_count", view)
+        self.assertIn("warn_count", view)
+
+    def test_builds_linux_node_view(self) -> None:
+        bundle = _linux_bundle("linux-01")
+        view = build_generic_node_view(self.schema, "linux-01", bundle, report_id="RID")
+
+        self.assertEqual(view["meta"]["host"], "linux-01")
+        self.assertEqual(view["meta"]["platform"], "linux")
+        self.assertEqual(view["meta"]["report_id"], "RID")
+        self.assertIn("health", view)
+        self.assertIn("alerts", view)
+        self.assertIn("fields", view)
+        self.assertIn("widgets", view)
 
 
 if __name__ == "__main__":

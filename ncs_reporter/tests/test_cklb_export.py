@@ -191,18 +191,20 @@ class TestGenerateCklb:
         # Expand skeleton to have enough rules for all variants
         extra_rules = []
         for i in range(4, 8):
-            extra_rules.append({
-                "rule_id": f"SV-00{i}",
-                "rule_version": f"V-00{i}",
-                "group_id": f"G-00{i}",
-                "severity": "medium",
-                "group_title": f"Group {i}",
-                "rule_title": f"Rule {i}",
-                "fix_text": f"Fix {i}",
-                "check_content": f"Check {i}",
-                "discussion": f"Discussion {i}",
-                "ccis": [f"CCI-00{i}"],
-            })
+            extra_rules.append(
+                {
+                    "rule_id": f"SV-00{i}",
+                    "rule_version": f"V-00{i}",
+                    "group_id": f"G-00{i}",
+                    "severity": "medium",
+                    "group_title": f"Group {i}",
+                    "rule_title": f"Rule {i}",
+                    "fix_text": f"Fix {i}",
+                    "check_content": f"Check {i}",
+                    "discussion": f"Discussion {i}",
+                    "ccis": [f"CCI-00{i}"],
+                }
+            )
         skeleton["stigs"][0]["rules"].extend(extra_rules)
 
         skeleton_path = tmp_path / "skeleton.json"

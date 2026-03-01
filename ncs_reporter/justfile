@@ -20,6 +20,10 @@ setup:
     .venv/bin/pip install -e .
     .venv/bin/pip install ruff mypy pytest basedpyright
 
+# Install project + dev dependencies via uv (preferred)
+setup-uv:
+    UV_CACHE_DIR=/tmp/uv-cache uv sync --dev
+
 # Run linting checks
 lint:
     {{ ruff }} check .

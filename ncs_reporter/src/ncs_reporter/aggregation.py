@@ -22,9 +22,7 @@ def deep_merge(target: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]
     for key, value in source.items():
         if key in target and isinstance(target[key], dict) and isinstance(value, dict):
             deep_merge(target[key], value)
-        elif (
-            key in target and isinstance(target[key], list) and isinstance(value, list)
-        ):
+        elif key in target and isinstance(target[key], list) and isinstance(value, list):
             # Combine lists (e.g., alerts from discovery + alerts from audit)
             target[key].extend([i for i in value if i not in target[key]])
         else:
@@ -67,11 +65,7 @@ def _apply_report_normalizer(
         return audit_type, report
 
     normalized = normalizer(hostname, audit_type, report)
-    if (
-        isinstance(normalized, tuple)
-        and len(normalized) == 2
-        and isinstance(normalized[1], dict)
-    ):
+    if isinstance(normalized, tuple) and len(normalized) == 2 and isinstance(normalized[1], dict):
         return normalized[0], normalized[1]
     if isinstance(normalized, dict):
         return audit_type, normalized
@@ -107,11 +101,19 @@ def load_all_reports(
     }
     host_exclude = {
         "platform",
+        # Flat-style platform dirs (legacy)
         "ubuntu",
         "vmware",
         "windows",
+        # Nested-style platform dirs (linux/ubuntu, vmware/vcenter, etc.)
+        "linux",
+        "vcenter",
+        "esxi",
+        "vm",
         "all_hosts_state.yaml",
         "vmware_fleet_state.yaml",
+        "esxi_fleet_state.yaml",
+        "vm_fleet_state.yaml",
         "linux_fleet_state.yaml",
         "windows_fleet_state.yaml",
     }.union(traversal_exclude)
@@ -154,15 +156,13 @@ def load_all_reports(
                 if audit_filter and audit_type != audit_filter:
                     continue
 
-                audit_type, report = _apply_report_normalizer(
-                    normalizer, hostname, audit_type, report
-                )
+                audit_type, report = _apply_report_normalizer(normalizer, hostname, audit_type, report)
 
                 # Store in bundle by audit_type (or filename if multiple raws)
                 if audit_type in host_bundle and isinstance(host_bundle[audit_type], dict):
-                     deep_merge(host_bundle[audit_type], report)
+                    deep_merge(host_bundle[audit_type], report)
                 else:
-                     host_bundle[audit_type] = report
+                    host_bundle[audit_type] = report
 
             except Exception as e:
                 logger.warning("Failed to load %s: %s", file_path, e)

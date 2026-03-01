@@ -41,6 +41,7 @@
               --reports-root "{{ _reports_root }}"
               --groups "{{ _groups_json }}"
               --report-stamp "{{ report_stamp }}"
+              --config-dir "{{ playbook_dir }}/../files/ncs_reporter_configs"
           register: _reporter_result
           changed_when: _reporter_result.rc == 0
 

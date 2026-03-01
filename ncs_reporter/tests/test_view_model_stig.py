@@ -126,13 +126,21 @@ class TestBuildStigHostView:
 class TestBuildStigFleetView:
     def test_basic_fleet(self):
         hosts = {
-            "host1": {"stig_esxi": _stig_payload([
-                {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
-            ])},
-            "host2": {"stig_vm": _stig_payload([
-                {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
-                {"id": "V-002", "status": "pass", "severity": "CAT_II", "title": "Rule 2"},
-            ])},
+            "host1": {
+                "stig_esxi": _stig_payload(
+                    [
+                        {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
+                    ]
+                )
+            },
+            "host2": {
+                "stig_vm": _stig_payload(
+                    [
+                        {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
+                        {"id": "V-002", "status": "pass", "severity": "CAT_II", "title": "Rule 2"},
+                    ]
+                )
+            },
         }
         view = build_stig_fleet_view(hosts, report_stamp="20260226")
         assert view["fleet"]["totals"]["hosts"] == 2

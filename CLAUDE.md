@@ -7,6 +7,7 @@ NCS is an Ansible-based infrastructure health monitoring and STIG compliance aud
 
 ## Commands
 
+### ncs_ansible/
 ```bash
 just all              # Run all checks (setup, lint, check, test, jinja-lint, ansible-lint)
 just lint             # Ruff linting
@@ -28,10 +29,7 @@ just stig-harden-vm <vcenter> <vm_name>
 just audit-linux-host <hostname>
 ```
 
-
-### ncs_reporter CLI (tools/ncs_reporter/)
-
-Has its own `justfile` for development:
+### ncs_reporter/
 ```bash
 just setup            # Install in dev mode
 just lint / just check / just test
@@ -41,9 +39,10 @@ just vmware <input> [output]
 just windows <input> [output]
 ```
 
+
 ## Architecture
 
-### Collections (`collections/ansible_collections/internal/`)
+### Collections (`ncs_ansible/collections/ansible_collections/internal/`)
 
 - **core** — Shared state management, common roles, and path resolution filters.
 - **linux** — Ubuntu discovery, STIG compliance, remediation
@@ -57,9 +56,9 @@ just windows <input> [output]
 
 ### Key Entry Points
 
-- `playbooks/site.yml` — Main orchestration playbook
-- `playbooks/*.yml` — Platform-specific and utility playbooks
-- `tools/ncs_reporter/` — Standalone Python CLI (`ncs-reporter`)
+- `ncs_ansible/playbooks/site.yml` — Main orchestration playbook
+- `ncs_ansible/playbooks/*.yml` — Platform-specific and utility playbooks
+- `ncs_reporter/` — Standalone Python CLI (`ncs-reporter`)
 
 
 ## Key Conventions
@@ -80,8 +79,8 @@ just windows <input> [output]
 - Ruff rules: E, F, B, I, N, UP, RUF
 - MyPy with `strict_optional` and `check_untyped_defs`
 - Type annotations on all Python code
-- External collections excluded from linting (`collections/ansible_collections/{cloud,community,vmware}`)
+- External collections excluded from linting (`ncs_ansible/collections/ansible_collections/{cloud,community,vmware}`)
 
 ## Active Migration
 
-Reporting is being decoupled from Ansible into `tools/ncs_reporter/` (standalone Python CLI). See `DECOUPLE_REPORTING.md` and `docs/REPORTING_ARCHITECTURE.md` for design details.
+Reporting is being decoupled from Ansible into `ncs_reporter/` (standalone Python CLI). See `ncs_ansible/docs/REPORTING_ARCHITECTURE.md` for design details.

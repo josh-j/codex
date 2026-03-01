@@ -34,22 +34,12 @@ def _canonical_stig_status(value: Any) -> str:
 
 def _row_status(item: dict[str, Any]) -> str:
     return _canonical_stig_status(
-        item.get("status")
-        or item.get("finding_status")
-        or item.get("result")
-        or item.get("compliance")
-        or ""
+        item.get("status") or item.get("finding_status") or item.get("result") or item.get("compliance") or ""
     )
 
 
 def _row_rule_id(item: dict[str, Any]) -> str:
-    return str(
-        item.get("id")
-        or item.get("rule_id")
-        or item.get("vuln_id")
-        or item.get("ruleId")
-        or ""
-    )
+    return str(item.get("id") or item.get("rule_id") or item.get("vuln_id") or item.get("ruleId") or "")
 
 
 def _row_title(item: dict[str, Any]) -> str:
@@ -65,21 +55,12 @@ def _row_title(item: dict[str, Any]) -> str:
 
 def _row_description(item: dict[str, Any]) -> str:
     return str(
-        item.get("checktext")
-        or item.get("details")
-        or item.get("description")
-        or item.get("finding_details")
-        or ""
+        item.get("checktext") or item.get("details") or item.get("description") or item.get("finding_details") or ""
     )
 
 
 def _row_severity(item: dict[str, Any]) -> str:
-    return (
-        item.get("severity")
-        or item.get("cat")
-        or item.get("severity_override")
-        or "medium"
-    )
+    return item.get("severity") or item.get("cat") or item.get("severity_override") or "medium"
 
 
 def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_target_type: str = "") -> STIGAuditModel:
@@ -89,17 +70,44 @@ def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_targe
     # raw_bundle might be the raw JSON/XML from an artifact
     rows: list[dict[str, Any]] = []
     collected_at = ""
-    logger.debug("normalize_stig: input type=%s, target_type=%s", type(raw_bundle).__name__, stig_target_type)
+
+    # Try to detect target type from the bundle if not provided
+    detected_type = stig_target_type
+
     if isinstance(raw_bundle, list):
         rows = raw_bundle
     elif isinstance(raw_bundle, dict):
         # Handle cases where it's wrapped in 'data' from the callback plugin
         rows = raw_bundle.get("data") or raw_bundle.get("full_audit") or []
-
         collected_at = raw_bundle.get("metadata", {}).get("timestamp", "")
+
+        if not detected_type:
+            detected_type = str(raw_bundle.get("target_type") or "")
+
         if not isinstance(rows, list):
             rows = [rows]
-    
+
+    # If still no type, peek at rules to guess (useful for raw XCCDF-to-JSON results)
+    if not detected_type and rows:
+        first = rows[0]
+        if isinstance(first, dict):
+            rv = str(first.get("rule_version") or "").upper()
+            if rv.startswith("VMCH"):
+                detected_type = "vm"
+            elif rv.startswith("ESXI"):
+                detected_type = "esxi"
+            elif rv.startswith("WN") or rv.startswith("MS"):
+                detected_type = "windows"
+            elif rv.startswith("UBTU") or rv.startswith("GEN"):
+                detected_type = "ubuntu"
+
+    logger.debug(
+        "normalize_stig: input type=%s, target_type=%s, detected=%s",
+        type(raw_bundle).__name__,
+        stig_target_type,
+        detected_type,
+    )
+
     full_audit = []
     violations = []
     alerts = []
@@ -137,7 +145,7 @@ def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_targe
                     "rule_id": rule_id,
                     "description": description,
                     "original_severity": str(raw_sev).upper(),
-                    "target_type": str(stig_target_type or ""),
+                    "target_type": str(detected_type or ""),
                 },
             }
         )
@@ -163,4 +171,3 @@ def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_targe
         alerts=[AlertModel.model_validate(a) for a in alerts],
         full_audit=full_audit,
     )
-
