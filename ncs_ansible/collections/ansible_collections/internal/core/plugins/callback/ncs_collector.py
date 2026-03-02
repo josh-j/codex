@@ -3,6 +3,7 @@
 import os
 import re
 import tempfile
+import hashlib
 from datetime import datetime, timezone
 
 import yaml
@@ -115,6 +116,10 @@ class CallbackModule(CallbackBase):
                 },
                 'data': payload
             }
+            if isinstance(name, str) and name.startswith("stig_"):
+                target_type = name.replace("stig_", "", 1)
+                envelope['metadata']['audit_type'] = name
+                envelope['target_type'] = target_type
             self._write_yaml(raw_path, envelope)
 
         # 2. Save Config if provided
@@ -134,18 +139,29 @@ class CallbackModule(CallbackBase):
         if not task_name:
             return None
         m = re.search(r"stigrule_(\d{4,})", str(task_name), re.IGNORECASE)
-        return m.group(1) if m else None
+        if m:
+            return m.group(1)
+        m = re.search(r"\bV-(\d{4,})\b", str(task_name), re.IGNORECASE)
+        if m:
+            return m.group(1)
+        return None
 
     def _record_stig_result(self, result, failed=False, skipped=False):
         task = getattr(result, "_task", None)
         if task is None:
             return
         task_name = getattr(task, "name", "") or ""
+        task_vars = getattr(task, "vars", {}) or {}
+        target_type = str(task_vars.get("stig_target_type", "") or "").lower() or "esxi"
         rule_num = self._extract_rule_number(task_name)
+        if not rule_num and target_type in {"vcsa", "vcenter"} and task_name:
+            # VCSA role tasks do not always carry STIG IDs in task names.
+            # Generate a stable synthetic rule id per task name to preserve findings.
+            digest = hashlib.sha1(task_name.encode("utf-8")).hexdigest()
+            rule_num = f"9{(int(digest[:8], 16) % 99999):05d}"
         if not rule_num:
             return
 
-        task_vars = getattr(task, "vars", {}) or {}
         host = task_vars.get("stig_target_host")
         if not host:
             try:
@@ -153,13 +169,20 @@ class CallbackModule(CallbackBase):
             except Exception:
                 host = "unknown"
 
-        target_type = str(task_vars.get("stig_target_type", "") or "").lower() or "esxi"
         platform = str(task_vars.get("stig_platform", "") or "").strip()
         if not platform:
             if target_type in {"ubuntu", "linux"}:
                 platform = "linux/ubuntu"
+            elif target_type == "photon":
+                platform = "linux/photon"
             elif target_type == "windows":
                 platform = "windows"
+            elif target_type == "esxi":
+                platform = "vmware/esxi"
+            elif target_type in {"vm", "guest_vm"}:
+                platform = "vmware/vm"
+            elif target_type in {"vcsa", "vcenter"}:
+                platform = "vmware/vcenter/vcsa"
             else:
                 platform = "vmware"
 
@@ -236,11 +259,24 @@ class CallbackModule(CallbackBase):
 
     def _write_yaml(self, path, data):
         try:
+            clean_data = self._to_builtin(data)
             dir_ = os.path.dirname(path) or "."
             with tempfile.NamedTemporaryFile('w', dir=dir_, suffix='.tmp', delete=False, encoding='utf-8') as tmp:
-                yaml.dump(data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
+                yaml.dump(clean_data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
                 tmp_path = tmp.name
             os.replace(tmp_path, path)
             self._display.display(f"[ncs_collector] Persisted data to {path}", color='green')
         except Exception as e:
             self._display.warning(f"[ncs_collector] Failed to write {path}: {e}")
+
+    def _to_builtin(self, value):
+        """Recursively coerce Ansible-tagged values to plain Python builtins."""
+        if isinstance(value, dict):
+            return {str(k): self._to_builtin(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [self._to_builtin(v) for v in value]
+        if isinstance(value, str):
+            return str(value)
+        if isinstance(value, (int, float, bool)) or value is None:
+            return value
+        return str(value)

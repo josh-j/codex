@@ -1,0 +1,45 @@
+---
+# Re-emit a single raw artifact through the collector callback for one host.
+# Intended for simulation pipelines that need Ansible-driven artifact emission.
+
+- name: "Simulation | Emit One Raw Artifact"
+  hosts: all
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: "Validate required emit vars"
+      ansible.builtin.assert:
+        that:
+          - emit_platform is defined
+          - emit_platform | length > 0
+          - emit_name is defined
+          - emit_name | length > 0
+          - emit_payload_file is defined
+          - emit_payload_file | length > 0
+          - emit_report_directory is defined
+          - emit_report_directory | length > 0
+      changed_when: false
+
+    - name: "Load raw artifact envelope"
+      ansible.builtin.include_vars:
+        file: "{{ emit_payload_file }}"
+        name: _emit_raw_doc
+      changed_when: false
+
+    - name: "Normalize payload for callback"
+      ansible.builtin.set_fact:
+        _emit_payload: "{{ (_emit_raw_doc.data | default(_emit_raw_doc)) | to_json | from_json }}"
+        _emit_config: "{{ (_emit_raw_doc.config | default({})) | to_json | from_json }}"
+      changed_when: false
+
+    - name: "Emit ncs_collect payload"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "{{ emit_platform }}"
+            name: "{{ emit_name }}"
+            report_directory: "{{ emit_report_directory }}"
+            payload: "{{ _emit_payload }}"
+            config: "{{ _emit_config }}"
+        per_host: true
+      changed_when: false

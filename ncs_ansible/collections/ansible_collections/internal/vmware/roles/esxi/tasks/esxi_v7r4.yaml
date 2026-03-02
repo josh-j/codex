@@ -317,6 +317,279 @@
   when: esxi_70_000047_Manage | default(esxi_70_000047) | default(true) | bool
 
 # =========================================================================
+# GROUP C2: Explicit hardening remediation aliases for managed controls
+# =========================================================================
+
+- name: stigrule_256376_dcui_access_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000002 remediation handled by stigrule_256376_dcui_access."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000002_Manage | default(esxi_70_000002) | default(true) | bool
+
+- name: stigrule_256378_syslog_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000004 remediation handled by stigrule_256378_syslog."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000004_Manage | default(esxi_70_000004) | default(true) | bool
+    - esxi_stig_syslog_host | default('') | length > 0
+
+- name: stigrule_256379_account_lock_failures_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000005 remediation handled by stigrule_256379_account_lock_failures."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000005_Manage | default(esxi_70_000005) | default(true) | bool
+
+- name: stigrule_256380_account_unlock_time_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000006 remediation handled by stigrule_256380_account_unlock_time."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000006_Manage | default(esxi_70_000006) | default(true) | bool
+
+- name: stigrule_256381_welcome_banner_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000007 remediation handled by stigrule_256381_welcome_banner."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000007_Manage | default(esxi_70_000007) | default(true) | bool
+    - esxi_stig_welcome_message | default('') | length > 0
+
+- name: stigrule_256398_password_history_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000032 remediation handled by stigrule_256398_password_history."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000032_Manage | default(esxi_70_000032) | default(true) | bool
+
+- name: stigrule_256404_ad_admin_group_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000039 remediation handled by stigrule_256404_ad_admin_group."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000039_Manage | default(esxi_70_000039) | default(true) | bool
+    - esxi_stig_ad_admin_group | default('') | length > 0
+
+- name: stigrule_256405_shell_interactive_timeout_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000041 remediation handled by stigrule_256405_shell_interactive_timeout."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000041_Manage | default(esxi_70_000041) | default(true) | bool
+
+- name: stigrule_256406_shell_timeout_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000042 remediation handled by stigrule_256406_shell_timeout."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000042_Manage | default(esxi_70_000042) | default(true) | bool
+
+- name: stigrule_256407_dcui_timeout_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000043 remediation handled by stigrule_256407_dcui_timeout."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000043_Manage | default(esxi_70_000043) | default(true) | bool
+
+- name: stigrule_256408_persistent_logs_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000045 remediation handled by stigrule_256408_persistent_logs."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000045_Manage | default(esxi_70_000045) | default(true) | bool
+    - esxi_stig_log_dir | default('') | length > 0
+
+- name: stigrule_256409_ntp_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000046 remediation handled by stigrule_256409_ntp_servers and stigrule_256409_ntp_service."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000046_Manage | default(esxi_70_000046) | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+- name: stigrule_256410_acceptance_level_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000047 remediation handled by stigrule_256410_acceptance_level."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000047_Manage | default(esxi_70_000047) | default(true) | bool
+
+- name: stigrule_256414_snmp_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000053 remediation handled by stigrule_256414_snmp."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000053_Manage | default(esxi_70_000053) | default(true) | bool
+
+- name: stigrule_256416_memory_salting_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000055 remediation handled by stigrule_256416_memory_salting."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000055_Manage | default(esxi_70_000055) | default(true) | bool
+
+- name: stigrule_256419_bpdu_filter_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000058 remediation handled by stigrule_256419_bpdu_filter."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000058_Manage | default(esxi_70_000058) | default(true) | bool
+
+- name: stigrule_256420_forged_transmits_vswitch_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000059 remediation handled by stigrule_256420_forged_transmits_vswitch."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000059_Manage | default(esxi_70_000059) | default(true) | bool
+
+- name: stigrule_256421_mac_changes_vswitch_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000060 remediation handled by stigrule_256421_mac_changes_vswitch."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000060_Manage | default(esxi_70_000060) | default(true) | bool
+
+- name: stigrule_256422_promiscuous_mode_vswitch_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000061 remediation handled by stigrule_256422_promiscuous_mode_vswitch."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000061_Manage | default(esxi_70_000061) | default(true) | bool
+
+- name: stigrule_256423_dvfilter_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000062 remediation handled by stigrule_256423_dvfilter."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000062_Manage | default(esxi_70_000062) | default(true) | bool
+
+- name: stigrule_256429_tls_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000074 remediation handled by stigrule_256429_tls."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000074_Manage | default(esxi_70_000074) | default(true) | bool
+
+- name: stigrule_256432_shell_warning_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000079 remediation handled by stigrule_256432_shell_warning."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000079_Manage | default(esxi_70_000079) | default(true) | bool
+
+- name: stigrule_256433_ht_warning_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000081 remediation handled by stigrule_256433_ht_warning."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000081_Manage | default(esxi_70_000081) | default(true) | bool
+
+- name: stigrule_256435_slpd_stopped_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000083 remediation handled by stigrule_256435_slpd_stopped."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000083_Manage | default(esxi_70_000083) | default(true) | bool
+
+- name: stigrule_256436_audit_record_validation_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000084 remediation handled by stigrule_256436_audit_record_validation."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000084_Manage | default(true) | bool
+
+- name: stigrule_256437_syslog_x509_strict_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000085 remediation handled by stigrule_256437_syslog_x509_strict."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000085_Manage | default(true) | bool
+
+- name: stigrule_256438_syslog_cert_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000086 remediation handled by stigrule_256438_syslog_cert."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000086_Manage | default(esxi_70_000086) | default(true) | bool
+
+- name: stigrule_256439_eager_zero_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000087 remediation handled by stigrule_256439_eager_zero."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000087_Manage | default(esxi_70_000087) | default(true) | bool
+
+- name: stigrule_256440_api_timeout_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000088 remediation handled by stigrule_256440_api_timeout."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000088_Manage | default(esxi_70_000088) | default(true) | bool
+
+- name: stigrule_256441_host_client_timeout_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000089 remediation handled by stigrule_256441_host_client_timeout."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000089_Manage | default(esxi_70_000089) | default(true) | bool
+
+- name: stigrule_256443_password_max_days_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000091 remediation handled by stigrule_256443_password_max_days."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000091_Manage | default(esxi_70_000091) | default(true) | bool
+
+- name: stigrule_256447_exec_installed_only_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000095 remediation handled by stigrule_256447_exec_installed_only."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000095_Manage | default(true) | bool
+
+- name: stigrule_256448_cim_stopped_remediate
+  ansible.builtin.debug:
+    msg: "ESXI-70-000097 remediation handled by stigrule_256448_cim_stopped."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000097_Manage | default(esxi_70_000097) | default(true) | bool
+
+# =========================================================================
 # GROUP D: PowerShell / Assert audit tasks
 # Query tasks keep check_mode: false, no_log, register (functional needs).
 # =========================================================================
@@ -337,7 +610,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
+  when:
+    - esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
 
 - name: stigrule_256375_lockdown_assert
   ansible.builtin.assert:
@@ -350,6 +624,7 @@
     - esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool
     - _q_256375 is not skipped
     - not (_q_256375.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
 
 - name: stigrule_256375_lockdown_remediate
   ansible.builtin.shell:
@@ -392,7 +667,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
+  when:
+    - esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
 
 - name: stigrule_256377_lockdown_exceptions_assert
   ansible.builtin.assert:
@@ -404,6 +680,30 @@
     - esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
     - _q_256377 is not skipped
     - not (_q_256377.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256377_lockdown_exceptions_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+      \$lockdown.UpdateLockdownExceptions(@())
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256377
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool
+    - not (_q_256377.failed | default(false))
+    - (_q_256377.stdout | default('') | trim | length) > 0
 
 # --- V-256415 / ESXI-70-000054: iSCSI CHAP ---
 - name: stigrule_256415_iscsi_chap_query
@@ -422,7 +722,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
+  when:
+    - esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
 
 - name: stigrule_256415_iscsi_chap_assert
   ansible.builtin.assert:
@@ -434,6 +735,31 @@
     - esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
     - _q_256415 is not skipped
     - not (_q_256415.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256415_iscsi_chap_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$hbas = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostHba | Where-Object { \$_.Type -eq 'iscsi' };
+      foreach (\$hba in \$hbas) {
+        Set-VMHostHba -Hba \$hba -ChapType Required -Confirm:\$false | Out-Null
+      }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256415
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool
+    - not (_q_256415.failed | default(false))
+    - (_q_256415.stdout | default('NO_ISCSI') | trim) not in ['NO_ISCSI', 'Required']
 
 # --- V-256417 / ESXI-70-000056: Firewall rules ---
 - name: stigrule_256417_firewall_query
@@ -454,7 +780,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
+  when:
+    - esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
 
 - name: stigrule_256417_firewall_assert
   ansible.builtin.assert:
@@ -466,6 +793,31 @@
     - esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
     - _q_256417 is not skipped
     - not (_q_256417.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256417_firewall_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View | Get-VMHostFirewallException |
+        Where-Object { (\$_.Enabled -eq \$true) -and (\$_.ExtensionData.AllowedHosts.AllIp -eq 'enabled') -and
+          (\$_.Name -notin @('vSphere Web Client','VMware vCenter Agent')) } |
+        Set-VMHostFirewallException -Enabled:\$false -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256417
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool
+    - not (_q_256417.failed | default(false))
+    - (_q_256417.stdout | default('') | trim) != 'COMPLIANT'
 
 # =========================================================================
 # GROUP E: vSwitch / Port Group security (formerly stubs)
@@ -501,7 +853,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
+  when:
+    - esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
 
 - name: stigrule_256402_ad_assert
   ansible.builtin.assert:
@@ -513,6 +866,33 @@
     - esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
     - _q_256402 is not skipped
     - not (_q_256402.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256402_ad_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' |
+        Set-VMHostAuthentication -JoinDomain -Domain '{{ esxi_stig_ad_domain }}' -User '{{ esxi_stig_ad_join_user }}' -Password \$env:AD_PASS -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+    AD_PASS: "{{ esxi_stig_ad_join_password | default('') | string | trim }}"
+  register: _r_256402
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool
+    - not (_q_256402.failed | default(false))
+    - (_q_256402.stdout | default('NOT_JOINED') | trim) == 'NOT_JOINED'
+    - esxi_stig_ad_domain | default('') | length > 0
+    - esxi_stig_ad_join_user | default('') | length > 0
+    - esxi_stig_ad_join_password | default('') | length > 0
 
 # --- V-256414 / ESXI-70-000053: SNMP disabled ---
 - name: stigrule_256414_snmp
@@ -616,7 +996,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000048_Manage | default(true) | bool
+  when:
+    - esxi_70_000048_Manage | default(true) | bool
 
 - name: stigrule_256411_pg_forged_transmits_assert
   ansible.builtin.assert:
@@ -628,6 +1009,30 @@
     - esxi_70_000048_Manage | default(true) | bool
     - _q_256411 is not skipped
     - not (_q_256411.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256411_pg_forged_transmits_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.ForgedTransmits -eq \$true } |
+        Set-SecurityPolicy -ForgedTransmits:\$false -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256411
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000048_Manage | default(true) | bool
+    - not (_q_256411.failed | default(false))
+    - (_q_256411.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256412 / ESXI-70-000049: Port group MAC changes reject ---
 - name: stigrule_256412_pg_mac_changes_query
@@ -647,7 +1052,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000049_Manage | default(true) | bool
+  when:
+    - esxi_70_000049_Manage | default(true) | bool
 
 - name: stigrule_256412_pg_mac_changes_assert
   ansible.builtin.assert:
@@ -659,6 +1065,30 @@
     - esxi_70_000049_Manage | default(true) | bool
     - _q_256412 is not skipped
     - not (_q_256412.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256412_pg_mac_changes_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.MacChanges -eq \$true } |
+        Set-SecurityPolicy -MacChanges:\$false -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256412
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000049_Manage | default(true) | bool
+    - not (_q_256412.failed | default(false))
+    - (_q_256412.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256413 / ESXI-70-000050: Port group promiscuous mode reject ---
 - name: stigrule_256413_pg_promiscuous_query
@@ -678,7 +1108,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000050_Manage | default(true) | bool
+  when:
+    - esxi_70_000050_Manage | default(true) | bool
 
 - name: stigrule_256413_pg_promiscuous_assert
   ansible.builtin.assert:
@@ -690,6 +1121,30 @@
     - esxi_70_000050_Manage | default(true) | bool
     - _q_256413 is not skipped
     - not (_q_256413.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256413_pg_promiscuous_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+        Where-Object { \$_.AllowPromiscuous -eq \$true } |
+        Set-SecurityPolicy -AllowPromiscuous:\$false -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256413
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000050_Manage | default(true) | bool
+    - not (_q_256413.failed | default(false))
+    - (_q_256413.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256418 / ESXI-70-000057: Firewall default action deny ---
 - name: stigrule_256418_firewall_default_query
@@ -708,7 +1163,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000057_Manage | default(false) | bool
+  when:
+    - esxi_70_000057_Manage | default(false) | bool
 
 - name: stigrule_256418_firewall_default_assert
   ansible.builtin.assert:
@@ -720,6 +1176,29 @@
     - esxi_70_000057_Manage | default(false) | bool
     - _q_256418 is not skipped
     - not (_q_256418.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256418_firewall_default_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' |
+        Set-VMHostFirewallDefaultPolicy -AllowIncoming:\$false -AllowOutgoing:\$false -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256418
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000057_Manage | default(false) | bool
+    - not (_q_256418.failed | default(false))
+    - (_q_256418.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256424 / ESXI-70-000063: No VLAN 4095 (trunk) on port groups ---
 - name: stigrule_256424_vlan_4095_query
@@ -739,7 +1218,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000063_Manage | default(true) | bool
+  when:
+    - esxi_70_000063_Manage | default(true) | bool
 
 - name: stigrule_256424_vlan_4095_assert
   ansible.builtin.assert:
@@ -751,6 +1231,30 @@
     - esxi_70_000063_Manage | default(true) | bool
     - _q_256424 is not skipped
     - not (_q_256424.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256424_vlan_4095_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { \$_.VLanId -eq 4095 } |
+        Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256424
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000063_Manage | default(true) | bool
+    - not (_q_256424.failed | default(false))
+    - (_q_256424.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256425 / ESXI-70-000064: No reserved VLANs (1001-1024, 3968-4047, 4094) ---
 - name: stigrule_256425_reserved_vlans_query
@@ -772,7 +1276,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000064_Manage | default(true) | bool
+  when:
+    - esxi_70_000064_Manage | default(true) | bool
 
 - name: stigrule_256425_reserved_vlans_assert
   ansible.builtin.assert:
@@ -784,6 +1289,30 @@
     - esxi_70_000064_Manage | default(true) | bool
     - _q_256425 is not skipped
     - not (_q_256425.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256425_reserved_vlans_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { (\$_.VLanId -ge 1001 -and \$_.VLanId -le 1024) -or (\$_.VLanId -ge 3968 -and \$_.VLanId -le 4047) -or (\$_.VLanId -eq 4094) } |
+        Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256425
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000064_Manage | default(true) | bool
+    - not (_q_256425.failed | default(false))
+    - (_q_256425.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256426 / ESXI-70-000065: Native VLAN not used for tagged traffic ---
 - name: stigrule_256426_native_vlan_query
@@ -803,7 +1332,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000065_Manage | default(true) | bool
+  when:
+    - esxi_70_000065_Manage | default(true) | bool
 
 - name: stigrule_256426_native_vlan_assert
   ansible.builtin.assert:
@@ -815,6 +1345,30 @@
     - esxi_70_000065_Manage | default(true) | bool
     - _q_256426 is not skipped
     - not (_q_256426.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256426_native_vlan_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+        Where-Object { \$_.VLanId -eq 1 } |
+        Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256426
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000065_Manage | default(true) | bool
+    - not (_q_256426.failed | default(false))
+    - (_q_256426.stdout | default('') | trim) != 'COMPLIANT'
 
 # =========================================================================
 # GROUP H: Firmware / audit-only rules (pwsh query+assert)
@@ -836,7 +1390,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000072_Manage | default(true) | bool
+  when:
+    - esxi_70_000072_Manage | default(true) | bool
 
 - name: stigrule_256427_patches_current_assert
   ansible.builtin.assert:
@@ -851,6 +1406,18 @@
     - esxi_70_000072_Manage | default(true) | bool
     - _q_256427 is not skipped
     - not (_q_256427.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256427_patches_current_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000072 on {{ _current_esxi_host }}:
+      apply the approved image/profile update and reboot. Set
+      esxi_stig_expected_build to the approved target build.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000072_Manage | default(true) | bool
 
 # --- V-256430 / ESXI-70-000076: Secure Boot ---
 - name: stigrule_256430_secure_boot_query
@@ -872,7 +1439,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000076_Manage | default(true) | bool
+  when:
+    - esxi_70_000076_Manage | default(true) | bool
 
 - name: stigrule_256430_secure_boot_assert
   ansible.builtin.assert:
@@ -884,6 +1452,17 @@
     - esxi_70_000076_Manage | default(true) | bool
     - _q_256430 is not skipped
     - not (_q_256430.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256430_secure_boot_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000076 on {{ _current_esxi_host }}:
+      enable UEFI Secure Boot in host firmware and re-attest host boot chain.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000076_Manage | default(true) | bool
 
 # --- V-256431 / ESXI-70-000078: LDAP/AD uses TLS ---
 - name: stigrule_256431_ldap_tls_query
@@ -906,7 +1485,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000078_Manage | default(true) | bool
+  when:
+    - esxi_70_000078_Manage | default(true) | bool
 
 - name: stigrule_256431_ldap_tls_assert
   ansible.builtin.assert:
@@ -918,6 +1498,17 @@
     - esxi_70_000078_Manage | default(true) | bool
     - _q_256431 is not skipped
     - not (_q_256431.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256431_ldap_tls_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000078 on {{ _current_esxi_host }}:
+      ensure AD/LDAP identity sources use TLS/LDAPS and trusted CA chain.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000078_Manage | default(true) | bool
 
 # --- V-256442 / ESXI-70-000090: rhttpproxy FIPS ---
 - name: stigrule_256442_rhttpproxy_fips_query
@@ -938,7 +1529,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000090_Manage | default(true) | bool
+  when:
+    - esxi_70_000090_Manage | default(true) | bool
 
 - name: stigrule_256442_rhttpproxy_fips_assert
   ansible.builtin.assert:
@@ -950,6 +1542,32 @@
     - esxi_70_000090_Manage | default(true) | bool
     - _q_256442 is not skipped
     - not (_q_256442.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256442_rhttpproxy_fips_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      \$args = \$esxcli.system.security.fips140.rhttpproxy.set.CreateArgs();
+      \$args.enable = \$true;
+      \$esxcli.system.security.fips140.rhttpproxy.set.Invoke(\$args) | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256442
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000090_Manage | default(true) | bool
+    - not (_q_256442.failed | default(false))
+    - (_q_256442.stdout | default('') | trim) != 'COMPLIANT'
 
 # --- V-256444 / ESXI-70-000092: VM config override cleared ---
 - name: stigrule_256444_vm_override_query
@@ -969,7 +1587,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000092_Manage | default(true) | bool
+  when:
+    - esxi_70_000092_Manage | default(true) | bool
 
 - name: stigrule_256444_vm_override_assert
   ansible.builtin.assert:
@@ -981,6 +1600,17 @@
     - esxi_70_000092_Manage | default(true) | bool
     - _q_256444 is not skipped
     - not (_q_256444.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256444_vm_override_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000092 on {{ _current_esxi_host }}:
+      clear unsupported VM override values and enforce host defaults.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000092_Manage | default(true) | bool
 
 # --- V-256445 / ESXI-70-000093: VM logger override cleared ---
 - name: stigrule_256445_vm_logger_query
@@ -1000,7 +1630,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000093_Manage | default(true) | bool
+  when:
+    - esxi_70_000093_Manage | default(true) | bool
 
 - name: stigrule_256445_vm_logger_assert
   ansible.builtin.assert:
@@ -1012,6 +1643,17 @@
     - esxi_70_000093_Manage | default(true) | bool
     - _q_256445 is not skipped
     - not (_q_256445.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256445_vm_logger_remediate
+  ansible.builtin.debug:
+    msg: >-
+      ESXI-70-000093 remediation is handled by stigrule_256396_log_level
+      (Config.HostAgent.log.level set to info) during hardening.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000093_Manage | default(true) | bool
 
 # --- V-256446 / ESXI-70-000094: TPM encryption ---
 - name: stigrule_256446_tpm_encryption_query
@@ -1032,7 +1674,8 @@
   changed_when: false
   check_mode: false
   no_log: true
-  when: esxi_70_000094_Manage | default(true) | bool
+  when:
+    - esxi_70_000094_Manage | default(true) | bool
 
 - name: stigrule_256446_tpm_encryption_assert
   ansible.builtin.assert:
@@ -1044,6 +1687,32 @@
     - esxi_70_000094_Manage | default(true) | bool
     - _q_256446 is not skipped
     - not (_q_256446.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256446_tpm_encryption_remediate
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      \$args = \$esxcli.system.settings.encryption.set.CreateArgs();
+      \$args.mode = 'TPM';
+      \$esxcli.system.settings.encryption.set.Invoke(\$args) | Out-Null
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _r_256446
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000094_Manage | default(true) | bool
+    - not (_q_256446.failed | default(false))
+    - (_q_256446.stdout | default('') | trim) is match('^NON_COMPLIANT')
 
 # =========================================================================
 # GROUP I: Remaining audit-only rules
@@ -1058,6 +1727,16 @@
       host profile with proper authentication proxy configuration.
   when: esxi_70_000038_Manage | default(true) | bool
 
+- name: stigrule_256403_host_profiles_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000038 on {{ _current_esxi_host }}:
+      attach and remediate against an approved host profile with auth proxy.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000038_Manage | default(true) | bool
+
 # --- V-256428 / ESXI-70-000070: CIM account access (manual) ---
 - name: stigrule_256428_cim_access
   ansible.builtin.debug:
@@ -1066,6 +1745,16 @@
       {{ _current_esxi_host }}. Verify only authorized accounts have CIM access.
   when: esxi_70_000070_Manage | default(true) | bool
 
+- name: stigrule_256428_cim_access_remediate
+  ansible.builtin.debug:
+    msg: >-
+      Hardening remediation required for ESXI-70-000070 on {{ _current_esxi_host }}:
+      remove unauthorized CIM users and keep CIM service disabled unless required.
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - esxi_70_000070_Manage | default(true) | bool
+
 # =========================================================================
 # GROUP J: SSH configuration rules (gated behind esxi_stig_enable_ssh_checks)
 # =========================================================================
@@ -1073,6 +1762,204 @@
 - name: "ESXi STIG | SSH checks block"
   when: esxi_stig_enable_ssh_checks | default(false) | bool
   block:
+    - name: "ESXi STIG | SSH hardening remediation"
+      ansible.builtin.shell:
+        executable: /bin/bash
+        cmd: |
+          set -o pipefail
+          pwsh -NoProfile -Command "
+          {{ _pwsh_preamble }}
+          \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+          \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+          \$settings = @{
+            'banner' = '/etc/issue';
+            'ignorerhosts' = 'yes';
+            'hostbasedauthentication' = 'no';
+            'permitrootlogin' = 'no';
+            'permitemptypasswords' = 'no';
+            'permituserenvironment' = 'no';
+            'strictmodes' = 'yes';
+            'compression' = 'no';
+            'gatewayports' = 'no';
+            'x11forwarding' = 'no';
+            'permittunnel' = 'no';
+            'clientalivecountmax' = '{{ esxi_stig_ssh_client_alive_count_max | default(3) | string }}';
+            'clientaliveinterval' = '{{ esxi_stig_ssh_client_alive_interval | default(200) | string }}';
+            'allowtcpforwarding' = 'no';
+            'ciphers' = '{{ esxi_stig_ssh_fips_ciphers | default("aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr") }}'
+          };
+          foreach (\$entry in \$settings.GetEnumerator()) {
+            \$args = \$esxcli.system.ssh.server.config.set.CreateArgs();
+            \$args.keyword = \$entry.Key;
+            \$args.value = \$entry.Value;
+            \$esxcli.system.ssh.server.config.set.Invoke(\$args) | Out-Null;
+          }
+          \$fipsArgs = \$esxcli.system.security.fips140.ssh.set.CreateArgs();
+          \$fipsArgs.enable = \$true;
+          \$esxcli.system.security.fips140.ssh.set.Invoke(\$fipsArgs) | Out-Null;
+          "
+      environment:
+        VC_PASS: "{{ vmware_password | string | trim }}"
+      register: _r_ssh_hardening
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - >-
+          (esxi_70_000009_Manage | default(true) | bool) or
+          (esxi_70_000010_Manage | default(true) | bool) or
+          (esxi_70_000012_Manage | default(true) | bool) or
+          (esxi_70_000013_Manage | default(true) | bool) or
+          (esxi_70_000014_Manage | default(false) | bool) or
+          (esxi_70_000015_Manage | default(true) | bool) or
+          (esxi_70_000016_Manage | default(true) | bool) or
+          (esxi_70_000020_Manage | default(true) | bool) or
+          (esxi_70_000021_Manage | default(true) | bool) or
+          (esxi_70_000022_Manage | default(true) | bool) or
+          (esxi_70_000023_Manage | default(true) | bool) or
+          (esxi_70_000025_Manage | default(true) | bool) or
+          (esxi_70_000026_Manage | default(true) | bool) or
+          (esxi_70_000027_Manage | default(true) | bool) or
+          (esxi_70_000082_Manage | default(true) | bool) or
+          (esxi_70_000274_Manage | default(true) | bool)
+
+    - name: stigrule_256382_ssh_banner_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000008 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000008_Manage | default(true) | bool
+
+    - name: stigrule_256383_ssh_banner_directive_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000009 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000009_Manage | default(true) | bool
+
+    - name: stigrule_256384_ssh_fips_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000010 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000010_Manage | default(true) | bool
+
+    - name: stigrule_256386_ssh_ignore_rhosts_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000012 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000012_Manage | default(true) | bool
+
+    - name: stigrule_256387_ssh_hostbased_auth_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000013 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000013_Manage | default(true) | bool
+
+    - name: stigrule_256388_ssh_permit_root_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000014 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000014_Manage | default(false) | bool
+
+    - name: stigrule_256389_ssh_permit_empty_pw_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000015 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000015_Manage | default(true) | bool
+
+    - name: stigrule_256390_ssh_permit_user_env_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000016 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000016_Manage | default(true) | bool
+
+    - name: stigrule_256394_ssh_strict_modes_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000020 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000020_Manage | default(true) | bool
+
+    - name: stigrule_256395_ssh_compression_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000021 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000021_Manage | default(true) | bool
+
+    - name: stigrule_256396_ssh_gateway_ports_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000022 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000022_Manage | default(true) | bool
+
+    - name: stigrule_256397_ssh_x11_forwarding_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000023 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000023_Manage | default(true) | bool
+
+    - name: stigrule_256399_ssh_permit_tunnel_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000025 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000025_Manage | default(true) | bool
+
+    - name: stigrule_256400_ssh_client_alive_count_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000026 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000026_Manage | default(true) | bool
+
+    - name: stigrule_256401_ssh_client_alive_interval_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000027 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000027_Manage | default(true) | bool
+
+    - name: stigrule_256434_ssh_allow_tcp_fwd_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000082 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000082_Manage | default(true) | bool
+
+    - name: stigrule_256449_ssh_fips_ciphers_remediate
+      ansible.builtin.debug:
+        msg: "ESXI-70-000274 remediation handled by consolidated SSH hardening task."
+      changed_when: false
+      when:
+        - vmware_stig_enable_hardening | default(false) | bool
+        - esxi_70_000274_Manage | default(true) | bool
+
     # --- V-256382 / ESXI-70-000008: Deploy /etc/issue banner ---
     - name: stigrule_256382_ssh_banner_file
       ansible.builtin.shell:
@@ -1104,6 +1991,7 @@
         - esxi_70_000008_Manage | default(true) | bool
         - _q_256382 is not skipped
         - not (_q_256382.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256383 / ESXI-70-000009: Banner directive in sshd_config ---
     - name: stigrule_256383_ssh_banner_directive_query
@@ -1138,6 +2026,7 @@
         - esxi_70_000009_Manage | default(true) | bool
         - _q_256383 is not skipped
         - not (_q_256383.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256384 / ESXI-70-000010: SSH FIPS 140-2 ---
     - name: stigrule_256384_ssh_fips_query
@@ -1170,6 +2059,7 @@
         - esxi_70_000010_Manage | default(true) | bool
         - _q_256384 is not skipped
         - not (_q_256384.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256386 / ESXI-70-000012: IgnoreRhosts yes ---
     - name: stigrule_256386_ssh_ignore_rhosts_query
@@ -1204,6 +2094,7 @@
         - esxi_70_000012_Manage | default(true) | bool
         - _q_256386 is not skipped
         - not (_q_256386.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256387 / ESXI-70-000013: HostbasedAuthentication no ---
     - name: stigrule_256387_ssh_hostbased_auth_query
@@ -1238,6 +2129,7 @@
         - esxi_70_000013_Manage | default(true) | bool
         - _q_256387 is not skipped
         - not (_q_256387.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256388 / ESXI-70-000014: PermitRootLogin no ---
     - name: stigrule_256388_ssh_permit_root_query
@@ -1272,6 +2164,7 @@
         - esxi_70_000014_Manage | default(false) | bool
         - _q_256388 is not skipped
         - not (_q_256388.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256389 / ESXI-70-000015: PermitEmptyPasswords no ---
     - name: stigrule_256389_ssh_permit_empty_pw_query
@@ -1306,6 +2199,7 @@
         - esxi_70_000015_Manage | default(true) | bool
         - _q_256389 is not skipped
         - not (_q_256389.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256390 / ESXI-70-000016: PermitUserEnvironment no ---
     - name: stigrule_256390_ssh_permit_user_env_query
@@ -1340,6 +2234,7 @@
         - esxi_70_000016_Manage | default(true) | bool
         - _q_256390 is not skipped
         - not (_q_256390.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256394 / ESXI-70-000020: StrictModes yes ---
     - name: stigrule_256394_ssh_strict_modes_query
@@ -1374,6 +2269,7 @@
         - esxi_70_000020_Manage | default(true) | bool
         - _q_256394 is not skipped
         - not (_q_256394.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256395 / ESXI-70-000021: Compression no ---
     - name: stigrule_256395_ssh_compression_query
@@ -1408,6 +2304,7 @@
         - esxi_70_000021_Manage | default(true) | bool
         - _q_256395 is not skipped
         - not (_q_256395.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256396 / ESXI-70-000022: GatewayPorts no ---
     - name: stigrule_256396_ssh_gateway_ports_query
@@ -1442,6 +2339,7 @@
         - esxi_70_000022_Manage | default(true) | bool
         - _q_256396_ssh is not skipped
         - not (_q_256396_ssh.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256397 / ESXI-70-000023: X11Forwarding no ---
     - name: stigrule_256397_ssh_x11_forwarding_query
@@ -1476,6 +2374,7 @@
         - esxi_70_000023_Manage | default(true) | bool
         - _q_256397_ssh is not skipped
         - not (_q_256397_ssh.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256399 / ESXI-70-000025: PermitTunnel no ---
     - name: stigrule_256399_ssh_permit_tunnel_query
@@ -1510,6 +2409,7 @@
         - esxi_70_000025_Manage | default(true) | bool
         - _q_256399_ssh is not skipped
         - not (_q_256399_ssh.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256400 / ESXI-70-000026: ClientAliveCountMax 3 ---
     - name: stigrule_256400_ssh_client_alive_count_query
@@ -1546,6 +2446,7 @@
         - esxi_70_000026_Manage | default(true) | bool
         - _q_256400_ssh is not skipped
         - not (_q_256400_ssh.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256401 / ESXI-70-000027: ClientAliveInterval 200 ---
     - name: stigrule_256401_ssh_client_alive_interval_query
@@ -1582,6 +2483,7 @@
         - esxi_70_000027_Manage | default(true) | bool
         - _q_256401_ssh is not skipped
         - not (_q_256401_ssh.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256434 / ESXI-70-000082: AllowTcpForwarding no ---
     - name: stigrule_256434_ssh_allow_tcp_fwd_query
@@ -1616,6 +2518,7 @@
         - esxi_70_000082_Manage | default(true) | bool
         - _q_256434 is not skipped
         - not (_q_256434.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)
 
     # --- V-256449 / ESXI-70-000274: FIPS SSH ciphers ---
     - name: stigrule_256449_ssh_fips_ciphers_query
@@ -1654,3 +2557,4 @@
         - esxi_70_000274_Manage | default(true) | bool
         - _q_256449 is not skipped
         - not (_q_256449.failed | default(false))
+        - not (vmware_stig_enable_hardening | default(false) | bool)

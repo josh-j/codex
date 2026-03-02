@@ -463,9 +463,15 @@ widgets:
     title: "Active Alerts"
     type: alert_panel
 
+  - id: intro_note
+    title: "VCSA Summary Note"
+    type: markdown
+    content: "This report provides a comprehensive health and compliance overview of the VCSA appliance and its managed infrastructure inventory."
+
   - id: appliance_overview
     title: "Appliance Overview"
     type: key_value
+    layout: { width: "half" }
     fields:
       - { label: "Version", field: appliance_version }
       - { label: "Build", field: appliance_build }
@@ -481,6 +487,7 @@ widgets:
   - id: inventory_summary
     title: "Inventory Summary"
     type: key_value
+    layout: { width: "half" }
     fields:
       - { label: "Datacenters", field: datacenter_count }
       - { label: "Datastores", field: datastore_count }
@@ -499,8 +506,19 @@ widgets:
       - { label: "Type", field: type }
       - { label: "Capacity (GB)", field: capacity_gb }
       - { label: "Free (GB)", field: free_gb }
-      - { label: "Used %", field: used_pct }
-      - { label: "Accessible", field: accessible, badge: true }
+      - label: "Used %"
+        field: used_pct
+        style_rules:
+          - condition: { op: gt, field: used_pct, threshold: 90 }
+            css_class: "sv-critical"
+          - condition: { op: gt, field: used_pct, threshold: 75 }
+            css_class: "sv-warning"
+      - label: "Accessible"
+        field: accessible
+        badge: true
+        style_rules:
+          - condition: { op: eq, field: accessible, threshold: 0.0 }
+            css_class: "sv-critical"
       - { label: "Maintenance", field: maintenanceMode }
 
   - id: clusters
@@ -513,8 +531,16 @@ widgets:
       - { label: "DRS", field: drs_enabled, badge: true }
       - { label: "HA", field: ha_enabled, badge: true }
       - { label: "Hosts", field: host_count }
-      - { label: "CPU %", field: cpu_usage_pct }
-      - { label: "Mem %", field: mem_usage_pct }
+      - label: "CPU %"
+        field: cpu_usage_pct
+        style_rules:
+          - condition: { op: gt, field: cpu_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
+      - label: "Mem %"
+        field: mem_usage_pct
+        style_rules:
+          - condition: { op: gt, field: mem_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
 
   - id: virtual_machines
     title: "Virtual Machines"
@@ -522,7 +548,12 @@ widgets:
     rows_field: virtual_machines
     columns:
       - { label: "Name", field: guest_name, link_field: guest_name }
-      - { label: "Power State", field: power_state, badge: true }
+      - label: "Power State"
+        field: power_state
+        badge: true
+        style_rules:
+          - condition: { op: eq_str, field: power_state, value: "poweredOff" }
+            css_class: "subtle-text"
       - { label: "Tools Status", field: tools_status }
       - { label: "Cluster", field: cluster }
       - { label: "IP Address", field: ip_address }

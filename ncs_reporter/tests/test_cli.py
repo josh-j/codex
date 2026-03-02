@@ -7,7 +7,8 @@ import unittest
 import yaml
 from click.testing import CliRunner
 
-from ncs_reporter.cli import get_jinja_env, main, status_badge_meta
+from ncs_reporter.cli import get_jinja_env, main
+from ncs_reporter.view_models.common import status_badge_meta
 
 
 # ---------------------------------------------------------------------------

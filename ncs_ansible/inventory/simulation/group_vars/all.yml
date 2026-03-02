@@ -1,0 +1,14 @@
+---
+# inventory/simulation/group_vars/all.yml
+
+simulation_mode: true
+vmware_validate_certs: false
+vmware_username: simulation@local
+vmware_password: simulation
+
+# Default simulation fixture root. Can be overridden via extra-vars.
+simulation_vcenter_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter/vcsa"
+
+# Keep writes local by default for simulation runs.
+ncs_config:
+  report_directory: tests/reports/simulated_playbook_run

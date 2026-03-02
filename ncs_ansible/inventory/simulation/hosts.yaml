@@ -1,0 +1,10 @@
+---
+# inventory/simulation/hosts.yaml
+# Dedicated inventory for simulation-mode playbook execution.
+
+vcenters:
+  hosts:
+    vc-site1.local:
+      site: sdhm
+    vc-site2.local:
+      site: site2

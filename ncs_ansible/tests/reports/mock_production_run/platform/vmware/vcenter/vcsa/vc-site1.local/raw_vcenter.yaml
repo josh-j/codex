@@ -1,0 +1,46 @@
+metadata:
+  host: vc-site1.local
+  raw_type: vcenter
+  timestamp: '2026-03-02T00:00:00Z'
+  engine: ncs_collector_callback
+data:
+  appliance_health_info:
+    appliance:
+      summary:
+        product: VMware vCenter Server
+        version: 8.0.3
+        build_number: '24022515'
+        uptime: 1209600
+        health:
+          overall: green
+          cpu: green
+          memory: green
+          database: green
+          storage: green
+      access:
+        ssh: false
+        shell:
+          enabled: false
+      time:
+        time_sync:
+          mode: NTP
+  appliance_backup_info:
+    schedules: []
+  datacenters_info:
+    datacenter_info:
+    - name: DC1
+      datacenter: dc-1
+  clusters_info:
+    results:
+    - item: DC1
+      clusters: {}
+  datastores_info:
+    datastores: []
+  vms_info:
+    virtual_machines: []
+  snapshots_info:
+    snapshots: []
+  alarms_info:
+    alarms: []
+  config:
+    infrastructure_vm_patterns: []

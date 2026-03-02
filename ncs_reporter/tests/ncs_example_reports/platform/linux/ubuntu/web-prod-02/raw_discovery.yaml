@@ -1,7 +1,7 @@
 metadata:
   host: web-prod-02
   raw_type: discovery
-  timestamp: '2026-03-01T17:17:25+00:00'
+  timestamp: '2026-03-02T22:59:54+00:00'
   engine: ncs_collector_callback
 data:
   ansible_facts:
@@ -60,7 +60,7 @@ data:
       - /home/deploy
       - /bin/bash
     date_time:
-      epoch: '1772385445'
+      epoch: '1772492394'
   failed_services:
     stdout_lines: []
     rc: 0

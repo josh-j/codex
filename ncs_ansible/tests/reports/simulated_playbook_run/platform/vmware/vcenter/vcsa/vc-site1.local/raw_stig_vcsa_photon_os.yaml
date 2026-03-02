@@ -1,0 +1,564 @@
+metadata:
+  host: vc-site1.local
+  raw_type: stig_vcsa_photon_os
+  audit_type: stig_vcsa_photon_os
+  timestamp: '2026-03-02T00:00:00Z'
+  engine: ncs_collector_callback
+data:
+- id: V-256478
+  rule_id: SV-256478r958368_rule
+  rule_version: PHTN-30-000001
+  status: na
+  severity: medium
+  title: The Photon operating system must audit all account creations.
+  checktext: 'At the command line, run the following command:
+
+
+    # auditctl -l | grep -E "(useradd|groupadd)"
+
+
+    Expected result:
+
+
+    -w /usr/sbin/useradd -p x -k useradd
+
+    -w /usr/sbin/groupadd -p x -k groupadd
+
+
+    If either "useradd" or "groupadd" are not listed with a permissions filter of
+    at least "x", this is a finding.
+
+
+    Note: This check depends on the "auditd" service to be in a running state for
+    accurate results. The "auditd" service is enabled in control PHTN-30-000013.'
+  fixtext: "Navigate to and open:\n\n/etc/audit/rules.d/audit.STIG.rules\n\nAdd or\
+    \ update the following lines:\n\n-w /usr/sbin/useradd -p x -k useradd\n-w /usr/sbin/groupadd\
+    \ -p x -k groupadd\n\nAt the command line, run the following command to load the\
+    \ new audit rules:\n\n# /sbin/augenrules --load\n\nNote: A new \"audit.STIG.rules\"\
+    \ file is provided for placement in \"/etc/audit/rules.d\" that contains all rules\
+    \ needed for auditd.\n\nNote: An older \"audit.STIG.rules\" may exist and may\
+    \ reference older \"GEN\" SRG IDs.\_This file can be removed and replaced as necessary\
+    \ with an updated one."
+- id: V-256479
+  rule_id: SV-256479r958388_rule
+  rule_version: PHTN-30-000002
+  status: failed
+  severity: medium
+  title: The Photon operating system must automatically lock an account when three
+    unsuccessful logon attempts occur.
+  checktext: 'At the command line, run the following commands:
+
+
+    # grep pam_tally2 /etc/pam.d/system-auth
+
+
+    Expected result:
+
+
+    auth       required pam_tally2.so deny=3 onerr=fail audit even_deny_root unlock_time=900
+    root_unlock_time=300
+
+
+    # grep pam_tally2 /etc/pam.d/system-account
+
+
+    Expected result:
+
+
+    account    required pam_tally2.so onerr=fail audit
+
+
+    If the output does not list the "pam_tally2" options as configured in the expected
+    results, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/pam.d/system-auth
+
+
+    Remove any existing "pam_tally2.so" line and add the following line after the
+    "pam_unix.so" statement:
+
+
+    auth       required pam_tally2.so deny=3 onerr=fail audit even_deny_root unlock_time=900
+    root_unlock_time=300
+
+
+    Navigate to and open:
+
+
+    /etc/pam.d/system-account
+
+
+    Remove any existing "pam_tally2.so" line and add the following line after the
+    "pam_unix.so" statement:
+
+
+    account    required pam_tally2.so onerr=fail audit
+
+
+    Note: On vCenter appliances, the equivalent file must be edited under "/etc/applmgmt/appliance",
+    if one exists, for the changes to persist after a reboot.'
+- id: V-256480
+  rule_id: SV-256480r958390_rule
+  rule_version: PHTN-30-000003
+  status: pass
+  severity: medium
+  title: The Photon operating system must display the Standard Mandatory DOD Notice
+    and Consent Banner before granting Secure Shell (SSH) access.
+  checktext: "At the command line, run the following command:\n\n# sshd -T|&grep -i\
+    \ Banner\n\nExpected result:\n\nbanner /etc/issue\n\nIf the output does not match\
+    \ the expected result, this is a finding. \n\nOpen \"/etc/issue\" with a text\
+    \ editor.\n\nIf the file does not contain the Standard Mandatory DOD Notice and\
+    \ Consent Banner, this is a finding.\n\nStandard Mandatory DOD Notice and Consent\
+    \ Banner:\n\n\"You are accessing a U.S. Government (USG) Information System (IS)\
+    \ that is provided for USG-authorized use only. By using this IS (which includes\
+    \ any device attached to this IS), you consent to the following conditions:\n\
+    -The USG routinely intercepts and monitors communications on this IS for purposes\
+    \ including, but not limited to, penetration testing, COMSEC monitoring, network\
+    \ operations and defense, personnel misconduct (PM), law enforcement (LE), and\
+    \ counterintelligence (CI) investigations.\n-At any time, the USG may inspect\
+    \ and seize data stored on this IS.\n-Communications using, or data stored on,\
+    \ this IS are not private, are subject to routine monitoring, interception, and\
+    \ search, and may be disclosed or used for any USG authorized purpose.\n-This\
+    \ IS includes security measures (e.g., authentication and access controls) to\
+    \ protect USG interests--not for your personal benefit or privacy.\n-Notwithstanding\
+    \ the above, using this IS does not constitute consent to PM, LE or CI investigative\
+    \ searching or monitoring of the content of privileged communications, or work\
+    \ product, related to personal representation or services by attorneys, psychotherapists,\
+    \ or clergy, and their assistants. Such communications and work product are private\
+    \ and confidential. See User Agreement for details.\""
+  fixtext: 'Navigate to and open:
+
+
+    /etc/ssh/sshd_config
+
+
+    Ensure the "Banner" line is uncommented and set to the following:
+
+
+    Banner /etc/issue
+
+
+    Navigate to and open:
+
+
+    /etc/issue
+
+
+    Ensure the file contains the Standard Mandatory DOD Notice and Consent Banner.
+
+
+    "You are accessing a U.S. Government (USG) Information System (IS) that is provided
+    for USG-authorized use only. By using this IS (which includes any device attached
+    to this IS), you consent to the following conditions:
+
+    -The USG routinely intercepts and monitors communications on this IS for purposes
+    including, but not limited to, penetration testing, COMSEC monitoring, network
+    operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence
+    (CI) investigations.
+
+    -At any time, the USG may inspect and seize data stored on this IS.
+
+    -Communications using, or data stored on, this IS are not private, are subject
+    to routine monitoring, interception, and search, and may be disclosed or used
+    for any USG authorized purpose.
+
+    -This IS includes security measures (e.g., authentication and access controls)
+    to protect USG interests--not for your personal benefit or privacy.
+
+    -Notwithstanding the above, using this IS does not constitute consent to PM, LE
+    or CI investigative searching or monitoring of the content of privileged communications,
+    or work product, related to personal representation or services by attorneys,
+    psychotherapists, or clergy, and their assistants. Such communications and work
+    product are private and confidential. See User Agreement for details."
+
+
+    At the command line, run the following command:
+
+
+    # systemctl restart sshd.service'
+- id: V-256481
+  rule_id: SV-256481r958398_rule
+  rule_version: PHTN-30-000004
+  status: na
+  severity: medium
+  title: The Photon operating system must limit the number of concurrent sessions
+    to 10 for all accounts and/or account types.
+  checktext: 'At the command line, run the following command:
+
+
+    #  grep "^[^#].*maxlogins.*" /etc/security/limits.conf
+
+
+    Expected result:
+
+
+    *       hard    maxlogins       10
+
+
+    If the output does not match the expected result, this is a finding.
+
+
+    Note: The expected result may be repeated multiple times.'
+  fixtext: 'At the command line, run the following command:
+
+
+    # echo ''*       hard    maxlogins       10'' >> /etc/security/limits.conf'
+- id: V-256482
+  rule_id: SV-256482r958402_rule
+  rule_version: PHTN-30-000005
+  status: failed
+  severity: medium
+  title: The Photon operating system must set a session inactivity timeout of 15 minutes
+    or less.
+  checktext: "At the command line, run the following command:\n\n# cat /etc/profile.d/tmout.sh\n\
+    \nExpected result:\n\nTMOUT=900\nreadonly TMOUT \nexport TMOUT\nmesg n 2>/dev/null\n\
+    \nIf the file \"tmout.sh\" does not exist or the output does not look like the\
+    \ expected result, this is a finding."
+  fixtext: "Navigate to and open:\n\n/etc/profile.d/tmout.sh\n\nSet its content to\
+    \ the following: \n\nTMOUT=900\nreadonly TMOUT \nexport TMOUT\nmesg n 2>/dev/null"
+- id: V-256483
+  rule_id: SV-256483r958406_rule
+  rule_version: PHTN-30-000006
+  status: pass
+  severity: medium
+  title: The Photon operating system must have the sshd SyslogFacility set to "authpriv".
+  checktext: 'At the command line, run the following command:
+
+
+    # sshd -T|&grep -i SyslogFacility
+
+
+    Expected result:
+
+
+    syslogfacility AUTHPRIV
+
+
+    If there is no output or if the output does not match the expected result, this
+    is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/ssh/sshd_config
+
+
+    Ensure the "SyslogFacility" line is uncommented and set to the following:
+
+
+    SyslogFacility AUTHPRIV
+
+
+    At the command line, run the following command:
+
+
+    # systemctl restart sshd.service'
+- id: V-256484
+  rule_id: SV-256484r958406_rule
+  rule_version: PHTN-30-000007
+  status: na
+  severity: medium
+  title: The Photon operating system must have sshd authentication logging enabled.
+  checktext: 'At the command line, run the following command:
+
+
+    # grep "^authpriv" /etc/rsyslog.conf
+
+
+    Expected result should be similar to the following:
+
+
+    authpriv.*   /var/log/auth.log
+
+
+    If "authpriv" is not configured to be logged, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/rsyslog.conf
+
+
+    Add the following line:
+
+
+    authpriv.*   /var/log/auth.log
+
+
+    Note: The path can be substituted for another suitable log destination.
+
+
+    At the command line, run the following command:
+
+
+    # systemctl restart rsyslog.service'
+- id: V-256485
+  rule_id: SV-256485r958406_rule
+  rule_version: PHTN-30-000008
+  status: failed
+  severity: medium
+  title: The Photon operating system must have the sshd LogLevel set to "INFO".
+  checktext: 'At the command line, run the following command:
+
+
+    # sshd -T|&grep -i LogLevel
+
+
+    Expected result:
+
+
+    LogLevel INFO
+
+
+    If the output does not match the expected result, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/ssh/sshd_config
+
+
+    Ensure the "LogLevel" line is uncommented and set to the following:
+
+
+    LogLevel INFO
+
+
+    At the command line, run the following command:
+
+
+    # systemctl restart sshd.service'
+- id: V-256486
+  rule_id: SV-256486r958408_rule
+  rule_version: PHTN-30-000009
+  status: pass
+  severity: low
+  title: The Photon operating system must configure sshd to use approved encryption
+    algorithms.
+  checktext: 'At the command line, run the following command:
+
+
+    # sshd -T|&grep -i FipsMode
+
+
+    Expected result:
+
+
+    FipsMode yes
+
+
+    If the output does not match the expected result, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/ssh/sshd_config
+
+
+    Ensure the "FipsMode" line is uncommented and set to the following:
+
+
+    FipsMode yes
+
+
+    At the command line, run the following command:
+
+
+    # systemctl restart sshd.service'
+- id: V-256487
+  rule_id: SV-256487r958412_rule
+  rule_version: PHTN-30-000010
+  status: na
+  severity: medium
+  title: The Photon operating system must configure auditd to log to disk.
+  checktext: 'At the command line, run the following command:
+
+
+    # grep "^write_logs" /etc/audit/auditd.conf
+
+
+    Expected result:
+
+
+    write_logs = yes
+
+
+    If there is no output, this is not a finding.
+
+
+    If the output does not match the expected result, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/audit/auditd.conf
+
+
+    Ensure the "write_logs" line is uncommented and set to the following:
+
+
+    write_logs = yes
+
+
+    At the command line, run the following command:
+
+
+    # killproc auditd -TERM
+
+    # systemctl start auditd'
+- id: V-256488
+  rule_id: SV-256488r958414_rule
+  rule_version: PHTN-30-000011
+  status: failed
+  severity: medium
+  title: The Photon operating system must configure auditd to use the correct log
+    format.
+  checktext: 'At the command line, run the following command:
+
+
+    # grep "^log_format" /etc/audit/auditd.conf
+
+
+    Expected result:
+
+
+    log_format = RAW
+
+
+    If there is no output, this is not a finding.
+
+
+    If the output does not match the expected result, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/audit/auditd.conf
+
+
+    Ensure the "log_format" line is uncommented and set to the following:
+
+
+    log_format = RAW
+
+
+    At the command line, run the following command:
+
+
+    # killproc auditd -TERM
+
+    # systemctl start auditd'
+- id: V-256489
+  rule_id: SV-256489r958422_rule
+  rule_version: PHTN-30-000012
+  status: pass
+  severity: medium
+  title: The Photon operating system must be configured to audit the execution of
+    privileged functions.
+  checktext: 'At the command line, run the following command:
+
+
+    # auditctl -l | grep execve
+
+
+    Expected result:
+
+
+    -a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=execpriv
+
+    -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=execpriv
+
+    -a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=execpriv
+
+    -a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=execpriv
+
+
+    If the output does not match the expected result, this is a finding.
+
+
+    Note: This check depends on the auditd service to be in a running state for accurate
+    results. Enabling the auditd service is done in control PHTN-30-000013.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/audit/rules.d/audit.STIG.rules
+
+
+    Add the following lines:
+
+
+    -a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=execpriv
+
+    -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=execpriv
+
+    -a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=execpriv
+
+    -a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=execpriv
+
+
+    At the command line, run the following command to load the new audit rules:
+
+
+    # /sbin/augenrules --load
+
+
+    Note: A new "audit.STIG.rules" file is provided for placement in "/etc/audit/rules.d"
+    that contains all rules needed for auditd.
+
+
+    Note: An older "audit.STIG.rules" may exist if the file exists and references
+    older "GEN" SRG IDs. This file can be removed and replaced as necessary with an
+    updated one.'
+- id: V-256490
+  rule_id: SV-256490r958422_rule
+  rule_version: PHTN-30-000013
+  status: na
+  severity: medium
+  title: The Photon operating system must have the auditd service running.
+  checktext: 'At the command line, run the following command:
+
+
+    # systemctl status auditd
+
+
+    If the service is not running, this is a finding.'
+  fixtext: 'At the command line, run the following commands:
+
+
+    # systemctl enable auditd
+
+    # systemctl start auditd'
+- id: V-256491
+  rule_id: SV-256491r958424_rule
+  rule_version: PHTN-30-000014
+  status: failed
+  severity: medium
+  title: The Photon operating system audit log must log space limit problems to syslog.
+  checktext: 'At the command line, run the following command:
+
+
+    # grep "^space_left_action" /etc/audit/auditd.conf
+
+
+    Expected result:
+
+
+    space_left_action = SYSLOG
+
+
+    If the output does not match the expected result, this is a finding.'
+  fixtext: 'Navigate to and open:
+
+
+    /etc/audit/auditd.conf
+
+
+    Ensure the "space_left_action" line is uncommented and set to the following:
+
+
+    space_left_action = SYSLOG
+
+
+    At the command line, run the following commands:
+
+
+    # killproc auditd -TERM
+
+    # systemctl start auditd'
+target_type: vcsa_photon_os

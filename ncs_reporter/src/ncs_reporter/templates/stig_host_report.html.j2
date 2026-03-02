@@ -15,13 +15,6 @@
     <style>
         {% include 'report_shared.css' %}
     </style>
-    <script>
-        function toggleDetails(id) {
-            var x = document.getElementById(id);
-            if (!x) return;
-            x.style.display = (x.style.display === "block") ? "none" : "block";
-        }
-    </script>
 </head>
 <body>
 <div class="page-wrap">
@@ -53,7 +46,7 @@
 
         {% if nav.get('tree_siblings') %}
         <div class="nav-tree">
-            <span class="tree-label">{{ target.get('target_type', 'unknown') | upper }} STIG</span>
+            <span class="tree-label">{{ target.get('host', 'host') }}</span>
             <span class="tree-trigger">&#9660;</span>
             <div class="nav-dropdown">
                 <div class="dropdown-group">Audits for {{ target.get('host', 'host') }}</div>
@@ -63,16 +56,33 @@
                 {% endfor %}
             </div>
         </div>
+        {% if nav.history %}
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">History</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">Report Versions</div>
+                {% for h in nav.history %}
+                <a href="{{ h.url }}">{{ h.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         {% else %}
         {{ target.get('host', 'unknown') }} (STIG)
         {% endif %}
+        <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
     </div>
     {% endif %}
 
     <div class="page-header">
         <div>
             <h1>STIG Compliance — Node Report &mdash; <code>{{ target.get('host', 'unknown') }}</code></h1>
-            <span style="font-size:11px; color:#9db4cc;">Platform: {{ target.get('platform', 'unknown') | upper }} &nbsp;&middot;&nbsp; Target: {{ target.get('target_type', 'unknown') | upper }}</span>
+            <span class="page-subtitle">Platform: {{ target.get('platform', 'unknown') | upper }} &nbsp;&middot;&nbsp; Target: {{ target.get('target_type', 'unknown') | upper }}</span>
         </div>
         <div class="right">
             {% set s_raw = target.get('status', {}).get('raw', 'UNKNOWN') | upper %}
@@ -94,9 +104,9 @@
     </div>
 
     {% if findings | length == 0 %}
-    <div style="padding: 16px; border: 1px solid #e67e22; background: #fff6e5; border-radius: 10px; margin: 10px 0 20px 0;">
+    <div class="inline-warning">
         <strong>No STIG checks were recorded.</strong>
-        <div style="margin-top: 8px;">
+        <div class="inline-warning-note">
             This usually means the audit produced no findings.
             Verify that the discovery tasks ran successfully and were not skipped.
         </div>
@@ -115,14 +125,14 @@
                         <span class="widget-title">By Status</span>
                     </div>
                     <div class="widget-body widget-table-view">
-                        <table style="border:0;">
+                        <table class="kv">
                             <tbody>
-                                <tr><td style="width:50%; color:#444;">Total Findings</td><td><strong>{{ findings_summary.get('total', 0) }}</strong></td></tr>
-                                <tr><td style="color:#444;">Passed</td><td><span class="sv-ok">{{ by_status.get('pass', 0) }}</span></td></tr>
-                                <tr><td style="color:#444;">Open</td><td><span class="sv-critical">{{ by_status.get('open', 0) }}</span></td></tr>
-                                <tr><td style="color:#444;">N/A</td><td><span class="sv-info">{{ by_status.get('na', 0) }}</span></td></tr>
+                                <tr><td class="kv-label-wide subtle-text">Total Findings</td><td><strong>{{ findings_summary.get('total', 0) }}</strong></td></tr>
+                                <tr><td class="subtle-text">Passed</td><td><span class="sv-ok">{{ by_status.get('pass', 0) }}</span></td></tr>
+                                <tr><td class="subtle-text">Open</td><td><span class="sv-critical">{{ by_status.get('open', 0) }}</span></td></tr>
+                                <tr><td class="subtle-text">N/A</td><td><span class="sv-info">{{ by_status.get('na', 0) }}</span></td></tr>
                                 {% set not_reviewed = by_status.get('not_reviewed', 0) + by_status.get('unknown', 0) %}
-                                {% if not_reviewed > 0 %}<tr><td style="color:#444;">Not Reviewed</td><td><span class="sv-warning">{{ not_reviewed }}</span></td></tr>{% endif %}
+                                {% if not_reviewed > 0 %}<tr><td class="subtle-text">Not Reviewed</td><td><span class="sv-warning">{{ not_reviewed }}</span></td></tr>{% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -133,11 +143,11 @@
                         <span class="widget-title">By Severity</span>
                     </div>
                     <div class="widget-body widget-table-view">
-                        <table style="border:0;">
+                        <table class="kv">
                             <tbody>
-                                <tr><td style="width:50%; color:#444;">CAT I</td><td><span class="{{ 'sv-critical' if findings_summary.get('critical', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('critical', 0) }}</span></td></tr>
-                                <tr><td style="color:#444;">CAT II</td><td><span class="{{ 'sv-warning' if findings_summary.get('warning', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('warning', 0) }}</span></td></tr>
-                                <tr><td style="color:#444;">CAT III</td><td><span class="sv-info">{{ findings_summary.get('info', 0) }}</span></td></tr>
+                                <tr><td class="kv-label-wide subtle-text">CAT I</td><td><span class="{{ 'sv-critical' if findings_summary.get('critical', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('critical', 0) }}</span></td></tr>
+                                <tr><td class="subtle-text">CAT II</td><td><span class="{{ 'sv-warning' if findings_summary.get('warning', 0) > 0 else 'sv-ok' }}">{{ findings_summary.get('warning', 0) }}</span></td></tr>
+                                <tr><td class="subtle-text">CAT III</td><td><span class="sv-info">{{ findings_summary.get('info', 0) }}</span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -168,7 +178,7 @@
                 {% set rule_detail = rule.get('detail', {}) %}
                 <tr>
                     <td class="col-id">{{ rule.get('rule_id', '') }}</td>
-                    <td><span class="sv-critical" style="font-weight: 600;">OPEN</span></td>
+                    <td><span class="sv-critical">OPEN</span></td>
                     <td>
                         {% set sev = rule.get('severity', 'info') | lower %}
                         {% set cat_label = 'CAT I' if sev in ['high', 'critical'] else 'CAT II' if sev in ['medium', 'warning'] else 'CAT III' %}
@@ -177,39 +187,37 @@
                         </span>
                     </td>
                     <td>
-                        <div style="font-weight: bold; margin-bottom: 5px;">
+                        {% set detail_desc = rule_detail.get('description', '') %}
+                        <div class="finding-title">
                             {{ rule.get('title', 'No Title Provided') }}
                         </div>
-                        {% if rule.get('message') and rule.get('message') != rule.get('title') %}
-                        <div style="font-size: 0.92rem; margin-bottom: 8px;">
+                        {% if rule.get('message') and rule.get('message') != rule.get('title') and rule.get('message') != detail_desc %}
+                        <div class="finding-message">
                             {{ rule.get('message', '') }}
                         </div>
                         {% endif %}
 
-                        <button class="toggle-btn" onclick="toggleDetails('d-{{ loop.index }}')">
-                            &#9654; View Technical Details
-                        </button>
-                        <div id="d-{{ loop.index }}" class="details-box">
-                            {% if rule_detail.get('description') or rule.get('message') %}
-                            <strong>DESCRIPTION / DISCUSSION:</strong>
-                            <div style="background: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; color: #444; line-height: 1.4;">
-                                {{ rule_detail.get('description', rule.get('message', '')) }}
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                {% if detail_desc or rule.get('message') %}
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    {{ detail_desc or rule.get('message', '') }}
+                                </div>
+                                {% endif %}
+
+                                {% if rule_detail.get('checktext') %}
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>{{ rule_detail.get('checktext', '') }}</pre>
+                                {% endif %}
+
+                                {% if rule_detail.get('fixtext') %}
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>{{ rule_detail.get('fixtext', '') }}</pre>
+                                {% endif %}
                             </div>
-                            {% endif %}
-
-                            {% if rule_detail.get('checktext') %}
-                            <strong>CHECK CONTENT:</strong>
-                            <pre>{{ rule_detail.get('checktext', '') }}</pre>
-                            {% endif %}
-
-                            {% if rule_detail.get('fixtext') %}
-                            <strong>REMEDIATION / FIX:</strong>
-                            <pre>{{ rule_detail.get('fixtext', '') }}</pre>
-                            {% endif %}
-
-                            <strong>FULL DETAIL:</strong>
-                            <pre>{{ rule_detail | tojson(indent=2) }}</pre>
-                        </div>
+                        </details>
                     </td>
                 </tr>
             {% endfor %}
@@ -245,10 +253,10 @@
                     <td class="col-id">{{ rule.get('rule_id', '') }}</td>
                     <td>
                         {% set status_raw = rule.get('status', 'unknown') | upper %}
-                        {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok" style="font-weight: 600;">{{ status_raw }}</span>
-                        {% elif status_raw == 'N/A' %}<span class="sv-info" style="font-weight: 600;">N/A</span>
-                        {% elif status_raw in ('OPEN', 'FAIL', 'NON-COMPLIANT') %}<span class="sv-critical" style="font-weight: 600;">OPEN</span>
-                        {% else %}<span class="sv-warning" style="font-weight: 600;">{{ status_raw }}</span>{% endif %}
+                        {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok">{{ status_raw }}</span>
+                        {% elif status_raw == 'N/A' %}<span class="sv-info">N/A</span>
+                        {% elif status_raw in ('OPEN', 'FAIL', 'NON-COMPLIANT') %}<span class="sv-critical">OPEN</span>
+                        {% else %}<span class="sv-warning">{{ status_raw }}</span>{% endif %}
                     </td>
                     <td>
                         {% set sev = rule.get('severity', 'info') | lower %}

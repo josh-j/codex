@@ -1,0 +1,12 @@
+---
+# playbooks/windows_post_patch_audit.yml
+# Read-only post-update verification audit for Windows hosts.
+
+- name: "Windows | Post-Update Audit"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ["windows", "audit", "verify", "post-patch"]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: audit

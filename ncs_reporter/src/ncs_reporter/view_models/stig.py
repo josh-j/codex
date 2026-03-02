@@ -27,16 +27,29 @@ def _canonical_stig_severity(value: Any) -> str:
 
 def _infer_stig_platform(audit_type: Any, payload: dict[str, Any] | None) -> str:
     at = str(audit_type or "").lower()
-    if "vmware" in at or "esxi" in at or at in ("stig_vm", "stig_esxi"):
+    if "vmware" in at or "esxi" in at or "vcsa" in at or "vcenter" in at or at in ("stig_vm", "stig_esxi"):
         return "vmware"
-    if "ubuntu" in at or "linux" in at:
+    if "ubuntu" in at or "linux" in at or "photon" in at:
         return "linux"
     if "windows" in at or at in ("stig_windows",):
         return "windows"
     target_type = str((payload or {}).get("target_type", "")).lower()
-    if "esxi" in target_type or "vm" in target_type:
+    vcsa_components = {
+        "vami",
+        "eam",
+        "lookup_svc",
+        "perfcharts",
+        "vcsa_photon_os",
+        "postgresql",
+        "rhttpproxy",
+        "sts",
+        "ui",
+    }
+    if target_type in ("vcsa", "vcenter") or "esxi" in target_type or "vm" in target_type:
         return "vmware"
-    if "ubuntu" in target_type or "linux" in target_type:
+    if target_type in vcsa_components:
+        return "vmware"
+    if "photon" in target_type or "ubuntu" in target_type or "linux" in target_type:
         return "linux"
     if "windows" in target_type:
         return "windows"
@@ -54,7 +67,25 @@ def _infer_stig_target_type(audit_type: Any, payload: dict[str, Any] | None) -> 
     return lower_at or "unknown"
 
 
-def _normalize_stig_finding(finding_or_alert: Any, audit_type: Any, platform: str) -> dict[str, Any]:
+def _pick_cklb_rule(
+    cklb_rule_lookup: Mapping[str, dict[str, Any]] | None,
+    *candidates: Any,
+) -> dict[str, Any]:
+    if not cklb_rule_lookup:
+        return {}
+    for candidate in candidates:
+        key = str(candidate or "").strip()
+        if key and key in cklb_rule_lookup:
+            return dict(cklb_rule_lookup[key] or {})
+    return {}
+
+
+def _normalize_stig_finding(
+    finding_or_alert: Any,
+    audit_type: Any,
+    platform: str,
+    cklb_rule_lookup: Mapping[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     if not isinstance(finding_or_alert, dict):
         finding_or_alert = {"message": str(finding_or_alert)}
 
@@ -73,10 +104,39 @@ def _normalize_stig_finding(finding_or_alert: Any, audit_type: Any, platform: st
         ):
             if key in item and item.get(key) is not None:
                 detail[key] = item.get(key)
+
+    cklb_rule = _pick_cklb_rule(
+        cklb_rule_lookup,
+        detail.get("rule_id"),
+        detail.get("vuln_id"),
+        item.get("rule_id"),
+        item.get("vuln_id"),
+        item.get("id"),
+        item.get("rule_version"),
+        item.get("group_id"),
+    )
+    if cklb_rule:
+        # Prefer raw finding data, but fill gaps from CKLB's canonical rule metadata.
+        detail["description"] = str(
+            detail.get("description") or cklb_rule.get("discussion") or cklb_rule.get("finding_details") or ""
+        )
+        detail["checktext"] = str(
+            detail.get("checktext") or cklb_rule.get("check_content") or cklb_rule.get("finding_details") or ""
+        )
+        detail["fixtext"] = str(detail.get("fixtext") or cklb_rule.get("fix_text") or "")
+        if cklb_rule.get("rule_id"):
+            detail.setdefault("rule_id", cklb_rule.get("rule_id"))
+
     raw_status = item.get("status", detail.get("status", "open"))
     status = _canonical_stig_status(raw_status)
 
-    raw_severity = item.get("severity") or detail.get("original_severity") or detail.get("severity") or "INFO"
+    raw_severity = (
+        item.get("severity")
+        or detail.get("original_severity")
+        or detail.get("severity")
+        or cklb_rule.get("severity")
+        or "INFO"
+    )
     severity = _canonical_stig_severity(raw_severity)
 
     rule_id = str(
@@ -90,12 +150,13 @@ def _normalize_stig_finding(finding_or_alert: Any, audit_type: Any, platform: st
 
     title = str(
         item.get("title")
+        or cklb_rule.get("rule_title")
         or detail.get("title")
         or (str(item.get("message") or "")).replace("STIG Violation: ", "")
         or rule_id
         or "Unknown Rule"
     )
-    message = str(item.get("message") or detail.get("description") or title)
+    message = str(item.get("message") or detail.get("description") or cklb_rule.get("discussion") or title)
 
     return {
         "rule_id": rule_id,
@@ -151,6 +212,9 @@ def build_stig_host_view(
     report_date: str | None = None,
     report_id: str | None = None,
     nav: Mapping[str, Any] | None = None,
+    cklb_rule_lookup: Mapping[str, dict[str, Any]] | None = None,
+    generated_fleet_dirs: set[str] | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     stig_payload = dict(stig_payload or {})
     platform_name = platform or _infer_stig_platform(audit_type, stig_payload)
@@ -160,10 +224,10 @@ def build_stig_host_view(
     full_audit = stig_payload.get("full_audit")
     if isinstance(full_audit, list):
         for row in full_audit:
-            source_findings.append(_normalize_stig_finding(row, audit_type, platform_name))
+            source_findings.append(_normalize_stig_finding(row, audit_type, platform_name, cklb_rule_lookup))
     else:
         for alert in safe_list(stig_payload.get("alerts")):
-            source_findings.append(_normalize_stig_finding(alert, audit_type, platform_name))
+            source_findings.append(_normalize_stig_finding(alert, audit_type, platform_name, cklb_rule_lookup))
 
     summary = _summarize_stig_findings(source_findings)
     health = _status_from_health(stig_payload.get("health"))
@@ -180,6 +244,8 @@ def build_stig_host_view(
 
     # Build nav tree information
     nav_with_tree = {**nav} if nav else {}
+    if history:
+        nav_with_tree["history"] = history
 
     # Sibling STIG audits for the same host (e.g. if a host has both ESXi and VM STIGs)
     siblings = []
@@ -201,10 +267,12 @@ def build_stig_host_view(
 
         fleets = []
         p_dirs = sorted(list(set(hosts_data.values())))
+        if generated_fleet_dirs is not None:
+            p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
         for plt_dir in p_dirs:
             if "vcenter" in plt_dir:
                 label = "VMware"
-                schema_name = "vcenter"
+                schema_name = "vcsa" if "vcenter/vcsa" in plt_dir else "vcenter"
             elif "ubuntu" in plt_dir:
                 label = "Linux"
                 schema_name = "linux"
@@ -246,8 +314,10 @@ def build_stig_fleet_view(
     report_date: str | None = None,
     report_id: str | None = None,
     nav: Mapping[str, Any] | None = None,
+    generated_fleet_dirs: set[str] | None = None,
 ) -> dict[str, Any]:
     rows = []
+    row_index: dict[str, dict[str, Any]] = {}
     top_index: dict[str, dict[str, Any]] = {}
     totals = {"hosts": 0, "findings_open": 0, "critical": 0, "warning": 0, "info": 0}
     by_platform = {
@@ -256,6 +326,20 @@ def build_stig_fleet_view(
         "windows": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
         "unknown": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
     }
+    platform_hosts: dict[str, set[str]] = {k: set() for k in by_platform}
+
+    def _link_base_for(platform_name: str, target_type: str) -> str:
+        if platform_name == "vmware":
+            if target_type == "esxi":
+                return "platform/vmware/esxi"
+            if target_type == "vm":
+                return "platform/vmware/vm"
+            return "platform/vmware/vcenter"
+        if platform_name == "windows":
+            return "platform/windows"
+        if target_type == "photon":
+            return "platform/linux/photon"
+        return "platform/linux/ubuntu"
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for audit_type, payload in dict(bundle or {}).items():
@@ -282,48 +366,53 @@ def build_stig_fleet_view(
             warn = summary["findings"].get("warning", 0)
             info = summary["findings"].get("info", 0)
 
-            totals["hosts"] += 1
             totals["findings_open"] += open_count
             totals["critical"] += crit
             totals["warning"] += warn
             totals["info"] += info
-            by_platform[p_name]["hosts"] += 1
             by_platform[p_name]["open"] += open_count
             by_platform[p_name]["critical"] += crit
             by_platform[p_name]["warning"] += warn
             by_platform[p_name]["info"] += info
+            platform_hosts[p_name].add(hostname)
 
             # Use the canonical STIG report name pattern: <host>_stig_<target_type>.html
             t_type = target.get("target_type", "unknown")
             stamped_name = f"{hostname}_stig_{t_type}.html"
-
-            if p_name == "vmware":
-                if t_type == "esxi":
-                    link_base = "platform/vmware/esxi"
-                elif t_type == "vm":
-                    link_base = "platform/vmware/vm"
-                else:
-                    link_base = "platform/vmware/vcenter"
-            elif p_name == "windows":
-                link_base = "platform/windows"
-            else:
-                link_base = "platform/linux/ubuntu"
-
-            rows.append(
-                {
+            target_link = f"{_link_base_for(p_name, t_type)}/{hostname}/{stamped_name}"
+            key = f"{p_name}:{hostname}"
+            row = row_index.get(key)
+            if row is None:
+                row = {
                     "host": hostname,
                     "platform": p_name,
+                    "status": {"raw": "PASS"},
+                    "findings_open": 0,
+                    "critical": 0,
+                    "warning": 0,
+                    "info": 0,
+                    "links": {"node_report_latest": target_link},
+                    "targets": [],
+                    "findings": [],
+                }
+                row_index[key] = row
+                rows.append(row)
+
+            row["findings_open"] += open_count
+            row["critical"] += crit
+            row["warning"] += warn
+            row["info"] += info
+            row["findings"].extend([f for f in findings if f.get("status") == "open"])
+            row["targets"].append(
+                {
+                    "target_type": str(t_type),
                     "audit_type": str(audit_type),
-                    "status": dict(target.get("status") or {}),
-                    "findings_open": open_count,
-                    "critical": crit,
-                    "warning": warn,
-                    "links": {
-                        "node_report_latest": f"{link_base}/{hostname}/{stamped_name}",
-                    },
-                    "findings": [f for f in findings if f.get("status") == "open"],
+                    "status": str((target.get("status") or {}).get("raw") or "UNKNOWN"),
+                    "link": target_link,
                 }
             )
+            if t_type in {"vcsa", "esxi", "vm", "windows", "ubuntu", "photon"}:
+                row["links"]["node_report_latest"] = target_link
 
             for f in findings:
                 rid = f.get("rule_id") or "UNKNOWN"
@@ -338,6 +427,20 @@ def build_stig_fleet_view(
                 )
                 if f.get("status") == "open":
                     idx["affected_hosts"].add(hostname)
+
+    totals["hosts"] = len({r["host"] for r in rows})
+    for p_name in by_platform:
+        by_platform[p_name]["hosts"] = len(platform_hosts[p_name])
+
+    for row in rows:
+        row["targets"] = sorted(
+            row.get("targets", []),
+            key=lambda x: (str(x.get("target_type") or ""), str(x.get("audit_type") or "")),
+        )
+        if row.get("findings_open", 0) > 0:
+            row["status"] = {"raw": "OPEN"}
+        else:
+            row["status"] = {"raw": "PASS"}
 
     top_findings = []
     for item in top_index.values():
@@ -360,7 +463,7 @@ def build_stig_fleet_view(
             str(x["rule_id"]),
         )
     )
-    rows.sort(key=lambda x: (str(x["platform"]), str(x["host"]), str(x["audit_type"])))
+    rows.sort(key=lambda x: (str(x["platform"]), str(x["host"])))
 
     # Build nav tree information
     nav_with_tree = {**nav} if nav else {}
@@ -371,7 +474,15 @@ def build_stig_fleet_view(
         "vmware": {"label": "VMware", "link": "platform/vmware/vcenter/vcenter_fleet_report.html"},
         "windows": {"label": "Windows", "link": "platform/windows/windows_fleet_report.html"},
     }
+    platform_to_dir = {
+        "linux": "linux/ubuntu",
+        "vmware": "vmware/vcenter",
+        "windows": "windows",
+    }
     for p_key in ["linux", "vmware", "windows"]:
+        report_dir = platform_to_dir[p_key]
+        if generated_fleet_dirs is not None and report_dir not in generated_fleet_dirs:
+            continue
         if by_platform.get(p_key, {}).get("hosts", 0) > 0:
             tree_fleets.append({"name": p_config[p_key]["label"], "report": p_config[p_key]["link"]})
 

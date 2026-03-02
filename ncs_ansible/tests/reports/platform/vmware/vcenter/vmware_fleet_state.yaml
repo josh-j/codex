@@ -1,8 +1,8 @@
 metadata:
-  generated_at: '2026-03-01T18:17:45.655913'
+  generated_at: '2026-03-02T23:29:10.016485'
   fleet_stats:
     total_hosts: 7
-    critical_alerts: 8
+    critical_alerts: 15
     warning_alerts: 20
 hosts:
   vcenter-apac-sg.corp.local:
@@ -2178,7 +2178,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:45.948148'
+        generated_at: '2026-03-02T23:29:10.498495'
         field_coverage:
           resolved: 25
           total: 28
@@ -3986,6 +3986,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -4021,9 +4025,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -4058,6 +4076,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -4083,6 +4104,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -4090,39 +4114,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -4130,39 +4179,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -4170,49 +4239,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -4220,34 +4306,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -4255,31 +4350,175 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.227865'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
   vcenter-eu-de.corp.local:
     raw_vcenter: &id078
       metadata:
@@ -6810,7 +7049,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:46.243218'
+        generated_at: '2026-03-02T23:29:10.980168'
         field_coverage:
           resolved: 25
           total: 28
@@ -8688,6 +8927,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -8723,9 +8966,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -8760,6 +9017,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -8785,6 +9045,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -8792,39 +9055,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -8832,39 +9120,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -8872,49 +9180,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -8922,34 +9247,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -8957,31 +9291,175 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.231731'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
   vcenter-eu-uk.corp.local:
     raw_vcenter: &id099
       metadata:
@@ -10231,7 +10709,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:46.559517'
+        generated_at: '2026-03-02T23:29:11.387678'
         field_coverage:
           resolved: 25
           total: 28
@@ -11164,6 +11642,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -11199,9 +11681,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -11236,6 +11732,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -11261,6 +11760,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -11268,39 +11770,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -11308,39 +11835,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -11348,49 +11895,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -11398,34 +11962,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -11433,31 +12006,175 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.235440'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
   vcenter-apac-au.corp.local:
     raw_vcenter: &id112
       metadata:
@@ -12843,7 +13560,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:46.813261'
+        generated_at: '2026-03-02T23:29:11.809109'
         field_coverage:
           resolved: 25
           total: 28
@@ -13855,6 +14572,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -13890,9 +14611,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -13927,6 +14662,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -13952,6 +14690,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -13959,39 +14700,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -13999,39 +14765,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -14039,49 +14825,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -14089,34 +14892,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -14124,31 +14936,175 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.238948'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
   vcenter-us-west.corp.local:
     raw_vcenter: &id123
       metadata:
@@ -15764,7 +16720,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:47.065597'
+        generated_at: '2026-03-02T23:29:12.223387'
         field_coverage:
           resolved: 25
           total: 28
@@ -16919,6 +17875,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -16954,9 +17914,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -16991,6 +17965,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -17016,6 +17993,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -17023,39 +18003,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -17063,39 +18068,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -17103,49 +18128,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -17153,34 +18195,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -17188,32 +18239,314 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.266788'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
   vcenter-us-east.corp.local:
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.293848'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
     raw_vcenter: &id136
       metadata:
         host: vcenter-us-east.corp.local
@@ -20132,7 +21465,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:47.381480'
+        generated_at: '2026-03-02T23:29:13.032589'
         field_coverage:
           resolved: 25
           total: 28
@@ -22562,6 +23895,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -22597,9 +23934,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -22634,6 +23985,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -22659,6 +24013,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -22666,39 +24023,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -22706,39 +24088,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -22746,49 +24148,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -22796,34 +24215,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -22831,32 +24259,176 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []
   vcenter-prod:
+    stig_vcsa:
+      metadata:
+        host: null
+        audit_type: stig
+        timestamp: '2026-03-02T00:00:00+00:00'
+        generated_at: '2026-03-02T23:29:12.314063'
+      health: CRITICAL
+      summary:
+        total: 3
+        critical_count: 1
+        warning_count: 0
+        info_count: 0
+        by_category:
+          security_compliance: 1
+      alerts:
+      - severity: CRITICAL
+        category: security_compliance
+        message: 'STIG Violation: The vCenter Server must use TLS 1.2, at a minimum,
+          to protect the confidentiality of sensitive data during electronic dissemination
+          using remote access.'
+        detail:
+          rule_id: V-256318
+          description: 'At the command prompt on the vCenter Server Appliance, run
+            the following command:
+
+
+            # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc
+            scan
+
+
+            If the output indicates versions of TLS other than 1.2 are enabled, this
+            is a finding.'
+          original_severity: HIGH
+          target_type: vcsa
+        affected_items: []
+        recommendation: null
+        remediation: null
+      target_type: vcsa
+      full_audit:
+      - id: V-256318
+        rule_id: V-256318
+        rule_version: VCSA-70-000009
+        status: open
+        severity: high
+        title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+          of sensitive data during electronic dissemination using remote access.
+        checktext: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+        fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+          commands:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update
+          -p TLSv1.2
+
+
+          vCenter services will be restarted as part of the'
+        description: 'At the command prompt on the vCenter Server Appliance, run the
+          following command:
+
+
+          # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+          If the output indicates versions of TLS other than 1.2 are enabled, this
+          is a finding.'
+      - id: V-256320
+        rule_id: V-256320
+        rule_version: VCSA-70-000024
+        status: pass
+        severity: medium
+        title: The vCenter Server must display the Standard Mandatory DOD Notice and
+          Consent Banner before login.
+        checktext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Login Message.
+
+
+          Click "Edit".
+
+
+          Click the "Show login message" slider to enable.
+
+
+          Configure the "Login message" to "DOD User Agreement".
+
+
+          Click the "Consent checkbox" slider to enable.
+
+
+          Set the "Details of login messa'
+        description: 'From the vSphere Client, go to Administration >> Single Sign
+          On >> Configuration >> Login Message.
+
+
+          If the selection box next to "Show login message" is disabled, "Details
+          of login message" is not configured to the standard DOD User Agreement,
+          or the "Consent checkbox" is disabled, this is a finding'
+      - id: V-256325
+        rule_id: V-256325
+        rule_version: VCSA-70-000069
+        status: na
+        severity: medium
+        title: The vCenter Server passwords must be at least 15 characters in length.
+        checktext: "From the vSphere Client, go to Administration >> Single Sign On\
+          \ >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
+        fixtext: 'From the vSphere Client, go to Administration >> Single Sign On
+          >> Configuration >> Local Accounts >> Password Policy.
+
+
+          Click "Edit".
+
+
+          Set the "Minimum Length" to "15" and click "Save".'
+        description: "From the vSphere Client, go to Administration >> Single Sign\
+          \ On >> Configuration >> Local Accounts >> Password Policy. \n\nThe following\
+          \ password requirement should be set with at least the stated value: \n\n\
+          Minimum Length: 15 \n\nIf this password policy is not configured as stated,\
+          \ this is a finding."
     raw_vcenter: &id229
       metadata:
         host: vcenter-prod
@@ -23391,7 +24963,7 @@ hosts:
         schema_name: vcenter
         platform: vmware
         display_name: VMware vCenter
-        generated_at: '2026-03-01T18:17:47.587276'
+        generated_at: '2026-03-02T23:29:13.380645'
         field_coverage:
           resolved: 25
           total: 28
@@ -23853,6 +25425,10 @@ hosts:
           id: alerts
           title: Active Alerts
           type: alert_panel
+        intro_note:
+          id: intro_note
+          title: VCSA Summary Note
+          type: markdown
         appliance_overview:
           id: appliance_overview
           title: Appliance Overview
@@ -23888,9 +25464,23 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
+        - id: intro_note
+          title: VCSA Summary Note
+          type: markdown
+          layout:
+            width: full
+            row: null
+          content: This report provides a comprehensive health and compliance overview
+            of the VCSA appliance and its managed infrastructure inventory.
         - id: appliance_overview
           title: Appliance Overview
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Version
             field: appliance_version
@@ -23925,6 +25515,9 @@ hosts:
         - id: inventory_summary
           title: Inventory Summary
           type: key_value
+          layout:
+            width: half
+            row: null
           fields:
           - label: Datacenters
             field: datacenter_count
@@ -23950,6 +25543,9 @@ hosts:
         - id: datastores
           title: Datastores
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: datastores
           columns:
           - label: Name
@@ -23957,39 +25553,64 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Type
             field: type
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Capacity (GB)
             field: capacity_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Free (GB)
             field: free_gb
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Used %
             field: used_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 90.0
+              css_class: sv-critical
+            - condition:
+                op: gt
+                field: used_pct
+                threshold: 75.0
+              css_class: sv-warning
           - label: Accessible
             field: accessible
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq
+                field: accessible
+                threshold: 0.0
+              css_class: sv-critical
           - label: Maintenance
             field: maintenanceMode
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: clusters
           title: Clusters
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: clusters
           columns:
           - label: Name
@@ -23997,39 +25618,59 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Datacenter
             field: datacenter
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: DRS
             field: drs_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: HA
             field: ha_enabled
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Hosts
             field: host_count
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: CPU %
             field: cpu_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: cpu_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
           - label: Mem %
             field: mem_usage_pct
             badge: false
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: gt
+                field: mem_usage_pct
+                threshold: 85.0
+              css_class: sv-critical
         - id: virtual_machines
           title: Virtual Machines
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: virtual_machines
           columns:
           - label: Name
@@ -24037,49 +25678,66 @@ hosts:
             badge: false
             format: null
             link_field: guest_name
+            style_rules: []
           - label: Power State
             field: power_state
             badge: true
             format: null
             link_field: null
+            style_rules:
+            - condition:
+                op: eq_str
+                field: power_state
+                value: poweredOff
+              css_class: subtle-text
           - label: Tools Status
             field: tools_status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Cluster
             field: cluster
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: IP Address
             field: ip_address
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Memory (MB)
             field: allocated.memory
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: vCPU
             field: allocated.cpu
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Last Backup
             field: backup_info
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: snapshots
           title: Snapshots
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: snapshots
           columns:
           - label: VM
@@ -24087,34 +25745,43 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Owner Email
             field: owner_email
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Snapshot
             field: name
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Created
             field: creation_time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: State
             field: state
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Days Old
             field: days_old
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: active_alarms
           title: Active vCenter Alarms
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: active_alarms
           columns:
           - label: Alarm
@@ -24122,28 +25789,34 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Entity
             field: entity
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Severity
             field: severity
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Time
             field: time
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Description
             field: description
             badge: false
             format: null
             link_field: null
+            style_rules: []

@@ -758,8 +758,27 @@ class TestVcenterSchema:
         assert "vm_tools_not_running" in fired
         # Overall health should be CRITICAL
         assert result["health"] == "CRITICAL"
-        # uptime_days computed correctly (172800s / 86400 = 2.0 days)
-        assert abs(result["fields"]["appliance_uptime_days"] - 2.0) < 0.001
+
+
+class TestPhotonSchema:
+    def test_photon_schema_loads_and_detects_bundle(self) -> None:
+        from pathlib import Path
+        from ncs_reporter.schema_loader import detect_schemas_for_bundle, load_schema_from_file
+
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "photon.yaml"
+        s = load_schema_from_file(schema_path)
+        assert s.name == "photon"
+        assert s.platform == "linux"
+
+        bundle = {
+            "raw_discovery": {
+                "metadata": {"timestamp": "2026-03-02T00:00:00Z"},
+                "data": {"ansible_facts": {"hostname": "photon-01"}},
+            }
+        }
+        detected = detect_schemas_for_bundle(bundle)
+        detected_names = {d.name for d in detected}
+        assert "photon" in detected_names
 
 
 # ---------------------------------------------------------------------------
@@ -983,3 +1002,184 @@ class TestDateThresholdCondition:
         raw = {"last_run": "2026-01-01T00:00:00Z", "ref_time": self.REF}
         result = normalize_from_schema(schema, raw)
         assert any(a["id"] == "date_alert" for a in result["alerts"])
+
+
+# ---------------------------------------------------------------------------
+# TestPipes & Semantic Coercers
+# ---------------------------------------------------------------------------
+
+
+class TestPipes:
+    def test_to_gb(self) -> None:
+        raw = {"bytes": 10737418240}  # 10 GB
+        assert resolve_field("bytes | to_gb", raw) == 10.0
+        assert resolve_field("missing | to_gb", raw) == 0.0
+        assert resolve_field("invalid | to_gb", {"invalid": "abc"}) == 0.0
+
+    def test_to_mb(self) -> None:
+        raw = {"bytes": 10485760}  # 10 MB
+        assert resolve_field("bytes | to_mb", raw) == 10.0
+        assert resolve_field("missing | to_mb", raw) == 0.0
+        assert resolve_field("invalid | to_mb", {"invalid": "abc"}) == 0.0
+
+    def test_to_days(self) -> None:
+        raw = {"secs": 172800}  # 2 days
+        assert resolve_field("secs | to_days", raw) == 2.0
+        assert resolve_field("missing | to_days", raw) == 0.0
+        assert resolve_field("invalid | to_days", {"invalid": "abc"}) == 0.0
+
+
+class TestSemanticTypes:
+    def test_coerce_bytes(self) -> None:
+        from ncs_reporter.normalization.schema_driven import _coerce_bytes
+
+        assert _coerce_bytes(1024) == 1024
+        assert _coerce_bytes("2048.5") == 2048
+
+    def test_coerce_percentage(self) -> None:
+        from ncs_reporter.normalization.schema_driven import _coerce_percentage
+
+        assert _coerce_percentage("85.5") == 85.5
+        assert _coerce_percentage(100) == 100.0
+
+    def test_coerce_datetime(self) -> None:
+        from ncs_reporter.normalization.schema_driven import _coerce_datetime
+
+        assert "2026-03-01T12:00:00+00:00" == _coerce_datetime("2026-03-01T12:00:00Z")
+        assert _coerce_datetime("not-a-date") == "not-a-date"
+
+    def test_coerce_duration(self) -> None:
+        from ncs_reporter.normalization.schema_driven import _coerce_duration
+
+        assert _coerce_duration("123.4") == 123.4
+        assert _coerce_duration(500) == 500.0
+
+
+# ---------------------------------------------------------------------------
+# TestSchemaRefResolution
+# ---------------------------------------------------------------------------
+
+
+class TestSchemaRefResolution:
+    def test_resolve_refs_with_json_pointer(self, tmp_path) -> None:
+        from ncs_reporter.schema_loader import _resolve_refs
+
+        shared_yaml = tmp_path / "shared.yaml"
+        shared_yaml.write_text("fields:\n  uptime: { type: int, fallback: 0 }\n")
+
+        main_dict = {"name": "test", "my_field": {"$ref": "shared.yaml#/fields/uptime"}}
+
+        resolved = _resolve_refs(main_dict, tmp_path / "main.yaml")
+        assert resolved["my_field"]["type"] == "int"
+        assert resolved["my_field"]["fallback"] == 0
+
+    def test_resolve_refs_overrides(self, tmp_path) -> None:
+        from ncs_reporter.schema_loader import _resolve_refs
+
+        shared_yaml = tmp_path / "shared.yaml"
+        shared_yaml.write_text("fields:\n  uptime: { type: int, fallback: 0 }\n")
+
+        main_dict = {
+            "name": "test",
+            "my_field": {
+                "$ref": "shared.yaml#/fields/uptime",
+                "fallback": 99,  # should override the ref
+            },
+        }
+
+        resolved = _resolve_refs(main_dict, tmp_path / "main.yaml")
+        assert resolved["my_field"]["type"] == "int"
+        assert resolved["my_field"]["fallback"] == 99
+
+    def test_resolve_refs_missing_file(self, tmp_path) -> None:
+        from ncs_reporter.schema_loader import _resolve_refs
+
+        main_dict = {"$ref": "nonexistent.yaml"}
+        with pytest.raises(ValueError, match="Schema reference not found"):
+            _resolve_refs(main_dict, tmp_path / "main.yaml")
+
+    def test_resolve_refs_bad_pointer(self, tmp_path) -> None:
+        from ncs_reporter.schema_loader import _resolve_refs
+
+        shared_yaml = tmp_path / "shared.yaml"
+        shared_yaml.write_text("a: 1")
+        main_dict = {"$ref": "shared.yaml#/missing"}
+        with pytest.raises(ValueError, match="Pointer /missing not found"):
+            _resolve_refs(main_dict, tmp_path / "main.yaml")
+
+
+# ---------------------------------------------------------------------------
+# TestWidgetRendering
+# ---------------------------------------------------------------------------
+
+
+class TestWidgetRendering:
+    def test_render_progress_bar_widget(self) -> None:
+        from ncs_reporter.models.report_schema import ProgressBarWidget
+        from ncs_reporter.view_models.generic import _render_widget
+
+        w = ProgressBarWidget(
+            id="prog1",
+            title="Progress",
+            type="progress_bar",
+            field="used_pct",
+            label="used_gb",
+            color="auto",
+            thresholds={75: "yellow", 90: "red"},
+        )
+
+        # Test ok range (below 75)
+        fields = {"used_pct": 50.0, "used_gb": "50 GB"}
+        r1 = _render_widget(w, fields, [])
+        assert r1["percent"] == 50.0
+        assert r1["label"] == "50 GB"
+        assert r1["color"] == "green"
+
+        # Test yellow range (75 to 89)
+        fields2 = {"used_pct": 80.0}
+        r2 = _render_widget(w, fields2, [])
+        assert r2["color"] == "yellow"
+
+        # Test red range (>= 90)
+        fields3 = {"used_pct": 95.0}
+        r3 = _render_widget(w, fields3, [])
+        assert r3["color"] == "red"
+
+        # Test out of bounds clamping
+        fields4 = {"used_pct": 150.0}
+        r4 = _render_widget(w, fields4, [])
+        assert r4["percent"] == 100.0  # clamped
+
+    def test_render_markdown_widget(self) -> None:
+        from ncs_reporter.models.report_schema import MarkdownWidget
+        from ncs_reporter.view_models.generic import _render_widget
+
+        w = MarkdownWidget(id="md1", title="Note", type="markdown", content="**bold**")
+        r = _render_widget(w, {}, [])
+        assert r["content"] == "**bold**"
+
+    def test_conditional_table_styling(self) -> None:
+        from ncs_reporter.models.report_schema import TableWidget, TableColumn, StyleRule, ThresholdCondition
+        from ncs_reporter.view_models.generic import _render_widget
+
+        w = TableWidget(
+            id="t1",
+            title="T1",
+            type="table",
+            rows_field="my_rows",
+            columns=[
+                TableColumn(
+                    label="Status",
+                    field="status",
+                    style_rules=[
+                        StyleRule(condition=ThresholdCondition(op="gt", field="status", threshold=90), css_class="red")
+                    ],
+                )
+            ],
+        )
+
+        fields = {"my_rows": [{"status": 80}, {"status": 95}]}
+        r = _render_widget(w, fields, [])
+
+        assert r["rows"][0][0]["css_class"] == ""  # 80 is not > 90
+        assert r["rows"][1][0]["css_class"] == "red"  # 95 is > 90

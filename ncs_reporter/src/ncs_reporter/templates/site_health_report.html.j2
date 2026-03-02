@@ -46,12 +46,16 @@
             </div>
         </div>
         {% endif %}
+        <div class="nav-search" data-root="./">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
     </div>
 
     <div class="page-header">
         <div>
             <h1>Site Dashboard</h1>
-            <span style="font-size:11px; color:#9db4cc;">Global Fleet Health</span>
+            <span class="page-subtitle">Global Fleet Health</span>
         </div>
         <div class="right">
             {{ site_meta.get('report_date', report_date | default('')) }}
@@ -77,7 +81,7 @@
         <div class="widget-body widget-table-view">
         <table>
             <thead>
-                <tr><th style="width:90px;">Severity</th><th>Message</th></tr>
+                <tr><th class="th-severity">Severity</th><th>Message</th></tr>
             </thead>
             <tbody>
             {% for group in alert_groups %}
@@ -112,19 +116,19 @@
         <table>
             <thead>
                 <tr>
-                    <th>Platform</th>
-                    <th style="width:100px;">Assets</th>
-                    <th style="width:70px;">Alerts</th>
-                    <th style="width:70px;">Alarms</th>
-                    <th style="width:90px;">Status</th>
+                    <th class="sortable">Platform</th>
+                    <th class="th-assets sortable">Assets</th>
+                    <th class="th-alerts sortable">Alerts</th>
+                    <th class="th-alarms sortable">Alarms</th>
+                    <th class="th-status sortable">Status</th>
                 </tr>
             </thead>
             <tbody>
                 <tr class="row-interactive">
-                    <td><a href="{{ linux_platform.get('links', {}).get('fleet_dashboard', 'platform/ubuntu/linux_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">Linux</a></td>
+                    <td><a href="{{ linux_platform.get('links', {}).get('fleet_dashboard', 'platform/linux/ubuntu/linux_fleet_report.html') }}" class="link-strong">Linux</a></td>
                     <td>{{ linux_platform.get('asset_count', 0) }} {{ linux_platform.get('asset_label', 'Nodes') }}</td>
                     <td>{{ linux_platform.get('alert_count', 0) }}</td>
-                    <td style="color:#ccc;">&mdash;</td>
+                    <td class="dash-muted">&mdash;</td>
                     <td>
                         {% set ls = linux_platform.get('status', {}).get('raw', 'OK') %}
                         {% if ls == 'OK' %}<span class="sv-ok">OK</span>
@@ -134,7 +138,7 @@
                     </td>
                 </tr>
                 <tr class="row-interactive">
-                    <td><a href="{{ vmware_platform.get('links', {}).get('fleet_dashboard', 'platform/vcenter/vcenter_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">VMware vCenter</a></td>
+                    <td><a href="{{ vmware_platform.get('links', {}).get('fleet_dashboard', 'platform/vmware/vcenter/vcenter_fleet_report.html') }}" class="link-strong">VMware vCenter</a></td>
                     <td>{{ vmware_platform.get('asset_count', 0) }} {{ vmware_platform.get('asset_label', 'vCenters') }}</td>
                     <td>{{ vmware_platform.get('alert_count', 0) }}</td>
                     <td>{{ vmware_platform.get('alarm_count', 0) }}</td>
@@ -147,10 +151,10 @@
                     </td>
                 </tr>
                 <tr class="row-interactive">
-                    <td><a href="{{ windows_platform.get('links', {}).get('fleet_dashboard', 'platform/windows/windows_fleet_report.html') }}" style="font-weight:bold; color:#00c; text-decoration:none;">Windows</a></td>
+                    <td><a href="{{ windows_platform.get('links', {}).get('fleet_dashboard', 'platform/windows/windows_fleet_report.html') }}" class="link-strong">Windows</a></td>
                     <td>{{ windows_platform.get('asset_count', 0) }} {{ windows_platform.get('asset_label', 'Nodes') }}</td>
                     <td>{{ windows_platform.get('alert_count', 0) }}</td>
-                    <td style="color:#ccc;">&mdash;</td>
+                    <td class="dash-muted">&mdash;</td>
                     <td>
                         {% set ws = windows_platform.get('status', {}).get('raw', 'OK') %}
                         {% if ws == 'OK' %}<span class="sv-ok">OK</span>
@@ -173,17 +177,17 @@
         <div class="widget-body widget-table-view">
         <table>
             <tbody>
-                <tr><td style="width:50%; color:#444;">Linux Nodes</td><td><strong>{{ linux_platform.get('asset_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">Windows Nodes</td><td><strong>{{ windows_platform.get('asset_count', 0) }}</strong></td></tr>
+                <tr><td class="kv-label-wide subtle-text">Linux Nodes</td><td><strong>{{ linux_platform.get('asset_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Windows Nodes</td><td><strong>{{ windows_platform.get('asset_count', 0) }}</strong></td></tr>
                 {% if infra.get('vcenter_count', 0) > 0 %}
-                <tr><td style="border-top:1px solid #eee; color:#444;">vCenters</td><td><strong>{{ infra.get('vcenter_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">Datacenters</td><td><strong>{{ infra.get('datacenter_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">Clusters</td><td><strong>{{ infra.get('cluster_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">ESXi Hosts</td><td><strong>{{ infra.get('esxi_host_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">Virtual Machines</td><td><strong>{{ infra.get('vm_count', 0) }}</strong></td></tr>
-                <tr><td style="color:#444;">Datastores</td><td><strong>{{ infra.get('datastore_count', 0) }}</strong></td></tr>
+                <tr><td class="kv-divider-top subtle-text">vCenters</td><td><strong>{{ infra.get('vcenter_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Datacenters</td><td><strong>{{ infra.get('datacenter_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Clusters</td><td><strong>{{ infra.get('cluster_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">ESXi Hosts</td><td><strong>{{ infra.get('esxi_host_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Virtual Machines</td><td><strong>{{ infra.get('vm_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Datastores</td><td><strong>{{ infra.get('datastore_count', 0) }}</strong></td></tr>
                 {% if infra.get('snapshot_count', 0) > 0 %}
-                <tr><td style="color:#444;">Snapshots</td><td><strong>{{ infra.get('snapshot_count', 0) }}</strong></td></tr>
+                <tr><td class="subtle-text">Snapshots</td><td><strong>{{ infra.get('snapshot_count', 0) }}</strong></td></tr>
                 {% endif %}
                 {% endif %}
             </tbody>
@@ -197,7 +201,7 @@
         <div class="widget-titlebar">
             <span class="widget-title">
                 STIG Compliance Overview
-                <span style="font-weight:normal; margin-left:10px; font-size:11px;">
+                <span class="widget-title-meta">
                     <a href="stig_fleet_report.html" class="titlebar-link">View Detailed STIG Fleet Report &rsaquo;</a>
                 </span>
             </span>
@@ -214,11 +218,11 @@
                     <div class="widget-body widget-table-view">
                         <table>
                             <tbody>
-                                <tr><td style="width:55%; color:#444;">STIG Hosts Audited</td><td><strong>{{ stig_fleet_totals.get('hosts', 0) }}</strong></td></tr>
-                                <tr><td style="color:#444;">STIG Open Findings</td><td><strong>{{ stig_fleet_totals.get('findings_open', 0) }}</strong></td></tr>
-                                {% if stig_fleet_totals.get('critical', 0) > 0 %}<tr><td style="color:#444;">CAT I findings</td><td><span class="sv-critical">{{ stig_fleet_totals.get('critical', 0) }}</span></td></tr>{% endif %}
-                                {% if stig_fleet_totals.get('warning', 0) > 0 %}<tr><td style="color:#444;">CAT II findings</td><td><span class="sv-warning">{{ stig_fleet_totals.get('warning', 0) }}</span></td></tr>{% endif %}
-                                {% if stig_fleet_totals.get('info', 0) > 0 %}<tr><td style="color:#444;">CAT III findings</td><td><span class="sv-info">{{ stig_fleet_totals.get('info', 0) }}</span></td></tr>{% endif %}
+                                <tr><td class="kv-label-wider subtle-text">STIG Hosts Audited</td><td><strong>{{ stig_fleet_totals.get('hosts', 0) }}</strong></td></tr>
+                                <tr><td class="subtle-text">STIG Open Findings</td><td><strong>{{ stig_fleet_totals.get('findings_open', 0) }}</strong></td></tr>
+                                {% if stig_fleet_totals.get('critical', 0) > 0 %}<tr><td class="subtle-text">CAT I findings</td><td><span class="sv-critical">{{ stig_fleet_totals.get('critical', 0) }}</span></td></tr>{% endif %}
+                                {% if stig_fleet_totals.get('warning', 0) > 0 %}<tr><td class="subtle-text">CAT II findings</td><td><span class="sv-warning">{{ stig_fleet_totals.get('warning', 0) }}</span></td></tr>{% endif %}
+                                {% if stig_fleet_totals.get('info', 0) > 0 %}<tr><td class="subtle-text">CAT III findings</td><td><span class="sv-info">{{ stig_fleet_totals.get('info', 0) }}</span></td></tr>{% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -233,7 +237,7 @@
                     <div class="widget-body widget-table-view">
                         <table>
                             <thead>
-                                <tr><th>Platform</th><th style="width:80px;">Hosts</th><th style="width:80px;">Open</th></tr>
+                                <tr><th>Platform</th><th class="th-hosts">Hosts</th><th class="th-open">Open</th></tr>
                             </thead>
                             <tbody>
                                 {% for platform_name, pdata in stig_by_platform.items() %}

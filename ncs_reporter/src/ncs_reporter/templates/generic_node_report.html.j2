@@ -45,25 +45,42 @@
 
         {% if nav.get('tree_siblings') %}
         <div class="nav-tree">
-            <span class="tree-label">{{ meta.get('host', 'host') }}</span>
+            <span class="tree-label">{{ meta.get('host') }}</span>
             <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown" style="max-height: 400px; overflow-y: auto;">
+            <div class="nav-dropdown nav-dropdown-scroll">
                 <div class="dropdown-group">Hosts</div>
                 {% for s in nav.tree_siblings %}
                 <a href="{{ s.report }}" class="{{ 'active' if s.name == meta.get('host') else '' }}">{{ s.name }}</a>
                 {% endfor %}
             </div>
         </div>
+        {% if nav.history %}
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">History</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">Report Versions</div>
+                {% for h in nav.history %}
+                <a href="{{ h.url }}">{{ h.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         {% else %}
         {{ meta.get('host', 'host') }}
         {% endif %}
+        <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
     </div>
     {% endif %}
 
     <div class="page-header">
         <div>
             <h1>{{ meta.get('display_name', 'Report') }} &mdash; <code>{{ meta.get('host', 'host') }}</code></h1>
-            <span style="font-size:11px; color:#9db4cc;">Platform: {{ meta.get('platform', '') | upper }}</span>
+            <span class="page-subtitle">Platform: {{ meta.get('platform', '') | upper }}</span>
         </div>
         <div class="right">
             {% if health == 'OK' %}<span class="health-ok">OK</span>
@@ -82,105 +99,132 @@
         </div>
     </div>
 
-    {# --- Data widgets --- #}
+    <div class="widget-grid-container" style="display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
     {% for widget in widgets %}
-    <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.id }}">
-        <div class="widget-titlebar">
-            {% if widget.type == 'alert_panel' %}
-            <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+        {% set w_width = widget.get('layout', {}).get('width', 'full') %}
+        {% set flex_basis = '100%' %}
+        {% if w_width == 'half' %}{% set flex_basis = 'calc(50% - 7px)' %}
+        {% elif w_width == 'third' %}{% set flex_basis = 'calc(33.333% - 9.33px)' %}
+        {% elif w_width == 'quarter' %}{% set flex_basis = 'calc(25% - 10.5px)' %}
+        {% endif %}
+
+        <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.id }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
+            <div class="widget-titlebar">
+                {% if widget.type == 'alert_panel' %}
+                <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+                {% else %}
+                <span class="widget-title">{{ widget.title }}</span>
+                {% endif %}
+                <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.title }}"></button>
+            </div>
+            
+            {% if widget.type == 'progress_bar' %}
+            <div class="widget-body" style="padding: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; font-weight: 600;">
+                    <span>{{ widget.label }}</span>
+                    <span>{{ widget.percent }}%</span>
+                </div>
+                <div style="background: var(--line); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="width: {{ widget.percent }}%; height: 100%; background: var(--{{ widget.color|default('brand') }}); border-radius: 4px; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+            
+            {% elif widget.type == 'markdown' %}
+            <div class="widget-body details-description" style="margin-bottom: 0; border: 1px solid var(--line); border-top: none; border-radius: 0 0 10px 10px;">
+                {{ widget.content }}
+            </div>
+            
             {% else %}
-            <span class="widget-title">{{ widget.title }}</span>
-            {% endif %}
-            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.title }}"></button>
-        </div>
-        <div class="widget-body widget-table-view">
+            <div class="widget-body widget-table-view">
 
-        {% if widget.type == 'alert_panel' %}
-        {% if alerts %}
-        <table>
-            <thead>
-                <tr><th style="width:90px;">Severity</th><th style="width:160px;">Category</th><th>Message</th></tr>
-            </thead>
-            <tbody>
-            {% for alert in alerts %}
-                <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
-                    <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }}" style="white-space:nowrap;">{{ alert.severity }}</td>
-                    <td style="white-space:nowrap; font-size:11px; color:#555; text-transform:uppercase; font-weight:600;">{{ alert.get('category', '') }}</td>
-                    <td>
-                        {{ alert.get('message', '') }}
-                        {% if alert.get('detail') %}
-                        <div class="alert-details">
-                            {% for dk, dv in alert.detail.items() %}
-                            <span><strong>{{ dk }}:</strong> {{ dv }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="no-data">No active alerts.</div>
-        {% endif %}
-
-        {% elif widget.type == 'key_value' %}
-        {% if widget.get('rows', []) %}
-        <table class="kv">
-            <tbody>
-            {% for row in widget.rows %}
-                <tr><td>{{ row.label }}</td><td>{{ row.value }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="no-data">No data.</div>
-        {% endif %}
-
-        {% elif widget.type == 'table' %}
-        {% if widget.get('rows', []) %}
-        <table>
-            <thead>
-                <tr>
-                {% for col in widget.get('columns', []) %}
-                    <th>{{ col.label }}</th>
+            {% if widget.type == 'alert_panel' %}
+            {% if alerts %}
+            <table>
+                <thead>
+                    <tr><th class="th-severity">Severity</th><th class="th-category">Category</th><th>Message</th></tr>
+                </thead>
+                <tbody>
+                {% for alert in alerts %}
+                    <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
+                        <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} nowrap">{{ alert.severity }}</td>
+                        <td class="nowrap subtle-text strong-text alert-category">{{ alert.get('category', '') }}</td>
+                        <td>
+                            {{ alert.get('message', '') }}
+                            {% if alert.get('detail') %}
+                            <div class="alert-details">
+                                {% for dk, dv in alert.detail.items() %}
+                                <span><strong>{{ dk }}:</strong> {{ dv }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-            {% for row in widget.rows %}
-                <tr>
-                {% for cell in row %}
-                    <td>
-                    {% if cell.link %}<a href="{{ cell.link }}" style="color:#00c; text-decoration:none;">{% endif %}
-                    {% if cell.badge %}
-                        {% if cell.value | lower in ('ok', 'up', 'running', 'connected', 'healthy') %}
-                            <span class="sv-ok">{{ cell.value }}</span>
-                        {% elif cell.value | lower in ('critical', 'down', 'error', 'failed') %}
-                            <span class="sv-critical">{{ cell.value }}</span>
-                        {% elif cell.value | lower in ('warning', 'degraded', 'unknown') %}
-                            <span class="sv-warning">{{ cell.value }}</span>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No active alerts.</div>
+            {% endif %}
+
+            {% elif widget.type == 'key_value' %}
+            {% if widget.get('rows', []) %}
+            <table class="kv">
+                <tbody>
+                {% for row in widget.rows %}
+                    <tr><td>{{ row.label }}</td><td>{{ row.value }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No data.</div>
+            {% endif %}
+
+            {% elif widget.type == 'table' %}
+            {% if widget.get('rows', []) %}
+            <table>
+                <thead>
+                    <tr>
+                    {% for col in widget.get('columns', []) %}
+                        <th class="sortable">{{ col.label }}</th>
+                    {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in widget.rows %}
+                    <tr class="row-interactive">
+                    {% for cell in row %}
+                        <td class="{{ cell.css_class | default('') }}">
+                        {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
+                        {% if cell.badge %}
+                            {% if cell.value | lower in ('ok', 'up', 'running', 'connected', 'healthy') %}
+                                <span class="sv-ok">{{ cell.value }}</span>
+                            {% elif cell.value | lower in ('critical', 'down', 'error', 'failed') %}
+                                <span class="sv-critical">{{ cell.value }}</span>
+                            {% elif cell.value | lower in ('warning', 'degraded', 'unknown') %}
+                                <span class="sv-warning">{{ cell.value }}</span>
+                            {% else %}
+                                {{ cell.value }}
+                            {% endif %}
                         {% else %}
                             {{ cell.value }}
                         {% endif %}
-                    {% else %}
-                        {{ cell.value }}
-                    {% endif %}
-                    {% if cell.link %}</a>{% endif %}
-                    </td>
+                        {% if cell.link %}</a>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
                 {% endfor %}
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="no-data">No rows.</div>
-        {% endif %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No rows.</div>
+            {% endif %}
 
-        {% endif %}
+            {% endif %}
+            </div>
+            {% endif %}
         </div>
-    </div>
     {% endfor %}
+    </div>
 
 </div>
 <script>{% include 'collapsible.js' %}</script>

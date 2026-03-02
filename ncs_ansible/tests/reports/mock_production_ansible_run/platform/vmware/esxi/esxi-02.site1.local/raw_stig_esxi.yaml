@@ -1,0 +1,752 @@
+data:
+  - checktext: 'For environments that do not use vCenter server to manage ESXi, this
+      is not applicable.
+
+
+      From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Security Profile.
+
+
+      Scroll down to "Lockdown Mode" and verify it is set to "Enabled" (Normal or
+      Strict).
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Select Name,@{N="Lockdown";E={$_.Extensiondata.Config.LockdownMode}}
+
+
+      If "Lockdown Mode" is disabled, this is a finding.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Security Profile >> Lockdown
+      Mode.
+
+
+      Click "Edit...". Select the "Normal" or "Strict" radio buttons.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      commands:
+
+
+      $level = "lockdownNormal" OR "lockdownStrict"
+
+      $vmhost = Get-VMHost -Name <hostname> | Get-View
+
+      $lockdown = Get-View $vmhost.ConfigManager.HostAccessManager
+
+      $lockdown.ChangeLockdownMode($level)
+
+
+      Note: In strict lockdown mode, the Direct Console User Interface (DCUI) service
+      is stopped. If the connection to vCenter Server is lost and the vSphere Client
+      is no longer available, the ESXi host becomes inaccessible.'
+    id: V-256375
+    rule_id: SV-256375r958398
+    rule_version: ESXI-70-000001
+    severity: medium
+    status: na
+    title: Access to the ESXi host must be limited by enabling lockdown mode.
+  - checktext: 'For environments that do not use vCenter server to manage ESXi, this
+      is not applicable.
+
+
+      From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "DCUI.Access" value and verify only the root user is listed.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name DCUI.Access and verify it is set to root.
+
+
+      If the "DCUI.Access" is not restricted to "root", this is a finding.
+
+
+      Note: This list is only for local user accounts and should only contain the
+      root user.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Click "Edit". Select the "DCUI.Access" value and configure it to "root".
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name DCUI.Access | Set-AdvancedSetting -Value
+      "root"'
+    id: V-256376
+    rule_id: SV-256376r959010
+    rule_version: ESXI-70-000002
+    severity: medium
+    status: failed
+    title: The ESXi host must verify the DCUI.Access list.
+  - checktext: 'For environments that do not use vCenter server to manage ESXi, this
+      is not applicable.
+
+
+      From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Security Profile.
+
+
+      Under "Lockdown Mode", review the Exception Users list.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      script:
+
+
+      $vmhost = Get-VMHost | Get-View
+
+      $lockdown = Get-View $vmhost.ConfigManager.HostAccessManager
+
+      $lockdown.QueryLockdownExceptions()
+
+
+      If the Exception Users list contains accounts that do not require special permissions,
+      this is a finding.
+
+
+      Note: The Exception Users list is empty by default and should remain that way
+      except under site-specific circumstances.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Security Profile.
+
+
+      Under "Lockdown Mode", click "Edit" and remove unnecessary users from the Exception
+      Users list.'
+    id: V-256377
+    rule_id: SV-256377r959010
+    rule_version: ESXI-70-000003
+    severity: medium
+    status: pass
+    title: The ESXi host must verify the exception users list for lockdown mode.
+  - checktext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "Syslog.global.logHost" value and verify it is set to a site-specific
+      syslog server.
+
+
+      Follow the conventions shown below:
+
+
+      udp://<IP/FQDN>:514
+
+      tcp://<IP/FQDN>:514
+
+      ssl://<IP/FQDN>:1514
+
+
+      Multiple servers can be specified when separated by commas.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Syslog.global.logHost
+
+
+      If the "Syslog.global.logHost" setting is not set to a valid, site-specific
+      syslog server, this is a finding.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Click "Edit". Select the "Syslog.global.logHost" value and configure it to a
+      site-specific syslog server.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Syslog.global.logHost | Set-AdvancedSetting
+      -Value "<syslog server hostname>"'
+    id: V-256378
+    rule_id: SV-256378r958406
+    rule_version: ESXI-70-000004
+    severity: medium
+    status: na
+    title: Remote logging for ESXi hosts must be configured.
+  - checktext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "Security.AccountLockFailures" value and verify it is set to "3".
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Security.AccountLockFailures
+
+
+      If the "Security.AccountLockFailures" setting is set to a value other than "3",
+      this is a finding.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Click "Edit". Select the "Security.AccountLockFailures" value and configure
+      it to "3".
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Security.AccountLockFailures | Set-AdvancedSetting
+      -Value 3'
+    id: V-256379
+    rule_id: SV-256379r958388
+    rule_version: ESXI-70-000005
+    severity: medium
+    status: failed
+    title: The ESXi host must enforce the limit of three consecutive invalid logon
+      attempts by a user.
+  - checktext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "Security.AccountUnlockTime" value and verify it is set to "900".
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Security.AccountUnlockTime
+
+
+      If the "Security.AccountUnlockTime" setting is set to a value other than "900",
+      this is a finding.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Click "Edit". Select the "Security.AccountUnlockTime" value and configure it
+      to "900".
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Security.AccountUnlockTime | Set-AdvancedSetting
+      -Value 900'
+    id: V-256380
+    rule_id: SV-256380r958736
+    rule_version: ESXI-70-000006
+    severity: medium
+    status: pass
+    title: The ESXi host must enforce an unlock timeout of 15 minutes after a user
+      account is locked out.
+  - checktext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "Annotations.WelcomeMessage" value and verify it contains the DOD
+      logon banner below.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Annotations.WelcomeMessage
+
+
+      Banner:
+
+
+      {bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{hostname}
+      , {ip}{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{esxproduct}
+      {esxversion}{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{memory}
+      RAM{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:white}        {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  You are accessing a U.S.
+      Government (USG) Information System (IS) that is provided for USG-authorized
+      use only. By      {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}  using
+      this IS (which includes any device attached to this IS), you consent to the
+      following conditions:                 {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       The USG routinely
+      intercepts and monitors communications on this IS for purposes including, but
+      not limited     {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          to,
+      penetration testing, COMSEC monitoring, network operations and defense, personnel
+      misconduct (PM), law      {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          enforcement
+      (LE), and counterintelligence (CI) investigations.                                                  {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       At any time, the
+      USG may inspect and seize data stored on this IS.                                              {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       Communications using,
+      or data stored on, this IS are not private, are subject to routine monitoring,            {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}          interception, and
+      search, and may be disclosed or used for any USG-authorized purpose.                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       This IS includes
+      security measures (e.g., authentication and access controls) to protect USG
+      interests--not     {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          for
+      your personal benefit or privacy.                                                                           {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       Notwithstanding the
+      above, using this IS does not constitute consent to PM, LE or CI investigative
+      searching    {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          or
+      monitoring of the content of privileged communications, or work product, related
+      to personal representation  {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          or
+      services by attorneys, psychotherapists, or clergy, and their assistants. Such
+      communications and work       {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          product
+      are private and confidential. See User Agreement for details.                                           {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:dark-grey}{color:white}  <F2> Accept Conditions
+      and Customize System / View Logs{/align}{align:right}<F12> Accept Conditions
+      and Shut Down/Restart  {bgcolor:black} {/color}{/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}
+
+
+      If the "Annotations.WelcomeMessage" setting is not set to the specified banner,
+      this is a finding.'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings. Click
+      "Edit".
+
+
+      Select the "Annotations.WelcomeMessage" value and set it to the following. Click
+      "OK".
+
+
+      {bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{hostname}
+      , {ip}{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{esxproduct}
+      {esxversion}{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:yellow}{memory}
+      RAM{/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:black}{color:white}        {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  You are accessing a U.S.
+      Government (USG) Information System (IS) that is provided for USG-authorized
+      use only. By      {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}  using
+      this IS (which includes any device attached to this IS), you consent to the
+      following conditions:                 {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       The USG routinely
+      intercepts and monitors communications on this IS for purposes including, but
+      not limited     {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          to,
+      penetration testing, COMSEC monitoring, network operations and defense, personnel
+      misconduct (PM), law      {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          enforcement
+      (LE), and counterintelligence (CI) investigations.                                                  {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       At any time, the
+      USG may inspect and seize data stored on this IS.                                              {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       Communications using,
+      or data stored on, this IS are not private, are subject to routine monitoring,            {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}          interception, and
+      search, and may be disclosed or used for any USG-authorized purpose.                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       This IS includes
+      security measures (e.g., authentication and access controls) to protect USG
+      interests--not     {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          for
+      your personal benefit or privacy.                                                                           {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}  -       Notwithstanding the
+      above, using this IS does not constitute consent to PM, LE or CI investigative
+      searching    {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          or
+      monitoring of the content of privileged communications, or work product, related
+      to personal representation  {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          or
+      services by attorneys, psychotherapists, or clergy, and their assistants. Such
+      communications and work       {/color}{/bgcolor}{/align}\n{bgcolor:black} {/color}{align:left}{bgcolor:yellow}{color:black}          product
+      are private and confidential. See User Agreement for details.                                           {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:yellow}{color:black}                                                                                                                          {/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}\n{bgcolor:black}
+      {/color}{align:left}{bgcolor:dark-grey}{color:white}  <F2> Accept Conditions
+      and Customize System / View Logs{/align}{align:right}<F12> Accept Conditions
+      and Shut Down/Restart  {bgcolor:black} {/color}{/color}{/bgcolor}{/align}\n{bgcolor:black}
+      {/color}{bgcolor:dark-grey}{color:black}                                                                                                                          {/color}{/bgcolor}
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Annotations.WelcomeMessage | Set-AdvancedSetting
+      -Value "<Banner text above>"'
+    id: V-256381
+    rule_id: SV-256381r958390
+    rule_version: ESXI-70-000007
+    severity: medium
+    status: na
+    title: The ESXi host must display the Standard Mandatory DOD Notice and Consent
+      Banner before granting access to the system via the Direct Console User Interface
+      (DCUI).
+  - checktext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Select the "Config.Etc.issue" value and verify it is set to the DOD logon banner
+      below.
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Config.Etc.issue
+
+
+      If the "Config.Etc.issue" setting (/etc/issue file) does not contain the logon
+      banner exactly as shown below, this is a finding.
+
+
+      "You are accessing a U.S. Government (USG) Information System (IS) that is provided
+      for USG-authorized use only. By using this IS (which includes any device attached
+      to this IS), you consent to the following conditions: -The USG routinely intercepts
+      and monitors communications on this IS for purposes including, but not limited
+      to, penetration testing, COMSEC monitoring, network operations and defense,
+      personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI)
+      investigations. -At any time, the USG may inspect and seize data stored on this
+      IS. -Communications using, or data stored on, this IS are not private, are subject
+      to routine monitoring, interception, and search, and may be disclosed or used
+      for any USG-authorized purpose. -This IS includes security measures (e.g., authentication
+      and access controls) to protect USG interests--not for your personal benefit
+      or privacy. -Notwithstanding the above, using this IS does not constitute consent
+      to PM, LE or CI investigative searching or monitoring of the content of privileged
+      communications, or work product, related to personal representation or services
+      by attorneys, psychotherapists, or clergy, and their assistants. Such communications
+      and work product are private and confidential. See User Agreement for details."'
+    fixtext: 'From the vSphere Client, go to Hosts and Clusters.
+
+
+      Select the ESXi Host >> Configure >> System >> Advanced System Settings.
+
+
+      Click "Edit". Select the "Config.Etc.issue" value and set it to the following:
+
+
+      "You are accessing a U.S. Government (USG) Information System (IS) that is provided
+      for USG-authorized use only. By using this IS (which includes any device attached
+      to this IS), you consent to the following conditions: -The USG routinely intercepts
+      and monitors communications on this IS for purposes including, but not limited
+      to, penetration testing, COMSEC monitoring, network operations and defense,
+      personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI)
+      investigations. -At any time, the USG may inspect and seize data stored on this
+      IS. -Communications using, or data stored on, this IS are not private, are subject
+      to routine monitoring, interception, and search, and may be disclosed or used
+      for any USG-authorized purpose. -This IS includes security measures (e.g., authentication
+      and access controls) to protect USG interests--not for your personal benefit
+      or privacy. -Notwithstanding the above, using this IS does not constitute consent
+      to PM, LE or CI investigative searching or monitoring of the content of privileged
+      communications, or work product, related to personal representation or services
+      by attorneys, psychotherapists, or clergy, and their assistants. Such communications
+      and work product are private and confidential. See User Agreement for details."
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      command:
+
+
+      Get-VMHost | Get-AdvancedSetting -Name Config.Etc.issue | Set-AdvancedSetting
+      -Value "<insert logon banner>"'
+    id: V-256382
+    rule_id: SV-256382r958390
+    rule_version: ESXI-70-000008
+    severity: medium
+    status: failed
+    title: The ESXi host must display the Standard Mandatory DOD Notice and Consent
+      Banner before granting access to the system via Secure Shell (SSH).
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # /usr/lib/vmware/openssh/bin/sshd -T|grep banner
+
+
+      Expected result:
+
+
+      banner /etc/issue
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, add or correct the following line in "/etc/ssh/sshd_config":
+
+
+      Banner /etc/issue'
+    id: V-256383
+    rule_id: SV-256383r958390
+    rule_version: ESXI-70-000009
+    severity: medium
+    status: pass
+    title: The ESXi host SSH daemon must be configured with the DOD logon banner.
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # esxcli system security fips140 ssh get
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      commands:
+
+
+      $esxcli = Get-EsxCli -v2
+
+      $esxcli.system.security.fips140.ssh.get.invoke()
+
+
+      Expected result:
+
+
+      Enabled: true
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, run the following command:
+
+
+      # esxcli system security fips140 ssh set -e true
+
+
+      or
+
+
+      From a PowerCLI command prompt while connected to the ESXi host, run the following
+      commands:
+
+
+      $esxcli = Get-EsxCli -v2
+
+      $arguments = $esxcli.system.security.fips140.ssh.set.CreateArgs()
+
+      $arguments.enable = $true
+
+      $esxcli.system.security.fips140.ssh.set.Invoke($arguments)'
+    id: V-256384
+    rule_id: SV-256384r958408
+    rule_version: ESXI-70-000010
+    severity: medium
+    status: na
+    title: The ESXi host Secure Shell (SSH) daemon must use FIPS 140-2 validated cryptographic
+      modules to protect the confidentiality of remote access sessions.
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # /usr/lib/vmware/openssh/bin/sshd -T|grep ignorerhosts
+
+
+      Expected result:
+
+
+      ignorerhosts yes
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, add or correct the following line in "/etc/ssh/sshd_config":
+
+
+      IgnoreRhosts yes'
+    id: V-256385
+    rule_id: SV-256385r984206
+    rule_version: ESXI-70-000012
+    severity: medium
+    status: failed
+    title: The ESXi host Secure Shell (SSH) daemon must ignore ".rhosts" files.
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # /usr/lib/vmware/openssh/bin/sshd -T|grep hostbasedauthentication
+
+
+      Expected result:
+
+
+      hostbasedauthentication no
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, add or correct the following line in "/etc/ssh/sshd_config":
+
+
+      HostbasedAuthentication no'
+    id: V-256386
+    rule_id: SV-256386r959010
+    rule_version: ESXI-70-000013
+    severity: medium
+    status: pass
+    title: The ESXi host Secure Shell (SSH) daemon must not allow host-based authentication.
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # /usr/lib/vmware/openssh/bin/sshd -T|grep permitemptypasswords
+
+
+      Expected result:
+
+
+      permitemptypasswords no
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, add or correct the following line in "/etc/ssh/sshd_config":
+
+
+      PermitEmptyPasswords no'
+    id: V-256387
+    rule_id: SV-256387r959010
+    rule_version: ESXI-70-000015
+    severity: low
+    status: na
+    title: The ESXi host Secure Shell (SSH) daemon must not allow authentication using
+      an empty password.
+  - checktext: 'From an ESXi shell, run the following command:
+
+
+      # /usr/lib/vmware/openssh/bin/sshd -T|grep permituserenvironment
+
+
+      Expected result:
+
+
+      permituserenvironment no
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'From an ESXi shell, add or correct the following line in "/etc/ssh/sshd_config":
+
+
+      PermitUserEnvironment no'
+    id: V-256388
+    rule_id: SV-256388r959010
+    rule_version: ESXI-70-000016
+    severity: medium
+    status: failed
+    title: The ESXi host Secure Shell (SSH) daemon must not permit user environment
+      settings.
+metadata:
+  audit_type: stig_esxi
+  engine: ncs_collector_callback
+  host: esxi-02.site1.local
+  raw_type: stig_esxi
+  timestamp: '2026-03-02T23:23:05Z'
+target_type: esxi

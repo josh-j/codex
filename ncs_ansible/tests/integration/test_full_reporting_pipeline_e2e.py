@@ -2,8 +2,8 @@
 
 This validates end-to-end report generation for:
 - platform reports (linux/vmware/windows)
-- STIG reports (esxi/vm/ubuntu/windows)
-- CKLB artifacts (esxi/vm)
+- STIG reports (esxi/vm/vcsa/ubuntu/windows)
+- CKLB artifacts (esxi/vm/vcsa)
 """
 
 from __future__ import annotations
@@ -126,21 +126,26 @@ class TestFullReportingPipelineE2E(unittest.TestCase):
         windows_host = "win-01"
         esxi_host = "esxi-01"
         vm_host = "vm-01"
+        vcsa_host = "vcsa-01"
 
         linux_dir = self.platform_root / "linux" / "ubuntu" / linux_host
         linux_dir.mkdir(parents=True)
         (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw(linux_host)))
         (linux_dir / "raw_stig_ubuntu.yaml").write_text(yaml.dump(_stig_raw(linux_host, "stig_ubuntu", "ubuntu")))
 
-        vcenter_dir = self.platform_root / "vmware" / "vcenter" / vcenter_host
+        vcenter_dir = self.platform_root / "vmware" / "vcenter" / "vcsa" / vcenter_host
         vcenter_dir.mkdir(parents=True)
         (vcenter_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vcenter_raw(vcenter_host)))
 
-        esxi_dir = self.platform_root / "vmware" / esxi_host
+        vcsa_dir = self.platform_root / "vmware" / "vcenter" / "vcsa" / vcsa_host
+        vcsa_dir.mkdir(parents=True)
+        (vcsa_dir / "raw_stig_vcsa.yaml").write_text(yaml.dump(_stig_raw(vcsa_host, "stig_vcsa", "vcsa")))
+
+        esxi_dir = self.platform_root / "vmware" / "esxi" / esxi_host
         esxi_dir.mkdir(parents=True)
         (esxi_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_stig_raw(esxi_host, "stig_esxi", "esxi")))
 
-        vm_dir = self.platform_root / "vmware" / vm_host
+        vm_dir = self.platform_root / "vmware" / "vm" / vm_host
         vm_dir.mkdir(parents=True)
         (vm_dir / "raw_stig_vm.yaml").write_text(yaml.dump(_stig_raw(vm_host, "stig_vm", "vm")))
 
@@ -152,7 +157,7 @@ class TestFullReportingPipelineE2E(unittest.TestCase):
         )
 
         groups = {
-            "all": [linux_host, vcenter_host, windows_host, esxi_host, vm_host],
+            "all": [linux_host, vcenter_host, windows_host, esxi_host, vm_host, vcsa_host],
             "ubuntu_servers": [linux_host],
             "vcenters": [vcenter_host],
             "windows_servers": [windows_host],
@@ -187,12 +192,16 @@ class TestFullReportingPipelineE2E(unittest.TestCase):
         # Site + fleet reports
         self.assertTrue((self.reports_root / "site_health_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter" / "vcenter_fleet_report.html").exists())
+        self.assertTrue(
+            (self.reports_root / "platform" / "vmware" / "vcenter" / "vcsa" / "vcsa_fleet_report.html").exists()
+        )
         self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
 
         # Node reports
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html").exists())
+        self.assertTrue(
+            (self.reports_root / "platform" / "vmware" / "vcenter" / "vcsa" / "vc-01" / "health_report.html").exists()
+        )
         self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").exists())
 
         # STIG reports
@@ -204,19 +213,25 @@ class TestFullReportingPipelineE2E(unittest.TestCase):
             (self.reports_root / "platform" / "vmware" / "vm" / "vm-01" / "vm-01_stig_vm.html").exists()
         )
         self.assertTrue(
+            (self.reports_root / "platform" / "vmware" / "vcenter" / "vcsa" / "vcsa-01" / "vcsa-01_stig_vcsa.html").exists()
+        )
+        self.assertTrue(
             (self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "linux-01_stig_ubuntu.html").exists()
         )
         self.assertTrue(
             (self.reports_root / "platform" / "windows" / "win-01" / "win-01_stig_windows.html").exists()
         )
 
-        # CKLB artifacts (supported target types only)
+        # CKLB artifacts (supported target types)
         esxi_cklb = self.reports_root / "cklb" / "esxi-01_esxi.cklb"
         vm_cklb = self.reports_root / "cklb" / "vm-01_vm.cklb"
+        vcsa_cklb = self.reports_root / "cklb" / "vcsa-01_vcsa.cklb"
         self.assertTrue(esxi_cklb.exists())
         self.assertTrue(vm_cklb.exists())
+        self.assertTrue(vcsa_cklb.exists())
         self.assertEqual(json.loads(esxi_cklb.read_text())["target_data"]["host_name"], "esxi-01")
         self.assertEqual(json.loads(vm_cklb.read_text())["target_data"]["host_name"], "vm-01")
+        self.assertEqual(json.loads(vcsa_cklb.read_text())["target_data"]["host_name"], "vcsa-01")
 
         # Aggregated state outputs
         self.assertTrue((self.platform_root / "linux" / "ubuntu" / "linux_fleet_state.yaml").exists())

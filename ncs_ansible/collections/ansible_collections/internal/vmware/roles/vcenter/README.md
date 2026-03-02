@@ -11,6 +11,13 @@ Performs deep discovery of clusters, hosts, datastores, VMs, and alarms.
 - **Handoff:** Emits raw telemetry via `ansible.builtin.set_stats` (intercepted by `ncs_collector` plugin).
 - **Idiomatic:** Uses `module_defaults` for centralized credential management.
 
+### `stig`
+Executes VCSA STIG service-role controls (v1r4 profile, vSphere 7.0) in either:
+- audit mode (`vmware_stig_enable_hardening: false`, forced check mode)
+- hardening mode (`vmware_stig_enable_hardening: true`)
+
+Optional Photon baseline execution can be enabled with `vcenter_stig_include_photon: true`.
+
 
 ## Usage
 

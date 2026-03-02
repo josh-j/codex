@@ -46,8 +46,17 @@ class TestInferStigPlatform:
     def test_windows_from_audit_type(self):
         assert _infer_stig_platform("stig_windows", None) == "windows"
 
+    def test_vmware_from_vcsa_audit_type(self):
+        assert _infer_stig_platform("stig_vcsa", None) == "vmware"
+        assert _infer_stig_platform("stig_vcenter", None) == "vmware"
+
+    def test_linux_from_photon_audit_type(self):
+        assert _infer_stig_platform("stig_photon", None) == "linux"
+
     def test_from_payload_target_type(self):
         assert _infer_stig_platform("stig_unknown", {"target_type": "esxi"}) == "vmware"
+        assert _infer_stig_platform("stig_unknown", {"target_type": "vcsa"}) == "vmware"
+        assert _infer_stig_platform("stig_unknown", {"target_type": "photon"}) == "linux"
 
     def test_unknown_default(self):
         assert _infer_stig_platform("stig_misc", {}) == "unknown"
@@ -121,6 +130,72 @@ class TestBuildStigHostView:
         view = build_stig_host_view("host1", "stig_test", {})
         assert view["summary"]["findings"]["total"] == 0
         assert len(view["findings"]) == 0
+
+    def test_enriches_finding_detail_from_cklb_lookup(self):
+        findings = [
+            {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
+        ]
+        cklb_lookup = {
+            "V-001": {
+                "rule_id": "V-001",
+                "rule_title": "CKLB Rule 1",
+                "severity": "cat_i",
+                "discussion": "CKLB discussion",
+                "check_content": "CKLB check",
+                "fix_text": "CKLB fix",
+            }
+        }
+        view = build_stig_host_view(
+            "host1",
+            "stig_esxi",
+            _stig_payload(findings),
+            cklb_rule_lookup=cklb_lookup,
+        )
+        finding = view["findings"][0]
+        assert finding["title"] == "Rule 1"
+        assert finding["detail"]["description"] == "CKLB discussion"
+        assert finding["detail"]["checktext"] == "CKLB check"
+        assert finding["detail"]["fixtext"] == "CKLB fix"
+
+    def test_cklb_lookup_can_supply_title_when_missing(self):
+        findings = [
+            {"id": "V-009", "status": "open", "severity": "CAT_II"},
+        ]
+        cklb_lookup = {
+            "V-009": {
+                "rule_id": "V-009",
+                "rule_title": "CKLB Title 9",
+                "severity": "cat_ii",
+                "discussion": "Discuss 9",
+            }
+        }
+        view = build_stig_host_view(
+            "host9",
+            "stig_esxi",
+            _stig_payload(findings),
+            cklb_rule_lookup=cklb_lookup,
+        )
+        finding = view["findings"][0]
+        assert finding["title"] == "CKLB Title 9"
+        assert finding["message"] == "Discuss 9"
+
+    def test_tree_fleets_filters_non_generated_platform_dirs(self):
+        hosts_data = {
+            "host-esxi": "vmware/esxi",
+            "host-vc": "vmware/vcenter",
+            "host-linux": "linux/ubuntu",
+        }
+        view = build_stig_host_view(
+            "host-esxi",
+            "stig_esxi",
+            _stig_payload([{"id": "V-001", "status": "open", "severity": "CAT_I"}]),
+            hosts_data=hosts_data,
+            generated_fleet_dirs={"vmware/vcenter", "linux/ubuntu"},
+        )
+        reports = [f["report"] for f in view["nav"]["tree_fleets"]]
+        assert any("platform/vmware/vcenter/vcenter_fleet_report.html" in r for r in reports)
+        assert any("platform/linux/ubuntu/linux_fleet_report.html" in r for r in reports)
+        assert not any("platform/vmware/esxi/esxi_fleet_report.html" in r for r in reports)
 
 
 class TestBuildStigFleetView:

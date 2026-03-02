@@ -1,0 +1,16 @@
+---
+# playbooks/photon_stig_audit.yml
+# Security Technical Implementation Guide (STIG) audit for VMware Photon OS 5.0.
+
+- name: "Phase 2: Photon STIG Audit"
+  hosts: "{{ photon_target_hosts | default('photon_servers') }}"
+  gather_facts: false
+  become: true
+  tags: ["photon", "stig", "security"]
+  roles:
+    - role: internal.linux.photon
+      vars:
+        photon_action: discover
+    - role: internal.linux.photon
+      vars:
+        photon_action: stig

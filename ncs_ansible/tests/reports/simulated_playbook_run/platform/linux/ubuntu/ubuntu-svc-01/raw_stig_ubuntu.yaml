@@ -1,0 +1,359 @@
+metadata:
+  host: ubuntu-svc-01
+  raw_type: stig_ubuntu
+  audit_type: stig_ubuntu
+  timestamp: '2026-03-02T00:00:00Z'
+  engine: ncs_collector_callback
+data:
+- id: V-256318
+  rule_id: SV-256318r919041_rule
+  rule_version: VCSA-70-000009
+  status: pass
+  severity: high
+  title: The vCenter Server must use TLS 1.2, at a minimum, to protect the confidentiality
+    of sensitive data during electronic dissemination using remote access.
+  checktext: 'At the command prompt on the vCenter Server Appliance, run the following
+    command:
+
+
+    # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc scan
+
+
+    If the output indicates versions of TLS other than 1.2 are enabled, this is a
+    finding.'
+  fixtext: 'At the command prompt on the vCenter Server Appliance, run the following
+    commands:
+
+
+    # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc backup
+
+
+    # /usr/lib/vmware-TlsReconfigurator/VcTlsReconfigurator/reconfigureVc update -p
+    TLSv1.2
+
+
+    vCenter services will be restarted as part of the reconfiguration. The operating
+    system will not be restarted.
+
+
+    The "--no-restart" flag can be added to restart services at a later time.
+
+
+    Changes will not take effect until all services are restarted or the appliance
+    is rebooted.
+
+
+    Note: This change should be performed on vCenter prior to ESXi.'
+- id: V-256319
+  rule_id: SV-256319r885568_rule
+  rule_version: VCSA-70-000023
+  status: na
+  severity: medium
+  title: The vCenter Server must enforce the limit of three consecutive invalid login
+    attempts by a user.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Lockout Policy. \n\nThe lockout policy should be set as\
+    \ follows:\n\nMaximum number of failed login attempts: 3 \n\nIf this account lockout\
+    \ policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Lockout Policy.
+
+
+    Click "Edit".
+
+
+    Set the "Maximum number of failed login attempts" to "3" and click "Save".'
+- id: V-256320
+  rule_id: SV-256320r885571_rule
+  rule_version: VCSA-70-000024
+  status: failed
+  severity: medium
+  title: The vCenter Server must display the Standard Mandatory DOD Notice and Consent
+    Banner before login.
+  checktext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Login Message.
+
+
+    If the selection box next to "Show login message" is disabled, "Details of login
+    message" is not configured to the standard DOD User Agreement, or the "Consent
+    checkbox" is disabled, this is a finding.
+
+
+    Note: Refer to vulnerability discussion for user agreement language.'
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Login Message.
+
+
+    Click "Edit".
+
+
+    Click the "Show login message" slider to enable.
+
+
+    Configure the "Login message" to "DOD User Agreement".
+
+
+    Click the "Consent checkbox" slider to enable.
+
+
+    Set the "Details of login message" to the Standard Mandatory DOD Notice and Consent
+    Banner text.
+
+
+    Click "Save".'
+- id: V-256321
+  rule_id: SV-256321r885574_rule
+  rule_version: VCSA-70-000034
+  status: pass
+  severity: medium
+  title: The vCenter Server must produce audit records containing information to establish
+    what type of events occurred.
+  checktext: 'From the vSphere Client, go to Host and Clusters.
+
+
+    Select a vCenter Server >> Configure >> Settings >> Advanced Settings.
+
+
+    Verify the "config.log.level" value is set to "info".
+
+
+    or
+
+
+    From a PowerCLI command prompt while connected to the vCenter server, run the
+    following command:
+
+
+    Get-AdvancedSetting -Entity <vcenter server name> -Name config.log.level and verify
+    it is set to "info".
+
+
+    If the "config.log.level" value is not set to "info" or does not exist, this is
+    a finding.'
+  fixtext: 'From the vSphere Client, go to Host and Clusters.
+
+
+    Select a vCenter Server >> Configure >> Settings >> Advanced Settings.
+
+
+    Click "Edit Settings" and configure the "config.log.level" setting to "info".
+
+
+    or
+
+
+    From a PowerCLI command prompt while connected to the vCenter server, run the
+    following command:
+
+
+    Get-AdvancedSetting -Entity <vcenter server name> -Name config.log.level | Set-AdvancedSetting
+    -Value info'
+- id: V-256322
+  rule_id: SV-256322r885577_rule
+  rule_version: VCSA-70-000057
+  status: na
+  severity: medium
+  title: vCenter Server plugins must be verified.
+  checktext: 'From the vSphere Client, go to Administration >> Solutions >> Client
+    Plug-Ins.
+
+
+    View the Installed/Available Plug-ins list and verify they are all identified
+    as authorized VMware, third-party (partner), and/or site-specific approved plug-ins.
+
+
+    If any installed/available plug-ins in the viewable list cannot be verified as
+    allowed vSphere Client plug-ins from trusted sources or are not in active use,
+    this is a finding.'
+  fixtext: "From the vSphere Client, go to Administration >> Solutions >> Client Plug-Ins,\
+    \ click the radio button next to the unknown plug-in, and click \"Disable\".\n\
+    \nIf the plugin will not be needed in the future, proceed to uninstall the plug-in.\n\
+    \nTo uninstall plug-ins, do the following:\n\nIf vCenter Server is in linked mode,\
+    \ perform this procedure on the vCenter Server that is used to install the plug-in\
+    \ initially and then restart the vCenter Server services on the linked vCenter\
+    \ Server:\n\nIn a web browser, navigate to \"http://vCenter_Server_name_or_IP/mob\"\
+    , where \"vCenter_Server_name_or_IP/mob\" is the name of the vCenter Server or\
+    \ its IP address.\n\nClick \"Content\".\n\nClick \"ExtensionManager\".\n\nSelect\
+    \ and copy the name of the plug-in to be removed from the list of values under\
+    \ \"Properties\". \n\nClick \"UnregisterExtension\". A new window appears.\n\n\
+    Paste the name of the plug-in and click \"Invoke Method\". This removes the plug-in.\n\
+    \nClose the window.\n\nRefresh the Managed Object Type:ManagedObjectReference:ExtensionManager\
+    \ window to verify the plug-in is removed successfully.\n\nNote: If the plug-in\
+    \ still appears, restart the vSphere Client.\n\nNote: The Managed Object Browser\
+    \ (MOB) may have to be enabled temporarily if it was disabled previously."
+- id: V-256323
+  rule_id: SV-256323r885580_rule
+  rule_version: VCSA-70-000059
+  status: failed
+  severity: medium
+  title: The vCenter Server must uniquely identify and authenticate users or processes
+    acting on behalf of users.
+  checktext: "From the vSphere Web Client, go to Administration >> Single Sign On\
+    \ >> Configuration >> Identity Provider. \n\nIf the identity provider type is\
+    \ \"embedded\" and there is no identity source of type \"Active Directory\" (either\
+    \ Windows Integrated Authentication or LDAP), this is a finding.\n\nIf the identity\
+    \ provider type is \"Microsoft ADFS\" or another supported identity provider,\
+    \ this is NOT a finding."
+  fixtext: "When using the embedded identity provider type, perform the following:\n\
+    \nFrom the vSphere Web Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Identity Provider >> Identity Sources.\n\nClick \"Add\".\n\nSelect either\
+    \ \"Active Directory over LDAP\" or \"Active Directory (Windows Integrated Authentication)\"\
+    \ and configure appropriately. \n\nNote: Windows Integrated Authentication requires\
+    \ that the vCenter server be joined to Active Directory before configuration via\
+    \ Administration >> Single Sign On >> Configuration >> Identity Provider >> Active\
+    \ Directory Domain.\n\nOR\n\nTo change the identity provider type to a third-party\
+    \ identity provider such as Microsoft ADFS, perform the following:\n\nFrom the\
+    \ vSphere Web Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Identity Provider.\n\nClick \"Change Identity Provider\".\n\nSelect \"Microsoft\
+    \ ADFS\" and click \"Next\".\n\nEnter the ADFS server information and User and\
+    \ Group details and click \"Finish\".\n\nFor additional information on configuring\
+    \ ADFS for use with vCenter, refer to the vSphere documentation."
+- id: V-256324
+  rule_id: SV-256324r885583_rule
+  rule_version: VCSA-70-000060
+  status: pass
+  severity: medium
+  title: The vCenter Server must require multifactor authentication.
+  checktext: 'From the vSphere Web Client, go to Administration >> Single Sign On
+    >> Configuration >> Identity Provider.
+
+
+    If the embedded identity provider is used, click on "Smart Card Authentication".
+
+
+    If the embedded identity provider is used and "Smart Card Authentication" is not
+    enabled, this is a finding.
+
+
+    If a third-party identity provider is used, such as Microsoft ADFS, and it does
+    not require multifactor authentication to log on to vCenter, this is a finding.'
+  fixtext: "To configure smart card authentication for vCenter when using the embedded\
+    \ identity provider, refer to the supplemental document.\_\n\nFor vCenter Servers\
+    \ using a third-party identity provider, consult the product's documentation for\
+    \ enabling multifactor authentication."
+- id: V-256325
+  rule_id: SV-256325r885586_rule
+  rule_version: VCSA-70-000069
+  status: na
+  severity: medium
+  title: The vCenter Server passwords must be at least 15 characters in length.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Password Policy. \n\nThe following password requirement\
+    \ should be set with at least the stated value: \n\nMinimum Length: 15 \n\nIf\
+    \ this password policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit".
+
+
+    Set the "Minimum Length" to "15" and click "Save".'
+- id: V-256326
+  rule_id: SV-256326r885589_rule
+  rule_version: VCSA-70-000070
+  status: failed
+  severity: medium
+  title: The vCenter Server must prohibit password reuse for a minimum of five generations.
+  checktext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    View the value of the "Restrict reuse" setting.
+
+
+    If the "Restrict reuse" policy is not set to "5" or more, this is a finding.'
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit", enter "5" as the "Restrict reuse" setting, and click "OK".'
+- id: V-256327
+  rule_id: SV-256327r885592_rule
+  rule_version: VCSA-70-000071
+  status: pass
+  severity: medium
+  title: The vCenter Server passwords must contain at least one uppercase character.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Password Policy. \n\nSet the following password requirement\
+    \ with at least the stated value: \n\nUpper-case Characters: At least 1 \n\nIf\
+    \ this password complexity policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit".
+
+
+    Set "Upper-case Characters" to at least "1" and click "Save".'
+- id: V-256328
+  rule_id: SV-256328r885595_rule
+  rule_version: VCSA-70-000072
+  status: na
+  severity: medium
+  title: The vCenter Server passwords must contain at least one lowercase character.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Password Policy. \n\nSet the following password requirement\
+    \ with at least the stated value: \n\nLower-case Characters: At least 1 \n\nIf\
+    \ this password complexity policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit".
+
+
+    Set "Lower-case Characters" to at least "1" and click "Save".'
+- id: V-256329
+  rule_id: SV-256329r885598_rule
+  rule_version: VCSA-70-000073
+  status: failed
+  severity: medium
+  title: The vCenter Server passwords must contain at least one numeric character.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Password Policy. \n\nSet the following password requirement\
+    \ with at least the stated value: \n\nNumeric Characters: At least 1 \n\nIf this\
+    \ password complexity policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit".
+
+
+    Set "Numeric Characters" to at least "1" and click "Save".'
+- id: V-256330
+  rule_id: SV-256330r885601_rule
+  rule_version: VCSA-70-000074
+  status: pass
+  severity: medium
+  title: The vCenter Server passwords must contain at least one special character.
+  checktext: "From the vSphere Client, go to Administration >> Single Sign On >> Configuration\
+    \ >> Local Accounts >> Password Policy. \n\nSet the following password requirements\
+    \ with at least the stated value: \n\nSpecial Characters: At least 1 \n\nIf this\
+    \ password complexity policy is not configured as stated, this is a finding."
+  fixtext: 'From the vSphere Client, go to Administration >> Single Sign On >> Configuration
+    >> Local Accounts >> Password Policy.
+
+
+    Click "Edit".
+
+
+    Set "Special Characters" to at least "1" and click "Save".'
+- id: V-256331
+  rule_id: SV-256331r885604_rule
+  rule_version: VCSA-70-000077
+  status: na
+  severity: high
+  title: The vCenter Server must enable FIPS-validated cryptography.
+  checktext: "From the vSphere Web Client, go to Developer Center >> API Explorer.\n\
+    \nFrom the \"Select API\" drop-down menu, select appliance.\n\nExpand system/security/global_fips\
+    \ >> GET.\n\nClick \"Execute\" and then \"Copy Response\"\_ to view the results.\n\
+    \nExample response:\n\n{\n    \"enabled\": true\n}\n\nIf global FIPS mode is not\
+    \ enabled, this is a finding."
+  fixtext: "From the vSphere Web Client, go to Developer Center >> API Explorer.\n\
+    \nFrom the \"Select API\" drop-down menu, select appliance.\n\nExpand system/security/global_fips\
+    \ >> PUT.\n\nIn the response body under \"Try it out\", paste the following:\n\
+    \n{\n    \"enabled\": true\n}\n\nClick \"Execute\".\n\nNote: The vCenter server\
+    \ reboots after FIPS is enabled or disabled."
+target_type: ubuntu

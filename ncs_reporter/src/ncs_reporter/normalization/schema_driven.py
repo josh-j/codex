@@ -58,6 +58,30 @@ def _first(value: Any) -> Any:
     return None
 
 
+@_register_transform("to_gb")
+def _to_gb(value: Any) -> float:
+    try:
+        return round(float(value) / (1024**3), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+@_register_transform("to_mb")
+def _to_mb(value: Any) -> float:
+    try:
+        return round(float(value) / (1024**2), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+@_register_transform("to_days")
+def _to_days(value: Any) -> float:
+    try:
+        return round(float(value) / 86400.0, 1)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Safe arithmetic expression evaluator
 # ---------------------------------------------------------------------------
@@ -266,6 +290,34 @@ def _coerce_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _coerce_bytes(value: Any) -> int:
+    """Coerce to int bytes."""
+    return int(float(value))
+
+
+def _coerce_percentage(value: Any) -> float:
+    """Coerce to float percentage."""
+    v = float(value)
+    # If it's already 0-100, return as-is. If it's 0-1, maybe multiply?
+    # Usually we expect it to be 0-100 if typed as percentage.
+    return v
+
+
+def _coerce_datetime(value: Any) -> str:
+    """Coerce to ISO 8601 string."""
+    if isinstance(value, str):
+        # Try parse and format to standard ISO
+        dt = _parse_iso(value)
+        if dt:
+            return dt.isoformat()
+    return str(value)
+
+
+def _coerce_duration(value: Any) -> float:
+    """Coerce to duration in seconds."""
+    return float(value)
+
+
 _TYPE_COERCERS: dict[str, Any] = {
     "str": str,
     "int": int,
@@ -273,6 +325,10 @@ _TYPE_COERCERS: dict[str, Any] = {
     "bool": _coerce_bool,
     "list": safe_list,
     "dict": dict,
+    "bytes": _coerce_bytes,
+    "percentage": _coerce_percentage,
+    "datetime": _coerce_datetime,
+    "duration_seconds": _coerce_duration,
 }
 
 

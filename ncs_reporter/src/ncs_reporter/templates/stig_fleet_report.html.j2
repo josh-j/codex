@@ -42,13 +42,17 @@
         {% else %}
         STIG Fleet Compliance Overview
         {% endif %}
+        <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
     </div>
     {% endif %}
 
     <div class="page-header">
         <div>
             <h1>STIG Compliance — Fleet Report</h1>
-            <span style="font-size:11px; color:#9db4cc;">Cross-platform STIG compliance summary</span>
+            <span class="page-subtitle">Cross-platform STIG compliance summary</span>
         </div>
         <div class="right">
             {{ meta.get('report_date', now_datetime | default('N/A')) }}
@@ -78,11 +82,11 @@
                     <div class="widget-body widget-table-view">
                         <table>
                             <tbody>
-                                <tr><td style="width:50%; color:#444;">Hosts audited</td><td><strong>{{ totals.get('hosts', 0) }}</strong></td></tr>
-                                <tr><td style="color:#444;">Open findings</td><td><strong>{{ totals.get('findings_open', 0) }}</strong></td></tr>
-                                {% if totals.get('critical', 0) > 0 %}<tr><td style="color:#444;">CAT I findings</td><td><span class="sv-critical">{{ totals.get('critical', 0) }}</span></td></tr>{% endif %}
-                                {% if totals.get('warning', 0) > 0 %}<tr><td style="color:#444;">CAT II findings</td><td><span class="sv-warning">{{ totals.get('warning', 0) }}</span></td></tr>{% endif %}
-                                {% if totals.get('info', 0) > 0 %}<tr><td style="color:#444;">CAT III findings</td><td><span class="sv-info">{{ totals.get('info', 0) }}</span></td></tr>{% endif %}
+                                <tr><td class="kv-label-wide subtle-text">Hosts audited</td><td><strong>{{ totals.get('hosts', 0) }}</strong></td></tr>
+                                <tr><td class="subtle-text">Open findings</td><td><strong>{{ totals.get('findings_open', 0) }}</strong></td></tr>
+                                {% if totals.get('critical', 0) > 0 %}<tr><td class="subtle-text">CAT I findings</td><td><span class="sv-critical">{{ totals.get('critical', 0) }}</span></td></tr>{% endif %}
+                                {% if totals.get('warning', 0) > 0 %}<tr><td class="subtle-text">CAT II findings</td><td><span class="sv-warning">{{ totals.get('warning', 0) }}</span></td></tr>{% endif %}
+                                {% if totals.get('info', 0) > 0 %}<tr><td class="subtle-text">CAT III findings</td><td><span class="sv-info">{{ totals.get('info', 0) }}</span></td></tr>{% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -96,12 +100,12 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Platform</th>
-                                <th>Hosts</th>
-                                <th>Open</th>
-                                <th>CAT I</th>
-                                <th>CAT II</th>
-                                <th>CAT III</th>
+                                <th class="sortable">Platform</th>
+                                <th class="sortable">Hosts</th>
+                                <th class="sortable">Open</th>
+                                <th class="sortable">CAT I</th>
+                                <th class="sortable">CAT II</th>
+                                <th class="sortable">CAT III</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -137,14 +141,14 @@
         <table>
             <thead>
                 <tr>
-                    <th>Host</th>
-                    <th>Platform</th>
-                    <th>Audit Type</th>
-                    <th>Status</th>
-                    <th>Open</th>
-                    <th>CAT I</th>
-                    <th>CAT II</th>
-                    <th>CAT III</th>
+                    <th class="sortable">Host</th>
+                    <th class="sortable">Platform</th>
+                    <th class="sortable">Targets</th>
+                    <th class="sortable">Status</th>
+                    <th class="sortable">Open</th>
+                    <th class="sortable">CAT I</th>
+                    <th class="sortable">CAT II</th>
+                    <th class="sortable">CAT III</th>
                 </tr>
             </thead>
             <tbody>
@@ -153,13 +157,22 @@
                     <td>
                         {% set link = row.get('links', {}).get('node_report_latest', '') %}
                         {% if link %}
-                            <a href="{{ link }}" style="font-weight:bold; color:#00c; text-decoration:none;">{{ row.get('host', '') }}</a>
+                            <a href="{{ link }}" class="link-strong">{{ row.get('host', '') }}</a>
                         {% else %}
                             <strong>{{ row.get('host', '') }}</strong>
                         {% endif %}
                     </td>
                     <td>{{ row.get('platform', '') }}</td>
-                    <td>{{ row.get('audit_type', '') }}</td>
+                    <td>
+                        {% set targets = row.get('targets', []) %}
+                        {% if targets %}
+                            {% for t in targets %}
+                                <a href="{{ t.get('link', '#') }}">{{ t.get('target_type', '') }}</a>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>
                         {% set status_raw = row.get('status', {}).get('raw', 'UNKNOWN') | upper %}
                         {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok">{{ status_raw }}</span>
@@ -192,10 +205,10 @@
         <table>
             <thead>
                 <tr>
-                    <th class="col-id">Rule ID</th>
-                    <th class="col-sev">Severity</th>
-                    <th>Affected Hosts</th>
-                    <th>Title</th>
+                    <th class="col-id sortable">Rule ID</th>
+                    <th class="col-sev sortable">Severity</th>
+                    <th class="sortable">Affected Hosts</th>
+                    <th class="sortable">Title</th>
                 </tr>
             </thead>
             <tbody>

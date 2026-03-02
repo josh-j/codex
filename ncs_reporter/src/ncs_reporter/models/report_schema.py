@@ -28,12 +28,17 @@ class FieldSpec(BaseModel):
     # Seconds before a script invocation is killed and the fallback is used.
     script_timeout: int = 30
 
-    type: Literal["str", "int", "float", "bool", "list", "dict"] = "str"
+    type: Literal[
+        "str", "int", "float", "bool", "list", "dict", "bytes", "percentage", "datetime", "duration_seconds"
+    ] = "str"
     fallback: Any = None
     # Value used instead of fallback when the path is *provably broken* (i.e. does
     # not resolve against the example bundle).  None means use a type-appropriate
     # default: "ERROR" for str, -1 for int/float.  Set explicitly to override.
     sentinel: Any = None
+
+    # Optional default format string applied during view model rendering
+    format: str | None = None
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
@@ -206,6 +211,12 @@ class AlertRule(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class WidgetLayout(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    width: Literal["full", "half", "third", "quarter"] = "full"
+    row: int | None = None
+
+
 class KeyValueField(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -220,7 +231,14 @@ class KeyValueWidget(BaseModel):
     id: str
     title: str
     type: Literal["key_value"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
     fields: list[KeyValueField]
+
+
+class StyleRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    condition: AlertCondition
+    css_class: str
 
 
 class TableColumn(BaseModel):
@@ -231,6 +249,7 @@ class TableColumn(BaseModel):
     badge: bool = False
     format: str | None = None
     link_field: str | None = None
+    style_rules: list[StyleRule] = Field(default_factory=list)
 
 
 class TableWidget(BaseModel):
@@ -239,6 +258,7 @@ class TableWidget(BaseModel):
     id: str
     title: str
     type: Literal["table"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
     rows_field: str
     columns: list[TableColumn]
 
@@ -249,10 +269,34 @@ class AlertPanelWidget(BaseModel):
     id: str
     title: str
     type: Literal["alert_panel"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+
+
+class ProgressBarWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["progress_bar"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    field: str  # Field containing a 0-100 percentage
+    label: str | None = None  # Optional secondary field for text label
+    color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
+    thresholds: dict[int, str] | None = None  # e.g., { 75: "yellow", 90: "red" }
+
+
+class MarkdownWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["markdown"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    content: str
 
 
 ReportWidget = Annotated[
-    Union[KeyValueWidget, TableWidget, AlertPanelWidget],
+    Union[KeyValueWidget, TableWidget, AlertPanelWidget, ProgressBarWidget, MarkdownWidget],
     Field(discriminator="type"),
 ]
 
@@ -327,6 +371,13 @@ class ReportSchema(BaseModel):
             elif isinstance(widget, TableWidget):
                 if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
                     errors.append(f"widget '{widget.id}': rows_field references undeclared field '{widget.rows_field}'")
+            elif isinstance(widget, ProgressBarWidget):
+                if not widget.field.startswith("_") and widget.field not in declared:
+                    errors.append(f"widget '{widget.id}': progress_bar references undeclared field '{widget.field}'")
+                if widget.label and not widget.label.startswith("_") and widget.label not in declared:
+                    errors.append(
+                        f"widget '{widget.id}': progress_bar label references undeclared field '{widget.label}'"
+                    )
 
         for col in self.fleet_columns:
             if not col.field.startswith("_") and col.field not in declared:

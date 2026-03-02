@@ -1,0 +1,411 @@
+data:
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Connector/@connectionTimeout'' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Expected result:
+
+
+      connectionTimeout="20000"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Navigate to each of the <Connector> nodes.
+
+
+      Configure each <Connector> node with the value:
+
+
+      connectionTimeout="20000"
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256611
+    rule_id: SV-256611r888324_rule
+    rule_version: VCPF-70-000001
+    severity: medium
+    status: na
+    title: Performance Charts must limit the amount of time that each Transport Control
+      Protocol (TCP) connection is kept alive.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Executor/@maxThreads'' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Expected result:
+
+
+      maxThreads="300"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Navigate to the <Executor> mode with the name of "tomcatThreadPool" and configure
+      with the value ''maxThreads="300"''.
+
+
+      Note: The <Executor> node should be configured as follows:
+
+
+      <Executor maxThreads="300" minSpareThreads="50" name="tomcatThreadPool" namePrefix="tomcat-http--"/>
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256612
+    rule_id: SV-256612r888327_rule
+    rule_version: VCPF-70-000002
+    severity: medium
+    status: failed
+    title: Performance Charts must limit the number of concurrent connections permitted.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Connector/@maxPostSize'' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Expected result:
+
+
+      XPath set is empty
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Navigate to each of the <Connector> nodes.
+
+
+      Remove any configuration for "maxPostSize".
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256613
+    rule_id: SV-256613r888330_rule
+    rule_version: VCPF-70-000003
+    severity: medium
+    status: pass
+    title: Performance Charts must limit the maximum size of a POST request.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml
+      | sed ''2 s/xmlns=".*"//g'' | xmllint --xpath ''/web-app/session-config/cookie-config/http-only''
+      -
+
+
+      Expected result:
+
+
+      <http-only>true</http-only>
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml\n\
+      \nNavigate to the <session-config> node and configure it as follows:\n\n<session-config>\n\
+      \  <cookie-config>\n    <http-only>true</http-only>\n    <secure>true</secure>\n\
+      \  </cookie-config>\n  <session-timeout>30</session-timeout>\n</session-config>\n\
+      \nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts"
+    id: V-256614
+    rule_id: SV-256614r888333_rule
+    rule_version: VCPF-70-000004
+    severity: medium
+    status: na
+    title: Performance Charts must protect cookies from cross-site scripting (XSS).
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml |
+      sed ''2 s/xmlns=".*"//g'' |  xmllint --xpath ''/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]/@pattern''
+      -
+
+
+      Expected result:
+
+
+      pattern="%h %{X-Forwarded-For}i %l %u %t &quot;%r&quot; %s %b &quot;%{User-Agent}i&quot;"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Inside the <Host> node, find the "AccessLogValve" <Valve> node and replace the
+      "pattern" element as follows:
+
+
+      pattern="%h %{X-Forwarded-For}i %l %u %t &quot;%r&quot; %s %b &quot;%{User-Agent}i&quot;"
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256615
+    rule_id: SV-256615r888336_rule
+    rule_version: VCPF-70-000005
+    severity: medium
+    status: failed
+    title: Performance Charts must record user access in a format that enables monitoring
+      of remote access.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep StreamRedirectFile /etc/vmware/vmware-vmon/svcCfgfiles/perfcharts.json
+
+
+      Expected result:
+
+
+      "StreamRedirectFile" : "%VMWARE_LOG_DIR%/vmware/perfcharts/vmware-perfcharts-runtime.log",
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /etc/vmware/vmware-vmon/svcCfgfiles/perfcharts.json
+
+
+      Below the last line of the "PreStartCommandArg" block, add the following line:
+
+
+      "StreamRedirectFile" : "%VMWARE_LOG_DIR%/vmware/perfcharts/vmware-perfcharts-runtime.log",
+
+
+      Restart the appliance for changes to take effect.'
+    id: V-256616
+    rule_id: SV-256616r888339_rule
+    rule_version: VCPF-70-000006
+    severity: medium
+    status: pass
+    title: Performance Charts must generate log records for system startup and shutdown.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # find /storage/log/vmware/perfcharts/ -xdev -type f -a ''('' -perm -o+w -o
+      -not -user perfcharts -o -not -group users '')'' -exec ls -ld {} \;
+
+
+      If any files are returned, this is a finding.'
+    fixtext: 'At the command prompt, run the following commands:
+
+
+      # chmod o-w <file>
+
+      # chown perfcharts:users <file>
+
+
+      Note: Substitute <file> with the listed file.'
+    id: V-256617
+    rule_id: SV-256617r888342_rule
+    rule_version: VCPF-70-000007
+    severity: medium
+    status: na
+    title: Performance Charts log files must only be modifiable by privileged users.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # rpm -V VMware-perfcharts|grep "^..5......"|grep -v -E "\.properties|\.conf|\.xml|\.password"
+
+
+      If any files are returned, this is a finding.'
+    fixtext: Reinstall the vCenter Server Appliance (VCSA) or roll back to a backup.
+      VMware does not support modifying the Performance Charts installation files
+      manually.
+    id: V-256618
+    rule_id: SV-256618r888345_rule
+    rule_version: VCPF-70-000008
+    severity: medium
+    status: failed
+    title: Performance Charts application files must be verified for their integrity.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # ls -A /usr/lib/vmware-perfcharts/tc-instance/webapps
+
+
+      Expected result:
+
+
+      statsreport
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'For each unexpected directory returned in the check, run the following
+      command:
+
+
+      # rm /usr/lib/vmware-perfcharts/tc-instance/webapps/<NAME>
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256619
+    rule_id: SV-256619r888348_rule
+    rule_version: VCPF-70-000009
+    severity: medium
+    status: pass
+    title: Performance Charts must only run one webapp.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep UserDatabaseRealm /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      If the command produces any output, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml
+
+
+      Remove the <Realm> node returned in the check.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256620
+    rule_id: SV-256620r888351_rule
+    rule_version: VCPF-70-000010
+    severity: medium
+    status: na
+    title: Performance Charts must not be configured with unsupported realms.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep "package.access" /usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties
+
+
+      Expected result:
+
+
+      package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.jasper.,org.apache.tomcat.
+
+
+      If the output of the command does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-sso/vmware-sts/conf/catalina.properties
+
+
+      Ensure the "package.access" line is configured as follows:
+
+
+      package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.jasper.,org.apache.tomcat.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256621
+    rule_id: SV-256621r888354_rule
+    rule_version: VCPF-70-000011
+    severity: medium
+    status: failed
+    title: Performance Charts must be configured to limit access to internal packages.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep -En ''(x-csh<)|(x-sh<)|(x-shar<)|(x-ksh<)'' /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml
+
+
+      If the command produces any output, this is a finding.'
+    fixtext: "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\
+      \nRemove any and all of the following nodes lines:\n\n<mime-type>application/x-csh</mime-type>\n\
+      <mime-type>application/x-shar</mime-type>\n<mime-type>application/x-sh</mime-type>\n\
+      <mime-type>application/x-ksh</mime-type>\n\nRestart the service with the following\
+      \ command:\n\n# vmon-cli --restart perfcharts\n\nNote: Delete the entire mime-mapping\
+      \ node for the target mime-type.\n\nExample:\n\n<mime-mapping>\n    <extension>sh</extension>\n\
+      \    <mime-type>application/x-sh</mime-type>\n</mime-mapping>"
+    id: V-256622
+    rule_id: SV-256622r888357_rule
+    rule_version: VCPF-70-000012
+    severity: medium
+    status: pass
+    title: Performance Charts must have Multipurpose Internet Mail Extensions (MIMEs)
+      that invoke operating system shell programs disabled.
+  - checktext: "At the command prompt, run the following command: \n\n# xmllint --format\
+      \ /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"\
+      //g' | xmllint --xpath '/web-app/servlet-mapping/servlet-name[text()=\"jsp\"\
+      ]/parent::servlet-mapping' -\n\nExpected result:\n\n<servlet-mapping>\n    <servlet-name>jsp</servlet-name>\n\
+      \    <url-pattern>*.jsp</url-pattern>\n    <url-pattern>*.jspx</url-pattern>\n\
+      </servlet-mapping>\n\nIf the output of the command does not match the expected\
+      \ result, this is a finding."
+    fixtext: "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\
+      \nInside the <web-app> parent node, add the following:\n\n<servlet-mapping>\n\
+      \    <servlet-name>jsp</servlet-name>\n    <url-pattern>*.jsp</url-pattern>\n\
+      \    <url-pattern>*.jspx</url-pattern>\n</servlet-mapping>\n\nRestart the service\
+      \ with the following command:\n\n# vmon-cli --restart perfcharts"
+    id: V-256623
+    rule_id: SV-256623r888360_rule
+    rule_version: VCPF-70-000013
+    severity: medium
+    status: na
+    title: Performance Charts must have mappings set for Java servlet pages.
+  - checktext: "At the command prompt, run the following command: \n\n# grep -n 'webdav'\
+      \ /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nIf the command produces\
+      \ any output, this is a finding."
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml
+
+
+      Find the <servlet-name>webdav</servlet-name> node and remove the entire parent
+      <servlet> block.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart perfcharts'
+    id: V-256624
+    rule_id: SV-256624r888363_rule
+    rule_version: VCPF-70-000014
+    severity: medium
+    status: failed
+    title: Performance Charts must not have the Web Distributed Authoring (WebDAV)
+      servlet installed.
+metadata:
+  audit_type: stig_perfcharts
+  engine: ncs_collector_callback
+  host: vc-site2.local
+  raw_type: stig_perfcharts
+  timestamp: '2026-03-02T23:23:16Z'
+target_type: perfcharts

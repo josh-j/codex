@@ -1,0 +1,14 @@
+---
+# playbooks/vmware_esxi_stig_audit.yml
+# Non-mutating STIG compliance assessment for VMware ESXi hosts.
+
+- name: "Phase 2a | ESXi STIG Audit (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "esxi"]
+  roles:
+    - role: internal.vmware.esxi
+      vars:
+        vmware_stig_enable_hardening: false   # READ-ONLY
+      when: esxi_stig_target_hosts | default([]) | length > 0

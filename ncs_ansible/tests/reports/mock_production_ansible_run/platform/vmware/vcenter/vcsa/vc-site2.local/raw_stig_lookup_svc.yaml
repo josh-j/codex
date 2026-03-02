@@ -1,0 +1,437 @@
+data:
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Connector[@port="${bio-custom.http.port}"]/@connectionTimeout''
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Expected result:
+
+
+      connectionTimeout="60000"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Configure the <Connector> node with the value:
+
+
+      connectionTimeout="60000"
+
+
+      Example:
+
+
+      <Connector .. connectionTimeout="60000" ..>
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256706
+    rule_id: SV-256706r888709_rule
+    rule_version: VCLU-70-000001
+    severity: medium
+    status: pass
+    title: Lookup Service must limit the amount of time that each Transport Control
+      Protocol (TCP) connection is kept alive.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxThreads''
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Expected result:
+
+
+      XPath set is empty
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      In the <Connector> node, remove the "maxThreads" key/value pair.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256707
+    rule_id: SV-256707r888712_rule
+    rule_version: VCLU-70-000002
+    severity: medium
+    status: na
+    title: Lookup Service must limit the number of concurrent connections permitted.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxPostSize''
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Expected result:
+
+
+      XPath set is empty
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      In the <Connector> node, remove the "maxPostSize" key/value pair.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256708
+    rule_id: SV-256708r888715_rule
+    rule_version: VCLU-70-000003
+    severity: medium
+    status: failed
+    title: Lookup Service must limit the maximum size of a POST request.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --format /usr/lib/vmware-lookupsvc/conf/context.xml | xmllint --xpath
+      ''/Context/@useHttpOnly'' -
+
+
+      Expected result:
+
+
+      useHttpOnly="true"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/context.xml
+
+
+      Add the following configuration to the <Context> node:
+
+
+      useHttpOnly="true"
+
+
+      Example:
+
+
+      <Context useHttpOnly="true">
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256709
+    rule_id: SV-256709r888718_rule
+    rule_version: VCLU-70-000004
+    severity: medium
+    status: pass
+    title: Lookup Service must protect cookies from cross-site scripting (XSS).
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # xmllint --xpath ''/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]/@pattern''
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Expected result:
+
+
+      pattern="%t %I [RemoteIP] %{X-Forwarded-For}i %u [Request] %h:%{remote}p to
+      local %{local}p - %H %m %U%q    [Response] %s - %b bytes    [Perf] process %Dms
+      / commit %Fms / conn [%X]"
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Inside the <Host> node, find the "AccessLogValve" <Valve> node and replace the
+      "pattern" element as follows:
+
+
+      pattern="%t %I [RemoteIP] %{X-Forwarded-For}i %u [Request] %h:%{remote}p to
+      local %{local}p - %H %m %U%q    [Response] %s - %b bytes    [Perf] process %Dms
+      / commit %Fms / conn [%X]"
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256710
+    rule_id: SV-256710r888721_rule
+    rule_version: VCLU-70-000005
+    severity: medium
+    status: na
+    title: Lookup Service must record user access in a format that enables monitoring
+      of remote access.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep StreamRedirectFile /etc/vmware/vmware-vmon/svcCfgfiles/lookupsvc.json
+
+
+      Expected result:
+
+
+      "StreamRedirectFile": "%VMWARE_LOG_DIR%/vmware/lookupsvc/lookupsvc_stream.log",
+
+
+      If no log file is specified for the "StreamRedirectFile" setting, this is a
+      finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /etc/vmware/vmware-vmon/svcCfgfiles/lookupsvc.json
+
+
+      Below the last line of the "PreStartCommandArg" block, add or reconfigure the
+      following line:
+
+
+      "StreamRedirectFile": "%VMWARE_LOG_DIR%/vmware/lookupsvc/lookupsvc_stream.log",
+
+
+      Restart the appliance for changes to take effect.'
+    id: V-256711
+    rule_id: SV-256711r888724_rule
+    rule_version: VCLU-70-000006
+    severity: medium
+    status: failed
+    title: Lookup Service must generate log records for system startup and shutdown.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # find /var/log/vmware/lookupsvc -xdev -type f ! -name lookupsvc-init.log -a
+      ''('' -perm -o+w -o -not -user lookupsvc -o -not -group lookupsvc '')'' -exec
+      ls -ld {} \;
+
+
+      If any files are returned, this is a finding.
+
+
+      Note: Prior to Update 3h, the user and group should be root.'
+    fixtext: 'At the command prompt, run the following commands:
+
+
+      # chmod o-w /var/log/vmware/lookupsvc/<file>
+
+      # chown lookupsvc:lookupsvc /var/log/vmware/lookupsvc/<file>
+
+
+      Note: Substitute <file> with the listed file.'
+    id: V-256712
+    rule_id: SV-256712r918958_rule
+    rule_version: VCLU-70-000007
+    severity: medium
+    status: pass
+    title: Lookup Service log files must only be accessible by privileged users.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # rpm -V vmware-lookupsvc|grep "^..5......"|grep -E "\.war|\.jar|\.sh|\.py"
+
+
+      If there is any output, this is a finding.'
+    fixtext: Reinstall the vCenter Server Appliance (VCSA) or roll back to a backup.
+      VMware does not support modifying the Lookup Service installation files manually.
+    id: V-256713
+    rule_id: SV-256713r888730_rule
+    rule_version: VCLU-70-000008
+    severity: medium
+    status: na
+    title: Lookup Service application files must be verified for their integrity.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # ls -A /usr/lib/vmware-lookupsvc/webapps/*.war
+
+
+      Expected result:
+
+
+      /usr/lib/vmware-lookupsvc/webapps/ROOT.war
+
+
+      If the output does not match the expected result, this is a finding.'
+    fixtext: 'For each unexpected directory returned in the check, run the following
+      command:
+
+
+      # rm /usr/lib/vmware-lookupsvc/webapps/<NAME>
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256714
+    rule_id: SV-256714r888733_rule
+    rule_version: VCLU-70-000009
+    severity: medium
+    status: failed
+    title: Lookup Service must only run one webapp.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep UserDatabaseRealm /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      If the command produces any output, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/server.xml
+
+
+      Remove all <Realm> nodes.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256715
+    rule_id: SV-256715r888736_rule
+    rule_version: VCLU-70-000010
+    severity: medium
+    status: pass
+    title: Lookup Service must not be configured with the "UserDatabaseRealm" enabled.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep "package.access" /usr/lib/vmware-lookupsvc/conf/catalina.properties
+
+
+      Expected result:
+
+
+      package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.tomcat.,org.apache.jasper.
+
+
+      If the output of the command does not match the expected result, this is a finding.'
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-sso/vmware-sts/conf/catalina.properties
+
+
+      Ensure the "package.access" line is configured as follows:
+
+
+      package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.tomcat.,org.apache.jasper.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256716
+    rule_id: SV-256716r888739_rule
+    rule_version: VCLU-70-000011
+    severity: medium
+    status: na
+    title: Lookup Service must be configured to limit access to internal packages.
+  - checktext: 'At the command prompt, run the following command:
+
+
+      # grep -En ''(x-csh<)|(x-sh<)|(x-shar<)|(x-ksh<)'' /usr/lib/vmware-lookupsvc/conf/web.xml
+
+
+      If the command produces any output, this is a finding.'
+    fixtext: "Navigate to and open:\n\n/usr/lib/vmware-lookupsvc/conf/web.xml\n\n\
+      Remove all of the following nodes lines:\n\n<mime-type>application/x-csh</mime-type>\n\
+      <mime-type>application/x-shar</mime-type>\n<mime-type>application/x-sh</mime-type>\n\
+      <mime-type>application/x-ksh</mime-type>\n\nRestart the service with the following\
+      \ command:\n\n# vmon-cli --restart lookupsvc\n\nNote: Delete the entire mime-mapping\
+      \ node for the target mime-type.\n\nExample:\n\n<mime-mapping>\n    <extension>sh</extension>\n\
+      \    <mime-type>application/x-sh</mime-type>\n</mime-mapping>"
+    id: V-256717
+    rule_id: SV-256717r888742_rule
+    rule_version: VCLU-70-000012
+    severity: medium
+    status: failed
+    title: Lookup Service must have Multipurpose Internet Mail Extensions (MIMEs)
+      that invoke operating system shell programs disabled.
+  - checktext: "At the command prompt, run the following command: \n\n# xmllint --format\
+      \ /usr/lib/vmware-lookupsvc/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint\
+      \ --xpath '/web-app/servlet-mapping/servlet-name[text()=\"jsp\"]/parent::servlet-mapping'\
+      \ -\n\nExpected result:\n\n<servlet-mapping>\n    <servlet-name>jsp</servlet-name>\n\
+      \    <url-pattern>*.jsp</url-pattern>\n    <url-pattern>*.jspx</url-pattern>\n\
+      </servlet-mapping>\n\nIf the .jsp and .jspx file url-patterns are not configured\
+      \ as in the expected result, this is a finding."
+    fixtext: "Navigate to and open:\n\n/usr/lib/vmware-lookupsvc/conf/web.xml\n\n\
+      Navigate to and locate the mapping for the JSP servlet. It is the <servlet-mapping>\
+      \ node that contains <servlet-name>jsp</servlet-name>.\n\nConfigure the <servlet-mapping>\
+      \ node to look like the code snippet below:\n\n<!-- The mappings for the JSP\
+      \ servlet -->\n<servlet-mapping>\n  <servlet-name>jsp</servlet-name>\n  <url-pattern>*.jsp</url-pattern>\n\
+      \  <url-pattern>*.jspx</url-pattern>\n</servlet-mapping>\n\nRestart the service\
+      \ with the following command:\n\n# vmon-cli --restart lookupsvc"
+    id: V-256718
+    rule_id: SV-256718r888745_rule
+    rule_version: VCLU-70-000013
+    severity: medium
+    status: pass
+    title: Lookup Service must have mappings set for Java servlet pages.
+  - checktext: "At the command prompt, run the following command: \n\n# grep -n 'webdav'\
+      \ /usr/lib/vmware-lookupsvc/conf/web.xml\n\nIf the command produces any output,\
+      \ this is a finding."
+    fixtext: 'Navigate to and open:
+
+
+      /usr/lib/vmware-lookupsvc/conf/web.xml
+
+
+      Find the <servlet-name>webdav</servlet-name> node and remove the entire parent
+      <servlet> block.
+
+
+      Find the <servlet-name>webdav</servlet-name> node and remove the entire parent
+      <servlet-mapping> block.
+
+
+      Restart the service with the following command:
+
+
+      # vmon-cli --restart lookupsvc'
+    id: V-256719
+    rule_id: SV-256719r888748_rule
+    rule_version: VCLU-70-000014
+    severity: medium
+    status: na
+    title: Lookup Service must not have the Web Distributed Authoring (WebDAV) servlet
+      installed.
+metadata:
+  audit_type: stig_lookup_svc
+  engine: ncs_collector_callback
+  host: vc-site2.local
+  raw_type: stig_lookup_svc
+  timestamp: '2026-03-02T23:23:15Z'
+target_type: lookup_svc

@@ -107,7 +107,9 @@ def load_all_reports(
         "windows",
         # Nested-style platform dirs (linux/ubuntu, vmware/vcenter, etc.)
         "linux",
+        "photon",
         "vcenter",
+        "vcsa",
         "esxi",
         "vm",
         "all_hosts_state.yaml",

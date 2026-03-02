@@ -1,0 +1,14 @@
+---
+# playbooks/vmware_vm_stig_audit.yml
+# Non-mutating STIG compliance assessment for VMware virtual machines.
+
+- name: "Phase 2b | VM STIG Audit (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  roles:
+    - role: internal.vmware.vm
+      vars:
+        vmware_stig_enable_hardening: false   # READ-ONLY
+      when: vm_stig_target_vms | default([]) | length > 0

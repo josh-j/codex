@@ -7,8 +7,14 @@ platforms:
     platform: linux
     state_file: linux_fleet_state.yaml
     render: true
+  - input_dir: photon
+    report_dir: linux/photon
+    platform: photon
+    schema_name: photon
+    state_file: photon_fleet_state.yaml
+    render: true
   - input_dir: vmware/vcenter
-    report_dir: vmware/vcenter
+    report_dir: vmware/vcenter/vcsa
     platform: vmware
     state_file: vmware_fleet_state.yaml
     render: true

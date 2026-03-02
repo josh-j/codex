@@ -295,3 +295,114 @@ class TestVmStigE2E(unittest.TestCase):
             cklb = json.load(f)
             rule = next(r for s in cklb["stigs"] for r in s["rules"] if r["group_id"] == "V-256450")
             self.assertEqual(rule["status"], "not_a_finding")
+
+
+class TestAdditionalTargetStigE2E(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.test_dir.name)
+        self.platform_root = self.root / "platform"
+        self.reports_root = self.root / "reports"
+        self.reports_root.mkdir(parents=True)
+
+    def tearDown(self):
+        self.test_dir.cleanup()
+
+    def test_vcsa_stig_report_renders_under_vmware_vcenter_vcsa(self):
+        host = "vcsa-01.local"
+        host_dir = self.platform_root / "vmware" / "vcenter" / "vcsa" / host
+        host_dir.mkdir(parents=True)
+
+        raw_data = {
+            "metadata": {
+                "host": host,
+                "audit_type": "stig_vcsa",
+                "timestamp": "2026-03-02T00:00:00Z",
+                "engine": "ncs_collector_callback",
+            },
+            "data": [
+                {
+                    "id": "VCST-70-000001",
+                    "status": "failed",
+                    "severity": "medium",
+                    "title": "VCST test",
+                }
+            ],
+            "target_type": "vcsa",
+        }
+        with open(host_dir / "raw_stig_vcsa.yaml", "w") as f:
+            yaml.dump(raw_data, f)
+
+        groups = {"all": [host], "vcenters": [host]}
+        groups_path = self.platform_root / "inventory_groups.json"
+        with open(groups_path, "w") as f:
+            json.dump(groups, f)
+
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(groups_path),
+                "--report-stamp",
+                "20260302",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
+
+        host_report = self.reports_root / "platform" / "vmware" / "vcenter" / "vcsa" / host / f"{host}_stig_vcsa.html"
+        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcenter/vcsa")
+
+    def test_photon_stig_report_renders_under_linux_photon(self):
+        host = "photon-01.local"
+        host_dir = self.platform_root / "linux" / "photon" / host
+        host_dir.mkdir(parents=True)
+
+        raw_data = {
+            "metadata": {
+                "host": host,
+                "audit_type": "stig_photon",
+                "timestamp": "2026-03-02T00:00:00Z",
+                "engine": "ncs_collector_callback",
+            },
+            "data": [
+                {
+                    "id": "PHOTON-000001",
+                    "status": "failed",
+                    "severity": "medium",
+                    "title": "Photon test",
+                }
+            ],
+            "target_type": "photon",
+        }
+        with open(host_dir / "raw_stig_photon.yaml", "w") as f:
+            yaml.dump(raw_data, f)
+
+        groups = {"all": [host], "photon_servers": [host], "ubuntu_servers": []}
+        groups_path = self.platform_root / "inventory_groups.json"
+        with open(groups_path, "w") as f:
+            json.dump(groups, f)
+
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root",
+                str(self.platform_root),
+                "--reports-root",
+                str(self.reports_root),
+                "--groups",
+                str(groups_path),
+                "--report-stamp",
+                "20260302",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
+
+        host_report = self.reports_root / "platform" / "linux" / "photon" / host / f"{host}_stig_photon.html"
+        self.assertTrue(host_report.exists(), "Photon STIG host report should exist under linux/photon")

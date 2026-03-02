@@ -38,13 +38,17 @@
         {% else %}
         {{ meta.get('display_name', 'Fleet') }} — Fleet Report
         {% endif %}
+        <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
     </div>
     {% endif %}
 
     <div class="page-header">
         <div>
             <h1>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</h1>
-            <span style="font-size:11px; color:#9db4cc;">Platform: {{ meta.get('platform', '') | upper }} &nbsp;&middot;&nbsp; {{ meta.get('total_hosts', 0) }} hosts</span>
+            <span class="page-subtitle">Platform: {{ meta.get('platform', '') | upper }} &nbsp;&middot;&nbsp; {{ meta.get('total_hosts', 0) }} hosts</span>
         </div>
         <div class="right">
             {{ meta.get('report_date', report_date | default('')) }}
@@ -68,7 +72,7 @@
         <div class="widget-body widget-table-view">
         <table>
             <thead>
-                <tr><th style="width:90px;">Severity</th><th>Message</th></tr>
+                <tr><th class="th-severity">Severity</th><th>Message</th></tr>
             </thead>
             <tbody>
             {% for group in alert_groups %}
@@ -101,10 +105,10 @@
         <table>
             <thead>
                 <tr>
-                    <th>Hostname</th>
-                    <th style="width:80px;">Health</th>
+                    <th class="sortable">Hostname</th>
+                    <th class="th-health sortable">Health</th>
                     {% for col in generic_fleet_view.get('fleet_columns', []) %}
-                        <th style="{% if col.get('width') %}width:{{ col.width }};{% endif %}">{{ col.label }}</th>
+                        <th class="sortable" style="{% if col.get('width') %}width:{{ col.width }};{% endif %}">{{ col.label }}</th>
                     {% endfor %}
                     {# Keep alert counts as optional default if no columns defined? No, stay 100% schema. #}
                 </tr>
@@ -112,7 +116,7 @@
             <tbody>
             {% for host in hosts %}
                 <tr>
-                    <td><a href="{{ host.node_report }}" style="font-weight:bold; color:#00c; text-decoration:none;">{{ host.hostname }}</a></td>
+                    <td><a href="{{ host.node_report }}" class="link-strong">{{ host.hostname }}</a></td>
                     <td>
                         {% if host.health == 'OK' %}<span class="sv-ok">OK</span>
                         {% elif host.health == 'WARNING' %}<span class="sv-warning">WARNING</span>
@@ -124,7 +128,7 @@
                     {% endfor %}
                 </tr>
             {% else %}
-                <tr><td colspan="{{ 2 + generic_fleet_view.get('fleet_columns', []) | length }}" style="color:#888;">No hosts found.</td></tr>
+                <tr><td colspan="{{ 2 + generic_fleet_view.get('fleet_columns', []) | length }}" class="subtle-text">No hosts found.</td></tr>
             {% endfor %}
             </tbody>
         </table>

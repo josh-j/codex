@@ -20,12 +20,37 @@ just setup            # Install Ansible collections and tools
 
 # Orchestration
 just site             # Run full fleet audit
+just site-collect     # Run collection only
+just site-reports     # Run reporting only
+just site-vmware      # Run VMware-only pipeline
 just audit-vmware     # Targeted VMware audit
+just audit-vmware-vcenter # Targeted vCenter audit
+just audit-vmware-esxi    # Targeted ESXi audit
+just audit-vmware-vm      # Targeted VMware VM audit
+just audit-ubuntu-discover # Targeted Ubuntu discovery
+just update-windows        # Windows updates apply phase
+just audit-windows-post-patch # Windows patch verification phase
 just stig-vmware      # Targeted STIG audit
 
 # Targeted Execution
 just stig-audit-vm <vcenter> <vm_name>
 just stig-harden-vm <vcenter> <vm_name>
+just stig-audit-esxi-site <site>
+just stig-audit-esxi-site-inv <site> <inventory>
+just stig-harden-esxi-site <site>
+just stig-harden-esxi-site-inv <site> <inventory>
+just stig-audit-vcsa [target]
+just stig-remediate-vcsa [target]
+just stig-audit-vcsa-site <site>
+just stig-remediate-vcsa-site <site>
+just stig-audit-vcsa-inv <target> <inventory>
+just stig-remediate-vcsa-inv <target> <inventory>
+just stig-audit-vcsa-site-inv <site> <inventory>
+just stig-remediate-vcsa-site-inv <site> <inventory>
+just stig-audit-photon [target]
+just stig-remediate-photon [target]
+just stig-audit-photon-inv <target> <inventory>
+just stig-remediate-photon-inv <target> <inventory>
 just audit-linux-host <hostname>
 ```
 

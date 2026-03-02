@@ -12,12 +12,17 @@ from ncs_reporter._stig_apply import (
     RULE_REQUIRED_VARS,
     RuleMetadata,
     build_ansible_args,
+    build_generic_apply_args,
     build_group_id_map,
     build_interactive_playbook,
     check_rule_config_vars,
+    detect_target_type,
     generate_all_disabled_vars,
     get_failing_rules,
+    infer_target_host,
     load_esxi_rule_metadata,
+    load_stig_artifact,
+    resolve_generic_apply_plan,
     rule_version_to_manage_var,
     _infer_rule_version,
 )
@@ -352,6 +357,58 @@ class TestBuildAnsibleArgs(unittest.TestCase):
         self.assertIn("-eesxi_stig_target_hosts=['esxi-02.site1.local']", args)
 
 
+class TestGenericTargetHelpers(unittest.TestCase):
+    def test_detect_target_type_from_target_type_field(self) -> None:
+        raw = {"target_type": "photon", "metadata": {"audit_type": "stig_photon"}, "data": []}
+        detected = detect_target_type(raw, Path("/tmp/raw_stig_unknown.yaml"))
+        self.assertEqual(detected, "photon")
+
+    def test_detect_target_type_from_audit_type(self) -> None:
+        raw = {"metadata": {"audit_type": "stig_vcsa"}, "data": []}
+        detected = detect_target_type(raw, Path("/tmp/audit.yaml"))
+        self.assertEqual(detected, "vcsa")
+
+    def test_detect_target_type_from_filename(self) -> None:
+        raw = {"metadata": {}, "data": []}
+        detected = detect_target_type(raw, Path("/tmp/raw_stig_vm.yaml"))
+        self.assertEqual(detected, "vm")
+
+    def test_infer_target_host_from_metadata(self) -> None:
+        host = infer_target_host({"metadata": {"host": "node01.example.local"}, "data": []})
+        self.assertEqual(host, "node01.example.local")
+
+    def test_load_stig_artifact_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "raw_stig_vm.yaml"
+            artifact.write_text("target_type: vm\nmetadata:\n  host: vm-01\n", encoding="utf-8")
+            loaded = load_stig_artifact(artifact)
+        self.assertIsInstance(loaded, dict)
+        self.assertEqual(loaded.get("target_type"), "vm")
+
+    def test_resolve_generic_apply_plan(self) -> None:
+        self.assertEqual(
+            resolve_generic_apply_plan("vcsa"),
+            ("playbooks/vmware_vcsa_stig_remediate.yml", "vcenter_stig_target_hosts"),
+        )
+        self.assertEqual(
+            resolve_generic_apply_plan("photon"),
+            ("playbooks/photon_stig_remediate.yml", "photon_target_hosts"),
+        )
+
+    def test_build_generic_apply_args_includes_target_var(self) -> None:
+        args = build_generic_apply_args(
+            playbook="playbooks/photon_stig_remediate.yml",
+            inventory="inventory/production/hosts.yaml",
+            limit="linux",
+            target_var="photon_target_hosts",
+            target_host="photon-01.local",
+            extra_vars=("foo=bar",),
+        )
+        self.assertIn("ansible-playbook", args)
+        self.assertIn("-ephoton_target_hosts=['photon-01.local']", args)
+        self.assertIn("foo=bar", args)
+
+
 class TestStigApplyCLIDryRun(unittest.TestCase):
     """Integration-level test: run stig-apply --dry-run via Click test runner."""
 
@@ -609,3 +666,128 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         self.assertIn("No failing", result.output)
+
+
+class TestStigApplyCLIGenericTargets(unittest.TestCase):
+    def _write_artifact(self, tmp_dir: str, *, target_type: str, host: str, rule_version: str) -> Path:
+        artifact = Path(tmp_dir) / f"raw_stig_{target_type}.yaml"
+        data = {
+            "metadata": {"host": host, "audit_type": f"stig_{target_type}", "timestamp": "2026-03-02T00:00:00Z"},
+            "data": [
+                {
+                    "id": "X-1",
+                    "rule_version": rule_version,
+                    "status": "failed",
+                    "severity": "medium",
+                    "title": "Test finding",
+                }
+            ],
+            "target_type": target_type,
+        }
+        with open(artifact, "w") as f:
+            yaml.dump(data, f)
+        return artifact
+
+    def test_vm_dry_run_generates_vm_remediation_command(self) -> None:
+        from click.testing import CliRunner
+        from ncs_reporter.cli import main
+
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = self._write_artifact(
+                tmp,
+                target_type="vm",
+                host="app01.example.local",
+                rule_version="VMCH-70-000001",
+            )
+            result = runner.invoke(
+                main,
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "vcenter1",
+                    "--dry-run",
+                ],
+            )
+        self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
+        self.assertIn("playbooks/vmware_vm_stig_remediate.yml", result.output)
+        self.assertIn("vm_stig_target_vms=['app01.example.local']", result.output)
+
+    def test_vcsa_dry_run_generates_vcsa_remediation_command(self) -> None:
+        from click.testing import CliRunner
+        from ncs_reporter.cli import main
+
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = self._write_artifact(
+                tmp,
+                target_type="vcsa",
+                host="vcsa01.example.local",
+                rule_version="VCST-70-000001",
+            )
+            result = runner.invoke(
+                main,
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "vcenters",
+                    "--dry-run",
+                ],
+            )
+        self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
+        self.assertIn("playbooks/vmware_vcsa_stig_remediate.yml", result.output)
+        self.assertIn("vcenter_stig_target_hosts=['vcsa01.example.local']", result.output)
+
+    def test_photon_dry_run_generates_photon_remediation_command(self) -> None:
+        from click.testing import CliRunner
+        from ncs_reporter.cli import main
+
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = self._write_artifact(
+                tmp,
+                target_type="photon",
+                host="photon01.example.local",
+                rule_version="PHOTON-000001",
+            )
+            result = runner.invoke(
+                main,
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "linux",
+                    "--dry-run",
+                ],
+            )
+        self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
+        self.assertIn("playbooks/photon_stig_remediate.yml", result.output)
+        self.assertIn("photon_target_hosts=['photon01.example.local']", result.output)
+
+    def test_ubuntu_dry_run_generates_ubuntu_remediation_command(self) -> None:
+        from click.testing import CliRunner
+        from ncs_reporter.cli import main
+
+        runner = CliRunner()
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact = self._write_artifact(
+                tmp,
+                target_type="ubuntu",
+                host="ubuntu01.example.local",
+                rule_version="UBTU-20-000001",
+            )
+            result = runner.invoke(
+                main,
+                [
+                    "stig-apply",
+                    str(artifact),
+                    "--limit",
+                    "linux",
+                    "--dry-run",
+                ],
+            )
+        self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
+        self.assertIn("playbooks/ubuntu_stig_remediate.yml", result.output)
+        self.assertIn("ubuntu_target_hosts=['ubuntu01.example.local']", result.output)

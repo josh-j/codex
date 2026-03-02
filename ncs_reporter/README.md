@@ -125,9 +125,12 @@ ncs-reporter collect \
 
 ---
 
-### `stig-apply` — Break-glass ESXi STIG hardening (interactive)
+### `stig-apply` — Interactive STIG hardening from raw YAML
 
-Reads a `raw_stig_esxi.yaml` audit artifact, extracts failing rules, and applies them **one at a time** with a confirmation prompt between each. Ansible is invoked as a subprocess per rule so output is live-streamed and side effects are visible before the next rule runs.
+Reads a `raw_stig_*.yaml` artifact and applies remediation interactively.
+
+- `esxi`: per-rule interactive apply (one warm Ansible session, confirm each rule).
+- `vm`, `vcsa`, `photon`, `ubuntu`: interactive confirmation, then target playbook apply.
 
 ```
 $ ncs-reporter stig-apply artifacts/vcenter1/raw_stig_esxi.yaml --limit vcenter1
@@ -154,26 +157,32 @@ Continue to next rule? [y/n/abort]: y
 
 **How it works:**
 
-1. Reads the artifact and filters to rules with `status=open`
-2. Generates an all-disabled vars file (`esxi_70_NNNNNN_Manage: false` for all 75 rules)
-3. For each failing rule, runs:
+1. Detects target type from artifact (`target_type`, `metadata.audit_type`, or filename), unless overridden via `--target-type`
+2. Filters findings to `status=open`
+3. For ESXi, generates an all-disabled vars file (`esxi_70_NNNNNN_Manage: false`) and applies selected rules interactively
+4. For non-ESXi targets, runs the mapped remediation playbook with target host scoping:
+   - `vm` -> `playbooks/vmware_vm_stig_remediate.yml`
+   - `vcsa` -> `playbooks/vmware_vcsa_stig_remediate.yml`
+   - `photon` -> `playbooks/photon_stig_remediate.yml`
+   - `ubuntu` -> `playbooks/ubuntu_stig_remediate.yml`
+
+ESXi command pattern:
    ```bash
-   ansible-playbook playbooks/vmware_stig_remediate.yml \
+   ansible-playbook <generated-temp-playbook>.yaml \
      -i inventory/production/hosts.yaml \
      -l <limit> \
-     --skip-tags snapshot,vm \
-     -e @/tmp/ncs_stig_disabled_*.yaml \
-     -e esxi_70_NNNNNN_Manage=true \
-     -e vmware_stig_enable_hardening=true
+     -e ...
    ```
 
 **Options:**
 
 | Option | Default | Description |
 |---|---|---|
-| `ARTIFACT` | *(required)* | Path to `raw_stig_esxi.yaml` artifact |
+| `ARTIFACT` | *(required)* | Path to `raw_stig_*.yaml` artifact |
 | `--limit` | *(required)* | Ansible `--limit` value (e.g. `vcenter1`) |
-| `--playbook` | `playbooks/vmware_stig_remediate.yml` | Playbook path |
+| `--target-type` | auto | Override target type (`esxi`, `vm`, `vcsa`, `photon`, `ubuntu`) |
+| `--target-host` | auto | Override target host used for host-scoped vars |
+| `--esxi-host` | auto | Legacy alias for `--target-host` (ESXi mode) |
 | `--inventory` | `inventory/production/hosts.yaml` | Inventory path |
 | `--skip-snapshot` | off | Skip the pre-hardening snapshot phase |
 | `-e` / `--extra-vars` | — | Extra vars passed to every ansible invocation (repeatable) |

@@ -20,6 +20,46 @@ _BUILTIN_SCHEMAS_DIR = Path(__file__).parent / "schemas"
 _USER_SCHEMAS_DIR = Path.home() / ".config" / "ncs_reporter" / "schemas"
 
 
+def _resolve_refs(node: Any, root_path: Path) -> Any:
+    """Recursively resolve $ref directives in the YAML schema."""
+    if isinstance(node, dict):
+        if "$ref" in node:
+            ref_path = node["$ref"]
+            parts = ref_path.split("#")
+            file_part = parts[0]
+            json_pointer = parts[1] if len(parts) > 1 else ""
+
+            target_file = root_path.parent / file_part
+            if not target_file.exists():
+                raise ValueError(f"Schema reference not found: {target_file}")
+
+            with open(target_file, encoding="utf-8") as f:
+                target_data = yaml.safe_load(f)
+
+            # Follow JSON pointer (e.g., /fields/some_field)
+            if json_pointer:
+                keys = [k for k in json_pointer.split("/") if k]
+                for key in keys:
+                    if isinstance(target_data, dict) and key in target_data:
+                        target_data = target_data[key]
+                    else:
+                        raise ValueError(f"Pointer {json_pointer} not found in {target_file}")
+
+            # Merge resolved data with any other keys in the current node (overriding ref data)
+            resolved = dict(target_data) if isinstance(target_data, dict) else target_data
+            if isinstance(resolved, dict):
+                for k, v in node.items():
+                    if k != "$ref":
+                        resolved[k] = _resolve_refs(v, root_path)
+            return resolved
+
+        else:
+            return {k: _resolve_refs(v, root_path) for k, v in node.items()}
+    elif isinstance(node, list):
+        return [_resolve_refs(item, root_path) for item in node]
+    return node
+
+
 def _load_schema_file(path: Path) -> ReportSchema | None:
     """Load and validate a single schema YAML file. Returns None on error."""
     try:
@@ -28,6 +68,9 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
         if not isinstance(data, dict):
             logger.warning("Skipping %s: not a YAML mapping", path)
             return None
+
+        data = _resolve_refs(data, path)
+
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
         _attach_broken_paths(schema)
@@ -136,6 +179,9 @@ def load_schema_from_file(path: Path) -> ReportSchema:
             data = yaml.safe_load(f)
         if not isinstance(data, dict):
             raise ValueError(f"Not a YAML mapping: {path}")
+
+        data = _resolve_refs(data, path)
+
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
         _attach_broken_paths(schema)

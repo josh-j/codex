@@ -1,0 +1,68 @@
+name: advanced_test
+platform: test
+display_name: "Advanced Schema Test"
+
+detection:
+  keys_any: [test_raw]
+
+fields:
+  uptime:
+    $ref: "shared_schema.yaml#/fields/shared_uptime"
+  uptime_days:
+    path: "test_raw.data.uptime | to_days"
+    type: float
+    format: "{value} days"
+  storage_bytes:
+    path: "test_raw.data.storage"
+    type: bytes
+  storage_gb:
+    path: "test_raw.data.storage | to_gb"
+    type: float
+  used_pct:
+    path: "test_raw.data.used_pct"
+    type: percentage
+  last_boot:
+    path: "test_raw.data.boot_time"
+    type: datetime
+  interfaces:
+    path: "test_raw.data.interfaces"
+    type: list
+
+widgets:
+  - id: layout_test
+    title: "Layout Test"
+    type: key_value
+    layout: { width: "half" }
+    fields:
+      - { label: "Uptime", field: uptime_days }
+
+  - id: storage_progress
+    title: "Storage Usage"
+    type: progress_bar
+    layout: { width: "half" }
+    field: used_pct
+    label: storage_gb
+    color: auto
+    thresholds:
+      75: yellow
+      90: red
+
+  - id: network_table
+    title: "Network Interfaces"
+    type: table
+    rows_field: interfaces
+    columns:
+      - label: "Name"
+        field: name
+      - label: "Status"
+        field: status
+        style_rules:
+          - condition: { op: eq_str, field: status, value: "down" }
+            css_class: "health-crit"
+          - condition: { op: eq_str, field: status, value: "up" }
+            css_class: "health-ok"
+
+  - id: note
+    title: "Note"
+    type: markdown
+    content: "This is a **markdown** widget."

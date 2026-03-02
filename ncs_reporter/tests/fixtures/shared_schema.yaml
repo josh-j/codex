@@ -1,0 +1,4 @@
+fields:
+  shared_uptime:
+    path: "test_raw.data.uptime"
+    type: int

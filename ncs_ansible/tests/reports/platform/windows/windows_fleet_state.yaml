@@ -1,5 +1,5 @@
 metadata:
-  generated_at: '2026-03-01T18:17:48.051962'
+  generated_at: '2026-03-02T23:29:14.223015'
   fleet_stats:
     total_hosts: 1
     critical_alerts: 1
@@ -144,7 +144,7 @@ hosts:
         host: null
         audit_type: stig
         timestamp: '2026-03-01T17:17:25+00:00'
-        generated_at: '2026-03-01T18:17:48.057625'
+        generated_at: '2026-03-02T23:29:14.233223'
       health: CRITICAL
       summary:
         total: 8
@@ -233,7 +233,7 @@ hosts:
         schema_name: windows
         platform: windows
         display_name: Windows
-        generated_at: '2026-03-01T18:17:48.129996'
+        generated_at: '2026-03-02T23:29:14.365857'
         field_coverage:
           resolved: 5
           total: 5
@@ -414,9 +414,15 @@ hosts:
         - id: alerts
           title: Active Alerts
           type: alert_panel
+          layout:
+            width: full
+            row: null
         - id: services
           title: Services
           type: key_value
+          layout:
+            width: full
+            row: null
           fields:
           - label: CCMExec State
             field: ccm_service_state
@@ -424,6 +430,9 @@ hosts:
         - id: configmgr_apps
           title: ConfigMgr Applications
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: configmgr_apps
           columns:
           - label: Name
@@ -431,14 +440,19 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Version
             field: Version
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: apps_to_update
           title: Applications Pending Update
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: apps_to_update
           columns:
           - label: Name
@@ -446,19 +460,25 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Current Version
             field: CurrentVersion
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Target Version
             field: TargetVersion
             badge: false
             format: null
             link_field: null
+            style_rules: []
         - id: update_results
           title: Update Results
           type: table
+          layout:
+            width: full
+            row: null
           rows_field: update_results
           columns:
           - label: Application
@@ -466,13 +486,16 @@ hosts:
             badge: false
             format: null
             link_field: null
+            style_rules: []
           - label: Status
             field: status
             badge: true
             format: null
             link_field: null
+            style_rules: []
           - label: Failed
             field: failed
             badge: true
             format: null
             link_field: null
+            style_rules: []

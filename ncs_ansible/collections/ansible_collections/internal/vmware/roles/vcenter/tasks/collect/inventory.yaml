@@ -8,11 +8,21 @@
   no_log: true
   failed_when: false
   changed_when: false
+  when:
+    - vcenter_collect_datacenters | default(true) | bool
+      or vcenter_collect_compute | default(true) | bool
+      or vcenter_collect_storage | default(true) | bool
+      or vcenter_collect_snapshots | default(true) | bool
 
 - name: Inventory | Extract Datacenter list
   ansible.builtin.set_fact:
     _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
   changed_when: false
+  when:
+    - vcenter_collect_datacenters | default(true) | bool
+      or vcenter_collect_compute | default(true) | bool
+      or vcenter_collect_storage | default(true) | bool
+      or vcenter_collect_snapshots | default(true) | bool
 
 - name: Inventory | Query Compute (Clusters & Hosts)
   vmware.vmware.cluster_info:
@@ -23,7 +33,9 @@
   no_log: true
   failed_when: false
   changed_when: false
-  when: _vcenter_datacenters | length > 0
+  when:
+    - vcenter_collect_compute | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0
 
 - name: Inventory | Query Storage (Datastores)
   community.vmware.vmware_datastore_info:
@@ -38,7 +50,9 @@
   delay: 5
   until: _raw_datastores is succeeded
   ignore_errors: true
-  when: _vcenter_datacenters | length > 0
+  when:
+    - vcenter_collect_storage | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0
 
 - name: Inventory | Query Workload (VMs)
   community.vmware.vmware_vm_info:
@@ -50,6 +64,7 @@
   no_log: true
   failed_when: false
   changed_when: false
+  when: vcenter_collect_workload | default(true) | bool
 
 - name: Inventory | Query Snapshots
   community.vmware.vmware_all_snapshots_info:
@@ -60,4 +75,6 @@
   no_log: true
   failed_when: false
   changed_when: false
-  when: _vcenter_datacenters | length > 0
+  when:
+    - vcenter_collect_snapshots | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0

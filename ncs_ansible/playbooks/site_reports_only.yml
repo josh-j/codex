@@ -1,0 +1,6 @@
+---
+# playbooks/site_reports_only.yml
+# Reporting-only pipeline from existing collected artifacts.
+
+- name: "Phase 4: Unified Infrastructure Reporting"
+  ansible.builtin.import_playbook: generate_reports.yml

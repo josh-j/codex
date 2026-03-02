@@ -2,72 +2,126 @@
 # inventory/production/hosts.yaml
 # Define your data center infrastructure targets here.
 
-# --- Platform Groups ---
+# --- Site-Scoped Groups ---
 
-vcenters:
+sdhm_vcenters:
   hosts:
     vc-site1.local:
-      site: site1
+      site: sdhm
+
+sdhm_esxi_hosts:
+  hosts:
+    esxi-01.site1.local:
+      site: sdhm
+    esxi-02.site1.local:
+      site: sdhm
+
+sdhm_unity_arrays:
+  hosts:
+    unity-site1.local:
+      site: sdhm
+
+sdhm_data_domains:
+  hosts:
+    dd-site1.local:
+      site: sdhm
+
+sdhm_ucs_managers:
+  hosts:
+    ucs-site1.local:
+      site: sdhm
+
+sdhm_ubuntu_servers:
+  hosts:
+    ubuntu-svc-01:
+      site: sdhm
+    ubuntu-svc-02:
+      site: sdhm
+
+sdhm_windows_servers:
+  hosts:
+    win-srv-01.site1.local:
+      site: sdhm
+    win-srv-02.site1.local:
+      site: sdhm
+
+sdhm_photon_servers:
+  hosts: {}
+
+site2_vcenters:
+  hosts:
     vc-site2.local:
       site: site2
 
-esxi_hosts:
+site2_unity_arrays:
   hosts:
-    esxi-01.site1.local:
-      site: site1
-    esxi-02.site1.local:
-      site: site1
-
-unity_arrays:
-  hosts:
-    unity-site1.local:
-      site: site1
     unity-site2.local:
       site: site2
 
-data_domains:
+site2_data_domains:
   hosts:
-    dd-site1.local:
-      site: site1
     dd-site2.local:
       site: site2
 
-ucs_managers:
+site2_ucs_managers:
   hosts:
-    ucs-site1.local:
-      site: site1
     ucs-site2.local:
       site: site2
 
+# --- Platform Groups (Global Rollups) ---
+
+vcenters:
+  children:
+    sdhm_vcenters:
+    site2_vcenters:
+
+esxi_hosts:
+  children:
+    sdhm_esxi_hosts:
+
+unity_arrays:
+  children:
+    sdhm_unity_arrays:
+    site2_unity_arrays:
+
+data_domains:
+  children:
+    sdhm_data_domains:
+    site2_data_domains:
+
+ucs_managers:
+  children:
+    sdhm_ucs_managers:
+    site2_ucs_managers:
+
 ubuntu_servers:
-  hosts:
-    ubuntu-svc-01:
-      site: site1
-    ubuntu-svc-02:
-      site: site1
+  children:
+    sdhm_ubuntu_servers:
 
 windows_servers:
-  hosts:
-    win-srv-01.site1.local:
-      site: site1
-    win-srv-02.site1.local:
-      site: site1
-
-# --- Site Groups (Logical aggregation) ---
-
-site1:
   children:
-    vcenters:
-    esxi_hosts:
-    unity_arrays:
-    data_domains:
-    ucs_managers:
-    ubuntu_servers:
-    windows_servers:
+    sdhm_windows_servers:
+
+photon_servers:
+  children:
+    sdhm_photon_servers:
+
+# --- Site Groups (Logical Aggregation) ---
+
+sdhm:
+  children:
+    sdhm_vcenters:
+    sdhm_esxi_hosts:
+    sdhm_unity_arrays:
+    sdhm_data_domains:
+    sdhm_ucs_managers:
+    sdhm_ubuntu_servers:
+    sdhm_windows_servers:
+    sdhm_photon_servers:
 
 site2:
   children:
-    vcenters:
-    unity_arrays:
-    data_domains:
-    ucs_managers:
+    site2_vcenters:
+    site2_unity_arrays:
+    site2_data_domains:
+    site2_ucs_managers:

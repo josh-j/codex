@@ -1,0 +1,13 @@
+test_raw:
+  metadata:
+    host: test-01
+  data:
+    uptime: 86400
+    storage: 107374182400
+    used_pct: 85
+    boot_time: "2026-03-01T12:00:00Z"
+    interfaces:
+      - name: eth0
+        status: up
+      - name: eth1
+        status: down

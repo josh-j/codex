@@ -5,3 +5,5 @@ collections:
   - name: vmware.vmware_rest
     version: 3.0.1
   - name: vmware.vmware
+  - name: community.general
+  - name: ansible.posix

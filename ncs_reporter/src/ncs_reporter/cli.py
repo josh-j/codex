@@ -185,6 +185,7 @@ def _render_platform(
     *,
     site_report_relative: str | None = None,
     global_inventory_index: dict[str, str] | None = None,
+    generated_fleet_dirs: set[str] | None = None,
     report_dir: str | None = None,
     extra_schema_dirs: tuple[str, ...] = (),
     schema_names_override: list[str] | None = None,
@@ -238,16 +239,43 @@ def _render_platform(
     if site_report_relative:
         fleet_nav["site_report"] = site_report_relative
 
+    import re
+
     for hostname, bundle in hosts_data.items():
-        node_view = build_generic_node_view(
-            schema, hostname, bundle, nav=node_nav, hosts_data=global_inventory_index, **kw
-        )
         host_dir = output_path / hostname
         host_dir.mkdir(exist_ok=True)
+        
+        # Build history list
+        history = []
+        for f in host_dir.glob("health_report_*.html"):
+            m = re.search(r"health_report_(\d+)\.html", f.name)
+            if m:
+                date_str = m.group(1)
+                display_name = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else date_str
+                history.append({"name": display_name, "url": f.name})
+        history.sort(key=lambda x: x["name"], reverse=True)
+
+        node_view = build_generic_node_view(
+            schema,
+            hostname,
+            bundle,
+            nav=node_nav,
+            hosts_data=global_inventory_index,
+            generated_fleet_dirs=generated_fleet_dirs,
+            history=history,
+            **kw,
+        )
         content = node_tpl.render(generic_node_view=node_view, **common_vars)
         write_report(host_dir, "health_report.html", content, stamp)
 
-    fleet_view = build_generic_fleet_view(schema, hosts_data, nav=fleet_nav, hosts_data=global_inventory_index, **kw)
+    fleet_view = build_generic_fleet_view(
+        schema,
+        hosts_data,
+        nav=fleet_nav,
+        hosts_data=global_inventory_index,
+        generated_fleet_dirs=generated_fleet_dirs,
+        **kw,
+    )
     fleet_tpl = env.get_template("generic_fleet_report.html.j2")
     content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
     write_report(output_path, fleet_filename, content, stamp)
@@ -263,6 +291,8 @@ def _render_stig(
     output_path: Path,
     common_vars: dict[str, str],
     global_inventory_index: dict[str, str] | None = None,
+    cklb_dir: Path | None = None,
+    generated_fleet_dirs: set[str] | None = None,
 ) -> None:
     """Render per-host STIG reports and fleet overview."""
     env = get_jinja_env()
@@ -270,6 +300,36 @@ def _render_stig(
     kw = vm_kwargs(common_vars)
     host_tpl = env.get_template("stig_host_report.html.j2")
     all_hosts_data: dict[str, Any] = {}
+    cklb_rule_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+    def _load_cklb_rule_lookup(cklb_path: Path) -> dict[str, dict[str, Any]]:
+        cached = cklb_rule_cache.get(str(cklb_path))
+        if cached is not None:
+            return cached
+        if not cklb_path.is_file():
+            cklb_rule_cache[str(cklb_path)] = {}
+            return {}
+
+        try:
+            payload = json.loads(cklb_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.warning("Failed to parse CKLB %s: %s", cklb_path, exc)
+            cklb_rule_cache[str(cklb_path)] = {}
+            return {}
+
+        out: dict[str, dict[str, Any]] = {}
+        for stig in payload.get("stigs", []) if isinstance(payload, dict) else []:
+            if not isinstance(stig, dict):
+                continue
+            for rule in stig.get("rules", []) if isinstance(stig.get("rules"), list) else []:
+                if not isinstance(rule, dict):
+                    continue
+                for key in ("rule_id", "rule_version", "group_id"):
+                    val = str(rule.get(key) or "").strip()
+                    if val and val not in out:
+                        out[val] = rule
+        cklb_rule_cache[str(cklb_path)] = out
+        return out
 
     for hostname, bundle in hosts_data.items():
         if not isinstance(bundle, dict):
@@ -281,6 +341,17 @@ def _render_stig(
                 continue
 
             target_type = str(payload.get("target_type", ""))
+            vcsa_components = {
+                "vami",
+                "eam",
+                "lookup_svc",
+                "perfcharts",
+                "vcsa_photon_os",
+                "postgresql",
+                "rhttpproxy",
+                "sts",
+                "ui",
+            }
             # Use target_type to guess platform for directory depth
             if target_type == "esxi":
                 platform_dir = "platform/vmware/esxi"
@@ -288,9 +359,21 @@ def _render_stig(
             elif target_type == "vm":
                 platform_dir = "platform/vmware/vm"
                 depth_prefix = "../../../../"
+            elif target_type in ("vcsa", "vcenter"):
+                platform_dir = "platform/vmware/vcenter/vcsa"
+                depth_prefix = "../../../../../"
+            elif target_type in vcsa_components:
+                platform_dir = "platform/vmware/vcenter/vcsa"
+                depth_prefix = "../../../../../"
             elif target_type == "windows":
                 platform_dir = "platform/windows"
                 depth_prefix = "../../../"
+            elif target_type == "photon":
+                platform_dir = "platform/linux/photon"
+                depth_prefix = "../../../../"
+            elif target_type in ("ubuntu", "linux"):
+                platform_dir = "platform/linux/ubuntu"
+                depth_prefix = "../../../../"
             else:
                 platform_dir = "platform/linux/ubuntu"
                 depth_prefix = "../../../../"
@@ -300,23 +383,57 @@ def _render_stig(
                 "fleet_label": "STIG Fleet Dashboard",
                 "site_report": f"{depth_prefix}site_health_report.html",
             }
-            host_view = build_stig_host_view(
-                hostname, audit_type, payload, nav=host_nav, host_bundle=bundle, hosts_data=global_inventory_index, **kw
-            )
-            # platform = host_view["target"].get("platform", "unknown") # already used for path
+            cklb_lookup: dict[str, dict[str, Any]] = {}
+            if cklb_dir is not None and target_type:
+                cklb_path = cklb_dir / f"{hostname}_{target_type}.cklb"
+                cklb_lookup = _load_cklb_rule_lookup(cklb_path)
+            import re
 
             host_dir = output_path / platform_dir / hostname
             host_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Build history list for stig
+            history = []
+            file_prefix = f"{hostname}_stig_{target_type}"
+            for f in host_dir.glob(f"{file_prefix}_*.html"):
+                m = re.search(f"{file_prefix}_(\\d+)\\.html", f.name)
+                if m:
+                    date_str = m.group(1)
+                    display_name = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else date_str
+                    history.append({"name": display_name, "url": f.name})
+            history.sort(key=lambda x: x["name"], reverse=True)
+
+            host_view = build_stig_host_view(
+                hostname,
+                audit_type,
+                payload,
+                nav=host_nav,
+                host_bundle=bundle,
+                hosts_data=global_inventory_index,
+                cklb_rule_lookup=cklb_lookup,
+                generated_fleet_dirs=generated_fleet_dirs,
+                history=history,
+                **kw,
+            )
+            # platform = host_view["target"].get("platform", "unknown") # already used for path
 
             content = host_tpl.render(stig_host_view=host_view, **common_vars)
             dest_name = f"{hostname}_stig_{target_type}.html"
             with open(host_dir / dest_name, "w") as f:
                 f.write(content)
+            if stamp:
+                with open(host_dir / f"{hostname}_stig_{target_type}_{stamp}.html", "w") as f:
+                    f.write(content)
 
             all_hosts_data.setdefault(hostname, {})[audit_type] = payload
 
     if all_hosts_data:
-        fleet_view = build_stig_fleet_view(all_hosts_data, nav={"site_report": "site_health_report.html"}, **kw)
+        fleet_view = build_stig_fleet_view(
+            all_hosts_data,
+            nav={"site_report": "site_health_report.html"},
+            generated_fleet_dirs=generated_fleet_dirs,
+            **kw,
+        )
         fleet_tpl = env.get_template("stig_fleet_report.html.j2")
         content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
         write_report(output_path, "stig_fleet_report.html", content, stamp)
@@ -568,6 +685,7 @@ def all_cmd(
             render_tasks.append(task)
 
     # 2. Parallel platform rendering
+    generated_fleet_dirs = {str(t["report_dir"]) for t in render_tasks}
     if render_tasks:
         with ThreadPoolExecutor(max_workers=min(len(render_tasks), 3)) as pool:
             futures = {
@@ -577,10 +695,9 @@ def all_cmd(
                     t["hosts_data"],
                     t["output_path"],
                     common_vars,
-                    site_report_relative="../../../site_health_report.html"
-                    if "/" in str(t["report_dir"])
-                    else "../../site_health_report.html",
+                    site_report_relative=("../" * (len(str(t["report_dir"]).split("/")) + 1)) + "site_health_report.html",
                     global_inventory_index=global_inventory_index,
+                    generated_fleet_dirs=generated_fleet_dirs,
                     report_dir=t["report_dir"],
                     extra_schema_dirs=t.get("extra_schema_dirs", ()),
                     schema_names_override=t.get("schema_names_override"),
@@ -617,16 +734,36 @@ def all_cmd(
 
         click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
 
-        # 4. STIG Fleet Rendering
-        click.echo("--- Processing STIG Fleet Reports ---")
-        _render_stig(
-            global_data.get("hosts", global_data), r_root, common_vars, global_inventory_index=global_inventory_index
-        )
+        # Generate search index
+        search_index = []
+        for hostname, rep_dir in global_inventory_index.items():
+            search_index.append(
+                {
+                    "h": hostname,
+                    "u": f"platform/{rep_dir}/{hostname}/health_report.html",
+                    "p": rep_dir.split("/")[0] if "/" in rep_dir else rep_dir,
+                }
+            )
 
-        # 5. CKLB Export
+        with open(r_root / "search_index.js", "w", encoding="utf-8") as f:
+            f.write("window.NCS_SEARCH_INDEX = " + json.dumps(search_index, separators=(",", ":")) + ";")
+        click.echo(f"Global search index generated at {r_root}/search_index.js")
+
+        # 4. CKLB Export
         click.echo("--- Generating CKLB Artifacts ---")
         ctx = click.get_current_context()
         ctx.invoke(cklb, input_file=str(all_hosts_state), output_dir=str(r_root / "cklb"))
+
+        # 5. STIG Fleet Rendering
+        click.echo("--- Processing STIG Fleet Reports ---")
+        _render_stig(
+            global_data.get("hosts", global_data),
+            r_root,
+            common_vars,
+            global_inventory_index=global_inventory_index,
+            cklb_dir=r_root / "cklb",
+            generated_fleet_dirs=generated_fleet_dirs,
+        )
 
         click.echo("STIG fleet reports and CKLB artifacts generated.")
 
@@ -823,7 +960,10 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
     output_path.mkdir(parents=True, exist_ok=True)
     hosts_data = load_hosts_data(input_file)
     common_vars = generate_timestamps(report_stamp)
-    _render_stig(hosts_data, output_path, common_vars)
+    # Generate CKLB first so STIG HTML can hydrate description/check/fix content from it.
+    ctx = click.get_current_context()
+    ctx.invoke(cklb, input_file=input_file, output_dir=str(output_path / "cklb"), skeleton_dir=None)
+    _render_stig(hosts_data, output_path, common_vars, cklb_dir=output_path / "cklb")
     click.echo(f"Done! STIG reports generated in {output_dir}")
 
 
@@ -849,6 +989,17 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
     skeleton_map = {
         "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
         "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
+        "vcsa": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
+        "vcenter": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
+        "vami": "cklb_skeleton_vsphere7_vami_V1R2.json",
+        "eam": "cklb_skeleton_vsphere7_vca_eam_V1R2.json",
+        "lookup_svc": "cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json",
+        "perfcharts": "cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json",
+        "vcsa_photon_os": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
+        "postgresql": "cklb_skeleton_vsphere7_vca_postgresql_V1R2.json",
+        "rhttpproxy": "cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json",
+        "sts": "cklb_skeleton_vsphere7_vca_sts_V1R2.json",
+        "ui": "cklb_skeleton_vsphere7_vca_ui_V1R2.json",
     }
 
     for hostname, bundle in hosts_data.items():
@@ -888,7 +1039,13 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
     "--inventory", default="inventory/production/hosts.yaml", show_default=True, help="Ansible inventory path."
 )
 @click.option("--limit", required=True, help="Ansible --limit (e.g. vcenter1).")
-@click.option("--esxi-host", required=True, help="ESXi hostname to target (sets esxi_stig_target_hosts).")
+@click.option("--target-type", default="", help="Override target type (esxi/vm/vcsa/photon/ubuntu).")
+@click.option(
+    "--target-host",
+    default="",
+    help="Override target host used for target-scoped vars (auto-inferred from artifact by default).",
+)
+@click.option("--esxi-host", default="", help="ESXi hostname override (legacy alias for --target-host).")
 @click.option(
     "--skip-snapshot", is_flag=True, help="Suppress the informational note that ESXi snapshots are not applicable."
 )
@@ -901,27 +1058,66 @@ def stig_apply(
     artifact: Path,
     inventory: str,
     limit: str,
+    target_type: str,
+    target_host: str,
     esxi_host: str,
     skip_snapshot: bool,
     post_audit: bool,
     extra_vars: tuple[str, ...],
     dry_run: bool,
 ) -> None:
-    """Apply ESXi STIG rules interactively, one at a time.
+    """Apply STIG remediation interactively from a raw STIG YAML artifact.
 
-    ARTIFACT is the path to a raw_stig_esxi.yaml audit artifact.  A single
-    Ansible playbook is generated with ``pause`` tasks so the vCenter connection
-    stays warm across rules, keeping per-rule time to ~2-5 s.
+    - ESXi: per-rule interactive apply.
+    - VM/VCSA/Photon/Ubuntu: interactive confirmation + target playbook apply.
     """
-    from ._stig_apply import run_interactive_apply
+    from ._stig_apply import (
+        SUPPORTED_TARGET_TYPES,
+        detect_target_type,
+        infer_target_host,
+        load_stig_artifact,
+        run_generic_interactive_apply,
+        run_interactive_apply,
+    )
 
-    run_interactive_apply(
+    raw = load_stig_artifact(artifact)
+    detected_target_type = detect_target_type(raw, artifact, override=target_type)
+    if not detected_target_type:
+        raise click.ClickException(
+            "Could not determine target type from artifact. Provide --target-type (esxi/vm/vcsa/photon/ubuntu)."
+        )
+
+    normalized_target = detected_target_type.lower()
+    if normalized_target not in SUPPORTED_TARGET_TYPES:
+        raise click.ClickException(
+            f"Unsupported target type '{normalized_target}'. Supported: esxi, vm, vcsa, photon, ubuntu."
+        )
+
+    effective_target_host = target_host or esxi_host or infer_target_host(raw)
+
+    if normalized_target == "esxi":
+        if not effective_target_host:
+            raise click.ClickException(
+                "ESXi apply requires a target host. Provide --target-host (or legacy --esxi-host)."
+            )
+        run_interactive_apply(
+            artifact=artifact,
+            inventory=inventory,
+            limit=limit,
+            esxi_host=effective_target_host,
+            skip_snapshot=skip_snapshot,
+            post_audit=post_audit,
+            extra_vars=extra_vars,
+            dry_run=dry_run,
+        )
+        return
+
+    run_generic_interactive_apply(
         artifact=artifact,
         inventory=inventory,
         limit=limit,
-        esxi_host=esxi_host,
-        skip_snapshot=skip_snapshot,
-        post_audit=post_audit,
+        target_type=normalized_target,
+        target_host=effective_target_host,
         extra_vars=extra_vars,
         dry_run=dry_run,
     )

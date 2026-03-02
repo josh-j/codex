@@ -57,23 +57,26 @@ from fixtures.example_data import (
     make_stig_windows_bundle,
 )
 from ncs_reporter._report_context import generate_timestamps, get_jinja_env, vm_kwargs
-from ncs_reporter.aggregation import load_all_reports, normalize_host_bundle
+from ncs_reporter.aggregation import deep_merge, load_all_reports, normalize_host_bundle
 from ncs_reporter.cli import _render_platform, _render_stig
 from ncs_reporter.view_models.site import build_site_dashboard_view
 
 OUT_ROOT = Path(__file__).parent / "ncs_example_reports"
 PLATFORM_ROOT = OUT_ROOT / "platform"
+REPORT_STAMP = "20260301"
 
 # Matches the platform table in cli.all_cmd:
 #   input_dir  — where ncs_collector writes raw_*.yaml files
 #   report_dir — where ncs-reporter renders HTML reports
 _PLATFORMS = [
     {"input_dir": "linux/ubuntu", "report_dir": "linux/ubuntu", "platform": "linux", "render": True},
+    {"input_dir": "linux/photon", "report_dir": "linux/photon", "platform": "linux", "render": False},
     {"input_dir": "vmware/vcenter", "report_dir": "vmware/vcenter", "platform": "vmware", "render": True},
     {"input_dir": "vmware/esxi", "report_dir": "vmware/esxi", "platform": "vmware", "render": False},
     {"input_dir": "vmware/vm", "report_dir": "vmware/vm", "platform": "vmware", "render": False},
     {"input_dir": "windows", "report_dir": "windows", "platform": "windows", "render": True},
 ]
+_GENERATED_FLEET_DIRS = {p["report_dir"] for p in _PLATFORMS if p.get("render", True)}
 
 _PLATFORM_BY_KEY_PREFIX: dict[str, str] = {
     "ubuntu_": "linux/ubuntu",
@@ -103,6 +106,10 @@ def _write_raw_yaml(bundle: dict) -> None:
             platform = "vmware/esxi"
         elif raw_type == "stig_vm":
             platform = "vmware/vm"
+        elif raw_type in ("stig_vcsa", "stig_vcenter"):
+            platform = "vmware/vcenter"
+        elif raw_type == "stig_photon":
+            platform = "linux/photon"
         elif raw_type == "vcenter":
             platform = "vmware/vcenter"
 
@@ -149,6 +156,50 @@ def main() -> None:
         make_stig_vm_bundle("web-prod-01", unhealthy=True),
         make_stig_ubuntu_bundle("web-prod-01", unhealthy=True),
         make_stig_windows_bundle("win-srv-01", unhealthy=True),
+        {
+            "vmware_raw_vcsa_stig": {
+                "metadata": {
+                    "host": "vcenter-prod",
+                    "raw_type": "stig_vcsa",
+                    "audit_type": "stig_vcsa",
+                    "timestamp": "2026-03-02T00:00:00+00:00",
+                    "engine": "ncs_collector_callback",
+                },
+                "data": [
+                    {
+                        "id": "VCST-70-000001",
+                        "rule_version": "VCST-70-000001",
+                        "status": "failed",
+                        "severity": "medium",
+                        "title": "VCSA STIG sample",
+                        "checktext": "VCSA control not compliant.",
+                    }
+                ],
+                "target_type": "vcsa",
+            }
+        },
+        {
+            "photon_raw_stig": {
+                "metadata": {
+                    "host": "photon-01",
+                    "raw_type": "stig_photon",
+                    "audit_type": "stig_photon",
+                    "timestamp": "2026-03-02T00:00:00+00:00",
+                    "engine": "ncs_collector_callback",
+                },
+                "data": [
+                    {
+                        "id": "PHOTON-000001",
+                        "rule_version": "PHOTON-000001",
+                        "status": "failed",
+                        "severity": "medium",
+                        "title": "Photon STIG sample",
+                        "checktext": "Photon control not compliant.",
+                    }
+                ],
+                "target_type": "photon",
+            }
+        },
     ]
     for bundle in bundles:
         _write_raw_yaml(bundle)
@@ -156,7 +207,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 2. Aggregate + render — same pipeline as ``ncs-reporter all``
     # ------------------------------------------------------------------
-    common_vars = generate_timestamps(None)
+    common_vars = generate_timestamps(REPORT_STAMP)
     all_hosts: dict = {}
     global_inventory_index: dict[str, str] = {}
 
@@ -168,9 +219,14 @@ def main() -> None:
         p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
         if not p_data or not p_data["hosts"]:
             continue
-        all_hosts.update(p_data["hosts"])
+        for h, data in p_data["hosts"].items():
+            if h not in all_hosts:
+                all_hosts[h] = {}
+            deep_merge(all_hosts[h], data)
         for h in p_data["hosts"]:
-            global_inventory_index[h] = p["report_dir"]
+            # Keep first report_dir mapping for hosts that show up in multiple
+            # collections (e.g. vcenter-prod in both vcenter and esxi inputs).
+            global_inventory_index.setdefault(h, p["report_dir"])
 
     # Second pass to render
     for p in _PLATFORMS:
@@ -195,6 +251,7 @@ def main() -> None:
             if "/" in p["report_dir"]
             else "../../site_health_report.html",
             global_inventory_index=global_inventory_index,
+            generated_fleet_dirs=_GENERATED_FLEET_DIRS,
         )
 
     # ------------------------------------------------------------------
@@ -224,18 +281,34 @@ def main() -> None:
     (OUT_ROOT / "site_health_report.html").write_text(content)
 
     # ------------------------------------------------------------------
-    # 4. STIG reports — same as all_cmd step 4
+    # 3.5 Search Index
     # ------------------------------------------------------------------
-    _render_stig(all_hosts, OUT_ROOT, common_vars, global_inventory_index=global_inventory_index)
+    import json
+
+    search_index = []
+    for hostname, rep_dir in global_inventory_index.items():
+        if rep_dir not in _GENERATED_FLEET_DIRS:
+            continue
+        search_index.append(
+            {
+                "h": hostname,
+                "u": f"platform/{rep_dir}/{hostname}/health_report.html",
+                "p": rep_dir.split("/")[0] if "/" in rep_dir else rep_dir,
+            }
+        )
+    with open(OUT_ROOT / "search_index.js", "w", encoding="utf-8") as f:
+        f.write("window.NCS_SEARCH_INDEX = " + json.dumps(search_index, separators=(",", ":")) + ";")
 
     # ------------------------------------------------------------------
-    # 5. CKLBs via stig_xml callback artifacts
+    # 4. CKLB via stig_xml callback artifacts
     # ------------------------------------------------------------------
     import json
     from ncs_reporter.normalization.stig import normalize_stig
     from ncs_reporter.cklb_export import generate_cklb
 
     s_dir = Path(__file__).parent.parent / "src/ncs_reporter/cklb_skeletons"
+    cklb_root = OUT_ROOT / "cklb"
+    cklb_root.mkdir(parents=True, exist_ok=True)
     skeleton_map = {
         "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
         "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
@@ -247,20 +320,15 @@ def main() -> None:
         # Determine platform directory from filename/path hints
         if "ubuntu" in str(json_file):
             t_type = "ubuntu"
-            p_dir = "linux/ubuntu"
         elif "windows" in str(json_file):
             t_type = "windows"
-            p_dir = "windows"
         elif "esxi" in str(json_file):
             t_type = "esxi"
-            p_dir = "vmware/esxi"
         elif "vm" in str(json_file):
             t_type = "vm"
-            p_dir = "vmware/vm"
         else:
             # Fallback for generic STIG artifacts
             t_type = ""
-            p_dir = "unknown"
 
         raw_list = json.loads(json_file.read_text())
         model = normalize_stig(raw_list, stig_target_type=t_type)
@@ -269,26 +337,38 @@ def main() -> None:
         final_type = t_type or ""
         # If we couldn't guess from filename, we might have it in alerts metadata now
         if not final_type and model.alerts:
-            final_type = model.alerts[0].get("detail", {}).get("target_type", "")
+            first_alert = model.alerts[0]
+            detail = first_alert.detail if hasattr(first_alert, "detail") else {}
+            if isinstance(detail, dict):
+                final_type = str(detail.get("target_type", "") or "")
 
         skel = skeleton_map.get(final_type)
         if skel:
             sk_path = s_dir / skel
             if sk_path.exists():
-                # Place in node directory
-                out_dir = OUT_ROOT / "platform" / p_dir / host
-                out_dir.mkdir(parents=True, exist_ok=True)
-                out_path = out_dir / f"{host}_{t_type}.cklb"
+                out_path = cklb_root / f"{host}_{final_type}.cklb"
                 # Best effort IP extraction for example reports
                 ip_addr = model.host_data.get("ip_address") if hasattr(model, "host_data") else ""
                 generate_cklb(host, model.full_audit, sk_path, out_path, ip_address=str(ip_addr or ""))
+
+    # ------------------------------------------------------------------
+    # 5. STIG reports — same as all_cmd step 5
+    # ------------------------------------------------------------------
+    _render_stig(
+        all_hosts,
+        OUT_ROOT,
+        common_vars,
+        global_inventory_index=global_inventory_index,
+        cklb_dir=cklb_root,
+        generated_fleet_dirs=_GENERATED_FLEET_DIRS,
+    )
 
     # ------------------------------------------------------------------
     # Summary
     # ------------------------------------------------------------------
     print(f"Generated reports in {OUT_ROOT}/")
     print(f"  {OUT_ROOT}/site_health_report.html")
-    for input_dir in ["linux/ubuntu", "vmware/vcenter", "vmware/esxi", "vmware/vm", "windows"]:
+    for input_dir in ["linux/ubuntu", "linux/photon", "vmware/vcenter", "vmware/esxi", "vmware/vm", "windows"]:
         for raw in sorted((PLATFORM_ROOT / input_dir).glob("*/raw_*.yaml")):
             print(f"  {raw}  [raw]")
         for json_art in sorted((PLATFORM_ROOT / input_dir).glob("*/xccdf-results_*.json")):
