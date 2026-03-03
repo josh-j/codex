@@ -422,6 +422,7 @@
                       set -o pipefail && \
                       grep 'text/' '{{ var_conf_path }}' | grep -v 'charset=utf-8'
   register: mimetypes
+  check_mode: false
   changed_when: false
   failed_when: "mimetypes.rc == 2"
   tags:

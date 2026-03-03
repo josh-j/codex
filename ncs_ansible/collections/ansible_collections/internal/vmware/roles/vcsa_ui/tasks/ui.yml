@@ -359,6 +359,7 @@
 - name: VCUI-70-000017 - Find vSphere UI web files
   ansible.builtin.shell: find {{ var_files_web_path }} -xdev -type f -a '(' -perm -o+w -o -not -user root -o -not -group root ')';
   register: files
+  check_mode: false
   tags:
     - VCUI-70-000017
   changed_when: files.stdout != ""

@@ -55,6 +55,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000016 - Install auditd.
       ansible.builtin.command: tdnf -y install audit
@@ -71,6 +72,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000016 - Enable and start the auditd service.
       ansible.builtin.systemd:
@@ -92,6 +94,7 @@
         rpm -qa | grep ^rsyslog-
       register: rsysloginstalled
       changed_when: false
+      check_mode: false
       failed_when: rsysloginstalled.rc == 2
 
     - name: PHTN-50-000241 - Install rsyslog.
@@ -117,6 +120,7 @@
         rpm -qa | grep ^rsyslog-
       register: rsysloginstalled
       changed_when: false
+      check_mode: false
       failed_when:
         - rsysloginstalled.rc == 2
 
@@ -149,6 +153,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000003 - Copy auditd rules template to {{ photon_5_vars_auditd_stig_rule_file }}.'
       ansible.builtin.template:
@@ -231,6 +236,7 @@
         rpm -qa | grep ^rsyslog-
       register: rsysloginstalled
       changed_when: false
+      check_mode: false
       failed_when:
         - rsysloginstalled.rc == 2
 
@@ -271,6 +277,7 @@
         rpm -qa | grep ^openssl-fips-provider
       register: opensslfipsinstalled
       changed_when: false
+      check_mode: false
       failed_when: opensslfipsinstalled.rc == 2
 
     - name: PHTN-50-000013 - Install OpenSSL FIPS Provider.
@@ -292,6 +299,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000014 - Configure write_logs in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.lineinfile:
@@ -315,6 +323,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000021 - Configure disk_full_action in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.lineinfile:
@@ -358,11 +367,13 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000026 - Find auditd log file in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.command: grep -iw log_file {{ photon_5_vars_auditd_conf_file }}
       register: auditlogoutput
       changed_when: false
+      check_mode: false
       failed_when: auditlogoutput.rc == 2
       when:
         - auditdinstalled.stdout != ""
@@ -408,6 +419,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000030 - Find auditd files.
       ansible.builtin.find:
@@ -569,6 +581,7 @@
         rpm -qa | grep telnet
       register: telnetinstalled
       changed_when: false
+      check_mode: false
       failed_when: telnetinstalled.rc == 2
 
     - name: PHTN-50-000040 - Remove telnet client.
@@ -695,6 +708,7 @@
       register: dmesg_restrict
       failed_when: dmesg_restrict.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000067 - Configure kernel parameter kernel.dmesg_restrict in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -716,6 +730,7 @@
       register: tcpsyncookies
       failed_when: tcpsyncookies.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000068 - Configure kernel parameter net.ipv4.tcp_syncookies in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -765,6 +780,7 @@
         rpm -qa | grep ^rsyslog-
       register: rsysloginstalled
       changed_when: false
+      check_mode: false
       failed_when: rsysloginstalled.rc == 2
 
     - name: 'PHTN-50-000074 - Configure umask in {{ photon_5_vars_rsyslog_conf_file }}.'
@@ -791,6 +807,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000080 - Add audit=1 in {{ photon_5_vars_grub_conf_file }}.'
       ansible.builtin.replace:
@@ -820,6 +837,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000082 - Update permissions on auditing tools 750.
       ansible.builtin.file:
@@ -858,6 +876,7 @@
       ansible.builtin.command: find /usr/lib/ -type f -perm -o+w
       register: badfiles
       changed_when: false
+      check_mode: false
       failed_when: false
 
     - name: PHTN-50-000085 - Removing world write from files under /usr/lib.
@@ -930,6 +949,7 @@
       register: fs_protected_symlinks
       failed_when: fs_protected_symlinks.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000105 - Configure kernel parameter fs.protected_symlinks in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -965,6 +985,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000110 - Configure num_logs in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.lineinfile:
@@ -998,6 +1019,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000112 - Configure space_left in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.lineinfile:
@@ -1031,6 +1053,7 @@
       register: aideinstalled
       failed_when: aideinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
       # Added libgcrypt. Currently a bug in the aide package that does not upgrade libgcrypt to the needed version.
     - name: PHTN-50-000127 - Install AIDE.
@@ -1071,6 +1094,7 @@
       register: kernelrandomizevaspace
       failed_when: kernelrandomizevaspace.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000160 - Configure kernel parameter kernel.randomize_va_space in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1164,6 +1188,7 @@
       register: auditdinstalled
       failed_when: auditdinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000186 - Configure flush in {{ photon_5_vars_auditd_conf_file }}.'
       ansible.builtin.lineinfile:
@@ -1367,6 +1392,7 @@
       register: syspasspwq
       failed_when: syspasspwq.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000197 - Remove existing pam_pwquality.so rules in system-password if it is incorrect.
       community.general.pamd:
@@ -1466,6 +1492,7 @@
       register: sysauthfaildelay
       failed_when: sysauthfaildelay.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: PHTN-50-000206 - Remove existing pam_faildelay.so rule in system-auth if it is incorrect.
       community.general.pamd:
@@ -1719,6 +1746,7 @@
       register: allaccept_source_route
       failed_when: allaccept_source_route.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000223 - Configure kernel parameter net.ipv4.conf.all.accept_source_route in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1735,6 +1763,7 @@
       register: defaultaccept_source_route
       failed_when: defaultaccept_source_route.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000223 - Configure kernel parameter net.ipv4.conf.default.accept_source_route in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1751,6 +1780,7 @@
       register: ipv6allaccept_source_route
       failed_when: ipv6allaccept_source_route.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000223 - Configure kernel parameter net.ipv6.conf.all.accept_source_route in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1767,6 +1797,7 @@
       register: ipv6defaultaccept_source_route
       failed_when: ipv6defaultaccept_source_route.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000223 - Configure kernel parameter net.ipv6.conf.default.accept_source_route in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1788,6 +1819,7 @@
       register: icmp_echo_ignore_broadcasts
       failed_when: icmp_echo_ignore_broadcasts.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000224 - Configure kernel parameter net.ipv4.icmp_echo_ignore_broadcasts in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1809,6 +1841,7 @@
       register: all_accept_redirects
       failed_when: all_accept_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000225 - Configure kernel parameter net.ipv4.conf.all.accept_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1825,6 +1858,7 @@
       register: default_accept_redirects
       failed_when: default_accept_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000225 - Configure kernel parameter net.ipv4.conf.default.accept_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1846,6 +1880,7 @@
       register: all_secure_redirects
       failed_when: all_secure_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000226 - Configure kernel parameter net.ipv4.conf.all.secure_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1862,6 +1897,7 @@
       register: default_secure_redirects
       failed_when: default_secure_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000226 - Configure kernel parameter net.ipv4.conf.default.secure_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1883,6 +1919,7 @@
       register: all_send_redirects
       failed_when: all_send_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000227 - Configure kernel parameter net.ipv4.conf.all.send_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1899,6 +1936,7 @@
       register: default_send_redirects
       failed_when: default_send_redirects.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000227 - Configure kernel parameter net.ipv4.conf.default.send_redirects in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1920,6 +1958,7 @@
       register: all_log_martians
       failed_when: all_log_martians.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000228 - Configure kernel parameter net.ipv4.conf.all.log_martians in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1936,6 +1975,7 @@
       register: default_log_martians
       failed_when: default_log_martians.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000228 - Configure kernel parameter net.ipv4.conf.default.log_martians in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1957,6 +1997,7 @@
       register: all_rp_filter
       failed_when: all_rp_filter.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000229 - Configure kernel parameter net.ipv4.conf.all.rp_filter in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1973,6 +2014,7 @@
       register: default_rp_filter
       failed_when: default_rp_filter.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000229 - Configure kernel parameter net.ipv4.conf.default.rp_filter in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -1995,6 +2037,7 @@
         rpm -qa | grep -E '(^docker-|^containerd|^kubernetes)'
       register: cntrpkgsinstalled
       changed_when: false
+      check_mode: false
       failed_when:
         - cntrpkgsinstalled.rc == 2
 
@@ -2003,6 +2046,7 @@
       register: ipv4_ip_forward
       failed_when: ipv4_ip_forward.rc == 2
       changed_when: false
+      check_mode: false
       when:
         - cntrpkgsinstalled.stdout == ""
 
@@ -2029,6 +2073,7 @@
       register: tcp_timestamps
       failed_when: tcp_timestamps.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000232 - Configure kernel parameter net.ipv4.tcp_timestamps in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -2149,6 +2194,7 @@
       register: fs_protected_hardlinks
       failed_when: fs_protected_hardlinks.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000244 - Configure kernel parameter fs.protected_hardlinks in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -2193,6 +2239,7 @@
       register: fs_suid_dumpable
       failed_when: fs_suid_dumpable.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000246 - Configure kernel parameter fs.suid_dumpable in {{ photon_5_vars_sysctl_conf_file }}.'
       ansible.posix.sysctl:
@@ -2234,6 +2281,7 @@
       register: aideinstalled
       failed_when: aideinstalled.rc == 2
       changed_when: false
+      check_mode: false
 
     - name: 'PHTN-50-000237 - Copy aide.conf template to {{ photon_5_vars_aide_conf_file }}.'
       ansible.builtin.template:
@@ -2250,6 +2298,7 @@
       ansible.builtin.command: aide --check
       register: aidecheckoutput
       changed_when: false
+      check_mode: false
       failed_when: aidecheckoutput.rc == 2
       no_log: true
       when:

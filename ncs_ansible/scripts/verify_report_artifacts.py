@@ -32,21 +32,65 @@ def _expect(path: Path, label: str, errors: list[str]) -> None:
         errors.append(f"missing {label}: {path}")
 
 
-def verify(report_root: Path) -> list[str]:
+def _load_platform_contract(platforms_config: Path | None) -> tuple[list[str], str, str, str]:
+    if platforms_config is None:
+        return (
+            [
+                "platform/linux/ubuntu/linux_fleet_report.html",
+                "platform/linux/photon/photon_fleet_report.html",
+                "platform/vmware/vcenter/vcsa/vcsa_fleet_report.html",
+                "platform/windows/windows_fleet_report.html",
+            ],
+            "site_health_report.html",
+            "stig_fleet_report.html",
+            "search_index.js",
+        )
+    raw = yaml.safe_load(platforms_config.read_text(encoding="utf-8")) or {}
+    platforms = raw.get("platforms", [])
+    if not isinstance(platforms, list):
+        raise ValueError(f"invalid platforms config {platforms_config}: missing platforms list")
+
+    fleet_reports: list[str] = []
+    site_report = "site_health_report.html"
+    stig_fleet_report = "stig_fleet_report.html"
+    search_index = "search_index.js"
+    for p in platforms:
+        if not isinstance(p, dict):
+            continue
+        paths = p.get("paths")
+        if not isinstance(paths, dict):
+            continue
+        report_dir = str(p.get("report_dir", "")).strip()
+        schema_name = str(p.get("schema_name") or p.get("platform") or "").strip()
+        if report_dir and schema_name:
+            fleet_reports.append(
+                str(paths.get("report_fleet", "")).format(
+                    report_dir=report_dir,
+                    schema_name=schema_name,
+                    hostname="",
+                    target_type="",
+                    report_stamp="",
+                )
+            )
+        site_report = str(paths.get("report_site", site_report))
+        stig_fleet_report = str(paths.get("report_stig_fleet", stig_fleet_report))
+        search_index = str(paths.get("report_search_entry", "search_index.js"))
+    # search_index_entry is a URL template, not the global file. Keep canonical artifact name.
+    search_index = "search_index.js"
+    return fleet_reports, site_report, stig_fleet_report, search_index
+
+
+def verify(report_root: Path, platforms_config: Path | None = None) -> list[str]:
     errors: list[str] = []
     platform = report_root / "platform"
     cklb_dir = report_root / "cklb"
+    fleet_candidates_rel, site_report_rel, stig_fleet_rel, search_index_rel = _load_platform_contract(platforms_config)
 
-    _expect(report_root / "site_health_report.html", "site dashboard", errors)
-    _expect(report_root / "stig_fleet_report.html", "stig fleet report", errors)
-    _expect(report_root / "search_index.js", "search index", errors)
+    _expect(report_root / site_report_rel, "site dashboard", errors)
+    _expect(report_root / stig_fleet_rel, "stig fleet report", errors)
+    _expect(report_root / search_index_rel, "search index", errors)
 
-    fleet_candidates = [
-        platform / "linux" / "ubuntu" / "linux_fleet_report.html",
-        platform / "linux" / "photon" / "photon_fleet_report.html",
-        platform / "vmware" / "vcenter" / "vcsa" / "vcsa_fleet_report.html",
-        platform / "windows" / "windows_fleet_report.html",
-    ]
+    fleet_candidates = [report_root / rel for rel in fleet_candidates_rel]
     if not any(p.exists() for p in fleet_candidates):
         errors.append("no fleet reports found under expected platform paths")
 
@@ -158,6 +202,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Verify report artifacts for production readiness.")
     parser.add_argument("--report-root", default="tests/reports", help="Root directory containing generated reports.")
     parser.add_argument(
+        "--platforms-config",
+        default=None,
+        help="Optional platforms.yaml path; when provided, expected report paths are derived from it.",
+    )
+    parser.add_argument(
         "--require-targets",
         default="",
         help="Comma-separated STIG target types that must be present (e.g. vcsa,esxi,vm,windows,ubuntu,photon).",
@@ -171,7 +220,8 @@ def main() -> int:
     args = parser.parse_args()
 
     report_root = Path(args.report_root)
-    errors = verify(report_root)
+    platforms_config = Path(args.platforms_config) if args.platforms_config else None
+    errors = verify(report_root, platforms_config=platforms_config)
     required_targets = [t.strip().lower() for t in args.require_targets.split(",") if t.strip()]
     target_hosts: dict[str, set[str]] = {}
     if required_targets:

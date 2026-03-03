@@ -7,29 +7,89 @@ platforms:
     platform: linux
     state_file: linux_fleet_state.yaml
     render: true
+    target_types: [linux, ubuntu]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html
   - input_dir: photon
     report_dir: linux/photon
     platform: photon
     schema_name: photon
     state_file: photon_fleet_state.yaml
     render: true
+    target_types: [photon]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html
   - input_dir: vmware/vcenter
     report_dir: vmware/vcenter/vcsa
     platform: vmware
     state_file: vmware_fleet_state.yaml
     render: true
+    target_types: [vcsa, vcenter, vami, eam, lookup_svc, perfcharts, vcsa_photon_os, postgresql, rhttpproxy, sts, ui]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html
   - input_dir: vmware/esxi
     report_dir: vmware/esxi
     platform: vmware
     state_file: esxi_fleet_state.yaml
     render: false
+    target_types: [esxi]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html
   - input_dir: vmware/vm
     report_dir: vmware/vm
     platform: vmware
     state_file: vm_fleet_state.yaml
     render: false
+    target_types: [vm]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html
   - input_dir: windows
     report_dir: windows
     platform: windows
     state_file: windows_fleet_state.yaml
     render: true
+    target_types: [windows]
+    paths:
+      raw_stig_artifact: platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml
+      report_fleet: platform/{report_dir}/{schema_name}_fleet_report.html
+      report_node_latest: platform/{report_dir}/{hostname}/health_report.html
+      report_node_historical: platform/{report_dir}/{hostname}/health_report_{report_stamp}.html
+      report_stig_host: platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html
+      report_search_entry: platform/{report_dir}/{hostname}/health_report.html
+      report_site: site_health_report.html
+      report_stig_fleet: stig_fleet_report.html

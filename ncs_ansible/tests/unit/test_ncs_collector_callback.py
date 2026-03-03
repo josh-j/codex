@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -280,7 +281,7 @@ class TestFilePathStructure(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cb, _ = _make_cb()
             _emit(cb, tmp, "esxi-01", "vmware", "stig_esxi", {"k": "v"})
-            expected = Path(tmp) / "platform" / "vmware" / "esxi-01" / "raw_stig_esxi.yaml"
+            expected = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-01" / "raw_stig_esxi.yaml"
             self.assertTrue(expected.exists())
 
     def test_host_directory_created(self) -> None:
@@ -314,7 +315,7 @@ class TestEnvelopeStructure(unittest.TestCase):
             "stig_esxi",
             {"findings": [{"id": "V-256376", "status": "pass"}]},
         )
-        artifact = Path(cls.tmpdir) / "platform" / "vmware" / "esxi-01" / "raw_stig_esxi.yaml"
+        artifact = Path(cls.tmpdir) / "platform" / "vmware" / "esxi" / "esxi-01" / "raw_stig_esxi.yaml"
         cls.envelope = _read_yaml(artifact)
 
     def test_has_metadata_key(self) -> None:
@@ -344,7 +345,7 @@ class TestEnvelopeStructure(unittest.TestCase):
         )
 
     def test_written_file_is_valid_yaml(self) -> None:
-        artifact = Path(self.tmpdir) / "platform" / "vmware" / "esxi-01" / "raw_stig_esxi.yaml"
+        artifact = Path(self.tmpdir) / "platform" / "vmware" / "esxi" / "esxi-01" / "raw_stig_esxi.yaml"
         content = artifact.read_text(encoding="utf-8")
         parsed = yaml.safe_load(content)
         self.assertIsInstance(parsed, dict)
@@ -459,27 +460,27 @@ class TestMultipleHosts(unittest.TestCase):
     def test_all_host_dirs_created(self) -> None:
         for host in ("esxi-01", "esxi-02", "esxi-03"):
             self.assertTrue(
-                (Path(self.tmpdir) / "platform" / "vmware" / host).is_dir(),
+                (Path(self.tmpdir) / "platform" / "vmware" / "esxi" / host).is_dir(),
                 f"Directory missing for {host}",
             )
 
     def test_all_raw_files_written(self) -> None:
         for host in ("esxi-01", "esxi-02", "esxi-03"):
             self.assertTrue(
-                (Path(self.tmpdir) / "platform" / "vmware" / host / "raw_stig_esxi.yaml").exists()
+                (Path(self.tmpdir) / "platform" / "vmware" / "esxi" / host / "raw_stig_esxi.yaml").exists()
             )
 
     def test_payloads_are_independent(self) -> None:
         for host in ("esxi-01", "esxi-02", "esxi-03"):
             envelope = _read_yaml(
-                Path(self.tmpdir) / "platform" / "vmware" / host / "raw_stig_esxi.yaml"
+                Path(self.tmpdir) / "platform" / "vmware" / "esxi" / host / "raw_stig_esxi.yaml"
             )
             self.assertEqual(envelope["data"]["host"], host)
 
     def test_metadata_host_matches_each_file(self) -> None:
         for host in ("esxi-01", "esxi-02", "esxi-03"):
             envelope = _read_yaml(
-                Path(self.tmpdir) / "platform" / "vmware" / host / "raw_stig_esxi.yaml"
+                Path(self.tmpdir) / "platform" / "vmware" / "esxi" / host / "raw_stig_esxi.yaml"
             )
             self.assertEqual(envelope["metadata"]["host"], host)
 
@@ -512,7 +513,7 @@ class TestStigTaskEventCapture(unittest.TestCase):
             finally:
                 os.environ.pop("NCS_REPORT_DIRECTORY", None)
 
-            artifact = Path(tmp) / "platform" / "vmware" / "esxi-01" / "raw_stig_esxi.yaml"
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-01" / "raw_stig_esxi.yaml"
             self.assertTrue(artifact.exists(), f"Expected STIG artifact not found: {artifact}")
             envelope = _read_yaml(artifact)
             self.assertEqual(envelope["metadata"]["engine"], "ncs_collector_callback")
@@ -543,7 +544,7 @@ class TestStigTaskEventCapture(unittest.TestCase):
             finally:
                 os.environ.pop("NCS_REPORT_DIRECTORY", None)
 
-            artifact = Path(tmp) / "platform" / "vmware" / "esxi-02" / "raw_stig_esxi.yaml"
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-02" / "raw_stig_esxi.yaml"
             envelope = _read_yaml(artifact)
             self.assertEqual(envelope["data"][0]["status"], "failed")
 
@@ -577,7 +578,7 @@ class TestStigTaskEventCapture(unittest.TestCase):
             )
             cb.v2_playbook_on_stats(stats)
 
-            artifact = Path(tmp) / "platform" / "vmware" / "esxi-03" / "raw_stig_esxi.yaml"
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-03" / "raw_stig_esxi.yaml"
             self.assertTrue(artifact.exists(), f"Expected STIG artifact not found: {artifact}")
 
     def test_host_report_directory_takes_precedence_over_env(self) -> None:
@@ -614,8 +615,8 @@ class TestStigTaskEventCapture(unittest.TestCase):
             finally:
                 os.environ.pop("NCS_REPORT_DIRECTORY", None)
 
-            expected = Path(host_tmp) / "platform" / "vmware" / "esxi-04" / "raw_stig_esxi.yaml"
-            unexpected = Path(env_tmp) / "platform" / "vmware" / "esxi-04" / "raw_stig_esxi.yaml"
+            expected = Path(host_tmp) / "platform" / "vmware" / "esxi" / "esxi-04" / "raw_stig_esxi.yaml"
+            unexpected = Path(env_tmp) / "platform" / "vmware" / "esxi" / "esxi-04" / "raw_stig_esxi.yaml"
             self.assertTrue(expected.exists(), f"Expected STIG artifact not found: {expected}")
             self.assertFalse(unexpected.exists(), f"STIG artifact should not be written to env dir: {unexpected}")
 
@@ -649,7 +650,7 @@ class TestStigTaskEventCapture(unittest.TestCase):
             )
             cb.v2_playbook_on_stats(stats)
 
-            artifact = Path(tmp) / "platform" / "vmware" / "esxi-05" / "raw_stig_esxi.yaml"
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-05" / "raw_stig_esxi.yaml"
             envelope = _read_yaml(artifact)
             self.assertIsInstance(envelope.get("data"), list)
             self.assertEqual(envelope["data"][0]["status"], "failed")
@@ -686,7 +687,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_warning_displayed_on_makedirs_failure(self) -> None:
         cb, _ = _make_cb()
-        with patch("os.makedirs", side_effect=OSError("Permission denied")):
+        with patch.object(cb, "_ensure_dir_inherits_parent", side_effect=OSError("Permission denied")):
             stats = FakeStats(
                 {
                     "host1": {
@@ -725,6 +726,32 @@ class TestErrorHandling(unittest.TestCase):
             cb.v2_playbook_on_stats(stats)
         except Exception as exc:
             self.fail(f"Missing report_directory raised {exc}")
+
+
+class TestPermissionInheritance(unittest.TestCase):
+    def test_created_stig_paths_and_files_inherit_parent_access(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chmod(tmp, 0o770)
+            cb, _ = _make_cb()
+            _emit(cb, tmp, "esxi-77", "vmware", "stig_esxi", {"k": "v"})
+
+            host_dir = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-77"
+            raw_file = host_dir / "raw_stig_esxi.yaml"
+            self.assertTrue(host_dir.is_dir())
+            self.assertTrue(raw_file.exists())
+
+            self.assertEqual(stat.S_IMODE(host_dir.stat().st_mode), 0o770)
+            self.assertEqual(stat.S_IMODE(raw_file.stat().st_mode), 0o660)
+
+    def test_non_stig_file_inherits_parent_file_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chmod(tmp, 0o750)
+            cb, _ = _make_cb()
+            _emit(cb, tmp, "host-a", "vmware", "vcenter", {"k": "v"})
+
+            raw_file = Path(tmp) / "platform" / "vmware" / "host-a" / "raw_vcenter.yaml"
+            self.assertTrue(raw_file.exists())
+            self.assertEqual(stat.S_IMODE(raw_file.stat().st_mode), 0o640)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import unittest
 import yaml
 from click.testing import CliRunner
 
-from ncs_reporter.cli import get_jinja_env, main
+from ncs_reporter.cli import _default_paths, get_jinja_env, main
 from ncs_reporter.view_models.common import status_badge_meta
 
 
@@ -512,6 +512,8 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                         "platform": "linux",
                         "state_file": "linux_fleet_state.yaml",
                         "render": True,
+                        "target_types": ["linux", "ubuntu"],
+                        "paths": _default_paths(),
                     }
                 ]
             }
@@ -537,8 +539,8 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
-    def test_platforms_config_invalid_yaml_falls_back(self):
-        """A malformed platforms config should warn and fall back to built-ins (no crash)."""
+    def test_platforms_config_invalid_yaml_fails_fast(self):
+        """A malformed explicit platforms config should fail fast in strict mode."""
         runner = CliRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             platform_root = os.path.join(tmpdir, "platform_root")
@@ -565,8 +567,8 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                     "20260101",
                 ],
             )
-            # Should not crash (exit 0 even if no data found)
-            self.assertEqual(result.exit_code, 0, msg=result.output)
+            self.assertNotEqual(result.exit_code, 0, msg=result.output)
+            self.assertIn("Invalid platforms config", result.output)
 
     def test_config_dir_loads_platforms_and_schemas(self):
         """--config-dir should resolve platforms.yaml + schema dir from one directory."""
@@ -592,6 +594,8 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "platform": "linux",
                                 "state_file": "linux_fleet_state.yaml",
                                 "render": True,
+                                "target_types": ["linux", "ubuntu"],
+                                "paths": _default_paths(),
                             }
                         ]
                     },
@@ -639,6 +643,8 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "platform": "linux",
                                 "state_file": "linux_fleet_state.yaml",
                                 "render": True,
+                                "target_types": ["linux", "ubuntu"],
+                                "paths": _default_paths(),
                             }
                         ]
                     },

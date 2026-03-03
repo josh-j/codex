@@ -43,9 +43,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_line_prefix;"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000002 - Assert log_line_prefix value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_log_line_prefix
+        fail_msg: "log_line_prefix is not set correctly: {{ result.stdout }}"
+        success_msg: "log_line_prefix is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000002 - Set log_line_prefix value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET log_line_prefix = '{{ var_postgres_conf_log_line_prefix }}';"
@@ -55,6 +64,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_log_line_prefix
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000003 - VMware Postgres configuration files must not be accessible by unauthorized users.
@@ -86,9 +96,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_truncate_on_rotation;"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000004 - Assert log_truncate_on_rotation value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_log_truncate_on_rotation
+        fail_msg: "log_truncate_on_rotation is not set correctly: {{ result.stdout }}"
+        success_msg: "log_truncate_on_rotation is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000004 - Set log_truncate_on_rotation value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET log_truncate_on_rotation = '{{ var_postgres_conf_log_truncate_on_rotation }}';"
@@ -98,6 +117,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_log_truncate_on_rotation
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ############################################
 
@@ -146,9 +166,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW port;"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000008 - Assert port value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_port
+        fail_msg: "port is not set correctly: {{ result.stdout }}"
+        success_msg: "port is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000008 - Set port value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET port = '{{ var_postgres_conf_port }}';"
@@ -158,6 +187,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_port
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000009 - VMware Postgres must require authentication on all connections.
@@ -194,9 +224,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW password_encryption"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000010 - Assert password_encryption value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_pw_encryption
+        fail_msg: "password_encryption is not set correctly: {{ result.stdout }}"
+        success_msg: "password_encryption is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000010 - Set password_encryption value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET password_encryption = '{{ var_postgres_conf_pw_encryption }}';"
@@ -206,6 +245,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_pw_encryption
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000011 - VMware Postgres must be configured to use TLS.
@@ -216,9 +256,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW ssl"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000011 - Assert ssl value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_ssl
+        fail_msg: "ssl is not set correctly: {{ result.stdout }}"
+        success_msg: "ssl is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000011 - Set ssl value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET ssl = '{{ var_postgres_conf_ssl }}';"
@@ -228,6 +277,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_ssl
+        - vmware_stig_enable_hardening | default(false) | bool
 
 
 ###################################################################################################################################
@@ -252,9 +302,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW ssl_ciphers"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000013 - Assert ssl_ciphers value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_ssl_ciphers
+        fail_msg: "ssl_ciphers is not set correctly: {{ result.stdout }}"
+        success_msg: "ssl_ciphers is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000014 - Set ssl_ciphers value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET ssl_ciphers = '{{ var_postgres_conf_ssl_ciphers }}';"
@@ -264,6 +323,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_ssl_ciphers
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000014 - VMware Postgres must write log entries to disk prior to returning operation success or failure.
@@ -274,9 +334,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW fsync"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000014 - Assert fsync value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_fsync
+        fail_msg: "fsync is not set correctly: {{ result.stdout }}"
+        success_msg: "fsync is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000014 - Set fsync value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET fsync = '{{ var_postgres_conf_fsync }}';"
@@ -286,14 +355,24 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_fsync
+        - vmware_stig_enable_hardening | default(false) | bool
 
     - name: VCPG-70-000014 - Check full_page_writes value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW full_page_writes"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000014 - Assert full_page_writes value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_full_page_writes
+        fail_msg: "full_page_writes is not set correctly: {{ result.stdout }}"
+        success_msg: "full_page_writes is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000014 - Set full_page_writes value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET full_page_writes = '{{ var_postgres_conf_full_page_writes }}';"
@@ -303,14 +382,24 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_full_page_writes
+        - vmware_stig_enable_hardening | default(false) | bool
 
     - name: VCPG-70-000014 - Check synchronous_commit value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW synchronous_commit"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000014 - Assert synchronous_commit value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_synchronous_commit
+        fail_msg: "synchronous_commit is not set correctly: {{ result.stdout }}"
+        success_msg: "synchronous_commit is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000014 - Set synchronous_commit value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET synchronous_commit = '{{ var_postgres_conf_synchronous_commit }}';"
@@ -320,6 +409,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_synchronous_commit
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ############################################
 
@@ -335,9 +425,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW client_min_messages"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000016 - Assert client_min_messages value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_client_min_messages
+        fail_msg: "client_min_messages is not set correctly: {{ result.stdout }}"
+        success_msg: "client_min_messages is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000016 - Set client_min_messages value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET client_min_messages = '{{ var_postgres_conf_client_min_messages }}';"
@@ -347,6 +446,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_client_min_messages
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000017 - VMware Postgres must have log collection enabled.
@@ -357,9 +457,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW logging_collector"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000017 - Assert logging_collector value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_logging_collector
+        fail_msg: "logging_collector is not set correctly: {{ result.stdout }}"
+        success_msg: "logging_collector is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000017 - Set logging_collector value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET logging_collector = '{{ var_postgres_conf_logging_collector }}';"
@@ -369,6 +478,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_logging_collector
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ###################################################################################################################################
 - name: VCPG-70-000018 - VMware Postgres must be configured to log to stderr.
@@ -379,9 +489,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_destination"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000018 - Assert log_destination value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_log_destination
+        fail_msg: "log_destination is not set correctly: {{ result.stdout }}"
+        success_msg: "log_destination is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000018 - Set log_destination value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET log_destination = '{{ var_postgres_conf_log_destination }}';"
@@ -391,6 +510,7 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_log_destination
+        - vmware_stig_enable_hardening | default(false) | bool
 
 ############################################
 
@@ -435,9 +555,18 @@
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_timezone"
       register: result
       changed_when: false
+      check_mode: false
       failed_when:
         - result.stderr != ''
         - result.rc != 0
+
+    - name: VCPG-70-000020 - Assert log_timezone value
+      ansible.builtin.assert:
+        that:
+          - result.stdout == var_postgres_conf_log_timezone
+        fail_msg: "log_timezone is not set correctly: {{ result.stdout }}"
+        success_msg: "log_timezone is correct"
+      when: not (vmware_stig_enable_hardening | default(false) | bool)
 
     - name: VCPG-70-000020 - Set log_timezone value
       ansible.builtin.command: /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET log_timezone = '{{ var_postgres_conf_log_timezone }}';"
@@ -447,3 +576,4 @@
         - reload vpostgres config
       when:
         - result.stdout != var_postgres_conf_log_timezone
+        - vmware_stig_enable_hardening | default(false) | bool

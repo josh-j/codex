@@ -69,9 +69,9 @@ def _build_group_index(inventory: dict[str, Any]) -> tuple[dict[str, set[str]], 
     children: dict[str, set[str]] = defaultdict(set)
     hostvars: dict[str, dict[str, Any]] = {}
 
-    for group, payload in inventory.items():
+    def _visit_group(group: str, payload: Any) -> None:
         if not isinstance(payload, dict):
-            continue
+            return
 
         hosts = payload.get("hosts", {})
         if isinstance(hosts, dict):
@@ -84,8 +84,15 @@ def _build_group_index(inventory: dict[str, Any]) -> tuple[dict[str, set[str]], 
 
         child_map = payload.get("children", {})
         if isinstance(child_map, dict):
-            for child_name in child_map.keys():
-                children[group].add(str(child_name))
+            for child_name, child_payload in child_map.items():
+                child_name_str = str(child_name)
+                children[group].add(child_name_str)
+                # YAML inventory supports inline nested child-group definitions.
+                if isinstance(child_payload, dict):
+                    _visit_group(child_name_str, child_payload)
+
+    for group, payload in inventory.items():
+        _visit_group(str(group), payload)
 
     return direct_hosts, children, hostvars
 

@@ -4,6 +4,8 @@ import os
 import re
 import tempfile
 import hashlib
+import importlib.util
+import stat
 from datetime import datetime, timezone
 
 import yaml
@@ -25,6 +27,10 @@ DOCUMENTATION = '''
       - Ensures that data collection remains persistent even after the playbook finishes.
 '''
 
+DEFAULT_REPORT_DIRECTORY = "/srv/samba/reports"
+FILE_MODE_INHERIT_MASK = 0o666
+
+
 def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
     cur = os.path.realpath(start_dir)
     for _ in range(max_up + 1):
@@ -37,6 +43,34 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
         cur = parent
     return os.path.realpath(start_dir)
 
+
+def _import_path_contract_module():
+    try:
+        from ansible_collections.internal.core.plugins.module_utils import path_contract as module
+        return module
+    except Exception:
+        # Local unit tests load callback by file path (no collection package context).
+        mod_path = os.path.join(os.path.dirname(__file__), "..", "module_utils", "path_contract.py")
+        spec = importlib.util.spec_from_file_location("ncs_path_contract_module_utils", mod_path)
+        if not spec or not spec.loader:
+            raise RuntimeError(f"Could not load path contract module from {mod_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+
+def _load_platforms_contract(repo_root: str) -> tuple[list[dict], dict[str, dict], object]:
+    path_contract = _import_path_contract_module()
+
+    explicit_cfg = os.environ.get("NCS_PLATFORMS_CONFIG", "").strip()
+    if explicit_cfg:
+        cfg_path = explicit_cfg
+    else:
+        cfg_path = os.path.join(repo_root, "files", "ncs_reporter_configs", "platforms.yaml")
+    platforms = path_contract.load_platforms_config_file(cfg_path)
+    target_index = path_contract.build_target_type_index(platforms)
+    return platforms, target_index, path_contract.resolve_platform_for_target_type
+
 class CallbackModule(CallbackBase):
     CALLBACK_VERSION = 2.0
     CALLBACK_TYPE = 'aggregate'
@@ -45,10 +79,13 @@ class CallbackModule(CallbackBase):
 
     def __init__(self):
         super().__init__()
-        self.repo_root = _find_repo_root(os.getcwd())
+        self.repo_root = _find_repo_root(os.path.dirname(__file__))
         self._stig_rules = {}
         self._stig_meta = {}
         self._host_report_dirs = {}
+        self._platforms_config, self._target_type_index, self._resolve_platform_for_target = _load_platforms_contract(
+            self.repo_root
+        )
 
     def v2_playbook_on_stats(self, stats):
         """
@@ -95,18 +132,40 @@ class CallbackModule(CallbackBase):
         config = collect_data.get('config')
         
         # Determine output directory
-        report_dir = collect_data.get('report_directory') or '/srv/samba/reports'
-        host_dir = os.path.join(report_dir, 'platform', platform, host)
+        report_dir = collect_data.get('report_directory') or DEFAULT_REPORT_DIRECTORY
+        target_type = ""
+        if isinstance(name, str) and name.startswith("stig_"):
+            target_type = name.replace("stig_", "", 1).strip().lower()
+            platform_cfg = self._resolve_platform_for_target(self._platforms_config, target_type)
+            paths = platform_cfg.get("paths", {}) if isinstance(platform_cfg, dict) else {}
+            raw_template = str(paths.get("raw_stig_artifact", "")).strip()
+            if not raw_template:
+                raise RuntimeError(f"Missing paths.raw_stig_artifact for target_type '{target_type}'")
+            raw_path = os.path.join(
+                report_dir,
+                raw_template.format(
+                    report_dir=str(platform_cfg.get("report_dir", "")),
+                    hostname=host,
+                    schema_name=str(platform_cfg.get("schema_name") or platform_cfg.get("platform") or ""),
+                    target_type=target_type,
+                    report_stamp="",
+                ),
+            )
+            host_dir = os.path.dirname(raw_path)
+        else:
+            host_dir = os.path.join(report_dir, 'platform', platform, host)
         
         try:
-            os.makedirs(host_dir, exist_ok=True)
+            self._ensure_dir_inherits_parent(host_dir)
         except OSError as e:
             self._display.warning(f"[ncs_collector] Could not create directory {host_dir}: {e}")
             return
 
         # 1. Save Raw Payload
         if payload is not None:
-            raw_path = os.path.join(host_dir, f"raw_{name}.yaml")
+            raw_path = raw_path if (isinstance(name, str) and name.startswith("stig_")) else os.path.join(
+                host_dir, f"raw_{name}.yaml"
+            )
             envelope = {
                 'metadata': {
                     'host': host,
@@ -117,7 +176,6 @@ class CallbackModule(CallbackBase):
                 'data': payload
             }
             if isinstance(name, str) and name.startswith("stig_"):
-                target_type = name.replace("stig_", "", 1)
                 envelope['metadata']['audit_type'] = name
                 envelope['target_type'] = target_type
             self._write_yaml(raw_path, envelope)
@@ -169,22 +227,13 @@ class CallbackModule(CallbackBase):
             except Exception:
                 host = "unknown"
 
-        platform = str(task_vars.get("stig_platform", "") or "").strip()
+        try:
+            platform_cfg = self._resolve_platform_for_target(self._platforms_config, target_type)
+        except Exception as exc:
+            raise RuntimeError(f"Unknown STIG target_type '{target_type}' in ncs_collector callback: {exc}") from exc
+        platform = str(platform_cfg.get("report_dir", "")).strip()
         if not platform:
-            if target_type in {"ubuntu", "linux"}:
-                platform = "linux/ubuntu"
-            elif target_type == "photon":
-                platform = "linux/photon"
-            elif target_type == "windows":
-                platform = "windows"
-            elif target_type == "esxi":
-                platform = "vmware/esxi"
-            elif target_type in {"vm", "guest_vm"}:
-                platform = "vmware/vm"
-            elif target_type in {"vcsa", "vcenter"}:
-                platform = "vmware/vcenter/vcsa"
-            else:
-                platform = "vmware"
+            raise RuntimeError(f"Missing report_dir for target_type '{target_type}' in platforms config")
 
         result_data = getattr(result, "_result", {}) or {}
         check_mode = bool(getattr(task, "check_mode", False))
@@ -219,11 +268,27 @@ class CallbackModule(CallbackBase):
             report_dir = (
                 self._host_report_dirs.get(host)
                 or os.environ.get("NCS_REPORT_DIRECTORY")
-                or "/srv/samba/reports"
+                or DEFAULT_REPORT_DIRECTORY
             )
-            host_dir = os.path.join(report_dir, "platform", platform, host)
             try:
-                os.makedirs(host_dir, exist_ok=True)
+                platform_cfg = self._resolve_platform_for_target(self._platforms_config, str(target_type))
+            except Exception as exc:
+                raise RuntimeError(f"Unknown STIG target_type '{target_type}' while persisting STIG data: {exc}") from exc
+            paths = platform_cfg.get("paths", {}) if isinstance(platform_cfg, dict) else {}
+            raw_template = str(paths.get("raw_stig_artifact", "")).strip()
+            if not raw_template:
+                raise RuntimeError(f"Missing paths.raw_stig_artifact for target_type '{target_type}'")
+            raw_rel = raw_template.format(
+                report_dir=str(platform_cfg.get("report_dir", "")),
+                hostname=host,
+                schema_name=str(platform_cfg.get("schema_name") or platform_cfg.get("platform") or ""),
+                target_type=str(target_type),
+                report_stamp="",
+            )
+            raw_path = os.path.join(report_dir, raw_rel)
+            host_dir = os.path.dirname(raw_path)
+            try:
+                self._ensure_dir_inherits_parent(host_dir)
             except OSError as e:
                 self._display.warning(f"[ncs_collector] Could not create directory {host_dir}: {e}")
                 continue
@@ -254,7 +319,6 @@ class CallbackModule(CallbackBase):
                 "data": rows,
                 "target_type": target_type,
             }
-            raw_path = os.path.join(host_dir, f"raw_stig_{target_type}.yaml")
             self._write_yaml(raw_path, envelope)
 
     def _write_yaml(self, path, data):
@@ -265,9 +329,33 @@ class CallbackModule(CallbackBase):
                 yaml.dump(clean_data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
                 tmp_path = tmp.name
             os.replace(tmp_path, path)
+            self._apply_file_mode_from_parent(path)
             self._display.display(f"[ncs_collector] Persisted data to {path}", color='green')
         except Exception as e:
             self._display.warning(f"[ncs_collector] Failed to write {path}: {e}")
+
+    def _mode_from_parent(self, parent_dir: str, *, is_dir: bool) -> int:
+        parent_mode = stat.S_IMODE(os.stat(parent_dir).st_mode)
+        if is_dir:
+            return parent_mode
+        return parent_mode & FILE_MODE_INHERIT_MASK
+
+    def _ensure_dir_inherits_parent(self, path: str) -> None:
+        path = os.path.realpath(path)
+        if os.path.isdir(path):
+            return
+        parent = os.path.dirname(path) or "."
+        if parent != path and not os.path.isdir(parent):
+            self._ensure_dir_inherits_parent(parent)
+        try:
+            os.mkdir(path)
+        except FileExistsError:
+            return
+        os.chmod(path, self._mode_from_parent(parent, is_dir=True))
+
+    def _apply_file_mode_from_parent(self, path: str) -> None:
+        parent = os.path.dirname(path) or "."
+        os.chmod(path, self._mode_from_parent(parent, is_dir=False))
 
     def _to_builtin(self, value):
         """Recursively coerce Ansible-tagged values to plain Python builtins."""

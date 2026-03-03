@@ -100,13 +100,13 @@ Commands are managed via `just`:
 - `just check`: Runs static analysis (Ruff, MyPy).
 - `just audit-linux-host <hostname>`: Audits a specific Linux server.
 - `just stig-audit-vm <vcenter> <vm_name>`: Performs a STIG audit on a VM.
-- `just stig-audit-esxi-site <site>`: Audits ESXi STIG controls for all hosts in `<site>_esxi_hosts`, executed via `<site>_vcenters`.
+- `just stig-audit-esxi-site <site>`: Audits ESXi STIG controls for all ESXi hosts associated to the site group.
 - `just stig-audit-esxi-site-inv <site> <inventory>`: Same as above, with an explicit inventory path.
-- `just stig-harden-esxi-site <site>`: Applies ESXi STIG remediation for all hosts in `<site>_esxi_hosts` (mutating).
+- `just stig-harden-esxi-site <site>`: Applies ESXi STIG remediation for all ESXi hosts associated to the site group (mutating).
 - `just stig-harden-esxi-site-inv <site> <inventory>`: Same remediation workflow with an explicit inventory path.
 - `just stig-audit-vcsa [target]`: Audits VCSA STIG controls (default target `vcenters`).
 - `just stig-remediate-vcsa [target]`: Applies VCSA STIG remediation (mutating).
-- `just stig-audit-vcsa-site <site>` / `just stig-remediate-vcsa-site <site>`: Site-scoped VCSA STIG workflows via `<site>_vcenters`.
+- `just stig-audit-vcsa-site <site>` / `just stig-remediate-vcsa-site <site>`: Site-scoped VCSA STIG workflows via site group targeting.
 - `just stig-audit-vcsa-inv <target> <inventory>` / `just stig-remediate-vcsa-inv <target> <inventory>`: VCSA STIG workflows with explicit inventory path.
 - `just stig-audit-vcsa-site-inv <site> <inventory>` / `just stig-remediate-vcsa-site-inv <site> <inventory>`: Site-scoped VCSA STIG workflows with explicit inventory path.
 - `just stig-audit-photon [target]`: Audits Photon STIG controls (default target `photon_servers`).

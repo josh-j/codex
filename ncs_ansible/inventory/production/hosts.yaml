@@ -1,127 +1,326 @@
 ---
 # inventory/production/hosts.yaml
-# Define your data center infrastructure targets here.
+# Mock/default 6-site production inventory.
+# Site-first hierarchy with global platform rollups.
 
-# --- Site-Scoped Groups ---
-
-sdhm_vcenters:
-  hosts:
-    vc-site1.local:
-      site: sdhm
-
-sdhm_esxi_hosts:
-  hosts:
-    esxi-01.site1.local:
-      site: sdhm
-    esxi-02.site1.local:
-      site: sdhm
-
-sdhm_unity_arrays:
-  hosts:
-    unity-site1.local:
-      site: sdhm
-
-sdhm_data_domains:
-  hosts:
-    dd-site1.local:
-      site: sdhm
-
-sdhm_ucs_managers:
-  hosts:
-    ucs-site1.local:
-      site: sdhm
-
-sdhm_ubuntu_servers:
-  hosts:
-    ubuntu-svc-01:
-      site: sdhm
-    ubuntu-svc-02:
-      site: sdhm
-
-sdhm_windows_servers:
-  hosts:
-    win-srv-01.site1.local:
-      site: sdhm
-    win-srv-02.site1.local:
-      site: sdhm
-
-sdhm_photon_servers:
-  hosts: {}
-
-site2_vcenters:
-  hosts:
-    vc-site2.local:
-      site: site2
-
-site2_unity_arrays:
-  hosts:
-    unity-site2.local:
-      site: site2
-
-site2_data_domains:
-  hosts:
-    dd-site2.local:
-      site: site2
-
-site2_ucs_managers:
-  hosts:
-    ucs-site2.local:
-      site: site2
-
-# --- Platform Groups (Global Rollups) ---
-
-vcenters:
+all:
   children:
-    sdhm_vcenters:
-    site2_vcenters:
+    sites:
+      children:
+        sdhm:
+          children:
+            sdhm_vcenters:
+              hosts:
+                vc-sdhm.local:
+                  site: sdhm
+            sdhm_esxi_hosts:
+              hosts:
+                esxi-01.sdhm.local:
+                  site: sdhm
+                esxi-02.sdhm.local:
+                  site: sdhm
+            sdhm_unity_arrays:
+              hosts:
+                unity-sdhm.local:
+                  site: sdhm
+            sdhm_data_domains:
+              hosts:
+                dd-sdhm.local:
+                  site: sdhm
+            sdhm_ucs_managers:
+              hosts:
+                ucs-sdhm.local:
+                  site: sdhm
+            sdhm_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.sdhm.local:
+                  site: sdhm
+                ubuntu-svc-02.sdhm.local:
+                  site: sdhm
+            sdhm_windows_servers:
+              hosts:
+                win-srv-01.sdhm.local:
+                  site: sdhm
+                win-srv-02.sdhm.local:
+                  site: sdhm
+            sdhm_photon_servers:
+              hosts:
+                photon-svc-01.sdhm.local:
+                  site: sdhm
 
-esxi_hosts:
-  children:
-    sdhm_esxi_hosts:
+        site2:
+          children:
+            site2_vcenters:
+              hosts:
+                vc-site2.local:
+                  site: site2
+            site2_esxi_hosts:
+              hosts:
+                esxi-01.site2.local:
+                  site: site2
+                esxi-02.site2.local:
+                  site: site2
+            site2_unity_arrays:
+              hosts:
+                unity-site2.local:
+                  site: site2
+            site2_data_domains:
+              hosts:
+                dd-site2.local:
+                  site: site2
+            site2_ucs_managers:
+              hosts:
+                ucs-site2.local:
+                  site: site2
+            site2_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.site2.local:
+                  site: site2
+                ubuntu-svc-02.site2.local:
+                  site: site2
+            site2_windows_servers:
+              hosts:
+                win-srv-01.site2.local:
+                  site: site2
+                win-srv-02.site2.local:
+                  site: site2
+            site2_photon_servers:
+              hosts:
+                photon-svc-01.site2.local:
+                  site: site2
 
-unity_arrays:
-  children:
-    sdhm_unity_arrays:
-    site2_unity_arrays:
+        site3:
+          children:
+            site3_vcenters:
+              hosts:
+                vc-site3.local:
+                  site: site3
+            site3_esxi_hosts:
+              hosts:
+                esxi-01.site3.local:
+                  site: site3
+                esxi-02.site3.local:
+                  site: site3
+            site3_unity_arrays:
+              hosts:
+                unity-site3.local:
+                  site: site3
+            site3_data_domains:
+              hosts:
+                dd-site3.local:
+                  site: site3
+            site3_ucs_managers:
+              hosts:
+                ucs-site3.local:
+                  site: site3
+            site3_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.site3.local:
+                  site: site3
+                ubuntu-svc-02.site3.local:
+                  site: site3
+            site3_windows_servers:
+              hosts:
+                win-srv-01.site3.local:
+                  site: site3
+                win-srv-02.site3.local:
+                  site: site3
+            site3_photon_servers:
+              hosts:
+                photon-svc-01.site3.local:
+                  site: site3
 
-data_domains:
-  children:
-    sdhm_data_domains:
-    site2_data_domains:
+        site4:
+          children:
+            site4_vcenters:
+              hosts:
+                vc-site4.local:
+                  site: site4
+            site4_esxi_hosts:
+              hosts:
+                esxi-01.site4.local:
+                  site: site4
+                esxi-02.site4.local:
+                  site: site4
+            site4_unity_arrays:
+              hosts:
+                unity-site4.local:
+                  site: site4
+            site4_data_domains:
+              hosts:
+                dd-site4.local:
+                  site: site4
+            site4_ucs_managers:
+              hosts:
+                ucs-site4.local:
+                  site: site4
+            site4_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.site4.local:
+                  site: site4
+                ubuntu-svc-02.site4.local:
+                  site: site4
+            site4_windows_servers:
+              hosts:
+                win-srv-01.site4.local:
+                  site: site4
+                win-srv-02.site4.local:
+                  site: site4
+            site4_photon_servers:
+              hosts:
+                photon-svc-01.site4.local:
+                  site: site4
 
-ucs_managers:
-  children:
-    sdhm_ucs_managers:
-    site2_ucs_managers:
+        site5:
+          children:
+            site5_vcenters:
+              hosts:
+                vc-site5.local:
+                  site: site5
+            site5_esxi_hosts:
+              hosts:
+                esxi-01.site5.local:
+                  site: site5
+                esxi-02.site5.local:
+                  site: site5
+            site5_unity_arrays:
+              hosts:
+                unity-site5.local:
+                  site: site5
+            site5_data_domains:
+              hosts:
+                dd-site5.local:
+                  site: site5
+            site5_ucs_managers:
+              hosts:
+                ucs-site5.local:
+                  site: site5
+            site5_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.site5.local:
+                  site: site5
+                ubuntu-svc-02.site5.local:
+                  site: site5
+            site5_windows_servers:
+              hosts:
+                win-srv-01.site5.local:
+                  site: site5
+                win-srv-02.site5.local:
+                  site: site5
+            site5_photon_servers:
+              hosts:
+                photon-svc-01.site5.local:
+                  site: site5
 
-ubuntu_servers:
-  children:
-    sdhm_ubuntu_servers:
+        site6:
+          children:
+            site6_vcenters:
+              hosts:
+                vc-site6.local:
+                  site: site6
+            site6_esxi_hosts:
+              hosts:
+                esxi-01.site6.local:
+                  site: site6
+                esxi-02.site6.local:
+                  site: site6
+            site6_unity_arrays:
+              hosts:
+                unity-site6.local:
+                  site: site6
+            site6_data_domains:
+              hosts:
+                dd-site6.local:
+                  site: site6
+            site6_ucs_managers:
+              hosts:
+                ucs-site6.local:
+                  site: site6
+            site6_ubuntu_servers:
+              hosts:
+                ubuntu-svc-01.site6.local:
+                  site: site6
+                ubuntu-svc-02.site6.local:
+                  site: site6
+            site6_windows_servers:
+              hosts:
+                win-srv-01.site6.local:
+                  site: site6
+                win-srv-02.site6.local:
+                  site: site6
+            site6_photon_servers:
+              hosts:
+                photon-svc-01.site6.local:
+                  site: site6
 
-windows_servers:
-  children:
-    sdhm_windows_servers:
+    vcenters:
+      children:
+        sdhm_vcenters: {}
+        site2_vcenters: {}
+        site3_vcenters: {}
+        site4_vcenters: {}
+        site5_vcenters: {}
+        site6_vcenters: {}
 
-photon_servers:
-  children:
-    sdhm_photon_servers:
+    esxi_hosts:
+      children:
+        sdhm_esxi_hosts: {}
+        site2_esxi_hosts: {}
+        site3_esxi_hosts: {}
+        site4_esxi_hosts: {}
+        site5_esxi_hosts: {}
+        site6_esxi_hosts: {}
 
-# --- Site Groups (Logical Aggregation) ---
+    unity_arrays:
+      children:
+        sdhm_unity_arrays: {}
+        site2_unity_arrays: {}
+        site3_unity_arrays: {}
+        site4_unity_arrays: {}
+        site5_unity_arrays: {}
+        site6_unity_arrays: {}
 
-sdhm:
-  children:
-    sdhm_vcenters:
-    sdhm_esxi_hosts:
-    sdhm_unity_arrays:
-    sdhm_data_domains:
-    sdhm_ucs_managers:
-    sdhm_ubuntu_servers:
-    sdhm_windows_servers:
-    sdhm_photon_servers:
+    data_domains:
+      children:
+        sdhm_data_domains: {}
+        site2_data_domains: {}
+        site3_data_domains: {}
+        site4_data_domains: {}
+        site5_data_domains: {}
+        site6_data_domains: {}
 
-site2:
-  children:
-    site2_vcenters:
-    site2_unity_arrays:
-    site2_data_domains:
-    site2_ucs_managers:
+    ucs_managers:
+      children:
+        sdhm_ucs_managers: {}
+        site2_ucs_managers: {}
+        site3_ucs_managers: {}
+        site4_ucs_managers: {}
+        site5_ucs_managers: {}
+        site6_ucs_managers: {}
+
+    ubuntu_servers:
+      children:
+        sdhm_ubuntu_servers: {}
+        site2_ubuntu_servers: {}
+        site3_ubuntu_servers: {}
+        site4_ubuntu_servers: {}
+        site5_ubuntu_servers: {}
+        site6_ubuntu_servers: {}
+
+    windows_servers:
+      children:
+        sdhm_windows_servers: {}
+        site2_windows_servers: {}
+        site3_windows_servers: {}
+        site4_windows_servers: {}
+        site5_windows_servers: {}
+        site6_windows_servers: {}
+
+    photon_servers:
+      children:
+        sdhm_photon_servers: {}
+        site2_photon_servers: {}
+        site3_photon_servers: {}
+        site4_photon_servers: {}
+        site5_photon_servers: {}
+        site6_photon_servers: {}

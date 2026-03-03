@@ -58,7 +58,7 @@ from fixtures.example_data import (
 )
 from ncs_reporter._report_context import generate_timestamps, get_jinja_env, vm_kwargs
 from ncs_reporter.aggregation import deep_merge, load_all_reports, normalize_host_bundle
-from ncs_reporter.cli import _render_platform, _render_stig
+from ncs_reporter.cli import _default_paths, _render_platform, _render_stig
 from ncs_reporter.view_models.site import build_site_dashboard_view
 
 OUT_ROOT = Path(__file__).parent / "ncs_example_reports"
@@ -69,12 +69,54 @@ REPORT_STAMP = "20260301"
 #   input_dir  — where ncs_collector writes raw_*.yaml files
 #   report_dir — where ncs-reporter renders HTML reports
 _PLATFORMS = [
-    {"input_dir": "linux/ubuntu", "report_dir": "linux/ubuntu", "platform": "linux", "render": True},
-    {"input_dir": "linux/photon", "report_dir": "linux/photon", "platform": "linux", "render": False},
-    {"input_dir": "vmware/vcenter", "report_dir": "vmware/vcenter", "platform": "vmware", "render": True},
-    {"input_dir": "vmware/esxi", "report_dir": "vmware/esxi", "platform": "vmware", "render": False},
-    {"input_dir": "vmware/vm", "report_dir": "vmware/vm", "platform": "vmware", "render": False},
-    {"input_dir": "windows", "report_dir": "windows", "platform": "windows", "render": True},
+    {
+        "input_dir": "linux/ubuntu",
+        "report_dir": "linux/ubuntu",
+        "platform": "linux",
+        "render": True,
+        "target_types": ["linux", "ubuntu"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "linux/photon",
+        "report_dir": "linux/photon",
+        "platform": "linux",
+        "render": False,
+        "target_types": ["photon"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "vmware/vcenter",
+        "report_dir": "vmware/vcenter",
+        "platform": "vmware",
+        "render": True,
+        "target_types": ["vcsa", "vcenter"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "vmware/esxi",
+        "report_dir": "vmware/esxi",
+        "platform": "vmware",
+        "render": False,
+        "target_types": ["esxi"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "vmware/vm",
+        "report_dir": "vmware/vm",
+        "platform": "vmware",
+        "render": False,
+        "target_types": ["vm"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "windows",
+        "report_dir": "windows",
+        "platform": "windows",
+        "render": True,
+        "target_types": ["windows"],
+        "paths": _default_paths(),
+    },
 ]
 _GENERATED_FLEET_DIRS = {p["report_dir"] for p in _PLATFORMS if p.get("render", True)}
 
@@ -247,11 +289,10 @@ def main() -> None:
             p_hosts,
             output_dir,
             common_vars,
-            site_report_relative="../../../site_health_report.html"
-            if "/" in p["report_dir"]
-            else "../../site_health_report.html",
             global_inventory_index=global_inventory_index,
             generated_fleet_dirs=_GENERATED_FLEET_DIRS,
+            report_dir=p["report_dir"],
+            platform_paths=p["paths"],
         )
 
     # ------------------------------------------------------------------
@@ -361,6 +402,7 @@ def main() -> None:
         global_inventory_index=global_inventory_index,
         cklb_dir=cklb_root,
         generated_fleet_dirs=_GENERATED_FLEET_DIRS,
+        stig_platforms_by_target={t: p for p in _PLATFORMS for t in p.get("target_types", [])},
     )
 
     # ------------------------------------------------------------------

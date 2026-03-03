@@ -59,6 +59,10 @@ check:
     mypy .
     {{ if path_exists(".venv/bin/basedpyright") == "true" { ".venv/bin/basedpyright ." } else { "basedpyright . --pythonpath `which python3`" } }}
 
+# Ensure module_utils path contract matches ncs_reporter canonical resolver
+sync-path-contract-check:
+    {{ python }} scripts/sync_path_contract.py --check
+
 # Run all unit and E2E tests
 test:
     {{ python }} -m pytest tests/unit
@@ -164,20 +168,20 @@ stig-harden-vm vcenter vm_name:
 stig-audit-esxi vcenter host:
     {{ ansible_playbook }} playbooks/vmware_esxi_stig_audit.yml -l {{ vcenter }} -e "esxi_stig_target_hosts=['{{ host }}']"
 
-# Run ESXi STIG audit for all ESXi hosts in a site (site must have <site>_vcenters and <site>_esxi_hosts groups)
+# Run ESXi STIG audit for all ESXi hosts in a site
 # Example: just stig-audit-esxi-site sdhm
 stig-audit-esxi-site site:
     tmpfile=$$(mktemp /tmp/ncs_esxi_site_XXXXXX.json); \
-    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no hosts found in group "+g))' > "$$tmpfile"; \
-    {{ ansible_playbook }} playbooks/vmware_esxi_stig_audit.yml -l {{ site }}_vcenters -e "@$$tmpfile"; \
+    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); site="{{ site }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(site) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for site "+site))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_esxi_stig_audit.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
 # Run ESXi STIG audit for all ESXi hosts in a site using a custom inventory file
 # Example: just stig-audit-esxi-site-inv sdhm inventory/production/hosts.yaml
 stig-audit-esxi-site-inv site inv:
     tmpfile=$$(mktemp /tmp/ncs_esxi_site_XXXXXX.json); \
-    {{ ansible_inventory }} -i {{ inv }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no hosts found in group "+g))' > "$$tmpfile"; \
-    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_audit.yml -l {{ site }}_vcenters -e "@$$tmpfile"; \
+    {{ ansible_inventory }} -i {{ inv }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); site="{{ site }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(site) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for site "+site))' > "$$tmpfile"; \
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_audit.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
 # Run STIG Hardening for a specific ESXi host on a specific vCenter (MUTATING)
@@ -188,16 +192,16 @@ stig-harden-esxi vcenter host:
 # Example: just stig-harden-esxi-site sdhm
 stig-harden-esxi-site site:
     tmpfile=$$(mktemp /tmp/ncs_esxi_site_XXXXXX.json); \
-    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no hosts found in group "+g))' > "$$tmpfile"; \
-    {{ ansible_playbook }} playbooks/vmware_esxi_stig_remediate.yml -l {{ site }}_vcenters -e "@$$tmpfile"; \
+    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); site="{{ site }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(site) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for site "+site))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_esxi_stig_remediate.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
 # Run ESXi STIG hardening for all ESXi hosts in a site using a custom inventory file (MUTATING)
 # Example: just stig-harden-esxi-site-inv sdhm inventory/production/hosts.yaml
 stig-harden-esxi-site-inv site inv:
     tmpfile=$$(mktemp /tmp/ncs_esxi_site_XXXXXX.json); \
-    {{ ansible_inventory }} -i {{ inv }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no hosts found in group "+g))' > "$$tmpfile"; \
-    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_remediate.yml -l {{ site }}_vcenters -e "@$$tmpfile"; \
+    {{ ansible_inventory }} -i {{ inv }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); site="{{ site }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(site) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for site "+site))' > "$$tmpfile"; \
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_remediate.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
 # Run VCSA STIG audit
@@ -213,12 +217,12 @@ stig-remediate-vcsa target="vcenters":
 # Run VCSA STIG audit for one site
 # Example: just stig-audit-vcsa-site sdhm
 stig-audit-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_audit.yml -l {{ site }}
 
 # Run VCSA STIG remediation for one site (MUTATING)
 # Example: just stig-remediate-vcsa-site sdhm
 stig-remediate-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}
 
 # Run VCSA STIG audit using a custom inventory file
 # Example: just stig-audit-vcsa-inv vcenters inventory/production/hosts.yaml
@@ -233,12 +237,12 @@ stig-remediate-vcsa-inv target inv:
 # Run VCSA STIG audit for one site using a custom inventory file
 # Example: just stig-audit-vcsa-site-inv sdhm inventory/production/hosts.yaml
 stig-audit-vcsa-site-inv site inv:
-    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_vcsa_stig_audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_vcsa_stig_audit.yml -l {{ site }}
 
 # Run VCSA STIG remediation for one site using a custom inventory file (MUTATING)
 # Example: just stig-remediate-vcsa-site-inv sdhm inventory/production/hosts.yaml
 stig-remediate-vcsa-site-inv site inv:
-    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}
 
 # Run Photon STIG audit
 # Example: just stig-audit-photon

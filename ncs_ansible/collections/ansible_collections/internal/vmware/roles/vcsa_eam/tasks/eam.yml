@@ -341,9 +341,10 @@
 
 # Title: ESX Agent Manager directory tree must have permissions in an "out of the box" state.
 
-- name: VCEM-70-000017 - Find EAM web files
+- name: VCEA-70-000017 - Find vSphere EAM web files
   ansible.builtin.shell: find {{ var_eam_web_path }} -xdev -type f -a '(' -not -user root -o -not -group root ')';
   register: files
+  check_mode: false
   tags:
     - VCEM-70-000017
   changed_when: files.stdout != ""

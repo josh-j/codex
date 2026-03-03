@@ -2,6 +2,31 @@
 
 This document explains the directory structures and path mapping logic used by `ncs-reporter` for consuming raw telemetry and generating HTML reports.
 
+## Canonical Source of Truth
+
+Pathing is defined by the user-owned `platforms.yaml` file.  
+`ncs-reporter`, collector-side exports, and downstream verifiers should resolve report paths from this YAML contract, not from hardcoded path assumptions.
+
+Each platform entry must include a `paths` block with these required templates:
+
+- `raw_stig_artifact`
+- `report_fleet`
+- `report_node_latest`
+- `report_node_historical`
+- `report_stig_host`
+- `report_search_entry`
+- `report_site`
+- `report_stig_fleet`
+
+Template placeholders are validated strictly. Required placeholders are:
+
+- `raw_stig_artifact`: `{report_dir}`, `{hostname}`, `{target_type}`
+- `report_fleet`: `{report_dir}`, `{schema_name}`
+- `report_node_latest`: `{report_dir}`, `{hostname}`
+- `report_node_historical`: `{report_dir}`, `{hostname}`, `{report_stamp}`
+- `report_stig_host`: `{report_dir}`, `{hostname}`, `{target_type}`
+- `report_search_entry`: `{report_dir}`, `{hostname}`
+
 ## 1. Input Structure (Telemetry Lake)
 
 `ncs-reporter` expects a "Telemetry Lake" directory structure, typically populated by `ncs-collector`. 

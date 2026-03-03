@@ -357,9 +357,10 @@
 
 # Title: Performance Charts directory tree must have permissions in an "out of the box" state.
 
-- name: VCPF-70-000017 - Find perfchart web files
+- name: VCPF-70-000017 - Find vSphere perfcharts web files
   ansible.builtin.shell: find {{ var_perfcharts_web_path }} -xdev -type f -a '(' -not -user root -a -not -user perfcharts -o -not -group root ')';
   register: files
+  check_mode: false
   tags:
     - VCPF-70-000017
   changed_when: files.stdout != ""
