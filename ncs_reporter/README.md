@@ -14,6 +14,25 @@ Stage 2 — Report (ncs-reporter)
 
 `ncs-reporter` never touches a live host. All tests run without an inventory.
 
+## User-Friendly YAML Schema Keys
+
+Custom report schemas now accept concise aliases in addition to canonical keys.
+Existing schema files continue to work unchanged.
+
+| Canonical key | Alias |
+|---|---|
+| `display_name` | `title` |
+| `detection.keys_any` | `detection.any` |
+| `detection.keys_all` | `detection.all` |
+| `path` | `from` |
+| `compute` | `expr` |
+| `script` | `run` |
+| `script_args` | `args` |
+| `script_timeout` | `timeout` |
+| `fallback` | `default` |
+| `table.rows_field` | `table.rows` |
+| `label` (field/column) | `title` |
+
 ## Setup
 
 ```bash
