@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -19,19 +19,19 @@ class FieldSpec(BaseModel):
     # path    — dot-notation traversal with optional pipe transform
     # compute — arithmetic expression using {field_name} references
     # script  — path to an executable; receives JSON on stdin, returns JSON on stdout
-    path: str | None = None
-    compute: str | None = None
-    script: str | None = None
+    path: str | None = Field(default=None, validation_alias=AliasChoices("path", "from"))
+    compute: str | None = Field(default=None, validation_alias=AliasChoices("compute", "expr"))
+    script: str | None = Field(default=None, validation_alias=AliasChoices("script", "run"))
 
     # Static key/value args passed to the script alongside extracted fields.
-    script_args: dict[str, Any] = Field(default_factory=dict)
+    script_args: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("script_args", "args"))
     # Seconds before a script invocation is killed and the fallback is used.
-    script_timeout: int = 30
+    script_timeout: int = Field(default=30, validation_alias=AliasChoices("script_timeout", "timeout"))
 
     type: Literal[
         "str", "int", "float", "bool", "list", "dict", "bytes", "percentage", "datetime", "duration_seconds"
     ] = "str"
-    fallback: Any = None
+    fallback: Any = Field(default=None, validation_alias=AliasChoices("fallback", "default"))
     # Value used instead of fallback when the path is *provably broken* (i.e. does
     # not resolve against the example bundle).  None means use a type-appropriate
     # default: "ERROR" for str, -1 for int/float.  Set explicitly to override.
@@ -220,7 +220,7 @@ class WidgetLayout(BaseModel):
 class KeyValueField(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    label: str
+    label: str = Field(validation_alias=AliasChoices("label", "title"))
     field: str
     format: str | None = None
 
@@ -244,7 +244,7 @@ class StyleRule(BaseModel):
 class TableColumn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    label: str
+    label: str = Field(validation_alias=AliasChoices("label", "title"))
     field: str
     badge: bool = False
     format: str | None = None
@@ -259,7 +259,7 @@ class TableWidget(BaseModel):
     title: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    rows_field: str
+    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     columns: list[TableColumn]
 
 
@@ -309,8 +309,8 @@ ReportWidget = Annotated[
 class DetectionSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    keys_any: list[str] = Field(default_factory=list)
-    keys_all: list[str] = Field(default_factory=list)
+    keys_any: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_any", "any"))
+    keys_all: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_all", "all"))
 
 
 # ---------------------------------------------------------------------------
@@ -320,7 +320,7 @@ class DetectionSpec(BaseModel):
 
 class FleetColumn(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    label: str
+    label: str = Field(validation_alias=AliasChoices("label", "title"))
     field: str
     width: str | None = None
 
@@ -330,7 +330,7 @@ class ReportSchema(BaseModel):
 
     name: str
     platform: str
-    display_name: str
+    display_name: str = Field(validation_alias=AliasChoices("display_name", "title"))
     detection: DetectionSpec
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
     alerts: list[AlertRule] = Field(default_factory=list)

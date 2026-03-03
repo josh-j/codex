@@ -380,6 +380,46 @@ class TestSchemaModelValidation:
         with pytest.raises(ValueError):
             FieldSpec(path="a.b", compute="{x} + 1", type="float")
 
+    def test_schema_alias_keys_parse(self) -> None:
+        schema = ReportSchema.model_validate(
+            {
+                "name": "alias_test",
+                "platform": "test",
+                "title": "Alias Test",
+                "detection": {"any": ["raw_test"]},
+                "fields": {
+                    "hostname": {"from": "raw_test.data.hostname", "default": "unknown"},
+                    "uptime_days": {"expr": "{uptime_seconds} / 86400", "default": 0.0, "type": "float"},
+                    "uptime_seconds": {"from": "raw_test.data.uptime", "type": "float", "default": 0.0},
+                    "rows_data": {"from": "raw_test.data.rows", "type": "list", "default": []},
+                },
+                "widgets": [
+                    {
+                        "id": "summary",
+                        "title": "Summary",
+                        "type": "key_value",
+                        "fields": [{"title": "Host", "field": "hostname"}],
+                    },
+                    {
+                        "id": "table1",
+                        "title": "Rows",
+                        "type": "table",
+                        "rows": "rows_data",
+                        "columns": [{"title": "Name", "field": "name"}],
+                    },
+                ],
+                "fleet_columns": [{"title": "Host", "field": "hostname"}],
+            }
+        )
+
+        assert schema.display_name == "Alias Test"
+        assert schema.detection.keys_any == ["raw_test"]
+        assert schema.fields["hostname"].path == "raw_test.data.hostname"
+        assert schema.fields["hostname"].fallback == "unknown"
+        assert schema.fields["uptime_days"].compute == "{uptime_seconds} / 86400"
+        assert schema.widgets[1].rows_field == "rows_data"
+        assert schema.fleet_columns[0].label == "Host"
+
 
 # ---------------------------------------------------------------------------
 # Safe expression evaluator
