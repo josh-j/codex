@@ -7,8 +7,13 @@
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "audit", "vm"]
+  pre_tasks:
+    - name: "Validate VM target list is provided"
+      ansible.builtin.assert:
+        that:
+          - vm_stig_target_vms | default([]) | length > 0
+        fail_msg: "No VM targets provided. Set vm_stig_target_vms (for example via just stig-audit-vm-*)."
   roles:
     - role: internal.vmware.vm
       vars:
         vmware_stig_enable_hardening: false   # READ-ONLY
-      when: vm_stig_target_vms | default([]) | length > 0

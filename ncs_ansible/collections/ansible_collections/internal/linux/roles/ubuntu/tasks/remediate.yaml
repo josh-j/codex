@@ -10,6 +10,20 @@
     - name: Apply patches, hardening, and handle reboots
       ansible.builtin.include_tasks: maintain.yaml
       when: ubuntu_enable_maintenance | default(false) | bool
+
+    - name: "Ubuntu STIG | Execute hardening"
+      when: ubuntu_enable_stig_hardening | default(false) | bool
+      block:
+        - name: "Ubuntu STIG | Run enforcement tasks"
+          ansible.builtin.include_tasks: ubuntu2404.yaml
+          args:
+            apply:
+              check_mode: false
+              tags: [stig_task]
+              vars:
+                stig_target_host: "{{ inventory_hostname }}"
+                stig_target_type: "ubuntu"
+                stig_platform: "linux/ubuntu"
   rescue:
     - name: Log remediation failure
       ansible.builtin.debug:

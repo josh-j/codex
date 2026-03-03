@@ -2,6 +2,8 @@
 # ncs_ansible consumes this file from files/ncs_reporter_configs/platforms.yaml.
 # Copy this file to ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml,
 # or pass --platforms-config <path> to customize the platform list.
+# NOTE: every STIG `stig_target_type` emitted by playbooks must be listed in one
+# of the `target_types` arrays below, or ncs_collector will fail fast.
 platforms:
   - input_dir: linux/ubuntu
     report_dir: linux/ubuntu

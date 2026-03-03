@@ -41,6 +41,23 @@ _PLATFORM_SCHEMA_NAMES: dict[str, list[str]] = {
 
 _USER_PLATFORMS_CONFIG = Path.home() / ".config" / "ncs_reporter" / "platforms.yaml"
 
+_STIG_SKELETON_MAP = {
+    "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
+    "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
+    "vcsa": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
+    "vcenter": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
+    "vami": "cklb_skeleton_vsphere7_vami_V1R2.json",
+    "eam": "cklb_skeleton_vsphere7_vca_eam_V1R2.json",
+    "lookup_svc": "cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json",
+    "perfcharts": "cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json",
+    "vcsa_photon_os": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
+    "photon": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
+    "postgresql": "cklb_skeleton_vsphere7_vca_postgresql_V1R2.json",
+    "rhttpproxy": "cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json",
+    "sts": "cklb_skeleton_vsphere7_vca_sts_V1R2.json",
+    "ui": "cklb_skeleton_vsphere7_vca_ui_V1R2.json",
+}
+
 
 def _default_paths() -> dict[str, str]:
     return {
@@ -433,6 +450,14 @@ def _render_stig(
             if cklb_dir is not None and target_type:
                 cklb_path = cklb_dir / f"{hostname}_{target_type}.cklb"
                 cklb_lookup = _load_cklb_rule_lookup(cklb_path)
+
+            if not cklb_lookup and target_type:
+                # Fallback: load the generic skeleton for this target type if available
+                skeleton_file = _STIG_SKELETON_MAP.get(target_type)
+                if skeleton_file:
+                    sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
+                    cklb_lookup = _load_cklb_rule_lookup(sk_path)
+
             import re
 
             host_dir = output_path / host_rel_dir
@@ -1090,22 +1115,6 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
     s_dir = Path(skeleton_dir) if skeleton_dir else Path(__file__).parent / "cklb_skeletons"
     hosts_data = load_hosts_data(input_file)
 
-    skeleton_map = {
-        "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
-        "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
-        "vcsa": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
-        "vcenter": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
-        "vami": "cklb_skeleton_vsphere7_vami_V1R2.json",
-        "eam": "cklb_skeleton_vsphere7_vca_eam_V1R2.json",
-        "lookup_svc": "cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json",
-        "perfcharts": "cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json",
-        "vcsa_photon_os": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
-        "postgresql": "cklb_skeleton_vsphere7_vca_postgresql_V1R2.json",
-        "rhttpproxy": "cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json",
-        "sts": "cklb_skeleton_vsphere7_vca_sts_V1R2.json",
-        "ui": "cklb_skeleton_vsphere7_vca_ui_V1R2.json",
-    }
-
     for hostname, bundle in hosts_data.items():
         if not isinstance(bundle, dict):
             continue
@@ -1116,7 +1125,7 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
                 continue
 
             target_type = str(payload.get("target_type", ""))
-            skeleton_file = skeleton_map.get(target_type)
+            skeleton_file = _STIG_SKELETON_MAP.get(target_type)
             if not skeleton_file:
                 continue
 

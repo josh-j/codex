@@ -10,7 +10,7 @@ def _canonical_stig_status(value: Any) -> str:
     text = str(value or "").strip().lower()
     if text in ("failed", "fail", "open", "non-compliant", "non_compliant"):
         return "open"
-    if text in ("pass", "passed", "compliant", "success"):
+    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated"):
         return "pass"
     if text in ("na", "n/a", "not_applicable", "not applicable"):
         return "na"
@@ -221,13 +221,51 @@ def build_stig_host_view(
     target_type = _infer_stig_target_type(audit_type, stig_payload)
 
     source_findings = []
+    # Track which rule IDs we've already added from the audit results
+    seen_rule_ids = set()
+
     full_audit = stig_payload.get("full_audit")
     if isinstance(full_audit, list):
         for row in full_audit:
-            source_findings.append(_normalize_stig_finding(row, audit_type, platform_name, cklb_rule_lookup))
+            finding = _normalize_stig_finding(row, audit_type, platform_name, cklb_rule_lookup)
+            source_findings.append(finding)
+            rid = finding.get("rule_id")
+            if rid:
+                seen_rule_ids.add(str(rid).strip())
     else:
         for alert in safe_list(stig_payload.get("alerts")):
-            source_findings.append(_normalize_stig_finding(alert, audit_type, platform_name, cklb_rule_lookup))
+            finding = _normalize_stig_finding(alert, audit_type, platform_name, cklb_rule_lookup)
+            source_findings.append(finding)
+            rid = finding.get("rule_id")
+            if rid:
+                seen_rule_ids.add(str(rid).strip())
+
+    # If we have a skeleton, add any rules that were NOT in the automated results
+    if cklb_rule_lookup:
+        for rid, rule_def in cklb_rule_lookup.items():
+            clean_rid = str(rid).strip()
+            # Rule definitions are indexed by rule_id, rule_version, and group_id.
+            # We only want to process each rule ONCE.
+            if clean_rid != str(rule_def.get("rule_id")).strip():
+                continue
+
+            # Check if this rule (or its version aliases) was seen in findings
+            was_seen = (
+                clean_rid in seen_rule_ids
+                or str(rule_def.get("rule_version")).strip() in seen_rule_ids
+                or str(rule_def.get("group_id")).strip() in seen_rule_ids
+            )
+
+            if not was_seen:
+                # Add as a 'not_reviewed' finding
+                source_findings.append(
+                    _normalize_stig_finding(
+                        {"status": "not_reviewed", "rule_id": clean_rid},
+                        audit_type,
+                        platform_name,
+                        cklb_rule_lookup,
+                    )
+                )
 
     summary = _summarize_stig_findings(source_findings)
     health = _status_from_health(stig_payload.get("health"))

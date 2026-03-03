@@ -48,7 +48,7 @@ def _import_path_contract_module():
     try:
         from ansible_collections.internal.core.plugins.module_utils import path_contract as module
         return module
-    except Exception:
+    except ModuleNotFoundError:
         # Local unit tests load callback by file path (no collection package context).
         mod_path = os.path.join(os.path.dirname(__file__), "..", "module_utils", "path_contract.py")
         spec = importlib.util.spec_from_file_location("ncs_path_contract_module_utils", mod_path)
@@ -134,26 +134,29 @@ class CallbackModule(CallbackBase):
         # Determine output directory
         report_dir = collect_data.get('report_directory') or DEFAULT_REPORT_DIRECTORY
         target_type = ""
-        if isinstance(name, str) and name.startswith("stig_"):
-            target_type = name.replace("stig_", "", 1).strip().lower()
-            platform_cfg = self._resolve_platform_for_target(self._platforms_config, target_type)
-            paths = platform_cfg.get("paths", {}) if isinstance(platform_cfg, dict) else {}
-            raw_template = str(paths.get("raw_stig_artifact", "")).strip()
-            if not raw_template:
-                raise RuntimeError(f"Missing paths.raw_stig_artifact for target_type '{target_type}'")
-            raw_path = os.path.join(
-                report_dir,
-                raw_template.format(
+        try:
+            if isinstance(name, str) and name.startswith("stig_"):
+                target_type = name.replace("stig_", "", 1).strip().lower()
+                platform_cfg = self._resolve_platform_for_target(self._platforms_config, target_type)
+                paths = platform_cfg.get("paths", {}) if isinstance(platform_cfg, dict) else {}
+                raw_template = str(paths.get("raw_stig_artifact", "")).strip()
+                if not raw_template:
+                    raise RuntimeError(f"Missing paths.raw_stig_artifact for target_type '{target_type}'")
+                raw_rel = raw_template.format(
                     report_dir=str(platform_cfg.get("report_dir", "")),
                     hostname=host,
                     schema_name=str(platform_cfg.get("schema_name") or platform_cfg.get("platform") or ""),
                     target_type=target_type,
                     report_stamp="",
-                ),
-            )
-            host_dir = os.path.dirname(raw_path)
-        else:
-            host_dir = os.path.join(report_dir, 'platform', platform, host)
+                )
+                raw_path = self._resolve_under_report_root(report_dir, raw_rel)
+                host_dir = os.path.dirname(raw_path)
+            else:
+                host_rel = os.path.join("platform", str(platform), str(host))
+                host_dir = self._resolve_under_report_root(report_dir, host_rel)
+        except Exception as e:
+            self._display.warning(f"[ncs_collector] Invalid output path for host '{host}' name '{name}': {e}")
+            return
         
         try:
             self._ensure_dir_inherits_parent(host_dir)
@@ -163,8 +166,8 @@ class CallbackModule(CallbackBase):
 
         # 1. Save Raw Payload
         if payload is not None:
-            raw_path = raw_path if (isinstance(name, str) and name.startswith("stig_")) else os.path.join(
-                host_dir, f"raw_{name}.yaml"
+            raw_path = raw_path if (isinstance(name, str) and name.startswith("stig_")) else self._resolve_under_report_root(
+                report_dir, os.path.join("platform", str(platform), str(host), f"raw_{name}.yaml")
             )
             envelope = {
                 'metadata': {
@@ -196,16 +199,16 @@ class CallbackModule(CallbackBase):
     def _extract_rule_number(self, task_name):
         if not task_name:
             return None
-        # Pattern 1: stigrule_123456
+        # Pattern 1: stigrule_123456 -> 123456
         m = re.search(r"stigrule_(\d{4,})", str(task_name), re.IGNORECASE)
         if m:
             return m.group(1)
-        # Pattern 2: V-123456
+        # Pattern 2: V-123456 -> 123456
         m = re.search(r"\bV-(\d{4,})\b", str(task_name), re.IGNORECASE)
         if m:
             return m.group(1)
-        # Pattern 3: PREFIX-YY-123456 (VCPG-70-000002, PHTN-50-000016)
-        m = re.search(r"\b[A-Z]+-\d+-(\d{4,})\b", str(task_name), re.IGNORECASE)
+        # Pattern 3: PREFIX-YY-123456 (VCPG-70-000002, PHTN-50-000016) -> Full ID
+        m = re.search(r"\b([A-Z]+-\d+-\d{4,})\b", str(task_name), re.IGNORECASE)
         if m:
             return m.group(1)
         return None
@@ -291,7 +294,7 @@ class CallbackModule(CallbackBase):
                 target_type=str(target_type),
                 report_stamp="",
             )
-            raw_path = os.path.join(report_dir, raw_rel)
+            raw_path = self._resolve_under_report_root(report_dir, raw_rel)
             host_dir = os.path.dirname(raw_path)
             try:
                 self._ensure_dir_inherits_parent(host_dir)
@@ -301,10 +304,16 @@ class CallbackModule(CallbackBase):
 
             rows = []
             for rule_num, status in rules.items():
+                # Use rule_num directly if it already has a prefix/hyphen (e.g. VCPG-70-000002)
+                # otherwise prefix with V- (e.g. 256450 -> V-256450)
+                rule_id = str(rule_num)
+                if "-" not in rule_id:
+                    rule_id = f"V-{rule_id}"
+
                 rows.append(
                     {
-                        "id": f"V-{rule_num}",
-                        "rule_id": f"V-{rule_num}",
+                        "id": rule_id,
+                        "rule_id": rule_id,
                         "name": host,
                         "status": status,
                         "title": f"stigrule_{rule_num}",
@@ -362,6 +371,18 @@ class CallbackModule(CallbackBase):
     def _apply_file_mode_from_parent(self, path: str) -> None:
         parent = os.path.dirname(path) or "."
         os.chmod(path, self._mode_from_parent(parent, is_dir=False))
+
+    def _resolve_under_report_root(self, report_root: str, rel_or_abs: str) -> str:
+        root_real = os.path.realpath(report_root)
+        candidate = rel_or_abs if os.path.isabs(rel_or_abs) else os.path.join(root_real, rel_or_abs)
+        cand_real = os.path.realpath(candidate)
+        try:
+            within = os.path.commonpath([cand_real, root_real]) == root_real
+        except ValueError:
+            within = False
+        if not within:
+            raise RuntimeError(f"resolved path escapes report root: {rel_or_abs}")
+        return cand_real
 
     def _to_builtin(self, value):
         """Recursively coerce Ansible-tagged values to plain Python builtins."""

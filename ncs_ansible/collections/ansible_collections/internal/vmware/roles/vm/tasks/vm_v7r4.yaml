@@ -200,10 +200,202 @@
   when: vmch_70_000027_Manage | default(true) | bool
 
 # =========================================================================
-# GROUP B: Hardware assertions (audit-only, cannot remediate via API)
+# GROUP B: Hardware assertions & remediation
 # =========================================================================
 
 # --- VMCH-70-000008 / floppy ---
+- name: stigrule_256457_floppy_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.floppy_drives | default(0) | int == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_detail.floppy_drives }} floppy drives"
+    success_msg: "VM {{ _current_vm_name }} has no floppy drives"
+  when:
+    - vmch_70_000008_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256457_floppy_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      floppy:
+        - state: absent
+  when:
+    - vmch_70_000008_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.floppy_drives | default(0) | int > 0"
+
+# --- VMCH-70-000009 / cdrom ---
+- name: stigrule_256458_cdrom_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.cdrom | default([]) | length == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_detail.cdrom | length }} CD-ROM devices"
+    success_msg: "VM {{ _current_vm_name }} has no CD-ROM devices"
+  when:
+    - vmch_70_000009_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256458_cdrom_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      cdrom:
+        - state: absent
+  when:
+    - vmch_70_000009_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.cdrom | default([]) | length > 0"
+
+# --- VMCH-70-000010 / parallel ---
+- name: stigrule_256459_parallel_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.parallel_ports | default(0) | int == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_detail.parallel_ports }} parallel ports"
+    success_msg: "VM {{ _current_vm_name }} has no parallel ports"
+  when:
+    - vmch_70_000010_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256459_parallel_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      parallel:
+        - state: absent
+  when:
+    - vmch_70_000010_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.parallel_ports | default(0) | int > 0"
+
+# --- VMCH-70-000011 / serial ---
+- name: stigrule_256460_serial_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.serial_ports | default(0) | int == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_detail.serial_ports }} serial ports"
+    success_msg: "VM {{ _current_vm_name }} has no serial ports"
+  when:
+    - vmch_70_000011_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256460_serial_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      serial:
+        - state: absent
+  when:
+    - vmch_70_000011_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.serial_ports | default(0) | int > 0"
+
+# --- VMCH-70-000012 / USB ---
+- name: stigrule_256461_usb_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.usb_controllers | default(0) | int == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_detail.usb_controllers }} USB controllers"
+    success_msg: "VM {{ _current_vm_name }} has no USB controllers"
+  when:
+    - vmch_70_000012_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256461_usb_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      usb_controller:
+        - state: absent
+  when:
+    - vmch_70_000012_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.usb_controllers | default(0) | int > 0"
+
+# --- VMCH-70-000006 / disk persistence ---
+- name: stigrule_256455_disk_persistence
+  ansible.builtin.debug:
+    msg: "VMCH-70-000006: Disk persistence mode requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000006_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP C: VM attribute assertions & remediation
+# =========================================================================
+
+# --- VMCH-70-000024 / vMotion encryption ---
+- name: stigrule_256472_vmotion_encryption_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.vmotion_encryption | default('disabled') == 'required'"
+    fail_msg: "VM {{ _current_vm_name }} vMotion encryption is {{ _vm_detail.vmotion_encryption | default('disabled') }}"
+    success_msg: "VM {{ _current_vm_name }} vMotion encryption is correct"
+  when:
+    - vmch_70_000024_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256472_vmotion_encryption_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    vmotion_encryption: required
+  when:
+    - vmch_70_000024_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.vmotion_encryption | default('disabled') != 'required'"
+
+# --- VMCH-70-000025 / Logging ---
+- name: stigrule_256473_logging_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.logging_enabled | default(false) == true"
+    fail_msg: "VM {{ _current_vm_name }} logging is disabled"
+    success_msg: "VM {{ _current_vm_name }} logging is enabled"
+  when:
+    - vmch_70_000025_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256473_logging_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: vmx.log.enabled
+        value: "TRUE"
+  when:
+    - vmch_70_000025_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.logging_enabled | default(false) == false"
+
+# --- VMCH-70-000029 / FT encryption ---
+- name: stigrule_256477_ft_encryption_assert
+  ansible.builtin.assert:
+    that:
+      - "_vm_detail.ft_encryption | default('disabled') == 'required'"
+    fail_msg: "VM {{ _current_vm_name }} FT encryption is {{ _vm_detail.ft_encryption | default('disabled') }}"
+    success_msg: "VM {{ _current_vm_name }} FT encryption is correct"
+  when:
+    - vmch_70_000029_Manage | default(true) | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+- name: stigrule_256477_ft_encryption_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    ft_encryption: required
+  when:
+    - vmch_70_000029_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "_vm_detail.ft_encryption | default('disabled') != 'required'"
+
+# =========================================================================
+# GROUP D: Hardening remediation coverage aliases
+# =========================================================================
+
+- name: stigrule_256450_copy_disable_remediate
+  ansible.builtin.debug:
+    msg: "VMCH-70-000001 remediation handled by stigrule_256450_copy_disable."
+  changed_when: false
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+    - vmch_70_000001_Manage | default(true) | bool
 
 - name: stigrule_256451_dnd_disable_remediate
   ansible.builtin.debug:
@@ -254,11 +446,6 @@
   when:
     - vmware_stig_enable_hardening | default(false) | bool
     - vmch_70_000007_Manage | default(true) | bool
-
-
-
-
-
 
 - name: stigrule_256462_max_connections_remediate
   ansible.builtin.debug:
@@ -318,17 +505,6 @@
     - vmware_stig_enable_hardening | default(false) | bool
     - vmch_70_000023_Manage | default(true) | bool
 
-
-- name: stigrule_256473_logging_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000025 on {{ _current_vm_name }}:
-      ensure VM logging is enabled and logs are retained per policy.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000025_Manage | default(true) | bool
-
 - name: stigrule_256474_log_rotate_size_remediate
   ansible.builtin.debug:
     msg: "VMCH-70-000026 remediation handled by stigrule_256474_log_rotate_size."
@@ -344,13 +520,3 @@
   when:
     - vmware_stig_enable_hardening | default(false) | bool
     - vmch_70_000027_Manage | default(true) | bool
-
-- name: stigrule_256477_ft_encryption_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000029 on {{ _current_vm_name }}:
-      enable Fault Tolerance traffic encryption where FT is used.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000029_Manage | default(true) | bool

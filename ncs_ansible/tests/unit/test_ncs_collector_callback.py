@@ -754,5 +754,14 @@ class TestPermissionInheritance(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(raw_file.stat().st_mode), 0o640)
 
 
+class TestPathContainment(unittest.TestCase):
+    def test_traversal_in_platform_does_not_write_outside_report_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            _emit(cb, tmp, "host1", "../../escape", "vcenter", {"k": "v"})
+            self.assertFalse((Path(tmp) / "escape").exists())
+            self.assertTrue(any("escapes report root" in w for w in cb._display.warnings))
+
+
 if __name__ == "__main__":
     unittest.main()

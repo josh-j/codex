@@ -7,6 +7,10 @@ This document explains the directory structures and path mapping logic used by `
 Pathing is defined by the user-owned `platforms.yaml` file.  
 `ncs-reporter`, collector-side exports, and downstream verifiers should resolve report paths from this YAML contract, not from hardcoded path assumptions.
 
+Collector runtime is strict for STIG telemetry:
+- Every emitted `stig_target_type` must exist in `platforms.yaml` `target_types`.
+- If a target type is missing, callback persistence fails fast instead of guessing a path.
+
 Each platform entry must include a `paths` block with these required templates:
 
 - `raw_stig_artifact`

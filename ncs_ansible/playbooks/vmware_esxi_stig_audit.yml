@@ -7,8 +7,13 @@
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "audit", "esxi"]
+  pre_tasks:
+    - name: "Validate ESXi target list is provided"
+      ansible.builtin.assert:
+        that:
+          - esxi_stig_target_hosts | default([]) | length > 0
+        fail_msg: "No ESXi targets provided. Set esxi_stig_target_hosts (for example via just stig-audit-esxi-*)."
   roles:
     - role: internal.vmware.esxi
       vars:
         vmware_stig_enable_hardening: false   # READ-ONLY
-      when: esxi_stig_target_hosts | default([]) | length > 0

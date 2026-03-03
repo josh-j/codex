@@ -3,7 +3,7 @@
 # STIG hardening + verification for vCenter Server Appliance (VCSA).
 
 - name: "Phase 2a: VCSA STIG Remediation"
-  hosts: "{{ vcenter_stig_target_hosts | default('vcenters') }}"
+  hosts: "{{ vcenter_stig_target_hosts | default(vcenter_target_hosts | default('vcenters')) }}"
   gather_facts: false
   become: true
   tags: ["vmware", "stig", "remediate", "vcsa"]
@@ -14,7 +14,7 @@
         vmware_stig_enable_hardening: true
 
 - name: "Phase 2b: VCSA STIG Post-Remediation Audit"
-  hosts: "{{ vcenter_stig_target_hosts | default('vcenters') }}"
+  hosts: "{{ vcenter_stig_target_hosts | default(vcenter_target_hosts | default('vcenters')) }}"
   gather_facts: false
   become: true
   tags: ["vmware", "stig", "audit", "vcsa"]

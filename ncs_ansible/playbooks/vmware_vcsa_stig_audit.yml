@@ -3,7 +3,7 @@
 # Read-only STIG audit for vCenter Server Appliance (VCSA).
 
 - name: "Phase 2a: VCSA STIG Audit"
-  hosts: "{{ vcenter_stig_target_hosts | default('vcenters') }}"
+  hosts: "{{ vcenter_stig_target_hosts | default(vcenter_target_hosts | default('vcenters')) }}"
   gather_facts: false
   become: true
   tags: ["vmware", "stig", "audit", "vcsa"]

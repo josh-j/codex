@@ -9,6 +9,12 @@
   tags: ["vmware", "stig", "remediate", "esxi"]
   vars:
     vmware_stig_enable_hardening: true    # MUTATING — applies changes
+  pre_tasks:
+    - name: "Validate ESXi target list is provided"
+      ansible.builtin.assert:
+        that:
+          - esxi_stig_target_hosts | default([]) | length > 0
+        fail_msg: "No ESXi targets provided. Set esxi_stig_target_hosts (for example via just stig-harden-esxi-*)."
 
   tasks:
     - name: "Execute ESXi STIG Hardening"

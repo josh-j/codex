@@ -7,6 +7,12 @@
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "remediate", "snapshot"]
+  pre_tasks:
+    - name: "Validate VM target list is provided"
+      ansible.builtin.assert:
+        that:
+          - vm_stig_target_vms | default([]) | length > 0
+        fail_msg: "No VM targets provided. Set vm_stig_target_vms (for example via just stig-harden-vm-*)."
   tasks:
     - name: Create safety snapshots
       ansible.builtin.include_role:
