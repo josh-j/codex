@@ -1,0 +1,210 @@
+---
+# vmware_host_config_manager tasks
+
+# --- V-256376 / ESXI-70-000002: DCUI.Access list ---
+- name: stigrule_256376_dcui_access
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      DCUI.Access: "{{ esxi_stig_dcui_access | default('root') }}"
+  when: esxi_70_000002_Manage | default(esxi_70_000002) | default(true) | bool
+
+# --- V-256378 / ESXI-70-000004: Remote syslog ---
+- name: stigrule_256378_syslog
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logHost: "{{ esxi_stig_syslog_host }}"
+  when:
+    - esxi_70_000004_Manage | default(esxi_70_000004) | default(true) | bool
+    - esxi_stig_syslog_host | default('') | length > 0
+
+# --- V-256379 / ESXI-70-000005: Account lock failures ---
+- name: stigrule_256379_account_lock_failures
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.AccountLockFailures: "{{ esxi_stig_account_lock_failures | default(3) }}"
+  when: esxi_70_000005_Manage | default(esxi_70_000005) | default(true) | bool
+
+# --- V-256380 / ESXI-70-000006: Account unlock timeout ---
+- name: stigrule_256380_account_unlock_time
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.AccountUnlockTime: "{{ esxi_stig_account_unlock_time | default(900) }}"
+  when: esxi_70_000006_Manage | default(esxi_70_000006) | default(true) | bool
+
+# --- V-256381 / ESXI-70-000007: DoD welcome banner ---
+- name: stigrule_256381_welcome_banner
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Annotations.WelcomeMessage: "{{ esxi_stig_welcome_message }}"
+  when:
+    - esxi_70_000007_Manage | default(esxi_70_000007) | default(true) | bool
+    - esxi_stig_welcome_message | default('') | length > 0
+
+# --- V-256396 / ESXI-70-000030: Log level ---
+- name: stigrule_256396_log_level
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.log.level: "{{ esxi_stig_log_level | default('info') }}"
+  when: esxi_70_000030_Manage | default(esxi_70_000030) | default(true) | bool
+
+# --- V-256397 / ESXI-70-000031: Password complexity ---
+- name: stigrule_256397_password_complexity
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordQualityControl: "{{ esxi_stig_password_quality | default('retry=3 min=disabled,disabled,disabled,disabled,15') }}"
+  when: esxi_70_000031_Manage | default(esxi_70_000031) | default(true) | bool
+
+# --- V-256398 / ESXI-70-000032: Password history ---
+- name: stigrule_256398_password_history
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordHistory: "{{ esxi_stig_password_history | default(5) }}"
+  when: esxi_70_000032_Manage | default(esxi_70_000032) | default(true) | bool
+
+# --- V-256399 / ESXI-70-000034: MOB disabled ---
+- name: stigrule_256399_mob_disabled
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.solo.enableMob: "{{ esxi_stig_mob_enabled | default('false') }}"
+  when: esxi_70_000034_Manage | default(esxi_70_000034) | default(true) | bool
+
+# --- V-256404 / ESXI-70-000039: AD admin group ---
+- name: stigrule_256404_ad_admin_group
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.hostsvc.esxAdminsGroup: "{{ esxi_stig_ad_admin_group }}"
+  when:
+    - esxi_70_000039_Manage | default(esxi_70_000039) | default(true) | bool
+    - esxi_stig_ad_admin_group | default('') | length > 0
+
+# --- V-256405 / ESXI-70-000041: Shell interactive timeout ---
+- name: stigrule_256405_shell_interactive_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiShellInteractiveTimeOut: "{{ esxi_stig_shell_interactive_timeout | default(120) }}"
+  when: esxi_70_000041_Manage | default(esxi_70_000041) | default(true) | bool
+
+# --- V-256406 / ESXI-70-000042: Shell timeout ---
+- name: stigrule_256406_shell_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiShellTimeOut: "{{ esxi_stig_shell_timeout | default(600) }}"
+  when: esxi_70_000042_Manage | default(esxi_70_000042) | default(true) | bool
+
+# --- V-256407 / ESXI-70-000043: DCUI timeout ---
+- name: stigrule_256407_dcui_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.DcuiTimeOut: "{{ esxi_stig_dcui_timeout | default(120) }}"
+  when: esxi_70_000043_Manage | default(esxi_70_000043) | default(true) | bool
+
+# --- V-256408 / ESXI-70-000045: Persistent logging ---
+- name: stigrule_256408_persistent_logs
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logDir: "{{ esxi_stig_log_dir }}"
+  when:
+    - esxi_70_000045_Manage | default(esxi_70_000045) | default(true) | bool
+    - esxi_stig_log_dir | default('') | length > 0
+
+# --- V-256416 / ESXI-70-000055: Memory salting ---
+- name: stigrule_256416_memory_salting
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Mem.ShareForceSalting: "{{ esxi_stig_share_force_salting | default(2) }}"
+  when: esxi_70_000055_Manage | default(esxi_70_000055) | default(true) | bool
+
+# --- V-256419 / ESXI-70-000058: BPDU filter ---
+- name: stigrule_256419_bpdu_filter
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Net.BlockGuestBPDU: "{{ esxi_stig_block_guest_bpdu | default(1) }}"
+  when: esxi_70_000058_Manage | default(esxi_70_000058) | default(true) | bool
+
+# --- V-256423 / ESXI-70-000062: dvFilter bind IP ---
+- name: stigrule_256423_dvfilter
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Net.DVFilterBindIpAddress: "{{ esxi_stig_dvfilter_bind_ip | default('') }}"
+  when: esxi_70_000062_Manage | default(esxi_70_000062) | default(true) | bool
+
+# --- V-256429 / ESXI-70-000074: TLS 1.2 only ---
+- name: stigrule_256429_tls
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.ESXiVPsDisabledProtocols: "{{ esxi_stig_disabled_protocols | default('tlsv1,tlsv1.1,sslv3') }}"
+  when: esxi_70_000074_Manage | default(esxi_70_000074) | default(true) | bool
+
+# --- V-256432 / ESXI-70-000079: Shell warning not suppressed ---
+- name: stigrule_256432_shell_warning
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.SuppressShellWarning: "{{ esxi_stig_suppress_shell_warning | default(0) }}"
+  when: esxi_70_000079_Manage | default(esxi_70_000079) | default(true) | bool
+
+# --- V-256433 / ESXI-70-000081: HT warning not suppressed ---
+- name: stigrule_256433_ht_warning
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.SuppressHyperthreadWarning: "{{ esxi_stig_suppress_ht_warning | default(0) }}"
+  when: esxi_70_000081_Manage | default(esxi_70_000081) | default(true) | bool
+
+# --- V-256438 / ESXI-70-000086: Syslog SSL cert check ---
+- name: stigrule_256438_syslog_cert
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.logCheckSSLCerts: "{{ esxi_stig_syslog_check_ssl_certs | default('true') }}"
+  when: esxi_70_000086_Manage | default(esxi_70_000086) | default(true) | bool
+
+# --- V-256439 / ESXI-70-000087: Volatile key destruction ---
+- name: stigrule_256439_eager_zero
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Mem.MemEagerZero: "{{ esxi_stig_memory_eager_zero | default(1) }}"
+  when: esxi_70_000087_Manage | default(esxi_70_000087) | default(true) | bool
+
+# --- V-256440 / ESXI-70-000088: API session timeout ---
+- name: stigrule_256440_api_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.vmacore.soap.sessionTimeout: "{{ esxi_stig_api_session_timeout | default(30) }}"
+  when: esxi_70_000088_Manage | default(esxi_70_000088) | default(true) | bool
+
+# --- V-256441 / ESXI-70-000089: Host client timeout ---
+- name: stigrule_256441_host_client_timeout
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      UserVars.HostClientSessionTimeout: "{{ esxi_stig_host_client_timeout | default(600) }}"
+  when: esxi_70_000089_Manage | default(esxi_70_000089) | default(true) | bool
+
+# --- V-256443 / ESXI-70-000091: Password max days ---
+- name: stigrule_256443_password_max_days
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Security.PasswordMaxDays: "{{ esxi_stig_password_max_days | default(90) }}"
+  when: esxi_70_000091_Manage | default(esxi_70_000091) | default(true) | bool

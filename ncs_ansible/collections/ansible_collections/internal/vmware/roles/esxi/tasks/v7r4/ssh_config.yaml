@@ -1,0 +1,18 @@
+---
+# tasks/v7r4/ssh_config.yaml
+# SSH Configuration Rules (Gated behind esxi_stig_enable_ssh_checks)
+
+- name: "Load PowerShell rules"
+  ansible.builtin.include_vars:
+    file: pwsh_rules.yaml
+
+- name: "SSH Hardening Explicit Bypass Block"
+  ansible.builtin.debug:
+    msg: "SSH Hardening tasks natively managed by stigrule_256385_ssh_service"
+  changed_when: false
+  when: vmware_stig_enable_hardening | default(false) | bool
+
+- name: "Execute SSH Configuration PowerShell STIG Rules"
+  ansible.builtin.include_tasks: v7r4/pwsh_evaluator.yaml
+  loop: "{{ esxi_pwsh_rules | selectattr('file', 'equalto', 'ssh_config.yaml') | list }}"
+  when: esxi_stig_enable_ssh_checks | default(true) | bool

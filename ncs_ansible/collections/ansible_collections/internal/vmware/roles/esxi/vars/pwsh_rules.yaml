@@ -1,0 +1,363 @@
+esxi_pwsh_rules:
+  - rule_id: "256402"
+    desc: "ad"
+    file: "vswitch_security.yaml"
+    reg_var: "_q_256402"
+    manage_var: "esxi_70_000037_Manage | default(esxi_70_000037) | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$authInfo = \$vmhost | Get-VMHostAuthentication;
+            if (\$authInfo.Domain) { \$authInfo.Domain } else { 'NOT_JOINED' }
+    assert_eval:
+      - "_q_256402.stdout | default('NOT_JOINED') | trim != 'NOT_JOINED'"
+    fail_msg: "ESXi host {{ _current_esxi_host }} is not joined to an AD domain"
+    success_msg: "ESXi host joined to domain: {{ _q_256402.stdout | default('') | trim }}"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' |
+              Set-VMHostAuthentication -JoinDomain -Domain '{{ esxi_stig_ad_domain }}' -User '{{ esxi_stig_ad_join_user }}' -Password \$env:AD_PASS -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256402.stdout | default('NOT_JOINED') | trim) == 'NOT_JOINED'"
+      - "esxi_stig_ad_domain | default('') | length > 0"
+      - "esxi_stig_ad_join_user | default('') | length > 0"
+      - "esxi_stig_ad_join_password | default('') | length > 0"
+
+  - rule_id: "256427"
+    desc: "patches_current"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256427"
+    manage_var: "esxi_70_000072_Manage | default(true) | bool"
+    query_cmd: |
+      (Get-VMHost -Name '{{ _current_esxi_host }}').Build
+    assert_eval:
+      - "esxi_stig_expected_build | default('') | length == 0 or"
+    fail_msg: "ESXi build {{ _q_256427.stdout | default('unknown') | trim }} does not match"
+    success_msg: "ESXi build: {{ _q_256427.stdout | default('unknown') | trim }}"
+
+  - rule_id: "256430"
+    desc: "secure_boot"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256430"
+    manage_var: "esxi_70_000076_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+            if (\$vmhost.Runtime.BootTime) {
+              try { \$vmhost.QueryTpmAttestationReport().TpmPcrValues | Out-Null; 'SUPPORTED' }
+              catch { 'UNKNOWN' }
+            } else { 'UNKNOWN' }
+    assert_eval:
+      - "(_q_256430.stdout | default('UNKNOWN') | trim) != 'DISABLED'"
+    fail_msg: "Secure Boot is disabled on {{ _current_esxi_host }}"
+    success_msg: "Secure Boot status: {{ _q_256430.stdout | default('UNKNOWN') | trim }}"
+
+  - rule_id: "256431"
+    desc: "ldap_tls"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256431"
+    manage_var: "esxi_70_000078_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$authInfo = \$vmhost | Get-VMHostAuthentication;
+            if (\$authInfo.Domain) {
+              \$adv = Get-AdvancedSetting -Entity \$vmhost -Name 'Config.HostAgent.plugins.hostsvc.esxAdminsGroupAutoAdd';
+              if (\$adv) { 'AD_JOINED' } else { 'AD_NO_TLS_INFO' }
+            } else { 'NOT_JOINED' }
+    assert_eval:
+      - "(_q_256431.stdout | default('NOT_JOINED') | trim) in ['AD_JOINED', 'NOT_JOINED']"
+    fail_msg: "LDAP/AD TLS configuration needs review: {{ _q_256431.stdout | default('') }}"
+    success_msg: "LDAP/AD TLS check: {{ _q_256431.stdout | default('') | trim }}"
+
+  - rule_id: "256442"
+    desc: "rhttpproxy_fips"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256442"
+    manage_var: "esxi_70_000090_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$result = \$esxcli.system.security.fips140.rhttpproxy.get.Invoke();
+            if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
+    assert_eval:
+      - "(_q_256442.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "rhttpproxy FIPS 140-2 is not enabled"
+    success_msg: "rhttpproxy FIPS 140-2 is enabled"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$args = \$esxcli.system.security.fips140.rhttpproxy.set.CreateArgs();
+            \$args.enable = \$true;
+            \$esxcli.system.security.fips140.rhttpproxy.set.Invoke(\$args) | Out-Null
+    remediate_when:
+      - "(_q_256442.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256444"
+    desc: "vm_override"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256444"
+    manage_var: "esxi_70_000092_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+            \$overrides = \$vmhost.Config.Vm.SwapPlacement;
+            if (\$overrides) { 'HAS_OVERRIDES' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256444.stdout | default('COMPLIANT') | trim) == 'COMPLIANT'"
+    fail_msg: "VM config overrides found on {{ _current_esxi_host }}"
+    success_msg: "No VM config overrides"
+
+  - rule_id: "256445"
+    desc: "vm_logger"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256445"
+    manage_var: "esxi_70_000093_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$adv = Get-AdvancedSetting -Entity \$vmhost -Name 'Config.HostAgent.log.level';
+            if (\$adv -and \$adv.Value -eq 'info') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$adv.Value }
+    assert_eval:
+      - "(_q_256445.stdout | default('') | trim) is match('^COMPLIANT')"
+    fail_msg: "VM logger override: {{ _q_256445.stdout | default('') }}"
+    success_msg: "VM logger level is compliant"
+
+  - rule_id: "256446"
+    desc: "tpm_encryption"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256446"
+    manage_var: "esxi_70_000094_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$enc = \$esxcli.system.settings.encryption.get.Invoke();
+            if (\$enc.Mode -eq 'TPM') { 'COMPLIANT' } else { 'NON_COMPLIANT: ' + \$enc.Mode }
+    assert_eval:
+      - "(_q_256446.stdout | default('') | trim) is match('^COMPLIANT')"
+    fail_msg: "TPM encryption: {{ _q_256446.stdout | default('') }}"
+    success_msg: "TPM encryption is enabled"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$args = \$esxcli.system.settings.encryption.set.CreateArgs();
+            \$args.mode = 'TPM';
+            \$esxcli.system.settings.encryption.set.Invoke(\$args) | Out-Null
+    remediate_when:
+      - "(_q_256446.stdout | default('') | trim) is match('^NON_COMPLIANT')"
+
+  - rule_id: "256375"
+    desc: "lockdown"
+    file: "explicit_remediation.yaml"
+    reg_var: "_q_256375"
+    manage_var: "esxi_70_000001_Manage | default(esxi_70_000001) | default(true) | bool"
+    query_cmd: |
+      (Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View).Config.LockdownMode
+    assert_eval:
+      - "_q_256375.stdout | default('') | lower != 'lockdowndisabled'"
+      - "_q_256375.stdout | default('') | length > 0"
+    fail_msg: "Lockdown mode is disabled"
+    success_msg: "Lockdown mode is enabled ({{ _q_256375.stdout | default('unknown') }})"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+            \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+            \$lockdown.ChangeLockdownMode('{{ esxi_stig_lockdown_level | default('lockdownNormal') }}')
+    remediate_when:
+      - "_q_256375.stdout | default('') | lower == 'lockdowndisabled'"
+
+  - rule_id: "256377"
+    desc: "lockdown_exceptions"
+    file: "explicit_remediation.yaml"
+    reg_var: "_q_256377"
+    manage_var: "esxi_70_000003_Manage | default(esxi_70_000003) | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+            \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+            (\$lockdown.QueryLockdownExceptions()) -join ','
+    assert_eval:
+      - "(_q_256377.stdout | default('') | trim | length) == 0"
+    fail_msg: "Lockdown exceptions found: {{ _q_256377.stdout | default('') }}"
+    success_msg: "No lockdown exceptions"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+            \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+            \$lockdown.UpdateLockdownExceptions(@())
+    remediate_when:
+      - "(_q_256377.stdout | default('') | trim | length) > 0"
+
+  - rule_id: "256415"
+    desc: "iscsi_chap"
+    file: "explicit_remediation.yaml"
+    reg_var: "_q_256415"
+    manage_var: "esxi_70_000054_Manage | default(esxi_70_000054) | default(true) | bool"
+    query_cmd: |
+      \$hbas = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostHba | Where-Object { \$_.Type -eq 'iscsi' };
+            if (\$hbas) { \$hbas.AuthenticationProperties.ChapType -join ',' } else { 'NO_ISCSI' }
+    assert_eval:
+      - "(_q_256415.stdout | default('NO_ISCSI') | trim) in ['NO_ISCSI', 'Required']"
+    fail_msg: "iSCSI CHAP not set to Required: {{ _q_256415.stdout | default('') }}"
+    success_msg: "iSCSI CHAP is Required or no iSCSI adapters"
+    remediate_cmd: |
+      \$hbas = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostHba | Where-Object { \$_.Type -eq 'iscsi' };
+            foreach (\$hba in \$hbas) {
+              Set-VMHostHba -Hba \$hba -ChapType Required -Confirm:\$false | Out-Null
+            }
+    remediate_when:
+      - "(_q_256415.stdout | default('NO_ISCSI') | trim) not in ['NO_ISCSI', 'Required']"
+
+  - rule_id: "256417"
+    desc: "firewall"
+    file: "explicit_remediation.yaml"
+    reg_var: "_q_256417"
+    manage_var: "esxi_70_000056_Manage | default(esxi_70_000056) | default(true) | bool"
+    query_cmd: |
+      \$open = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View | Get-VMHostFirewallException |
+              Where-Object { (\$_.Enabled -eq \$true) -and (\$_.ExtensionData.AllowedHosts.AllIp -eq 'enabled') -and
+                (\$_.Name -notin @('vSphere Web Client','VMware vCenter Agent')) };
+            if (\$open) { \$open.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256417.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Firewall rules allow all IPs: {{ _q_256417.stdout | default('') }}"
+    success_msg: "Firewall rules restrict access"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View | Get-VMHostFirewallException |
+              Where-Object { (\$_.Enabled -eq \$true) -and (\$_.ExtensionData.AllowedHosts.AllIp -eq 'enabled') -and
+                (\$_.Name -notin @('vSphere Web Client','VMware vCenter Agent')) } |
+              Set-VMHostFirewallException -Enabled:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256417.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256411"
+    desc: "pg_forged_transmits"
+    file: "network_audit.yaml"
+    reg_var: "_q_256411"
+    manage_var: "esxi_70_000048_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.ForgedTransmits -eq \$true };
+            if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256411.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups allow forged transmits: {{ _q_256411.stdout | default('') }}"
+    success_msg: "All port groups reject forged transmits"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.ForgedTransmits -eq \$true } |
+              Set-SecurityPolicy -ForgedTransmits:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256411.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256412"
+    desc: "pg_mac_changes"
+    file: "network_audit.yaml"
+    reg_var: "_q_256412"
+    manage_var: "esxi_70_000049_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.MacChanges -eq \$true };
+            if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256412.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups allow MAC changes: {{ _q_256412.stdout | default('') }}"
+    success_msg: "All port groups reject MAC changes"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.MacChanges -eq \$true } |
+              Set-SecurityPolicy -MacChanges:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256412.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256413"
+    desc: "pg_promiscuous"
+    file: "network_audit.yaml"
+    reg_var: "_q_256413"
+    manage_var: "esxi_70_000050_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.AllowPromiscuous -eq \$true };
+            if (\$bad) { (\$bad | ForEach-Object { \$_.VirtualPortGroup }) -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256413.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups allow promiscuous mode: {{ _q_256413.stdout | default('') }}"
+    success_msg: "All port groups reject promiscuous mode"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup | Get-SecurityPolicy |
+              Where-Object { \$_.AllowPromiscuous -eq \$true } |
+              Set-SecurityPolicy -AllowPromiscuous:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256413.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256418"
+    desc: "firewall_default"
+    file: "network_audit.yaml"
+    reg_var: "_q_256418"
+    manage_var: "esxi_70_000057_Manage | default(false) | bool"
+    query_cmd: |
+      \$fw = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VMHostFirewallDefaultPolicy;
+            if (\$fw.IncomingEnabled -or \$fw.OutgoingEnabled) { 'NON_COMPLIANT' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256418.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Firewall default policy allows traffic — should be deny"
+    success_msg: "Firewall default policy is deny"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' |
+              Set-VMHostFirewallDefaultPolicy -AllowIncoming:\$false -AllowOutgoing:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256418.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256424"
+    desc: "vlan_4095"
+    file: "network_audit.yaml"
+    reg_var: "_q_256424"
+    manage_var: "esxi_70_000063_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { \$_.VLanId -eq 4095 };
+            if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256424.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups using VLAN 4095 (trunk): {{ _q_256424.stdout | default('') }}"
+    success_msg: "No port groups use VLAN 4095"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { \$_.VLanId -eq 4095 } |
+              Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256424.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256425"
+    desc: "reserved_vlans"
+    file: "network_audit.yaml"
+    reg_var: "_q_256425"
+    manage_var: "esxi_70_000064_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { (\$_.VLanId -ge 1001 -and \$_.VLanId -le 1024) -or
+                             (\$_.VLanId -ge 3968 -and \$_.VLanId -le 4047) -or
+                             (\$_.VLanId -eq 4094) };
+            if (\$bad) { (\$bad | ForEach-Object { \
+    assert_eval:
+      - "(_q_256425.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups using reserved VLANs: {{ _q_256425.stdout | default('') }}"
+    success_msg: "No port groups use reserved VLANs"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { (\$_.VLanId -ge 1001 -and \$_.VLanId -le 1024) -or (\$_.VLanId -ge 3968 -and \$_.VLanId -le 4047) -or (\$_.VLanId -eq 4094) } |
+              Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256425.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256426"
+    desc: "native_vlan"
+    file: "network_audit.yaml"
+    reg_var: "_q_256426"
+    manage_var: "esxi_70_000065_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { \$_.VLanId -eq 1 };
+            if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256426.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Port groups using native VLAN 1: {{ _q_256426.stdout | default('') }}"
+    success_msg: "No port groups use native VLAN 1"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualPortGroup |
+              Where-Object { \$_.VLanId -eq 1 } |
+              Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256426.stdout | default('') | trim) != 'COMPLIANT'"
+

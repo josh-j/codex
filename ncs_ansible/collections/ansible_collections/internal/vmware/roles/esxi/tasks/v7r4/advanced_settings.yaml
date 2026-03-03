@@ -1,0 +1,26 @@
+---
+# Additional advanced settings (vmware_host_config_manager)
+
+# --- V-256436 / ESXI-70-000084: Audit record storage validation ---
+- name: stigrule_256436_audit_record_validation
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.HostAgent.plugins.vimsvc.authValidateRecords: "true"
+  when: esxi_70_000084_Manage | default(true) | bool
+
+# --- V-256437 / ESXI-70-000085: Syslog x509 strict ---
+- name: stigrule_256437_syslog_x509_strict
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Syslog.global.certificate.checkSSLCerts: "true"
+  when: esxi_70_000085_Manage | default(true) | bool
+
+# --- V-256447 / ESXI-70-000095: Execute installed only ---
+- name: stigrule_256447_exec_installed_only
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      VMkernel.Boot.execInstalledOnly: "true"
+  when: esxi_70_000095_Manage | default(true) | bool

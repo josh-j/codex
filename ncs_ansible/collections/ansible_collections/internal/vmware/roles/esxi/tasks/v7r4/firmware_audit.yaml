@@ -1,0 +1,11 @@
+---
+# tasks/v7r4/firmware_audit.yaml
+# Firmware / Audit-only Rules (pwsh query/assert)
+
+- name: "Load PowerShell rules"
+  ansible.builtin.include_vars:
+    file: pwsh_rules.yaml
+
+- name: "Execute Firmware PowerShell STIG Rules"
+  ansible.builtin.include_tasks: v7r4/pwsh_evaluator.yaml
+  loop: "{{ esxi_pwsh_rules | selectattr('file', 'equalto', 'firmware_audit.yaml') | list }}"
