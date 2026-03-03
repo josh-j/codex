@@ -204,74 +204,6 @@
 # =========================================================================
 
 # --- VMCH-70-000008 / floppy ---
-- name: stigrule_256457_floppy
-  ansible.builtin.debug:
-    msg: "VMCH-70-000008: Floppy drive status requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000008_Manage | default(true) | bool
-
-# --- VMCH-70-000009 / cdrom ---
-- name: stigrule_256458_cdrom
-  ansible.builtin.debug:
-    msg: "VMCH-70-000009: CD-ROM host device backing requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000009_Manage | default(true) | bool
-
-# --- VMCH-70-000010 / parallel ---
-- name: stigrule_256459_parallel
-  ansible.builtin.debug:
-    msg: "VMCH-70-000010: Parallel port presence requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000010_Manage | default(true) | bool
-
-# --- VMCH-70-000011 / serial ---
-- name: stigrule_256460_serial
-  ansible.builtin.debug:
-    msg: "VMCH-70-000011: Serial port presence requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000011_Manage | default(true) | bool
-
-# --- VMCH-70-000012 / USB ---
-- name: stigrule_256461_usb
-  ansible.builtin.debug:
-    msg: "VMCH-70-000012: USB controller presence requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000012_Manage | default(true) | bool
-
-# --- VMCH-70-000006 / disk persistence ---
-- name: stigrule_256455_disk_persistence
-  ansible.builtin.debug:
-    msg: "VMCH-70-000006: Disk persistence mode requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000006_Manage | default(true) | bool
-
-# =========================================================================
-# GROUP C: VM attribute assertions (audit-only stubs)
-# =========================================================================
-
-# --- VMCH-70-000024 / vMotion encryption ---
-- name: stigrule_256472_vmotion_encryption
-  ansible.builtin.debug:
-    msg: "VMCH-70-000024: vMotion encryption requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000024_Manage | default(true) | bool
-
-# --- VMCH-70-000025 / Logging ---
-- name: stigrule_256473_logging
-  ansible.builtin.debug:
-    msg: "VMCH-70-000025: VM logging status requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000025_Manage | default(true) | bool
-
-# --- VMCH-70-000029 / FT encryption ---
-- name: stigrule_256477_ft_encryption
-  ansible.builtin.debug:
-    msg: "VMCH-70-000029: FT encryption requires manual inspection for {{ _current_vm_name }}"
-  when: vmch_70_000029_Manage | default(true) | bool
-
-# =========================================================================
-# GROUP D: Hardening remediation coverage (per STIG vulnerability)
-# =========================================================================
-
-- name: stigrule_256450_copy_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000001 remediation handled by stigrule_256450_copy_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000001_Manage | default(true) | bool
 
 - name: stigrule_256451_dnd_disable_remediate
   ansible.builtin.debug:
@@ -323,55 +255,10 @@
     - vmware_stig_enable_hardening | default(false) | bool
     - vmch_70_000007_Manage | default(true) | bool
 
-- name: stigrule_256457_floppy_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000008 on {{ _current_vm_name }}:
-      remove virtual floppy devices from the VM hardware.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000008_Manage | default(true) | bool
 
-- name: stigrule_256458_cdrom_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000009 on {{ _current_vm_name }}:
-      remove CD/DVD devices or disconnect host-backed media.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000009_Manage | default(true) | bool
 
-- name: stigrule_256459_parallel_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000010 on {{ _current_vm_name }}:
-      remove virtual parallel ports from VM hardware.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000010_Manage | default(true) | bool
 
-- name: stigrule_256460_serial_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000011 on {{ _current_vm_name }}:
-      remove or disable virtual serial ports unless explicitly required.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000011_Manage | default(true) | bool
 
-- name: stigrule_256461_usb_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000012 on {{ _current_vm_name }}:
-      remove USB controllers from VM hardware unless mission-required.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000012_Manage | default(true) | bool
 
 - name: stigrule_256462_max_connections_remediate
   ansible.builtin.debug:
@@ -431,15 +318,6 @@
     - vmware_stig_enable_hardening | default(false) | bool
     - vmch_70_000023_Manage | default(true) | bool
 
-- name: stigrule_256472_vmotion_encryption_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000024 on {{ _current_vm_name }}:
-      set VM vMotion encryption policy to required in vCenter.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000024_Manage | default(true) | bool
 
 - name: stigrule_256473_logging_remediate
   ansible.builtin.debug:

@@ -8,6 +8,7 @@ ansible_playbook := if path_exists(".venv/bin/ansible-playbook") == "true" { ".v
 ansible_inventory := if path_exists(".venv/bin/ansible-inventory") == "true" { ".venv/bin/ansible-inventory" } else { "ansible-inventory" }
 ncs_reporter     := if path_exists(".venv/bin/ncs-reporter") == "true" { ".venv/bin/ncs-reporter" } else { "ncs-reporter" }
 reporter_config_dir := "files/ncs_reporter_configs"
+platforms_config   := reporter_config_dir + "/platforms.yaml"
 inventory_file   := "inventory/production/hosts.yaml"
 simulation_inventory_file := "inventory/simulation/hosts.yaml"
 reports_dir      := "tests/reports"
@@ -44,7 +45,7 @@ setup-tools: setup-venv
 # --- Quality Control ---
 
 # Run all quality checks (lint, check, test)
-all: setup lint check test jinja-lint ansible-lint
+all: setup lint check contract-check test jinja-lint ansible-lint
 
 # Run python linting (Ruff)
 lint:
@@ -56,12 +57,18 @@ format:
 
 # Run static type checking (MyPy & Basedpyright)
 check:
+    {{ python }} scripts/sync_path_contract.py --check
     mypy .
     {{ if path_exists(".venv/bin/basedpyright") == "true" { ".venv/bin/basedpyright ." } else { "basedpyright . --pythonpath `which python3`" } }}
 
 # Ensure module_utils path contract matches ncs_reporter canonical resolver
 sync-path-contract-check:
     {{ python }} scripts/sync_path_contract.py --check
+
+# Validate path-contract integrity and resolver parity tests.
+contract-check:
+    {{ python }} scripts/sync_path_contract.py --check
+    {{ python }} -m pytest tests/unit/test_path_contract_parity.py tests/unit/test_path_contract_sync.py
 
 # Run all unit and E2E tests
 test:
@@ -118,7 +125,7 @@ simulate-vmware-playbook out_root="tests/reports/simulated_playbook_run":
         --platform-root {{ out_root }}/platform \
         --reports-root {{ out_root }} \
         --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }} --platforms-config {{ platforms_config }}
 
 # Run only the vCenter control-plane audit
 audit-vmware-vcenter:
@@ -152,6 +159,170 @@ update-windows:
 audit-windows-post-patch:
     {{ ansible_playbook }} playbooks/windows_post_patch_audit.yml
 
+# --- Scoped Playbook Targeting ---
+
+# Run any playbook against a platform rollup group (e.g., vcenters, ubuntu_servers).
+run-playbook-platform playbook platform:
+    {{ ansible_playbook }} playbooks/{{ playbook }} -l {{ platform }}
+
+# Run any playbook against a site group (e.g., sdhm, site2).
+run-playbook-site playbook site:
+    {{ ansible_playbook }} playbooks/{{ playbook }} -l {{ site }}
+
+# Run any playbook against an arbitrary inventory group.
+run-playbook-group playbook group:
+    {{ ansible_playbook }} playbooks/{{ playbook }} -l {{ group }}
+
+# Run any playbook against a single host.
+run-playbook-host playbook host:
+    {{ ansible_playbook }} playbooks/{{ playbook }} -l {{ host }}
+
+# Run any playbook against targets using an explicit inventory file.
+run-playbook-platform-inv playbook platform inv:
+    {{ ansible_playbook }} -i {{ inv }} playbooks/{{ playbook }} -l {{ platform }}
+
+run-playbook-site-inv playbook site inv:
+    {{ ansible_playbook }} -i {{ inv }} playbooks/{{ playbook }} -l {{ site }}
+
+run-playbook-group-inv playbook group inv:
+    {{ ansible_playbook }} -i {{ inv }} playbooks/{{ playbook }} -l {{ group }}
+
+run-playbook-host-inv playbook host inv:
+    {{ ansible_playbook }} -i {{ inv }} playbooks/{{ playbook }} -l {{ host }}
+
+# Scoped VMware collection (full, vCenter-only, ESXi-only, VM-only)
+audit-vmware-site site:
+    {{ ansible_playbook }} playbooks/vmware_audit.yml -l {{ site }}
+
+audit-vmware-group group:
+    {{ ansible_playbook }} playbooks/vmware_audit.yml -l {{ group }}
+
+audit-vmware-host host:
+    {{ ansible_playbook }} playbooks/vmware_audit.yml -l {{ host }}
+
+audit-vmware-vcenter-site site:
+    {{ ansible_playbook }} playbooks/vmware_vcenter_audit.yml -l {{ site }}
+
+audit-vmware-vcenter-group group:
+    {{ ansible_playbook }} playbooks/vmware_vcenter_audit.yml -l {{ group }}
+
+audit-vmware-vcenter-host host:
+    {{ ansible_playbook }} playbooks/vmware_vcenter_audit.yml -l {{ host }}
+
+audit-vmware-esxi-site site:
+    {{ ansible_playbook }} playbooks/vmware_esxi_audit.yml -l {{ site }}
+
+audit-vmware-esxi-group group:
+    {{ ansible_playbook }} playbooks/vmware_esxi_audit.yml -l {{ group }}
+
+audit-vmware-esxi-host host:
+    {{ ansible_playbook }} playbooks/vmware_esxi_audit.yml -l {{ host }}
+
+audit-vmware-vm-site site:
+    {{ ansible_playbook }} playbooks/vmware_vm_audit.yml -l {{ site }}
+
+audit-vmware-vm-group group:
+    {{ ansible_playbook }} playbooks/vmware_vm_audit.yml -l {{ group }}
+
+audit-vmware-vm-host host:
+    {{ ansible_playbook }} playbooks/vmware_vm_audit.yml -l {{ host }}
+
+# Scoped Ubuntu/Windows collection phases
+audit-ubuntu-site site:
+    {{ ansible_playbook }} playbooks/ubuntu_audit.yml -l {{ site }}
+
+audit-ubuntu-group group:
+    {{ ansible_playbook }} playbooks/ubuntu_audit.yml -l {{ group }}
+
+audit-ubuntu-discover-site site:
+    {{ ansible_playbook }} playbooks/ubuntu_discover.yml -l {{ site }}
+
+audit-ubuntu-discover-group group:
+    {{ ansible_playbook }} playbooks/ubuntu_discover.yml -l {{ group }}
+
+audit-ubuntu-discover-host host:
+    {{ ansible_playbook }} playbooks/ubuntu_discover.yml -l {{ host }}
+
+audit-windows-site site:
+    {{ ansible_playbook }} playbooks/windows_audit.yml -l {{ site }}
+
+audit-windows-group group:
+    {{ ansible_playbook }} playbooks/windows_audit.yml -l {{ group }}
+
+update-windows-site site:
+    {{ ansible_playbook }} playbooks/windows_update.yml -l {{ site }}
+
+update-windows-group group:
+    {{ ansible_playbook }} playbooks/windows_update.yml -l {{ group }}
+
+update-windows-host host:
+    {{ ansible_playbook }} playbooks/windows_update.yml -l {{ host }}
+
+audit-windows-post-patch-site site:
+    {{ ansible_playbook }} playbooks/windows_post_patch_audit.yml -l {{ site }}
+
+audit-windows-post-patch-group group:
+    {{ ansible_playbook }} playbooks/windows_post_patch_audit.yml -l {{ group }}
+
+audit-windows-post-patch-host host:
+    {{ ansible_playbook }} playbooks/windows_post_patch_audit.yml -l {{ host }}
+
+# Scoped Ubuntu/Windows STIG workflows
+stig-audit-ubuntu target="ubuntu_servers":
+    {{ ansible_playbook }} playbooks/ubuntu_stig_audit.yml -l {{ target }}
+
+stig-audit-ubuntu-site site:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_audit.yml -l {{ site }}
+
+stig-audit-ubuntu-group group:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_audit.yml -l {{ group }}
+
+stig-audit-ubuntu-host host:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_audit.yml -l {{ host }}
+
+stig-remediate-ubuntu target="ubuntu_servers":
+    {{ ansible_playbook }} playbooks/ubuntu_stig_remediate.yml -l {{ target }}
+
+stig-remediate-ubuntu-site site:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_remediate.yml -l {{ site }}
+
+stig-remediate-ubuntu-group group:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_remediate.yml -l {{ group }}
+
+stig-remediate-ubuntu-host host:
+    {{ ansible_playbook }} playbooks/ubuntu_stig_remediate.yml -l {{ host }}
+
+stig-audit-windows target="windows_servers":
+    {{ ansible_playbook }} playbooks/windows_stig_audit.yml -l {{ target }} -e "master_enable_windows_stig=true"
+
+stig-audit-windows-site site:
+    {{ ansible_playbook }} playbooks/windows_stig_audit.yml -l {{ site }} -e "master_enable_windows_stig=true"
+
+stig-audit-windows-group group:
+    {{ ansible_playbook }} playbooks/windows_stig_audit.yml -l {{ group }} -e "master_enable_windows_stig=true"
+
+stig-audit-windows-host host:
+    {{ ansible_playbook }} playbooks/windows_stig_audit.yml -l {{ host }} -e "master_enable_windows_stig=true"
+
+# Scoped Photon STIG
+stig-audit-photon-site site:
+    {{ ansible_playbook }} playbooks/photon_stig_audit.yml -l {{ site }}
+
+stig-audit-photon-group group:
+    {{ ansible_playbook }} playbooks/photon_stig_audit.yml -l {{ group }}
+
+stig-audit-photon-host host:
+    {{ ansible_playbook }} playbooks/photon_stig_audit.yml -l {{ host }}
+
+stig-remediate-photon-site site:
+    {{ ansible_playbook }} playbooks/photon_stig_remediate.yml -l {{ site }}
+
+stig-remediate-photon-group group:
+    {{ ansible_playbook }} playbooks/photon_stig_remediate.yml -l {{ group }}
+
+stig-remediate-photon-host host:
+    {{ ansible_playbook }} playbooks/photon_stig_remediate.yml -l {{ host }}
+
 # --- Targeted Orchestration ---
 
 # Run STIG Audit for a specific VM on a specific vCenter
@@ -184,6 +355,18 @@ stig-audit-esxi-site-inv site inv:
     {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_audit.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
+# Run ESXi STIG audit for hosts in any group. Limit defaults to vcenters.
+# Example: just stig-audit-esxi-group site4_esxi_hosts
+stig-audit-esxi-group group limit="vcenters":
+    tmpfile=$$(mktemp /tmp/ncs_esxi_group_XXXXXX.json); \
+    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); group="{{ group }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(group) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for group "+group))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_esxi_stig_audit.yml -l {{ limit }} -e "@$$tmpfile"; \
+    rm -f "$$tmpfile"
+
+# Run ESXi STIG audit for all ESXi platform hosts.
+stig-audit-esxi-platform platform="esxi_hosts" limit="vcenters":
+    just stig-audit-esxi-group {{ platform }} {{ limit }}
+
 # Run STIG Hardening for a specific ESXi host on a specific vCenter (MUTATING)
 stig-harden-esxi vcenter host:
     {{ ansible_playbook }} playbooks/vmware_esxi_stig_remediate.yml -l {{ vcenter }} -e "esxi_stig_target_hosts=['{{ host }}']"
@@ -204,6 +387,17 @@ stig-harden-esxi-site-inv site inv:
     {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_esxi_stig_remediate.yml -l {{ site }} -e "@$$tmpfile"; \
     rm -f "$$tmpfile"
 
+# Run ESXi STIG remediation for hosts in any group. Limit defaults to vcenters.
+stig-harden-esxi-group group limit="vcenters":
+    tmpfile=$$(mktemp /tmp/ncs_esxi_group_XXXXXX.json); \
+    {{ ansible_inventory }} -i {{ inventory_file }} --list | {{ python }} -c 'import json,sys; d=json.load(sys.stdin); group="{{ group }}";\n\ndef walk(g, seen=None):\n    seen = seen or set()\n    if g in seen:\n        return set()\n    seen.add(g)\n    node=d.get(g,{})\n    hosts=set(node.get("hosts",[]))\n    for c in node.get("children",[]):\n        hosts |= walk(c, seen)\n    return hosts\n\nesxi_all=walk("esxi_hosts"); hosts=sorted(walk(group) & esxi_all); (hosts and print(json.dumps({"esxi_stig_target_hosts": hosts}))) or (_ for _ in ()).throw(SystemExit("no ESXi hosts found for group "+group))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_esxi_stig_remediate.yml -l {{ limit }} -e "@$$tmpfile"; \
+    rm -f "$$tmpfile"
+
+# Run ESXi STIG remediation for all ESXi platform hosts.
+stig-harden-esxi-platform platform="esxi_hosts" limit="vcenters":
+    just stig-harden-esxi-group {{ platform }} {{ limit }}
+
 # Run VCSA STIG audit
 # Example: just stig-audit-vcsa
 stig-audit-vcsa target="vcenters":
@@ -219,10 +413,24 @@ stig-remediate-vcsa target="vcenters":
 stig-audit-vcsa-site site:
     {{ ansible_playbook }} playbooks/vmware_vcsa_stig_audit.yml -l {{ site }}
 
+# Run VCSA STIG audit for arbitrary group or single host
+stig-audit-vcsa-group group:
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_audit.yml -l {{ group }}
+
+stig-audit-vcsa-host host:
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_audit.yml -l {{ host }}
+
 # Run VCSA STIG remediation for one site (MUTATING)
 # Example: just stig-remediate-vcsa-site sdhm
 stig-remediate-vcsa-site site:
     {{ ansible_playbook }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}
+
+# Run VCSA STIG remediation for arbitrary group or single host
+stig-remediate-vcsa-group group:
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ group }}
+
+stig-remediate-vcsa-host host:
+    {{ ansible_playbook }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ host }}
 
 # Run VCSA STIG audit using a custom inventory file
 # Example: just stig-audit-vcsa-inv vcenters inventory/production/hosts.yaml
@@ -243,6 +451,39 @@ stig-audit-vcsa-site-inv site inv:
 # Example: just stig-remediate-vcsa-site-inv sdhm inventory/production/hosts.yaml
 stig-remediate-vcsa-site-inv site inv:
     {{ ansible_playbook }} -i {{ inv }} playbooks/vmware_vcsa_stig_remediate.yml -l {{ site }}
+
+# Run VM STIG audit for a CSV list of VM names with platform/site/group/vCenter selector.
+# Example: just stig-audit-vm-site site2 "vm-app-01.site2.local,vm-db-01.site2.local"
+stig-audit-vm-target target vm_csv:
+    tmpfile=$$(mktemp /tmp/ncs_vm_targets_XXXXXX.json); \
+    {{ python }} -c 'import json; vms=[v.strip() for v in "{{ vm_csv }}".split(",") if v.strip()]; (vms and print(json.dumps({"vm_stig_target_vms": vms}))) or (_ for _ in ()).throw(SystemExit("no VM names supplied"))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_vm_stig_audit.yml -l {{ target }} -e "@$$tmpfile"; \
+    rm -f "$$tmpfile"
+
+stig-audit-vm-site site vm_csv:
+    just stig-audit-vm-target {{ site }} "{{ vm_csv }}"
+
+stig-audit-vm-group group vm_csv:
+    just stig-audit-vm-target {{ group }} "{{ vm_csv }}"
+
+stig-audit-vm-platform platform vm_csv:
+    just stig-audit-vm-target {{ platform }} "{{ vm_csv }}"
+
+# Run VM STIG remediation for a CSV list of VM names with platform/site/group/vCenter selector.
+stig-harden-vm-target target vm_csv:
+    tmpfile=$$(mktemp /tmp/ncs_vm_targets_XXXXXX.json); \
+    {{ python }} -c 'import json; vms=[v.strip() for v in "{{ vm_csv }}".split(",") if v.strip()]; (vms and print(json.dumps({"vm_stig_target_vms": vms}))) or (_ for _ in ()).throw(SystemExit("no VM names supplied"))' > "$$tmpfile"; \
+    {{ ansible_playbook }} playbooks/vmware_vm_stig_remediate.yml -l {{ target }} -e "@$$tmpfile"; \
+    rm -f "$$tmpfile"
+
+stig-harden-vm-site site vm_csv:
+    just stig-harden-vm-target {{ site }} "{{ vm_csv }}"
+
+stig-harden-vm-group group vm_csv:
+    just stig-harden-vm-target {{ group }} "{{ vm_csv }}"
+
+stig-harden-vm-platform platform vm_csv:
+    just stig-harden-vm-target {{ platform }} "{{ vm_csv }}"
 
 # Run Photon STIG audit
 # Example: just stig-audit-photon
@@ -295,7 +536,30 @@ report:
             --platform-root {{ platform_root }} \
             --reports-root {{ reports_dir }}; \
     fi
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ reports_dir }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ reports_dir }} --platforms-config {{ platforms_config }}
+
+# Canonical strict reporting gate: render + structure verification + STIG target coverage verification.
+report-strict report_root=reports_dir required_targets="vcsa,esxi,vm,windows,ubuntu,photon,vami,eam,lookup_svc,perfcharts,vcsa_photon_os,postgresql,rhttpproxy,sts,ui" min_hosts="1":
+    @mkdir -p "{{ report_root }}/platform"
+    @if command -v {{ ansible_inventory }} >/dev/null 2>&1; then \
+        {{ ansible_inventory }} -i {{ inventory_file }} --list --output "{{ report_root }}/platform/inventory_groups.json" && \
+        {{ ncs_reporter }} all \
+            --config-dir {{ reporter_config_dir }} \
+            --platform-root "{{ report_root }}/platform" \
+            --reports-root "{{ report_root }}" \
+            --groups "{{ report_root }}/platform/inventory_groups.json"; \
+    else \
+        {{ ncs_reporter }} all \
+            --config-dir {{ reporter_config_dir }} \
+            --platform-root "{{ report_root }}/platform" \
+            --reports-root "{{ report_root }}"; \
+    fi
+    {{ python }} scripts/verify_report_artifacts.py --report-root "{{ report_root }}" --platforms-config {{ platforms_config }}
+    {{ python }} scripts/verify_report_artifacts.py \
+        --report-root "{{ report_root }}" \
+        --platforms-config {{ platforms_config }} \
+        --require-targets "{{ required_targets }}" \
+        --min-hosts-per-target {{ min_hosts }}
 
 # Generate all platform and site reports from collected artifacts
 # Example: just report /srv/samba/reports/platform /srv/samba/reports platform/inventory_groups.json
@@ -306,7 +570,7 @@ report-custom custom_platform_root custom_reports_root custom_groups:
         --reports-root {{ custom_reports_root }} \
         --groups {{ custom_groups }}
 
-# Generate STIG compliance reports
+# Generate STIG compliance reports (non-canonical path; prefer `report` / `report-strict` for contract-based full pipeline)
 # Example: just report-stig /srv/samba/reports/platform/vmware/vcenter reports/stig
 report-stig input output="reports/stig":
     {{ ncs_reporter }} stig --input {{ input }} --output-dir {{ output }}
@@ -319,13 +583,14 @@ report-cklb input output="reports/cklb":
 # Verify generated artifacts are complete enough for production publish gates.
 # Example: just verify-report-artifacts tests/reports/mock_production_run
 verify-report-artifacts report_root=reports_dir:
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ report_root }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ report_root }} --platforms-config {{ platforms_config }}
 
 # Validate STIG callback emission coverage by target type.
 # Example: just verify-stig-emission tests/reports/mock_production_run
 verify-stig-emission report_root=reports_dir required_targets="vcsa,esxi,vm,windows,ubuntu,photon" min_hosts="1":
     {{ python }} scripts/verify_report_artifacts.py \
         --report-root {{ report_root }} \
+        --platforms-config {{ platforms_config }} \
         --require-targets "{{ required_targets }}" \
         --min-hosts-per-target {{ min_hosts }}
 
@@ -340,9 +605,10 @@ simulate-production-stig-run out_root="tests/reports/mock_production_run":
         --platform-root {{ out_root }}/platform \
         --reports-root {{ out_root }} \
         --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }} --platforms-config {{ platforms_config }}
     {{ python }} scripts/verify_report_artifacts.py \
         --report-root {{ out_root }} \
+        --platforms-config {{ platforms_config }} \
         --require-targets "vcsa,esxi,vm,windows,ubuntu,photon,vami,eam,lookup_svc,perfcharts,vcsa_photon_os,postgresql,rhttpproxy,sts,ui" \
         --min-hosts-per-target 1
 
@@ -369,11 +635,18 @@ simulate-production-ansible-run out_root="tests/reports/mock_production_ansible_
         --platform-root {{ out_root }}/platform \
         --reports-root {{ out_root }} \
         --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }} --platforms-config {{ platforms_config }}
     {{ python }} scripts/verify_report_artifacts.py \
         --report-root {{ out_root }} \
+        --platforms-config {{ platforms_config }} \
         --require-targets "vcsa,esxi,vm,windows,ubuntu,photon,vami,eam,lookup_svc,perfcharts,vcsa_photon_os,postgresql,rhttpproxy,sts,ui" \
         --min-hosts-per-target 1
+
+# One-command clean smoke check for deterministic production simulation outputs.
+smoke-clean out_root="tests/reports/mock_production_ansible_run":
+    rm -rf "{{ out_root }}"
+    just simulate-production-ansible-run "{{ out_root }}"
+    @echo "Smoke run complete: {{ out_root }}"
 
 # Audit a specific Linux host
 audit-linux-host hostname:

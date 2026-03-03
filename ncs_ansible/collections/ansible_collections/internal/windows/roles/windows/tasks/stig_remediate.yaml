@@ -1,0 +1,57 @@
+---
+# internal.windows.windows : tasks/stig_remediate.yaml
+#
+# Remediation logic for Windows Server STIG rules.
+# This file performs the actual mutations to bring the system into compliance.
+
+- name: "Windows STIG | Remediate | RDP NLA"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
+    name: UserAuthentication
+    data: 1
+    type: dword
+  when:
+    - _facts.rdp_nla | default(0) | int != 1
+
+- name: "Windows STIG | Remediate | Enable Firewall Profiles"
+  ansible.windows.win_shell: |
+    Set-NetFirewallProfile -Profile {{ item }} -Enabled True
+  loop: "{{ _facts.firewall_disabled_profiles | default([]) }}"
+  when:
+    - _facts.firewall_disabled_profiles | default([]) | length > 0
+    - item != 'ERROR'
+
+- name: "Windows STIG | Remediate | Disable SMBv1"
+  ansible.windows.win_optional_feature:
+    name: SMB1Protocol
+    state: absent
+  when:
+    - _facts.smb1_state | default('') not in ['Disabled', 'DisabledWithPayloadRemoved']
+
+- name: "Windows STIG | Remediate | Disable Guest Account"
+  ansible.windows.win_user:
+    name: Guest
+    account_disabled: true
+  when:
+    - _facts.guest_enabled | default(false) == true
+
+- name: "Windows STIG | Remediate | WinRM Disable Unencrypted"
+  ansible.windows.win_shell: |
+    winrm set winrm/config/service '@{AllowUnencrypted="false"}'
+  when:
+    - _facts.winrm_allow_unencrypted | default('') | lower != 'false'
+
+- name: "Windows STIG | Remediate | WinRM Disable Basic Auth"
+  ansible.windows.win_shell: |
+    winrm set winrm/config/service/auth '@{Basic="false"}'
+  when:
+    - _facts.winrm_basic_auth | default('') | lower != 'false'
+
+- name: "Windows STIG | Remediate | UAC Admin Approval Mode"
+  ansible.windows.win_regedit:
+    path: 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    name: FilterAdministratorToken
+    data: 1
+    type: dword
+  when:
+    - _facts.uac_filter_admin | default(0) | int != 1

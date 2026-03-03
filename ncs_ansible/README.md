@@ -98,6 +98,8 @@ Commands are managed via `just`:
 - `just site-vmware`: Executes VMware-only pipeline.
 - `just test`: Runs Python unit and E2E tests for the reporting engine.
 - `just check`: Runs static analysis (Ruff, MyPy).
+- `just run-playbook-platform <playbook.yml> <platform_group>` / `just run-playbook-site <playbook.yml> <site>` / `just run-playbook-group <playbook.yml> <group>` / `just run-playbook-host <playbook.yml> <host>`: Generic targeting wrappers for any playbook.
+- `just run-playbook-*-inv ... <inventory>`: Same generic targeting wrappers with explicit inventory path.
 - `just audit-linux-host <hostname>`: Audits a specific Linux server.
 - `just stig-audit-vm <vcenter> <vm_name>`: Performs a STIG audit on a VM.
 - `just stig-audit-esxi-site <site>`: Audits ESXi STIG controls for all ESXi hosts associated to the site group.

@@ -26,10 +26,20 @@
 - name: "Windows STIG | Phase 1b | Run native checks"
   when:
     - not (_stig_audit_ran | default(false))
-    - windows_stig_enable_audit | default(false) | bool
+    - windows_stig_enable_audit | default(true) | bool
   block:
     - name: "Windows STIG | Phase 1b.1 | Execute native baseline checks"
       ansible.builtin.import_tasks: stig_check.yaml
+      tags: [windows, stig, security, checks]
+
+    - name: "Windows STIG | Phase 1b.2 | Execute native remediation"
+      ansible.builtin.import_tasks: stig_remediate.yaml
+      when: windows_stig_enable_hardening | default(false) | bool
+      tags: [windows, stig, security, remediate]
+
+    - name: "Windows STIG | Phase 1b.3 | Refresh checks after remediation"
+      ansible.builtin.import_tasks: stig_check.yaml
+      when: windows_stig_enable_hardening | default(false) | bool
       tags: [windows, stig, security, checks]
   rescue:
     - name: "Windows STIG | Phase 1b.r | Mark native check failure"
