@@ -196,10 +196,16 @@ class CallbackModule(CallbackBase):
     def _extract_rule_number(self, task_name):
         if not task_name:
             return None
+        # Pattern 1: stigrule_123456
         m = re.search(r"stigrule_(\d{4,})", str(task_name), re.IGNORECASE)
         if m:
             return m.group(1)
+        # Pattern 2: V-123456
         m = re.search(r"\bV-(\d{4,})\b", str(task_name), re.IGNORECASE)
+        if m:
+            return m.group(1)
+        # Pattern 3: PREFIX-YY-123456 (VCPG-70-000002, PHTN-50-000016)
+        m = re.search(r"\b[A-Z]+-\d+-(\d{4,})\b", str(task_name), re.IGNORECASE)
         if m:
             return m.group(1)
         return None
