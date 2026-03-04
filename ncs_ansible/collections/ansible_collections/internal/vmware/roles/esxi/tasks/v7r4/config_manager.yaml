@@ -45,6 +45,16 @@
     - esxi_70_000007_Manage | default(esxi_70_000007) | default(true) | bool
     - esxi_stig_welcome_message | default('') | length > 0
 
+# --- V-256382 / ESXI-70-000008: SSH /etc/issue banner ---
+- name: stigrule_256382_etc_issue
+  community.vmware.vmware_host_config_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    options:
+      Config.Etc.issue: "{{ esxi_stig_welcome_message }}"
+  when:
+    - esxi_70_000008_Manage | default(esxi_70_000008) | default(true) | bool
+    - esxi_stig_welcome_message | default('') | length > 0
+
 # --- V-256396 / ESXI-70-000030: Log level ---
 - name: stigrule_256396_log_level
   community.vmware.vmware_host_config_manager:

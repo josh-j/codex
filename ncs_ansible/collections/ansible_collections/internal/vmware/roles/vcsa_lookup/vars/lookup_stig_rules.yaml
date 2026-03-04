@@ -1,0 +1,228 @@
+---
+# Data-driven XML rules for Lookup Service STIG remediation.
+# Consumed by xml_evaluator.yml.
+
+lookup_xml_rules:
+  - stig_id: "VCLU-70-000001"
+    desc: "Lookup Service must limit the amount of time that each TCP connection is kept alive."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: "connectionTimeout"
+    value: "{{ var_server_xml_connectiontimeout }}"
+    manage_var: "run_connection_timeout | bool"
+
+  - stig_id: "VCLU-70-000002"
+    desc: "Lookup Service must limit the number of concurrent connections permitted."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxThreads'
+    state: "absent"
+    manage_var: "run_max_threads | bool"
+
+  - stig_id: "VCLU-70-000003"
+    desc: "Lookup Service must limit the maximum size of a POST request."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxPostSize'
+    state: "absent"
+    manage_var: "run_max_post_size | bool"
+
+  - stig_id: "VCLU-70-000004"
+    desc: "Lookup Service must protect cookies from cross-site scripting (XSS)."
+    xml_path: "var_context_xml_path"
+    xpath: "/Context"
+    attribute: "useHttpOnly"
+    value: "{{ var_context_xml_http_only }}"
+    manage_var: "run_http_only | bool"
+
+  - stig_id: "VCLU-70-000005"
+    desc: "Lookup Service must record user access in a format that enables monitoring of remote access."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]'
+    attribute: "pattern"
+    value: "{{ var_server_xml_access_log_valve_pattern }}"
+    manage_var: "run_access_valve_pattern | bool"
+
+  - stig_id: "VCLU-70-000010"
+    desc: "Lookup Service must not be configured with the UserDatabaseRealm enabled."
+    xml_path: "var_server_xml_path"
+    xpath: "/Server/Service/Engine/Realm"
+    state: "absent"
+    manage_var: "run_user_database_realm | bool"
+
+  - stig_id: "VCLU-70-000012"
+    desc: "MIMEs that invoke operating system shell programs disabled. CSH"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:mime-mapping/x:extension[text()="csh"]/..'
+    state: "absent"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_removed_mime_mappings | bool"
+
+  - stig_id: "VCLU-70-000012"
+    desc: "MIMEs that invoke operating system shell programs disabled. SH"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:mime-mapping/x:extension[text()="sh"]/..'
+    state: "absent"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_removed_mime_mappings | bool"
+
+  - stig_id: "VCLU-70-000012"
+    desc: "MIMEs that invoke operating system shell programs disabled. SHAR"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:mime-mapping/x:extension[text()="shar"]/..'
+    state: "absent"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_removed_mime_mappings | bool"
+
+  - stig_id: "VCLU-70-000012"
+    desc: "MIMEs that invoke operating system shell programs disabled. KSH"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:mime-mapping/x:extension[text()="ksh"]/..'
+    state: "absent"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_removed_mime_mappings | bool"
+
+  - stig_id: "VCLU-70-000013"
+    desc: "Lookup Service must have mappings set for Java servlet pages. jsp"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[1]'
+    value: "{{ var_web_xml_servlet_jsp_url_pattern1 }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_java_servlet | bool"
+
+  - stig_id: "VCLU-70-000013"
+    desc: "Lookup Service must have mappings set for Java servlet pages. jspx"
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[2]'
+    value: "{{ var_web_xml_servlet_jsp_url_pattern2 }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_java_servlet | bool"
+
+  - stig_id: "VCLU-70-000014"
+    desc: "Lookup Service must not have the Web Distributed Authoring (WebDAV) servlet installed."
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="webdav"]/..'
+    state: "absent"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_remove_webdav | bool"
+
+  - stig_id: "VCLU-70-000015"
+    desc: "Lookup Service must be configured with memory leak protection."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Listener[@className="org.apache.catalina.core.JreMemoryLeakPreventionListener"]'
+    state: "present"
+    manage_var: "run_mem_leak_prevention | bool"
+
+  - stig_id: "VCLU-70-000019"
+    desc: "Lookup Service must limit the number of allowed connections."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: "acceptCount"
+    value: "{{ var_server_xml_acceptcount }}"
+    manage_var: "run_accept_count | bool"
+
+  - stig_id: "VCLU-70-000020"
+    desc: "Lookup Service must set URIEncoding to UTF-8."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: "URIEncoding"
+    value: "{{ var_server_xml_uriencoding }}"
+    manage_var: "run_uri_encoding | bool"
+
+  - stig_id: "VCLU-70-000021"
+    desc: "Lookup Service must set the welcome-file node to a default web page. html"
+    xml_path: "var_web_xml_path"
+    xpath: "/x:web-app/x:welcome-file-list/x:welcome-file[1]"
+    value: "{{ var_web_xml_welcome_file_list1 }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_welcome_file | bool"
+
+  - stig_id: "VCLU-70-000021"
+    desc: "Lookup Service must set the welcome-file node to a default web page. htm"
+    xml_path: "var_web_xml_path"
+    xpath: "/x:web-app/x:welcome-file-list/x:welcome-file[2]"
+    value: "{{ var_web_xml_welcome_file_list2 }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_welcome_file | bool"
+
+  - stig_id: "VCLU-70-000021"
+    desc: "Lookup Service must set the welcome-file node to a default web page. jsp"
+    xml_path: "var_web_xml_path"
+    xpath: "/x:web-app/x:welcome-file-list/x:welcome-file[3]"
+    value: "{{ var_web_xml_welcome_file_list3 }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_welcome_file | bool"
+
+  - stig_id: "VCLU-70-000022"
+    desc: "The Lookup Service must not show directory listings."
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="listings"]/x:param-value'
+    value: "false"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_remove_listings | bool"
+
+  - stig_id: "VCLU-70-000023"
+    desc: "Lookup Service must be configured to hide the server version."
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: "server"
+    value: "{{ var_server_xml_server }}"
+    manage_var: "run_server_anonymous | bool"
+
+  - stig_id: "VCLU-70-000024"
+    desc: "Lookup Service must be configured to show error pages with minimal information. showServerInfo"
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.ErrorReportValve"]'
+    attribute: "showServerInfo"
+    value: "{{ var_server_xml_show_server_info }}"
+    manage_var: "run_hide_error_reports | bool"
+
+  - stig_id: "VCLU-70-000024"
+    desc: "Lookup Service must be configured to not show error reports. showReport"
+    xml_path: "var_server_xml_path"
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.ErrorReportValve"]'
+    attribute: "showReport"
+    value: "{{ var_server_xml_show_server_report }}"
+    manage_var: "run_hide_error_reports | bool"
+
+  - stig_id: "VCLU-70-000025"
+    desc: "Lookup Service must not enable support for TRACE requests."
+    xml_path: "var_server_xml_path"
+    xpath: "/Server/Service/Connector/@allowTrace"
+    state: "absent"
+    manage_var: "run_allow_trace | bool"
+
+  - stig_id: "VCLU-70-000026"
+    desc: "Lookup Service must have the debug option turned off."
+    xml_path: "var_web_xml_path"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="debug"]/x:param-value'
+    value: "0"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_remove_debug | bool"
+
+  - stig_id: "VCLU-70-000030"
+    desc: "Lookup Service must disable the shutdown port."
+    xml_path: "var_server_xml_path"
+    xpath: "/Server"
+    attribute: "port"
+    value: "{{ var_server_xml_shutdownport }}"
+    manage_var: "run_server_shutdownport | bool"
+
+  - stig_id: "VCLU-70-000031"
+    desc: "Lookup Service must set the secure flag for cookies."
+    xml_path: "var_web_xml_path"
+    xpath: "/x:web-app/x:session-config/x:cookie-config/x:secure"
+    value: "{{ var_web_xml_cookie_secure }}"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    manage_var: "run_web_cookie_secure | bool"

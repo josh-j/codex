@@ -8,7 +8,7 @@
 #   - Each task has ONLY: name, module, parameters, when guard
 #   - NO register (except functional), NO ignore_errors, NO tags
 #   - Toggle guard: vmch_70_NNNNNN_Manage | default(true)
-#   - Advanced settings flattened: one task per rule (no loop)
+#   - Advanced settings driven by vm_stig_rules.yaml (data-driven loop)
 #
 # Credentials come from module_defaults in tasks/main.yaml.
 # Task naming: stigrule_NNNNNN_<desc> for callback compatibility.
@@ -43,6 +43,10 @@
       VMCH-70-000025: "V-256473"
       VMCH-70-000026: "V-256474"
       VMCH-70-000027: "V-256475"
+      VMCH-70-000019: "V-256467"
+      VMCH-70-000020: "V-256468"
+      VMCH-70-000021: "V-256469"
+      VMCH-70-000028: "V-256476"
       VMCH-70-000029: "V-256477"
   changed_when: false
   check_mode: false
@@ -64,140 +68,22 @@
   check_mode: false
 
 # =========================================================================
-# GROUP A: Advanced settings — explicit per-rule tasks
+# GROUP A: Advanced settings — data-driven loop
 # =========================================================================
 
-# V-256450 / VMCH-70-000001: Copy operations must be disabled
-- name: stigrule_256450_copy_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.copy.disable
-        value: "{{ vm_stig_256450_value | default('TRUE') }}"
-  when: vmch_70_000001_Manage | default(true) | bool
+- name: "VM STIG | Load advanced settings rules"
+  ansible.builtin.include_vars:
+    file: vm_stig_rules.yaml
 
-# V-256451 / VMCH-70-000002: Drag and drop operations must be disabled
-- name: stigrule_256451_dnd_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.dnd.disable
-        value: "{{ vm_stig_256451_value | default('TRUE') }}"
-  when: vmch_70_000002_Manage | default(true) | bool
-
-# V-256452 / VMCH-70-000003: Paste operations must be disabled
-- name: stigrule_256452_paste_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.paste.disable
-        value: "{{ vm_stig_256452_value | default('TRUE') }}"
-  when: vmch_70_000003_Manage | default(true) | bool
-
-# V-256453 / VMCH-70-000004: Virtual disk shrinking must be disabled
-- name: stigrule_256453_disk_shrink_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.diskShrink.disable
-        value: "{{ vm_stig_256453_value | default('TRUE') }}"
-  when: vmch_70_000004_Manage | default(true) | bool
-
-# V-256454 / VMCH-70-000005: Virtual disk wiping must be disabled
-- name: stigrule_256454_disk_wiper_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.diskWiper.disable
-        value: "{{ vm_stig_256454_value | default('TRUE') }}"
-  when: vmch_70_000005_Manage | default(true) | bool
-
-# V-256456 / VMCH-70-000007: HGFS file transfers must be disabled
-- name: stigrule_256456_hgfs_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.tools.hgfsServerSet.disable
-        value: "{{ vm_stig_256456_value | default('TRUE') }}"
-  when: vmch_70_000007_Manage | default(true) | bool
-
-# V-256462 / VMCH-70-000013: Console connection sharing must be limited
-- name: stigrule_256462_max_connections
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: RemoteDisplay.maxConnections
-        value: "{{ vm_stig_256462_value | default('1') }}"
-  when: vmch_70_000013_Manage | default(true) | bool
-
-# V-256463 / VMCH-70-000015: Informational messages to VMX file must be limited
-- name: stigrule_256463_setinfo_size_limit
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: tools.setinfo.sizeLimit
-        value: "{{ vm_stig_256463_value | default('1048576') }}"
-  when: vmch_70_000015_Manage | default(true) | bool
-
-# V-256464 / VMCH-70-000016: Unauthorized connection of devices must be prevented
-- name: stigrule_256464_connectable_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: isolation.device.connectable.disable
-        value: "{{ vm_stig_256464_value | default('TRUE') }}"
-  when: vmch_70_000016_Manage | default(true) | bool
-
-# V-256465 / VMCH-70-000017: Guest info gathering must be disabled
-- name: stigrule_256465_guest_host_info
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: tools.guestlib.enableHostInfo
-        value: "{{ vm_stig_256465_value | default('FALSE') }}"
-  when: vmch_70_000017_Manage | default(true) | bool
+- name: "VM STIG | Apply advanced settings"
+  ansible.builtin.include_tasks: v7r4/advanced_settings_evaluator.yaml
+  loop: "{{ vm_advanced_settings_rules }}"
 
 # V-256466 / VMCH-70-000018: Shared salt values must be disabled
 - name: stigrule_256466_pshare_salt
   ansible.builtin.debug:
     msg: "VMCH-70-000018: sched.mem.pshare.salt should be absent on {{ _current_vm_name }}"
   when: vmch_70_000018_Manage | default(true) | bool
-
-# V-256470 / VMCH-70-000022: Guest OS must lock when console closes
-- name: stigrule_256470_desktop_autolock
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: tools.guest.desktop.autolock
-        value: "{{ vm_stig_256470_value | default('TRUE') }}"
-  when: vmch_70_000022_Manage | default(true) | bool
-
-# V-256471 / VMCH-70-000023: 3D features must be disabled
-- name: stigrule_256471_3d_disable
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: mks.enable3d
-        value: "{{ vm_stig_256471_value | default('FALSE') }}"
-  when: vmch_70_000023_Manage | default(true) | bool
-
-# V-256474 / VMCH-70-000026: Log rotation size must be configured
-- name: stigrule_256474_log_rotate_size
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: vmx.log.rotateSize
-        value: "{{ vm_stig_256474_value | default('2048000') }}"
-  when: vmch_70_000026_Manage | default(true) | bool
-
-# V-256475 / VMCH-70-000027: Log retention must be configured
-- name: stigrule_256475_log_keep_old
-  community.vmware.vmware_guest:
-    name: "{{ _current_vm_name }}"
-    advanced_settings:
-      - key: vmx.log.keepOld
-        value: "{{ vm_stig_256475_value | default('10') }}"
-  when: vmch_70_000027_Manage | default(true) | bool
 
 # =========================================================================
 # GROUP B: Hardware assertions & remediation
@@ -319,6 +205,30 @@
     msg: "VMCH-70-000006: Disk persistence mode requires manual inspection for {{ _current_vm_name }}"
   when: vmch_70_000006_Manage | default(true) | bool
 
+# V-256467 / VMCH-70-000019: dvFilter network API access
+- name: stigrule_256467_dvfilter
+  ansible.builtin.debug:
+    msg: "VMCH-70-000019: dvFilter network API access requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000019_Manage | default(true) | bool
+
+# V-256468 / VMCH-70-000020: Template usage for VM deployment
+- name: stigrule_256468_template_usage
+  ansible.builtin.debug:
+    msg: "VMCH-70-000020: Template usage for VM deployment requires manual policy verification for {{ _current_vm_name }}"
+  when: vmch_70_000020_Manage | default(true) | bool
+
+# V-256469 / VMCH-70-000021: VM console usage minimization
+- name: stigrule_256469_console_minimize
+  ansible.builtin.debug:
+    msg: "VMCH-70-000021: VM console usage minimization requires manual policy verification for {{ _current_vm_name }}"
+  when: vmch_70_000021_Manage | default(true) | bool
+
+# V-256476 / VMCH-70-000028: DirectPath I/O (PCI passthrough)
+- name: stigrule_256476_pci_passthru
+  ansible.builtin.debug:
+    msg: "VMCH-70-000028: DirectPath I/O (PCI passthrough) must be disabled when not required — requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000028_Manage | default(true) | bool
+
 # =========================================================================
 # GROUP C: VM attribute assertions & remediation
 # =========================================================================
@@ -384,139 +294,3 @@
     - vmch_70_000029_Manage | default(true) | bool
     - vmware_stig_enable_hardening | default(false) | bool
     - "_vm_detail.ft_encryption | default('disabled') != 'required'"
-
-# =========================================================================
-# GROUP D: Hardening remediation coverage aliases
-# =========================================================================
-
-- name: stigrule_256450_copy_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000001 remediation handled by stigrule_256450_copy_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000001_Manage | default(true) | bool
-
-- name: stigrule_256451_dnd_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000002 remediation handled by stigrule_256451_dnd_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000002_Manage | default(true) | bool
-
-- name: stigrule_256452_paste_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000003 remediation handled by stigrule_256452_paste_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000003_Manage | default(true) | bool
-
-- name: stigrule_256453_disk_shrink_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000004 remediation handled by stigrule_256453_disk_shrink_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000004_Manage | default(true) | bool
-
-- name: stigrule_256454_disk_wiper_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000005 remediation handled by stigrule_256454_disk_wiper_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000005_Manage | default(true) | bool
-
-- name: stigrule_256455_disk_persistence_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000006 on {{ _current_vm_name }}:
-      set all virtual disks to persistent mode and remove independent/nonpersistent disks.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000006_Manage | default(true) | bool
-
-- name: stigrule_256456_hgfs_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000007 remediation handled by stigrule_256456_hgfs_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000007_Manage | default(true) | bool
-
-- name: stigrule_256462_max_connections_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000013 remediation handled by stigrule_256462_max_connections."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000013_Manage | default(true) | bool
-
-- name: stigrule_256463_setinfo_size_limit_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000015 remediation handled by stigrule_256463_setinfo_size_limit."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000015_Manage | default(true) | bool
-
-- name: stigrule_256464_connectable_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000016 remediation handled by stigrule_256464_connectable_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000016_Manage | default(true) | bool
-
-- name: stigrule_256465_guest_host_info_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000017 remediation handled by stigrule_256465_guest_host_info."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000017_Manage | default(true) | bool
-
-- name: stigrule_256466_pshare_salt_remediate
-  ansible.builtin.debug:
-    msg: >-
-      Hardening remediation required for VMCH-70-000018 on {{ _current_vm_name }}:
-      ensure sched.mem.pshare.salt is not set in advanced settings.
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000018_Manage | default(true) | bool
-
-- name: stigrule_256470_desktop_autolock_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000022 remediation handled by stigrule_256470_desktop_autolock."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000022_Manage | default(true) | bool
-
-- name: stigrule_256471_3d_disable_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000023 remediation handled by stigrule_256471_3d_disable."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000023_Manage | default(true) | bool
-
-- name: stigrule_256474_log_rotate_size_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000026 remediation handled by stigrule_256474_log_rotate_size."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000026_Manage | default(true) | bool
-
-- name: stigrule_256475_log_keep_old_remediate
-  ansible.builtin.debug:
-    msg: "VMCH-70-000027 remediation handled by stigrule_256475_log_keep_old."
-  changed_when: false
-  when:
-    - vmware_stig_enable_hardening | default(false) | bool
-    - vmch_70_000027_Manage | default(true) | bool

@@ -56,3 +56,5 @@ run_conf_ssl_honor_cipher_order: true
 run_conf_ssl_disable_client_renegotiation: true
 # VCLD-70-000027
 run_conf_server_tag: true
+# VCLD-70-000056
+run_conf_server_fips_mode: true

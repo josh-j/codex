@@ -41,7 +41,9 @@
       "WebFetch(domain:docs.ansible.com)",
       "Bash(/Users/joshj/dev/codex/tools/ncs_reporter/.venv/bin/python:*)",
       "Bash(PYTHONPATH=\"/Users/joshj/dev/codex/ncs_reporter/src\" /Users/joshj/dev/codex/ncs_reporter/.venv/bin/python:*)",
-      "Bash(.venv/bin/pip install:*)"
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(git:*)",
+      "Bash(rg:*)"
     ]
   }
 }

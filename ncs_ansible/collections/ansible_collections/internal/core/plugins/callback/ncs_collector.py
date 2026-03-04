@@ -29,6 +29,7 @@ DOCUMENTATION = '''
 
 DEFAULT_REPORT_DIRECTORY = "/srv/samba/reports"
 FILE_MODE_INHERIT_MASK = 0o666
+_STATUS_PRIORITY = {"na": 0, "pass": 1, "fixed": 2, "failed": 3}
 
 
 def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
@@ -258,7 +259,9 @@ class CallbackModule(CallbackBase):
             status = "fixed" if changed else "pass"
 
         host_rules = self._stig_rules.setdefault(host, {})
-        host_rules[rule_num] = status
+        existing = host_rules.get(rule_num)
+        if existing is None or _STATUS_PRIORITY.get(status, 0) >= _STATUS_PRIORITY.get(existing, 0):
+            host_rules[rule_num] = status
 
         self._stig_meta[host] = {
             "platform": platform,

@@ -21,6 +21,29 @@ esxi_pwsh_rules:
       - "esxi_stig_ad_join_user | default('') | length > 0"
       - "esxi_stig_ad_join_password | default('') | length > 0"
 
+  - rule_id: "256384"
+    desc: "ssh_fips"
+    file: "ssh_config.yaml"
+    reg_var: "_q_256384"
+    manage_var: "esxi_70_000010_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$result = \$esxcli.system.security.fips140.ssh.get.Invoke();
+            if (\$result.Enabled -eq 'true') { 'COMPLIANT' } else { 'NON_COMPLIANT' }
+    assert_eval:
+      - "(_q_256384.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "SSH FIPS 140-2 mode is not enabled"
+    success_msg: "SSH FIPS 140-2 mode is enabled"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$args = \$esxcli.system.security.fips140.ssh.set.CreateArgs();
+            \$args.enable = \$true;
+            \$esxcli.system.security.fips140.ssh.set.Invoke(\$args) | Out-Null
+    remediate_when:
+      - "(_q_256384.stdout | default('') | trim) != 'COMPLIANT'"
+
   - rule_id: "256427"
     desc: "patches_current"
     file: "firmware_audit.yaml"
@@ -360,4 +383,117 @@ esxi_pwsh_rules:
               Set-VirtualPortGroup -VLanId {{ esxi_stig_portgroup_remediation_vlan_id | default(0) }} -Confirm:\$false | Out-Null
     remediate_when:
       - "(_q_256426.stdout | default('') | trim) != 'COMPLIANT'"
+
+esxi_sshd_config_rules:
+  - rule_id: "256383"
+    desc: "ssh_banner"
+    key: "banner"
+    expected: "banner /etc/issue"
+    manage_var: "esxi_70_000009_Manage | default(true) | bool"
+    fail_msg: "SSH banner is not set to /etc/issue"
+    success_msg: "SSH banner is correctly configured"
+
+  - rule_id: "256385"
+    desc: "ignore_rhosts"
+    key: "ignorerhosts"
+    expected: "ignorerhosts yes"
+    manage_var: "esxi_70_000012_Manage | default(true) | bool"
+    fail_msg: "IgnoreRhosts is not enabled"
+    success_msg: "IgnoreRhosts is enabled"
+
+  - rule_id: "256386"
+    desc: "hostbased_auth"
+    key: "hostbasedauthentication"
+    expected: "hostbasedauthentication no"
+    manage_var: "esxi_70_000013_Manage | default(true) | bool"
+    fail_msg: "Host-based authentication is enabled"
+    success_msg: "Host-based authentication is disabled"
+
+  - rule_id: "256387"
+    desc: "empty_passwords"
+    key: "permitemptypasswords"
+    expected: "permitemptypasswords no"
+    manage_var: "esxi_70_000015_Manage | default(true) | bool"
+    fail_msg: "Empty passwords are permitted"
+    success_msg: "Empty passwords are not permitted"
+
+  - rule_id: "256388"
+    desc: "user_environment"
+    key: "permituserenvironment"
+    expected: "permituserenvironment no"
+    manage_var: "esxi_70_000016_Manage | default(true) | bool"
+    fail_msg: "User environment processing is enabled"
+    success_msg: "User environment processing is disabled"
+
+  - rule_id: "256389"
+    desc: "strict_modes"
+    key: "strictmodes"
+    expected: "strictmodes yes"
+    manage_var: "esxi_70_000020_Manage | default(true) | bool"
+    fail_msg: "StrictModes is not enabled"
+    success_msg: "StrictModes is enabled"
+
+  - rule_id: "256390"
+    desc: "compression"
+    key: "compression"
+    expected: "compression no"
+    manage_var: "esxi_70_000021_Manage | default(true) | bool"
+    fail_msg: "SSH compression is enabled"
+    success_msg: "SSH compression is disabled"
+
+  - rule_id: "256391"
+    desc: "gateway_ports"
+    key: "gatewayports"
+    expected: "gatewayports no"
+    manage_var: "esxi_70_000022_Manage | default(true) | bool"
+    fail_msg: "Gateway ports are enabled"
+    success_msg: "Gateway ports are disabled"
+
+  - rule_id: "256392"
+    desc: "x11_forwarding"
+    key: "x11forwarding"
+    expected: "x11forwarding no"
+    manage_var: "esxi_70_000023_Manage | default(true) | bool"
+    fail_msg: "X11 forwarding is enabled"
+    success_msg: "X11 forwarding is disabled"
+
+  - rule_id: "256393"
+    desc: "permit_tunnel"
+    key: "permittunnel"
+    expected: "permittunnel no"
+    manage_var: "esxi_70_000025_Manage | default(true) | bool"
+    fail_msg: "Tunnel device forwarding is enabled"
+    success_msg: "Tunnel device forwarding is disabled"
+
+  - rule_id: "256394"
+    desc: "alive_count_max"
+    key: "clientalivecountmax"
+    expected: "clientalivecountmax 3"
+    manage_var: "esxi_70_000026_Manage | default(true) | bool"
+    fail_msg: "ClientAliveCountMax is not set to 3"
+    success_msg: "ClientAliveCountMax is correctly set to 3"
+
+  - rule_id: "256395"
+    desc: "alive_interval"
+    key: "clientaliveinterval"
+    expected: "clientaliveinterval 200"
+    manage_var: "esxi_70_000027_Manage | default(true) | bool"
+    fail_msg: "ClientAliveInterval is not set to 200"
+    success_msg: "ClientAliveInterval is correctly set to 200"
+
+  - rule_id: "256434"
+    desc: "tcp_forwarding"
+    key: "allowtcpforwarding"
+    expected: "allowtcpforwarding no"
+    manage_var: "esxi_70_000082_Manage | default(true) | bool"
+    fail_msg: "TCP forwarding is enabled"
+    success_msg: "TCP forwarding is disabled"
+
+  - rule_id: "256449"
+    desc: "fips_ciphers"
+    key: "ciphers"
+    expected: "ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+    manage_var: "esxi_70_000274_Manage | default(true) | bool"
+    fail_msg: "SSH ciphers do not match FIPS-approved list"
+    success_msg: "SSH ciphers match FIPS-approved list"
 

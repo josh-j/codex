@@ -1,0 +1,28 @@
+---
+# tasks/v7r4/ssh_evaluator.yaml
+# Query/assert executor for sshd_config STIG rules via direct SSH
+
+- name: "stigrule_{{ item.rule_id }}_{{ item.desc }}_query"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >
+      ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes
+      {{ esxi_ssh_user | default('root') }}@{{ _current_esxi_host }}
+      '/usr/lib/vmware/openssh/bin/sshd -T | grep -i {{ item.key }}'
+  register: _ssh_result
+  changed_when: false
+  check_mode: false
+  no_log: true
+  when: "{{ item.manage_var }}"
+
+- name: "stigrule_{{ item.rule_id }}_{{ item.desc }}_assert"
+  ansible.builtin.assert:
+    that:
+      - "(_ssh_result.stdout | default('') | lower | trim) == '{{ item.expected }}'"
+    fail_msg: "{{ item.fail_msg | default('Rule failed') }}"
+    success_msg: "{{ item.success_msg | default('Rule passed') }}"
+  when:
+    - "{{ item.manage_var }}"
+    - _ssh_result is not skipped
+    - not (_ssh_result.failed | default(false))
+    - not (vmware_stig_enable_hardening | default(false) | bool)

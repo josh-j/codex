@@ -46,57 +46,18 @@
 
 ############################################
 
-# Title: VAMI must limit the number of simultaneous requests.
+# Data-driven lineinfile rules (17 rules)
+# Covers: VCLD-70-000001, 000002, 000003, 000005, 000012, 000014, 000015,
+#         000016, 000018, 000020, 000021, 000022, 000023, 000025, 000026,
+#         000027, 000056
 
-- name: VCLD-70-000001 - VAMI must limit the number of simultaneous requests.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^server.max-connections.*$'
-    line: server.max-connections = {{ var_conf_server_max_connections }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000001
-  notify:
-    - restart vami
-  when:
-    - run_conf_server_max_connections | bool
+- name: "Load VAMI STIG lineinfile rules"
+  ansible.builtin.include_vars:
+    file: vami_stig_rules.yaml
 
-############################################
-
-# Title: VAMI must be configured with FIPS 140-2 compliant ciphers for HTTPS connections.
-
-- name: VCLD-70-000002 - VAMI must be configured with FIPS 140-2 compliant ciphers for HTTPS connections.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path_etc }}'
-    state: present
-    regexp: '^ssl.cipher-list.*$'
-    line: ssl.cipher-list = "{{ var_conf_ssl_ciphers }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000002
-  notify:
-    - restart vami
-  when:
-    - run_conf_ssl_ciphers | bool
-
-############################################
-
-# Title: VAMI must use cryptography to protect the integrity of remote sessions.
-
-- name: VCLD-70-000003 - VAMI must use cryptography to protect the integrity of remote sessions.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^ssl.engine.*$'
-    line: ssl.engine = {{ var_conf_ssl_engine }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000003
-  notify:
-    - restart vami
-  when:
-    - run_conf_ssl_engine | bool
+- name: "Apply VAMI STIG lineinfile rules"
+  ansible.builtin.include_tasks: lineinfile_evaluator.yml
+  loop: "{{ vami_lineinfile_rules }}"
 
 ############################################
 
@@ -115,25 +76,6 @@
     - restart vami
   when:
     - run_conf_server_mod_accesslog | bool
-
-############################################
-
-# Title: VAMI must generate log records for system startup and shutdown.
-
-- name: VCLD-70-000005 - VAMI must generate log records for system startup and shutdown.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^server.errorlog.*$'
-    line: server.errorlog = {{ var_conf_server_error_log }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000005
-  notify:
-    - restart vami
-  when:
-    - run_conf_server_error_log | bool
-
 
 ############################################
 
@@ -277,24 +219,6 @@
 
 ############################################
 
-# Title: VAMI must explicitly disable Multipurpose Internet Mail Extensions (MIME) mime mappings based on "Content-Type".
-
-- name: VCLD-70-000012 - VAMI must explicitly disable Multipurpose Internet Mail Extensions (MIME) mime mappings based on "Content-Type".
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^mimetype.use-xattr.*$'
-    line: mimetype.use-xattr = "{{ var_conf_mimetype_xattr }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000012
-  notify:
-    - restart vami
-  when:
-    - run_conf_mimetype_xattr | bool
-
-############################################
-
 # Title: VAMI must remove all mappings to unused scripts.
 
 - name: VCLD-70-000013 - VAMI must remove all mappings to unused scripts.
@@ -329,58 +253,6 @@
 
 ############################################
 
-# Title: VAMI must have resource mappings set to disable the serving of certain file types
-
-- name: VCLD-70-000014 - VAMI must have resource mappings set to disable the serving of certain file types
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^url.access-deny.*$'
-    line: url.access-deny             = {{ var_conf_url_access_deny }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000014
-  notify:
-    - restart vami
-  when:
-    - run_conf_url_access_deny | bool
-
-############################################
-
-# Title: VAMI must not have the Web Distributed Authoring (WebDAV) servlet installed.
-
-- name: VCLD-70-000015 - VAMI must not have the Web Distributed Authoring (WebDAV) servlet installed.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: absent
-    regexp: '^mod_webdav.*$'
-  tags:
-    - VCLD-70-000015
-  notify:
-    - restart vami
-  when:
-    - run_conf_remove_mod_webdav | bool
-
-############################################
-
-# Title: VAMI must prevent hosted applications from exhausting system resources.
-
-- name: VCLD-70-000016 - VAMI must prevent hosted applications from exhausting system resources.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^server.max-keep-alive-idle.*$'
-    line: server.max-keep-alive-idle = {{ var_conf_server_max_keep_alive_idle }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000016
-  notify:
-    - restart vami
-  when:
-    - run_conf_server_max_keep_alive_idle | bool
-
-############################################
-
 # Title: VAMI must protect the keystore from unauthorized access.
 
 - name: VCLD-70-000017 - VAMI must protect the keystore from unauthorized access.
@@ -394,24 +266,6 @@
     - VCLD-70-000017
   when:
     - run_key_permissions | bool
-
-############################################
-
-# Title: VAMI must protect against or limit the effects of HTTP types of denial-of-service (DoS) attacks.
-
-- name: VCLD-70-000018 - VAMI must protect against or limit the effects of HTTP types of Denial of Service (DoS) attacks.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^server.max-fds.*$'
-    line: server.max-fds = {{ var_conf_server_max_fds }}
-    firstmatch: true
-  tags:
-    - VCLD-70-000018
-  notify:
-    - restart vami
-  when:
-    - run_conf_server_max_fds | bool
 
 ############################################
 
@@ -457,74 +311,6 @@
 
 ############################################
 
-# Title: VAMI must disable directory browsing.
-
-- name: VCLD-70-000020 - VAMI must disable directory browsing.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^dir-listing.activate.*$'
-    line: dir-listing.activate = "{{ var_conf_dir_listing_activate }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000020
-  notify:
-    - restart vami
-  when:
-    - run_conf_dir_listing_activate | bool
-
-############################################
-
-# Title: VAMI must not be configured to use mod_status.
-
-- name: VCLD-70-000021 - VAMI must not be configured to use mod_status.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: absent
-    regexp: '^mod_status.*$'
-  tags:
-    - VCLD-70-000021
-  notify:
-    - restart vami
-  when:
-    - run_conf_remove_mod_status | bool
-
-############################################
-
-# Title: VAMI must have debug logging disabled.
-
-- name: VCLD-70-000022 - VAMI must have debug logging disabled.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^debug.log-request-handling.*$'
-    line: debug.log-request-handling = "{{ var_conf_debug_log_request_handling }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000022
-  notify:
-    - restart vami
-  when:
-    - run_conf_debug_log_request_handling | bool
-
-############################################
-
-# Title: VAMI must be protected from being stopped by a non-privileged user.
-
-- name: VCLD-70-000023 - VAMI must be protected from being stopped by a non-privileged user.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: absent
-    regexp: '^User=.*$'
-  tags:
-    - VCLD-70-000023
-  notify:
-    - restart vami
-  when:
-    - run_service_remove_user | bool
-
-############################################
-
 # Title: VAMI must implement TLS1.2 exclusively.
 
 - name: VCLD-70-000024 - VAMI must implement TLS1.2 exclusively.
@@ -561,55 +347,3 @@
     - restart vami
   when:
     - run_conf_ssl_disabled_versions | bool
-
-############################################
-
-# Title: VAMI must force clients to select the most secure cipher.
-
-- name: VCLD-70-000025 - VAMI must force clients to select the most secure cipher.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: present
-    regexp: '^ssl.honor-cipher-order.*$'
-    line: ssl.honor-cipher-order = "{{ var_conf_ssl_honor_cipher_order }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000025
-  notify:
-    - restart vami
-  when:
-    - run_conf_ssl_honor_cipher_order | bool
-
-############################################
-
-# Title: VAMI must disable client initiated TLS renegotiation.
-
-- name: VCLD-70-000026 - VAMI must disable client initiated TLS renegotiation.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path }}'
-    state: absent
-    regexp: '^ssl.disable-client-renegotiation.*$'
-  tags:
-    - VCLD-70-000026
-  notify:
-    - restart vami
-  when:
-    - run_conf_ssl_disable_client_renegotiation | bool
-
-############################################
-
-# Title: VAMI must be configured to hide the server type and version in client responses.
-
-- name: VCLD-70-000027 - VAMI must be configured to hide the server type and version in client responses.
-  ansible.builtin.lineinfile:
-    path: '{{ var_conf_path_etc }}'
-    state: present
-    regexp: '^server.tag.*$'
-    line: server.tag = "{{ var_conf_server_tag }}"
-    firstmatch: true
-  tags:
-    - VCLD-70-000027
-  notify:
-    - restart vami
-  when:
-    - run_conf_server_tag | bool

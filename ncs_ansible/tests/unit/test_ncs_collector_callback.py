@@ -754,6 +754,133 @@ class TestPermissionInheritance(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(raw_file.stat().st_mode), 0o640)
 
 
+# ===========================================================================
+# Tests: STIG status priority (skipped must not overwrite real findings)
+# ===========================================================================
+
+
+class TestStigStatusPriority(unittest.TestCase):
+    """Lower-priority statuses must never overwrite higher-priority ones."""
+
+    def test_skipped_does_not_overwrite_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = tmp
+            try:
+                # First: real task fails
+                cb.v2_runner_on_failed(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256376_dcui_access",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio",
+                            "stig_target_type": "esxi",
+                        },
+                    ),
+                    ignore_errors=False,
+                )
+                # Second: stub is skipped (emits "na")
+                cb.v2_runner_on_skipped(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256376_dcui_access_remediate",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio",
+                            "stig_target_type": "esxi",
+                        },
+                    )
+                )
+                cb.v2_playbook_on_stats(FakeStats({}))
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-prio" / "raw_stig_esxi.yaml"
+            envelope = _read_yaml(artifact)
+            statuses = {row["id"]: row["status"] for row in envelope["data"]}
+            self.assertEqual(statuses["V-256376"], "failed")
+
+    def test_skipped_does_not_overwrite_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = tmp
+            try:
+                cb.v2_runner_on_ok(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256378_syslog",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio2",
+                            "stig_target_type": "esxi",
+                        },
+                    )
+                )
+                cb.v2_runner_on_skipped(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256378_syslog_remediate",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio2",
+                            "stig_target_type": "esxi",
+                        },
+                    )
+                )
+                cb.v2_playbook_on_stats(FakeStats({}))
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-prio2" / "raw_stig_esxi.yaml"
+            envelope = _read_yaml(artifact)
+            statuses = {row["id"]: row["status"] for row in envelope["data"]}
+            self.assertEqual(statuses["V-256378"], "pass")
+
+    def test_failed_overwrites_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cb, _ = _make_cb()
+            os.environ["NCS_REPORT_DIRECTORY"] = tmp
+            try:
+                cb.v2_runner_on_ok(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256379_account_lock",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio3",
+                            "stig_target_type": "esxi",
+                        },
+                    )
+                )
+                cb.v2_runner_on_failed(
+                    FakeResult(
+                        "localhost",
+                        "stigrule_256379_account_lock_remediate",
+                        check_mode=True,
+                        changed=False,
+                        vars={
+                            "stig_target_host": "esxi-prio3",
+                            "stig_target_type": "esxi",
+                        },
+                    ),
+                    ignore_errors=False,
+                )
+                cb.v2_playbook_on_stats(FakeStats({}))
+            finally:
+                os.environ.pop("NCS_REPORT_DIRECTORY", None)
+
+            artifact = Path(tmp) / "platform" / "vmware" / "esxi" / "esxi-prio3" / "raw_stig_esxi.yaml"
+            envelope = _read_yaml(artifact)
+            statuses = {row["id"]: row["status"] for row in envelope["data"]}
+            self.assertEqual(statuses["V-256379"], "failed")
+
+
 class TestPathContainment(unittest.TestCase):
     def test_traversal_in_platform_does_not_write_outside_report_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

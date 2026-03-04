@@ -1,0 +1,53 @@
+---
+# Data-driven XML rules for rhttpproxy STIG remediation.
+# Consumed by xml_evaluator.yml.
+
+rhttpproxy_xml_rules:
+  - stig_id: "VCRP-70-000001"
+    desc: "Envoy must drop connections to disconnected clients."
+    xml_path: "var_config_xml_path"
+    xpath: "/config/envoy/L4Filter/tcpKeepAliveTimeSec"
+    value: "{{ var_config_xml_tcpkeepalivetimesec }}"
+    manage_var: "run_config_tcpkeepalivetimesec | bool"
+
+  - stig_id: "VCRP-70-000002"
+    desc: "Envoy must set a limit on established connections."
+    xml_path: "var_config_xml_path"
+    xpath: "/config/envoy/L4Filter/maxHttpsConnections"
+    value: "{{ var_config_xml_maxhttpsconnections }}"
+    manage_var: "run_config_maxhttpsconnections | bool"
+
+  - stig_id: "VCRP-70-000003"
+    desc: "Envoy must be configured to operate in FIPS mode."
+    xml_path: "var_config_xml_path"
+    xpath: "/config/vmacore/ssl/fips"
+    value: "{{ var_config_xml_fips }}"
+    manage_var: "run_config_fips | bool"
+
+  - stig_id: "VCRP-70-000004"
+    desc: "Envoy must use only TLS 1.2 for the protection of client connections."
+    xml_path: "var_config_xml_path"
+    xpath: "/config/vmacore/ssl/protocols"
+    value: "{{ var_config_xml_tls }}"
+    manage_var: "run_config_tls | bool"
+
+  - stig_id: "VCRP-70-000006"
+    desc: "Envoy must exclusively use the HTTPS protocol for client connections. Key"
+    xml_path: "var_config_xml_path"
+    xpath: "/config/ssl/privateKey"
+    value: "{{ var_config_xml_ssl_private_key }}"
+    manage_var: "run_config_ssl | bool"
+
+  - stig_id: "VCRP-70-000006"
+    desc: "Envoy must exclusively use the HTTPS protocol for client connections. Cert"
+    xml_path: "var_config_xml_path"
+    xpath: "/config/ssl/certificate"
+    value: "{{ var_config_xml_ssl_cert }}"
+    manage_var: "run_config_ssl | bool"
+
+  - stig_id: "VCRP-70-000006"
+    desc: "Envoy must exclusively use the HTTPS protocol for client connections. VECS"
+    xml_path: "var_config_xml_path"
+    xpath: "/config/ssl/vecsServerName"
+    value: "{{ var_config_xml_ssl_vecs }}"
+    manage_var: "run_config_ssl | bool"
