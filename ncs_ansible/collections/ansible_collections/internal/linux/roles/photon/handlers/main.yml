@@ -6,6 +6,22 @@
   when:
     - not ansible_is_chroot
 
+- name: reload auditdrules
+  ansible.builtin.command: /sbin/augenrules --load
+  register: output
+  changed_when: output.rc == 0
+
+- name: reload auditdconf
+  ansible.builtin.command: pkill -SIGHUP auditd
+  notify: start auditd
+  register: output
+  changed_when: output.rc == 0
+
+- name: start auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+
 - name: restart sshd
   ansible.builtin.systemd:
     name: sshd
@@ -16,7 +32,17 @@
     name: rsyslog
     state: restarted
 
+- name: restart syslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted
+
 - name: restart ntpd
+  ansible.builtin.systemd:
+    name: ntpd
+    state: restarted
+
+- name: restart ntp
   ansible.builtin.systemd:
     name: ntpd
     state: restarted

@@ -202,6 +202,34 @@ esxi_pwsh_rules:
     remediate_when:
       - "(_q_256377.stdout | default('') | trim | length) > 0"
 
+  - rule_id: "256414"
+    desc: "snmp"
+    file: "firmware_audit.yaml"
+    reg_var: "_q_256414"
+    manage_var: "esxi_70_000053_Manage | default(true) | bool"
+    query_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$snmp = \$esxcli.system.snmp.get.Invoke();
+            if (\$snmp.Enable -eq 'true') {
+              \$communities = \$snmp.Communities;
+              if (\$communities -match 'public') { 'NON_COMPLIANT_DEFAULT_COMMUNITY' }
+              elseif (\$communities) { 'ENABLED_CUSTOM' }
+              else { 'ENABLED_NO_COMMUNITY' }
+            } else { 'COMPLIANT_DISABLED' }
+    assert_eval:
+      - "(_q_256414.stdout | default('') | trim) in ['COMPLIANT_DISABLED', 'ENABLED_CUSTOM', 'ENABLED_NO_COMMUNITY']"
+    fail_msg: "SNMP is enabled with default 'public' community string"
+    success_msg: "SNMP is either disabled or configured without default community"
+    remediate_cmd: |
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+            \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+            \$args = \$esxcli.system.snmp.set.CreateArgs();
+            \$args.enable = \$false;
+            \$esxcli.system.snmp.set.Invoke(\$args) | Out-Null
+    remediate_when:
+      - "(_q_256414.stdout | default('') | trim) == 'NON_COMPLIANT_DEFAULT_COMMUNITY'"
+
   - rule_id: "256415"
     desc: "iscsi_chap"
     file: "explicit_remediation.yaml"
@@ -304,6 +332,69 @@ esxi_pwsh_rules:
     remediate_when:
       - "(_q_256413.stdout | default('') | trim) != 'COMPLIANT'"
 
+  - rule_id: "256420"
+    desc: "vswitch_forged_transmits"
+    file: "network_audit.yaml"
+    reg_var: "_q_256420"
+    manage_var: "esxi_70_000059_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              Where-Object { (Get-SecurityPolicy -VirtualSwitch \$_).ForgedTransmits -eq \$true };
+            if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256420.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Standard switches allow forged transmits: {{ _q_256420.stdout | default('') }}"
+    success_msg: "All standard switches reject forged transmits"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              ForEach-Object { Get-SecurityPolicy -VirtualSwitch \$_ } |
+              Where-Object { \$_.ForgedTransmits -eq \$true } |
+              Set-SecurityPolicy -ForgedTransmits:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256420.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256421"
+    desc: "vswitch_mac_changes"
+    file: "network_audit.yaml"
+    reg_var: "_q_256421"
+    manage_var: "esxi_70_000060_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              Where-Object { (Get-SecurityPolicy -VirtualSwitch \$_).MacChanges -eq \$true };
+            if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256421.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Standard switches allow MAC changes: {{ _q_256421.stdout | default('') }}"
+    success_msg: "All standard switches reject MAC changes"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              ForEach-Object { Get-SecurityPolicy -VirtualSwitch \$_ } |
+              Where-Object { \$_.MacChanges -eq \$true } |
+              Set-SecurityPolicy -MacChanges:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256421.stdout | default('') | trim) != 'COMPLIANT'"
+
+  - rule_id: "256422"
+    desc: "vswitch_promiscuous"
+    file: "network_audit.yaml"
+    reg_var: "_q_256422"
+    manage_var: "esxi_70_000061_Manage | default(true) | bool"
+    query_cmd: |
+      \$bad = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              Where-Object { (Get-SecurityPolicy -VirtualSwitch \$_).AllowPromiscuous -eq \$true };
+            if (\$bad) { \$bad.Name -join ',' } else { 'COMPLIANT' }
+    assert_eval:
+      - "(_q_256422.stdout | default('') | trim) == 'COMPLIANT'"
+    fail_msg: "Standard switches allow promiscuous mode: {{ _q_256422.stdout | default('') }}"
+    success_msg: "All standard switches reject promiscuous mode"
+    remediate_cmd: |
+      Get-VMHost -Name '{{ _current_esxi_host }}' | Get-VirtualSwitch -Standard |
+              ForEach-Object { Get-SecurityPolicy -VirtualSwitch \$_ } |
+              Where-Object { \$_.AllowPromiscuous -eq \$true } |
+              Set-SecurityPolicy -AllowPromiscuous:\$false -Confirm:\$false | Out-Null
+    remediate_when:
+      - "(_q_256422.stdout | default('') | trim) != 'COMPLIANT'"
+
   - rule_id: "256418"
     desc: "firewall_default"
     file: "network_audit.yaml"
@@ -352,7 +443,7 @@ esxi_pwsh_rules:
               Where-Object { (\$_.VLanId -ge 1001 -and \$_.VLanId -le 1024) -or
                              (\$_.VLanId -ge 3968 -and \$_.VLanId -le 4047) -or
                              (\$_.VLanId -eq 4094) };
-            if (\$bad) { (\$bad | ForEach-Object { \
+            if (\$bad) { (\$bad | ForEach-Object { \$_.Name + ':' + \$_.VLanId }) -join ',' } else { 'COMPLIANT' }
     assert_eval:
       - "(_q_256425.stdout | default('') | trim) == 'COMPLIANT'"
     fail_msg: "Port groups using reserved VLANs: {{ _q_256425.stdout | default('') }}"

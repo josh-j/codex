@@ -18,6 +18,7 @@
   changed_when: false
   check_mode: false
   no_log: true
+  ignore_errors: true # noqa: ignore-errors — query failure handled below
   when: "{{ item.manage_var }}"
 
 - name: "stigrule_{{ item.rule_id }}_{{ item.desc | default('pwsh') }}_assert"
@@ -25,6 +26,7 @@
     that: "{{ item.assert_eval }}"
     fail_msg: "{{ item.fail_msg | default('Rule failed') }}"
     success_msg: "{{ item.success_msg | default('Rule passed') }}"
+  ignore_errors: true # noqa: ignore-errors — ncs_collector captures the failure; must not halt remaining rules
   when:
     - "{{ item.manage_var }}"
     - _q_result is not skipped
@@ -47,7 +49,7 @@
     VC_PASS: "{{ vmware_password | string | trim }}"
     AD_PASS: "{{ esxi_stig_ad_join_password | default('') | string | trim }}"
   register: _r_result
-  changed_when: false
+  changed_when: true
   check_mode: false
   no_log: true
   when:

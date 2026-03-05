@@ -1,20 +1,29 @@
 ---
 # internal.linux.photon : tasks/stig.yaml
 
+- name: "Photon STIG | Load version-specific vars"
+  when: photon_version | default('5') | string == '3'
+  block:
+    - name: "Photon STIG | Load Photon 3.0 defaults"
+      ansible.builtin.include_vars: "{{ role_path }}/defaults/photon3_defaults.yml"
+
+    - name: "Photon STIG | Load Photon 3.0 vars"
+      ansible.builtin.include_vars: "{{ role_path }}/vars/photon3_vars.yml"
+
 - name: "Photon STIG | Phase 1 | Evaluate compliance (read-only)"
   when:
     - photon_stig_enable_audit | default(true) | bool
     - not (photon_stig_enable_hardening | default(false) | bool)
   block:
     - name: "Photon STIG | Execute STIG role in simulation"
-      ansible.builtin.include_tasks: photon.yml
+      ansible.builtin.include_tasks: "{{ 'photon3.yml' if (photon_version | default('5') | string == '3') else 'photon.yml' }}"
       args:
         apply:
           check_mode: true
           tags: [stig_task]
           vars:
             stig_target_host: "{{ inventory_hostname }}"
-            stig_target_type: "photon"
+            stig_target_type: "{{ stig_target_type | default('vcsa_photon_os' if (photon_version | default('5') | string == '3') else 'photon') }}"
             stig_platform: "linux/photon"
       ignore_errors: true # noqa: ignore-errors
 

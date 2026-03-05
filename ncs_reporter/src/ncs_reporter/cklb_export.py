@@ -79,24 +79,37 @@ def generate_cklb(
 
             if audit_result:
                 res_status = str(audit_result.get("status", "")).lower()
+                rule_title = rule.get("rule_title") or rule_version
+                check_content = _strip_html(rule.get("check_content") or "")
+                fix_text_detail = _strip_html(rule.get("fix_text") or "")
+                host_name = audit_result.get("name") or hostname
+
                 if res_status in ["failed", "fail", "open"]:
                     status = "open"
-                    raw_details = (
-                        audit_result.get("checktext")
-                        or audit_result.get("description")
-                        or "Automated check identified a finding."
-                    )
-                    details = _strip_html(raw_details)
-                    comment = "Automated Audit: Non-Compliant setting found."
+                    details = (
+                        f"Automated audit of {rule_version} on {host_name} identified a non-compliant setting.\n\n"
+                        f"Check performed:\n{check_content}\n\n"
+                        f"Recommended fix:\n{fix_text_detail}"
+                    ) if check_content else f"Automated audit of {rule_version} on {host_name} identified a non-compliant setting."
+                    comment = f"OPEN: {rule_title} — automated check found non-compliant configuration on {host_name}."
                 elif res_status in ["passed", "pass", "not_a_finding", "notafinding"]:
                     status = "not_a_finding"
-                    raw_details = (
-                        audit_result.get("checktext")
-                        or audit_result.get("description")
-                        or "Automated check verified compliance."
-                    )
-                    details = _strip_html(raw_details)
-                    comment = "Automated Audit: Verified Compliant."
+                    details = (
+                        f"Automated audit of {rule_version} on {host_name} verified compliant configuration.\n\n"
+                        f"Check performed:\n{check_content}"
+                    ) if check_content else f"Automated audit of {rule_version} on {host_name} verified compliant configuration."
+                    comment = f"NOT A FINDING: {rule_title} — verified compliant on {host_name} via automated audit."
+                elif res_status == "fixed":
+                    status = "not_a_finding"
+                    details = (
+                        f"Automated remediation of {rule_version} on {host_name} corrected the setting.\n\n"
+                        f"Fix applied:\n{fix_text_detail}"
+                    ) if fix_text_detail else f"Automated remediation of {rule_version} on {host_name} corrected the setting."
+                    comment = f"NOT A FINDING (REMEDIATED): {rule_title} — setting corrected on {host_name} via automated remediation."
+                elif res_status in ["na", "not_applicable", "notapplicable"]:
+                    status = "not_applicable"
+                    details = f"Automated audit determined {rule_version} is not applicable to {host_name}."
+                    comment = f"NOT APPLICABLE: {rule_title} — rule does not apply to {host_name}."
 
             new_rule = {
                 "rule_id": rule.get("rule_id"),

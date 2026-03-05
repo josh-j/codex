@@ -19,6 +19,7 @@
         stig_target_host: "{{ _current_esxi_host }}"
         stig_target_type: "esxi"
         stig_platform: "vmware/esxi"
+  ignore_errors: true # noqa: ignore-errors — assert failures are expected; ncs_collector captures them
 
 - name: "ESXi STIG | Flag audit as complete"
   ansible.builtin.set_fact:

@@ -258,12 +258,16 @@ class CallbackModule(CallbackBase):
         else:
             status = "fixed" if changed else "pass"
 
-        host_rules = self._stig_rules.setdefault(host, {})
+        # Key by (host, target_type) so each STIG component gets its own bucket
+        # and its own raw artifact file. Without this, all VCSA components on the
+        # same host would collapse into a single file under the last target_type.
+        bucket_key = (host, target_type)
+        host_rules = self._stig_rules.setdefault(bucket_key, {})
         existing = host_rules.get(rule_num)
         if existing is None or _STATUS_PRIORITY.get(status, 0) >= _STATUS_PRIORITY.get(existing, 0):
             host_rules[rule_num] = status
 
-        self._stig_meta[host] = {
+        self._stig_meta[bucket_key] = {
             "platform": platform,
             "target_type": target_type,
         }
@@ -272,10 +276,11 @@ class CallbackModule(CallbackBase):
         if not self._stig_rules:
             return
 
-        for host, rules in self._stig_rules.items():
-            meta = self._stig_meta.get(host, {})
+        for bucket_key, rules in self._stig_rules.items():
+            host, target_type_from_key = bucket_key
+            meta = self._stig_meta.get(bucket_key, {})
             platform = meta.get("platform", "vmware")
-            target_type = meta.get("target_type", "esxi")
+            target_type = meta.get("target_type", target_type_from_key)
 
             report_dir = (
                 self._host_report_dirs.get(host)

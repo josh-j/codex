@@ -15,6 +15,12 @@
 # =========================================================================
 # PowerCLI connection preamble (used by all PowerShell query tasks)
 # =========================================================================
+- name: "ESXi STIG | Load PowerShell rule definitions"
+  ansible.builtin.include_vars:
+    file: pwsh_rules.yaml
+  check_mode: false
+  changed_when: false
+
 - name: "ESXi STIG | Set PowerCLI preamble"
   ansible.builtin.set_fact:
     _pwsh_preamble: >-
@@ -22,18 +28,20 @@
       Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force | Out-Null;
   check_mode: false
   changed_when: false
+# =========================================================================
+# Task ordering is critical for remediation mode:
+#   1. Config/settings first (API-based, no connectivity side effects)
+#   2. SSH checks (requires SSH service still running)
+#   3. Lockdown & service stops LAST (restrict access after all checks done)
+# =========================================================================
 - name: "Include config_manager.yaml"
   ansible.builtin.include_tasks: v7r4/config_manager.yaml
-- name: "Include service_manager.yaml"
-  ansible.builtin.include_tasks: v7r4/service_manager.yaml
-- name: "Include other_modules.yaml"
-  ansible.builtin.include_tasks: v7r4/other_modules.yaml
-- name: "Include explicit_remediation.yaml"
-  ansible.builtin.include_tasks: v7r4/explicit_remediation.yaml
-- name: "Include vswitch_security.yaml"
-  ansible.builtin.include_tasks: v7r4/vswitch_security.yaml
 - name: "Include advanced_settings.yaml"
   ansible.builtin.include_tasks: v7r4/advanced_settings.yaml
+- name: "Include other_modules.yaml"
+  ansible.builtin.include_tasks: v7r4/other_modules.yaml
+- name: "Include vswitch_security.yaml"
+  ansible.builtin.include_tasks: v7r4/vswitch_security.yaml
 - name: "Include network_audit.yaml"
   ansible.builtin.include_tasks: v7r4/network_audit.yaml
 - name: "Include firmware_audit.yaml"
@@ -42,3 +50,8 @@
   ansible.builtin.include_tasks: v7r4/remaining_audit_only_rules.yaml
 - name: "Include ssh_config.yaml"
   ansible.builtin.include_tasks: v7r4/ssh_config.yaml
+# --- Post-check: lockdown & service stops (restrict access last) ---
+- name: "Include explicit_remediation.yaml"
+  ansible.builtin.include_tasks: v7r4/explicit_remediation.yaml
+- name: "Include service_manager.yaml"
+  ansible.builtin.include_tasks: v7r4/service_manager.yaml

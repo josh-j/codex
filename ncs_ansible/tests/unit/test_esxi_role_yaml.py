@@ -161,14 +161,17 @@ class TestEsxiV7r4NoInlineCredentials(unittest.TestCase):
     MODULE = "community.vmware.vmware_host_config_manager"
 
     def setUp(self) -> None:
-        all_tasks = _load("esxi_v7r4.yaml")
+        # config_manager tasks live in sub-files included by esxi_v7r4.yaml
+        all_tasks: list[dict[str, Any]] = []
+        for sub_file in ("v7r4/config_manager.yaml", "v7r4/advanced_settings.yaml"):
+            all_tasks.extend(_load(sub_file))
         self.config_manager_tasks = [t for t in all_tasks if self.MODULE in t]
 
     def test_has_config_manager_tasks(self) -> None:
         self.assertGreater(
             len(self.config_manager_tasks),
             0,
-            f"No {self.MODULE} tasks found in esxi_v7r4.yaml — path or module name may have changed.",
+            f"No {self.MODULE} tasks found in v7r4/config_manager.yaml or v7r4/advanced_settings.yaml — path or module name may have changed.",
         )
 
     def _credential_violations(self, param: str) -> list[str]:

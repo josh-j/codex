@@ -89,7 +89,6 @@ _BUILTIN_PLATFORMS: list[dict[str, Any]] = [
         "state_file": "vmware_fleet_state.yaml",
         "render": True,
         "target_types": [
-            "vcsa",
             "vcenter",
             "vami",
             "eam",
@@ -101,6 +100,24 @@ _BUILTIN_PLATFORMS: list[dict[str, Any]] = [
             "sts",
             "ui",
         ],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "vmware/vcenter/vcsa",
+        "report_dir": "vmware/vcenter/vcsa",
+        "platform": "vmware",
+        "state_file": "vcsa_fleet_state.yaml",
+        "render": False,
+        "target_types": ["vcsa"],
+        "paths": _default_paths(),
+    },
+    {
+        "input_dir": "linux/photon",
+        "report_dir": "linux/photon",
+        "platform": "linux",
+        "state_file": "photon_fleet_state.yaml",
+        "render": False,
+        "target_types": ["photon"],
         "paths": _default_paths(),
     },
     {

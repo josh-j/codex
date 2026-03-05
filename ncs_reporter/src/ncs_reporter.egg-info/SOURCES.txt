@@ -1,5 +1,7 @@
 README.md
 pyproject.toml
+src/ncs_path_contract/__init__.py
+src/ncs_path_contract/resolver.py
 src/ncs_reporter/__init__.py
 src/ncs_reporter/_report_context.py
 src/ncs_reporter/_stig_apply.py
@@ -8,6 +10,7 @@ src/ncs_reporter/alerts.py
 src/ncs_reporter/cklb_export.py
 src/ncs_reporter/cli.py
 src/ncs_reporter/date_utils.py
+src/ncs_reporter/pathing.py
 src/ncs_reporter/primitives.py
 src/ncs_reporter/schema_loader.py
 src/ncs_reporter.egg-info/PKG-INFO
@@ -48,6 +51,7 @@ tests/test_cklb_export.py
 tests/test_cli.py
 tests/test_example_data_contracts.py
 tests/test_html_reports_e2e.py
+tests/test_new_features_e2e.py
 tests/test_normalization_stig.py
 tests/test_schema_driven.py
 tests/test_stig_apply.py

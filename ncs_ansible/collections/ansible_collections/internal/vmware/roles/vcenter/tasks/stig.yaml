@@ -10,27 +10,30 @@
   vars:
     photon_action: "{{ 'remediate' if (vmware_stig_enable_hardening | default(false) | bool) else 'stig' }}"
     photon_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(false) | bool }}"
+    photon_version: "{{ vcenter_stig_photon_version | default('3') | string }}"
   when: vcenter_stig_include_photon | default(false) | bool
 
 - name: "vCenter STIG | Execute VCSA service roles"
   ansible.builtin.include_role:
-    name: "{{ item }}"
+    name: "{{ item.role }}"
     apply:
       tags: [stig_task]
       vars:
         stig_target_host: "{{ inventory_hostname }}"
-        stig_target_type: "vcsa"
+        stig_target_type: "{{ item.target_type }}"
         stig_platform: "vmware/vcenter/vcsa"
   loop:
-    - internal.vmware.vcsa_misc
-    - internal.vmware.vcsa_eam
-    - internal.vmware.vcsa_lookup
-    - internal.vmware.vcsa_perfcharts
-    - internal.vmware.vcsa_postgresql
-    - internal.vmware.vcsa_rhttpproxy
-    - internal.vmware.vcsa_sts
-    - internal.vmware.vcsa_ui
-    - internal.vmware.vcsa_vami
+    - { role: internal.vmware.vcsa_misc, target_type: vcsa }
+    - { role: internal.vmware.vcsa_eam, target_type: eam }
+    - { role: internal.vmware.vcsa_lookup, target_type: lookup_svc }
+    - { role: internal.vmware.vcsa_perfcharts, target_type: perfcharts }
+    - { role: internal.vmware.vcsa_postgresql, target_type: postgresql }
+    - { role: internal.vmware.vcsa_rhttpproxy, target_type: rhttpproxy }
+    - { role: internal.vmware.vcsa_sts, target_type: sts }
+    - { role: internal.vmware.vcsa_ui, target_type: ui }
+    - { role: internal.vmware.vcsa_vami, target_type: vami }
+  loop_control:
+    label: "{{ item.role }} ({{ item.target_type }})"
   vars:
     run_create_backups: "{{ vcenter_stig_create_backups | default(true) | bool }}"
     photon_version: "{{ vcenter_stig_photon_version | default('3') | string }}"

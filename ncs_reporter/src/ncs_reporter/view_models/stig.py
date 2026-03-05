@@ -475,8 +475,10 @@ def build_stig_fleet_view(
             row.get("targets", []),
             key=lambda x: (str(x.get("target_type") or ""), str(x.get("audit_type") or "")),
         )
-        if row.get("findings_open", 0) > 0:
-            row["status"] = {"raw": "OPEN"}
+        if row.get("critical", 0) > 0:
+            row["status"] = {"raw": "CRITICAL"}
+        elif row.get("findings_open", 0) > 0:
+            row["status"] = {"raw": "WARNING"}
         else:
             row["status"] = {"raw": "PASS"}
 
