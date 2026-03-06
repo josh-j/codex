@@ -1,0 +1,68 @@
+---
+# tasks/v7r4/pre_stig.yaml
+
+- name: "ESXi STIG | Pre | Disable lockdown mode"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' | Get-View;
+      \$lockdown = Get-View \$vmhost.ConfigManager.HostAccessManager;
+      \$lockdown.ChangeLockdownMode('lockdownDisabled')
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  changed_when: true
+  check_mode: false
+  no_log: true
+  ignore_errors: true # noqa: ignore-errors — may already be disabled
+  when: esxi_stig_pre_unlock | default(true) | bool
+
+- name: "ESXi STIG | Pre | Start SSH and Shell services"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}';
+
+      foreach (\$key in @('TSM-SSH', 'TSM')) {
+        \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq \$key };
+        if (\$svc) {
+          Write-Host \$key 'Policy:' \$svc.Policy 'Running:' \$svc.Running;
+          if (\$svc.Policy -ne 'on') {
+            Set-VMHostService -HostService \$svc -Policy 'on' -Confirm:\$false | Out-Null;
+            Write-Host \$key 'policy set to on';
+          }
+          if (-not \$svc.Running) {
+            Start-VMHostService -HostService \$svc -Confirm:\$false | Out-Null;
+            Write-Host \$key 'started';
+          }
+        } else {
+          Write-Host \$key 'service not found';
+        }
+      }
+
+      Start-Sleep -Seconds 3;
+
+      foreach (\$key in @('TSM-SSH', 'TSM')) {
+        \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq \$key };
+        Write-Host \$key 'Final — Policy:' \$svc.Policy 'Running:' \$svc.Running;
+      }
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _pre_svc_result
+  changed_when: true
+  check_mode: false
+  no_log: false
+  ignore_errors: true # noqa: ignore-errors — best effort
+  when: esxi_stig_pre_unlock | default(true) | bool
+
+- name: "ESXi STIG | Pre | Service start result"
+  ansible.builtin.debug:
+    msg: "{{ _pre_svc_result.stdout_lines | default(['no output']) }}"
+  when: esxi_stig_pre_unlock | default(true) | bool

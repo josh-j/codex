@@ -1,0 +1,15 @@
+---
+- name: "Phase 2a: VCSA STIG Audit"
+  hosts: "{{ vcenter_stig_target_hosts | default('vcenters') }}"
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vcsa"]
+  vars:
+    ansible_connection: ssh
+    ansible_user: root
+    ansible_password: "{{ vault_vcenter_ssh_password }}"
+    ansible_python_interpreter: /usr/bin/python3
+  roles:
+    - role: internal.vmware.vcenter
+      vars:
+        vcenter_action: stig
+        vmware_stig_enable_hardening: false

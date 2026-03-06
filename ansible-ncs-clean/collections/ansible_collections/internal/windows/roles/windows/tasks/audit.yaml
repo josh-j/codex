@@ -1,0 +1,46 @@
+---
+# internal.windows.windows : tasks/audit.yaml
+
+- name: Windows Audit Orchestrator
+  vars:
+    _windows_audit_failed: false
+  block:
+    - name: Run Application Checks
+      ansible.builtin.include_tasks: checks/applications.yaml
+      tags: ["audit", "applications"]
+
+    - name: Run ConfigMgr Updates
+      ansible.builtin.include_tasks: updates/configmgr.yaml
+      when: windows_audit_force_update | default(false) | bool
+      tags: ["update", "configmgr"]
+  rescue:
+    - name: Mark Windows audit as failed
+      ansible.builtin.set_fact:
+        _windows_audit_failed: true
+      changed_when: false
+
+  always:
+    - name: Assemble raw audit context
+      ansible.builtin.set_fact:
+        _win_raw_payload:
+          ansible_facts: "{{ ansible_facts }}"
+          ccm_service: "{{ _ccm_service | default({}) }}"
+          configmgr_apps: "{{ _win_configmgr_apps | default([]) }}"
+          installed_apps: "{{ _win_installed_apps | default([]) }}"
+          apps_to_update: "{{ _win_apps_to_update | default([]) }}"
+          update_results: "{{ _win_update_results | default([]) }}"
+          audit_failed: "{{ _windows_audit_failed | bool }}"
+      changed_when: false
+
+    - name: Windows | Emit audit telemetry
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "windows"
+            name: "audit"
+            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+            payload: "{{ _win_raw_payload }}"
+            config:
+              windows_audit_force_update: "{{ windows_audit_force_update | default(false) }}"
+        per_host: true
+      changed_when: false

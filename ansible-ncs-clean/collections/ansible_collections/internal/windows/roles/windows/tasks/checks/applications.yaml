@@ -1,0 +1,43 @@
+---
+# applications.yaml - Windows Installed Apps Check (Simplified for raw collection)
+
+- name: Windows installed applications inventory
+  block:
+    - name: Check if CCMExec service is running
+      ansible.windows.win_service:
+        name: CCMExec
+      register: _ccm_service
+
+    - name: Ensure scripts directory exists
+      ansible.windows.win_file:
+        path: "C:\\Temp\\AnsibleScripts"
+        state: directory
+
+    - name: Copy Get-ConfigMgrApplications.ps1 script
+      ansible.windows.win_copy:
+        src: Get-ConfigMgrApplications.ps1
+        dest: "C:\\Temp\\AnsibleScripts\\Get-ConfigMgrApplications.ps1"
+
+    - name: Copy Get-InstalledApplications.ps1 script
+      ansible.windows.win_copy:
+        src: Get-InstalledApplications.ps1
+        dest: "C:\\Temp\\AnsibleScripts\\Get-InstalledApplications.ps1"
+
+    - name: Get ConfigMgr applications
+      ansible.windows.win_powershell:
+        script: |
+          & "C:\Temp\AnsibleScripts\Get-ConfigMgrApplications.ps1" -ExcludedPatterns @()
+      register: _configmgr_apps_result
+
+    - name: Get installed applications
+      ansible.windows.win_powershell:
+        script: |
+          & "C:\Temp\AnsibleScripts\Get-InstalledApplications.ps1"
+      register: _installed_apps_result
+
+    # Stage raw results for main.yaml to pick up
+    - name: Stage raw application results
+      ansible.builtin.set_fact:
+        _win_configmgr_apps: "{{ _configmgr_apps_result.output[0] | from_json if _configmgr_apps_result.output is defined else [] }}"
+        _win_installed_apps: "{{ _installed_apps_result.output[0] | from_json if _installed_apps_result.output is defined else [] }}"
+      changed_when: false

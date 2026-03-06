@@ -1,0 +1,7 @@
+---
+# tasks/v7r4/vswitch_security.yaml
+# vSwitch / Port Group Security
+
+- name: "Execute vSwitch Security PowerShell STIG Rules"
+  ansible.builtin.include_tasks: v7r4/pwsh_evaluator.yaml
+  loop: "{{ esxi_pwsh_rules | selectattr('file', 'equalto', 'vswitch_security.yaml') | list }}"

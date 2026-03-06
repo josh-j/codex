@@ -1,0 +1,95 @@
+---
+# internal.vmware.vcenter : collect/inventory.yaml
+
+- name: Inventory | Query Datacenters
+  community.vmware.vmware_datacenter_info:
+  register: _raw_datacenters
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when:
+    - vcenter_collect_datacenters | default(true) | bool
+      or vcenter_collect_compute | default(true) | bool
+      or vcenter_collect_storage | default(true) | bool
+      or vcenter_collect_snapshots | default(true) | bool
+
+- name: Inventory | Extract Datacenter list
+  ansible.builtin.set_fact:
+    _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
+  changed_when: false
+  when:
+    - vcenter_collect_datacenters | default(true) | bool
+      or vcenter_collect_compute | default(true) | bool
+      or vcenter_collect_storage | default(true) | bool
+      or vcenter_collect_snapshots | default(true) | bool
+
+- name: Inventory | Query Compute (Clusters & Hosts)
+  vmware.vmware.cluster_info:
+    datacenter: "{{ item }}"
+  loop: "{{ _vcenter_datacenters }}"
+  register: _raw_clusters
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when:
+    - vcenter_collect_compute | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0
+
+- name: Inventory | Query Storage (Datastores)
+  community.vmware.vmware_datastore_info:
+    datacenter: "{{ item }}"
+  loop: "{{ _vcenter_datacenters }}"
+  register: _raw_datastores
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  retries: 2
+  delay: 5
+  until: _raw_datastores is succeeded
+  ignore_errors: true
+  when:
+    - vcenter_collect_storage | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0
+
+- name: Inventory | Query Workload (VMs)
+  community.vmware.vmware_vm_info:
+    vm_type: vm
+    show_attribute: true
+    show_tag: true
+  register: _raw_vms
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcenter_collect_workload | default(true) | bool
+
+- name: Inventory | Query Snapshots
+  community.vmware.vmware_all_snapshots_info:
+    datacenter: "{{ item }}"
+  loop: "{{ _vcenter_datacenters }}"
+  register: _raw_snapshots
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when:
+    - vcenter_collect_snapshots | default(true) | bool
+    - _vcenter_datacenters | default([]) | length > 0
+# - name: Inventory | Query Snapshots
+#   community.vmware.vmware_guest_snapshot_info:
+#     datacenter: "{{ item.datacenter }}"
+#     name: "{{ item.guest_name }}"
+#   loop: "{{ _raw_vms.virtual_machines | default([]) }}"
+#   loop_control:
+#     label: "{{ item.guest_name | default('unknown') }}"
+#   register: _raw_snapshots
+#   delegate_to: localhost
+#   no_log: true
+#   failed_when: false
+#   changed_when: false
+#   when:
+#     - vcenter_collect_snapshots | default(true) | bool
+#     - _raw_vms.virtual_machines | default([]) | length > 0

@@ -1,0 +1,124 @@
+---
+# vcsa_vami/vars/vami_stig_rules.yaml
+# Data-driven rules for VAMI STIG lineinfile tasks.
+# Consumed by lineinfile_evaluator.yml.
+
+vami_lineinfile_rules:
+  - stig_id: "VCLD-70-000001"
+    desc: "VAMI must limit the number of simultaneous requests."
+    conf_path: "var_conf_path"
+    regexp: '^server.max-connections.*$'
+    line: "server.max-connections = {{ var_conf_server_max_connections }}"
+    manage_var: "run_conf_server_max_connections | bool"
+
+  - stig_id: "VCLD-70-000002"
+    desc: "VAMI must be configured with FIPS 140-2 compliant ciphers for HTTPS connections."
+    conf_path: "var_conf_path_etc"
+    regexp: '^ssl.cipher-list.*$'
+    line: 'ssl.cipher-list = "{{ var_conf_ssl_ciphers }}"'
+    manage_var: "run_conf_ssl_ciphers | bool"
+
+  - stig_id: "VCLD-70-000003"
+    desc: "VAMI must use cryptography to protect the integrity of remote sessions."
+    conf_path: "var_conf_path"
+    regexp: '^ssl.engine.*$'
+    line: "ssl.engine = {{ var_conf_ssl_engine }}"
+    manage_var: "run_conf_ssl_engine | bool"
+
+  - stig_id: "VCLD-70-000005"
+    desc: "VAMI must generate log records for system startup and shutdown."
+    conf_path: "var_conf_path"
+    regexp: '^server.errorlog.*$'
+    line: "server.errorlog = {{ var_conf_server_error_log }}"
+    manage_var: "run_conf_server_error_log | bool"
+
+  - stig_id: "VCLD-70-000012"
+    desc: 'VAMI must explicitly disable MIME mime mappings based on "Content-Type".'
+    conf_path: "var_conf_path"
+    regexp: '^mimetype.use-xattr.*$'
+    line: 'mimetype.use-xattr = "{{ var_conf_mimetype_xattr }}"'
+    manage_var: "run_conf_mimetype_xattr | bool"
+
+  - stig_id: "VCLD-70-000014"
+    desc: "VAMI must have resource mappings set to disable the serving of certain file types."
+    conf_path: "var_conf_path"
+    regexp: '^url.access-deny.*$'
+    line: "url.access-deny             = {{ var_conf_url_access_deny }}"
+    manage_var: "run_conf_url_access_deny | bool"
+
+  - stig_id: "VCLD-70-000015"
+    desc: "VAMI must not have the Web Distributed Authoring (WebDAV) servlet installed."
+    conf_path: "var_conf_path"
+    state: "absent"
+    regexp: '^mod_webdav.*$'
+    manage_var: "run_conf_remove_mod_webdav | bool"
+
+  - stig_id: "VCLD-70-000016"
+    desc: "VAMI must prevent hosted applications from exhausting system resources."
+    conf_path: "var_conf_path"
+    regexp: '^server.max-keep-alive-idle.*$'
+    line: "server.max-keep-alive-idle = {{ var_conf_server_max_keep_alive_idle }}"
+    manage_var: "run_conf_server_max_keep_alive_idle | bool"
+
+  - stig_id: "VCLD-70-000018"
+    desc: "VAMI must protect against or limit the effects of HTTP types of Denial of Service (DoS) attacks."
+    conf_path: "var_conf_path"
+    regexp: '^server.max-fds.*$'
+    line: "server.max-fds = {{ var_conf_server_max_fds }}"
+    manage_var: "run_conf_server_max_fds | bool"
+
+  - stig_id: "VCLD-70-000020"
+    desc: "VAMI must disable directory browsing."
+    conf_path: "var_conf_path"
+    regexp: '^dir-listing.activate.*$'
+    line: 'dir-listing.activate = "{{ var_conf_dir_listing_activate }}"'
+    manage_var: "run_conf_dir_listing_activate | bool"
+
+  - stig_id: "VCLD-70-000021"
+    desc: "VAMI must not be configured to use mod_status."
+    conf_path: "var_conf_path"
+    state: "absent"
+    regexp: '^mod_status.*$'
+    manage_var: "run_conf_remove_mod_status | bool"
+
+  - stig_id: "VCLD-70-000022"
+    desc: "VAMI must have debug logging disabled."
+    conf_path: "var_conf_path"
+    regexp: '^debug.log-request-handling.*$'
+    line: 'debug.log-request-handling = "{{ var_conf_debug_log_request_handling }}"'
+    manage_var: "run_conf_debug_log_request_handling | bool"
+
+  - stig_id: "VCLD-70-000023"
+    desc: "VAMI must be protected from being stopped by a non-privileged user."
+    conf_path: "var_conf_path"
+    state: "absent"
+    regexp: '^User=.*$'
+    manage_var: "run_service_remove_user | bool"
+
+  - stig_id: "VCLD-70-000025"
+    desc: "VAMI must force clients to select the most secure cipher."
+    conf_path: "var_conf_path"
+    regexp: '^ssl.honor-cipher-order.*$'
+    line: 'ssl.honor-cipher-order = "{{ var_conf_ssl_honor_cipher_order }}"'
+    manage_var: "run_conf_ssl_honor_cipher_order | bool"
+
+  - stig_id: "VCLD-70-000026"
+    desc: "VAMI must disable client initiated TLS renegotiation."
+    conf_path: "var_conf_path"
+    state: "absent"
+    regexp: '^ssl.disable-client-renegotiation.*$'
+    manage_var: "run_conf_ssl_disable_client_renegotiation | bool"
+
+  - stig_id: "VCLD-70-000027"
+    desc: "VAMI must be configured to hide the server type and version in client responses."
+    conf_path: "var_conf_path_etc"
+    regexp: '^server.tag.*$'
+    line: 'server.tag = "{{ var_conf_server_tag }}"'
+    manage_var: "run_conf_server_tag | bool"
+
+  - stig_id: "VCLD-70-000056"
+    desc: "VAMI must enable FIPS mode."
+    conf_path: "var_conf_path"
+    regexp: '^server.fips-mode.*$'
+    line: 'server.fips-mode = "{{ var_conf_server_fips_mode }}"'
+    manage_var: "run_conf_server_fips_mode | bool"

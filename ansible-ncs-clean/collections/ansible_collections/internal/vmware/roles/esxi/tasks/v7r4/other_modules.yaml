@@ -1,0 +1,38 @@
+---
+# Other module tasks
+
+# --- V-256409 / ESXI-70-000046: NTP servers ---
+- name: stigrule_256409_ntp_servers
+  community.vmware.vmware_host_ntp:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    state: present
+    ntp_servers: "{{ esxi_stig_ntp_servers }}"
+  when:
+    - esxi_70_000046_Manage | default(esxi_70_000046) | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+# --- V-256409 / ESXI-70-000046: NTP service running ---
+- name: stigrule_256409_ntp_service
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: ntpd
+    service_policy: "on"
+    state: start
+  when:
+    - esxi_70_000046_Manage | default(esxi_70_000046) | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+# --- V-256410 / ESXI-70-000047: VIB acceptance level ---
+- name: stigrule_256410_acceptance_level
+  community.vmware.vmware_host_acceptance:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    state: >-
+      {{
+        (esxi_stig_acceptance_level | default('partner') | string)
+        | replace('PartnerSupported', 'partner')
+        | replace('CommunitySupported', 'community')
+        | replace('VMwareAccepted', 'vmware_accepted')
+        | replace('VMwareCertified', 'vmware_certified')
+        | lower
+      }}
+  when: esxi_70_000047_Manage | default(esxi_70_000047) | default(true) | bool

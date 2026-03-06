@@ -1,0 +1,51 @@
+---
+# configmgr.yaml - ConfigMgr Application Updates (Simplified for raw collection)
+
+- name: ConfigMgr application update management
+  block:
+    - name: Create log directory on remote host
+      ansible.windows.win_file:
+        path: "C:\\Temp\\ConfigMgrLogs"
+        state: directory
+
+    - name: Copy Update-ConfigMgrApplication.ps1 script
+      ansible.windows.win_copy:
+        src: Update-ConfigMgrApplication.ps1
+        dest: "C:\\Temp\\AnsibleScripts\\Update-ConfigMgrApplication.ps1"
+
+    - name: Trigger ConfigMgr application updates
+      ansible.windows.win_powershell:
+        script: |
+          param(
+            [string]$ApplicationName,
+            [string]$LogDirectory,
+            [bool]$Force,
+            [bool]$AllowReboot,
+            [string]$EnforcePreference,
+            [string]$Priority
+          )
+          & "C:\Temp\AnsibleScripts\Update-ConfigMgrApplication.ps1" `
+            -ApplicationName $ApplicationName `
+            -LogDirectory $LogDirectory `
+            -Force $Force `
+            -AllowReboot $AllowReboot `
+            -EnforcePreference $EnforcePreference `
+            -Priority $Priority `
+            -NoWait
+        parameters:
+          ApplicationName: "{{ item.Name }}"
+          LogDirectory: "C:\\Temp\\ConfigMgrLogs"
+          Force: "{{ windows_audit_force_update | default(false) }}"
+          AllowReboot: false
+          EnforcePreference: "Immediate"
+          Priority: "Normal"
+      loop: "{{ _win_configmgr_apps.AppsToUpdate | default([]) }}"
+      loop_control:
+        label: "{{ item.Name }}"
+      register: _update_results
+      when: (_win_configmgr_apps.AppsToUpdate | default([]) | length) > 0
+
+    - name: Stage raw update results
+      ansible.builtin.set_fact:
+        _win_update_results: "{{ _update_results.results | default([]) }}"
+      changed_when: false

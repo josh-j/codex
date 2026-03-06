@@ -1,0 +1,30 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_system_remediate/tasks/main.yaml
+#
+# Runs remediation tasks against the host - patching, hardening, and reboots.
+# All actions are off by default and must be explicitly enabled via vars.
+# Requires: ubuntu_ctx (from ubuntu_system_discover)
+
+- name: Run remediation tasks
+  block:
+    - name: Apply patches, hardening, and handle reboots
+      ansible.builtin.include_tasks: maintain.yaml
+      when: ubuntu_enable_maintenance | default(false) | bool
+
+    - name: "Ubuntu STIG | Execute hardening"
+      when: ubuntu_enable_stig_hardening | default(false) | bool
+      block:
+        - name: "Ubuntu STIG | Run enforcement tasks"
+          ansible.builtin.include_tasks: ubuntu2404.yaml
+          args:
+            apply:
+              check_mode: false
+              tags: [stig_task]
+              vars:
+                stig_target_host: "{{ inventory_hostname }}"
+                stig_target_type: "ubuntu"
+                stig_platform: "linux/ubuntu"
+  rescue:
+    - name: Log remediation failure
+      ansible.builtin.debug:
+        msg: "Remediation failed on {{ inventory_hostname }} - check output above for details."

@@ -1,0 +1,26 @@
+---
+# internal.linux.photon : tasks/remediate.yaml
+
+- name: "Photon STIG | Execute hardening"
+  when: photon_stig_enable_hardening | default(false) | bool
+  block:
+    - name: "Photon STIG | Run enforcement tasks"
+      ansible.builtin.include_tasks: photon.yml
+      args:
+        apply:
+          check_mode: false
+          tags: [stig_task]
+          vars:
+            stig_target_host: "{{ inventory_hostname }}"
+            stig_target_type: "photon"
+            stig_platform: "linux/photon"
+
+  rescue:
+    - name: "Photon STIG | Mark hardening as failed"
+      ansible.builtin.set_fact:
+        _stig_hardening_failed: true
+      changed_when: false
+
+    - name: "Photon STIG | Log hardening failure"
+      ansible.builtin.debug:
+        msg: "Photon STIG hardening failed on {{ inventory_hostname }}."

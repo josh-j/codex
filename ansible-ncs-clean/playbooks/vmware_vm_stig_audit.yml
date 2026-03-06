@@ -1,0 +1,37 @@
+---
+# playbooks/vmware_vm_stig_audit.yml
+- name: "Phase 2b | VM STIG Audit (per vCenter)"
+  hosts: "{{ vm_stig_target_hosts | default('vcenters') }}"
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Discover all VMs on vCenter"
+      community.vmware.vmware_vm_info:
+        hostname: "{{ inventory_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+      register: _vcenter_vms
+      when: vm_stig_target_vms | default([]) | length == 0
+
+    - name: "Set VM target list from discovery"
+      ansible.builtin.set_fact:
+        vm_stig_target_vms: >-
+          {{ vm_stig_target_vms | default(None) or
+             _vcenter_vms.virtual_machines | default([])
+             | rejectattr('guest_name', 'match', '^vCLS-')
+             | map(attribute='guest_name') | list }}
+      when: vm_stig_target_vms | default([]) | length == 0
+
+    - name: "Validate VM target list"
+      ansible.builtin.assert:
+        that:
+          - vm_stig_target_vms | default([]) | length > 0
+        fail_msg: "No VMs discovered or provided. Check vCenter connectivity or set vm_stig_target_vms explicitly."
+  roles:
+    - role: internal.vmware.vm
+      vars:
+        vmware_stig_enable_hardening: false

@@ -1,0 +1,348 @@
+---
+# VMware vSphere 7.0 vCenter Server Appliance EAM Ansible Role
+
+############################################
+# Backup files that may be modified
+############################################
+
+- name: Create time stamp
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: Backup files...if restoring be sure to restore permissions that original file had!!
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-eam-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  with_items:
+    - "{{ var_server_xml_path }}"
+    - "{{ var_web_xml_path }}"
+    - "{{ var_eam_json_path }}"
+    - "{{ var_catalina_props_path }}"
+    - "{{ var_syslog_conf_path }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+############################################
+# Data-driven XML/grep rules
+############################################
+
+- name: "Load EAM STIG XML rules"
+  ansible.builtin.include_vars:
+    file: eam_stig_rules.yaml
+
+- name: "Apply EAM STIG XML rules"
+  ansible.builtin.include_tasks: xml_evaluator.yml
+  loop: "{{ eam_xml_rules }}"
+  vars:
+    _vcsa_notify_handler: "restart eam"
+
+############################################
+# VCEM-70-000006: StreamRedirectFile in eam.json
+############################################
+
+- name: VCEM-70-000006 - ESX Agent Manager must generate log records for system startup and shutdown
+  ansible.builtin.lineinfile:
+    path: "{{ var_eam_json_path }}"
+    state: present
+    regexp: '^.*"StreamRedirectFile".*$'
+    line: '    "StreamRedirectFile" : "{{ var_stream_redirect_file }}",'
+    insertbefore: ^.*WorkingDir.*$
+    firstmatch: true
+  tags:
+    - VCEM-70-000006
+  notify:
+    - restart eam
+  when:
+    - run_json_stream_redirect_file | bool
+
+############################################
+# VCEM-70-000007: Log file permissions
+############################################
+
+- name: VCEM-70-000007 - Find EAM log files
+  ansible.builtin.find:
+    paths: "{{ var_eam_logs_path }}"
+    file_type: file
+    patterns: "*.log*,*.txt*"
+  register: eamlogs
+  tags:
+    - VCEM-70-000007
+  when:
+    - run_logs_permissions | bool
+
+- name: VCEM-70-000007 - Set EAM log permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: file
+    mode: "0644"
+    owner: "eam"
+    group: "users"
+  with_items: "{{ eamlogs.files }}"
+  tags:
+    - VCEM-70-000007
+  when:
+    - run_logs_permissions | bool
+
+############################################
+# VCEM-70-000008: Application file integrity (manual)
+# VCEM-70-000009: Only one webapp (manual)
+############################################
+
+############################################
+# VCEM-70-000011: catalina.properties package.access
+############################################
+
+- name: VCEM-70-000011 - Configure catalina.properties file
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCEM-70-000011
+  notify:
+    - restart eam
+  when:
+    - run_catalina_properties | bool
+
+############################################
+# VCEM-70-000016: Symbolic links (manual)
+############################################
+
+############################################
+# VCEM-70-000017: Web directory permissions
+############################################
+
+- name: VCEM-70-000017 - Find vSphere EAM web files
+  ansible.builtin.shell: find {{ var_eam_web_path }} -xdev -type f -a '(' -not -user root -o -not -group root ')';
+  register: files
+  check_mode: false
+  tags:
+    - VCEM-70-000017
+  changed_when: files.stdout != ""
+  when:
+    - run_web_files_permissions | bool
+
+- name: VCEM-70-000017 - Set EAM web files owner and group
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    owner: "root"
+    group: "root"
+  with_items: "{{ files.stdout_lines }}"
+  tags:
+    - VCEM-70-000017
+  when:
+    - run_web_files_permissions | bool
+    - files.stdout != ""
+
+############################################
+# VCEM-70-000018: Fail to safe state
+############################################
+
+- name: VCEM-70-000018 - ESX Agent Manager must fail to a known safe state
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCEM-70-000018
+  notify:
+    - restart eam
+  when:
+    - run_catalina_properties_shutdown | bool
+
+############################################
+# VCEM-70-000021: setCharacterEncodingFilter
+# Converted from community.general.xml to xmllint/shell
+# for Python 3.7 compatibility on VCSA
+############################################
+
+# --- Audit: check filter configuration via xmllint ---
+- name: VCEM-70-000021 - Check setCharacterEncodingFilter configuration
+  ansible.builtin.shell:
+    cmd: >
+      xmllint --format '{{ var_web_xml_path }}'
+      | sed 's/xmlns="[^"]*"//g'
+      | xmllint --xpath '//*[contains(text(),"setCharacterEncodingFilter")]/parent::*' - 2>&1
+      || true
+  register: _filter_check
+  changed_when: false
+  check_mode: false
+  tags:
+    - VCEM-70-000021
+  when:
+    - run_web_filter | bool
+
+- name: VCEM-70-000021 - Assert setCharacterEncodingFilter exists and is configured
+  ansible.builtin.assert:
+    that:
+      - "'setCharacterEncodingFilter' in _filter_check.stdout"
+      - "'SetCharacterEncodingFilter' in _filter_check.stdout"
+      - "'encoding' in _filter_check.stdout"
+      - "'UTF-8' in _filter_check.stdout"
+    fail_msg: "VCEM-70-000021: setCharacterEncodingFilter is not properly configured"
+    success_msg: "VCEM-70-000021: setCharacterEncodingFilter is compliant"
+  ignore_errors: true  # noqa: ignore-errors — ncs_collector captures
+  tags:
+    - VCEM-70-000021
+  when:
+    - run_web_filter | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+# --- Check filter-mapping ---
+- name: VCEM-70-000021 - Check filter-mapping exists
+  ansible.builtin.shell:
+    cmd: >
+      xmllint --format '{{ var_web_xml_path }}'
+      | sed 's/xmlns="[^"]*"//g'
+      | xmllint --xpath '//filter-mapping[filter-name="setCharacterEncodingFilter"]/url-pattern' - 2>&1
+      || true
+  register: _filter_mapping_check
+  changed_when: false
+  check_mode: false
+  tags:
+    - VCEM-70-000021
+  when:
+    - run_web_filter | bool
+
+- name: VCEM-70-000021 - Assert filter-mapping url-pattern is /*
+  ansible.builtin.assert:
+    that:
+      - "'/*' in _filter_mapping_check.stdout"
+    fail_msg: "VCEM-70-000021: filter-mapping url-pattern not set to /*"
+    success_msg: "VCEM-70-000021: filter-mapping url-pattern is compliant"
+  ignore_errors: true  # noqa: ignore-errors — ncs_collector captures
+  tags:
+    - VCEM-70-000021
+  when:
+    - run_web_filter | bool
+    - not (vmware_stig_enable_hardening | default(false) | bool)
+
+# --- Remediation via xmlstarlet (hardening mode only) ---
+- name: VCEM-70-000021 - Remediate setCharacterEncodingFilter (hardening)
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      WEB_XML='{{ var_web_xml_path }}'
+      NS='http://java.sun.com/xml/ns/javaee'
+
+      # Check if filter exists
+      FILTER_COUNT=$(xmllint --format "$WEB_XML" | sed 's/xmlns="[^"]*"//g' | \
+        xmllint --xpath 'count(//filter[filter-name="setCharacterEncodingFilter"])' - 2>/dev/null || echo "0")
+
+      if [ "$FILTER_COUNT" = "0" ] || [ "$FILTER_COUNT" != "1" ]; then
+        # Remove any malformed filters and recreate
+        xmlstarlet ed -L -N x="$NS" \
+          -d '//x:filter[x:filter-name="setCharacterEncodingFilter"]' \
+          "$WEB_XML" 2>/dev/null || true
+
+        # Add filter node before first filter-mapping
+        xmlstarlet ed -L -N x="$NS" \
+          -s '/x:web-app' -t elem -n 'filter' \
+          -s '/x:web-app/filter[last()]' -t elem -n 'filter-name' -v 'setCharacterEncodingFilter' \
+          -s '/x:web-app/filter[last()]' -t elem -n 'filter-class' -v 'org.apache.catalina.filters.SetCharacterEncodingFilter' \
+          -s '/x:web-app/filter[last()]' -t elem -n 'async-supported' -v 'true' \
+          -s '/x:web-app/filter[last()]' -t elem -n 'init-param' \
+          -s '/x:web-app/filter[last()]/init-param[last()]' -t elem -n 'param-name' -v 'encoding' \
+          -s '/x:web-app/filter[last()]/init-param[last()]' -t elem -n 'param-value' -v 'UTF-8' \
+          -s '/x:web-app/filter[last()]' -t elem -n 'init-param' \
+          -s '/x:web-app/filter[last()]/init-param[last()]' -t elem -n 'param-name' -v 'ignore' \
+          -s '/x:web-app/filter[last()]/init-param[last()]' -t elem -n 'param-value' -v 'true' \
+          "$WEB_XML"
+      fi
+
+      # Ensure filter-mapping exists
+      MAPPING_COUNT=$(xmllint --format "$WEB_XML" | sed 's/xmlns="[^"]*"//g' | \
+        xmllint --xpath 'count(//filter-mapping[filter-name="setCharacterEncodingFilter"])' - 2>/dev/null || echo "0")
+
+      if [ "$MAPPING_COUNT" = "0" ]; then
+        xmlstarlet ed -L -N x="$NS" \
+          -s '/x:web-app' -t elem -n 'filter-mapping' \
+          -s '/x:web-app/filter-mapping[last()]' -t elem -n 'filter-name' -v 'setCharacterEncodingFilter' \
+          -s '/x:web-app/filter-mapping[last()]' -t elem -n 'url-pattern' -v '/*' \
+          "$WEB_XML"
+      fi
+
+      echo "setCharacterEncodingFilter remediation complete"
+  tags:
+    - VCEM-70-000021
+  notify:
+    - restart eam
+  when:
+    - run_web_filter | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  ignore_errors: true  # noqa: ignore-errors — ncs_collector captures
+
+############################################
+# VCEM-70-000029: Rsyslog configuration
+############################################
+
+- name: VCEM-70-000029 - Rsyslog must be configured to monitor and ship ESX Agent Manager log files.
+  ansible.builtin.template:
+    src: vmware-services-eam.conf
+    dest: /etc/vmware-syslog/vmware-services-eam.conf
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCEM-70-000029
+  notify:
+    - restart syslog
+  when:
+    - run_eam_syslog_config | bool
+
+############################################
+# VCEM-70-000031: Appropriate ports
+############################################
+
+- name: VCEM-70-000031 - ESX Agent Manager must be configured with the appropriate ports.
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCEM-70-000031
+  notify:
+    - restart eam
+  when:
+    - run_catalina_properties_bioport | bool
+
+############################################
+# VCEM-70-000032: Disable shutdown port
+############################################
+
+- name: VCEM-70-000032 - ESX Agent Manager must disable the shutdown port.
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCEM-70-000032
+  notify:
+    - restart eam
+  when:
+    - run_catalina_properties_shutdownport | bool

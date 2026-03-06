@@ -1,0 +1,53 @@
+---
+# tasks/v7r4/ssh_config.yaml
+# SSH Configuration Rules (Gated behind esxi_stig_enable_ssh_checks)
+
+- name: "Execute SSH Configuration PowerShell STIG Rules"
+  ansible.builtin.include_tasks: v7r4/pwsh_evaluator.yaml
+  loop: "{{ esxi_pwsh_rules | selectattr('file', 'equalto', 'ssh_config.yaml') | list }}"
+  when: esxi_stig_enable_ssh_checks | default(true) | bool
+
+- name: "ESXi STIG | Gather sshd_config (single SSH call)"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >
+      sshpass -e ssh
+      -o StrictHostKeyChecking=no
+      -o ConnectTimeout=30
+      -o PubkeyAuthentication=no
+      {{ vault_vcenter_ssh_username | default('root') }}@{{ _current_esxi_host }}
+      '/usr/lib/vmware/openssh/bin/sshd -T'
+  environment:
+    SSHPASS: "{{ vault_vcenter_ssh_password | default(vmware_password) | string | trim }}"
+  register: _sshd_config_result
+  changed_when: false
+  check_mode: false
+  no_log: false
+  ignore_errors: true # noqa: ignore-errors — if SSH unreachable, individual rule asserts will fail
+  when: esxi_stig_enable_ssh_checks | default(true) | bool
+
+- name: "ESXi STIG | SSH gather failed — marking all SSH rules as not-assessable"
+  ansible.builtin.debug:
+    msg: >-
+      SSH connection to {{ _current_esxi_host }} failed. All sshd_config
+      STIG rules will be recorded as failed (not assessable without SSH access).
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - _sshd_config_result is failed
+
+- name: "ESXi STIG | Parse sshd_config lines"
+  ansible.builtin.set_fact:
+    _sshd_config_lines: "{{ (_sshd_config_result.stdout | default('')).split('\n') }}"
+  check_mode: false
+  changed_when: false
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - _sshd_config_result is not skipped
+    - not (_sshd_config_result.failed | default(false))
+
+- name: "Execute sshd_config Direct SSH STIG Rules"
+  ansible.builtin.include_tasks: v7r4/ssh_evaluator.yaml
+  loop: "{{ esxi_sshd_config_rules }}"
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - not (_sshd_config_result.failed | default(false))

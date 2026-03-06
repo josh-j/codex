@@ -1,0 +1,16 @@
+---
+# vcsa_vami/tasks/lineinfile_evaluator.yml
+# Generic lineinfile evaluator for VAMI STIG rules.
+# Looped from vami.yml over vami_lineinfile_rules.
+
+- name: "{{ item.stig_id }} - {{ item.desc }}"
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('vars', item.conf_path) }}"
+    state: "{{ item.state | default('present') }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line | default(omit) }}"
+    firstmatch: true
+  notify:
+    - restart vami
+  when:
+    - lookup('vars', item.manage_var, default=true) | bool

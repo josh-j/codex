@@ -1,0 +1,19 @@
+---
+# Remaining audit-only rules
+
+# --- V-256403 / ESXI-70-000038: Host profiles / auth proxy (manual) ---
+- name: stigrule_256403_host_profiles
+  ansible.builtin.debug:
+    msg: >-
+      ESXI-70-000038: Host profile and auth proxy configuration requires manual
+      verification for {{ _current_esxi_host }}. Ensure the host is assigned a
+      host profile with proper authentication proxy configuration.
+  when: esxi_70_000038_Manage | default(true) | bool
+
+# --- V-256428 / ESXI-70-000070: CIM account access (manual) ---
+- name: stigrule_256428_cim_access
+  ansible.builtin.debug:
+    msg: >-
+      ESXI-70-000070: CIM account access requires manual verification for
+      {{ _current_esxi_host }}. Verify only authorized accounts have CIM access.
+  when: esxi_70_000070_Manage | default(true) | bool

@@ -1,0 +1,230 @@
+# VMware vSphere 7.0 vCenter Server Appliance Lookup Service Ansible Role
+---
+############################################
+
+# Backup files that may be modified in case restoration is needed
+
+- name: Create time stamp
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: Backup files...if restoring be sure to restore permissions that original file had!!
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-lookup-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  with_items:
+    - "{{ var_server_xml_path }}"
+    - "{{ var_web_xml_path }}"
+    - "{{ var_context_xml_path }}"
+    - "{{ var_json_path }}"
+    - "{{ var_catalina_props_path }}"
+    - "{{ var_syslog_conf_path }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+############################################
+
+# Data-driven XML rules (27 rules)
+# Covers: VCLU-70-000001, 000002, 000003, 000004, 000005, 000010,
+#         000012 (×4), 000013 (×2), 000014, 000015, 000019, 000020,
+#         000021 (×3), 000022, 000023, 000024 (×2), 000025, 000026,
+#         000030, 000031
+
+- name: "Load Lookup STIG XML rules"
+  ansible.builtin.include_vars:
+    file: lookup_stig_rules.yaml
+
+- name: "Apply Lookup STIG XML rules"
+  ansible.builtin.include_tasks: xml_evaluator.yml
+  loop: "{{ lookup_xml_rules }}"
+  vars:
+    _vcsa_notify_handler: "restart lookupsvc"
+
+############################################
+
+# Title: Lookup Service must generate log records for system startup and shutdown.
+
+- name: VCLU-70-000006 - Lookup Service must generate log records for system startup and shutdown.
+  ansible.builtin.lineinfile:
+    path: "{{ var_json_path }}"
+    state: present
+    regexp: '^.*"StreamRedirectFile".*$'
+    line: '  "StreamRedirectFile": "{{ var_stream_redirect_file }}",'
+    insertbefore: ^.*WorkingDir.*$
+    firstmatch: true
+  tags:
+    - VCLU-70-000006
+  notify:
+    - restart lookupsvc
+  when:
+    - run_json_stream_redirect_file | bool
+
+############################################
+
+# Title: Lookup Service log files must only be accessible by privileged users.
+
+- name: VCLU-70-000007 - Find Lookupsvc log files
+  ansible.builtin.find:
+    paths: "{{ var_logs_path }}"
+    file_type: file
+    patterns:
+      - "*.current"
+      - "*.stdout"
+      - "*.stderr"
+      - "*.log"
+    excludes:
+      - "lookupsvc-init.log"
+    recurse: true
+  register: logs
+  tags:
+    - VCLU-70-000007
+  when:
+    - run_logs_permissions | bool
+
+- name: VCLU-70-000007 - Set Lookupsvc log permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: file
+    mode: "o-w"
+    owner: "lookupsvc"
+    group: "lookupsvc"
+  with_items: "{{ logs.files }}"
+  tags:
+    - VCLU-70-000007
+  when:
+    - run_logs_permissions | bool
+
+############################################
+
+# Title: Lookup Service application files must be verified for their integrity.
+# VCLU-70-000008 requires manual remediation
+
+############################################
+
+# Title: Lookup Service must only run one webapp.
+# VCLU-70-000009 requires manual remediation
+
+############################################
+
+# Title: Lookup Service must be configured to limit access to internal packages.
+
+- name: VCLU-70-000011 - Lookup Service must be configured to limit access to internal packages.
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCLU-70-000011
+  notify:
+    - restart lookupsvc
+  when:
+    - run_catalina_properties | bool
+
+############################################
+
+# Title: Lookup Service must not have any symbolic links in the web content directory tree.
+# VCLU-70-000016 requires manual remediation
+
+############################################
+
+# Title: Lookup Service directory tree must have permissions in an out-of-the-box state.
+
+- name: VCLU-70-000017 - Find vSphere Lookup Service web files
+  ansible.builtin.shell: find {{ var_lib_path }} {{ var_conf_path }} -xdev -type f -a '(' -perm -o+w -o -not -user root -o -not -group root ')';
+  register: files
+  check_mode: false
+  tags:
+    - VCLU-70-000017
+  changed_when: files.stdout != ""
+  when:
+    - run_web_files_permissions | bool
+
+- name: VCLU-70-000017 - Set Lookupsvc web files owner and group
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items: "{{ files.stdout_lines }}"
+  tags:
+    - VCLU-70-000017
+  when:
+    - run_web_files_permissions | bool
+    - files.stdout != ""
+
+############################################
+
+# Title: Lookup Service must fail to a known safe state if system initialization fails, shutdown fails, or aborts fail.
+
+- name: VCLU-70-000018 - Lookup Service must fail to a known safe state if system initialization fails, shutdown fails, or aborts fail.
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCLU-70-000018
+  notify:
+    - restart lookupsvc
+  when:
+    - run_catalina_properties_shutdown | bool
+
+############################################
+
+# Title: Lookup Service must use a logging mechanism that is configured to allocate log record storage capacity large enough to accommodate the logging requirements of the web server.
+# VCLU-70-000027 requires manual remediation
+
+############################################
+
+# Title: Lookup Service log files must be be offloaded to a central log server in real time.
+
+- name: VCLU-70-000028 - Lookup Service log files must be be offloaded to a central log server in real time.
+  ansible.builtin.template:
+    src: vmware-services-lookupsvc.conf
+    dest: /etc/vmware-syslog/vmware-services-lookupsvc.conf
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCLU-70-000028
+  notify:
+    - restart syslog
+  when:
+    - run_syslog_config | bool
+
+############################################
+
+# Title: ESX Agent Manager must be configured with the appropriate ports.
+
+- name: VCLU-70-000029 - ESX Agent Manager must be configured with the appropriate ports.
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  tags:
+    - VCLU-70-000029
+  notify:
+    - restart lookupsvc
+  when:
+    - run_catalina_properties_ports | bool

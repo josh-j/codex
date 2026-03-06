@@ -1,0 +1,33 @@
+---
+# collections/ansible_collections/internal/windows/roles/windows/defaults/main.yaml
+
+# --- Actions ---
+windows_action: audit
+
+# --- Performance/Safety ---
+windows_audit_startup_delay: 5
+windows_audit_skip_startup_delay: true
+windows_audit_timeout_minutes: 30
+
+# --- Inventory Configuration ---
+windows_config_include_system_apps: false
+
+# --- Thresholds (Used by ncs-reporter) ---
+windows_audit_update_age_warning_days: 30
+windows_audit_update_age_critical_days: 90
+
+# --- Update Management ---
+windows_audit_force_update: false
+windows_audit_allow_reboot: false
+windows_audit_enforce_preference: "Immediate"
+windows_audit_update_priority: "Normal"
+
+# --- STIG Settings ---
+windows_stig_enable_audit: false
+windows_stig_native_checks_only: false
+windows_stig_require_input: false
+windows_stig_target_type: "windows_server_2022"
+
+windows_audit_excluded_apps:
+  - "USAF - MDE - DeviceTagging"
+  - "Intel(R)_Chipset Device Software_*"

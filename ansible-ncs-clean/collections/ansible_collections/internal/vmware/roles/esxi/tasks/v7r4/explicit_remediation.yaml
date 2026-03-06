@@ -1,0 +1,7 @@
+---
+# tasks/v7r4/explicit_remediation.yaml
+# Mixed declarative aliases and explicit PowerShell remediation rules
+
+- name: "Execute Explicit Remediation PowerShell STIG Rules"
+  ansible.builtin.include_tasks: v7r4/pwsh_evaluator.yaml
+  loop: "{{ esxi_pwsh_rules | selectattr('file', 'equalto', 'explicit_remediation.yaml') | list }}"

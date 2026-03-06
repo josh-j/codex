@@ -1,0 +1,328 @@
+---
+# internal.vmware.stig : vm/vm_v7r4.yaml
+#
+# Clean drop-in VM V7R4 STIG tasks for a single VM (_current_vm_name).
+# Included via check.yaml which injects: check_mode, ignore_errors, tags.
+#
+# Conventions:
+#   - Each task has ONLY: name, module, parameters, when guard
+#   - NO register (except functional), NO ignore_errors, NO tags
+#   - Toggle guard: vmch_70_NNNNNN_Manage | default(true)
+#   - Advanced settings driven by vm_stig_rules.yaml (data-driven loop)
+#
+# Credentials come from module_defaults in tasks/main.yaml.
+# Task naming: stigrule_NNNNNN_<desc> for callback compatibility.
+
+# =========================================================================
+# INIT: Register target host and type for the ncs_collector callback.
+# The inventory host is the vCenter; these facts tell the callback to file
+# results under the VM name with target_type "vm".
+# =========================================================================
+
+- name: "VM STIG | Register target VM for callback"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ _current_vm_name }}"
+    _ncs_stig_target_type: "vm"
+  check_mode: false
+  changed_when: false
+
+- name: "VM STIG | Set PowerCLI preamble"
+  ansible.builtin.set_fact:
+    _pwsh_preamble: >-
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:\$false | Out-Null;
+      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force | Out-Null;
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# PRE-TASK: Gather VM info
+# vmware_vm_info returns basic metadata. For hardware device counts and
+# VM-level encryption settings we use PowerShell queries below.
+# =========================================================================
+
+- name: "VM STIG | Gather info for {{ _current_vm_name }}"
+  community.vmware.vmware_vm_info:
+    vm_name: "{{ _current_vm_name }}"
+  register: _vm_info_raw
+  check_mode: false
+
+- name: "VM STIG | Extract VM details"
+  ansible.builtin.set_fact:
+    _vm_detail: "{{ _vm_info_raw.virtual_machines | default([]) | first | default({}) }}"
+  changed_when: false
+  check_mode: false
+
+# Query hardware device counts and VM attributes via PowerShell
+# (vmware_vm_info doesn't return floppy_drives, parallel_ports, etc.)
+- name: "VM STIG | Query hardware details for {{ _current_vm_name }}"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vm = Get-VM -Name '{{ _current_vm_name }}';
+      \$view = \$vm | Get-View;
+      \$devs = \$view.Config.Hardware.Device;
+      \$floppy = (\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualFloppy] }).Count;
+      \$cdrom = (\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualCdrom] }).Count;
+      \$parallel = (\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualParallelPort] }).Count;
+      \$serial = (\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualSerialPort] }).Count;
+      \$usb = (\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualUSBController] -or \$_ -is [VMware.Vim.VirtualUSBXHCIController] }).Count;
+      \$vmotion = \$view.Config.MigrateEncryption;
+      \$ft = \$view.Config.FtEncryptionMode;
+      \$logging = \$view.Config.Flags.EnableLogging;
+      Write-Output \"floppy=\$floppy\";
+      Write-Output \"cdrom=\$cdrom\";
+      Write-Output \"parallel=\$parallel\";
+      Write-Output \"serial=\$serial\";
+      Write-Output \"usb=\$usb\";
+      Write-Output \"vmotion_encryption=\$vmotion\";
+      Write-Output \"ft_encryption=\$ft\";
+      Write-Output \"logging_enabled=\$logging\";
+      "
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _vm_hw_raw
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: "VM STIG | Parse hardware details"
+  ansible.builtin.set_fact:
+    _vm_hw: >-
+      {{ dict(_vm_hw_raw.stdout_lines | default([])
+         | map('split', '=', 1)
+         | list) }}
+  changed_when: false
+  check_mode: false
+
+# =========================================================================
+# GROUP A: Advanced settings — data-driven loop
+# =========================================================================
+
+- name: "VM STIG | Load advanced settings rules"
+  ansible.builtin.include_vars:
+    file: vm_stig_rules.yaml
+
+- name: "VM STIG | Apply advanced settings"
+  ansible.builtin.include_tasks: v7r4/advanced_settings_evaluator.yaml
+  loop: "{{ vm_advanced_settings_rules }}"
+
+# V-256466 / VMCH-70-000018: Shared salt values must be disabled
+- name: stigrule_256466_pshare_salt
+  ansible.builtin.debug:
+    msg: "VMCH-70-000018: sched.mem.pshare.salt should be absent on {{ _current_vm_name }}"
+  when: vmch_70_000018_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP B: Hardware assertions & remediation
+# Uses _vm_hw from PowerShell query for accurate device counts.
+# =========================================================================
+
+# --- VMCH-70-000008 / floppy ---
+- name: stigrule_256457_floppy_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.floppy | default('0') | int) == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_hw.floppy | default('unknown') }} floppy drives"
+    success_msg: "VM {{ _current_vm_name }} has no floppy drives"
+  failed_when: false
+  when:
+    - vmch_70_000008_Manage | default(true) | bool
+
+- name: stigrule_256457_floppy_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      floppy:
+        - state: absent
+  when:
+    - vmch_70_000008_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.floppy | default('0') | int) > 0"
+
+# --- VMCH-70-000009 / cdrom ---
+- name: stigrule_256458_cdrom_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.cdrom | default('0') | int) == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_hw.cdrom | default('unknown') }} CD-ROM devices"
+    success_msg: "VM {{ _current_vm_name }} has no CD-ROM devices"
+  failed_when: false
+  when:
+    - vmch_70_000009_Manage | default(true) | bool
+
+- name: stigrule_256458_cdrom_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      cdrom:
+        - state: absent
+  when:
+    - vmch_70_000009_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.cdrom | default('0') | int) > 0"
+
+# --- VMCH-70-000010 / parallel ---
+- name: stigrule_256459_parallel_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.parallel | default('0') | int) == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_hw.parallel | default('unknown') }} parallel ports"
+    success_msg: "VM {{ _current_vm_name }} has no parallel ports"
+  failed_when: false
+  when:
+    - vmch_70_000010_Manage | default(true) | bool
+
+- name: stigrule_256459_parallel_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      parallel:
+        - state: absent
+  when:
+    - vmch_70_000010_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.parallel | default('0') | int) > 0"
+
+# --- VMCH-70-000011 / serial ---
+- name: stigrule_256460_serial_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.serial | default('0') | int) == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_hw.serial | default('unknown') }} serial ports"
+    success_msg: "VM {{ _current_vm_name }} has no serial ports"
+  failed_when: false
+  when:
+    - vmch_70_000011_Manage | default(true) | bool
+
+- name: stigrule_256460_serial_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      serial:
+        - state: absent
+  when:
+    - vmch_70_000011_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.serial | default('0') | int) > 0"
+
+# --- VMCH-70-000012 / USB ---
+- name: stigrule_256461_usb_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.usb | default('0') | int) == 0"
+    fail_msg: "VM {{ _current_vm_name }} has {{ _vm_hw.usb | default('unknown') }} USB controllers"
+    success_msg: "VM {{ _current_vm_name }} has no USB controllers"
+  failed_when: false
+  when:
+    - vmch_70_000012_Manage | default(true) | bool
+
+- name: stigrule_256461_usb_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    hardware:
+      usb_controller:
+        - state: absent
+  when:
+    - vmch_70_000012_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.usb | default('0') | int) > 0"
+
+# --- VMCH-70-000006 / disk persistence (manual) ---
+- name: stigrule_256455_disk_persistence
+  ansible.builtin.debug:
+    msg: "VMCH-70-000006: Disk persistence mode requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000006_Manage | default(true) | bool
+
+# --- VMCH-70-000019 / dvFilter (manual) ---
+- name: stigrule_256467_dvfilter
+  ansible.builtin.debug:
+    msg: "VMCH-70-000019: dvFilter network API access requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000019_Manage | default(true) | bool
+
+# --- VMCH-70-000020 / Template usage (manual) ---
+- name: stigrule_256468_template_usage
+  ansible.builtin.debug:
+    msg: "VMCH-70-000020: Template usage for VM deployment requires manual policy verification for {{ _current_vm_name }}"
+  when: vmch_70_000020_Manage | default(true) | bool
+
+# --- VMCH-70-000021 / Console usage (manual) ---
+- name: stigrule_256469_console_minimize
+  ansible.builtin.debug:
+    msg: "VMCH-70-000021: VM console usage minimization requires manual policy verification for {{ _current_vm_name }}"
+  when: vmch_70_000021_Manage | default(true) | bool
+
+# --- VMCH-70-000028 / PCI passthrough (manual) ---
+- name: stigrule_256476_pci_passthru
+  ansible.builtin.debug:
+    msg: "VMCH-70-000028: DirectPath I/O (PCI passthrough) must be disabled when not required — requires manual inspection for {{ _current_vm_name }}"
+  when: vmch_70_000028_Manage | default(true) | bool
+
+# =========================================================================
+# GROUP C: VM attribute assertions & remediation
+# Uses _vm_hw from PowerShell query for vMotion/FT encryption and logging.
+# =========================================================================
+
+# --- VMCH-70-000024 / vMotion encryption ---
+- name: stigrule_256472_vmotion_encryption_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.vmotion_encryption | default('disabled') | lower) == 'required'"
+    fail_msg: "VM {{ _current_vm_name }} vMotion encryption is {{ _vm_hw.vmotion_encryption | default('unknown') }}"
+    success_msg: "VM {{ _current_vm_name }} vMotion encryption is required"
+  failed_when: false
+  when:
+    - vmch_70_000024_Manage | default(true) | bool
+
+- name: stigrule_256472_vmotion_encryption_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    vmotion_encryption: required
+  when:
+    - vmch_70_000024_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.vmotion_encryption | default('disabled') | lower) != 'required'"
+
+# --- VMCH-70-000025 / Logging ---
+- name: stigrule_256473_logging_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.logging_enabled | default('False') | lower) == 'true'"
+    fail_msg: "VM {{ _current_vm_name }} logging is disabled"
+    success_msg: "VM {{ _current_vm_name }} logging is enabled"
+  failed_when: false
+  when:
+    - vmch_70_000025_Manage | default(true) | bool
+
+- name: stigrule_256473_logging_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    advanced_settings:
+      - key: vmx.log.enabled
+        value: "TRUE"
+  when:
+    - vmch_70_000025_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.logging_enabled | default('False') | lower) != 'true'"
+
+# --- VMCH-70-000029 / FT encryption ---
+- name: stigrule_256477_ft_encryption_assert
+  ansible.builtin.assert:
+    that:
+      - "(_vm_hw.ft_encryption | default('disabled') | lower) in ['required', 'ftencryptionrequired']"
+    fail_msg: "VM {{ _current_vm_name }} FT encryption is {{ _vm_hw.ft_encryption | default('unknown') }}"
+    success_msg: "VM {{ _current_vm_name }} FT encryption is required"
+  failed_when: false
+  when:
+    - vmch_70_000029_Manage | default(true) | bool
+
+- name: stigrule_256477_ft_encryption_remediate
+  community.vmware.vmware_guest:
+    name: "{{ _current_vm_name }}"
+    ft_encryption: required
+  when:
+    - vmch_70_000029_Manage | default(true) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+    - "(_vm_hw.ft_encryption | default('disabled') | lower) not in ['required', 'ftencryptionrequired']"

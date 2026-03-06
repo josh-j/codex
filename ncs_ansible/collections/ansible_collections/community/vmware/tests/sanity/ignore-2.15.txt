@@ -1,2 +1,0 @@
-plugins/modules/vmware_deploy_ovf.py replace-urlopen!skip
-plugins/modules/vmware_deploy_ovf.py use-argspec-type-path!skip

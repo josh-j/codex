@@ -13,6 +13,7 @@ from .common import (
     to_int,
 )
 from .stig import build_stig_fleet_view
+from ..pathing import render_template
 
 
 def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | None:
@@ -37,6 +38,44 @@ def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | N
     return None
 
 
+def _build_platform_links(
+    platforms_config: list[dict[str, Any]] | None,
+    report_stamp: str | None,
+) -> dict[str, str]:
+    """Build a mapping of platform name → fleet report relative path from config.
+
+    Returns e.g. {"linux": "platform/linux/ubuntu/linux_fleet_report.html", ...}
+    """
+    links: dict[str, str] = {}
+    for p in platforms_config or []:
+        paths = p.get("paths") or {}
+        tpl = paths.get("report_fleet", "")
+        report_dir = p.get("report_dir", "")
+        if not tpl or not report_dir:
+            continue
+        link = render_template(
+            tpl,
+            report_dir=report_dir,
+            schema_name=p.get("schema_name") or p.get("platform") or "",
+            hostname="",
+            target_type="",
+            report_stamp=report_stamp or "",
+        )
+        # Only store the first (most specific) entry per platform key
+        platform_key = p.get("platform", "")
+        if platform_key and platform_key not in links:
+            links[platform_key] = link
+    return links
+
+
+# Hardcoded fallbacks used only when no platforms_config is provided
+_FALLBACK_LINKS: dict[str, str] = {
+    "linux": "platform/linux/ubuntu/linux_fleet_report.html",
+    "vmware": "platform/vmware/vcenter/vcsa/vcenter_fleet_report.html",
+    "windows": "platform/windows/windows_fleet_report.html",
+}
+
+
 def build_site_dashboard_view(
     aggregated_hosts: dict[str, Any],
     inventory_groups: dict[str, Any] | None = None,
@@ -44,6 +83,7 @@ def build_site_dashboard_view(
     report_stamp: str | None = None,
     report_date: str | None = None,
     report_id: str | None = None,
+    platforms_config: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     groups = dict(inventory_groups or {})
     all_alerts: list[dict[str, Any]] = []
@@ -64,6 +104,12 @@ def build_site_dashboard_view(
         report_date=report_date,
         report_id=report_id,
     )
+
+    # Resolve fleet report links from platforms config (single source of truth)
+    platform_links = _build_platform_links(platforms_config, report_stamp)
+    linux_fleet_link = platform_links.get("linux", _FALLBACK_LINKS["linux"])
+    vmware_fleet_link = platform_links.get("vmware", _FALLBACK_LINKS["vmware"])
+    windows_fleet_link = platform_links.get("windows", _FALLBACK_LINKS["windows"])
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         # 1. Linux
@@ -99,7 +145,7 @@ def build_site_dashboard_view(
                         "host": hostname,
                         "status": {"raw": status},
                         "clusters": [],
-                        "links": {"fleet_dashboard": "platform/vmware/vcenter/vcenter_fleet_report.html"},
+                        "links": {"fleet_dashboard": vmware_fleet_link},
                     }
                 )
                 all_alerts.extend(
@@ -187,17 +233,17 @@ def build_site_dashboard_view(
         "linux": {
             "asset_count": to_int(linux_count),
             "label": "Linux",
-            "link": "platform/linux/ubuntu/linux_fleet_report.html",
+            "link": linux_fleet_link,
         },
         "vmware": {
             "asset_count": to_int(vmware_count),
             "label": "VMware",
-            "link": "platform/vmware/vcenter/vcenter_fleet_report.html",
+            "link": vmware_fleet_link,
         },
         "windows": {
             "asset_count": to_int(windows_count),
             "label": "Windows",
-            "link": "platform/windows/windows_fleet_report.html",
+            "link": windows_fleet_link,
         },
     }
 
@@ -215,7 +261,6 @@ def build_site_dashboard_view(
         "nav": {"tree_fleets": tree_fleets},
         "alerts": sorted(all_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))),
         "alert_groups": alert_groups,
-        # ... (rest of the dict)
         "infra": infra,
         "platforms": {
             "linux": {
@@ -223,7 +268,7 @@ def build_site_dashboard_view(
                 "asset_label": "Nodes",
                 "alert_count": l_counts["total"],
                 "status": {"raw": linux_status},
-                "links": {"fleet_dashboard": "platform/linux/ubuntu/linux_fleet_report.html"},
+                "links": {"fleet_dashboard": linux_fleet_link},
             },
             "vmware": {
                 "asset_count": vmware_count,
@@ -231,14 +276,14 @@ def build_site_dashboard_view(
                 "alert_count": v_counts["total"],
                 "alarm_count": infra["active_alarm_count"],
                 "status": {"raw": vmware_status},
-                "links": {"fleet_dashboard": "platform/vmware/vcenter/vcenter_fleet_report.html"},
+                "links": {"fleet_dashboard": vmware_fleet_link},
             },
             "windows": {
                 "asset_count": windows_count,
                 "asset_label": "Nodes",
                 "alert_count": w_counts["total"],
                 "status": {"raw": windows_status},
-                "links": {"fleet_dashboard": "platform/windows/windows_fleet_report.html"},
+                "links": {"fleet_dashboard": windows_fleet_link},
             },
         },
         "security": {

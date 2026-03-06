@@ -1,0 +1,487 @@
+# VMware vSphere 7.0 vCenter Server Appliance STS Ansible Playbook
+---
+############################################
+# Backup files that may be modified in case restoration is needed
+
+- name: "STS | Create backup timestamp"
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "STS | Backup config files"
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ _sts_backup_item }}"
+    dest: "/tmp/ansible-vcsa-sts-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  loop:
+    - "{{ var_server_xml_path }}"
+    - "{{ var_web_xml_path }}"
+    - "{{ var_logging_props_path }}"
+    - "{{ var_catalina_props_path }}"
+    - "{{ var_syslog_conf_path }}"
+  loop_control:
+    loop_var: _sts_backup_item
+    label: "{{ _sts_backup_item | basename }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+############################################
+# Data-driven XML rules
+
+- name: "STS | Load STIG XML rules"
+  ansible.builtin.include_vars:
+    file: sts_stig_rules.yaml
+
+- name: "STS | Apply STIG XML rules"
+  ansible.builtin.include_tasks: xml_evaluator.yml
+  loop: "{{ sts_xml_rules }}"
+  vars:
+    _vcsa_notify_handler: "restart sts"
+
+############################################
+# VCST-70-000006: STS must generate log records during java startup and shutdown.
+
+- name: "VCST-70-000006 - STS logging properties: handlers"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "handlers"
+    value: "{{ var_logging_props_handlers }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: .handlers"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: ".handlers"
+    value: "{{ var_logging_props_dothandlers }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: level"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.level"
+    value: "{{ var_logging_props_level }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: directory"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.directory"
+    value: "{{ var_logging_props_directory }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: prefix"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.prefix"
+    value: "{{ var_logging_props_prefix }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: bufferSize"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.bufferSize"
+    value: "{{ var_logging_props_buffersize }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: formatter"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.formatter"
+    value: "{{ var_logging_props_formatter }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: maxDays"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "1catalina.org.apache.juli.FileHandler.maxDays"
+    value: "{{ var_logging_props_maxdays }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+- name: "VCST-70-000006 - STS logging properties: Catalina handlers"
+  community.general.ini_file:
+    path: "{{ var_logging_props_path }}"
+    section: null
+    state: present
+    option: "org.apache.catalina.startup.Catalina.handlers"
+    value: "{{ var_logging_props_handlers2 }}"
+    mode: "0600"
+  when:
+    - run_logging_properties | bool
+
+############################################
+# VCST-70-000007: STS log files must only be modifiable by privileged users.
+
+- name: "VCST-70-000007 - Find STS log files"
+  ansible.builtin.find:
+    paths: "{{ var_sts_logs_path }}"
+    file_type: file
+  register: stslogs
+  check_mode: false
+  when:
+    - run_logs_permissions | bool
+
+- name: "VCST-70-000007 - Set STS log permissions"
+  ansible.builtin.file:
+    path: "{{ _sts_log.path }}"
+    state: file
+    mode: o-w
+    owner: "root"
+    group: "root"
+  loop: "{{ stslogs.files | default([]) }}"
+  loop_control:
+    loop_var: _sts_log
+    label: "{{ _sts_log.path | basename }}"
+  when:
+    - run_logs_permissions | bool
+    - stslogs.files | default([]) | length > 0
+
+############################################
+# VCST-70-000011: STS must be configured to limit access to internal packages.
+
+- name: "VCST-70-000011 - STS catalina.properties package access"
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: true
+  notify:
+    - restart sts
+  when:
+    - run_catalina_props_package_access | bool
+
+############################################
+# VCST-70-000017: STS directory tree permissions.
+
+- name: "VCST-70-000017 - Find STS web files with wrong permissions"
+  ansible.builtin.shell: find {{ var_sts_web_path }} -xdev -type f -a '(' -not -user root -o -not -group root ')';
+  register: _sts_web_files
+  check_mode: false
+  changed_when: _sts_web_files.stdout != ""
+  when:
+    - run_web_files_permissions | bool
+
+- name: "VCST-70-000017 - Set STS web files owner and group"
+  ansible.builtin.file:
+    path: "{{ _sts_web_file }}"
+    state: file
+    owner: "root"
+    group: "root"
+  loop: "{{ _sts_web_files.stdout_lines | default([]) }}"
+  loop_control:
+    loop_var: _sts_web_file
+    label: "{{ _sts_web_file | basename }}"
+  when:
+    - run_web_files_permissions | bool
+    - _sts_web_files.stdout | default('') != ""
+
+############################################
+# VCST-70-000018: STS must fail to a known safe state.
+
+- name: "VCST-70-000018 - STS catalina.properties init failure"
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: true
+  notify:
+    - restart sts
+  when:
+    - run_catalina_props_init_failure | bool
+
+############################################
+# VCST-70-000021: STS must use the setCharacterEncodingFilter filter.
+
+# --- filter-mapping ---
+
+- name: "VCST-70-000021 - Check if filter-mapping exists"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter-mapping[x:filter-name="setCharacterEncodingFilter"]'
+    count: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  register: filtermaphits
+  when:
+    - run_web_filter | bool
+
+- name: "VCST-70-000021 - Insert filter-mapping block if missing"
+  ansible.builtin.blockinfile:
+    path: "{{ var_web_xml_path }}"
+    marker: "<!-- {mark} ANSIBLE MANAGED - setCharacterEncodingFilter mapping -->"
+    insertbefore: "</web-app>"
+    block: |2
+        <filter-mapping>
+          <filter-name>setCharacterEncodingFilter</filter-name>
+          <url-pattern>/*</url-pattern>
+        </filter-mapping>
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - filtermaphits.count | default(0) == 0
+
+- name: "VCST-70-000021 - Verify filter-mapping url-pattern"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter-mapping[x:filter-name="setCharacterEncodingFilter"]/x:url-pattern'
+    value: "/*"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - filtermaphits.count | default(0) > 0
+
+# --- filter element ---
+
+- name: "VCST-70-000021 - Check filter init-param count"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:init-param'
+    count: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  register: countbadinits
+  when:
+    - run_web_filter | bool
+
+- name: "VCST-70-000021 - Check filter element count"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]'
+    count: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  register: countbadfilters
+  when:
+    - run_web_filter | bool
+
+- name: "VCST-70-000021 - Remove malformed filter configuration"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]'
+    state: absent
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  when:
+    - run_web_filter | bool
+    - (countbadinits.count | default(0) == 1 or countbadinits.count | default(0) > 2) or (countbadfilters.count | default(0) != 1)
+
+- name: "VCST-70-000021 - Insert filter block if missing or malformed"
+  ansible.builtin.blockinfile:
+    path: "{{ var_web_xml_path }}"
+    marker: "<!-- {mark} ANSIBLE MANAGED - setCharacterEncodingFilter -->"
+    insertbefore: "</web-app>"
+    block: |2
+        <filter>
+          <filter-name>setCharacterEncodingFilter</filter-name>
+          <filter-class>org.apache.catalina.filters.SetCharacterEncodingFilter</filter-class>
+          <async-supported>true</async-supported>
+          <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+          </init-param>
+          <init-param>
+            <param-name>ignore</param-name>
+            <param-value>true</param-value>
+          </init-param>
+        </filter>
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - (countbadinits.count | default(0) == 1 or countbadinits.count | default(0) > 2) or (countbadfilters.count | default(0) != 1)
+
+# --- Verify existing filter values (only when filter exists and is well-formed) ---
+
+- name: "VCST-70-000021 - Verify filter-class value"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:filter-class'
+    value: "org.apache.catalina.filters.SetCharacterEncodingFilter"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+- name: "VCST-70-000021 - Verify filter async-supported"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:async-supported'
+    value: "true"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+- name: "VCST-70-000021 - Verify encoding param-name"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:init-param[1]/x:param-name'
+    value: "encoding"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+- name: "VCST-70-000021 - Verify encoding param-value"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:init-param[1]/x:param-value'
+    value: "UTF-8"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+- name: "VCST-70-000021 - Verify ignore param-name"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:init-param[2]/x:param-name'
+    value: "ignore"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+- name: "VCST-70-000021 - Verify ignore param-value"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:filter[x:filter-name="setCharacterEncodingFilter"]/x:init-param[2]/x:param-value'
+    value: "true"
+    state: present
+    pretty_print: true
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  notify:
+    - restart sts
+  when:
+    - run_web_filter | bool
+    - countbadfilters.count | default(0) == 1
+    - countbadinits.count | default(0) == 2
+
+############################################
+# VCST-70-000028: STS must be configured with the appropriate ports.
+
+- name: "VCST-70-000028 - STS catalina.properties ports"
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: true
+  notify:
+    - restart sts
+  when:
+    - run_catalina_props_ports | bool
+
+############################################
+# VCST-70-000029: STS must disable the shutdown port.
+
+- name: "VCST-70-000029 - STS catalina.properties shutdown port"
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: true
+  notify:
+    - restart sts
+  when:
+    - run_catalina_properties_shutdownport | bool
+
+############################################
+# VCST-70-000050: Rsyslog must monitor and ship STS log files.
+
+- name: "VCST-70-000050 - STS syslog configuration"
+  ansible.builtin.template:
+    src: vmware-services-sso-services.conf
+    dest: "{{ var_syslog_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  notify:
+    - restart syslog
+  when:
+    - run_sts_syslog_config | bool

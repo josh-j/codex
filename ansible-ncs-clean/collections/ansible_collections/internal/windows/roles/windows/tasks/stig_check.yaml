@@ -1,0 +1,134 @@
+---
+# internal.windows.windows : tasks/stig_check.yaml
+#
+# Minimal native Windows Server STIG baseline checks.
+
+- name: "Windows STIG | Gather native baseline facts"
+  ansible.windows.win_powershell:
+    script: |
+      $facts = @{
+        name = $env:COMPUTERNAME
+      }
+
+      # 1) RDP NLA
+      try {
+        $nla = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name UserAuthentication -ErrorAction SilentlyContinue
+        $facts['rdp_nla'] = if ($nla) { [int]$nla.UserAuthentication } else { $null }
+      } catch { $facts['rdp_nla'] = $null }
+
+      # 2) Firewall Profiles
+      try {
+        $profiles = Get-NetFirewallProfile -ErrorAction SilentlyContinue
+        $facts['firewall_disabled_profiles'] = @($profiles | Where-Object { -not $_.Enabled } | Select-Object -ExpandProperty Name)
+      } catch { $facts['firewall_disabled_profiles'] = @('ERROR') }
+
+      # 3) SMBv1
+      try {
+        $feature = Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -ErrorAction SilentlyContinue
+        $facts['smb1_state'] = if ($feature) { [string]$feature.State } else { 'Unknown' }
+      } catch { $facts['smb1_state'] = 'ERROR' }
+
+      # 4) Guest account
+      try {
+        $guest = Get-LocalUser -Name 'Guest' -ErrorAction SilentlyContinue
+        $facts['guest_enabled'] = if ($guest) { [bool]$guest.Enabled } else { $null }
+      } catch { $facts['guest_enabled'] = $null }
+
+      # 5) Password complexity
+      try {
+        $cfg = Join-Path $env:TEMP 'secpol-export.cfg'
+        secedit /export /cfg $cfg | Out-Null
+        $line = Select-String -Path $cfg -Pattern '^PasswordComplexity\s*=\s*(\d+)\s*$' | Select-Object -First 1
+        $facts['password_complexity'] = if ($line) { [int]$line.Matches[0].Groups[1].Value } else { -1 }
+        Remove-Item $cfg -ErrorAction SilentlyContinue
+      } catch { $facts['password_complexity'] = -2 }
+
+      # 6) Defender
+      try {
+        $mp = Get-MpComputerStatus -ErrorAction SilentlyContinue
+        $facts['defender_realtime'] = if ($mp) { [bool]$mp.RealTimeProtectionEnabled } else { $null }
+      } catch { $facts['defender_realtime'] = $null }
+
+      # 7/8) WinRM
+      try {
+        $svc = winrm get winrm/config/service
+        $facts['winrm_allow_unencrypted'] = if ($svc -match 'AllowUnencrypted\s*=\s*(\w+)') { $Matches[1] } else { 'Unknown' }
+        $auth = winrm get winrm/config/service/auth
+        $facts['winrm_basic_auth'] = if ($auth -match 'Basic\s*=\s*(\w+)') { $Matches[1] } else { 'Unknown' }
+      } catch {
+        $facts['winrm_allow_unencrypted'] = 'ERROR'
+        $facts['winrm_basic_auth'] = 'ERROR'
+      }
+
+      # 9) UAC Admin Approval
+      try {
+        $uac = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name FilterAdministratorToken -ErrorAction SilentlyContinue
+        $facts['uac_filter_admin'] = if ($uac) { [int]$uac.FilterAdministratorToken } else { $null }
+      } catch { $facts['uac_filter_admin'] = $null }
+
+      # 10) Audit Logon
+      try {
+        $auditpol = auditpol /get /subcategory:"Logon" /r
+        $csv = $auditpol | ConvertFrom-Csv
+        $facts['audit_logon_setting'] = if ($csv) { [string]($csv[0].'Inclusion Setting') } else { 'Unknown' }
+      } catch { $facts['audit_logon_setting'] = 'ERROR' }
+
+      $facts | ConvertTo-Json -Compress
+  register: _windows_stig_facts_result
+
+- name: "Windows STIG | Evaluate compliance"
+  ansible.builtin.set_fact:
+    audit_full_list:
+      - id: "WN-SRV-000001"
+        title: "RDP must require Network Level Authentication (NLA)"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.rdp_nla | default(0) | int == 1) else 'failed' }}"
+        checktext: "UserAuthentication={{ _facts.rdp_nla | default('null') }}"
+      - id: "WN-SRV-000002"
+        title: "Windows Firewall must be enabled for all profiles"
+        severity: "CAT_I"
+        status: "{{ 'pass' if (_facts.firewall_disabled_profiles | default([]) | length == 0) else 'failed' }}"
+        checktext: "Disabled profiles: {{ _facts.firewall_disabled_profiles | default([]) | join(', ') }}"
+      - id: "WN-SRV-000003"
+        title: "SMBv1 protocol must be disabled"
+        severity: "CAT_I"
+        status: "{{ 'pass' if (_facts.smb1_state | default('') in ['Disabled', 'DisabledWithPayloadRemoved']) else 'failed' }}"
+        checktext: "SMB1Protocol State={{ _facts.smb1_state | default('Unknown') }}"
+      - id: "WN-SRV-000004"
+        title: "Guest account must be disabled"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.guest_enabled | default(true) == false) else 'failed' }}"
+        checktext: "Guest Enabled={{ _facts.guest_enabled | default('null') }}"
+      - id: "WN-SRV-000005"
+        title: "Password complexity must be enabled"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.password_complexity | default(0) | int == 1) else 'failed' }}"
+        checktext: "PasswordComplexity={{ _facts.password_complexity | default(-1) }}"
+      - id: "WN-SRV-000006"
+        title: "Microsoft Defender real-time protection must be enabled"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.defender_realtime | default(false) == true) else 'failed' }}"
+        checktext: "RealTimeProtectionEnabled={{ _facts.defender_realtime | default('null') }}"
+      - id: "WN-SRV-000007"
+        title: "WinRM must not allow unencrypted traffic"
+        severity: "CAT_I"
+        status: "{{ 'pass' if (_facts.winrm_allow_unencrypted | default('') | lower == 'false') else 'failed' }}"
+        checktext: "AllowUnencrypted={{ _facts.winrm_allow_unencrypted | default('Unknown') }}"
+      - id: "WN-SRV-000008"
+        title: "WinRM Basic authentication must be disabled"
+        severity: "CAT_I"
+        status: "{{ 'pass' if (_facts.winrm_basic_auth | default('') | lower == 'false') else 'failed' }}"
+        checktext: "WinRM Basic={{ _facts.winrm_basic_auth | default('Unknown') }}"
+      - id: "WN-SRV-000009"
+        title: "UAC Admin Approval Mode for the built-in Administrator account must be enabled"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.uac_filter_admin | default(0) | int == 1) else 'failed' }}"
+        checktext: "FilterAdministratorToken={{ _facts.uac_filter_admin | default('null') }}"
+      - id: "WN-SRV-000010"
+        title: "Audit Logon events must record both success and failure"
+        severity: "CAT_II"
+        status: "{{ 'pass' if (_facts.audit_logon_setting | default('') is search('Success') and _facts.audit_logon_setting | default('') is search('Failure')) else 'failed' }}"
+        checktext: "Logon Audit Setting={{ _facts.audit_logon_setting | default('Unknown') }}"
+  vars:
+    _facts: "{{ _windows_stig_facts_result.output[0] | from_json }}"
+  changed_when: false
