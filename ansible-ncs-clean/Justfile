@@ -212,8 +212,14 @@ stig-audit-esxi vcenter host:
 
 # Audit all ESXi hosts at a site
 stig-audit-esxi-site site:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
+    trap 'rm -f "$tmpfile"' EXIT
+    {{ ansible_inventory }} -i {{ inventory_file }} --list | \
+        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/vmware_esxi_stig_audit.yml \
-        -l {{ site }}_vcenters -f 10
+        -l {{ site }}_vcenters -e "@$tmpfile" -f 10
 
 # Audit all ESXi hosts at a site with custom inventory
 stig-audit-esxi-site-inv site inv:
