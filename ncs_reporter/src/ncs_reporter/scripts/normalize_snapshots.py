@@ -12,6 +12,8 @@ import json
 import sys
 from datetime import datetime, timezone
 
+from ncs_reporter.primitives import SECONDS_PER_DAY
+
 
 def _parse_iso(ts: str) -> datetime | None:
     if not ts:
@@ -60,7 +62,7 @@ def main() -> None:
     collected_at_str: str = str(fields.get("collected_at") or "")
 
     ref = _parse_iso(collected_at_str) or datetime.now(timezone.utc)
-    threshold_seconds = age_days * 86400.0
+    threshold_seconds = age_days * SECONDS_PER_DAY
 
     enriched_snapshots = []
     aged_count = 0
@@ -80,7 +82,7 @@ def main() -> None:
 
         if dt is not None:
             diff_seconds = (ref - dt).total_seconds()
-            days_old = round(diff_seconds / 86400.0, 1)
+            days_old = round(diff_seconds / SECONDS_PER_DAY, 1)
             item["days_old"] = days_old
             if diff_seconds > threshold_seconds:
                 aged_count += 1

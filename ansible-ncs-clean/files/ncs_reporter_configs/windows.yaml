@@ -1,10 +1,20 @@
 name: windows
-platform: windows
-display_name: "Windows"
+platform:
+  name: windows
+  input_dir: windows
+  report_dir: windows
+  target_types: [windows]
+  inventory_groups: [windows_servers, windows]
+  stig_rule_prefixes:
+    WN: windows
+    MS: windows
 
 # Detects the key emitted by the internal.windows role via ncs_collector callback.
 detection:
   keys_any: [windows_raw_audit]
+
+# Paths starting with '.' are relative to path_prefix.
+path_prefix: "windows_raw_audit.data"
 
 fleet_columns:
   - { label: "Collected At", field: collected_at, width: "160px" }
@@ -26,16 +36,12 @@ fleet_columns:
 fields:
   # --- Collection timestamp ---
 
-  collected_at:
-    path: "windows_raw_audit.metadata.timestamp"
-    type: str
-    fallback: ""
+  collected_at: "windows_raw_audit.metadata.timestamp"
 
   # --- CCMExec service ---
 
   ccm_service_state:
-    path: "windows_raw_audit.data.ccm_service.state"
-    type: str
+    path: ".ccm_service.state"
     fallback: "unknown"
 
   # --- ConfigMgr applications (PowerShell JSON) ---
@@ -43,9 +49,8 @@ fields:
   # unwrap_ps_json.py extracts it; key="AllApps" gives the full app list.
 
   raw_configmgr_apps:
-    path: "windows_raw_audit.data.configmgr_apps"
+    path: ".configmgr_apps"
     type: dict
-    fallback: {}
 
   configmgr_apps:
     script: "unwrap_ps_json.py"
@@ -53,7 +58,6 @@ fields:
       source_field: "raw_configmgr_apps"
       key: "AllApps"
     type: list
-    fallback: []
 
   apps_to_update:
     script: "unwrap_ps_json.py"
@@ -61,28 +65,24 @@ fields:
       source_field: "raw_configmgr_apps"
       key: "AppsToUpdate"
     type: list
-    fallback: []
 
   # --- Installed applications (PowerShell JSON) ---
 
   raw_installed_apps:
-    path: "windows_raw_audit.data.installed_apps"
+    path: ".installed_apps"
     type: list
-    fallback: []
 
   installed_apps:
     script: "unwrap_ps_json.py"
     script_args:
       source_field: "raw_installed_apps"
     type: list
-    fallback: []
 
   # --- Windows Update results ---
 
   update_results:
-    path: "windows_raw_audit.data.update_results"
+    path: ".update_results"
     type: list
-    fallback: []
 
 # ---------------------------------------------------------------------------
 # Alerts

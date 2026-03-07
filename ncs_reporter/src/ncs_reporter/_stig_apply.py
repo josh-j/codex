@@ -19,6 +19,7 @@ from typing import Any
 import yaml
 
 from .normalization.stig import normalize_stig
+from .platform_registry import default_registry
 
 # ---------------------------------------------------------------------------
 # Data types
@@ -36,7 +37,7 @@ RULE_REQUIRED_VARS: dict[str, str] = {
     "ESXI-70-000046": "esxi_stig_ntp_servers",
 }
 
-SUPPORTED_TARGET_TYPES: set[str] = {"esxi", "vm", "vcsa", "vcenter", "photon", "ubuntu", "linux"}
+SUPPORTED_TARGET_TYPES: set[str] = default_registry().all_target_types()
 
 
 class RuleMetadata:
@@ -151,16 +152,9 @@ def detect_target_type(
 
     if rows:
         rv = str(rows[0].get("rule_version") or "").upper()
-        if rv.startswith("ESXI"):
-            return "esxi"
-        if rv.startswith("VMCH"):
-            return "vm"
-        if rv.startswith("VC"):
-            return "vcsa"
-        if rv.startswith("PH"):
-            return "photon"
-        if rv.startswith("UBTU") or rv.startswith("GEN"):
-            return "ubuntu"
+        inferred = default_registry().infer_target_type_from_rule_prefix(rv)
+        if inferred:
+            return inferred
     return ""
 
 

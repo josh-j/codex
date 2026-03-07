@@ -12,7 +12,7 @@
     {% set warn_hosts  = hosts | selectattr('warning_count',  'gt', 0) | list | length %}
     {% set ok_hosts    = hosts | selectattr('health', 'eq', 'OK') | list | length %}
     <title>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</title>
-    <style>{% include 'report_shared.css' %}</style>
+    <style>{{ _minified_css }}</style>
 </head>
 <body>
 <div class="page-wrap">
@@ -138,6 +138,6 @@
 
 
 </div>
-<script>{% include 'collapsible.js' %}</script>
+<script>{{ _minified_js }}</script>
 </body>
 </html>

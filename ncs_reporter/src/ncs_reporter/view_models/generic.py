@@ -7,14 +7,110 @@ from typing import Any
 
 from ncs_reporter.models.report_schema import (
     AlertPanelWidget,
+    BarChartWidget,
+    GroupedTableWidget,
     KeyValueWidget,
-    ReportSchema,
-    TableWidget,
-    ProgressBarWidget,
+    ListWidget,
     MarkdownWidget,
+    ProgressBarWidget,
+    ReportSchema,
+    StatCardsWidget,
+    TableWidget,
 )
-from ncs_reporter.normalization.schema_driven import normalize_from_schema
-from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, status_badge_meta
+from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
+from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entry_for_dir, status_badge_meta
+
+
+def _format_value(fmt: str | None, value: Any) -> str:
+    """Apply a format string to a value, returning str(value) on failure or no format."""
+    if not fmt:
+        return str(value)
+    try:
+        if "{value" in fmt:
+            return fmt.format(value=value)
+        return fmt.replace("{value}", str(value))
+    except (ValueError, KeyError, TypeError):
+        return str(value)
+
+
+def _resolve_threshold_color(
+    value: float, thresholds: dict[int, str] | None, default_color: str = "blue"
+) -> str:
+    """Resolve a color name from sorted thresholds. Returns default_color if no thresholds."""
+    if not thresholds:
+        return default_color
+    sorted_thresh = sorted([(int(k), v) for k, v in thresholds.items()])
+    color = "green"
+    for thresh_val, c_name in sorted_thresh:
+        if value >= thresh_val:
+            color = c_name
+    return color
+
+
+def _render_table_cell(
+    col: Any,
+    item: dict[str, Any],
+    hosts_data: dict[str, Any] | None = None,
+    current_platform_dir: str | None = None,
+    generated_fleet_dirs: set[str] | None = None,
+) -> dict[str, Any]:
+    """Render a single table cell from a TableColumn and row item."""
+    if "." in col.field:
+        parts = col.field.split(".")
+        value: Any = item
+        for p in parts:
+            if isinstance(value, dict):
+                value = value.get(p, "")
+            else:
+                value = ""
+                break
+    else:
+        value = item.get(col.field, "")
+    link = None
+    cell_class = ""
+
+    if col.style_rules:
+        temp_ctx = {col.field: value}
+        if isinstance(item, dict):
+            temp_ctx.update(item)
+        for rule in col.style_rules:
+            if evaluate_condition(rule.condition, temp_ctx):
+                cell_class = rule.css_class
+                break
+
+    if col.link_field and hosts_data:
+        link_val = str(item.get(col.link_field) or "")
+        if link_val in hosts_data:
+            target_platform = hosts_data[link_val]
+            if generated_fleet_dirs is not None and target_platform not in generated_fleet_dirs:
+                target_platform = ""
+            if target_platform:
+                depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
+                back_to_root = "../" * (depth + 1)
+                link = f"{back_to_root}platform/{target_platform}/{link_val}/health_report.html"
+
+    rendered_value = _format_value(col.format, value) if col.format else value
+
+    return {"value": rendered_value, "badge": col.badge, "link": link, "css_class": cell_class}
+
+
+# Widget types that are compact enough to sit side-by-side at half width
+_COMPACT_WIDGET_TYPES = (KeyValueWidget, StatCardsWidget, ProgressBarWidget, ListWidget, BarChartWidget)
+
+# Tables with this many columns or fewer auto-size to half width
+_TABLE_HALF_WIDTH_MAX_COLS = 4
+
+
+def _auto_layout(widget: Any) -> dict[str, Any]:
+    """Return layout dict, auto-sizing compact widgets to half when no explicit width was set."""
+    layout = widget.layout.model_dump() if hasattr(widget, "layout") else {"width": "full"}
+    if widget.layout.model_fields_set.intersection({"width"}):
+        return layout
+    if isinstance(widget, _COMPACT_WIDGET_TYPES):
+        layout["width"] = "half"
+    elif isinstance(widget, (TableWidget, GroupedTableWidget)) and len(widget.columns) <= _TABLE_HALF_WIDTH_MAX_COLS:
+        layout["width"] = "half"
+    return layout
 
 
 def _render_widget(
@@ -24,29 +120,23 @@ def _render_widget(
     hosts_data: dict[str, Any] | None = None,
     current_platform_dir: str | None = None,
     generated_fleet_dirs: set[str] | None = None,
-) -> dict[str, Any]:
-    """Render a single schema widget into a template-ready dict."""
+) -> dict[str, Any] | None:
+    """Render a single schema widget into a template-ready dict. Returns None if hidden by visible_if."""
+    # visible_if guard
+    if hasattr(widget, "visible_if") and widget.visible_if is not None:
+        if not evaluate_condition(widget.visible_if, fields):
+            return None
+
     if isinstance(widget, KeyValueWidget):
         rows = []
         for kv in widget.fields:
             value = fields.get(kv.field, "")
-            if kv.format:
-                try:
-                    # Support both old-style .replace and new-style .format with specifiers (e.g. {value:.1f})
-                    if "{value" in kv.format:
-                        label_str = kv.format.format(value=value)
-                    else:
-                        label_str = kv.format.replace("{value}", str(value))
-                except (ValueError, KeyError, TypeError):
-                    label_str = str(value)
-            else:
-                label_str = str(value)
-            rows.append({"label": kv.label, "value": label_str})
+            rows.append({"label": kv.label, "value": _format_value(kv.format, value), "badge": kv.badge})
         return {
             "id": widget.id,
             "title": widget.title,
             "type": "key_value",
-            "layout": widget.layout.model_dump(),
+            "layout": _auto_layout(widget),
             "rows": rows,
         }
 
@@ -58,61 +148,16 @@ def _render_widget(
         for item in raw_rows:
             if not isinstance(item, dict):
                 item = {"value": item}
-            rendered_cells = []
-            for col in widget.columns:
-                value = item.get(col.field, "")
-                link = None
-                cell_class = ""
-
-                # Evaluate conditional styling
-                if col.style_rules:
-                    # evaluate_condition expects a dict of fields. We wrap the cell value
-                    # in a temporary dict matching the field name to evaluate the condition.
-                    from ncs_reporter.normalization.schema_driven import evaluate_condition
-
-                    temp_ctx = {col.field: value}
-                    # Also include the rest of the row context in case conditions reference other columns
-                    if isinstance(item, dict):
-                        temp_ctx.update(item)
-                    for rule in col.style_rules:
-                        if evaluate_condition(rule.condition, temp_ctx):
-                            cell_class = rule.css_class
-                            break
-
-                # Resolve link if specified
-                if col.link_field and hosts_data:
-                    link_val = str(item.get(col.link_field) or "")
-                    if link_val in hosts_data:
-                        # link_val is the hostname, hosts_data[link_val] is the platform directory
-                        target_platform = hosts_data[link_val]
-                        if generated_fleet_dirs is not None and target_platform not in generated_fleet_dirs:
-                            target_platform = ""
-                        if target_platform:
-                            # Calculate steps back to 'platform' root
-                            depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
-                            back_to_root = "../" * (depth + 1)
-                            link = f"{back_to_root}platform/{target_platform}/{link_val}/health_report.html"
-
-                if col.format:
-                    try:
-                        if "{value" in col.format:
-                            rendered_value = col.format.format(value=value)
-                        else:
-                            rendered_value = col.format.replace("{value}", str(value))
-                    except (ValueError, KeyError, TypeError):
-                        rendered_value = str(value)
-                else:
-                    rendered_value = value
-
-                rendered_cells.append(
-                    {"value": rendered_value, "badge": col.badge, "link": link, "css_class": cell_class}
-                )
+            rendered_cells = [
+                _render_table_cell(col, item, hosts_data, current_platform_dir, generated_fleet_dirs)
+                for col in widget.columns
+            ]
             table_rows.append(rendered_cells)
         return {
             "id": widget.id,
             "title": widget.title,
             "type": "table",
-            "layout": widget.layout.model_dump(),
+            "layout": _auto_layout(widget),
             "columns": [c.model_dump() for c in widget.columns],
             "rows": table_rows,
         }
@@ -129,20 +174,14 @@ def _render_widget(
             label_text = str(fields.get(widget.label, ""))
 
         color: str = widget.color
-        if color == "auto" and widget.thresholds:
-            sorted_thresh = sorted([(int(k), v) for k, v in widget.thresholds.items()])
-            color = "green"  # default
-            for thresh_val, c_name in sorted_thresh:
-                if pct >= thresh_val:
-                    color = c_name
-        elif color == "auto":
-            color = "blue"
+        if color == "auto":
+            color = _resolve_threshold_color(pct, widget.thresholds)
 
         return {
             "id": widget.id,
             "title": widget.title,
             "type": "progress_bar",
-            "layout": widget.layout.model_dump(),
+            "layout": _auto_layout(widget),
             "percent": pct,
             "label": label_text,
             "color": color,
@@ -153,7 +192,7 @@ def _render_widget(
             "id": widget.id,
             "title": widget.title,
             "type": "markdown",
-            "layout": widget.layout.model_dump(),
+            "layout": _auto_layout(widget),
             "content": widget.content,
         }
 
@@ -162,8 +201,101 @@ def _render_widget(
             "id": widget.id,
             "title": widget.title,
             "type": "alert_panel",
-            "layout": widget.layout.model_dump(),
+            "layout": _auto_layout(widget),
             "alerts": alerts,
+        }
+
+    if isinstance(widget, StatCardsWidget):
+        cards_rendered = []
+        for card in widget.cards:
+            value = fields.get(card.field, 0)
+            display = _format_value(card.format, value)
+
+            resolved_color: str = card.color
+            if resolved_color == "auto":
+                try:
+                    num_val = float(value)
+                except (ValueError, TypeError):
+                    num_val = 0.0
+                resolved_color = _resolve_threshold_color(num_val, card.thresholds)
+
+            cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
+        return {
+            "id": widget.id,
+            "title": widget.title,
+            "type": "stat_cards",
+            "layout": _auto_layout(widget),
+            "cards": cards_rendered,
+        }
+
+    if isinstance(widget, BarChartWidget):
+        raw_rows = fields.get(widget.rows_field, [])
+        if not isinstance(raw_rows, list):
+            raw_rows = []
+        bars = []
+        for item in raw_rows:
+            if not isinstance(item, dict):
+                continue
+            label = str(item.get(widget.label_field, ""))
+            try:
+                val = float(item.get(widget.value_field, 0))
+            except (ValueError, TypeError):
+                val = 0.0
+            width_pct = min(100.0, max(0.0, val / widget.max * 100)) if widget.max else 0.0
+            color = _resolve_threshold_color(val, widget.thresholds)
+            bars.append({"label": label, "value": val, "width_pct": width_pct, "color": color})
+        return {
+            "id": widget.id,
+            "title": widget.title,
+            "type": "bar_chart",
+            "layout": _auto_layout(widget),
+            "bars": bars,
+        }
+
+    if isinstance(widget, ListWidget):
+        raw_items = fields.get(widget.items_field, [])
+        if not isinstance(raw_items, list):
+            raw_items = []
+        display_items = []
+        for item in raw_items:
+            if widget.display_field and isinstance(item, dict):
+                display_items.append(str(item.get(widget.display_field, "")))
+            else:
+                display_items.append(str(item))
+        return {
+            "id": widget.id,
+            "title": widget.title,
+            "type": "list",
+            "layout": _auto_layout(widget),
+            "items": display_items,
+            "style": widget.style,
+            "empty_text": widget.empty_text,
+        }
+
+    if isinstance(widget, GroupedTableWidget):
+        raw_rows = fields.get(widget.rows_field, [])
+        if not isinstance(raw_rows, list):
+            raw_rows = []
+        # Group by the group_by field, preserving insertion order
+        groups: dict[str, list[list[dict[str, Any]]]] = {}
+        for item in raw_rows:
+            if not isinstance(item, dict):
+                item = {"value": item}
+            group_key = str(item.get(widget.group_by, ""))
+            if group_key not in groups:
+                groups[group_key] = []
+            rendered_cells = [
+                _render_table_cell(col, item, hosts_data, current_platform_dir, generated_fleet_dirs)
+                for col in widget.columns
+            ]
+            groups[group_key].append(rendered_cells)
+        return {
+            "id": widget.id,
+            "title": widget.title,
+            "type": "grouped_table",
+            "layout": _auto_layout(widget),
+            "columns": [c.model_dump() for c in widget.columns],
+            "groups": groups,
         }
 
     layout_val = {"width": "full"}
@@ -190,6 +322,7 @@ def build_generic_node_view(
     nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
+    has_stig_fleet: bool = False,
     history: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single host report."""
@@ -205,15 +338,19 @@ def build_generic_node_view(
     # siblings in the same platform (as indexed in hosts_data)
     current_plt_dir = hosts_data.get(hostname) if hosts_data else None
     widgets_rendered = [
-        _render_widget(
-            w,
-            fields,
-            alerts,
-            hosts_data=hosts_data,
-            current_platform_dir=current_plt_dir,
-            generated_fleet_dirs=generated_fleet_dirs,
-        )
+        rendered
         for w in schema.widgets
+        if (
+            rendered := _render_widget(
+                w,
+                fields,
+                alerts,
+                hosts_data=hosts_data,
+                current_platform_dir=current_plt_dir,
+                generated_fleet_dirs=generated_fleet_dirs,
+            )
+        )
+        is not None
     ]
 
     # Build nav tree information if possible
@@ -240,23 +377,14 @@ def build_generic_node_view(
             p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
 
         for plt_dir in p_dirs:
-            # Map directory/internal names to labels and schema names
-            if "vcenter" in plt_dir:
-                label = "VMware"
-                schema_name = "vcsa" if "vcenter/vcsa" in plt_dir else "vcenter"
-            elif "ubuntu" in plt_dir:
-                label = "Linux"
-                schema_name = "linux"
-            else:
-                label = plt_dir.split("/")[-1].capitalize()
-                schema_name = plt_dir.split("/")[-1]
-
+            label, schema_name = fleet_entry_for_dir(plt_dir)
             fleets.append(
                 {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
             )
 
-        # Add STIG fleet
-        fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
+        # Add STIG fleet (only if it will be generated)
+        if has_stig_fleet:
+            fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
         nav_with_tree["tree_fleets"] = fleets
 
     return {
@@ -287,6 +415,7 @@ def build_generic_fleet_view(
     nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
+    has_stig_fleet: bool = False,
 ) -> dict[str, Any]:
     """Build a template context dict for a fleet-level report."""
     schema_key = f"schema_{schema.name}"
@@ -365,22 +494,14 @@ def build_generic_fleet_view(
             if generated_fleet_dirs is not None:
                 p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
             for plt_dir in p_dirs:
-                if "vcenter" in plt_dir:
-                    label = "VMware"
-                    schema_name = "vcsa" if "vcenter/vcsa" in plt_dir else "vcenter"
-                elif "ubuntu" in plt_dir:
-                    label = "Linux"
-                    schema_name = "linux"
-                else:
-                    label = plt_dir.split("/")[-1].capitalize()
-                    schema_name = plt_dir.split("/")[-1]
-
+                label, schema_name = fleet_entry_for_dir(plt_dir)
                 fleets.append(
                     {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
                 )
 
-            # Add STIG fleet
-            fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
+            # Add STIG fleet (only if it will be generated)
+            if has_stig_fleet:
+                fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
             nav_with_tree["tree_fleets"] = fleets
 
     return {

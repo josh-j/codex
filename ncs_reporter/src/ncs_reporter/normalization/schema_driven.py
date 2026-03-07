@@ -27,7 +27,7 @@ from ncs_reporter.models.report_schema import (
     StringInCondition,
     ThresholdCondition,
 )
-from ncs_reporter.primitives import canonical_severity, safe_list
+from ncs_reporter.primitives import BYTES_PER_GB, BYTES_PER_MB, SECONDS_PER_DAY, canonical_severity, safe_list
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _first(value: Any) -> Any:
 @_register_transform("to_gb")
 def _to_gb(value: Any) -> float:
     try:
-        return round(float(value) / (1024**3), 2)
+        return round(float(value) / BYTES_PER_GB, 2)
     except (TypeError, ValueError):
         return 0.0
 
@@ -69,7 +69,7 @@ def _to_gb(value: Any) -> float:
 @_register_transform("to_mb")
 def _to_mb(value: Any) -> float:
     try:
-        return round(float(value) / (1024**2), 2)
+        return round(float(value) / BYTES_PER_MB, 2)
     except (TypeError, ValueError):
         return 0.0
 
@@ -77,7 +77,107 @@ def _to_mb(value: Any) -> float:
 @_register_transform("to_days")
 def _to_days(value: Any) -> float:
     try:
-        return round(float(value) / 86400.0, 1)
+        return round(float(value) / SECONDS_PER_DAY, 1)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+@_register_transform("join_lines")
+def _join_lines(value: Any) -> str:
+    """Join a list of strings into a single newline-delimited string."""
+    if isinstance(value, list):
+        return "\n".join(str(v) for v in value)
+    return str(value) if value is not None else ""
+
+
+@_register_transform("keys")
+def _keys(value: Any) -> list[str]:
+    """Return the keys of a dict as a list."""
+    if isinstance(value, dict):
+        return list(value.keys())
+    return []
+
+
+@_register_transform("values")
+def _values(value: Any) -> list[Any]:
+    """Return the values of a dict as a list."""
+    if isinstance(value, dict):
+        return list(value.values())
+    return []
+
+
+@_register_transform("flatten")
+def _flatten(value: Any) -> list[Any]:
+    """Flatten a list of lists into a single list."""
+    if not isinstance(value, list):
+        return []
+    result: list[Any] = []
+    for item in value:
+        if isinstance(item, list):
+            result.extend(item)
+        else:
+            result.append(item)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Parameterized transforms (name(arg) syntax)
+# ---------------------------------------------------------------------------
+
+_PARAM_TRANSFORMS: dict[str, Callable[..., Any]] = {}
+
+
+def _register_param_transform(name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        _PARAM_TRANSFORMS[name] = fn
+        return fn
+
+    return decorator
+
+
+@_register_param_transform("regex_extract")
+def _regex_extract(value: Any, pattern: str) -> str:
+    """Extract the first capture group from a string using a regex pattern."""
+    text = str(value) if value is not None else ""
+    m = _re.search(pattern, text)
+    return m.group(1) if m else ""
+
+
+@_register_param_transform("parse_kv")
+def _parse_kv(value: Any, separator: str = " ", comment: str = "#") -> dict[str, str]:
+    """Parse key-value pairs from lines of text.
+
+    Strips comment lines (starting with `comment`), splits on `separator`,
+    and strips inline comments.
+    """
+    lines: list[str] = []
+    if isinstance(value, list):
+        lines = [str(v) for v in value]
+    elif isinstance(value, str):
+        lines = value.splitlines()
+    else:
+        return {}
+
+    result: dict[str, str] = {}
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith(comment):
+            continue
+        if separator == " ":
+            parts = line.split(None, 1)
+        else:
+            parts = line.split(separator, 1)
+        if len(parts) == 2 and parts[0]:
+            val = parts[1].split(comment, 1)[0].strip()
+            result[parts[0]] = val
+    return result
+
+
+@_register_param_transform("round")
+def _round_transform(value: Any, digits: str = "0") -> float:
+    """Round a number to the given number of decimal places."""
+    try:
+        return round(float(value), int(digits))
     except (TypeError, ValueError):
         return 0.0
 
@@ -236,22 +336,81 @@ def _run_script_field(
 # ---------------------------------------------------------------------------
 
 
+_PARAM_RE = _re.compile(r"^(\w+)\((.+)\)$")
+
+
+def _apply_transform(obj: Any, transform_str: str, full_path: str) -> Any:
+    """Apply a single transform (simple or parameterized) to a value."""
+    transform_str = transform_str.strip()
+    # Check for parameterized transform: name(arg1, arg2, ...)
+    m = _PARAM_RE.match(transform_str)
+    if m:
+        name = m.group(1)
+        fn = _PARAM_TRANSFORMS.get(name)
+        if fn is None:
+            logger.warning("Unknown parameterized transform '%s' in path '%s'", name, full_path)
+            return obj
+        # Parse args: handle quoted strings and bare values
+        raw_args = m.group(2)
+        args = _parse_transform_args(raw_args)
+        return fn(obj, *args)
+
+    # Simple transform
+    transform = _TRANSFORMS.get(transform_str)
+    if transform is None:
+        logger.warning("Unknown transform '%s' in path '%s'", transform_str, full_path)
+        return obj
+    return transform(obj)
+
+
+def _parse_transform_args(raw: str) -> list[str]:
+    """Parse transform arguments, respecting quoted strings.
+
+    Quoted values preserve their content exactly (no stripping).
+    Unquoted values are stripped of whitespace.
+    Backslashes inside quotes are treated literally.
+    """
+    args: list[str] = []
+    current = ""
+    in_quote: str | None = None
+    has_quote = False
+    for ch in raw:
+        if in_quote is not None:
+            if ch == in_quote:
+                in_quote = None
+                continue
+            current += ch
+            continue
+        if ch in ("'", '"'):
+            in_quote = ch
+            has_quote = True
+            # Discard any unquoted whitespace accumulated before the quote
+            current = current.rstrip()
+            continue
+        if ch == ",":
+            args.append(current if has_quote else current.strip())
+            current = ""
+            has_quote = False
+            continue
+        current += ch
+    final = current if has_quote else current.strip()
+    if final or has_quote:
+        args.append(final)
+    return args
+
+
 def resolve_field(path: str, raw: dict[str, Any]) -> Any:
     """
     Resolve a field path against *raw*.
 
     Syntax:
       - Dot-notation traversal: ``"ansible_facts.hostname"``
-      - Optional pipe transform: ``"interfaces | len_if_list"``
+      - Optional pipe transforms (chainable): ``"interfaces | len_if_list"``
+      - Parameterized transforms: ``"lines | regex_extract('(\\d+) upgraded')"``
     """
-    transform_name: str | None = None
-
-    if " | " in path:
-        path_part, transform_name = path.split(" | ", 1)
-        path_part = path_part.strip()
-        transform_name = transform_name.strip()
-    else:
-        path_part = path
+    parts = path.split(" | ")
+    path_part = parts[0].strip()
+    transforms = parts[1:] if len(parts) > 1 else []
 
     obj: Any = raw
     for segment in path_part.split("."):
@@ -264,12 +423,8 @@ def resolve_field(path: str, raw: dict[str, Any]) -> Any:
             obj = None
             break
 
-    if transform_name is not None:
-        transform = _TRANSFORMS.get(transform_name)
-        if transform is None:
-            logger.warning("Unknown transform '%s' in path '%s'", transform_name, path)
-        else:
-            obj = transform(obj)
+    for t in transforms:
+        obj = _apply_transform(obj, t, path)
 
     return obj
 
@@ -368,6 +523,106 @@ def _coerce(value: Any, type_name: str, fallback: Any) -> Any:
         return fallback
 
 
+def _apply_list_filter(items: list[Any], filter_spec: Any) -> list[Any]:
+    """Apply list_filter (exclude/include) to a list of dicts."""
+    result: list[Any] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        excluded = False
+        # Exclude: if any rule matches, item is excluded
+        for field_name, patterns in filter_spec.exclude.items():
+            val = str(item.get(field_name) or "")
+            for pat in patterns:
+                if pat.startswith("^"):
+                    # Regex pattern
+                    if _re.search(pat, val):
+                        excluded = True
+                        break
+                else:
+                    # Substring / exact match (case-insensitive)
+                    if pat.lower() == val.lower():
+                        excluded = True
+                        break
+            if excluded:
+                break
+        if excluded:
+            continue
+        # Include: if include rules exist, at least one must match
+        if filter_spec.include:
+            included = False
+            for field_name, patterns in filter_spec.include.items():
+                val = str(item.get(field_name) or "")
+                for pat in patterns:
+                    if pat.startswith("^"):
+                        if _re.search(pat, val):
+                            included = True
+                            break
+                    else:
+                        if pat.lower() == val.lower():
+                            included = True
+                            break
+                if included:
+                    break
+            if not included:
+                continue
+        result.append(item)
+    return result
+
+
+def _apply_list_map(items: list[Any], map_spec: dict[str, str]) -> list[Any]:
+    """Apply list_map expressions to each item in a list, adding computed fields."""
+    result: list[Any] = []
+    for item in items:
+        if not isinstance(item, dict):
+            result.append(item)
+            continue
+        enriched = dict(item)
+        for field_name, expression in map_spec.items():
+            try:
+                enriched[field_name] = round(_safe_eval_expr(expression, enriched), 2)
+            except Exception:
+                enriched[field_name] = 0.0
+        result.append(enriched)
+    return result
+
+
+def _apply_count_where(items: list[Any], conditions: dict[str, Any]) -> int:
+    """Count list items where all field=value conditions match (case-insensitive for strings)."""
+    count = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        match = True
+        for field_name, expected in conditions.items():
+            val = item.get(field_name)
+            if isinstance(val, str) and isinstance(expected, str):
+                if val.lower() != expected.lower():
+                    match = False
+                    break
+            elif val != expected:
+                match = False
+                break
+        if match:
+            count += 1
+    return count
+
+
+def _apply_list_processing(value: Any, spec: Any) -> Any:
+    """Apply list_filter, list_map, and count_where to a resolved value."""
+    if spec.count_where is not None:
+        items = value if isinstance(value, list) else []
+        return _apply_count_where(items, spec.count_where)
+    if spec.list_filter is not None or spec.list_map:
+        items = value if isinstance(value, list) else []
+        if spec.list_filter is not None:
+            items = _apply_list_filter(items, spec.list_filter)
+        if spec.list_map:
+            items = _apply_list_map(items, spec.list_map)
+        return items
+    return value
+
+
 def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
     """
     Walk schema.fields, resolve each from *raw*, coerce types, apply fallbacks.
@@ -402,7 +657,9 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
                 result[name] = _get_sentinel(spec)
                 path_broken += 1
             else:
-                result[name] = _coerce(raw_value, spec.type, spec.fallback)
+                processed = _apply_list_processing(raw_value, spec)
+                coerced = _coerce(processed, spec.type, spec.fallback)
+                result[name] = coerced
                 if raw_value is not None:
                     path_resolved += 1
 
@@ -429,7 +686,8 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
             if value is _SCRIPT_ERROR_SENTINEL:
                 result[name] = _get_sentinel(spec)
             else:
-                result[name] = _coerce(value, spec.type, spec.fallback)
+                processed = _apply_list_processing(value, spec)
+                result[name] = _coerce(processed, spec.type, spec.fallback)
 
     # Pass 4: re-evaluate compute fields (allows compute to reference script results)
     for name, spec in schema.fields.items():
@@ -577,7 +835,7 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
         else:
             ref_dt = datetime.now(timezone.utc)
 
-        age_days = (ref_dt - field_dt).total_seconds() / 86400.0
+        age_days = (ref_dt - field_dt).total_seconds() / SECONDS_PER_DAY
         _date_ops = {
             "age_gt": lambda a, t: a > t,
             "age_lt": lambda a, t: a < t,
@@ -598,9 +856,17 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
 def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[dict[str, Any]]:
     """Evaluate all alert rules and return alert dicts compatible with build_alerts()."""
     alerts: list[dict[str, Any]] = []
+    fired_ids: set[str] = set()
+
     for rule in schema.alerts:
         if not evaluate_condition(rule.condition, fields):
             continue
+
+        # Check suppress_if: skip this alert if any referenced alert already fired
+        if rule.suppress_if is not None:
+            suppressor_ids = [rule.suppress_if] if isinstance(rule.suppress_if, str) else rule.suppress_if
+            if any(sid in fired_ids for sid in suppressor_ids):
+                continue
 
         try:
             message = rule.message.format(**fields)
@@ -627,6 +893,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 "condition": True,
             }
         )
+        fired_ids.add(rule.id)
 
     return alerts
 

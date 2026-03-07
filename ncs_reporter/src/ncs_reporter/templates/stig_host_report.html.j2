@@ -12,9 +12,7 @@
     {% set findings = view.get('findings', []) %}
     {% set nav = view.get('nav', {}) %}
     <title>STIG Report - {{ target.get('host', 'unknown') }}</title>
-    <style>
-        {% include 'report_shared.css' %}
-    </style>
+    <style>{{ _minified_css }}</style>
 </head>
 <body>
 <div class="page-wrap">
@@ -44,18 +42,36 @@
         <a href="{{ nav.fleet_report }}">{{ nav.get('fleet_label', 'STIG Fleet Dashboard') }}</a><span class="sep">&rsaquo;</span>
         {% endif %}
 
-        {% if nav.get('tree_siblings') %}
+        {% if nav.get('tree_host_peers') %}
         <div class="nav-tree">
             <span class="tree-label">{{ target.get('host', 'host') }}</span>
             <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">Hosts</div>
+                {% for p in nav.tree_host_peers %}
+                <a href="{{ p.report }}" class="{{ 'active' if p.name == target.get('host') else '' }}">{{ p.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <span>{{ target.get('host', 'host') }}</span>
+        {% endif %}
+
+        {% if nav.get('tree_siblings') %}
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">{{ target.get('target_type', 'unknown') | upper }} STIG</span>
+            <span class="tree-trigger">&#9660;</span>
             <div class="nav-dropdown">
-                <div class="dropdown-group">Audits for {{ target.get('host', 'host') }}</div>
+                <div class="dropdown-group">STIG Audits</div>
                 <a href="#" class="active">{{ target.get('target_type', 'unknown') | upper }} STIG</a>
                 {% for s in nav.tree_siblings %}
                 <a href="{{ s.report }}">{{ s.name }}</a>
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
+
         {% if nav.history %}
         <span class="sep">&rsaquo;</span>
         <div class="nav-tree">
@@ -68,9 +84,6 @@
                 {% endfor %}
             </div>
         </div>
-        {% endif %}
-        {% else %}
-        {{ target.get('host', 'unknown') }} (STIG)
         {% endif %}
         <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
             <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
@@ -167,10 +180,10 @@
         <table>
             <thead>
                 <tr>
-                    <th class="col-id">Rule ID</th>
-                    <th class="col-status">Status</th>
-                    <th class="col-sev">Severity</th>
-                    <th>Details</th>
+                    <th class="col-id sortable">Rule ID</th>
+                    <th class="col-status sortable">Status</th>
+                    <th class="col-sev sortable">Severity</th>
+                    <th class="sortable">Details</th>
                 </tr>
             </thead>
             <tbody>
@@ -241,14 +254,16 @@
         <table>
             <thead>
                 <tr>
-                    <th class="col-id">Rule ID</th>
-                    <th class="col-status">Status</th>
-                    <th class="col-sev">Severity</th>
-                    <th>Title</th>
+                    <th class="col-id sortable">Rule ID</th>
+                    <th class="col-status sortable">Status</th>
+                    <th class="col-sev sortable">Severity</th>
+                    <th class="sortable">Details</th>
                 </tr>
             </thead>
             <tbody>
             {% for rule in findings %}
+                {% set rule_detail = rule.get('detail', {}) %}
+                {% set is_open = rule.get('status', '') | lower in ('open', 'fail', 'non-compliant') %}
                 <tr>
                     <td class="col-id">{{ rule.get('rule_id', '') }}</td>
                     <td>
@@ -265,7 +280,41 @@
                             {{ cat_label }}
                         </span>
                     </td>
-                    <td>{{ rule.get('title', '') }}</td>
+                    <td>
+                        <div class="finding-title">
+                            {{ rule.get('title', 'No Title Provided') }}
+                        </div>
+                        {% if is_open %}
+                        {% set detail_desc = rule_detail.get('description', '') %}
+                        {% if rule.get('message') and rule.get('message') != rule.get('title') and rule.get('message') != detail_desc %}
+                        <div class="finding-message">
+                            {{ rule.get('message', '') }}
+                        </div>
+                        {% endif %}
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                {% if detail_desc or rule.get('message') %}
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    {{ detail_desc or rule.get('message', '') }}
+                                </div>
+                                {% endif %}
+
+                                {% if rule_detail.get('checktext') %}
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>{{ rule_detail.get('checktext', '') }}</pre>
+                                {% endif %}
+
+                                {% if rule_detail.get('fixtext') %}
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>{{ rule_detail.get('fixtext', '') }}</pre>
+                                {% endif %}
+                            </div>
+                        </details>
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
             </tbody>
@@ -274,6 +323,6 @@
     </div>
     {% endif %}
 </div>
-<script>{% include 'collapsible.js' %}</script>
+<script>{{ _minified_js }}</script>
 </body>
 </html>

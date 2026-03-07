@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from ..platform_registry import default_registry
 from ..primitives import (
     canonical_severity as canonical_severity,
     safe_list as safe_list,
@@ -9,24 +10,7 @@ from ..primitives import (
     to_int as to_int,
 )  # noqa: F401 (to_int re-exported)
 
-_DEFAULT_SKIP_KEYS = {
-    "summary",
-    "split",
-    "platform",
-    "history",
-    "raw_state",
-    "ubuntu",
-    "vmware",
-    "windows",
-    "all_hosts_state",
-    "all_hosts_state.yaml",
-    "linux_fleet_state",
-    "linux_fleet_state.yaml",
-    "vmware_fleet_state",
-    "vmware_fleet_state.yaml",
-    "windows_fleet_state",
-    "windows_fleet_state.yaml",
-}
+_DEFAULT_SKIP_KEYS = default_registry().skip_keys_set()
 
 
 def default_report_skip_keys() -> list[str]:
@@ -69,14 +53,6 @@ def _optional_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
-
-def _severity_for_pct(value_pct: Any, warning: float = 85.0, critical: float = 90.0) -> str:
-    pct = to_float(value_pct, 0.0)
-    if pct > to_float(critical, 90.0):
-        return "CRITICAL"
-    if pct > to_float(warning, 85.0):
-        return "WARNING"
-    return "OK"
 
 
 def _count_alerts(alerts: Any) -> dict[str, int]:
@@ -185,6 +161,23 @@ def aggregate_platform_status(all_alerts: list[dict[str, Any]], audit_type: str)
     if has_warning:
         return "WARNING"
     return "OK"
+
+
+def fleet_entry_for_dir(plt_dir: str) -> tuple[str, str]:
+    """Map a platform directory to (label, schema_name) for fleet nav trees.
+
+    Uses the platform registry to resolve display names and schema names
+    from report_dir paths.
+    """
+    reg = default_registry()
+    for entry in reg.entries:
+        if entry.report_dir == plt_dir:
+            label = entry.display_name or entry.platform.capitalize()
+            schema_name = (entry.schema_names[0] if entry.schema_names
+                           else entry.schema_name or entry.platform)
+            return (label, schema_name)
+    leaf = plt_dir.split("/")[-1]
+    return (leaf.capitalize(), leaf)
 
 
 def collect_active_alerts(

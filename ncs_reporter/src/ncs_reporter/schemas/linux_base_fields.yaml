@@ -1,0 +1,134 @@
+# Shared Linux/Photon base fields.
+# Included via $include from linux-family schemas.
+# Paths use '.' prefix (relative to the schema's path_prefix).
+
+# --- System identity ---
+
+hostname:
+  path: ".ansible_facts.hostname"
+  fallback: "unknown"
+
+ip_address:
+  path: ".ansible_facts.default_ipv4.address"
+  fallback: "N/A"
+
+kernel:
+  path: ".ansible_facts.kernel"
+  fallback: "unknown"
+
+os_family:
+  path: ".ansible_facts.os_family"
+  fallback: "unknown"
+
+distribution:
+  path: ".ansible_facts.distribution"
+  fallback: "unknown"
+
+distribution_version:
+  path: ".ansible_facts.distribution_version"
+  fallback: "unknown"
+
+# --- Uptime ---
+
+uptime_seconds:
+  path: ".ansible_facts.uptime_seconds"
+  type: float
+
+uptime_days:
+  compute: "{uptime_seconds} / 86400"
+  type: float
+
+load_avg_15m:
+  path: ".ansible_facts.loadavg.15m"
+  type: float
+
+# --- Memory ---
+
+memory_total_mb:
+  path: ".ansible_facts.memtotal_mb"
+  type: float
+  fallback: 1.0
+
+memory_free_mb:
+  path: ".ansible_facts.memfree_mb"
+  type: float
+
+memory_used_pct:
+  compute: "({memory_total_mb} - {memory_free_mb}) / {memory_total_mb} * 100"
+  type: float
+
+swap_total_mb:
+  path: ".ansible_facts.swaptotal_mb"
+  type: float
+
+swap_free_mb:
+  path: ".ansible_facts.swapfree_mb"
+  type: float
+
+swap_used_pct:
+  compute: "({swap_total_mb} - {swap_free_mb}) / {swap_total_mb} * 100"
+  type: float
+
+# --- Services ---
+
+failed_services:
+  path: ".failed_services.stdout_lines"
+  type: list
+
+failed_services_count:
+  path: ".failed_services.stdout_lines | len_if_list"
+  type: int
+
+# --- Updates & reboot ---
+
+pending_updates_count:
+  path: ".apt_simulate.stdout_lines | join_lines | regex_extract('(\\d+) upgraded,')"
+  type: int
+
+reboot_pending:
+  path: ".reboot_stat.stat.exists"
+  type: bool
+
+# --- Storage ---
+
+disks:
+  path: ".ansible_facts.mounts"
+  type: list
+  list_filter:
+    exclude:
+      fstype: [tmpfs, devtmpfs, squashfs, overlay, proc, sysfs, devpts]
+      device: ["^/dev/loop"]
+  list_map:
+    total_gb: "{size_total} / 1073741824"
+    free_gb: "{size_available} / 1073741824"
+    used_pct: "({size_total} - {size_available}) / {size_total} * 100"
+
+# --- Security ---
+
+getent_passwd:
+  path: ".ansible_facts.getent_passwd"
+  type: dict
+
+shadow_lines:
+  path: ".shadow_raw.stdout_lines"
+  type: list
+
+epoch_seconds:
+  path: ".ansible_facts.date_time.epoch"
+  type: float
+
+sshd_config:
+  path: ".sshd_raw.stdout_lines | parse_kv(' ', '#')"
+  type: dict
+
+world_writable_files:
+  path: ".world_writable.stdout_lines"
+  type: list
+
+world_writable_count:
+  path: ".world_writable.stdout_lines | len_if_list"
+  type: int
+
+users:
+  script: "user_inventory.py"
+  type: list

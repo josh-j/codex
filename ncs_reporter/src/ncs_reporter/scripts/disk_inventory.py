@@ -24,6 +24,8 @@ from typing import Any
 import json
 import sys
 
+from ncs_reporter.primitives import BYTES_PER_GB
+
 
 def main() -> None:
     payload = json.load(sys.stdin)
@@ -56,8 +58,8 @@ def main() -> None:
             size_available = 0.0
 
         used_pct = round((size_total - size_available) / size_total * 100.0, 1) if size_total > 0 else 0.0
-        total_gb = round(size_total / 1_073_741_824.0, 1)
-        free_gb = round(size_available / 1_073_741_824.0, 1)
+        total_gb = round(size_total / BYTES_PER_GB, 1)
+        free_gb = round(size_available / BYTES_PER_GB, 1)
 
         result.append(
             {

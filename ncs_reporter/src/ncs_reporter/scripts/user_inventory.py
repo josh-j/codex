@@ -23,6 +23,8 @@ from typing import Any
 import json
 import sys
 
+from ncs_reporter.primitives import SECONDS_PER_DAY
+
 
 def main() -> None:
     payload = json.load(sys.stdin)
@@ -31,7 +33,7 @@ def main() -> None:
     getent_passwd: dict[str, Any] = fields.get("getent_passwd") or {}
     shadow_lines: list[Any] = fields.get("shadow_lines") or []
     epoch_seconds: int = int(fields.get("epoch_seconds") or 0)
-    epoch_days = epoch_seconds // 86400
+    epoch_days = epoch_seconds // SECONDS_PER_DAY
 
     # Build shadow map: username → last_change_days_since_epoch
     shadow_map: dict[str, int] = {}

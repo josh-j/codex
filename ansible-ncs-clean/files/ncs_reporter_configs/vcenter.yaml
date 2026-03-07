@@ -1,12 +1,60 @@
 name: vcenter
-platform: vmware
 display_name: "VMware vCenter"
+platform:
+  name: vmware
+  input_dir: vmware/vcenter
+  report_dir: vmware/vcenter
+  target_types: [vcenter, vami, eam, lookup_svc, perfcharts, vcsa_photon_os, postgresql, rhttpproxy, sts, ui]
+  state_file: vmware_fleet_state.yaml
+  display_name: VMware
+  asset_label: vCenters
+  inventory_groups: [vcenters]
+  stig_skeleton_map:
+    vcsa: cklb_skeleton_vsphere7_vcsa_V1R3.json
+    vcenter: cklb_skeleton_vsphere7_vcsa_V1R3.json
+    vami: cklb_skeleton_vsphere7_vami_V1R2.json
+    eam: cklb_skeleton_vsphere7_vca_eam_V1R2.json
+    lookup_svc: cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json
+    perfcharts: cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json
+    vcsa_photon_os: cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
+    postgresql: cklb_skeleton_vsphere7_vca_postgresql_V1R2.json
+    rhttpproxy: cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
+    sts: cklb_skeleton_vsphere7_vca_sts_V1R2.json
+    ui: cklb_skeleton_vsphere7_vca_ui_V1R2.json
+  stig_rule_prefixes:
+    VMCH: vm
+    ESXI: esxi
+    VC: vcsa
+    PH: photon
+  site_category: VMware
+  sub_entries:
+    - input_dir: vmware/vcenter/vcsa
+      report_dir: vmware/vcenter/vcsa
+      state_file: vcsa_fleet_state.yaml
+      target_types: [vcsa]
+      stig_skeleton_map:
+        vcsa: cklb_skeleton_vsphere7_vcsa_V1R3.json
+    - input_dir: vmware/esxi
+      report_dir: vmware/esxi
+      state_file: esxi_fleet_state.yaml
+      target_types: [esxi]
+      stig_skeleton_map:
+        esxi: cklb_skeleton_vsphere7_esxi_V1R4.json
+    - input_dir: vmware/vm
+      report_dir: vmware/vm
+      state_file: vm_fleet_state.yaml
+      target_types: [vm]
+      stig_skeleton_map:
+        vm: cklb_skeleton_vsphere7_vms_V1R4.json
 
 # Detects the key emitted by the internal.vmware.vcenter role via set_stats.
 # Alternative raw keys (raw_vcenter, vcenter) require their own schema variant
 # because the top-level key is part of every field path below.
 detection:
   keys_any: [vmware_raw_vcenter]
+
+# Paths starting with '.' are relative to path_prefix.
+path_prefix: "vmware_raw_vcenter.data"
 
 fleet_columns:
   - { label: "Version", field: appliance_version, width: "120px" }
@@ -25,158 +73,139 @@ fields:
   # --- Appliance ---
 
   appliance_version:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.version"
-    type: str
+    path: ".appliance_health_info.appliance.summary.version"
     fallback: "unknown"
 
   appliance_build:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.build_number"
-    type: str
+    path: ".appliance_health_info.appliance.summary.build_number"
     fallback: "unknown"
 
   # String; one of green / yellow / red / gray.
   # Used for display only — threshold alerting on strings is not supported.
   appliance_health_overall:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.overall"
-    type: str
+    path: ".appliance_health_info.appliance.summary.health.overall"
     fallback: "gray"
 
   appliance_health_cpu:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.cpu"
-    type: str
+    path: ".appliance_health_info.appliance.summary.health.cpu"
     fallback: "gray"
 
   appliance_health_memory:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.memory"
-    type: str
+    path: ".appliance_health_info.appliance.summary.health.memory"
     fallback: "gray"
 
   appliance_health_database:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.database"
-    type: str
+    path: ".appliance_health_info.appliance.summary.health.database"
     fallback: "gray"
 
   appliance_health_storage:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.health.storage"
-    type: str
+    path: ".appliance_health_info.appliance.summary.health.storage"
     fallback: "gray"
 
   appliance_uptime_seconds:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.summary.uptime"
+    path: ".appliance_health_info.appliance.summary.uptime"
     type: float
-    fallback: 0.0
 
   appliance_uptime_days:
     compute: "{appliance_uptime_seconds} / 86400"
     type: float
-    fallback: 0.0
 
   # bool; True == 1.0 for threshold comparison
   ssh_enabled:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.access.ssh"
+    path: ".appliance_health_info.appliance.access.ssh"
     type: bool
-    fallback: false
 
   shell_enabled:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.access.shell.enabled"
+    path: ".appliance_health_info.appliance.access.shell.enabled"
     type: bool
-    fallback: false
 
   ntp_mode:
-    path: "vmware_raw_vcenter.data.appliance_health_info.appliance.time.time_sync.mode"
-    type: str
+    path: ".appliance_health_info.appliance.time.time_sync.mode"
     fallback: "unknown"
+
+  ntp_servers:
+    path: ".appliance_health_info.appliance.time.time_sync.servers"
+    type: list
 
   # --- Backup ---
 
   backup_schedules:
-    path: "vmware_raw_vcenter.data.appliance_backup_info.schedules"
+    path: ".appliance_backup_info.schedules"
     type: list
-    fallback: []
 
   backup_schedule_count:
-    path: "vmware_raw_vcenter.data.appliance_backup_info.schedules | len_if_list"
+    path: ".appliance_backup_info.schedules | len_if_list"
     type: int
-    fallback: 0
 
   # --- Infrastructure inventory ---
 
   datacenters:
-    path: "vmware_raw_vcenter.data.datacenters_info.datacenter_info"
+    path: ".datacenters_info.datacenter_info"
     type: list
-    fallback: []
 
   datacenter_count:
-    path: "vmware_raw_vcenter.data.datacenters_info.datacenter_info | len_if_list"
+    path: ".datacenters_info.datacenter_info | len_if_list"
     type: int
-    fallback: 0
 
   # Raw Ansible loop results from cluster_info — consumed by count_clusters_and_hosts.py
   clusters_info_results:
-    path: "vmware_raw_vcenter.data.clusters_info.results"
+    path: ".clusters_info.results"
     type: list
-    fallback: []
 
   cluster_count:
     script: "count_clusters_and_hosts.py"
     script_args:
       metric: cluster_count
     type: int
-    fallback: 0
 
   esxi_host_count:
     script: "count_clusters_and_hosts.py"
     script_args:
       metric: esxi_host_count
     type: int
-    fallback: 0
 
   datastores_raw:
-    path: "vmware_raw_vcenter.data.datastores_info.datastores"
+    path: ".datastores_info.datastores"
     type: list
-    fallback: []
 
+  # Replaces normalize_datastores.py — list_map computes capacity_gb/free_gb/used_pct.
   datastores:
-    script: "normalize_datastores.py"
+    path: ".datastores_info.datastores"
     type: list
-    fallback: []
+    list_map:
+      capacity_gb: "{capacity} / 1073741824"
+      free_gb: "{freeSpace} / 1073741824"
+      used_pct: "({capacity} - {freeSpace}) / {capacity} * 100"
 
   datastore_count:
-    path: "vmware_raw_vcenter.data.datastores_info.datastores | len_if_list"
+    path: ".datastores_info.datastores | len_if_list"
     type: int
-    fallback: 0
 
   vms_info_raw:
-    path: "vmware_raw_vcenter.data.vms_info"
+    path: ".vms_info"
     type: dict
-    fallback: {}
 
   infra_patterns:
-    path: "vmware_raw_vcenter.data.config.infrastructure_vm_patterns"
+    path: ".config.infrastructure_vm_patterns"
     type: list
-    fallback: []
 
   virtual_machines:
     script: "get_vms_list.py"
     script_args:
       exclude_patterns: "{infra_patterns}"
     type: list
-    fallback: []
 
   vm_count:
-    path: "vmware_raw_vcenter.data.vms_info.virtual_machines | len_if_list"
+    path: ".vms_info.virtual_machines | len_if_list"
     type: int
-    fallback: 0
 
   clusters:
     script: "get_clusters_list.py"
     type: list
-    fallback: []
 
   snapshots_raw:
-    path: "vmware_raw_vcenter.data.snapshots_info.snapshots"
+    path: ".snapshots_info.snapshots"
     type: list
-    fallback: []
 
   snapshots:
     script: "normalize_snapshots.py"
@@ -184,19 +213,14 @@ fields:
       mode: list
       age_days: 7
     type: list
-    fallback: []
 
   snapshot_count:
-    path: "vmware_raw_vcenter.data.snapshots_info.snapshots | len_if_list"
+    path: ".snapshots_info.snapshots | len_if_list"
     type: int
-    fallback: 0
 
   # ISO timestamp of the collection run — passed to the snapshot age script as the
   # reference time so that age is calculated against collection time, not report time.
-  collected_at:
-    path: "vmware_raw_vcenter.metadata.timestamp"
-    type: str
-    fallback: ""
+  collected_at: "vmware_raw_vcenter.metadata.timestamp"
 
   # Count of snapshots older than age_days.
   aged_snapshot_count:
@@ -205,54 +229,82 @@ fields:
       mode: count
       age_days: 7
     type: int
-    fallback: 0
 
   # Derived field for mutually exclusive info alert
   recent_snapshot_count:
     compute: "{snapshot_count} - {aged_snapshot_count}"
     type: int
-    fallback: 0
 
   # --- Alarms ---
   # Raw triggered alarms from internal.vmware.vmware_triggered_alarms_info.
   # Each item: {alarm_name, entity, severity (lowercase), status, time, description}
 
   active_alarms:
-    path: "vmware_raw_vcenter.data.alarms_info.alarms"
+    path: ".alarms_info.alarms"
     type: list
-    fallback: []
 
-  alarms_result:
-    script: "normalize_vcenter_alarms.py"
-    type: dict
-    fallback: {"critical": 0, "warning": 0, "total": 0}
-
+  # Replaces normalize_vcenter_alarms.py — count_where provides inline aggregation.
   active_critical_alarm_count:
-    path: "{alarms_result}.critical"
+    path: ".alarms_info.alarms"
     type: int
-    fallback: 0
+    count_where:
+      severity: "critical"
 
   active_warning_alarm_count:
-    path: "{alarms_result}.warning"
+    path: ".alarms_info.alarms"
     type: int
-    fallback: 0
-
-  # Failsafe for mutual exclusivity in alerts
-  # (active_critical_alarm_count == 0) is roughly (1 - min(active_critical_alarm_count, 1))
-  # But we don't have min().
-  # We'll use the 'range' operator in the alert condition instead, it's cleaner.
-  
-  # To ensure we only fire WARNING if there are actually warnings AND no criticals:
-  # We'll use a hack where we subtract 1000 if critical > 0
-  warnings_exclusive:
-    compute: "{active_warning_alarm_count} - ({active_critical_alarm_count} * 1000)"
-    type: int
-    fallback: 0
+    count_where:
+      severity: "warning"
 
   alarm_count:
-    path: "{alarms_result}.total"
+    path: ".alarms_info.alarms | len_if_list"
     type: int
-    fallback: 0
+
+  # --- Derived counts ---
+
+  powered_off_vm_count:
+    path: ".vms_info.virtual_machines"
+    type: int
+    count_where:
+      power_state: "poweredOff"
+
+  # Cluster HA/DRS disabled counts (computed from clusters list)
+  cluster_ha_disabled_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_ha_disabled_count
+    type: int
+
+  cluster_drs_disabled_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_drs_disabled_count
+    type: int
+
+  # Total allocated vCPU and memory across all VMs
+  total_allocated_vcpu:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_cpu_capacity
+    type: int
+
+  total_allocated_mem_mb:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_mem_capacity
+    type: int
+
+  total_used_cpu_pct:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_cpu_used_pct
+    type: float
+
+  total_used_mem_pct:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_mem_used_pct
+    type: float
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -273,6 +325,7 @@ alerts:
   - id: appliance_health_yellow
     category: "Appliance Health"
     severity: WARNING
+    suppress_if: appliance_health_red
     condition:
       op: eq_str
       field: appliance_health_overall
@@ -282,6 +335,7 @@ alerts:
   - id: appliance_health_gray
     category: "Data Quality"
     severity: WARNING
+    suppress_if: [appliance_health_red, appliance_health_yellow]
     condition:
       op: eq_str
       field: appliance_health_overall
@@ -298,6 +352,83 @@ alerts:
       field: datacenter_count
       threshold: 0
     message: "Inventory gap: no datacenters detected in vCenter"
+
+  - id: no_esxi_hosts
+    category: "Infrastructure"
+    severity: CRITICAL
+    condition:
+      op: lte
+      field: esxi_host_count
+      threshold: 0
+    message: "Inventory gap: no ESXi hosts detected in vCenter"
+
+  # ---- Cluster availability ----
+
+  - id: cluster_ha_disabled
+    category: "Cluster Availability"
+    severity: WARNING
+    condition:
+      op: gt
+      field: cluster_ha_disabled_count
+      threshold: 0
+    message: "{cluster_ha_disabled_count} cluster(s) have HA disabled — reduced fault tolerance"
+
+  - id: cluster_drs_disabled
+    category: "Cluster Availability"
+    severity: INFO
+    condition:
+      op: gt
+      field: cluster_drs_disabled_count
+      threshold: 0
+    message: "{cluster_drs_disabled_count} cluster(s) have DRS disabled — no automatic load balancing"
+
+  # ---- Cluster resource utilization ----
+
+  - id: cluster_cpu_critical
+    category: "Cluster Resources"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{cpu_usage_pct}"
+      cmp: gte
+      threshold: 90.0
+    message: "One or more clusters have critically high CPU utilization (≥90%)"
+
+  - id: cluster_cpu_warning
+    category: "Cluster Resources"
+    severity: WARNING
+    suppress_if: cluster_cpu_critical
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{cpu_usage_pct}"
+      cmp: gte
+      threshold: 80.0
+    message: "One or more clusters have elevated CPU utilization (≥80%)"
+
+  - id: cluster_mem_critical
+    category: "Cluster Resources"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{mem_usage_pct}"
+      cmp: gte
+      threshold: 90.0
+    message: "One or more clusters have critically high memory utilization (≥90%)"
+
+  - id: cluster_mem_warning
+    category: "Cluster Resources"
+    severity: WARNING
+    suppress_if: cluster_mem_critical
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{mem_usage_pct}"
+      cmp: gte
+      threshold: 80.0
+    message: "One or more clusters have elevated memory utilization (≥80%)"
 
   # ---- Appliance security ----
 
@@ -319,6 +450,62 @@ alerts:
       field: shell_enabled
       threshold: 1.0
     message: "Hardening violation: interactive shell is enabled on VCSA"
+
+  # ---- NTP ----
+
+  - id: ntp_disabled
+    category: "Time Synchronization"
+    severity: WARNING
+    condition:
+      op: not_in_str
+      field: ntp_mode
+      values: ["NTP", "HOST"]
+    message: "Time sync misconfigured: NTP mode is '{ntp_mode}' — clock drift may affect logs and certificates"
+
+  # ---- Appliance uptime ----
+
+  - id: appliance_uptime_excessive
+    category: "Appliance Lifecycle"
+    severity: WARNING
+    condition:
+      op: gte
+      field: appliance_uptime_days
+      threshold: 90.0
+    message: "VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
+
+  - id: appliance_uptime_recent_reboot
+    category: "Appliance Lifecycle"
+    severity: INFO
+    suppress_if: appliance_uptime_excessive
+    condition:
+      op: lt
+      field: appliance_uptime_days
+      threshold: 1.0
+    message: "VCSA was rebooted less than 24 hours ago — verify this was planned"
+
+  # ---- Powered-off VMs ----
+
+  - id: powered_off_vms
+    category: "Workload Inventory"
+    severity: INFO
+    condition:
+      op: gt
+      field: powered_off_vm_count
+      threshold: 0
+    message: "{powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
+
+  # ---- Datastore over-provisioning ----
+
+  - id: datastore_overprovisioned
+    category: "Storage Capacity"
+    severity: INFO
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{provisioned} / {capacity} * 100"
+      cmp: gte
+      threshold: 200.0
+    message: "One or more datastores are thin-provisioned beyond 2x capacity — monitor for space contention"
 
   # ---- Backup ----
 
@@ -360,6 +547,7 @@ alerts:
   - id: datastore_warning_space
     category: "Storage Capacity"
     severity: WARNING
+    suppress_if: datastore_critical_space
     condition:
       op: computed_filter
       field: datastores_raw
@@ -398,11 +586,11 @@ alerts:
   - id: active_warning_alarms
     category: "vCenter Alarms"
     severity: WARNING
+    suppress_if: active_critical_alarms
     condition:
       op: gt
-      field: warnings_exclusive
+      field: active_warning_alarm_count
       threshold: 0
-    # WARNING fires only if active_warning_alarm_count > 0 AND active_critical_alarm_count == 0.
     message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
     affected_items_field: active_alarms
 
@@ -463,9 +651,29 @@ widgets:
     title: "Active Alerts"
     type: alert_panel
 
+  - id: intro_note
+    title: "VCSA Summary Note"
+    type: markdown
+    content: "This report provides a comprehensive health and compliance overview of the VCSA appliance and its managed infrastructure inventory."
+
+  - id: inventory_kpis
+    title: "Inventory KPIs"
+    type: stat_cards
+    layout: { width: "full" }
+    cards:
+      - { field: datacenter_count, label: "Datacenters" }
+      - { field: cluster_count, label: "Clusters" }
+      - { field: esxi_host_count, label: "ESXi Hosts" }
+      - { field: vm_count, label: "VMs" }
+      - { field: datastore_count, label: "Datastores" }
+      - { field: snapshot_count, label: "Snapshots", thresholds: { 1: yellow, 10: red } }
+      - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
+      - { field: powered_off_vm_count, label: "Powered Off", thresholds: { 1: yellow, 5: red } }
+
   - id: appliance_overview
     title: "Appliance Overview"
     type: key_value
+    layout: { width: "half" }
     fields:
       - { label: "Version", field: appliance_version }
       - { label: "Build", field: appliance_build }
@@ -478,17 +686,15 @@ widgets:
       - { label: "SSH Enabled", field: ssh_enabled }
       - { label: "NTP Mode", field: ntp_mode }
 
-  - id: inventory_summary
-    title: "Inventory Summary"
-    type: key_value
-    fields:
-      - { label: "Datacenters", field: datacenter_count }
-      - { label: "Datastores", field: datastore_count }
-      - { label: "Virtual Machines", field: vm_count }
-      - { label: "Snapshots", field: snapshot_count }
-      - { label: "Aged Snapshots", field: aged_snapshot_count }
-      - { label: "Active Alarms", field: alarm_count }
-      - { label: "Backup Schedules", field: backup_schedule_count }
+  - id: ds_capacity
+    title: "Datastore Capacity"
+    type: bar_chart
+    layout: { width: "half" }
+    rows_field: datastores
+    label_field: name
+    value_field: used_pct
+    max: 100
+    thresholds: { 75: yellow, 90: red }
 
   - id: datastores
     title: "Datastores"
@@ -499,8 +705,19 @@ widgets:
       - { label: "Type", field: type }
       - { label: "Capacity (GB)", field: capacity_gb }
       - { label: "Free (GB)", field: free_gb }
-      - { label: "Used %", field: used_pct }
-      - { label: "Accessible", field: accessible, badge: true }
+      - label: "Used %"
+        field: used_pct
+        style_rules:
+          - condition: { op: gt, field: used_pct, threshold: 90 }
+            css_class: "sv-critical"
+          - condition: { op: gt, field: used_pct, threshold: 75 }
+            css_class: "sv-warning"
+      - label: "Accessible"
+        field: accessible
+        badge: true
+        style_rules:
+          - condition: { op: eq, field: accessible, threshold: 0.0 }
+            css_class: "sv-critical"
       - { label: "Maintenance", field: maintenanceMode }
 
   - id: clusters
@@ -513,16 +730,64 @@ widgets:
       - { label: "DRS", field: drs_enabled, badge: true }
       - { label: "HA", field: ha_enabled, badge: true }
       - { label: "Hosts", field: host_count }
-      - { label: "CPU %", field: cpu_usage_pct }
-      - { label: "Mem %", field: mem_usage_pct }
+      - label: "CPU %"
+        field: cpu_usage_pct
+        style_rules:
+          - condition: { op: gt, field: cpu_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
+      - label: "Mem %"
+        field: mem_usage_pct
+        style_rules:
+          - condition: { op: gt, field: mem_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
+
+  - id: cluster_cpu
+    title: "Cluster CPU Utilization"
+    type: bar_chart
+    rows_field: clusters
+    label_field: name
+    value_field: cpu_usage_pct
+    max: 100
+    thresholds: { 80: yellow, 90: red }
+
+  - id: cluster_mem
+    title: "Cluster Memory Utilization"
+    type: bar_chart
+    rows_field: clusters
+    label_field: name
+    value_field: mem_usage_pct
+    max: 100
+    thresholds: { 80: yellow, 90: red }
+
+  - id: backup_schedules_tbl
+    title: "Backup Schedules"
+    type: table
+    visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }
+    rows_field: backup_schedules
+    columns:
+      - { label: "Name", field: name }
+      - label: "Enabled"
+        field: enabled
+        badge: true
+        style_rules:
+          - condition: { op: eq, field: enabled, threshold: 0.0 }
+            css_class: "sv-critical"
+      - { label: "Location", field: location }
+      - { label: "Retain Count", field: retain_count }
 
   - id: virtual_machines
     title: "Virtual Machines"
-    type: table
+    type: grouped_table
     rows_field: virtual_machines
+    group_by: cluster
     columns:
       - { label: "Name", field: guest_name, link_field: guest_name }
-      - { label: "Power State", field: power_state, badge: true }
+      - label: "Power State"
+        field: power_state
+        badge: true
+        style_rules:
+          - condition: { op: eq_str, field: power_state, value: "poweredOff" }
+            css_class: "subtle-text"
       - { label: "Tools Status", field: tools_status }
       - { label: "Cluster", field: cluster }
       - { label: "IP Address", field: ip_address }
@@ -534,6 +799,7 @@ widgets:
   - id: snapshots
     title: "Snapshots"
     type: table
+    visible_if: { op: gt, field: snapshot_count, threshold: 0 }
     rows_field: snapshots
     columns:
       - { label: "VM", field: vm_name }

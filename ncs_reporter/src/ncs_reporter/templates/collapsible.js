@@ -148,6 +148,17 @@
  
   // ---- table sorting ----
 
+  function _sortCompare(cellA, cellB, isAsc) {
+    var numA = parseFloat(cellA.replace(/[^0-9.-]+/g, ""));
+    var numB = parseFloat(cellB.replace(/[^0-9.-]+/g, ""));
+    if (!isNaN(numA) && !isNaN(numB) && cellA.match(/^[0-9.,\s%MBGBKB]+$/) && cellB.match(/^[0-9.,\s%MBGBKB]+$/)) {
+      return isAsc ? numB - numA : numA - numB;
+    }
+    return isAsc
+      ? cellB.localeCompare(cellA, undefined, { numeric: true, sensitivity: 'base' })
+      : cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
   function initTableSorting() {
     var sortableHeaders = document.querySelectorAll('th.sortable');
     for (var i = 0; i < sortableHeaders.length; i++) {
@@ -155,10 +166,9 @@
         header.addEventListener('click', function () {
           var table = header.closest('table');
           var tbody = table.querySelector('tbody');
-          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr:not(.group-hdr)'));
           var colIndex = Array.prototype.indexOf.call(header.parentNode.children, header);
           var isAsc = header.classList.contains('sort-asc');
-          
+
           // Reset other headers in the same table
           var otherHeaders = header.parentNode.querySelectorAll('th.sortable');
           for (var j = 0; j < otherHeaders.length; j++) {
@@ -167,26 +177,43 @@
             }
           }
 
-          rows.sort(function (a, b) {
-            var cellA = a.children[colIndex].textContent.trim();
-            var cellB = b.children[colIndex].textContent.trim();
-            
-            // Try numeric sort
-            var numA = parseFloat(cellA.replace(/[^0-9.-]+/g, ""));
-            var numB = parseFloat(cellB.replace(/[^0-9.-]+/g, ""));
-            if (!isNaN(numA) && !isNaN(numB) && cellA.match(/^[0-9.,\s%MBGBKB]+$/) && cellB.match(/^[0-9.,\s%MBGBKB]+$/)) {
-              return isAsc ? numB - numA : numA - numB;
-            }
-            
-            // Default string sort
-            return isAsc 
-              ? cellB.localeCompare(cellA, undefined, { numeric: true, sensitivity: 'base' })
-              : cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
-          });
+          var hasGroups = tbody.querySelector('tr.group-hdr') !== null;
 
-          // Re-append rows to tbody
-          for (var k = 0; k < rows.length; k++) {
-            tbody.appendChild(rows[k]);
+          if (hasGroups) {
+            // Group-aware sort: sort rows within each group, keep groups in place
+            var groupHeaders = Array.prototype.slice.call(tbody.querySelectorAll('tr.group-hdr'));
+            for (var g = 0; g < groupHeaders.length; g++) {
+              var gid = groupHeaders[g].getAttribute('data-group');
+              var groupRows = Array.prototype.slice.call(
+                tbody.querySelectorAll('tr.group-row[data-group="' + gid + '"]')
+              );
+              groupRows.sort(function (a, b) {
+                return _sortCompare(
+                  a.children[colIndex].textContent.trim(),
+                  b.children[colIndex].textContent.trim(),
+                  isAsc
+                );
+              });
+              // Re-insert after the group header
+              var anchor = groupHeaders[g];
+              for (var r = 0; r < groupRows.length; r++) {
+                anchor.parentNode.insertBefore(groupRows[r], anchor.nextSibling);
+                anchor = groupRows[r];
+              }
+            }
+          } else {
+            // Simple flat sort
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+              return _sortCompare(
+                a.children[colIndex].textContent.trim(),
+                b.children[colIndex].textContent.trim(),
+                isAsc
+              );
+            });
+            for (var k = 0; k < rows.length; k++) {
+              tbody.appendChild(rows[k]);
+            }
           }
 
           header.classList.toggle('sort-asc', !isAsc);
@@ -333,14 +360,53 @@
     });
   }
 
+  // ---- theme toggle (light/dark) ----
+
+  function initThemeToggle() {
+    var saved = localStorage.getItem('ncs-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+
+    var btn = document.createElement('button');
+    btn.className = 'theme-toggle';
+    btn.title = 'Toggle light/dark mode';
+    btn.setAttribute('aria-label', 'Toggle light/dark mode');
+    btn.textContent = document.documentElement.classList.contains('light') ? '\u2600' : '\u263E';
+    btn.addEventListener('click', function () {
+      var isLight = document.documentElement.classList.toggle('light');
+      btn.textContent = isLight ? '\u2600' : '\u263E';
+      localStorage.setItem('ncs-theme', isLight ? 'light' : 'dark');
+    });
+
+    // Insert next to the search bar in the breadcrumb
+    var searchBar = document.querySelector('.nav-search');
+    if (searchBar) {
+      searchBar.parentNode.insertBefore(btn, searchBar.nextSibling);
+    } else {
+      // Fallback: insert into breadcrumb or toc
+      var breadcrumb = document.querySelector('.breadcrumb') || document.querySelector('.toc');
+      if (breadcrumb) {
+        breadcrumb.appendChild(btn);
+      } else {
+        document.body.appendChild(btn);
+      }
+    }
+  }
+
   // ---- init ----
- 
-  document.addEventListener('DOMContentLoaded', function () {
+
+  function init() {
     initWidgetToggles();
     initGroupToggles();
     injectTOCActions();
     initNavDropdowns();
     initTableSorting();
     initHostSearch();
-  });
+    initThemeToggle();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 }());

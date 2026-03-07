@@ -173,13 +173,38 @@ def build_count_alert(
     )
 
 
+SECONDS_PER_DAY: int = 86400
+BYTES_PER_GB: float = 1024.0**3
+BYTES_PER_MB: float = 1024.0**2
+
+
+def canonical_stig_status(value: Any) -> str:
+    """Unified STIG status canonicalization (superset of all platform mappings)."""
+    text = str(value or "").strip().lower()
+    if text in ("failed", "fail", "open", "finding", "non-compliant", "non_compliant"):
+        return "open"
+    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated", "closed", "notafinding"):
+        return "pass"
+    if text in ("na", "n/a", "not_applicable", "not applicable"):
+        return "na"
+    if text in ("not_reviewed", "not reviewed", "unreviewed"):
+        return "not_reviewed"
+    if text in ("error", "unknown"):
+        return text
+    return text or ""
+
+
 __all__ = [
+    "BYTES_PER_GB",
+    "BYTES_PER_MB",
+    "SECONDS_PER_DAY",
     "T",
     "as_list",
     "build_alert",
     "build_count_alert",
     "build_threshold_alert",
     "canonical_severity",
+    "canonical_stig_status",
     "normalize_detail",
     "safe_list",
     "threshold_severity",

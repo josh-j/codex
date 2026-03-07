@@ -38,6 +38,12 @@ def main() -> None:
 
     cluster_count = 0
     esxi_host_count = 0
+    ha_disabled = 0
+    drs_disabled = 0
+    total_cpu_cap = 0.0
+    total_cpu_used = 0.0
+    total_mem_cap = 0.0
+    total_mem_used = 0.0
 
     for entry in results:
         if not isinstance(entry, dict):
@@ -47,13 +53,33 @@ def main() -> None:
             continue
         cluster_count += len(dc_clusters)
         for cdata in dc_clusters.values():
-            if isinstance(cdata, dict):
-                hosts = cdata.get("hosts")
-                if isinstance(hosts, list):
-                    esxi_host_count += len(hosts)
+            if not isinstance(cdata, dict):
+                continue
+            hosts = cdata.get("hosts")
+            if isinstance(hosts, list):
+                esxi_host_count += len(hosts)
+            if not cdata.get("ha_enabled", False):
+                ha_disabled += 1
+            if not cdata.get("drs_enabled", False):
+                drs_disabled += 1
+            res = cdata.get("resource_summary", {})
+            if isinstance(res, dict):
+                total_cpu_cap += float(res.get("cpuCapacityMHz") or 0)
+                total_cpu_used += float(res.get("cpuUsedMHz") or 0)
+                total_mem_cap += float(res.get("memCapacityMB") or 0)
+                total_mem_used += float(res.get("memUsedMB") or 0)
 
-    result = cluster_count if metric == "cluster_count" else esxi_host_count
-    print(json.dumps(result))
+    metrics = {
+        "cluster_count": cluster_count,
+        "esxi_host_count": esxi_host_count,
+        "cluster_ha_disabled_count": ha_disabled,
+        "cluster_drs_disabled_count": drs_disabled,
+        "total_cpu_capacity": int(total_cpu_cap),
+        "total_mem_capacity": int(total_mem_cap),
+        "total_cpu_used_pct": round((total_cpu_used / total_cpu_cap) * 100, 1) if total_cpu_cap > 0 else 0.0,
+        "total_mem_used_pct": round((total_mem_used / total_mem_cap) * 100, 1) if total_mem_cap > 0 else 0.0,
+    }
+    print(json.dumps(metrics.get(metric, 0)))
 
 
 if __name__ == "__main__":

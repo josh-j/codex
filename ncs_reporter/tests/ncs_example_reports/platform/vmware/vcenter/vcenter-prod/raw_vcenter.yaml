@@ -1,7 +1,7 @@
 metadata:
   host: vcenter-prod
   raw_type: vcenter
-  timestamp: '2026-03-02T22:59:54+00:00'
+  timestamp: '2026-03-07T09:46:45+00:00'
   engine: ncs_collector_callback
 data:
   appliance_health_info:
@@ -278,7 +278,7 @@ data:
       attributes:
         Owner Email: platform-alerts@corp.local
         Owner Name: Platform Team
-        Last Dell PowerProtect Backup: '2026-03-02T10:59:54+00:00'
+        Last Dell PowerProtect Backup: '2026-03-06T21:46:45+00:00'
       datastore_url:
       - name: t880-o2g
         url: /vmfs/volumes/e074264a-e5c82a58
@@ -318,7 +318,7 @@ data:
       attributes:
         Owner Email: platform-alerts@corp.local
         Owner Name: Platform Team
-        Last Dell PowerProtect Backup: '2026-03-02T10:59:54+00:00'
+        Last Dell PowerProtect Backup: '2026-03-06T21:46:45+00:00'
       datastore_url:
       - name: t880-o2g
         url: /vmfs/volumes/e074264a-e5c82a58
@@ -358,7 +358,7 @@ data:
       attributes:
         Owner Email: platform-alerts@corp.local
         Owner Name: Platform Team
-        Last Dell PowerProtect Backup: '2026-03-02T10:59:54+00:00'
+        Last Dell PowerProtect Backup: '2026-03-06T21:46:45+00:00'
       datastore_url:
       - name: t880-o2g
         url: /vmfs/volumes/e074264a-e5c82a58
@@ -398,7 +398,7 @@ data:
       attributes:
         Owner Email: platform-alerts@corp.local
         Owner Name: Platform Team
-        Last Dell PowerProtect Backup: '2026-03-02T10:59:54+00:00'
+        Last Dell PowerProtect Backup: '2026-03-06T21:46:45+00:00'
       datastore_url:
       - name: t880-o2g
         url: /vmfs/volumes/e074264a-e5c82a58
@@ -438,7 +438,7 @@ data:
       attributes:
         Owner Email: platform-alerts@corp.local
         Owner Name: Platform Team
-        Last Dell PowerProtect Backup: '2026-03-02T10:59:54+00:00'
+        Last Dell PowerProtect Backup: '2026-03-06T21:46:45+00:00'
       datastore_url:
       - name: t880-o2g
         url: /vmfs/volumes/e074264a-e5c82a58
@@ -465,7 +465,7 @@ data:
       folder: /DC-Production/vm
       name: pre-upgrade-snapshot
       description: Before kernel upgrade
-      creation_time: '2026-02-03T22:59:54+00:00'
+      creation_time: '2026-02-08T09:46:45+00:00'
       state: poweredOff
       id: 12
       quiesced: false
@@ -473,7 +473,7 @@ data:
       folder: /DC-Production/vm
       name: pre-patch-jan
       description: Pre-January patching window
-      creation_time: '2026-01-17T22:59:54+00:00'
+      creation_time: '2026-01-22T09:46:45+00:00'
       state: poweredOn
       id: 7
       quiesced: false
@@ -481,7 +481,7 @@ data:
       folder: /DC-Production/vm
       name: rollback-checkpoint
       description: Emergency rollback point
-      creation_time: '2026-02-22T22:59:54+00:00'
+      creation_time: '2026-02-27T09:46:45+00:00'
       state: poweredOn
       id: 15
       quiesced: true
@@ -493,7 +493,7 @@ data:
       entity_type: HostSystem
       status: red
       severity: critical
-      time: '2026-03-02T16:59:54+00:00'
+      time: '2026-03-07T03:46:45+00:00'
       acknowledged: false
     - alarm_name: Datastore Free Space
       description: PROD-VMFS-SSD-02 has less than 10% free space
@@ -501,7 +501,7 @@ data:
       entity_type: Datastore
       status: yellow
       severity: warning
-      time: '2026-03-01T22:59:54+00:00'
+      time: '2026-03-06T09:46:45+00:00'
       acknowledged: false
     count: 2
     python: /usr/bin/python3

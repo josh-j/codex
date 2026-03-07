@@ -3,56 +3,41 @@
 from collections.abc import Mapping
 from typing import Any
 
+from ..platform_registry import PlatformRegistry, default_registry
+from ..primitives import canonical_stig_status as _canonical_stig_status
 from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
-
-
-def _canonical_stig_status(value: Any) -> str:
-    text = str(value or "").strip().lower()
-    if text in ("failed", "fail", "open", "non-compliant", "non_compliant"):
-        return "open"
-    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated"):
-        return "pass"
-    if text in ("na", "n/a", "not_applicable", "not applicable"):
-        return "na"
-    if text in ("not_reviewed", "not reviewed", "unreviewed"):
-        return "not_reviewed"
-    if text in ("error", "unknown"):
-        return text
-    return text or "unknown"
 
 
 def _canonical_stig_severity(value: Any) -> str:
     return canonical_severity(value)
 
 
-def _infer_stig_platform(audit_type: Any, payload: dict[str, Any] | None) -> str:
+def _infer_stig_platform(audit_type: Any, payload: dict[str, Any] | None, registry: PlatformRegistry | None = None) -> str:
+    reg = registry or default_registry()
     at = str(audit_type or "").lower()
-    if "vmware" in at or "esxi" in at or "vcsa" in at or "vcenter" in at or at in ("stig_vm", "stig_esxi"):
-        return "vmware"
-    if "ubuntu" in at or "linux" in at or "photon" in at:
-        return "linux"
-    if "windows" in at or at in ("stig_windows",):
-        return "windows"
+    # Try to infer from audit_type suffix (e.g. stig_esxi -> esxi)
+    if at.startswith("stig_"):
+        suffix = at.replace("stig_", "", 1)
+        result = reg.infer_platform_from_target_type(suffix)
+        if result != "unknown":
+            return result
+    # Try substrings of audit_type against known target types
+    for tt in reg.all_target_types():
+        if tt.lower() in at:
+            result = reg.infer_platform_from_target_type(tt)
+            if result != "unknown":
+                return result
+    # Try payload target_type (exact match then substring)
     target_type = str((payload or {}).get("target_type", "")).lower()
-    vcsa_components = {
-        "vami",
-        "eam",
-        "lookup_svc",
-        "perfcharts",
-        "vcsa_photon_os",
-        "postgresql",
-        "rhttpproxy",
-        "sts",
-        "ui",
-    }
-    if target_type in ("vcsa", "vcenter") or "esxi" in target_type or "vm" in target_type:
-        return "vmware"
-    if target_type in vcsa_components:
-        return "vmware"
-    if "photon" in target_type or "ubuntu" in target_type or "linux" in target_type:
-        return "linux"
-    if "windows" in target_type:
-        return "windows"
+    if target_type:
+        result = reg.infer_platform_from_target_type(target_type)
+        if result != "unknown":
+            return result
+        for tt in reg.all_target_types():
+            if tt.lower() in target_type:
+                result = reg.infer_platform_from_target_type(tt)
+                if result != "unknown":
+                    return result
     return "unknown"
 
 
@@ -215,9 +200,13 @@ def build_stig_host_view(
     cklb_rule_lookup: Mapping[str, dict[str, Any]] | None = None,
     generated_fleet_dirs: set[str] | None = None,
     history: list[dict[str, str]] | None = None,
+    stig_host_peers: list[dict[str, str]] | None = None,
+    stig_siblings: list[dict[str, str]] | None = None,
+    registry: PlatformRegistry | None = None,
 ) -> dict[str, Any]:
+    reg = registry or default_registry()
     stig_payload = dict(stig_payload or {})
-    platform_name = platform or _infer_stig_platform(audit_type, stig_payload)
+    platform_name = platform or _infer_stig_platform(audit_type, stig_payload, registry=reg)
     target_type = _infer_stig_target_type(audit_type, stig_payload)
 
     source_findings = []
@@ -286,16 +275,24 @@ def build_stig_host_view(
         nav_with_tree["history"] = history
 
     # Sibling STIG audits for the same host (e.g. if a host has both ESXi and VM STIGs)
-    siblings = []
-    if host_bundle:
-        for k in host_bundle.keys():
-            if k.lower().startswith("stig_") and k != audit_type:
-                # Determine target type for the link
-                p = host_bundle[k]
-                t_type = _infer_stig_target_type(k, p)
-                siblings.append({"name": f"{t_type.upper()} STIG", "report": f"{hostname}_stig_{t_type}.html"})
-    siblings.sort(key=lambda x: x["name"])
-    nav_with_tree["tree_siblings"] = siblings
+    if stig_siblings is not None:
+        # Pre-computed with proper relative paths from cli._render_stig
+        nav_with_tree["tree_siblings"] = stig_siblings
+    else:
+        # Fallback: build from bundle (filename only, works when reports are co-located)
+        siblings = []
+        if host_bundle:
+            for k in host_bundle.keys():
+                if k.lower().startswith("stig_") and k != audit_type:
+                    p = host_bundle[k]
+                    t_type = _infer_stig_target_type(k, p)
+                    siblings.append({"name": f"{t_type.upper()} STIG", "report": f"{hostname}_stig_{t_type}.html"})
+        siblings.sort(key=lambda x: x["name"])
+        nav_with_tree["tree_siblings"] = siblings
+
+    # Peer hosts with same STIG target type (for host-switching dropdown)
+    if stig_host_peers:
+        nav_with_tree["tree_host_peers"] = stig_host_peers
 
     # Global fleets dropdown
     if hosts_data:
@@ -308,12 +305,16 @@ def build_stig_host_view(
         if generated_fleet_dirs is not None:
             p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
         for plt_dir in p_dirs:
-            if "vcenter" in plt_dir:
-                label = "VMware"
-                schema_name = "vcsa" if "vcenter/vcsa" in plt_dir else "vcenter"
-            elif "ubuntu" in plt_dir:
-                label = "Linux"
-                schema_name = "linux"
+            # Find the entry whose report_dir matches to get display_name and schema_name
+            matched_entry = None
+            for e in reg.entries:
+                if e.report_dir == plt_dir:
+                    matched_entry = e
+                    break
+            if matched_entry:
+                label = matched_entry.display_name or matched_entry.platform.capitalize()
+                schema_name = (matched_entry.schema_names[0] if matched_entry.schema_names
+                               else matched_entry.schema_name or matched_entry.platform)
             else:
                 label = plt_dir.split("/")[-1].capitalize()
                 schema_name = plt_dir.split("/")[-1]
@@ -353,31 +354,18 @@ def build_stig_fleet_view(
     report_id: str | None = None,
     nav: Mapping[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
+    registry: PlatformRegistry | None = None,
 ) -> dict[str, Any]:
+    reg = registry or default_registry()
     rows = []
     row_index: dict[str, dict[str, Any]] = {}
     top_index: dict[str, dict[str, Any]] = {}
     totals = {"hosts": 0, "findings_open": 0, "critical": 0, "warning": 0, "info": 0}
-    by_platform = {
-        "linux": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
-        "vmware": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
-        "windows": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
-        "unknown": {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0},
+    _init_keys = {*reg.all_platform_names(), "unknown"}
+    by_platform: dict[str, dict[str, int]] = {
+        k: {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0} for k in _init_keys
     }
     platform_hosts: dict[str, set[str]] = {k: set() for k in by_platform}
-
-    def _link_base_for(platform_name: str, target_type: str) -> str:
-        if platform_name == "vmware":
-            if target_type == "esxi":
-                return "platform/vmware/esxi"
-            if target_type == "vm":
-                return "platform/vmware/vm"
-            return "platform/vmware/vcenter"
-        if platform_name == "windows":
-            return "platform/windows"
-        if target_type == "photon":
-            return "platform/linux/photon"
-        return "platform/linux/ubuntu"
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for audit_type, payload in dict(bundle or {}).items():
@@ -394,6 +382,7 @@ def build_stig_fleet_view(
                 report_date=report_date,
                 report_id=report_id,
                 nav=nav,
+                registry=reg,
             )
             target = host_view["target"]
             summary = host_view["summary"]
@@ -416,8 +405,17 @@ def build_stig_fleet_view(
 
             # Use the canonical STIG report name pattern: <host>_stig_<target_type>.html
             t_type = target.get("target_type", "unknown")
+            # Resolve link base — try exact match, then substring for compound types
+            known_types = reg.all_target_types()
+            resolved_base_type = t_type if t_type in known_types else None
+            if not resolved_base_type:
+                for tt in known_types:
+                    if tt.lower() in t_type.lower():
+                        resolved_base_type = tt
+                        break
+            link_base = reg.link_base_for_target(resolved_base_type or t_type)
             stamped_name = f"{hostname}_stig_{t_type}.html"
-            target_link = f"{_link_base_for(p_name, t_type)}/{hostname}/{stamped_name}"
+            target_link = f"{link_base}/{hostname}/{stamped_name}"
             key = f"{p_name}:{hostname}"
             row = row_index.get(key)
             if row is None:
@@ -449,7 +447,9 @@ def build_stig_fleet_view(
                     "link": target_link,
                 }
             )
-            if t_type in {"vcsa", "esxi", "vm", "windows", "ubuntu", "photon"}:
+            # Update link if this is a known target type (exact or substring match)
+            known_types = reg.all_target_types()
+            if t_type in known_types or any(tt in t_type.lower() for tt in known_types):
                 row["links"]["node_report_latest"] = target_link
 
             for f in findings:
@@ -509,22 +509,19 @@ def build_stig_fleet_view(
     nav_with_tree = {**nav} if nav else {}
     # We can derive tree_fleets from by_platform if they have hosts
     tree_fleets = []
-    p_config = {
-        "linux": {"label": "Linux", "link": "platform/linux/ubuntu/linux_fleet_report.html"},
-        "vmware": {"label": "VMware", "link": "platform/vmware/vcenter/vcenter_fleet_report.html"},
-        "windows": {"label": "Windows", "link": "platform/windows/windows_fleet_report.html"},
-    }
-    platform_to_dir = {
-        "linux": "linux/ubuntu",
-        "vmware": "vmware/vcenter",
-        "windows": "windows",
-    }
-    for p_key in ["linux", "vmware", "windows"]:
-        report_dir = platform_to_dir[p_key]
+    for p_name in reg.all_platform_names():
+        report_dir = reg.platform_to_report_dir(p_name)
+        if report_dir is None:
+            continue
         if generated_fleet_dirs is not None and report_dir not in generated_fleet_dirs:
             continue
-        if by_platform.get(p_key, {}).get("hosts", 0) > 0:
-            tree_fleets.append({"name": p_config[p_key]["label"], "report": p_config[p_key]["link"]})
+        if by_platform.get(p_name, {}).get("hosts", 0) > 0:
+            fleet_link = reg.platform_fleet_link(p_name)
+            if not fleet_link:
+                schema_name = (reg.schema_names_for_platform(p_name) or [p_name])[0]
+                fleet_link = f"platform/{report_dir}/{schema_name}_fleet_report.html"
+            display = reg.platform_display_name(p_name)
+            tree_fleets.append({"name": display, "report": fleet_link})
 
     # Add STIG fleet
     tree_fleets.append({"name": "STIG", "report": "stig_fleet_report.html"})

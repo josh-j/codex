@@ -13,10 +13,7 @@
     {% set top_findings = findings_index.get('top_findings', []) %}
     {% set nav = view.get('nav', {}) %}
     <title>STIG Fleet Compliance Overview</title>
-    <style>
-        {% include 'report_shared.css' %}
-        .platform-row td:first-child { font-weight: 600; text-transform: capitalize; }
-    </style>
+    <style>{{ _minified_css }}.platform-row td:first-child{font-weight:600;text-transform:capitalize}</style>
 </head>
 <body>
 <div class="page-wrap">
@@ -28,7 +25,7 @@
         
         {% if nav.get('tree_fleets') %}
         <div class="nav-tree">
-            <span class="tree-label">STIG Fleet Overview</span>
+            <span class="tree-label">STIG Fleet</span>
             <span class="tree-trigger">&#9660;</span>
             <div class="nav-dropdown">
                 <div class="dropdown-group">Fleets</div>
@@ -42,6 +39,21 @@
         {% else %}
         STIG Fleet Compliance Overview
         {% endif %}
+
+        {% if rows | length > 0 %}
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">Hosts</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">STIG Hosts</div>
+                {% for row in rows %}
+                <a href="{{ row.get('links', {}).get('node_report_latest', '#') }}">{{ row.get('host', '') }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
             <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
             <div class="search-results nav-dropdown"></div>
@@ -116,9 +128,9 @@
                                 <td>{{ platform_name }}</td>
                                 <td>{{ p.get('hosts', 0) }}</td>
                                 <td>{{ p.get('open', 0) }}</td>
-                                <td class="{% if p.get('critical', 0) > 0 %}sv-critical{% endif %}">{{ p.get('critical', 0) }}</td>
-                                <td class="{% if p.get('warning', 0) > 0 %}sv-warning{% endif %}">{{ p.get('warning', 0) }}</td>
-                                <td class="{% if p.get('info', 0) > 0 %}sv-info{% endif %}">{{ p.get('info', 0) }}</td>
+                                <td>{% if p.get('critical', 0) > 0 %}<span class="sv-critical">{{ p.get('critical', 0) }}</span>{% else %}{{ p.get('critical', 0) }}{% endif %}</td>
+                                <td>{% if p.get('warning', 0) > 0 %}<span class="sv-warning">{{ p.get('warning', 0) }}</span>{% else %}{{ p.get('warning', 0) }}{% endif %}</td>
+                                <td>{% if p.get('info', 0) > 0 %}<span class="sv-info">{{ p.get('info', 0) }}</span>{% else %}{{ p.get('info', 0) }}{% endif %}</td>
                             </tr>
                             {% endif %}
                         {% endfor %}
@@ -138,11 +150,11 @@
         </div>
         <div class="widget-body widget-table-view">
         {% if rows | length > 0 %}
+        {% set ns = namespace(current_platform='', grp_id='') %}
         <table>
             <thead>
                 <tr>
                     <th class="sortable">Host</th>
-                    <th class="sortable">Platform</th>
                     <th class="sortable">Targets</th>
                     <th class="sortable">Status</th>
                     <th class="sortable">Open</th>
@@ -153,7 +165,19 @@
             </thead>
             <tbody>
             {% for row in rows %}
-                <tr class="row-interactive">
+                {% set plat = row.get('platform', '') %}
+                {% if plat != ns.current_platform %}
+                    {% set ns.current_platform = plat %}
+                    {% set ns.grp_id = "grp-stig-" ~ loop.index %}
+                    <tr class="group-hdr" data-group="{{ ns.grp_id }}">
+                        <td colspan="7">
+                            <span class="group-toggle"></span>
+                            <strong class="platform-name">{{ plat }}</strong>
+                            <span class="subtle-text">({{ rows | selectattr('platform', 'eq', plat) | list | length }})</span>
+                        </td>
+                    </tr>
+                {% endif %}
+                <tr class="group-row row-interactive" data-group="{{ ns.grp_id }}">
                     <td>
                         {% set link = row.get('links', {}).get('node_report_latest', '') %}
                         {% if link %}
@@ -162,7 +186,6 @@
                             <strong>{{ row.get('host', '') }}</strong>
                         {% endif %}
                     </td>
-                    <td>{{ row.get('platform', '') }}</td>
                     <td>
                         {% set targets = row.get('targets', []) %}
                         {% if targets %}
@@ -176,13 +199,14 @@
                     <td>
                         {% set status_raw = row.get('status', {}).get('raw', 'UNKNOWN') | upper %}
                         {% if status_raw in ('PASS', 'OK', 'COMPLIANT') %}<span class="sv-ok">{{ status_raw }}</span>
-                        {% elif status_raw in ('FAIL', 'OPEN', 'NON-COMPLIANT') %}<span class="sv-critical">{{ status_raw }}</span>
+                        {% elif status_raw in ('FAIL', 'OPEN', 'NON-COMPLIANT', 'CRITICAL') %}<span class="sv-critical">{{ status_raw }}</span>
+                        {% elif status_raw in ('WARNING',) %}<span class="sv-warning">{{ status_raw }}</span>
                         {% else %}<span class="sv-info">{{ status_raw }}</span>{% endif %}
                     </td>
                     <td>{{ row.get('findings_open', 0) }}</td>
-                    <td class="{% if row.get('critical', 0) > 0 %}sv-critical{% endif %}">{{ row.get('critical', 0) }}</td>
-                    <td class="{% if row.get('warning', 0) > 0 %}sv-warning{% endif %}">{{ row.get('warning', 0) }}</td>
-                    <td class="{% if row.get('info', 0) > 0 %}sv-info{% endif %}">{{ row.get('info', 0) }}</td>
+                    <td>{% if row.get('critical', 0) > 0 %}<span class="sv-critical">{{ row.get('critical', 0) }}</span>{% else %}{{ row.get('critical', 0) }}{% endif %}</td>
+                    <td>{% if row.get('warning', 0) > 0 %}<span class="sv-warning">{{ row.get('warning', 0) }}</span>{% else %}{{ row.get('warning', 0) }}{% endif %}</td>
+                    <td>{% if row.get('info', 0) > 0 %}<span class="sv-info">{{ row.get('info', 0) }}</span>{% else %}{{ row.get('info', 0) }}{% endif %}</td>
                 </tr>
             {% endfor %}
             </tbody>
@@ -207,7 +231,7 @@
                 <tr>
                     <th class="col-id sortable">Rule ID</th>
                     <th class="col-sev sortable">Severity</th>
-                    <th class="sortable">Affected Hosts</th>
+                    <th class="col-sev sortable">Affected</th>
                     <th class="sortable">Title</th>
                 </tr>
             </thead>
@@ -232,6 +256,6 @@
     </div>
     {% endif %}
 </div>
-<script>{% include 'collapsible.js' %}</script>
+<script>{{ _minified_js }}</script>
 </body>
 </html>

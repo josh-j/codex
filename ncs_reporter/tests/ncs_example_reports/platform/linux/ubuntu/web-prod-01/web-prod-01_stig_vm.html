@@ -1,0 +1,3743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STIG Report - web-prod-01</title>
+    <style>
+/* ==========================================================================
+   CSS Variables — Grafana-inspired dark theme
+   ========================================================================== */
+:root {
+  /* Colors: Surface & Backgrounds */
+  --bg-top: #111217;
+  --bg-bottom: #111217;
+  --surface: #181b1f;
+  --surface-alt: #1e2228;
+  --surface-muted: #1a1d23;
+  --surface-th: #1e2228;
+  --surface-row-alt: #1a1d22;
+  --surface-hover: #22262d;
+  --surface-hover-light: #1e2228;
+  --surface-active: #22262d;
+  --surface-translucent: rgba(24, 27, 31, 0.92);
+
+  /* Colors: Text */
+  --text: #d8dce2;
+  --text-muted: #8e939c;
+  --text-soft: #6c727d;
+  --text-strong: #ccccdc;
+  --text-active: #ffffff;
+  --text-details: #a7abb5;
+  --text-divider: #444950;
+  --text-icon: #6c727d;
+  --text-icon-dark: #8e939c;
+  --text-dash: #444950;
+  --text-inverse: #ffffff;
+  --text-inverse-muted: #c7d0dc;
+  --text-inverse-soft: #a0aab8;
+
+  /* Colors: Lines & Borders */
+  --line: #2c3038;
+  --line-strong: #363b44;
+  --line-subtle: #22262d;
+  --line-hover: #44495a;
+  --line-focus: #6e9fff;
+  --line-focus-muted: #4a6fa5;
+
+  /* Colors: Brand — Grafana teal accent */
+  --brand: #6e9fff;
+  --brand-strong: #83b0ff;
+  --brand-soft: rgba(110, 159, 255, 0.12);
+
+  /* Colors: Health & Status — Grafana palette */
+  --ok: #73bf69;
+  --warn: #ff9830;
+  --critical: #f2495c;
+  --info: #8e939c;
+  --green: #73bf69;
+  --yellow: #ff9830;
+  --red: #f2495c;
+  --blue: #6e9fff;
+  --health-ok: #73bf69;
+  --health-warn: #ff9830;
+  --health-crit: #f2495c;
+  --health-unk: #6c727d;
+  --muted: #555a65;
+
+  /* Colors: Alerts */
+  --alert-bg: rgba(242, 73, 92, 0.06);
+  --alert-border: rgba(242, 73, 92, 0.20);
+  --alert-crit-bg: rgba(242, 73, 92, 0.06);
+  --alert-warn-bg: rgba(255, 152, 48, 0.06);
+  --alert-warn-border: rgba(255, 152, 48, 0.20);
+
+  /* Colors: Gradients — flat for Grafana */
+  --grad-header: #181b1f;
+  --grad-toc: #181b1f;
+  --grad-widget-hdr: #1e2228;
+  --grad-widget-hdr-hover: #22262d;
+  --grad-widget-alert-hdr: rgba(242, 73, 92, 0.10);
+  --grad-widget-subgroup: #1a1d22;
+
+  /* Colors: Widgets & Groups */
+  --widget-hdr-border: #2c3038;
+  --widget-alert-hdr-border: rgba(242, 73, 92, 0.25);
+  --widget-grid-hdr: #1e2228;
+  --widget-grid-title: #ccccdc;
+  --widget-grid-toggle-border: #363b44;
+  --widget-link: #6e9fff;
+
+  --text-stig: #c77dba;
+  --text-stig-hover: #d99cce;
+  --surface-stig-hover: rgba(199, 125, 186, 0.08);
+  --group-hdr-bg: #1e2228;
+
+  /* Radii — tighter for Grafana feel */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Shadows — very subtle in dark theme */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  /* Typography */
+  --text-micro: 9px;
+  --text-tiny: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-xl: 18px;
+  --font-sans: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Spacing */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-22: 22px;
+}
+
+/* ==========================================================================
+   Light Theme Override
+   ========================================================================== */
+:root.light {
+  --bg-top: #d8dce4;
+  --bg-bottom: #d8dce4;
+  --surface: #e4e7ed;
+  --surface-alt: #dde0e7;
+  --surface-muted: #d8dbe2;
+  --surface-th: #d4d8df;
+  --surface-row-alt: #e0e3ea;
+  --surface-hover: #d0d4dc;
+  --surface-hover-light: #dde0e7;
+  --surface-active: #cacfd8;
+  --surface-translucent: rgba(228, 231, 237, 0.96);
+  --text: #3b4049;
+  --text-muted: #5c6370;
+  --text-soft: #7c828d;
+  --text-strong: #2c3038;
+  --text-active: #1a1d22;
+  --text-details: #4a5060;
+  --text-divider: #b8bcc5;
+  --text-icon: #7c828d;
+  --text-icon-dark: #5c6370;
+  --text-dash: #b8bcc5;
+  --text-inverse: #3b4049;
+  --text-inverse-muted: #4a5060;
+  --text-inverse-soft: #5c6370;
+  --line: #c4c9d2;
+  --line-strong: #b0b6c0;
+  --line-subtle: #d4d8df;
+  --line-hover: #9098a4;
+  --line-focus: #4a7cdc;
+  --line-focus-muted: #7aa0e8;
+  --brand: #4a7cdc;
+  --brand-strong: #3a6bcf;
+  --brand-soft: rgba(74, 124, 220, 0.10);
+  --ok: #3d8c56;
+  --warn: #b8742a;
+  --critical: #c44040;
+  --info: #5c6370;
+  --green: #3d8c56;
+  --yellow: #b8742a;
+  --red: #c44040;
+  --blue: #4a7cdc;
+  --health-ok: #3d8c56;
+  --health-warn: #b8742a;
+  --health-crit: #c44040;
+  --health-unk: #7c828d;
+  --muted: #9098a4;
+  --alert-bg: rgba(196, 64, 64, 0.06);
+  --alert-border: rgba(196, 64, 64, 0.16);
+  --alert-crit-bg: rgba(196, 64, 64, 0.06);
+  --alert-warn-bg: rgba(184, 116, 42, 0.06);
+  --alert-warn-border: rgba(184, 116, 42, 0.16);
+  --grad-header: #dde0e7;
+  --grad-toc: #dde0e7;
+  --grad-widget-hdr: #d8dbe2;
+  --grad-widget-hdr-hover: #d0d4dc;
+  --grad-widget-alert-hdr: rgba(196, 64, 64, 0.08);
+  --grad-widget-subgroup: #d8dbe2;
+  --widget-grid-hdr: #d0d4dc;
+  --widget-grid-title: #3b4049;
+  --widget-grid-toggle-border: #b0b6c0;
+  --text-stig: #7b52b4;
+  --text-stig-hover: #6842a0;
+  --surface-stig-hover: rgba(123, 82, 180, 0.07);
+  --group-hdr-bg: #d4d8df;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Theme toggle button — inline next to search */
+.theme-toggle {
+  width: 26px;
+  height: 26px;
+  margin-left: var(--space-8);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.theme-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text);
+  min-height: 100vh;
+  background: var(--bg-top);
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--brand-strong);
+  text-decoration: underline;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: var(--space-2);
+  border-radius: var(--space-4);
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* ==========================================================================
+   Tables — Grafana-style: no vertical borders, subtle horizontal rules
+   ========================================================================== */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-md);
+}
+
+th {
+  padding: 10px var(--space-12);
+  background: transparent;
+  border-top: none;
+  border-bottom: 1px solid var(--line);
+  border-right: none;
+  color: var(--text-muted);
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--text-tiny);
+  font-weight: 600;
+  position: relative;
+}
+
+.js th.sortable {
+  cursor: pointer;
+  user-select: none;
+  padding-right: 24px;
+  transition: color 0.15s ease;
+}
+
+.js th.sortable:hover {
+  color: var(--text-strong);
+}
+
+.js th.sortable::after {
+  content: "\2195";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.3;
+  font-size: 1.1em;
+}
+
+.js th.sortable.sort-asc::after {
+  content: "\2193";
+  opacity: 1;
+  color: var(--brand);
+}
+
+.js th.sortable.sort-desc::after {
+  content: "\2191";
+  opacity: 1;
+  color: var(--brand);
+}
+
+th:first-child {
+  border-left: none;
+}
+
+td {
+  border-right: none;
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-8) var(--space-12);
+  vertical-align: top;
+  background: transparent;
+}
+
+td:first-child {
+  border-left: none;
+}
+
+tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0;
+}
+
+.js tr.group-hdr:hover td,
+tr.row-interactive:hover td {
+  background: var(--surface-hover);
+}
+
+/* ==========================================================================
+   Layout & Headers
+   ========================================================================== */
+.page-wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-16) var(--space-22);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-16);
+  margin: 0;
+  padding: var(--space-16) var(--space-20);
+  color: var(--text-inverse);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.page-header .right {
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.page-header span {
+  color: var(--text-muted);
+}
+
+.page-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Status & Colors — Grafana-style bold text
+   ========================================================================== */
+.sv-critical { color: var(--critical); font-weight: 600; }
+.sv-warning  { color: var(--warn); font-weight: 600; }
+.sv-ok       { color: var(--ok); font-weight: 600; }
+.sv-info     { color: var(--info); font-weight: 500; }
+.sv-off      { color: var(--muted); font-weight: 500; }
+.health-ok   { color: var(--health-ok); font-weight: 700; font-size: 1.1em; }
+.health-warn { color: var(--health-warn); font-weight: 700; font-size: 1.1em; }
+.health-crit { color: var(--health-crit); font-weight: 700; font-size: 1.1em; }
+.health-unk  { color: var(--health-unk); font-weight: 600; }
+
+/* Status icons — small inline circles/symbols before badge text */
+.status-icon { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.status-icon-ok   { background: var(--ok); box-shadow: 0 0 4px var(--ok); }
+.status-icon-crit { background: var(--critical); box-shadow: 0 0 4px var(--critical); }
+.status-icon-warn { background: var(--warn); box-shadow: 0 0 4px var(--warn); }
+.status-icon-off  { background: var(--muted); }
+
+.alert-crit td { background: var(--alert-crit-bg); }
+.alert-warn td { background: var(--alert-warn-bg); }
+
+/* ==========================================================================
+   Navigation (TOC & Breadcrumbs)
+   ========================================================================== */
+.toc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-14);
+  margin: 0 0 var(--space-16);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface);
+}
+
+.toc-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+.toc-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.toc a {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.toc a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.toc-left a:not(:first-of-type)::before {
+  content: "\00b7";
+  margin-right: 11px;
+  color: var(--text-divider);
+  font-size: 16px;
+  line-height: 0;
+}
+
+.breadcrumb {
+  margin: 0 0 var(--space-12);
+  padding: 7px 11px;
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.nav-search {
+  margin-left: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-search input {
+  padding: 5px 12px 5px 28px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: all 0.2s ease;
+  width: 140px;
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.nav-search input::placeholder {
+  color: var(--text-soft);
+}
+
+.nav-search input:focus {
+  border-color: var(--brand);
+  width: 200px;
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+.nav-search::before {
+  content: "\26B2";
+  position: absolute;
+  left: 10px;
+  font-size: 14px;
+  color: var(--text-soft);
+  pointer-events: none;
+  transform: rotate(-45deg);
+  display: inline-block;
+}
+
+.nav-search .search-results {
+  top: calc(100% + var(--space-4));
+  right: 0;
+  left: auto;
+  width: 250px;
+  max-width: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.nav-search .search-results .platform-badge {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  background: var(--surface-alt);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.breadcrumb .sep {
+  margin: 0 5px;
+  color: var(--text-divider);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb .site-home {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: var(--space-4);
+  vertical-align: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1L1 7h2v6h4V9h2v4h4V7h2L8 1z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1L1 7h2v6h4V9h2v4h4V7h2L8 1z'/%3E%3C/svg%3E") center/contain no-repeat;
+  color: var(--text-muted);
+  font-size: 0;
+}
+
+/* ==========================================================================
+   Nav Tree & Dropdown
+   ========================================================================== */
+.nav-tree {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: -3px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  transition: all 0.15s ease;
+}
+
+.nav-tree:hover {
+  border-color: var(--line-hover);
+  background: var(--surface-hover);
+}
+
+.nav-tree::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: var(--space-10);
+  display: none;
+  z-index: 10;
+}
+
+.nav-tree:hover::after {
+  display: block;
+}
+
+.nav-tree:focus-within {
+  border-color: var(--line-focus-muted);
+}
+
+.nav-tree .tree-label {
+  font-size: var(--text-sm);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.nav-tree .tree-trigger {
+  display: inline-block;
+  margin-left: var(--space-4);
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid var(--text-icon);
+  cursor: pointer;
+  user-select: none;
+  font-size: 0;
+}
+
+.nav-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  left: 0;
+  min-width: 220px;
+  max-width: 340px;
+  z-index: 1000;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.nav-tree:hover .nav-dropdown,
+.nav-tree:focus-within .nav-dropdown,
+.nav-tree.nav-tree-open .nav-dropdown {
+  display: block;
+}
+
+.nav-dropdown-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.nav-dropdown .dropdown-group {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  padding: var(--space-8) var(--space-12) 3px;
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.nav-dropdown .dropdown-group:first-child {
+  margin-top: 0;
+  border-top: none;
+}
+
+.nav-dropdown a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-sm);
+  color: var(--text);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-dropdown a:hover {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.nav-dropdown a.active {
+  background: var(--surface-active);
+  color: var(--text-active);
+  font-weight: 600;
+  cursor: default;
+}
+
+.nav-dropdown a.active::after {
+  content: "\2713";
+  font-size: var(--text-tiny);
+  color: var(--ok);
+}
+
+.nav-dropdown a.stig-link {
+  color: var(--text-stig);
+}
+
+.nav-dropdown a.stig-link:hover {
+  background: var(--surface-stig-hover);
+  color: var(--text-stig-hover);
+}
+
+/* ==========================================================================
+   Components & Utilities
+   ========================================================================== */
+.summary-line {
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-12);
+  color: var(--text-muted);
+}
+
+.summary-line span {
+  margin-right: var(--space-16);
+}
+
+.kv td:first-child {
+  width: 38%;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.kv td:last-child {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.no-data,
+.empty-state {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.no-data {
+  font-size: var(--text-sm);
+  padding: var(--space-10) var(--space-12);
+}
+
+.widget-body > .no-data {
+  border: none;
+  background: none;
+  padding: var(--space-22);
+  text-align: center;
+  font-style: italic;
+  font-size: var(--text-md);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 34px var(--space-20);
+}
+
+.text-right { text-align: right; }
+.mt-14 { margin-top: var(--space-14); }
+.severity-cell { white-space: nowrap; padding-left: var(--space-20); }
+.nowrap { white-space: nowrap; }
+.subtle-text { color: var(--text-muted); }
+.strong-text { font-weight: 600; }
+.link-strong { font-weight: 600; }
+.dash-muted { color: var(--text-dash); }
+
+.th-severity { width: 90px; }
+.th-health { width: 80px; }
+.th-assets { width: 100px; }
+.th-alerts,
+.th-alarms { width: 70px; }
+.th-status { width: 90px; }
+.th-hosts,
+.th-open { width: 80px; }
+.th-category { width: 160px; }
+
+.kv-label-wide { width: 50%; }
+.kv-label-wider { width: 55%; }
+.kv-divider-top { border-top: 1px solid var(--line); }
+
+.inline-warning {
+  padding: var(--space-16);
+  border: 1px solid var(--alert-warn-border);
+  border-radius: var(--radius-md);
+  margin: var(--space-10) 0 var(--space-20);
+  background: var(--alert-warn-bg);
+}
+
+.inline-warning-note {
+  margin-top: var(--space-8);
+}
+
+.finding-title {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.finding-message {
+  font-size: 0.92rem;
+  margin-bottom: var(--space-8);
+}
+
+.details-description {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: var(--space-10);
+  margin-bottom: var(--space-10);
+  color: var(--text-details);
+  line-height: 1.5;
+}
+
+.alert-category {
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+}
+
+.alert-details {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6) var(--space-10);
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+}
+
+.col-id {
+  width: 130px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.col-status { width: 120px; }
+.col-sev { width: 80px; }
+
+/* ==========================================================================
+   Widgets — Grafana panel style: flat header, card body
+   ========================================================================== */
+.widget-title-meta {
+  font-weight: 500;
+  margin-left: var(--space-10);
+  font-size: var(--text-xs);
+}
+
+.widget-table-view {
+  overflow-x: auto;
+}
+
+.widget {
+  margin-bottom: var(--space-8);
+}
+
+.widget-titlebar {
+  padding: var(--space-8) var(--space-12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: background 0.15s ease;
+}
+
+.widget-title {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.titlebar-link {
+  color: var(--brand);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  transition: color 0.15s ease;
+}
+
+.titlebar-link:hover {
+  color: var(--brand-strong);
+}
+
+.widget-body {
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--surface);
+}
+
+.widget-body table {
+  margin-bottom: 0;
+}
+
+.js .widget-titlebar:has(.widget-toggle) {
+  cursor: pointer;
+  user-select: none;
+}
+
+.js .widget-titlebar:has(.widget-toggle):hover {
+  background: var(--surface-hover);
+}
+
+.js .widget-grid .widget-titlebar:has(.widget-toggle):hover {
+  background: var(--surface-hover);
+}
+
+.widget-toggle {
+  display: none;
+}
+
+.js .widget-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.js .widget-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.js .widget-toggle::before {
+  content: "\2212";
+  font-size: var(--text-sm);
+}
+
+.js .widget-toggle[aria-expanded="false"]::before {
+  content: "+";
+}
+
+/* When collapsed, round the bottom corners of the titlebar */
+.js .widget-titlebar:has(.widget-toggle[aria-expanded="false"]) {
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.widget-subgroup {
+  padding: var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  background: var(--surface-alt);
+}
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-8);
+}
+
+.widget-grid .widget {
+  margin-bottom: 0;
+}
+
+.widget-grid .widget-titlebar {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-bottom: none;
+}
+
+.widget-grid .widget-title {
+  color: var(--text-muted);
+}
+
+.widget-grid .widget-toggle {
+  border-color: var(--line-strong);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.widget-grid .widget-body {
+  box-shadow: none;
+}
+
+.widget-alert {
+  border-radius: var(--radius-md);
+}
+
+.widget-alert .widget-titlebar {
+  background: var(--grad-widget-alert-hdr);
+  border-color: var(--widget-alert-hdr-border);
+}
+
+.widget-alert .widget-title {
+  color: var(--critical);
+}
+
+.widget-alert .widget-body {
+  border-color: var(--widget-alert-hdr-border);
+}
+
+/* ==========================================================================
+   Groups & Details
+   ========================================================================== */
+.group-hdr td {
+  padding: 7px var(--space-12);
+  background: var(--group-hdr-bg);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.group-platform {
+  margin-left: var(--space-8);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.platform-name {
+  text-transform: capitalize;
+}
+
+.js tr.group-hdr {
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-toggle {
+  display: none;
+}
+
+.js .group-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-right: var(--space-6);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.group-toggle::before {
+  content: "\2212";
+}
+
+.group-hdr-collapsed .group-toggle::before {
+  content: "+";
+}
+
+.details-box {
+  display: none;
+  margin-top: var(--space-10);
+  padding: var(--space-14);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  font-size: 0.9rem;
+}
+
+details[open] > .details-box {
+  display: block;
+}
+
+.details-box pre {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  margin: var(--space-8) 0 var(--space-12);
+  padding: var(--space-10);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-details);
+  font-family: var(--font-mono);
+}
+
+.toggle-btn {
+  margin-top: var(--space-4);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.toggle-btn:hover {
+  color: var(--brand-strong);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Stat Cards — Grafana single-stat style
+   ========================================================================== */
+.widget-body-padded {
+  padding: var(--space-14);
+}
+
+.stat-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.stat-card {
+  flex: 1 1 110px;
+  min-width: 90px;
+  padding: var(--space-16) var(--space-14);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--line-hover);
+}
+
+.stat-card-value {
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.1;
+  margin-bottom: var(--space-6);
+  letter-spacing: -0.02em;
+}
+
+.stat-card-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card-blue .stat-card-value { color: var(--blue); }
+.stat-card-green .stat-card-value { color: var(--green); }
+.stat-card-yellow .stat-card-value { color: var(--yellow); }
+.stat-card-red .stat-card-value { color: var(--red); }
+.stat-card-auto .stat-card-value { color: var(--text); }
+
+/* ==========================================================================
+   Bar Chart — Grafana gauge-bar style
+   ========================================================================== */
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.bar-chart-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.bar-chart-label {
+  flex: 0 0 160px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-chart-track {
+  flex: 1;
+  height: 10px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-chart-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.bar-chart-value {
+  flex: 0 0 52px;
+  text-align: right;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.bar-chart-blue { background: var(--blue); }
+.bar-chart-green { background: var(--green); }
+.bar-chart-yellow { background: var(--yellow); }
+.bar-chart-red { background: var(--red); }
+
+/* ==========================================================================
+   List Widget
+   ========================================================================== */
+.list-widget {
+  margin: 0;
+  padding-left: var(--space-20);
+  font-size: var(--text-md);
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.list-widget li {
+  padding: var(--space-2) 0;
+}
+
+.list-widget-comma {
+  font-size: var(--text-md);
+  line-height: 1.7;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 900px) {
+  .page-wrap {
+    padding: var(--space-14);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header .right {
+    text-align: left;
+  }
+
+  .toc {
+    padding: 9px 11px;
+  }
+
+  .widget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  table {
+    font-size: var(--text-sm);
+  }
+
+  .widget-table-view table {
+    min-width: 640px;
+  }
+
+  .widget-table-view table.kv {
+    min-width: 0;
+  }
+
+  th,
+  td {
+    padding: 7px var(--space-8);
+  }
+
+  .stat-card-value {
+    font-size: 24px;
+  }
+}
+
+/* ==========================================================================
+   Print (Minimal & Compact)
+   ========================================================================== */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .page-wrap {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide navigation, search, and UI buttons */
+  .breadcrumb, .toc, .nav-search, .widget-toggle, .header-actions,
+  .toggle-btn, .group-toggle, .nav-dropdown, .nav-tree, .titlebar-link {
+    display: none !important;
+  }
+
+  /* Compact, minimal header */
+  .page-header {
+    background: none !important;
+    color: #000 !important;
+    border: none !important;
+    border-bottom: 2px solid #000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 0 5pt 0 !important;
+    margin-bottom: 10pt !important;
+    display: block !important;
+  }
+
+  .page-header h1 {
+    font-size: 14pt !important;
+    margin: 0 !important;
+  }
+
+  .page-header .right {
+    float: right;
+    text-align: right !important;
+  }
+
+  .page-subtitle {
+    font-size: 8pt !important;
+    color: #444 !important;
+  }
+
+  /* High-density widgets */
+  .widget {
+    margin-bottom: 10pt !important;
+    page-break-inside: avoid;
+  }
+
+  .widget-titlebar {
+    background: none !important;
+    color: #000 !important;
+    border: none !important;
+    border-bottom: 1px solid #000 !important;
+    padding: 2pt 0 !important;
+    margin-bottom: 2pt !important;
+    border-radius: 0 !important;
+  }
+
+  .widget-title {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+
+  .widget-body {
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* Compact Tables */
+  table {
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+
+  th {
+    background: #f0f0f0 !important;
+    border: 0.5pt solid #000 !important;
+    padding: 2pt 4pt !important;
+    color: #000 !important;
+  }
+
+  td {
+    background: #fff !important;
+    border: 0.5pt solid #ccc !important;
+    padding: 2pt 4pt !important;
+    color: #000 !important;
+  }
+
+  /* Expanded sections */
+  .details-box {
+    display: block !important;
+    border: 0.5pt solid #ccc !important;
+    margin-top: 2pt !important;
+    padding: 4pt !important;
+    font-size: 8pt !important;
+  }
+
+  pre {
+    white-space: pre-wrap !important;
+    border: 0.5pt solid #eee !important;
+    background: #f9f9f9 !important;
+    padding: 4pt !important;
+    font-size: 7.5pt !important;
+  }
+
+  tr.group-row {
+    display: table-row !important;
+  }
+
+  /* Stat cards: compact inline */
+  .stat-cards-row {
+    gap: 4pt !important;
+  }
+
+  .stat-card {
+    padding: 4pt 6pt !important;
+    border: 0.5pt solid #ccc !important;
+    background: #fff !important;
+  }
+
+  .stat-card-value {
+    font-size: 14pt !important;
+    color: #000 !important;
+  }
+
+  .stat-card-label {
+    color: #444 !important;
+  }
+
+  /* Bar chart: simple bars */
+  .bar-chart-track {
+    height: 8pt !important;
+    background: #eee !important;
+  }
+
+  .bar-chart-fill {
+    background: #666 !important;
+  }
+
+  .bar-chart-label,
+  .bar-chart-value {
+    color: #000 !important;
+  }
+
+  /* B&W Status Indicators */
+  .sv-critical, .health-crit { font-weight: bold !important; text-decoration: underline !important; color: #000 !important; }
+  .sv-warning, .health-warn { font-weight: bold !important; color: #000 !important; }
+  .sv-ok, .health-ok { color: #000 !important; }
+  .sv-off { color: #888 !important; }
+  .status-icon { background: #000 !important; box-shadow: none !important; }
+  .status-icon-off { background: #888 !important; }
+
+  .alert-crit td, .alert-warn td {
+    background: #fff !important;
+  }
+
+  /* Remove URL footnotes for cleaner compact look */
+  a[href]:after { content: "" !important; }
+}    </style>
+</head>
+<body>
+<div class="page-wrap">
+
+    <div class="breadcrumb">
+        <a href="../../../../site_health_report.html" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
+        
+        <div class="nav-tree">
+            <a href="../../../../stig_fleet_report.html" class="tree-label">STIG Fleet</a>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">Fleets</div>
+                <a href="../../../../platform/linux/ubuntu/linux_fleet_report.html" class=" ">
+                    Linux Fleet
+                </a>
+                <a href="../../../../platform/vmware/vcenter/vcenter_fleet_report.html" class=" ">
+                    Vcenter Fleet
+                </a>
+                <a href="../../../../platform/windows/windows_fleet_report.html" class=" ">
+                    Windows Fleet
+                </a>
+                <a href="../../../../stig_fleet_report.html" class="active stig-link">
+                    STIG Fleet
+                </a>
+            </div>
+        </div>
+        <span class="sep">&rsaquo;</span>
+
+        <div class="nav-tree">
+            <span class="tree-label">web-prod-01</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">Hosts</div>
+                <a href="../../photon/photon-01/photon-01_stig_photon.html" class="">photon-01</a>
+                <a href="../vcenter-prod/vcenter-prod_stig_vcsa.html" class="">vcenter-prod</a>
+                <a href="web-prod-01_stig_vm.html" class="active">web-prod-01</a>
+                <a href="../../../windows/win-srv-01/win-srv-01_stig_windows.html" class="">win-srv-01</a>
+            </div>
+        </div>
+
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">VM STIG</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown">
+                <div class="dropdown-group">STIG Audits</div>
+                <a href="#" class="active">VM STIG</a>
+                <a href="web-prod-01_stig_ubuntu.html">UBUNTU STIG</a>
+            </div>
+        </div>
+
+        <span class="sep">&rsaquo;</span>
+        <div class="nav-tree">
+            <span class="tree-label">History</span>
+            <span class="tree-trigger">&#9660;</span>
+            <div class="nav-dropdown nav-dropdown-scroll">
+                <div class="dropdown-group">Report Versions</div>
+                <a href="web-prod-01_stig_vm_20260301.html">2026-03-01</a>
+            </div>
+        </div>
+        <div class="nav-search" data-root="../../../../">
+            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+            <div class="search-results nav-dropdown"></div>
+        </div>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <h1>STIG Compliance — Node Report &mdash; <code>web-prod-01</code></h1>
+            <span class="page-subtitle">Platform: UNKNOWN &nbsp;&middot;&nbsp; Target: VM</span>
+        </div>
+        <div class="right">
+<span class="health-crit">NON-COMPLIANT</span>
+            <br>2026-03-07 07:26:10
+        </div>
+    </div>
+
+
+    <div class="toc">
+        <div class="toc-left">
+            <a href="#evaluation">Evaluation Summary</a>
+<a href="#open-findings">Open Findings</a><a href="#all-findings">All Findings</a>        </div>
+    </div>
+
+
+    <div class="widget" id="evaluation">
+        <div class="widget-titlebar">
+            <span class="widget-title">Evaluation Summary</span>
+        </div>
+        <div class="widget-body widget-subgroup">
+            <div class="widget-grid">
+                
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">By Status</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table class="kv">
+                            <tbody>
+                                <tr><td class="kv-label-wide subtle-text">Total Findings</td><td><strong>33</strong></td></tr>
+                                <tr><td class="subtle-text">Passed</td><td><span class="sv-ok">3</span></td></tr>
+                                <tr><td class="subtle-text">Open</td><td><span class="sv-critical">2</span></td></tr>
+                                <tr><td class="subtle-text">N/A</td><td><span class="sv-info">0</span></td></tr>
+<tr><td class="subtle-text">Not Reviewed</td><td><span class="sv-warning">28</span></td></tr>                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">By Severity</span>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table class="kv">
+                            <tbody>
+                                <tr><td class="kv-label-wide subtle-text">CAT I</td><td><span class="sv-critical">1</span></td></tr>
+                                <tr><td class="subtle-text">CAT II</td><td><span class="sv-warning">1</span></td></tr>
+                                <tr><td class="subtle-text">CAT III</td><td><span class="sv-info">0</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="widget" id="open-findings">
+        <div class="widget-titlebar">
+            <span class="widget-title">Open Findings (2)</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Open Findings"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id sortable">Rule ID</th>
+                    <th class="col-status sortable">Status</th>
+                    <th class="col-sev sortable">Severity</th>
+                    <th class="sortable">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-id">V-256400</td>
+                    <td><span class="sv-critical">OPEN</span></td>
+                    <td>
+                        <span class="sv-critical">
+                            CAT I
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must disable unneeded hardware.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must disable unneeded hardware.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">V-256402</td>
+                    <td><span class="sv-critical">OPEN</span></td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must restrict console access.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must restrict console access.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="widget" id="all-findings">
+        <div class="widget-titlebar">
+            <span class="widget-title">All Findings (33)</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse All Findings"></button>
+        </div>
+        <div class="widget-body widget-table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-id sortable">Rule ID</th>
+                    <th class="col-status sortable">Status</th>
+                    <th class="col-sev sortable">Severity</th>
+                    <th class="sortable">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="col-id">V-256400</td>
+                    <td>
+<span class="sv-critical">OPEN</span>
+                    </td>
+                    <td>
+                        <span class="sv-critical">
+                            CAT I
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must disable unneeded hardware.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must disable unneeded hardware.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">V-256402</td>
+                    <td>
+<span class="sv-critical">OPEN</span>
+                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must restrict console access.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must restrict console access.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">V-256401</td>
+                    <td>
+<span class="sv-ok">PASS</span>
+                    </td>
+                    <td>
+                        <span class="sv-critical">
+                            CAT I
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must use encryption.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must use encryption.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">V-256403</td>
+                    <td>
+<span class="sv-ok">PASS</span>
+                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must use latest tools.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must use latest tools.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">V-256404</td>
+                    <td>
+<span class="sv-ok">PASS</span>
+                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            VM must limit logging.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VM must limit logging.
+                                </div>
+
+
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256453r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Virtual disk shrinking must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Shrinking a virtual disk reclaims unused space in it. If there is empty space in the disk, this process reduces the amount of space the virtual disk occupies on the host drive. Normal users and processes (those without root or administrator privileges) within virtual machines have the capability to invoke this procedure. 
+
+However, if this is done repeatedly, the virtual disk can become unavailable while this shrinking is being performed, effectively causing a denial of service. In most datacenter environments, disk shrinking is not done, so this feature must be disabled. Repeated disk shrinking can make a virtual disk unavailable. The capability to shrink is available to nonadministrative users operating within the VM&#39;s guest operating system.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.diskShrink.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.diskShrink.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.diskShrink.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.tools.diskShrink.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.diskShrink.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.diskShrink.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256454r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Virtual disk wiping must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Shrinking and wiping (erasing) a virtual disk reclaims unused space in it. If there is empty space in the disk, this process reduces the amount of space the virtual disk occupies on the host drive. Normal users and processes (those without root or administrator privileges) within virtual machines have the capability to invoke this procedure. 
+
+However, if this is done repeatedly, the virtual disk can become unavailable while this shrinking is being performed, effectively causing a denial of service. In most datacenter environments, disk shrinking is not done, so this feature must be disabled. Repeated disk shrinking can make a virtual disk unavailable. The capability to wipe (erase) is available to nonadministrative users operating within the VM&#39;s guest operating system.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.diskWiper.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.diskWiper.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.diskWiper.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.tools.diskWiper.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.diskWiper.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.diskWiper.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256455r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Independent, nonpersistent disks must not be used on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The security issue with nonpersistent disk mode is that successful attackers, with a simple shutdown or reboot, might undo or remove any traces they were ever on the machine. To safeguard against this risk, production virtual machines should be set to use persistent disk mode; additionally, ensure activity within the VM is logged remotely on a separate server, such as a syslog server or equivalent Windows-based event collector. Without a persistent record of activity on a VM, administrators might never know whether they have been attacked or hacked.  
+
+There can be valid use cases for these types of disks, such as with an application presentation solution where read-only disks are desired, and such cases should be identified and documented.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Review the attached hard disks and verify they are not configured as independent nonpersistent disks.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-HardDisk | Select Parent, Name, Filename, DiskType, Persistence | FT -AutoSize
+
+If the virtual machine has attached disks that are in independent nonpersistent mode and are not documented, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Select the target hard disk and change the mode to &#34;persistent&#34; or uncheck &#34;Independent&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+Get-VM &#34;VM Name&#34; | Get-HardDisk | Set-HardDisk -Persistence IndependentPersistent
+
+or
+
+Get-VM &#34;VM Name&#34; | Get-HardDisk | Set-HardDisk -Persistence Persistent</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256456r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Host Guest File System (HGFS) file transfers must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Setting &#34;isolation.tools.hgfsServerSet.disable&#34; to &#34;true&#34; disables registration of the guest&#39;s HGFS server with the host. Application Programming Interfaces (APIs) that use HGFS to transfer files to and from the guest operating system, such as some VIX commands, will not function. An attacker could use this to transfer files inside the guest operating system.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.hgfsServerSet.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.hgfsServerSet.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.hgfsServerSet.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.tools.hgfsServerSet.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.hgfsServerSet.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.hgfsServerSet.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256457r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized floppy devices must be disconnected on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Ensure no device is connected to a virtual machine if it is not required. For example, floppy, serial, and parallel ports are rarely used for virtual machines in a data center environment, and CD/DVD drives are usually connected only temporarily during software installation.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>Floppy drives are no longer visible through the vSphere Client and must be done via the Application Programming Interface (API) or PowerCLI.
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Get-FloppyDrive | Select Parent, Name, ConnectionState
+
+If a virtual machine has a floppy drive connected, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>Floppy drives are no longer visible through the vSphere Client and must be done via the API or PowerCLI.
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-FloppyDrive | Remove-FloppyDrive
+
+Note: The VM must be powered off to remove the floppy drive.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256459r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized parallel devices must be disconnected on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Ensure no device is connected to a virtual machine if it is not required. For example, floppy, serial, and parallel ports are rarely used for virtual machines in a data center environment, and CD/DVD drives are usually connected only temporarily during software installation.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Review the VM&#39;s hardware and verify no parallel devices exist.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Where {$_.ExtensionData.Config.Hardware.Device.DeviceInfo.Label -match &#34;parallel&#34;}
+
+If a virtual machine has a parallel device present, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>The VM must be powered off to remove a parallel device.
+
+From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Select the parallel device, click the circled &#34;X&#34; to remove it, and click &#34;OK&#34;.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256460r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized serial devices must be disconnected on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Ensure no device is connected to a virtual machine if it is not required. For example, floppy, serial, and parallel ports are rarely used for virtual machines in a datacenter environment, and CD/DVD drives are usually connected only temporarily during software installation.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Review the VM&#39;s hardware and verify no serial devices exist.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Where {$_.ExtensionData.Config.Hardware.Device.DeviceInfo.Label -match &#34;serial&#34;}
+
+If a virtual machine has a serial device present, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>The VM must be powered off to remove a serial device.
+
+From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Select the serial device, click the circled &#34;X&#34; to remove it, and click &#34;OK&#34;.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256461r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized USB devices must be disconnected on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Ensure no device is connected to a virtual machine if it is not required. For example, floppy, serial, and parallel ports are rarely used for virtual machines in a data center environment, and CD/DVD drives are usually connected only temporarily during software installation.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Review the VM&#39;s hardware and verify no USB devices exist.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following commands:
+
+Get-VM | Where {$_.ExtensionData.Config.Hardware.Device.DeviceInfo.Label -match &#34;usb&#34;}
+Get-VM | Get-UsbDevice
+
+If a virtual machine has any USB devices or USB controllers present, this is a finding.
+
+If USB smart card readers are used to pass smart cards through the VM console to a VM, the use of a USB controller and USB devices for that purpose is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Select the USB controller, click the circled &#34;X&#34; to remove it, and click &#34;OK&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-USBDevice | Remove-USBDevice
+
+Note: This will not remove the USB controller, just any connected devices.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256462r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Console connection sharing must be limited on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    By default, more than one user at a time can connect to remote console sessions. When multiple sessions are activated, each terminal window receives a notification about the new session. If an administrator in the VM logs in using a VMware remote console during their session, a nonadministrator in the VM might connect to the console and observe the administrator&#39;s actions.
+
+Also, this could result in an administrator losing console access to a VM. For example, if a jump box is being used for an open console session and the administrator loses connection to that box, the console session remains open. Allowing two console sessions permits debugging via a shared session. For the highest security, allow only one remote console session at a time.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;RemoteDisplay.maxConnections&#34; value is set to &#34;1&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name RemoteDisplay.maxConnections
+
+If the virtual machine advanced setting &#34;RemoteDisplay.maxConnections&#34; does not exist or is not set to &#34;1&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;RemoteDisplay.maxConnections&#34; value and set it to &#34;1&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name RemoteDisplay.maxConnections -Value 1
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name RemoteDisplay.maxConnections | Set-AdvancedSetting -Value 1</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256464r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized removal, connection, and modification of devices must be prevented on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    In a virtual machine, users and processes without root or administrator privileges can connect or disconnect devices, such as network adaptors and CD-ROM drives, and can modify device settings. Use the virtual machine settings editor or configuration editor to remove unneeded or unused hardware devices. To use the device again, prevent a user or running process in the virtual machine from connecting, disconnecting, or modifying a device from within the guest operating system.
+
+By default, a rogue user with nonadministrator privileges in a virtual machine can: 
+
+1. Connect a disconnected CD-ROM drive and access sensitive information on the media left in the drive.
+2. Disconnect a network adaptor to isolate the virtual machine from its network, which is a denial of service.
+3. Modify settings on a device.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.device.connectable.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.device.connectable.disable
+
+If the virtual machine advanced setting &#34;isolation.device.connectable.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.device.connectable.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.device.connectable.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.device.connectable.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256465r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            The virtual machine (VM) must not be able to obtain host information from the hypervisor.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    If enabled, a VM can obtain detailed information about the physical host. The default value for the parameter is FALSE. This setting should not be TRUE unless a particular VM requires this information for performance monitoring. An adversary could use this information to inform further attacks on the host.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;tools.guestlib.enableHostInfo&#34; value is set to &#34;false&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.guestlib.enableHostInfo
+
+If the virtual machine advanced setting &#34;tools.guestlib.enableHostInfo&#34; does not exist or is not set to &#34;false&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;tools.guestlib.enableHostInfo&#34; value and set it to &#34;false&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name tools.guestlib.enableHostInfo -Value false
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.guestlib.enableHostInfo | Set-AdvancedSetting -Value false</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256469r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Use of the virtual machine (VM)  console must be minimized.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The VM console enables a connection to the console of a virtual machine, in effect seeing what a monitor on a physical server would show. The VM console also provides power management and removable device connectivity controls, which could allow a malicious user to bring down a VM. In addition, it impacts performance on the service console, especially if many VM console sessions are open simultaneously.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>Remote management services, such as terminal services and Secure Shell (SSH), must be used to interact with VMs.
+
+VM console access should only be granted when remote management services are unavailable or insufficient to perform necessary management tasks.
+
+Ask the system administrator if a VM console is used to perform VM management tasks other than for troubleshooting VM issues. 
+
+If a VM console is used to perform VM management tasks other than for troubleshooting VM issues, this is a finding. 
+
+If SSH and/or terminal management services are exclusively used to perform management tasks, this is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>Develop a policy prohibiting the use of a VM console for performing management services.
+
+This policy should include procedures for the use of SSH and Terminal Management services for VM management.
+
+Where SSH and Terminal Management services prove insufficient to troubleshoot a VM, access to the VM console may be granted temporarily.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256470r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            The virtual machine (VM) guest operating system must be locked when the last console connection is closed.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    When accessing the VM console, the guest operating system must be locked when the last console user disconnects, limiting the possibility of session hijacking. This setting only applies to Windows-based VMs with VMware tools installed.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;tools.guest.desktop.autolock&#34; value and verify it is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.guest.desktop.autolock
+
+If the virtual machine advanced setting &#34;tools.guest.desktop.autolock&#34; does not exist or is not set to &#34;true&#34;, this is a finding.
+
+If the VM is not Windows-based, this is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find or create the &#34;tools.guest.desktop.autolock&#34; value and set it to &#34;true&#34;.
+
+Note: The VM must be powered off to modify the advanced settings through the vSphere Client. It is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. In this case, the modified settings will not take effect until a cold boot of the VM.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name tools.guest.desktop.autolock -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.guest.desktop.autolock | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256472r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Encryption must be enabled for vMotion on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    vMotion migrations in vSphere 6.0 and earlier transferred working memory and CPU state information in clear text over the vMotion network. As of vSphere 6.5, this transfer can be transparently encrypted using 256-bit AES-GCM with negligible performance impact.
+
+vSphere enables encrypted vMotion by default as &#34;Opportunistic&#34;, meaning that encrypted channels are used where supported but the operation will continue in plain text where encryption is not supported.
+
+For example, when vMotioning between two hosts, encryption will always be used. However, because 6.0 and earlier releases do not support this feature, vMotion from a 7.0 host to a 6.0 host would be allowed but would not be encrypted. If the encryption is set to &#34;Required&#34;, vMotions to unsupported hosts will fail. This must be set to &#34;Opportunistic&#34; or &#34;Required&#34;.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the virtual machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Encryption &gt;&gt; Encrypted vMotion.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Where {($_.ExtensionData.Config.MigrateEncryption -eq &#34;disabled&#34;)}
+
+If the setting does not have a value of &#34;Opportunistic&#34; or &#34;Required&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Encryption &gt;&gt; Encrypted vMotion.
+
+Set the value to &#34;Opportunistic&#34; or &#34;Required&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following commands:
+
+$spec = New-Object VMware.Vim.VirtualMachineConfigSpec
+$spec.MigrateEncryption = New-Object VMware.Vim.VirtualMachineConfigSpecEncryptedVMotionModes
+$spec.MigrateEncryption = $true
+(Get-VM -Name &lt;vmname&gt;).ExtensionData.ReconfigVM($spec)</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256473r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Logging must be enabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The ESXi hypervisor maintains logs for each individual VM by default. These logs contain information including but not limited to power events, system failure information, tools status and activity, time sync, virtual hardware changes, vMotion migrations and machine clones. Due to the value these logs provide for the continued availability of each VM and potential security incidents, these logs must be enabled.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Settings.
+
+Ensure that the checkbox next to &#34;Enable logging&#34; is checked.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Where {$_.ExtensionData.Config.Flags.EnableLogging -ne &#34;True&#34;}
+
+If logging is not enabled, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Settings.
+
+Click the checkbox next to &#34;Enable logging&#34;. Click &#34;OK&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following commands:
+
+$spec = New-Object VMware.Vim.VirtualMachineConfigSpec
+$spec.Flags = New-Object VMware.Vim.VirtualMachineFlagInfo
+$spec.Flags.enableLogging = $true
+(Get-VM -Name &lt;vmname&gt;).ExtensionData.ReconfigVM($spec)</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256474r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Log size must be configured properly on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The ESXi hypervisor maintains logs for each individual VM by default. These logs contain information including but not limited to power events, system failure information, tools status and activity, time sync, virtual hardware changes, vMotion migrations, and machine clones.
+
+By default, the size of these logs is unlimited, and they are only rotated on vMotion or power events. This can cause storage issues at scale for VMs that do not vMotion or power cycle often.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;log.rotateSize&#34; value and verify it is set to &#34;2048000&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name log.rotateSize
+
+If the virtual machine advanced setting &#34;log.rotateSize&#34; does not exist or is not set to &#34;2048000&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;log.rotateSize&#34; value and set it to &#34;2048000&#34;.
+
+Note: The VM must be powered off to modify the advanced settings through the vSphere Client. It is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. In this case, the modified settings will not take effect until a cold boot of the VM.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name log.rotateSize -Value 2048000
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name log.rotateSize | Set-AdvancedSetting -Value 2048000</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256475r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Log retention must be configured properly on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The ESXi hypervisor maintains logs for each individual VM by default. These logs contain information including but not limited to power events, system failure information, tools status and activity, time sync, virtual hardware changes, vMotion migrations, and machine clones.
+
+By default, 10 of these logs are retained. This is normally sufficient for most environments, but this configuration must be verified and maintained.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;log.keepOld&#34; value and verify it is set to &#34;10&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name log.keepOld
+
+If the virtual machine advanced setting &#34;log.keepOld&#34; is not set to &#34;10&#34;, this is a finding.
+
+If the virtual machine advanced setting &#34;log.keepOld&#34; does not exist, this is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;log.keepOld&#34; value and set it to &#34;10&#34;.
+
+Note: The VM must be powered off to modify the advanced settings through the vSphere Client. It is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. In this case, the modified settings will not take effect until a cold boot of the VM.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name log.keepOld -Value 10
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name log.keepOld | Set-AdvancedSetting -Value 10</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256476r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            DirectPath I/O must be disabled on the virtual machine (VM) when not required.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    VMDirectPath I/O (PCI passthrough) enables direct assignment of hardware PCI functions to VMs. This gives the VM access to the PCI functions with minimal intervention from the ESXi host. This is a powerful feature for legitimate applications such as virtualized storage appliances, backup appliances, dedicated graphics, etc., but it also allows a potential attacker highly privileged access to underlying hardware and the PCI bus.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find any &#34;pciPassthruX.present&#34; value (where &#34;X&#34; is a count starting at 0) and verify it is set to &#34;FALSE&#34; or &#34;&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name &#34;pciPassthru*.present&#34; | Select Entity, Name, Value
+
+If the virtual machine advanced setting &#34;pciPassthruX.present&#34; is present, and the specific device returned is not approved, this is a finding.
+
+If the virtual machine advanced setting &#34;pciPassthruX.present&#34; is not present, this is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; Virtual Hardware tab.
+
+Find the unexpected PCI device returned from the check.
+
+Hover the mouse over the device and click the circled &#34;X&#34; to remove the device. Click &#34;OK&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name pciPassthruX.present | Remove-AdvancedSetting
+
+Note: Change the &#34;X&#34;  value to match the specific setting in the organization&#39;s environment.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256477r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-warning">
+                            CAT II
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Encryption must be enabled for Fault Tolerance on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Fault Tolerance log traffic can be encrypted. This could contain sensitive data from the protected machine&#39;s memory or CPU instructions.
+
+vSphere Fault Tolerance performs frequent checks between a primary VM and secondary VM so the secondary VM can quickly resume from the last successful checkpoint. The checkpoint contains the VM state that has been modified since the previous checkpoint.
+
+When Fault Tolerance is turned on, FT encryption is set to &#34;Opportunistic&#34; by default, which means it enables encryption only if both the primary and secondary host are capable of encryption.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>If the VM does not have Fault Tolerance enabled, this is not applicable.
+
+From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Encryption &gt;&gt; Encrypted FT. 
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Where {$_.ExtensionData.Config.FtEncryptionMode -eq &#34;ftEncryptionDisabled&#34;}
+
+If the setting does not have a value of &#34;Opportunistic&#34; or &#34;Required&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, select the Virtual Machine, right-click, and go to Edit Settings &gt;&gt; VM Options tab &gt;&gt; Encryption &gt;&gt; FT Encryption.
+
+Set the value to &#34;Opportunistic&#34; or &#34;Required&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following commands:
+
+$spec = New-Object VMware.Vim.VirtualMachineConfigSpec
+$spec.FTEncryption = New-Object VMware.Vim.VMware.Vim.VirtualMachineConfigSpecEncryptedFtModes
+$spec.FT = ftEncryptionOpportunistic or ftEncryptionRequired
+(Get-VM -Name &lt;vmname&gt;).ExtensionData.ReconfigVM($spec)</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256450r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Copy operations must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Copy and paste operations are disabled by default; however, explicitly disabling this feature will enable audit controls to verify this setting is correct. Copy, paste, drag and drop, or GUI copy/paste operations between the guest operating system and the remote console could provide the means for an attacker to compromise the VM.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.copy.disable&#34; value is set to true.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.copy.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.copy.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.tools.copy.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen. 
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as noted below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.copy.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.copy.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256451r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Drag and drop operations must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Copy and paste operations are disabled by default; however, explicitly disabling this feature will enable audit controls to verify this setting is correct. Copy, paste, drag and drop, or GUI copy/paste operations between the guest operating system and the remote console could provide the means for an attacker to compromise the VM.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.dnd.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.dnd.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.dnd.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.dnd.disable&#34; value is set to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as noted below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.dnd.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.dnd.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256452r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Paste operations must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Copy and paste operations are disabled by default; however, explicitly disabling this feature will enable audit controls to verify this setting is correct. Copy, paste, drag and drop, or GUI copy/paste operations between the guest operating system and the remote console could provide the means for an attacker to compromise the VM.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;isolation.tools.paste.disable&#34; value is set to &#34;true&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.paste.disable
+
+If the virtual machine advanced setting &#34;isolation.tools.paste.disable&#34; does not exist or is not set to &#34;true&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;isolation.tools.paste.disable&#34; value and set it to &#34;true&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name isolation.tools.paste.disable -Value true
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name isolation.tools.paste.disable | Set-AdvancedSetting -Value true</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256458r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Unauthorized CD/DVD devices must be disconnected on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Ensure no device is connected to a virtual machine if it is not required. For example, floppy, serial, and parallel ports are rarely used for virtual machines in a data center environment, and CD/DVD drives are usually connected only temporarily during software installation.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Review the VM&#39;s hardware and verify no CD/DVD drives are connected.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM | Get-CDDrive | Where {$_.extensiondata.connectable.connected -eq $true} | Select Parent,Name
+
+If a virtual machine has a CD/DVD drive connected other than temporarily, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to &#34;Edit Settings&#34;.
+
+Select the CD/DVD drive and uncheck &#34;Connected&#34; and &#34;Connect at power on&#34; and remove any attached ISOs.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-CDDrive | Set-CDDrive -NoMedia</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256463r1051422</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Informational messages from the virtual machine to the VMX file must be limited on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    The configuration file containing these name-value pairs is limited to a size of 1MB. If not limited, VMware tools in the guest operating system are capable of sending a large and continuous data stream to the host. This 1MB capacity should be sufficient for most cases, but this value can change if necessary.
+
+The value can be increased if large amounts of custom information are being stored in the configuration file. The default limit is 1MB.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;tools.setInfo.sizeLimit&#34; value is set to &#34;1048576&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.setinfo.sizeLimit
+
+If the virtual machine advanced setting &#34;tools.setInfo.sizeLimit&#34; does not exist or is not set to &#34;1048576&#34;, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Find the &#34;tools.setInfo.sizeLimit&#34; value and set it to &#34;1048576&#34;.
+
+If the setting does not exist, add the Name and Value setting at the bottom of screen.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as shown below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name tools.setInfo.sizeLimit -Value 1048576
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name tools.setInfo.sizeLimit | Set-AdvancedSetting -Value 1048576</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256466r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Shared salt values must be disabled on the virtual machine (VM).
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    When salting is enabled (Mem.ShareForceSalting=1 or 2) to share a page between two virtual machines, both salt and the content of the page must be same. A salt value is a configurable advanced option for each virtual machine. The salt values can be specified manually in the virtual machine&#39;s advanced settings with the new option &#34;sched.mem.pshare.salt&#34;.
+
+If this option is not present in the virtual machine&#39;s advanced settings, the value of the &#34;vc.uuid&#34; option is taken as the default value. Because the &#34;vc.uuid&#34; is unique to each virtual machine, by default Transparent Page Sharing (TPS) happens only among the pages belonging to a particular virtual machine (Intra-VM).
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Verify the &#34;sched.mem.pshare.salt&#34; setting does not exist.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name sched.mem.pshare.salt
+
+If the virtual machine advanced setting &#34;sched.mem.pshare.salt&#34; exists, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Delete the &#34;sched.mem.pshare.salt&#34; setting.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name sched.mem.pshare.salt | Remove-AdvancedSetting</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256467r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            Access to virtual machines (VMs) through the &#34;dvfilter&#34; network Application Programming Interface (API) must be controlled.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    An attacker might compromise a VM by using the &#34;dvFilter&#34; API. Configure only VMs that need this access to use the API.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Look for settings with the format &#34;ethernet*.filter*.name&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name &#34;ethernet*.filter*.name*&#34;
+
+If the virtual machine advanced setting &#34;ethernet*.filter*.name&#34; exists and dvfilters are not in use, this is a finding.
+
+If the virtual machine advanced setting &#34;ethernet*.filter*.name&#34; exists and the value is not valid, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>From the vSphere Client, right-click the Virtual Machine and go to Edit Settings &gt;&gt; VM Options &gt;&gt; Advanced &gt;&gt; Configuration Parameters &gt;&gt; Edit Configuration.
+
+Look for settings with the format &#34;ethernet*.filter*.name&#34;.
+
+Ensure only required VMs use this setting.
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name ethernetX.filterY.name | Remove-AdvancedSetting
+
+Note: Change the X and Y values to match the specific setting in the organization&#39;s environment.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256468r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            System administrators must use templates to deploy virtual machines (VMs) whenever possible.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    Capture a hardened base operating system image (with no applications installed) in a template to ensure all VMs are created with a known baseline level of security. Use this template to create other, application-specific templates, or use the application template to deploy VMs. Manual installation of the operating system and applications into a VM introduces the risk of misconfiguration due to human or process error.
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>Ask the system administrator if hardened, patched templates are used for VM creation and properly configured operating system deployments, including applications dependent and nondependent on VM-specific configurations.
+
+If hardened, patched templates are not used for VM creation, this is a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>Create hardened VM templates to use for operating system deployments.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-id">SV-256471r959010</td>
+                    <td>
+<span class="sv-warning">NOT_REVIEWED</span>                    </td>
+                    <td>
+                        <span class="sv-info">
+                            CAT III
+                        </span>
+                    </td>
+                    <td>
+                        <div class="finding-title">
+                            All 3D features on the virtual machine (VM) must be disabled when not required.
+                        </div>
+
+                        <details class="finding-details">
+                            <summary class="toggle-btn">View Technical Details</summary>
+                            <div class="details-box">
+                                <strong>DESCRIPTION / DISCUSSION:</strong>
+                                <div class="details-description">
+                                    For performance reasons, it is recommended that 3D acceleration be disabled on virtual machines that do not require 3D functionality (e.g., most server workloads or desktops not using 3D applications). 
+                                </div>
+
+                                <strong>CHECK CONTENT:</strong>
+                                <pre>For each virtual machine do the following:
+
+From the vSphere Client, right-click the virtual machine and go to Edit Settings.
+
+Expand the &#34;Video card&#34; and verify the &#34;Enable 3D Support&#34; checkbox is unchecked.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the following command:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name mks.enable3d
+
+If the virtual machine advanced setting &#34;mks.enable3d&#34; exists and is not set to &#34;false&#34;, this is a finding.
+
+If the virtual machine advanced setting &#34;mks.enable3d&#34; does not exist, this is not a finding.</pre>
+
+                                <strong>REMEDIATION / FIX:</strong>
+                                <pre>For each virtual machine do the following:
+
+From the vSphere Client, right-click the virtual machine and go to &#34;Edit Settings&#34;.
+
+Expand the &#34;Video card&#34; and uncheck the &#34;Enable 3D Support&#34; checkbox.
+
+Click &#34;OK&#34;.
+
+or
+
+From a PowerCLI command prompt while connected to the ESXi host or vCenter server, run the provided commands as noted below.
+
+If the setting does not exist, run:
+
+Get-VM &#34;VM Name&#34; | New-AdvancedSetting -Name mks.enable3d -Value false
+
+If the setting exists, run:
+
+Get-VM &#34;VM Name&#34; | Get-AdvancedSetting -Name mks.enable3d | Set-AdvancedSetting -Value false
+
+Note: The VM must be powered off to configure the advanced settings through the vSphere Client. Therefore, it is recommended to configure these settings with PowerCLI as this can be done while the VM is powered on. Settings do not take effect via either method until the virtual machine is cold started, not rebooted.</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+<script>(function () {
+  'use strict';
+
+  // Signal to CSS that JS is active; scopes all collapsible affordances
+  document.documentElement.classList.add('js');
+
+  // ---- widget toggle (titlebar button) ----
+
+  function initWidgetToggles() {
+    var titlebars = document.querySelectorAll('.widget-titlebar');
+    for (var i = 0; i < titlebars.length; i++) {
+      (function (bar) {
+        var btn = bar.querySelector('.widget-toggle');
+        if (!btn) return;
+
+        bar.addEventListener('click', function (e) {
+          // If the user clicked a link inside the titlebar, don't toggle
+          if (e.target.closest('a')) return;
+
+          var widget = bar.closest('.widget');
+          if (!widget) return;
+          var body = widget.querySelector('.widget-body');
+          if (!body) return;
+
+          var expanded = btn.getAttribute('aria-expanded') !== 'false';
+          body.style.display = expanded ? 'none' : '';
+          btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        });
+      })(titlebars[i]);
+    }
+  }
+
+  // ---- .group-hdr / .group-row (site report alert groups) ----
+
+  function initGroupToggles() {
+    var headers = document.querySelectorAll('tr.group-hdr');
+    for (var i = 0; i < headers.length; i++) {
+      (function (hdr) {
+        hdr.addEventListener('click', function () {
+          var gid = hdr.getAttribute('data-group');
+          if (!gid) return;
+          var rows = document.querySelectorAll('tr.group-row[data-group="' + gid + '"]');
+          var anyVisible = false;
+          for (var j = 0; j < rows.length; j++) {
+            if (rows[j].style.display !== 'none') { anyVisible = true; break; }
+          }
+          for (var k = 0; k < rows.length; k++) {
+            rows[k].style.display = anyVisible ? 'none' : '';
+          }
+          hdr.classList.toggle('group-hdr-collapsed', anyVisible);
+        });
+      })(headers[i]);
+    }
+  }
+
+  // ---- expand / collapse all ----
+
+  function expandAll() {
+    document.querySelectorAll('.widget-body').forEach(function (el) { el.style.display = ''; });
+    document.querySelectorAll('.widget-toggle').forEach(function (btn) { btn.setAttribute('aria-expanded', 'true'); });
+    document.querySelectorAll('tr.group-row').forEach(function (el) { el.style.display = ''; });
+    document.querySelectorAll('tr.group-hdr.group-hdr-collapsed').forEach(function (el) { el.classList.remove('group-hdr-collapsed'); });
+    document.querySelectorAll('details').forEach(function (el) { el.open = true; });
+  }
+
+  function collapseAll() {
+    document.querySelectorAll('.widget-body').forEach(function (el) { el.style.display = 'none'; });
+    document.querySelectorAll('.widget-toggle').forEach(function (btn) { btn.setAttribute('aria-expanded', 'false'); });
+    document.querySelectorAll('tr.group-row').forEach(function (el) { el.style.display = 'none'; });
+    document.querySelectorAll('tr.group-hdr').forEach(function (el) { el.classList.add('group-hdr-collapsed'); });
+    document.querySelectorAll('details').forEach(function (el) { el.open = false; });
+  }
+
+  // ---- TOC actions (expand / collapse all) ----
+ 
+  function injectTOCActions() {
+    var toc = document.querySelector('.toc');
+    if (!toc) return;
+ 
+    var actions = document.createElement('div');
+    actions.className = 'toc-right';
+ 
+    var lkExpand = document.createElement('a');
+    lkExpand.href = '#';
+    lkExpand.textContent = 'Expand all';
+    lkExpand.addEventListener('click', function(e) { e.preventDefault(); expandAll(); });
+ 
+    var lkCollapse = document.createElement('a');
+    lkCollapse.href = '#';
+    lkCollapse.textContent = 'Collapse all';
+    lkCollapse.addEventListener('click', function(e) { e.preventDefault(); collapseAll(); });
+ 
+    var lkPrint = document.createElement('a');
+    lkPrint.href = '#';
+    lkPrint.textContent = 'Print report';
+    lkPrint.addEventListener('click', function(e) { e.preventDefault(); window.print(); });
+
+    actions.appendChild(lkExpand);
+    actions.appendChild(lkCollapse);
+    actions.appendChild(lkPrint);
+    toc.appendChild(actions);
+  }
+
+  // ---- nav dropdown accessibility (keyboard + touch) ----
+
+  function initNavDropdowns() {
+    var trees = document.querySelectorAll('.nav-tree');
+    for (var i = 0; i < trees.length; i++) {
+      (function (tree, idx) {
+        var trigger = tree.querySelector('.tree-trigger');
+        var dropdown = tree.querySelector('.nav-dropdown');
+        if (!trigger || !dropdown) return;
+
+        if (!dropdown.id) dropdown.id = 'nav-dropdown-' + idx;
+        trigger.setAttribute('role', 'button');
+        trigger.setAttribute('tabindex', '0');
+        trigger.setAttribute('aria-haspopup', 'menu');
+        trigger.setAttribute('aria-controls', dropdown.id);
+        trigger.setAttribute('aria-expanded', 'false');
+
+        function setOpen(open) {
+          tree.classList.toggle('nav-tree-open', open);
+          trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        function toggleOpen(e) {
+          if (e) e.preventDefault();
+          var isOpen = tree.classList.contains('nav-tree-open');
+          setOpen(!isOpen);
+        }
+
+        trigger.addEventListener('click', toggleOpen);
+        trigger.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') toggleOpen(e);
+          if (e.key === 'Escape') setOpen(false);
+        });
+
+        tree.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') setOpen(false);
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!tree.contains(e.target)) setOpen(false);
+        });
+      })(trees[i], i);
+    }
+  }
+ 
+  // ---- table sorting ----
+
+  function initTableSorting() {
+    var sortableHeaders = document.querySelectorAll('th.sortable');
+    for (var i = 0; i < sortableHeaders.length; i++) {
+      (function (header) {
+        header.addEventListener('click', function () {
+          var table = header.closest('table');
+          var tbody = table.querySelector('tbody');
+          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr:not(.group-hdr)'));
+          var colIndex = Array.prototype.indexOf.call(header.parentNode.children, header);
+          var isAsc = header.classList.contains('sort-asc');
+          
+          // Reset other headers in the same table
+          var otherHeaders = header.parentNode.querySelectorAll('th.sortable');
+          for (var j = 0; j < otherHeaders.length; j++) {
+            if (otherHeaders[j] !== header) {
+              otherHeaders[j].classList.remove('sort-asc', 'sort-desc');
+            }
+          }
+
+          rows.sort(function (a, b) {
+            var cellA = a.children[colIndex].textContent.trim();
+            var cellB = b.children[colIndex].textContent.trim();
+            
+            // Try numeric sort
+            var numA = parseFloat(cellA.replace(/[^0-9.-]+/g, ""));
+            var numB = parseFloat(cellB.replace(/[^0-9.-]+/g, ""));
+            if (!isNaN(numA) && !isNaN(numB) && cellA.match(/^[0-9.,\s%MBGBKB]+$/) && cellB.match(/^[0-9.,\s%MBGBKB]+$/)) {
+              return isAsc ? numB - numA : numA - numB;
+            }
+            
+            // Default string sort
+            return isAsc 
+              ? cellB.localeCompare(cellA, undefined, { numeric: true, sensitivity: 'base' })
+              : cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          // Re-append rows to tbody
+          for (var k = 0; k < rows.length; k++) {
+            tbody.appendChild(rows[k]);
+          }
+
+          header.classList.toggle('sort-asc', !isAsc);
+          header.classList.toggle('sort-desc', isAsc);
+        });
+      })(sortableHeaders[i]);
+    }
+  }
+
+  // ---- global host search ----
+
+  function initHostSearch() {
+    var searchContainer = document.querySelector('.nav-search');
+    if (!searchContainer) return;
+
+    var searchInput = searchContainer.querySelector('input');
+    var searchResults = searchContainer.querySelector('.search-results');
+    if (!searchInput || !searchResults) return;
+
+    var rootPath = searchContainer.getAttribute('data-root') || './';
+    var searchIndex = window.NCS_SEARCH_INDEX || null;
+
+    // Load search index script if missing (CORS-friendly for file:// protocol)
+    function loadSearchIndexScript() {
+      if (window.NCS_SEARCH_INDEX) {
+        searchIndex = window.NCS_SEARCH_INDEX;
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = rootPath + 'search_index.js';
+      script.onload = function() {
+        searchIndex = window.NCS_SEARCH_INDEX;
+        renderResults(searchInput.value.toLowerCase().trim());
+      };
+      document.head.appendChild(script);
+    }
+
+    // Local filtering (keep for current page)
+    function filterLocalTables(query) {
+      var tables = document.querySelectorAll('table');
+      for (var i = 0; i < tables.length; i++) {
+        var table = tables[i];
+        var rows = table.querySelectorAll('tbody tr:not(.group-hdr)');
+        var groupHeaders = table.querySelectorAll('tr.group-hdr');
+
+        for (var gh = 0; gh < groupHeaders.length; gh++) {
+          groupHeaders[gh].style.display = '';
+        }
+
+        for (var j = 0; j < rows.length; j++) {
+          var row = rows[j];
+          if (query === '' || row.textContent.toLowerCase().indexOf(query) !== -1) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        }
+
+        for (var k = 0; k < groupHeaders.length; k++) {
+          var groupHdr = groupHeaders[k];
+          var gid = groupHdr.getAttribute('data-group');
+          var groupRows = table.querySelectorAll('tr.group-row[data-group="' + gid + '"]');
+          var groupMatch = false;
+          for (var r = 0; r < groupRows.length; r++) {
+            if (groupRows[r].style.display !== 'none') { groupMatch = true; break; }
+          }
+          if (query !== '' && !groupMatch) groupHdr.style.display = 'none';
+        }
+      }
+    }
+
+    function renderResults(query) {
+      if (!searchIndex) return;
+      searchResults.innerHTML = '';
+      if (!query) {
+        searchResults.style.display = 'none';
+        return;
+      }
+
+      var matches = [];
+      for (var i = 0; i < searchIndex.length; i++) {
+        if (searchIndex[i].h.toLowerCase().indexOf(query) !== -1) {
+          matches.push(searchIndex[i]);
+        }
+        if (matches.length >= 15) break; // limit results
+      }
+
+      if (matches.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'dropdown-group';
+        empty.textContent = 'No hosts found';
+        searchResults.appendChild(empty);
+      } else {
+        for (var j = 0; j < matches.length; j++) {
+          var match = matches[j];
+          var a = document.createElement('a');
+          a.href = rootPath + match.u;
+          
+          var textSpan = document.createElement('span');
+          textSpan.textContent = match.h;
+          a.appendChild(textSpan);
+          
+          if (match.p) {
+            var badge = document.createElement('span');
+            badge.className = 'platform-badge';
+            badge.textContent = match.p;
+            a.appendChild(badge);
+          }
+          
+          searchResults.appendChild(a);
+        }
+      }
+      searchResults.style.display = 'block';
+    }
+
+    searchInput.addEventListener('focus', function() {
+      if (!searchIndex) loadSearchIndexScript();
+      renderResults(searchInput.value.toLowerCase().trim());
+    });
+
+    searchInput.addEventListener('input', function (e) {
+      var query = e.target.value.toLowerCase().trim();
+      filterLocalTables(query);
+      
+      if (searchIndex) {
+        renderResults(query);
+      } else if (query.length > 0) {
+        loadSearchIndexScript();
+      }
+    });
+
+    // Close dropdown on click outside or escape
+    document.addEventListener('click', function(e) {
+      if (!searchContainer.contains(e.target)) {
+        searchResults.style.display = 'none';
+      }
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        searchResults.style.display = 'none';
+        searchInput.blur();
+      }
+    });
+  }
+
+  // ---- theme toggle (light/dark) ----
+
+  function initThemeToggle() {
+    var saved = localStorage.getItem('ncs-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+
+    var btn = document.createElement('button');
+    btn.className = 'theme-toggle';
+    btn.title = 'Toggle light/dark mode';
+    btn.setAttribute('aria-label', 'Toggle light/dark mode');
+    btn.textContent = document.documentElement.classList.contains('light') ? '\u2600' : '\u263E';
+    btn.addEventListener('click', function () {
+      var isLight = document.documentElement.classList.toggle('light');
+      btn.textContent = isLight ? '\u2600' : '\u263E';
+      localStorage.setItem('ncs-theme', isLight ? 'light' : 'dark');
+    });
+
+    // Insert next to the search bar in the breadcrumb
+    var searchBar = document.querySelector('.nav-search');
+    if (searchBar) {
+      searchBar.parentNode.insertBefore(btn, searchBar.nextSibling);
+    } else {
+      // Fallback: insert into breadcrumb or toc
+      var breadcrumb = document.querySelector('.breadcrumb') || document.querySelector('.toc');
+      if (breadcrumb) {
+        breadcrumb.appendChild(btn);
+      } else {
+        document.body.appendChild(btn);
+      }
+    }
+  }
+
+  // ---- init ----
+
+  function init() {
+    initWidgetToggles();
+    initGroupToggles();
+    injectTOCActions();
+    initNavDropdowns();
+    initTableSorting();
+    initHostSearch();
+    initThemeToggle();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}());</script>
+</body>
+</html>

@@ -1,10 +1,21 @@
 name: photon
-platform: linux
 display_name: "Photon OS"
+platform:
+  name: linux
+  input_dir: linux/photon
+  report_dir: linux/photon
+  state_file: photon_fleet_state.yaml
+  render: false
+  target_types: [photon]
+  stig_skeleton_map:
+    photon: cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
 
 # Detects the key emitted by the internal.linux role via ncs_collector callback.
 detection:
   keys_any: [raw_discovery]
+
+# Paths starting with '.' are relative to path_prefix.
+path_prefix: "raw_discovery.data"
 
 fleet_columns:
   - { label: "Distribution", field: distribution, width: "120px" }
@@ -13,191 +24,14 @@ fleet_columns:
   - { label: "Warning", field: _warning_count, width: "70px" }
 
 # ---------------------------------------------------------------------------
-# Fields
-#
-# Raw Linux data lives under:
-#   raw_discovery.data.ansible_facts.*
-#   raw_discovery.<module_name>.*
-#
-# Pass 1 (path):    direct traversal
-# Pass 2 (compute): arithmetic over extracted fields
-# Pass 3 (script):  subprocess for regex / file parsing
+# Fields — shared with linux via $include, only collection timestamp differs
 # ---------------------------------------------------------------------------
 
 fields:
-  # --- System identity ---
+  $include: "linux_base_fields.yaml"
 
-  hostname:
-    path: "raw_discovery.data.ansible_facts.hostname"
-    type: str
-    fallback: "unknown"
-
-  ip_address:
-    path: "raw_discovery.data.ansible_facts.default_ipv4.address"
-    type: str
-    fallback: "N/A"
-
-  kernel:
-    path: "raw_discovery.data.ansible_facts.kernel"
-    type: str
-    fallback: "unknown"
-
-  os_family:
-    path: "raw_discovery.data.ansible_facts.os_family"
-    type: str
-    fallback: "unknown"
-
-  distribution:
-    path: "raw_discovery.data.ansible_facts.distribution"
-    type: str
-    fallback: "unknown"
-
-  distribution_version:
-    path: "raw_discovery.data.ansible_facts.distribution_version"
-    type: str
-    fallback: "unknown"
-
-  # --- Uptime ---
-
-  uptime_seconds:
-    path: "raw_discovery.data.ansible_facts.uptime_seconds"
-    type: float
-    fallback: 0.0
-
-  uptime_days:
-    compute: "{uptime_seconds} / 86400"
-    type: float
-    fallback: 0.0
-
-  load_avg_15m:
-    path: "raw_discovery.data.ansible_facts.loadavg.15m"
-    type: float
-    fallback: 0.0
-
-  # --- Memory ---
-
-  memory_total_mb:
-    path: "raw_discovery.data.ansible_facts.memtotal_mb"
-    type: float
-    fallback: 1.0
-
-  memory_free_mb:
-    path: "raw_discovery.data.ansible_facts.memfree_mb"
-    type: float
-    fallback: 0.0
-
-  memory_used_pct:
-    compute: "({memory_total_mb} - {memory_free_mb}) / {memory_total_mb} * 100"
-    type: float
-    fallback: 0.0
-
-  swap_total_mb:
-    path: "raw_discovery.data.ansible_facts.swaptotal_mb"
-    type: float
-    fallback: 0.0
-
-  swap_free_mb:
-    path: "raw_discovery.data.ansible_facts.swapfree_mb"
-    type: float
-    fallback: 0.0
-
-  swap_used_pct:
-    compute: "({swap_total_mb} - {swap_free_mb}) / {swap_total_mb} * 100"
-    type: float
-    fallback: 0.0
-
-  # --- Services ---
-
-  failed_services:
-    path: "raw_discovery.data.failed_services.stdout_lines"
-    type: list
-    fallback: []
-
-  failed_services_count:
-    path: "raw_discovery.data.failed_services.stdout_lines | len_if_list"
-    type: int
-    fallback: 0
-
-  # --- Updates & reboot ---
-
-  # Raw apt-get --simulate output lines; script parses the "X upgraded," count.
-  apt_lines:
-    path: "raw_discovery.data.apt_simulate.stdout_lines"
-    type: list
-    fallback: []
-
-  pending_updates_count:
-    script: "apt_updates.py"
-    type: int
-    fallback: 0
-
-  reboot_pending:
-    path: "raw_discovery.data.reboot_stat.stat.exists"
-    type: bool
-    fallback: false
-
-  # --- Collection timestamp (used as reference for date conditions) ---
-
-  collected_at:
-    path: "raw_discovery.metadata.timestamp"
-    type: str
-    fallback: ""
-
-  # --- Storage ---
-  # Raw ansible_facts.mounts list; script filters loop/tmpfs and computes
-  # total_gb, free_gb, used_pct for each surviving mount.
-
-  mounts:
-    path: "raw_discovery.data.ansible_facts.mounts"
-    type: list
-    fallback: []
-
-  disks:
-    script: "disk_inventory.py"
-    type: list
-    fallback: []
-
-  # --- Security ---
-
-  getent_passwd:
-    path: "raw_discovery.data.ansible_facts.getent_passwd"
-    type: dict
-    fallback: {}
-
-  shadow_lines:
-    path: "raw_discovery.data.shadow_raw.stdout_lines"
-    type: list
-    fallback: []
-
-  epoch_seconds:
-    path: "raw_discovery.data.ansible_facts.date_time.epoch"
-    type: float
-    fallback: 0.0
-
-  sshd_lines:
-    path: "raw_discovery.data.sshd_raw.stdout_lines"
-    type: list
-    fallback: []
-
-  sshd_config:
-    script: "parse_sshd_config.py"
-    type: dict
-    fallback: {}
-
-  world_writable_files:
-    path: "raw_discovery.data.world_writable.stdout_lines"
-    type: list
-    fallback: []
-
-  world_writable_count:
-    path: "raw_discovery.data.world_writable.stdout_lines | len_if_list"
-    type: int
-    fallback: 0
-
-  users:
-    script: "user_inventory.py"
-    type: list
-    fallback: []
+  # --- Collection timestamp (absolute path, not relative to path_prefix) ---
+  collected_at: "raw_discovery.metadata.timestamp"
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -218,6 +52,7 @@ alerts:
   - id: memory_warning
     category: "Capacity"
     severity: WARNING
+    suppress_if: memory_critical
     condition:
       op: range
       field: memory_used_pct
@@ -225,7 +60,7 @@ alerts:
       max: 98.0
     message: "Memory pressure: {memory_used_pct:.1f}% used"
 
-  # ---- Storage (per-disk, via computed_filter on enriched disk list) ----
+  # ---- Storage ----
 
   - id: disk_critical
     category: "Capacity"
@@ -242,6 +77,7 @@ alerts:
   - id: disk_warning
     category: "Capacity"
     severity: WARNING
+    suppress_if: disk_critical
     condition:
       op: computed_filter
       field: disks
@@ -315,6 +151,15 @@ widgets:
     title: "Active Alerts"
     type: alert_panel
 
+  - id: headline_kpis
+    title: "Key Metrics"
+    type: stat_cards
+    cards:
+      - { field: uptime_days, label: "Uptime (d)", format: "{value:.0f}" }
+      - { field: memory_used_pct, label: "Mem Used %", format: "{value:.1f}%", thresholds: { 85: yellow, 98: red } }
+      - { field: failed_services_count, label: "Failed Svcs", thresholds: { 1: red } }
+      - { field: pending_updates_count, label: "Pending Updates", thresholds: { 1: yellow } }
+
   - id: system_overview
     title: "System Overview"
     type: key_value
@@ -341,6 +186,14 @@ widgets:
         }
       - { label: "Swap Used %", field: swap_used_pct, format: "{value:.1f}" }
 
+  - id: patching
+    title: "Patching & Services"
+    type: key_value
+    fields:
+      - { label: "Failed Services", field: failed_services_count }
+      - { label: "Pending Updates", field: pending_updates_count }
+      - { label: "Reboot Required", field: reboot_pending }
+
   - id: disks
     title: "Filesystems"
     type: table
@@ -352,11 +205,3 @@ widgets:
       - { label: "Total (GB)", field: total_gb }
       - { label: "Free (GB)", field: free_gb }
       - { label: "Used %", field: used_pct, badge: true }
-
-  - id: patching
-    title: "Patching & Services"
-    type: key_value
-    fields:
-      - { label: "Failed Services", field: failed_services_count }
-      - { label: "Pending Updates", field: pending_updates_count }
-      - { label: "Reboot Required", field: reboot_pending }

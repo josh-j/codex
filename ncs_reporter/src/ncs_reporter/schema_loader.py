@@ -7,9 +7,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import pydantic
 import yaml
 
-from ncs_reporter.models.report_schema import ReportSchema
+from ncs_reporter.models.report_schema import PlatformSpec, ReportSchema
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,46 @@ def _resolve_refs(node: Any, root_path: Path) -> Any:
     return node
 
 
+def _resolve_includes(data: dict[str, Any], root_path: Path) -> dict[str, Any]:
+    """Resolve $include directives in dict-valued sections (fields, alerts, etc.).
+
+    ``$include`` merges the contents of an external YAML file into the current dict.
+    Keys defined in the including file override keys from the included file.
+
+    Example::
+
+        fields:
+          $include: "linux_base_fields.yaml"
+          # local overrides here
+          hostname:
+            path: "different.path"
+    """
+    if not isinstance(data, dict):
+        return data
+
+    result = dict(data)
+    for section_key in ("fields",):
+        section = result.get(section_key)
+        if not isinstance(section, dict):
+            continue
+        include_path = section.pop("$include", None)
+        if include_path is None:
+            continue
+        target_file = root_path.parent / include_path
+        if not target_file.exists():
+            raise ValueError(f"$include file not found: {target_file}")
+        with open(target_file, encoding="utf-8") as f:
+            included = yaml.safe_load(f)
+        if not isinstance(included, dict):
+            raise ValueError(f"$include file must be a YAML mapping: {target_file}")
+        # Included fields go first, local overrides win
+        merged = dict(included)
+        merged.update(section)
+        result[section_key] = merged
+
+    return result
+
+
 def _load_schema_file(path: Path) -> ReportSchema | None:
     """Load and validate a single schema YAML file. Returns None on error."""
     try:
@@ -70,6 +111,7 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
             return None
 
         data = _resolve_refs(data, path)
+        data = _resolve_includes(data, path)
 
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
@@ -172,6 +214,15 @@ def resolve_template_path(schema: ReportSchema, template_name: str) -> Path | No
     return candidate if candidate.exists() else None
 
 
+def format_schema_validation_error(path: Path, exc: pydantic.ValidationError) -> str:
+    """Format a Pydantic validation error with schema file path and field-level context."""
+    lines = [f"Invalid schema {path}:"]
+    for err in exc.errors():
+        loc = ".".join(str(part) for part in err["loc"])
+        lines.append(f"  {loc}: {err['msg']}")
+    return "\n".join(lines)
+
+
 def load_schema_from_file(path: Path) -> ReportSchema:
     """Load and validate a schema file, raising ValueError on failure."""
     try:
@@ -181,11 +232,16 @@ def load_schema_from_file(path: Path) -> ReportSchema:
             raise ValueError(f"Not a YAML mapping: {path}")
 
         data = _resolve_refs(data, path)
+        data = _resolve_includes(data, path)
 
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
         _attach_broken_paths(schema)
         return schema
+    except pydantic.ValidationError as exc:
+        raise ValueError(format_schema_validation_error(path, exc)) from exc
+    except ValueError:
+        raise
     except Exception as exc:
         raise ValueError(f"Invalid schema {path}: {exc}") from exc
 
@@ -228,3 +284,57 @@ def validate_schema_paths(schema: ReportSchema, example_bundle: dict[str, Any]) 
         if value is None:
             errors[name] = f"field '{name}': path '{spec.path}' → None (check path segments against the example file)"
     return errors
+
+
+def build_platform_entries_from_schemas(
+    schemas: dict[str, ReportSchema],
+) -> list[dict[str, Any]]:
+    """Extract PlatformEntry dicts from schemas that have embedded platform metadata.
+
+    Each schema with a ``platform_spec`` produces one primary entry and zero or more
+    sub-entries (non-renderable, STIG-only entries like vcsa/esxi/vm under vmware).
+    """
+    entries: list[dict[str, Any]] = []
+    seen_platforms: set[str] = set()
+
+    for schema in schemas.values():
+        spec: PlatformSpec | None = schema.platform_spec
+        if spec is None:
+            continue
+
+        platform_name = spec.name or schema.platform or schema.name
+
+        # Primary entry
+        primary: dict[str, Any] = {
+            "input_dir": spec.input_dir or schema.platform or schema.name,
+            "report_dir": spec.report_dir or schema.platform or schema.name,
+            "platform": platform_name,
+            "state_file": spec.state_file,
+            "render": spec.render,
+            "schema_name": schema.name,
+            "target_types": list(spec.target_types),
+            "display_name": schema.display_name or spec.display_name,
+            "asset_label": spec.asset_label,
+            "inventory_groups": list(spec.inventory_groups),
+            "schema_names": [schema.name],
+            "stig_skeleton_map": dict(spec.stig_skeleton_map),
+            "stig_rule_prefixes": dict(spec.stig_rule_prefixes),
+            "site_category": spec.site_category,
+        }
+        entries.append(primary)
+        seen_platforms.add(platform_name)
+
+        # Sub-entries (non-renderable)
+        for sub in spec.sub_entries:
+            sub_entry: dict[str, Any] = {
+                "input_dir": sub.input_dir,
+                "report_dir": sub.report_dir,
+                "platform": platform_name,
+                "state_file": sub.state_file,
+                "render": False,
+                "target_types": list(sub.target_types),
+                "stig_skeleton_map": dict(sub.stig_skeleton_map),
+            }
+            entries.append(sub_entry)
+
+    return entries

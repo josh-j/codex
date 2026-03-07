@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import pydantic
 import yaml
 
 from ._report_context import (
@@ -17,8 +18,8 @@ from ._report_context import (
 )
 from .aggregation import load_all_reports, normalize_host_bundle, write_output
 from .cklb_export import generate_cklb
-from .models.platforms_config import PlatformsConfig
-from ncs_path_contract import build_target_type_index
+from .models.platforms_config import DEFAULT_PATH_TEMPLATES, PlatformEntry, PlatformsConfig
+from .platform_registry import PlatformRegistry, default_registry
 from .pathing import rel_href, render_template
 from .schema_loader import discover_schemas, load_example_bundle, load_schema_from_file, validate_schema_paths
 from .view_models.generic import build_generic_fleet_view, build_generic_node_view
@@ -32,122 +33,15 @@ logger = logging.getLogger("ncs_reporter")
 # Schema-driven platform renderer
 # ---------------------------------------------------------------------------
 
-# Maps CLI platform name → schema name(s) to try (in preference order)
-_PLATFORM_SCHEMA_NAMES: dict[str, list[str]] = {
-    "linux": ["linux"],
-    "vmware": ["vcenter"],
-    "windows": ["windows"],
-}
-
 _USER_PLATFORMS_CONFIG = Path.home() / ".config" / "ncs_reporter" / "platforms.yaml"
-
-_STIG_SKELETON_MAP = {
-    "esxi": "cklb_skeleton_vsphere7_esxi_V1R4.json",
-    "vm": "cklb_skeleton_vsphere7_vms_V1R4.json",
-    "vcsa": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
-    "vcenter": "cklb_skeleton_vsphere7_vcsa_V1R3.json",
-    "vami": "cklb_skeleton_vsphere7_vami_V1R2.json",
-    "eam": "cklb_skeleton_vsphere7_vca_eam_V1R2.json",
-    "lookup_svc": "cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json",
-    "perfcharts": "cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json",
-    "vcsa_photon_os": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
-    "photon": "cklb_skeleton_vsphere7_vca_photon_os_V1R4.json",
-    "postgresql": "cklb_skeleton_vsphere7_vca_postgresql_V1R2.json",
-    "rhttpproxy": "cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json",
-    "sts": "cklb_skeleton_vsphere7_vca_sts_V1R2.json",
-    "ui": "cklb_skeleton_vsphere7_vca_ui_V1R2.json",
-}
 
 
 def _default_paths() -> dict[str, str]:
-    return {
-        "raw_stig_artifact": "platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml",
-        "report_fleet": "platform/{report_dir}/{schema_name}_fleet_report.html",
-        "report_node_latest": "platform/{report_dir}/{hostname}/health_report.html",
-        "report_node_historical": "platform/{report_dir}/{hostname}/health_report_{report_stamp}.html",
-        "report_stig_host": "platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html",
-        "report_search_entry": "platform/{report_dir}/{hostname}/health_report.html",
-        "report_site": "site_health_report.html",
-        "report_stig_fleet": "stig_fleet_report.html",
-    }
+    return dict(DEFAULT_PATH_TEMPLATES)
 
 
-_BUILTIN_PLATFORMS: list[dict[str, Any]] = [
-    {
-        "input_dir": "linux/ubuntu",
-        "report_dir": "linux/ubuntu",
-        "platform": "linux",
-        "state_file": "linux_fleet_state.yaml",
-        "render": True,
-        "target_types": ["linux", "ubuntu"],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "vmware/vcenter",
-        "report_dir": "vmware/vcenter",
-        "platform": "vmware",
-        "state_file": "vmware_fleet_state.yaml",
-        "render": True,
-        "target_types": [
-            "vcenter",
-            "vami",
-            "eam",
-            "lookup_svc",
-            "perfcharts",
-            "vcsa_photon_os",
-            "postgresql",
-            "rhttpproxy",
-            "sts",
-            "ui",
-        ],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "vmware/vcenter/vcsa",
-        "report_dir": "vmware/vcenter/vcsa",
-        "platform": "vmware",
-        "state_file": "vcsa_fleet_state.yaml",
-        "render": False,
-        "target_types": ["vcsa"],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "linux/photon",
-        "report_dir": "linux/photon",
-        "platform": "linux",
-        "state_file": "photon_fleet_state.yaml",
-        "render": False,
-        "target_types": ["photon"],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "vmware/esxi",
-        "report_dir": "vmware/esxi",
-        "platform": "vmware",
-        "state_file": "esxi_fleet_state.yaml",
-        "render": False,
-        "target_types": ["esxi"],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "vmware/vm",
-        "report_dir": "vmware/vm",
-        "platform": "vmware",
-        "state_file": "vm_fleet_state.yaml",
-        "render": False,
-        "target_types": ["vm"],
-        "paths": _default_paths(),
-    },
-    {
-        "input_dir": "windows",
-        "report_dir": "windows",
-        "platform": "windows",
-        "state_file": "windows_fleet_state.yaml",
-        "render": True,
-        "target_types": ["windows"],
-        "paths": _default_paths(),
-    },
-]
+def _builtin_platforms() -> list[dict[str, Any]]:
+    return [e.model_dump() for e in default_registry().entries]
 
 
 def _resolve_path_from_config_root(config_dir: str | None, value: str) -> str:
@@ -229,8 +123,22 @@ def _resolve_config_dir(
     return _unique_preserve_order(resolved_schema_dirs), resolved_platforms
 
 
-def _load_platforms(explicit_path: str | None) -> list[dict[str, Any]]:
-    """Locate and load a platforms config YAML. Falls back to built-in defaults."""
+def _format_validation_error(path: Path, exc: pydantic.ValidationError) -> str:
+    lines = [f"Invalid platforms config {path}:"]
+    for err in exc.errors():
+        loc = ".".join(str(part) for part in err["loc"])
+        lines.append(f"  {loc}: {err['msg']}")
+    return "\n".join(lines)
+
+
+def _load_platforms(
+    explicit_path: str | None,
+    extra_schema_dirs: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Locate and load a platforms config YAML.
+
+    Falls back to schema-embedded platform metadata, then built-in defaults.
+    """
     candidates: list[Path] = []
     if explicit_path:
         candidates.append(Path(explicit_path))
@@ -244,11 +152,26 @@ def _load_platforms(explicit_path: str | None) -> list[dict[str, Any]]:
             config = PlatformsConfig.model_validate(raw)
             logger.info("Loaded platforms config from %s", path)
             return [p.model_dump() for p in config.platforms]
+        except pydantic.ValidationError as exc:
+            msg = _format_validation_error(path, exc)
+            if explicit_path and path == Path(explicit_path):
+                raise click.ClickException(msg) from exc
+            logger.warning(msg)
         except Exception as exc:
             if explicit_path and path == Path(explicit_path):
                 raise click.ClickException(f"Invalid platforms config {path}: {exc}") from exc
             logger.warning("Failed to load platforms config %s: %s", path, exc)
-    return list(_BUILTIN_PLATFORMS)
+
+    # Fall back to schema-embedded platform metadata
+    from .schema_loader import build_platform_entries_from_schemas
+
+    schemas = discover_schemas(extra_dirs=extra_schema_dirs)
+    schema_entries = build_platform_entries_from_schemas(schemas)
+    if schema_entries:
+        entries = [PlatformEntry.model_validate(e) for e in schema_entries]
+        return [e.model_dump() for e in entries]
+
+    return _builtin_platforms()
 
 
 def _render_platform(
@@ -263,13 +186,15 @@ def _render_platform(
     platform_paths: dict[str, str] | None = None,
     extra_schema_dirs: tuple[str, ...] = (),
     schema_names_override: list[str] | None = None,
+    has_site_report: bool = False,
+    has_stig_fleet: bool = False,
 ) -> None:
     """Render node + fleet reports for a platform using the schema engine.
 
     Paths and filenames are resolved from the platform path templates.
     """
     schema_names = (
-        schema_names_override if schema_names_override is not None else _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+        schema_names_override if schema_names_override is not None else default_registry().schema_names_for_platform(platform)
     )
     all_schemas = discover_schemas(extra_dirs=extra_schema_dirs)
 
@@ -325,7 +250,8 @@ def _render_platform(
         host_dir.mkdir(exist_ok=True)
         node_rel_dir = f"platform/{report_dir}/{hostname}"
         node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
-        node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
+        if has_site_report:
+            node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
         
         # Build history list
         history = []
@@ -344,19 +270,22 @@ def _render_platform(
             nav=node_nav,
             hosts_data=global_inventory_index,
             generated_fleet_dirs=generated_fleet_dirs,
+            has_stig_fleet=has_stig_fleet,
             history=history,
             **kw,
         )
         content = node_tpl.render(generic_node_view=node_view, **common_vars)
         write_report(host_dir, "health_report.html", content, stamp)
 
-    fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
+    if has_site_report:
+        fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
     fleet_view = build_generic_fleet_view(
         schema,
         hosts_data,
         nav=fleet_nav,
         hosts_data=global_inventory_index,
         generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=has_stig_fleet,
         **kw,
     )
     fleet_tpl = env.get_template("generic_fleet_report.html.j2")
@@ -376,9 +305,11 @@ def _render_stig(
     global_inventory_index: dict[str, str] | None = None,
     cklb_dir: Path | None = None,
     generated_fleet_dirs: set[str] | None = None,
-    stig_platforms_by_target: dict[str, dict[str, Any]] | None = None,
+    registry: PlatformRegistry | None = None,
+    has_site_report: bool = False,
 ) -> None:
     """Render per-host STIG reports and fleet overview."""
+    reg = registry or default_registry()
     env = get_jinja_env()
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
@@ -415,6 +346,13 @@ def _render_stig(
         cklb_rule_cache[str(cklb_path)] = out
         return out
 
+    import re
+
+    # First pass: collect all STIG entries and build navigation indices
+    stig_entries: list[dict[str, Any]] = []
+    # All STIG reports indexed by hostname → list of {target_type, host_report_abs, host_rel_dir}
+    all_stig_reports: dict[str, list[dict[str, str]]] = {}
+
     for hostname, bundle in hosts_data.items():
         if not isinstance(bundle, dict):
             continue
@@ -425,30 +363,16 @@ def _render_stig(
                 continue
 
             target_type = str(payload.get("target_type", "")).strip().lower()
-            target_cfg = (stig_platforms_by_target or {}).get(target_type)
-            if target_cfg is None:
-                target_cfg = next((p for p in _BUILTIN_PLATFORMS if "linux" in p.get("target_types", [])), None)
-            if target_cfg is None:
+            entry = reg.entry_for_target_type(target_type)
+            if entry is None:
+                linux_entries = reg.by_platform("linux")
+                entry = linux_entries[0] if linux_entries else None
+            if entry is None:
                 logger.warning("No STIG platform mapping available for target_type '%s'", target_type)
                 continue
-            report_dir = str(target_cfg["report_dir"])
-            path_templates = dict(target_cfg["paths"])
-            site_report_abs = render_template(
-                path_templates["report_site"],
-                report_dir=report_dir,
-                schema_name="",
-                hostname=hostname,
-                target_type=target_type,
-                report_stamp=stamp,
-            )
-            stig_fleet_abs = render_template(
-                path_templates["report_stig_fleet"],
-                report_dir=report_dir,
-                schema_name="",
-                hostname=hostname,
-                target_type=target_type,
-                report_stamp=stamp,
-            )
+
+            report_dir = entry.report_dir
+            path_templates = entry.paths.model_dump()
             host_report_abs = render_template(
                 path_templates["report_stig_host"],
                 report_dir=report_dir,
@@ -458,68 +382,143 @@ def _render_stig(
                 report_stamp=stamp,
             )
             host_rel_dir = str(Path(host_report_abs).parent).replace("\\", "/")
-            host_nav = {
-                "fleet_report": rel_href(host_rel_dir, stig_fleet_abs),
-                "fleet_label": "STIG Fleet Dashboard",
-                "site_report": rel_href(host_rel_dir, site_report_abs),
-            }
-            cklb_lookup: dict[str, dict[str, Any]] = {}
-            if cklb_dir is not None and target_type:
-                cklb_path = cklb_dir / f"{hostname}_{target_type}.cklb"
-                cklb_lookup = _load_cklb_rule_lookup(cklb_path)
 
-            if not cklb_lookup and target_type:
-                # Fallback: load the generic skeleton for this target type if available
-                skeleton_file = _STIG_SKELETON_MAP.get(target_type)
-                if skeleton_file:
-                    sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
-                    cklb_lookup = _load_cklb_rule_lookup(sk_path)
+            stig_entries.append({
+                "hostname": hostname,
+                "bundle": bundle,
+                "audit_type": audit_type,
+                "payload": payload,
+                "target_type": target_type,
+                "entry": entry,
+                "report_dir": report_dir,
+                "path_templates": path_templates,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            })
 
-            import re
+            all_stig_reports.setdefault(hostname, []).append({
+                "target_type": target_type,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            })
 
-            host_dir = output_path / host_rel_dir
-            host_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Build history list for stig
-            history = []
-            file_prefix = Path(host_report_abs).stem
-            for f in host_dir.glob(f"{file_prefix}_*.html"):
-                m = re.search(f"{file_prefix}_(\\d+)\\.html", f.name)
-                if m:
-                    date_str = m.group(1)
-                    display_name = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else date_str
-                    history.append({"name": display_name, "url": f.name})
-            history.sort(key=lambda x: x["name"], reverse=True)
+    # Second pass: render each STIG host report
+    for se in stig_entries:
+        hostname = se["hostname"]
+        bundle = se["bundle"]
+        audit_type = se["audit_type"]
+        payload = se["payload"]
+        target_type = se["target_type"]
+        entry = se["entry"]
+        report_dir = se["report_dir"]
+        path_templates = se["path_templates"]
+        host_report_abs = se["host_report_abs"]
+        host_rel_dir = se["host_rel_dir"]
 
-            host_view = build_stig_host_view(
-                hostname,
-                audit_type,
-                payload,
-                nav=host_nav,
-                host_bundle=bundle,
-                hosts_data=global_inventory_index,
-                cklb_rule_lookup=cklb_lookup,
-                generated_fleet_dirs=generated_fleet_dirs,
-                history=history,
-                **kw,
-            )
-            # platform = host_view["target"].get("platform", "unknown") # already used for path
+        site_report_abs = render_template(
+            path_templates["report_site"],
+            report_dir=report_dir,
+            schema_name="",
+            hostname=hostname,
+            target_type=target_type,
+            report_stamp=stamp,
+        )
+        stig_fleet_abs = render_template(
+            path_templates["report_stig_fleet"],
+            report_dir=report_dir,
+            schema_name="",
+            hostname=hostname,
+            target_type=target_type,
+            report_stamp=stamp,
+        )
+        host_nav: dict[str, str] = {
+            "fleet_report": rel_href(host_rel_dir, stig_fleet_abs),
+            "fleet_label": "STIG Fleet Dashboard",
+        }
+        if has_site_report:
+            host_nav["site_report"] = rel_href(host_rel_dir, site_report_abs)
+        cklb_lookup: dict[str, dict[str, Any]] = {}
+        if cklb_dir is not None and target_type:
+            cklb_path = cklb_dir / f"{hostname}_{target_type}.cklb"
+            cklb_lookup = _load_cklb_rule_lookup(cklb_path)
 
-            content = host_tpl.render(stig_host_view=host_view, **common_vars)
-            dest_name = Path(host_report_abs).name
-            with open(host_dir / dest_name, "w") as f:
+        if not cklb_lookup and target_type:
+            skeleton_file = reg.stig_skeleton_for_target(target_type)
+            if skeleton_file:
+                sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
+                cklb_lookup = _load_cklb_rule_lookup(sk_path)
+
+        host_dir = output_path / host_rel_dir
+        host_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build history list for stig
+        history = []
+        file_prefix = Path(host_report_abs).stem
+        for f in host_dir.glob(f"{file_prefix}_*.html"):
+            m = re.search(f"{file_prefix}_(\\d+)\\.html", f.name)
+            if m:
+                date_str = m.group(1)
+                display_name = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}" if len(date_str) == 8 else date_str
+                history.append({"name": display_name, "url": f.name})
+        history.sort(key=lambda x: x["name"], reverse=True)
+
+        # Build peer host links — all STIG hosts (prefer same target_type, else first)
+        stig_host_peers = []
+        seen_peer_hosts: set[str] = set()
+        for peer_host, peer_reports in sorted(all_stig_reports.items()):
+            if peer_host in seen_peer_hosts:
+                continue
+            seen_peer_hosts.add(peer_host)
+            # Prefer linking to the same target_type if this peer has it
+            pr = next((r for r in peer_reports if r["target_type"] == target_type), peer_reports[0])
+            peer_abs = pr["host_rel_dir"] + "/" + Path(pr["host_report_abs"]).name
+            stig_host_peers.append({
+                "name": peer_host,
+                "report": rel_href(host_rel_dir, peer_abs),
+            })
+
+        # Build sibling links with proper relative paths (other STIG types for same host)
+        stig_siblings = []
+        for sr in all_stig_reports.get(hostname, []):
+            if sr["target_type"] == target_type:
+                continue
+            sibling_abs = sr["host_rel_dir"] + "/" + Path(sr["host_report_abs"]).name
+            stig_siblings.append({
+                "name": f"{sr['target_type'].upper()} STIG",
+                "report": rel_href(host_rel_dir, sibling_abs),
+            })
+        stig_siblings.sort(key=lambda x: x["name"])
+
+        host_view = build_stig_host_view(
+            hostname,
+            audit_type,
+            payload,
+            nav=host_nav,
+            host_bundle=bundle,
+            hosts_data=global_inventory_index,
+            cklb_rule_lookup=cklb_lookup,
+            generated_fleet_dirs=generated_fleet_dirs,
+            history=history,
+            stig_host_peers=stig_host_peers,
+            stig_siblings=stig_siblings,
+            **kw,
+        )
+
+        content = host_tpl.render(stig_host_view=host_view, **common_vars)
+        dest_name = Path(host_report_abs).name
+        with open(host_dir / dest_name, "w") as f:
+            f.write(content)
+        if stamp:
+            stem = Path(dest_name).stem
+            suffix = Path(dest_name).suffix or ".html"
+            with open(host_dir / f"{stem}_{stamp}{suffix}", "w") as f:
                 f.write(content)
-            if stamp:
-                stem = Path(dest_name).stem
-                suffix = Path(dest_name).suffix or ".html"
-                with open(host_dir / f"{stem}_{stamp}{suffix}", "w") as f:
-                    f.write(content)
 
-            all_hosts_data.setdefault(hostname, {})[audit_type] = payload
+        all_hosts_data.setdefault(hostname, {})[audit_type] = payload
 
     if all_hosts_data:
-        fleet_paths_src = next(iter((stig_platforms_by_target or {}).values()), {"paths": _default_paths()})
-        fleet_paths = dict(fleet_paths_src.get("paths", _default_paths()))
+        first_entry = reg.entries[0] if reg.entries else None
+        fleet_paths = first_entry.paths.model_dump() if first_entry else _default_paths()
         site_report_abs = render_template(
             fleet_paths["report_site"],
             report_dir="",
@@ -536,9 +535,12 @@ def _render_stig(
             target_type="",
             report_stamp=stamp,
         )
+        stig_fleet_nav: dict[str, str] = {}
+        if has_site_report:
+            stig_fleet_nav["site_report"] = rel_href(".", site_report_abs)
         fleet_view = build_stig_fleet_view(
             all_hosts_data,
-            nav={"site_report": rel_href(".", site_report_abs)},
+            nav=stig_fleet_nav,
             generated_fleet_dirs=generated_fleet_dirs,
             **kw,
         )
@@ -565,6 +567,45 @@ def main(verbose: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
+# validate-config command
+# ---------------------------------------------------------------------------
+
+
+@main.command("validate-config")
+@click.option(
+    "--platforms-config",
+    "-P",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to platforms.yaml config. Defaults: ./platforms.yaml, ~/.config/ncs_reporter/platforms.yaml, built-in.",
+)
+def validate_config(platforms_config: str | None) -> None:
+    """Validate a platforms config file."""
+    try:
+        entries = _load_platforms(platforms_config)
+    except click.ClickException:
+        raise
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    # Also run path contract validation
+    from ncs_path_contract import validate_platforms_config_dict
+
+    try:
+        validate_platforms_config_dict({"platforms": entries})
+    except ValueError as exc:
+        raise click.ClickException(f"Path contract error: {exc}") from exc
+
+    target_types = sorted({t for e in entries for t in e.get("target_types", [])})
+    renderable = [e["platform"] for e in entries if e.get("render", True)]
+    seen: set[str] = set()
+    unique_renderable = [p for p in renderable if p not in seen and not seen.add(p)]  # type: ignore[func-returns-value]
+    click.echo(f"Valid! {len(entries)} platform entries, {len(target_types)} target types.")
+    click.echo(f"  Target types: {', '.join(target_types)}")
+    click.echo(f"  Renderable platforms: {', '.join(unique_renderable)}")
+
+
+# ---------------------------------------------------------------------------
 # Platform commands (linux, vmware, windows)
 # ---------------------------------------------------------------------------
 
@@ -575,7 +616,7 @@ def _platform_command(platform: str, input_file: str, output_dir: str, report_st
     output_path.mkdir(parents=True, exist_ok=True)
     hosts_data = load_hosts_data(input_file)
     common_vars = generate_timestamps(report_stamp)
-    report_dir = {"linux": "linux/ubuntu", "vmware": "vmware/vcenter", "windows": "windows"}.get(platform, platform)
+    report_dir = default_registry().platform_to_report_dir(platform) or platform
     _render_platform(
         platform,
         hosts_data,
@@ -739,7 +780,7 @@ def all_cmd(
     common_vars = generate_timestamps(effective_stamp)
 
     _extra_dirs, _platforms_cfg = _resolve_config_dir(config_dir, extra_schema_dir, platforms_config, config_yaml)
-    platforms = _load_platforms(_platforms_cfg)
+    platforms = _load_platforms(_platforms_cfg, extra_schema_dirs=_extra_dirs)
 
     # Append custom schemas (platforms not already in the loaded config)
     _configured_platforms = {p["platform"] for p in platforms}
@@ -769,7 +810,8 @@ def all_cmd(
     render_tasks: list[dict[str, Any]] = []
     global_inventory_index: dict[str, str] = {}
     platforms_by_report_dir: dict[str, dict[str, Any]] = {str(p["report_dir"]): p for p in platforms}
-    stig_platforms_by_target: dict[str, dict[str, Any]] = build_target_type_index(platforms)
+    _runtime_entries = [PlatformEntry.model_validate(p) for p in platforms]
+    runtime_registry = PlatformRegistry(_runtime_entries)
 
     for p in platforms:
         p_dir = p_root / p["input_dir"]
@@ -822,6 +864,8 @@ def all_cmd(
                     platform_paths=t["platform_paths"],
                     extra_schema_dirs=t.get("extra_schema_dirs", ()),
                     schema_names_override=t.get("schema_names_override"),
+                    has_site_report=True,
+                    has_stig_fleet=True,
                 ): t["platform"]
                 for t in render_tasks
             }
@@ -896,7 +940,8 @@ def all_cmd(
             global_inventory_index=global_inventory_index,
             cklb_dir=r_root / "cklb",
             generated_fleet_dirs=generated_fleet_dirs,
-            stig_platforms_by_target=stig_platforms_by_target,
+            registry=runtime_registry,
+            has_site_report=True,
         )
 
         click.echo("STIG fleet reports and CKLB artifacts generated.")
@@ -909,7 +954,7 @@ def all_cmd(
 
 @main.command()
 @click.option(
-    "--platform", "-p", required=True, type=click.Choice(["linux", "vmware", "windows"]), help="Target platform type."
+    "--platform", "-p", required=True, type=click.Choice(default_registry().all_platform_names()), help="Target platform type."
 )
 @click.option(
     "--input",
@@ -933,7 +978,7 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
     env = get_jinja_env()
     kw = vm_kwargs(common_vars)
 
-    schema_names = _PLATFORM_SCHEMA_NAMES.get(platform, [platform])
+    schema_names = default_registry().schema_names_for_platform(platform)
     all_schemas = discover_schemas()
     schema = next((all_schemas[n] for n in schema_names if n in all_schemas), None)
     if schema is None:
@@ -981,9 +1026,16 @@ def schema_list(extra_schema_dir: tuple[str, ...]) -> None:
 @schema.command("validate")
 @click.argument("schema_file", type=click.Path(exists=True, path_type=Path))
 def schema_validate(schema_file: Path) -> None:
-    """Validate a schema file and check all field paths against its example data.
+    """Validate a schema file with comprehensive checks.
 
     SCHEMA_FILE: path to a *.yaml schema file.
+
+    Checks performed:
+      - YAML + Pydantic structural validation
+      - Unused fields (declared but not referenced in alerts/widgets/fleet_columns)
+      - Message format strings reference valid fields
+      - Script files exist in the schema scripts directory
+      - Field paths resolve against example data (if .example.yaml exists)
     """
     try:
         s = load_schema_from_file(schema_file)
@@ -991,24 +1043,269 @@ def schema_validate(schema_file: Path) -> None:
         click.echo(f"INVALID: {exc}", err=True)
         raise SystemExit(1)
 
+    warnings: list[str] = []
+    errors: list[str] = []
+
+    # --- Check unused fields ---
+    referenced: set[str] = set()
+    for rule in s.alerts:
+        cond = rule.condition
+        if hasattr(cond, "field"):
+            referenced.add(cond.field)
+        for f in rule.detail_fields:
+            referenced.add(f)
+        if rule.affected_items_field:
+            referenced.add(rule.affected_items_field)
+    for widget in s.widgets:
+        from .models.report_schema import KeyValueWidget, ProgressBarWidget, TableWidget
+
+        if isinstance(widget, KeyValueWidget):
+            for kv in widget.fields:
+                referenced.add(kv.field)
+        elif isinstance(widget, TableWidget):
+            referenced.add(widget.rows_field)
+        elif isinstance(widget, ProgressBarWidget):
+            referenced.add(widget.field)
+            if widget.label:
+                referenced.add(widget.label)
+    for col in s.fleet_columns:
+        referenced.add(col.field)
+    # Also count compute/script dependencies as referenced
+    for spec in s.fields.values():
+        if spec.compute:
+            import re
+
+            for ref in re.findall(r"\{(\w+)\}", spec.compute):
+                referenced.add(ref)
+        if spec.script_args:
+            for v in spec.script_args.values():
+                if isinstance(v, str):
+                    import re
+
+                    for ref in re.findall(r"\{(\w+)\}", v):
+                        referenced.add(ref)
+    unreferenced = {k for k in s.fields if not k.startswith("_") and k not in referenced}
+    if unreferenced:
+        warnings.append(f"Unused fields (not referenced in alerts/widgets/fleet_columns): {', '.join(sorted(unreferenced))}")
+
+    # --- Check message format strings ---
+    import re
+
+    declared = set(s.fields.keys())
+    for rule in s.alerts:
+        for match in re.finditer(r"\{(\w+)", rule.message):
+            ref = match.group(1)
+            if ref != "value" and not ref.startswith("_") and ref not in declared:
+                errors.append(f"alert '{rule.id}': message references undeclared field '{ref}'")
+
+    # --- Check script files exist ---
+    from .normalization.schema_driven import _BUILTIN_SCRIPTS_DIR
+
+    schema_dir = schema_file.parent
+    for name, spec in s.fields.items():
+        if spec.script is None:
+            continue
+        p = Path(spec.script)
+        found = p.is_absolute() and p.exists()
+        if not found:
+            found = (schema_dir / spec.script).exists()
+        if not found:
+            found = p.exists()
+        if not found:
+            found = (_BUILTIN_SCRIPTS_DIR / spec.script).exists()
+        if not found:
+            errors.append(f"field '{name}': script '{spec.script}' not found")
+
+    # --- Check field paths against example data ---
+    example = load_example_bundle(s)
+    path_errors: dict[str, str] = {}
+    if example is not None:
+        path_errors = validate_schema_paths(s, example)
+        for msg in path_errors.values():
+            errors.append(msg)
+
+    # --- Output ---
     click.echo(
-        f"Schema '{s.name}' loaded OK  ({len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.widgets)} widgets)"
+        f"Schema '{s.name}' — {len(s.fields)} fields, {len(s.alerts)} alerts, {len(s.widgets)} widgets"
     )
 
-    example = load_example_bundle(s)
-    if example is None:
-        click.echo(f"WARNING: no example file found ({s.name}.example.yaml) — path validation skipped")
-        return
+    if warnings:
+        for w in warnings:
+            click.echo(f"  WARNING: {w}")
 
-    errors = validate_schema_paths(s, example)
     if errors:
-        click.echo(f"FAIL: {len(errors)} field path(s) do not resolve against the example bundle:")
-        for msg in errors.values():
-            click.echo(f"  {msg}")
+        click.echo(f"FAIL: {len(errors)} error(s):")
+        for e in errors:
+            click.echo(f"  {e}")
         raise SystemExit(1)
 
-    path_fields = sum(1 for spec in s.fields.values() if spec.path is not None)
-    click.echo(f"OK: all {path_fields} path field(s) resolve against {s.name}.example.yaml")
+    if example is None:
+        click.echo(f"  WARNING: no example file ({s.name}.example.yaml) — path validation skipped")
+    else:
+        path_fields = sum(1 for spec in s.fields.values() if spec.path is not None)
+        click.echo(f"  OK: all {path_fields} path field(s) resolve against {s.name}.example.yaml")
+
+    click.echo("Valid!")
+
+
+@schema.command("init")
+@click.option("--name", required=True, help="Schema name (e.g. 'linux', 'my_platform').")
+@click.option(
+    "--from-bundle",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Raw YAML data bundle to generate field entries from.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Write output to file instead of stdout.",
+)
+def schema_init(name: str, from_bundle: Path | None, output: Path | None) -> None:
+    """Generate a starter schema YAML template.
+
+    Without --from-bundle: produces a starter template with example entries.
+    With --from-bundle: walks the key tree of a raw YAML bundle and generates
+    field entries for every leaf key with inferred types.
+    """
+    if from_bundle is not None:
+        content = _schema_from_bundle(name, from_bundle)
+    else:
+        content = _schema_template(name)
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(content, encoding="utf-8")
+        click.echo(f"Schema written to {output}")
+    else:
+        click.echo(content)
+
+
+def _schema_template(name: str) -> str:
+    """Generate a minimal starter schema template."""
+    return f"""name: {name}
+
+detection:
+  keys_any: [{name}_raw_data]
+
+# Uncomment to reduce path repetition — paths starting with '.' are relative.
+# path_prefix: "{name}_raw_data.data"
+
+fields:
+  hostname:
+    path: "{name}_raw_data.data.hostname"
+    fallback: "unknown"
+
+  example_metric:
+    path: "{name}_raw_data.data.some_metric"
+    type: float
+
+  example_computed:
+    compute: "{{example_metric}} * 100"
+    type: float
+
+alerts:
+  - id: example_alert
+    category: "Example"
+    severity: WARNING
+    condition:
+      op: gt
+      field: example_metric
+      threshold: 90.0
+    message: "Example metric is high: {{example_metric:.1f}}"
+
+widgets:
+  - id: alerts
+    title: "Active Alerts"
+    type: alert_panel
+
+  - id: overview
+    title: "Overview"
+    type: key_value
+    fields:
+      - {{ label: "Hostname", field: hostname }}
+      - {{ label: "Example Metric", field: example_metric }}
+"""
+
+
+def _infer_type(value: Any) -> str:
+    """Infer a schema field type string from a Python value."""
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    if isinstance(value, list):
+        return "list"
+    if isinstance(value, dict):
+        return "dict"
+    return "str"
+
+
+def _walk_keys(data: Any, prefix: str, result: list[tuple[str, str, str]]) -> None:
+    """Recursively walk a nested dict, collecting (path, field_name, type) tuples."""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            full_path = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                _walk_keys(value, full_path, result)
+            elif isinstance(value, list):
+                # Record the list itself as a field
+                safe_name = full_path.replace(".", "_").replace("-", "_")
+                result.append((full_path, safe_name, "list"))
+            else:
+                safe_name = full_path.replace(".", "_").replace("-", "_")
+                result.append((full_path, safe_name, _infer_type(value)))
+
+
+def _schema_from_bundle(name: str, bundle_path: Path) -> str:
+    """Generate a schema from a raw YAML data bundle."""
+    with open(bundle_path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, dict):
+        raise click.ClickException(f"Bundle {bundle_path} is not a YAML mapping")
+
+    # Walk the key tree
+    entries: list[tuple[str, str, str]] = []
+    _walk_keys(data, "", entries)
+
+    # Detect a common prefix
+    top_key = next(iter(data.keys())) if data else name
+    detection_key = top_key
+
+    lines = [
+        f"name: {name}",
+        "",
+        "detection:",
+        f"  keys_any: [{detection_key}]",
+        "",
+        "# Uncomment and adjust to reduce path repetition:",
+        f'# path_prefix: "{top_key}.data"',
+        "",
+        f"# Generated from {bundle_path.name} — {len(entries)} leaf keys discovered",
+        "fields:",
+    ]
+
+    for path, field_name, ftype in entries:
+        lines.append(f"  {field_name}:")
+        lines.append(f'    path: "{path}"')
+        if ftype != "str":
+            lines.append(f"    type: {ftype}")
+        lines.append("")
+
+    lines.append("alerts: []")
+    lines.append("")
+    lines.append("widgets:")
+    lines.append("  - id: alerts")
+    lines.append('    title: "Active Alerts"')
+    lines.append("    type: alert_panel")
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 @schema.command("run")
@@ -1094,12 +1391,6 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
     output_path.mkdir(parents=True, exist_ok=True)
     hosts_data = load_hosts_data(input_file)
     common_vars = generate_timestamps(report_stamp)
-    stig_platforms_by_target: dict[str, dict[str, Any]] = {}
-    for p in _BUILTIN_PLATFORMS:
-        for t in p.get("target_types", []):
-            key = str(t).strip().lower()
-            if key:
-                stig_platforms_by_target[key] = p
     # Generate CKLB first so STIG HTML can hydrate description/check/fix content from it.
     ctx = click.get_current_context()
     ctx.invoke(cklb, input_file=input_file, output_dir=str(output_path / "cklb"), skeleton_dir=None)
@@ -1108,7 +1399,6 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None) -> None:
         output_path,
         common_vars,
         cklb_dir=output_path / "cklb",
-        stig_platforms_by_target=stig_platforms_by_target,
     )
     click.echo(f"Done! STIG reports generated in {output_dir}")
 
@@ -1142,7 +1432,7 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None) -> None:
                 continue
 
             target_type = str(payload.get("target_type", ""))
-            skeleton_file = _STIG_SKELETON_MAP.get(target_type)
+            skeleton_file = default_registry().stig_skeleton_for_target(target_type)
             if not skeleton_file:
                 continue
 

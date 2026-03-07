@@ -6,6 +6,8 @@ from typing import Any
 from ncs_reporter.models.base import MetadataModel, SummaryModel, AlertModel
 from ncs_reporter.models.stig import STIGAuditModel
 from ncs_reporter.alerts import health_rollup
+from ncs_reporter.platform_registry import default_registry
+from ncs_reporter.primitives import canonical_stig_status as _canonical_stig_status
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +20,6 @@ def _severity_to_alert(raw_severity: Any) -> str:
         return "WARNING"
     return "INFO"
 
-
-def _canonical_stig_status(value: Any) -> str:
-    text = str(value or "").strip().lower()
-    if text in ("failed", "fail", "open", "finding", "non-compliant", "non_compliant"):
-        return "open"
-    if text in ("fixed", "remediated"):
-        return "pass"
-    if text in ("pass", "passed", "compliant", "success", "closed", "notafinding"):
-        return "pass"
-    if text in ("na", "n/a", "not_applicable", "not applicable"):
-        return "na"
-    return text
 
 
 def _row_status(item: dict[str, Any]) -> str:
@@ -92,14 +82,9 @@ def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_targe
         first = rows[0]
         if isinstance(first, dict):
             rv = str(first.get("rule_version") or "").upper()
-            if rv.startswith("VMCH"):
-                detected_type = "vm"
-            elif rv.startswith("ESXI"):
-                detected_type = "esxi"
-            elif rv.startswith("WN") or rv.startswith("MS"):
-                detected_type = "windows"
-            elif rv.startswith("UBTU") or rv.startswith("GEN"):
-                detected_type = "ubuntu"
+            inferred = default_registry().infer_target_type_from_rule_prefix(rv)
+            if inferred:
+                detected_type = inferred
 
     logger.debug(
         "normalize_stig: input type=%s, target_type=%s, detected=%s",

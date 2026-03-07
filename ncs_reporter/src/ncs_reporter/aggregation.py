@@ -11,6 +11,7 @@ import yaml
 
 from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.normalization.stig import normalize_stig
+from ncs_reporter.platform_registry import PlatformRegistry, default_registry
 from ncs_reporter.primitives import canonical_severity  # noqa: F401
 from ncs_reporter.schema_loader import detect_schemas_for_bundle
 
@@ -77,6 +78,7 @@ def load_all_reports(
     audit_filter: str | None = None,
     normalizer: Callable[[str, str, dict[str, Any]], tuple[str, dict[str, Any]] | dict[str, Any]] | None = None,
     host_normalizer: Callable[[str, dict[str, Any]], dict[str, Any]] | None = None,
+    registry: PlatformRegistry | None = None,
 ) -> dict[str, Any] | None:
     aggregated: dict[str, Any] = {
         "metadata": {
@@ -99,26 +101,8 @@ def load_all_reports(
         ".git",
         ".artifacts",
     }
-    host_exclude = {
-        "platform",
-        # Flat-style platform dirs (legacy)
-        "ubuntu",
-        "vmware",
-        "windows",
-        # Nested-style platform dirs (linux/ubuntu, vmware/vcenter, etc.)
-        "linux",
-        "photon",
-        "vcenter",
-        "vcsa",
-        "esxi",
-        "vm",
-        "all_hosts_state.yaml",
-        "vmware_fleet_state.yaml",
-        "esxi_fleet_state.yaml",
-        "vm_fleet_state.yaml",
-        "linux_fleet_state.yaml",
-        "windows_fleet_state.yaml",
-    }.union(traversal_exclude)
+    reg = registry or default_registry()
+    host_exclude = reg.host_exclude_set().union(traversal_exclude)
 
     if not os.path.isdir(report_dir):
         logger.error("Report directory not found: %s", report_dir)

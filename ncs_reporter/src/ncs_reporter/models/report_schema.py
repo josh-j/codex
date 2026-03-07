@@ -4,12 +4,55 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
 # Field specification
 # ---------------------------------------------------------------------------
+
+
+_TYPE_DEFAULT_FALLBACKS: dict[str, Any] = {
+    "str": "",
+    "int": 0,
+    "float": 0.0,
+    "bool": False,
+    "list": [],
+    "dict": {},
+    "bytes": 0,
+    "percentage": 0.0,
+    "datetime": "",
+    "duration_seconds": 0.0,
+}
+
+_SENTINEL_UNSET = object()
+
+
+class ListFilterExclude(BaseModel):
+    """Exclude list items where a field matches any of the given values or patterns."""
+
+    model_config = ConfigDict(extra="allow")
+
+    # Each key is a field name; value is a list of exact strings or regex patterns
+    # (regex patterns start with ^). Items matching ANY exclude rule are removed.
+
+
+class ListFilterSpec(BaseModel):
+    """Declarative list filtering: exclude items by field value or pattern."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    exclude: dict[str, list[str]] = Field(default_factory=dict)
+    include: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class CountWhereSpec(BaseModel):
+    """Count items in a list matching field=value filters (case-insensitive for strings)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    # Each key is a field name, value is the required value.
+    # All conditions must match (AND). Count of matching items is the result.
 
 
 class FieldSpec(BaseModel):
@@ -31,7 +74,7 @@ class FieldSpec(BaseModel):
     type: Literal[
         "str", "int", "float", "bool", "list", "dict", "bytes", "percentage", "datetime", "duration_seconds"
     ] = "str"
-    fallback: Any = Field(default=None, validation_alias=AliasChoices("fallback", "default"))
+    fallback: Any = Field(default=_SENTINEL_UNSET, validation_alias=AliasChoices("fallback", "default"))
     # Value used instead of fallback when the path is *provably broken* (i.e. does
     # not resolve against the example bundle).  None means use a type-appropriate
     # default: "ERROR" for str, -1 for int/float.  Set explicitly to override.
@@ -40,6 +83,16 @@ class FieldSpec(BaseModel):
     # Optional default format string applied during view model rendering
     format: str | None = None
 
+    # --- List processing (applied after path/compute/script resolution) ---
+    # Filter list items by field values. Applied before list_map.
+    list_filter: ListFilterSpec | None = None
+    # Compute derived fields on each list item using arithmetic expressions.
+    # Keys are new field names, values are expressions using {item_field} refs.
+    list_map: dict[str, str] = Field(default_factory=dict)
+    # Count list items matching field=value conditions. Overrides the resolved
+    # value with the integer count. Useful for aggregation without scripts.
+    count_where: dict[str, Any] | None = None
+
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
         sources = sum(x is not None for x in [self.path, self.compute, self.script])
@@ -47,6 +100,9 @@ class FieldSpec(BaseModel):
             raise ValueError("FieldSpec requires one of: 'path', 'compute', or 'script'")
         if sources > 1:
             raise ValueError("FieldSpec: 'path', 'compute', and 'script' are mutually exclusive")
+        # Auto-derive fallback from type when not explicitly set
+        if self.fallback is _SENTINEL_UNSET:
+            self.fallback = _TYPE_DEFAULT_FALLBACKS.get(self.type)
         return self
 
 
@@ -204,6 +260,8 @@ class AlertRule(BaseModel):
     message: str
     detail_fields: list[str] = Field(default_factory=list)
     affected_items_field: str | None = None
+    # Suppress this alert if another alert (by id) already fired.
+    suppress_if: str | list[str] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +281,7 @@ class KeyValueField(BaseModel):
     label: str = Field(validation_alias=AliasChoices("label", "title"))
     field: str
     format: str | None = None
+    badge: bool = False
 
 
 class KeyValueWidget(BaseModel):
@@ -232,6 +291,7 @@ class KeyValueWidget(BaseModel):
     title: str
     type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
     fields: list[KeyValueField]
 
 
@@ -259,6 +319,7 @@ class TableWidget(BaseModel):
     title: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     columns: list[TableColumn]
 
@@ -270,6 +331,7 @@ class AlertPanelWidget(BaseModel):
     title: str
     type: Literal["alert_panel"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
 
 
 class ProgressBarWidget(BaseModel):
@@ -279,6 +341,7 @@ class ProgressBarWidget(BaseModel):
     title: str
     type: Literal["progress_bar"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
     field: str  # Field containing a 0-100 percentage
     label: str | None = None  # Optional secondary field for text label
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
@@ -292,11 +355,85 @@ class MarkdownWidget(BaseModel):
     title: str
     type: Literal["markdown"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
     content: str
 
 
+class StatCardSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field: str
+    label: str
+    format: str | None = None
+    color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
+    thresholds: dict[int, str] | None = None
+
+
+class StatCardsWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["stat_cards"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
+    cards: list[StatCardSpec]
+
+
+class BarChartWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["bar_chart"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
+    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
+    label_field: str
+    value_field: str
+    max: float = 100
+    thresholds: dict[int, str] | None = None
+
+
+class ListWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["list"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
+    items_field: str
+    display_field: str | None = None
+    style: Literal["bullet", "numbered", "comma"] = "bullet"
+    empty_text: str = "None"
+
+
+class GroupedTableWidget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    type: Literal["grouped_table"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    visible_if: AlertCondition | None = None
+    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
+    group_by: str
+    columns: list[TableColumn]
+
+
 ReportWidget = Annotated[
-    Union[KeyValueWidget, TableWidget, AlertPanelWidget, ProgressBarWidget, MarkdownWidget],
+    Union[
+        KeyValueWidget,
+        TableWidget,
+        AlertPanelWidget,
+        ProgressBarWidget,
+        MarkdownWidget,
+        StatCardsWidget,
+        BarChartWidget,
+        ListWidget,
+        GroupedTableWidget,
+    ],
     Field(discriminator="type"),
 ]
 
@@ -311,6 +448,50 @@ class DetectionSpec(BaseModel):
 
     keys_any: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_any", "any"))
     keys_all: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_all", "all"))
+
+
+# ---------------------------------------------------------------------------
+# Embedded platform metadata (replaces platforms_default.yaml)
+# ---------------------------------------------------------------------------
+
+
+class SubEntry(BaseModel):
+    """A STIG-only sub-entry under a parent platform (e.g. vcsa, esxi, vm under vmware)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    input_dir: str
+    report_dir: str
+    state_file: str = ""
+    target_types: list[str] = Field(default_factory=list)
+    stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
+
+
+class PlatformSpec(BaseModel):
+    """Platform routing metadata embedded in a schema YAML."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = ""  # platform name (e.g. "linux", "vmware", "windows")
+    input_dir: str = ""
+    report_dir: str = ""
+    target_types: list[str] = Field(default_factory=list)
+    state_file: str = ""
+    display_name: str | None = None
+    asset_label: str = "Nodes"
+    inventory_groups: list[str] = Field(default_factory=list)
+    stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
+    stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
+    render: bool = True  # False = STIG/routing only, no fleet/site reports
+    site_category: str | None = None
+    sub_entries: list[SubEntry] = Field(default_factory=list)
+
+    @field_validator("sub_entries", mode="before")
+    @classmethod
+    def _coerce_sub_entries(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        return v
 
 
 # ---------------------------------------------------------------------------
@@ -329,8 +510,10 @@ class ReportSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    platform: str
-    display_name: str = Field(validation_alias=AliasChoices("display_name", "title"))
+    platform: str = ""
+    platform_spec: PlatformSpec | None = Field(default=None, exclude=True)
+    display_name: str = Field(default="", validation_alias=AliasChoices("display_name", "title"))
+    path_prefix: str | None = None
     detection: DetectionSpec
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
     alerts: list[AlertRule] = Field(default_factory=list)
@@ -340,6 +523,42 @@ class ReportSchema(BaseModel):
 
     # Track where this schema was loaded from (set post-load, not from YAML)
     _source_path: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_defaults(cls, values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+
+        # Handle platform field: can be str or dict (PlatformSpec)
+        raw_platform = values.get("platform")
+        if isinstance(raw_platform, dict):
+            # Dict form: extract platform name for the str field, store spec separately
+            values["platform_spec"] = raw_platform
+            values["platform"] = raw_platform.get("name", values.get("name", ""))
+        elif not raw_platform:
+            # Auto-derive platform from name when not explicitly set
+            values["platform"] = values.get("name", "")
+
+        # Auto-derive display_name from name
+        if not values.get("display_name") and not values.get("title"):
+            name = values.get("name", "")
+            values["display_name"] = name.replace("_", " ").title() if name else ""
+        # Expand short-form fields: bare string → path-only FieldSpec
+        fields = values.get("fields")
+        if isinstance(fields, dict):
+            for key, val in fields.items():
+                if isinstance(val, str):
+                    fields[key] = {"path": val}
+        # Expand path_prefix: prepend to all relative paths (starting with '.')
+        prefix = values.get("path_prefix")
+        if prefix and isinstance(fields, dict):
+            for key, val in fields.items():
+                if isinstance(val, dict) and isinstance(val.get("path"), str) and val["path"].startswith("."):
+                    val["path"] = prefix + val["path"]  # ".foo" → "prefix.foo"
+                elif isinstance(val, dict) and isinstance(val.get("from"), str) and val["from"].startswith("."):
+                    val["from"] = prefix + val["from"]
+        return values
 
     @model_validator(mode="after")
     def _cross_check_references(self) -> "ReportSchema":
@@ -377,6 +596,27 @@ class ReportSchema(BaseModel):
                 if widget.label and not widget.label.startswith("_") and widget.label not in declared:
                     errors.append(
                         f"widget '{widget.id}': progress_bar label references undeclared field '{widget.label}'"
+                    )
+            elif isinstance(widget, StatCardsWidget):
+                for card in widget.cards:
+                    if not card.field.startswith("_") and card.field not in declared:
+                        errors.append(
+                            f"widget '{widget.id}': stat_cards references undeclared field '{card.field}'"
+                        )
+            elif isinstance(widget, BarChartWidget):
+                if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
+                    errors.append(
+                        f"widget '{widget.id}': bar_chart rows_field references undeclared field '{widget.rows_field}'"
+                    )
+            elif isinstance(widget, ListWidget):
+                if not widget.items_field.startswith("_") and widget.items_field not in declared:
+                    errors.append(
+                        f"widget '{widget.id}': list references undeclared field '{widget.items_field}'"
+                    )
+            elif isinstance(widget, GroupedTableWidget):
+                if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
+                    errors.append(
+                        f"widget '{widget.id}': grouped_table rows_field references undeclared field '{widget.rows_field}'"
                     )
 
         for col in self.fleet_columns:

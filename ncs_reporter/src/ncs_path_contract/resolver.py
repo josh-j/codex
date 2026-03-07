@@ -18,6 +18,17 @@ REQUIRED_PATH_KEYS = {
     "report_stig_fleet",
 }
 
+DEFAULT_PATH_TEMPLATES: dict[str, str] = {
+    "raw_stig_artifact": "platform/{report_dir}/{hostname}/raw_stig_{target_type}.yaml",
+    "report_fleet": "platform/{report_dir}/{schema_name}_fleet_report.html",
+    "report_node_latest": "platform/{report_dir}/{hostname}/health_report.html",
+    "report_node_historical": "platform/{report_dir}/{hostname}/health_report_{report_stamp}.html",
+    "report_stig_host": "platform/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html",
+    "report_search_entry": "platform/{report_dir}/{hostname}/health_report.html",
+    "report_site": "site_health_report.html",
+    "report_stig_fleet": "stig_fleet_report.html",
+}
+
 _ALLOWED_TEMPLATE_FIELDS = {"report_dir", "hostname", "schema_name", "target_type", "report_stamp"}
 _REQUIRED_TEMPLATE_FIELDS: dict[str, set[str]] = {
     "raw_stig_artifact": {"report_dir", "hostname", "target_type"},
@@ -59,19 +70,26 @@ def validate_platforms_config_dict(raw: dict[str, Any]) -> list[dict[str, Any]]:
     for idx, p in enumerate(platforms):
         if not isinstance(p, dict):
             raise ValueError(f"platforms[{idx}] must be a mapping")
-        for req in ("input_dir", "report_dir", "platform", "state_file", "target_types", "paths"):
+        for req in ("input_dir", "report_dir", "platform", "target_types"):
             if req not in p:
                 raise ValueError(f"platforms[{idx}] missing required field '{req}'")
         if not isinstance(p.get("target_types"), list) or not p.get("target_types"):
             raise ValueError(f"platforms[{idx}].target_types must be a non-empty list")
+        # Derive state_file from platform if missing
+        if "state_file" not in p or not p["state_file"]:
+            p["state_file"] = f"{p['platform']}_fleet_state.yaml"
+        # Inject/merge default paths
         paths = p.get("paths")
-        if not isinstance(paths, dict):
+        if paths is None:
+            p["paths"] = dict(DEFAULT_PATH_TEMPLATES)
+        elif isinstance(paths, dict):
+            merged = dict(DEFAULT_PATH_TEMPLATES)
+            merged.update(paths)
+            p["paths"] = merged
+        else:
             raise ValueError(f"platforms[{idx}].paths must be a mapping")
-        missing_keys = sorted(REQUIRED_PATH_KEYS - set(paths.keys()))
-        if missing_keys:
-            raise ValueError(f"platforms[{idx}].paths missing required keys: {', '.join(missing_keys)}")
         for key in REQUIRED_PATH_KEYS:
-            _validate_template(key, str(paths[key]))
+            _validate_template(key, str(p["paths"][key]))
         out.append(p)
     build_target_type_index(out)
     return out

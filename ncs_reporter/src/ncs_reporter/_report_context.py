@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import functools
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
+
+from .minify import minify_css, minify_html_doc, minify_js
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,13 @@ def get_jinja_env() -> Environment:
         lstrip_blocks=True,
     )
     env.filters["status_badge_meta"] = _badge
+
+    # Pre-minify shared CSS/JS once and expose as Jinja globals.
+    css_text = (template_dir / "report_shared.css").read_text()
+    js_text = (template_dir / "collapsible.js").read_text()
+    env.globals["_minified_css"] = Markup(minify_css(css_text))
+    env.globals["_minified_js"] = Markup(minify_js(js_text))
+
     return env
 
 
@@ -90,11 +101,22 @@ def vm_kwargs(common_vars: dict[str, Any]) -> dict[str, Any]:
 
 
 def write_report(output_path: Path, base_name: str, content: str, stamp: str) -> None:
-    """Write a stamped report and a 'latest' (un-stamped) copy."""
+    """Write a stamped report and hardlink a 'latest' (un-stamped) copy."""
+    content = minify_html_doc(content)
     stem, ext = base_name.rsplit(".", 1) if "." in base_name else (base_name, "html")
     stamped = output_path / f"{stem}_{stamp}.{ext}"
     latest = output_path / f"{stem}.{ext}"
+
     with open(stamped, "w") as f:
         f.write(content)
-    with open(latest, "w") as f:
-        f.write(content)
+
+    # Hardlink the latest copy to avoid writing identical data twice.
+    # Fall back to a regular copy on cross-device or permission errors.
+    if latest.exists():
+        latest.unlink()
+    try:
+        os.link(stamped, latest)
+    except OSError:
+        import shutil
+
+        shutil.copy2(str(stamped), str(latest))

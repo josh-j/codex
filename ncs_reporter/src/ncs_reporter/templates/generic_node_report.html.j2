@@ -1,3 +1,21 @@
+{% macro render_badge(value) %}
+{% set v = (value | string) | lower %}
+{% if v in ('poweredon', 'toolsok', 'toolsrunning', 'green', 'ok', 'up', 'running', 'connected', 'healthy', 'true') %}
+    <span class="sv-ok" title="{{ value }}"><span class="status-icon status-icon-ok"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('red', 'critical', 'down', 'error', 'failed', 'false') %}
+    <span class="sv-critical" title="{{ value }}"><span class="status-icon status-icon-crit"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('yellow', 'warning', 'degraded') %}
+    <span class="sv-warning" title="{{ value }}"><span class="status-icon status-icon-warn"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('gray', 'grey', 'unknown') %}
+    <span class="sv-info" title="{{ value }}"><span class="status-icon status-icon-off"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('poweredoff', 'suspended') %}
+    <span class="sv-off" title="{{ value }}"><span class="status-icon status-icon-off"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('toolsnotinstalled', 'toolsnotrunning', 'toolsold') %}
+    <span class="sv-warning" title="{{ value }}"><span class="status-icon status-icon-warn"></span><span class="badge-text-print">{{ value }}</span></span>
+{% else %}
+    {{ value }}
+{% endif %}
+{% endmacro %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +31,7 @@
     {% set crit = summary.get('critical_count', 0) %}
     {% set warn = summary.get('warning_count', 0) %}
     <title>{{ meta.get('display_name', 'Report') }} — Node Report — {{ meta.get('host', 'host') }}</title>
-    <style>{% include 'report_shared.css' %}</style>
+    <style>{{ _minified_css }}</style>
 </head>
 <body>
 <div class="page-wrap">
@@ -99,7 +117,7 @@
         </div>
     </div>
 
-    <div class="widget-grid-container" style="display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
+    <div class="widget-grid-container">
     {% for widget in widgets %}
         {% set w_width = widget.get('layout', {}).get('width', 'full') %}
         {% set flex_basis = '100%' %}
@@ -128,12 +146,66 @@
                     <div style="width: {{ widget.percent }}%; height: 100%; background: var(--{{ widget.color|default('brand') }}); border-radius: 4px; transition: width 0.3s ease;"></div>
                 </div>
             </div>
-            
+
             {% elif widget.type == 'markdown' %}
             <div class="widget-body details-description" style="margin-bottom: 0; border: 1px solid var(--line); border-top: none; border-radius: 0 0 10px 10px;">
                 {{ widget.content }}
             </div>
-            
+
+            {% elif widget.type == 'stat_cards' %}
+            <div class="widget-body widget-body-padded">
+            <div class="stat-cards-row">
+                {% for card in widget.get('cards', []) %}
+                <div class="stat-card stat-card-{{ card.color | default('blue') }}">
+                    <div class="stat-card-value">{{ card.value }}</div>
+                    <div class="stat-card-label">{{ card.label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            </div>
+
+            {% elif widget.type == 'bar_chart' %}
+            <div class="widget-body widget-body-padded">
+            {% if widget.get('bars', []) %}
+            <div class="bar-chart">
+                {% for bar in widget.bars %}
+                <div class="bar-chart-row">
+                    <span class="bar-chart-label">{{ bar.label }}</span>
+                    <div class="bar-chart-track">
+                        <div class="bar-chart-fill bar-chart-{{ bar.color | default('blue') }}" style="width: {{ bar.width_pct }}%;"></div>
+                    </div>
+                    <span class="bar-chart-value">{{ bar.value | round(1) }}%</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-data">No data.</div>
+            {% endif %}
+            </div>
+
+            {% elif widget.type == 'list' %}
+            <div class="widget-body widget-body-padded">
+            {% if widget.get('items', []) %}
+                {% if widget.style == 'comma' %}
+                <div class="list-widget-comma">{{ widget.items | join(', ') }}</div>
+                {% elif widget.style == 'numbered' %}
+                <ol class="list-widget">
+                    {% for item in widget.items %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <ul class="list-widget">
+                    {% for item in widget.items %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            {% else %}
+            <div class="no-data">{{ widget.empty_text | default('None') }}</div>
+            {% endif %}
+            </div>
+
             {% else %}
             <div class="widget-body widget-table-view">
 
@@ -171,7 +243,7 @@
             <table class="kv">
                 <tbody>
                 {% for row in widget.rows %}
-                    <tr><td>{{ row.label }}</td><td>{{ row.value }}</td></tr>
+                    <tr><td>{{ row.label }}</td><td>{% if row.badge %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -196,15 +268,7 @@
                         <td class="{{ cell.css_class | default('') }}">
                         {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
                         {% if cell.badge %}
-                            {% if cell.value | lower in ('ok', 'up', 'running', 'connected', 'healthy') %}
-                                <span class="sv-ok">{{ cell.value }}</span>
-                            {% elif cell.value | lower in ('critical', 'down', 'error', 'failed') %}
-                                <span class="sv-critical">{{ cell.value }}</span>
-                            {% elif cell.value | lower in ('warning', 'degraded', 'unknown') %}
-                                <span class="sv-warning">{{ cell.value }}</span>
-                            {% else %}
-                                {{ cell.value }}
-                            {% endif %}
+                            {{ render_badge(cell.value) }}
                         {% else %}
                             {{ cell.value }}
                         {% endif %}
@@ -212,6 +276,48 @@
                         </td>
                     {% endfor %}
                     </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No rows.</div>
+            {% endif %}
+
+            {% elif widget.type == 'grouped_table' %}
+            {% if widget.get('groups', {}) %}
+            <table>
+                <thead>
+                    <tr>
+                    {% for col in widget.get('columns', []) %}
+                        <th class="sortable">{{ col.label }}</th>
+                    {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for group_name, group_rows in widget.groups.items() %}
+                    {% set grp_id = "grp-" ~ widget.id ~ "-" ~ loop.index %}
+                    <tr class="group-hdr" data-group="{{ grp_id }}">
+                        <td colspan="{{ widget.columns | length }}">
+                            <span class="group-toggle"></span>
+                            <strong>{{ group_name }}</strong>
+                            <span class="subtle-text">({{ group_rows | length }})</span>
+                        </td>
+                    </tr>
+                    {% for row in group_rows %}
+                    <tr class="group-row row-interactive" data-group="{{ grp_id }}">
+                    {% for cell in row %}
+                        <td class="{{ cell.css_class | default('') }}">
+                        {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
+                        {% if cell.badge %}
+                            {{ render_badge(cell.value) }}
+                        {% else %}
+                            {{ cell.value }}
+                        {% endif %}
+                        {% if cell.link %}</a>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                    {% endfor %}
                 {% endfor %}
                 </tbody>
             </table>
@@ -227,6 +333,6 @@
     </div>
 
 </div>
-<script>{% include 'collapsible.js' %}</script>
+<script>{{ _minified_js }}</script>
 </body>
 </html>
