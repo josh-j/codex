@@ -1,0 +1,154 @@
+# =============================================================================
+# AIDE integrity controls
+# =============================================================================
+
+- name: "stigrule_270650_aide_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      command -v aide >/dev/null
+      test -f /etc/aide/aide.conf
+      test -f /var/lib/aide/aide.db || test -f /var/lib/aide/aide.db.gz
+      aide --config=/etc/aide/aide.conf --check >/dev/null 2>&1 || rc=$?
+      test "${rc:-0}" -le 1
+  register: _stigrule_270650_aide
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270650_aide.rc == 0
+    fail_msg: "AIDE is not installed, initialized, or able to perform an integrity check"
+    success_msg: "AIDE is installed, initialized, and able to run an integrity check"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - _stigrule_270650_aide is defined
+
+- name: "stigrule_270650_aide_package"
+  ansible.builtin.apt:
+    name:
+      - aide
+      - aide-common
+    state: present
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_initialize"
+  ansible.builtin.command:
+    cmd: aideinit
+    creates: /var/lib/aide/aide.db.new
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_database_copy"
+  ansible.builtin.copy:
+    src: /var/lib/aide/aide.db.new
+    remote_src: true
+    dest: /var/lib/aide/aide.db
+    mode: "0600"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - _stigrule_270650_aide.rc | default(1) != 0
+
+- name: "stigrule_270651_aide_schedule_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      test -f /etc/aide/aide.conf
+      cmp -s /etc/aide/aide.conf /usr/share/aide/config/aide/aide.conf
+      test -f /etc/cron.daily/dailyaidecheck
+      grep -Fqx 'SCRIPT="/usr/share/aide/bin/dailyaidecheck"' /etc/cron.daily/dailyaidecheck
+  register: _stigrule_270651_aide_schedule
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_aide_schedule_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270651_aide_schedule.rc == 0
+    fail_msg: "AIDE default configuration or default scheduled script is missing"
+    success_msg: "AIDE default configuration and scheduled script are present"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - _stigrule_270651_aide_schedule is defined
+
+- name: "stigrule_270651_aide_default_conf"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/aide/aide.conf
+    remote_src: true
+    dest: /etc/aide/aide.conf
+    mode: "0644"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_aide_default_schedule"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/cron.daily/aide
+    remote_src: true
+    dest: /etc/cron.daily/dailyaidecheck
+    mode: "0755"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270831_aide_audit_tools_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      for tool in auditctl auditd ausearch aureport autrace augenrules; do
+        grep -Eq "^/sbin/${tool}[[:space:]]+p\\+i\\+n\\+u\\+g\\+s\\+b\\+acl\\+xattrs\\+sha512$" /etc/aide/aide.conf
+      done
+  register: _stigrule_270831_aide_audit_tools
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+
+- name: "stigrule_270831_aide_audit_tools_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270831_aide_audit_tools.rc == 0
+    fail_msg: "AIDE does not protect all required audit tools"
+    success_msg: "AIDE protects the required audit tools"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+    - _stigrule_270831_aide_audit_tools is defined
+
+- name: "stigrule_270831_aide_audit_tools_remediate"
+  ansible.builtin.blockinfile:
+    path: /etc/aide/aide.conf
+    marker: "# {mark} ANSIBLE MANAGED STIG 270831"
+    block: |
+      /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
+    create: true
+    mode: "0644"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool

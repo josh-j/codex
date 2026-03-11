@@ -1,0 +1,36 @@
+---
+- name: ssh_restart
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+
+- name: dconf_update
+  ansible.builtin.command:
+    cmd: dconf update
+
+- name: update_grub
+  ansible.builtin.command:
+    cmd: update-grub
+
+- name: reload_audit_rules
+  ansible.builtin.command:
+    cmd: augenrules --load
+
+- name: auditd_restart
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
+
+- name: rsyslog_restart
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+
+- name: chrony_restart
+  ansible.builtin.service:
+    name: chrony
+    state: restarted
+
+- name: update_ca_certificates
+  ansible.builtin.command:
+    cmd: update-ca-certificates

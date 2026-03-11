@@ -1,0 +1,40 @@
+---
+# Collector-facing Ubuntu 24.04 STIG task entrypoint.
+
+- name: "Ubuntu STIG | Prelude"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/00_prelude.yaml
+
+- name: "Ubuntu STIG | Packages and services"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/10_packages_services.yaml
+
+- name: "Ubuntu STIG | SSH crypto"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/20_ssh_crypto.yaml
+
+- name: "Ubuntu STIG | System config"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/30_system_config.yaml
+
+- name: "Ubuntu STIG | System config audits"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/31_system_config_audits.yaml
+  when: _ubuntu2404_stig_phase == 'audit'
+
+- name: "Ubuntu STIG | Access and PAM"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/32_access_pam.yaml
+
+- name: "Ubuntu STIG | Filesystem, network, and PKI"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/33_fs_network_pki.yaml
+
+- name: "Ubuntu STIG | AIDE"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/34_aide.yaml
+
+- name: "Ubuntu STIG | Remaining filesystem and audit log controls"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/35_remaining_fs_audit.yaml
+
+- name: "Ubuntu STIG | Audit rules"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/40_audit_rules.yaml
+
+- name: "Ubuntu STIG | Audit rule audits"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/41_audit_rule_audits.yaml
+  when: _ubuntu2404_stig_phase == 'audit'
+
+- name: "Ubuntu STIG | Audit daemon and tooling"
+  ansible.builtin.import_tasks: ubuntu2404_stigs/42_auditd_controls.yaml

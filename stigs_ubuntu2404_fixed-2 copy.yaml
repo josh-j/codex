@@ -1,0 +1,999 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu_stig_audit/tasks/stigs_ubuntu2404.yaml
+# Refactored Ubuntu 24.04 STIG task file.
+# Audit-mode tasks use explicit asserts/shell checks where the STIG check content
+# requires exact command semantics. Remediation-mode tasks use idempotent modules.
+# ansible-lint: skip-file
+
+- name: "Set NCS STIG target type to ubuntu"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_type: "ubuntu"
+  tags:
+    - always
+
+- name: "Ubuntu STIG | Gather package facts"
+  ansible.builtin.package_facts:
+    manager: apt
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Gather service facts"
+  ansible.builtin.service_facts:
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Ensure auditd is installed (remediate only)"
+  ansible.builtin.apt:
+    name: auditd
+    state: present
+  register: _apt_auditd
+  until: _apt_auditd is success
+  retries: 12
+  delay: 10
+  when: not (ansible_check_mode | default(false))
+
+- name: "Ubuntu STIG | Ensure stig.rules exists (remediate only)"
+  ansible.builtin.file:
+    path: /etc/audit/rules.d/stig.rules
+    state: touch
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  when: not (ansible_check_mode | default(false))
+
+# =============================================================================
+# Package management and core services
+# =============================================================================
+
+- name: "stigrule_{{ item.id }}_package_absent_assert"
+  ansible.builtin.assert:
+    that:
+      - item.pkg not in ansible_facts.packages
+    fail_msg: "{{ item.pkg }} is installed"
+    success_msg: "{{ item.pkg }} is absent"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270645', manage_var: 'ubuntu2404STIG_stigrule_270645_manage', pkg: 'systemd-timesyncd' }
+    - { id: '270646', manage_var: 'ubuntu2404STIG_stigrule_270646_manage', pkg: 'ntp' }
+    - { id: '270648', manage_var: 'ubuntu2404STIG_stigrule_270648_manage', pkg: 'rsh-server' }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_{{ item.id }}_package_absent"
+  ansible.builtin.apt:
+    name: "{{ item.pkg }}"
+    state: absent
+    purge: "{{ item.purge | default(false) }}"
+    autoremove: "{{ item.autoremove | default(false) }}"
+    update_cache: "{{ item.update_cache | default(true) }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270645', manage_var: 'ubuntu2404STIG_stigrule_270645_manage', pkg: 'systemd-timesyncd', purge: true }
+    - { id: '270646', manage_var: 'ubuntu2404STIG_stigrule_270646_manage', pkg: 'ntp', purge: true }
+    - { id: '270648', manage_var: 'ubuntu2404STIG_stigrule_270648_manage', pkg: 'rsh-server' }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_270647_telnetd_check"
+  ansible.builtin.shell:
+    cmd: "dpkg -l | grep -w telnetd"
+  register: _stigrule_270647_telnetd
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270647_manage | default(true) | bool
+
+- name: "stigrule_270647_telnetd_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270647_telnetd.rc != 0
+    fail_msg: "telnetd is installed"
+    success_msg: "telnetd is absent"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270647_manage | default(true) | bool
+    - _stigrule_270647_telnetd is defined
+
+- name: "stigrule_270647_telnetd_remove"
+  ansible.builtin.apt:
+    name: telnetd
+    state: absent
+    purge: true
+    autoremove: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270647_manage | default(true) | bool
+
+- name: "stigrule_{{ item.id }}_package_present_assert"
+  ansible.builtin.assert:
+    that:
+      - item.pkg in ansible_facts.packages
+    fail_msg: "{{ item.pkg }} is not installed"
+    success_msg: "{{ item.pkg }} is installed"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270649', manage_var: 'ubuntu2404STIG_stigrule_270649_manage', pkg: 'aide' }
+    - { id: '270654', manage_var: 'ubuntu2404STIG_stigrule_270654_manage', pkg: 'ufw' }
+    - { id: '270656', manage_var: 'ubuntu2404STIG_stigrule_270656_manage', pkg: 'auditd' }
+    - { id: '270659', manage_var: 'ubuntu2404STIG_stigrule_270659_manage', pkg: 'apparmor' }
+    - { id: '270661', manage_var: 'ubuntu2404STIG_stigrule_270661_manage', pkg: 'libpam-pwquality' }
+    - { id: '270664', manage_var: 'ubuntu2404STIG_stigrule_270664_manage', pkg: 'chrony' }
+    - { id: '270665', manage_var: 'ubuntu2404STIG_stigrule_270665_manage', pkg: 'openssh-server' }
+    - { id: '270672', manage_var: 'ubuntu2404STIG_stigrule_270672_manage', pkg: 'opensc-pkcs11' }
+    - { id: '270673', manage_var: 'ubuntu2404STIG_stigrule_270673_manage', pkg: 'libpam-pkcs11' }
+    - { id: '270674', manage_var: 'ubuntu2404STIG_stigrule_270674_manage', pkg: 'vlock' }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_{{ item.id }}_package_present"
+  ansible.builtin.apt:
+    name: "{{ item.pkg }}"
+    state: present
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270649', manage_var: 'ubuntu2404STIG_stigrule_270649_manage', pkg: 'aide' }
+    - { id: '270654', manage_var: 'ubuntu2404STIG_stigrule_270654_manage', pkg: 'ufw' }
+    - { id: '270656', manage_var: 'ubuntu2404STIG_stigrule_270656_manage', pkg: 'auditd' }
+    - { id: '270659', manage_var: 'ubuntu2404STIG_stigrule_270659_manage', pkg: 'apparmor' }
+    - { id: '270661', manage_var: 'ubuntu2404STIG_stigrule_270661_manage', pkg: 'libpam-pwquality' }
+    - { id: '270664', manage_var: 'ubuntu2404STIG_stigrule_270664_manage', pkg: 'chrony' }
+    - { id: '270665', manage_var: 'ubuntu2404STIG_stigrule_270665_manage', pkg: 'openssh-server' }
+    - { id: '270672', manage_var: 'ubuntu2404STIG_stigrule_270672_manage', pkg: 'opensc-pkcs11' }
+    - { id: '270673', manage_var: 'ubuntu2404STIG_stigrule_270673_manage', pkg: 'libpam-pkcs11' }
+    - { id: '270674', manage_var: 'ubuntu2404STIG_stigrule_270674_manage', pkg: 'vlock' }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_270653_rsyslog_assert"
+  ansible.builtin.assert:
+    that:
+      - "'rsyslog' in ansible_facts.packages"
+      - ansible_facts.services.get('rsyslog.service', {}).get('state') == 'running'
+    fail_msg: "rsyslog is not installed or not running"
+    success_msg: "rsyslog is installed and running"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - ubuntu2404STIG_stigrule_270653_manage | default(true) | bool
+
+- name: "stigrule_270653_rsyslog"
+  ansible.builtin.apt:
+    name: rsyslog
+    state: present
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270653_manage | default(true) | bool
+
+- name: "stigrule_270655_ufw_status_check"
+  ansible.builtin.command:
+    cmd: ufw status
+  register: _stigrule_270655_ufw_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
+
+- name: "stigrule_270655_ufw_status_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270655_ufw_status.rc == 0
+      - "'Status: active' in _stigrule_270655_ufw_status.stdout"
+    fail_msg: "ufw is not active"
+    success_msg: "ufw is active"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
+    - _stigrule_270655_ufw_status is defined
+
+- name: "stigrule_270655_ufw_enable"
+  community.general.ufw:
+    state: enabled
+  become: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
+
+- name: "stigrule_270662_sssd_packages_assert"
+  ansible.builtin.assert:
+    that:
+      - "'sssd' in ansible_facts.packages"
+      - "'libpam-sss' in ansible_facts.packages"
+      - "'libnss-sss' in ansible_facts.packages"
+    fail_msg: "SSSD package set is incomplete"
+    success_msg: "SSSD package set is installed"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - ubuntu2404STIG_stigrule_270662_manage | default(true) | bool
+
+- name: "stigrule_270662_sssd_packages_install"
+  ansible.builtin.apt:
+    name:
+      - sssd
+      - libpam-sss
+      - libnss-sss
+    state: present
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270662_manage | default(true) | bool
+
+- name: "stigrule_{{ item.id }}_service_assert"
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services.get(item.unit, {}).get('state') == 'running'
+      - ansible_facts.services.get(item.unit, {}).get('status') == 'enabled'
+    fail_msg: "{{ item.unit }} is not running and enabled"
+    success_msg: "{{ item.unit }} is running and enabled"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270657', manage_var: 'ubuntu2404STIG_stigrule_270657_manage', unit: 'auditd.service' }
+    - { id: '270660', manage_var: 'ubuntu2404STIG_stigrule_270660_manage', unit: 'apparmor.service' }
+    - { id: '270663', manage_var: 'ubuntu2404STIG_stigrule_270663_manage', unit: 'sssd.service' }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_270657_auditd_enable"
+  ansible.builtin.service:
+    name: auditd.service
+    state: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_state }}"
+    enabled: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_enabled }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270657_manage | default(true) | bool
+    - "'auditd.service' in ansible_facts.services"
+
+- name: "stigrule_270660_apparmor_start"
+  ansible.builtin.service:
+    name: apparmor.service
+    state: "{{ ubuntu2404STIG_stigrule_270660_apparmor_start_state }}"
+    enabled: "{{ ubuntu2404STIG_stigrule_270660_apparmor_enable_enabled }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270660_manage | default(true) | bool
+    - "'apparmor.service' in ansible_facts.services"
+
+- name: "stigrule_270663_sssd_enable"
+  ansible.builtin.service:
+    name: sssd.service
+    state: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_state }}"
+    enabled: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_enabled }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270663_manage | default(true) | bool
+    - "'sssd.service' in ansible_facts.services"
+
+- name: "stigrule_270666_ssh_enabled_check"
+  ansible.builtin.command:
+    cmd: systemctl is-enabled ssh
+  register: _stigrule_270666_ssh_enabled
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270666_manage | default(true) | bool
+
+- name: "stigrule_270666_ssh_active_check"
+  ansible.builtin.command:
+    cmd: systemctl is-active ssh
+  register: _stigrule_270666_ssh_active
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270666_manage | default(true) | bool
+
+- name: "stigrule_270666_ssh_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270666_ssh_enabled.stdout | trim == 'enabled'
+      - _stigrule_270666_ssh_active.stdout | trim == 'active'
+    fail_msg: "ssh is not enabled and active"
+    success_msg: "ssh is enabled and active"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270666_manage | default(true) | bool
+    - _stigrule_270666_ssh_enabled is defined
+    - _stigrule_270666_ssh_active is defined
+
+- name: "stigrule_270666_ssh_start"
+  ansible.builtin.service:
+    name: ssh.service
+    state: "{{ ubuntu2404STIG_stigrule_270666_ssh_start_state }}"
+    enabled: "{{ ubuntu2404STIG_stigrule_270666_ssh_active_enabled }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270666_manage | default(true) | bool
+    - "'ssh.service' in ansible_facts.services"
+# =============================================================================
+# Exact-audit SSH crypto rules
+# =============================================================================
+
+- name: "stigrule_{{ item.id }}_ssh_check"
+  ansible.builtin.shell:
+    cmd: "{{ item.check_cmd }}"
+  register: _ssh_crypto_checks
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - vars[item.manage_var] | default(true) | bool
+    - ansible_facts.packages['openssh-server'] is defined
+  loop:
+    - id: '270667'
+      manage_var: 'ubuntu2404STIG_stigrule_270667_manage'
+      check_cmd: 'grep -rsiE ''^\s*Ciphers\s+'' /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null'
+    - id: '270668'
+      manage_var: 'ubuntu2404STIG_stigrule_270668_manage'
+      check_cmd: 'grep -rsiE ''^\s*MACs\s+'' /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null'
+    - id: '270669'
+      manage_var: 'ubuntu2404STIG_stigrule_270669_manage'
+      check_cmd: 'grep -rsiE ''^\s*KexAlgorithms\s+'' /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null'
+    - id: '270670'
+      manage_var: 'ubuntu2404STIG_stigrule_270670_manage'
+      check_cmd: 'grep -rsiE ''^\s*Ciphers\s+'' /etc/ssh/ssh_config /etc/ssh/ssh_config.d 2>/dev/null'
+    - id: '270671'
+      manage_var: 'ubuntu2404STIG_stigrule_270671_manage'
+      check_cmd: 'grep -rsiE ''^\s*MACs\s+'' /etc/ssh/ssh_config /etc/ssh/ssh_config.d 2>/dev/null'
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_{{ item.item.id }}_ssh_assert"
+  ansible.builtin.assert:
+    that:
+      - item.stdout_lines | length == 1
+      - item.stdout is search(item_expected[item.item.id])
+    fail_msg: "SSH setting {{ item.item.id }} is missing, commented, or conflicting across config includes"
+    success_msg: "SSH setting {{ item.item.id }} matches STIG exactly"
+  vars:
+    item_expected:
+      '270667': 'Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr$'
+      '270668': 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256$'
+      '270669': 'KexAlgorithms ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group14-sha256$'
+      '270670': 'Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr$'
+      '270671': 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256$'
+  ignore_errors: true
+  when:
+    - item is mapping
+  loop: "{{ _ssh_crypto_checks.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.id if (item is mapping and item.item is defined) else 'unknown' }}"
+
+- name: "stigrule_{{ item.id }}_ssh_remediate"
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: true
+  notify: ssh_restart
+  when:
+    - not (ansible_check_mode | default(false))
+    - vars[item.manage_var] | default(true) | bool
+    - ansible_facts.packages['openssh-server'] is defined
+  loop:
+    - id: '270667'
+      manage_var: 'ubuntu2404STIG_stigrule_270667_manage'
+      path: '/etc/ssh/sshd_config'
+      regexp: '(?i)^\s*Ciphers\s+'
+      line: "{{ ubuntu2404STIG_stigrule_270667_Ciphers_line }}"
+    - id: '270668'
+      manage_var: 'ubuntu2404STIG_stigrule_270668_manage'
+      path: '/etc/ssh/sshd_config'
+      regexp: '(?i)^\s*MACs\s+'
+      line: "{{ ubuntu2404STIG_stigrule_270668_MACs_line }}"
+    - id: '270669'
+      manage_var: 'ubuntu2404STIG_stigrule_270669_manage'
+      path: '/etc/ssh/sshd_config'
+      regexp: '(?i)^\s*KexAlgorithms\s+'
+      line: "{{ ubuntu2404STIG_stigrule_270669_KexAlgorithms_line }}"
+    - id: '270670'
+      manage_var: 'ubuntu2404STIG_stigrule_270670_manage'
+      path: '/etc/ssh/ssh_config'
+      regexp: '(?i)^\s*Ciphers\s+'
+      line: "{{ ubuntu2404STIG_stigrule_270670_Ciphers_line }}"
+    - id: '270671'
+      manage_var: 'ubuntu2404STIG_stigrule_270671_manage'
+      path: '/etc/ssh/ssh_config'
+      regexp: '(?i)^\s*MACs\s+'
+      line: "{{ ubuntu2404STIG_stigrule_270671_MACs_line }}"
+  loop_control:
+    label: "{{ item.id }}"
+# =============================================================================
+# Direct file and config rules
+# =============================================================================
+
+- name: "stigrule_270652_aide_silentreports"
+  ansible.builtin.lineinfile:
+    path: /etc/default/aide
+    regexp: "^SILENTREPORTS="
+    line: "{{ ubuntu2404STIG_stigrule_270652_silentreports_line }}"
+    create: true
+  when:
+    - ubuntu2404STIG_stigrule_270652_manage | default(true) | bool
+
+- name: "stigrule_270675_grub_password_assert"
+  ansible.builtin.shell:
+    cmd: "grep -iE '^password_pbkdf2[[:space:]]+root[[:space:]]+' /boot/grub/grub.cfg"
+  register: _grub_pw
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270675_manage | default(false) | bool
+
+- name: "stigrule_270675_grub_password_check"
+  ansible.builtin.assert:
+    that:
+      - _grub_pw.rc == 0
+    fail_msg: "No GRUB password_pbkdf2 root entry found"
+    success_msg: "GRUB password is set"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270675_manage | default(false) | bool
+    - _grub_pw is defined
+
+- name: "stigrule_270676_grub_audit_assert"
+  ansible.builtin.shell:
+    cmd: 'grep -E ''^\s*linux'' /boot/grub/grub.cfg | grep -q ''audit=1'''
+  register: _grub_audit
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270676_manage | default(true) | bool
+
+- name: "stigrule_270676_grub_audit_check"
+  ansible.builtin.assert:
+    that:
+      - _grub_audit.rc == 0
+    fail_msg: "audit=1 not found in GRUB config"
+    success_msg: "audit=1 is set in GRUB config"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270676_manage | default(true) | bool
+    - _grub_audit is defined
+
+- name: "stigrule_270676_grub_cmdline_linux"
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX="'
+    line: "{{ ubuntu2404STIG_stigrule_270676_grub_cmdline_linux_line }}"
+  notify: update_grub
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270676_manage | default(true) | bool
+
+- name: "stigrule_270678_dconf_session_lock"
+  block:
+    - name: "stigrule_270678_idle_delay"
+      community.general.ini_file:
+        path: /etc/dconf/db/local.d/00-screensaver
+        section: org/gnome/desktop/session
+        option: idle-delay
+        value: "{{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_idle_delay_value }}"
+        no_extra_spaces: true
+      notify: dconf_update
+
+    - name: "stigrule_270678_lock_enabled"
+      community.general.ini_file:
+        path: /etc/dconf/db/local.d/00-screensaver
+        section: org/gnome/desktop/screensaver
+        option: lock-enabled
+        value: "{{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_enabled_value }}"
+        no_extra_spaces: true
+      notify: dconf_update
+
+    - name: "stigrule_270678_lock_delay"
+      community.general.ini_file:
+        path: /etc/dconf/db/local.d/00-screensaver
+        section: org/gnome/desktop/screensaver
+        option: lock-delay
+        value: "{{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_delay_value }}"
+        no_extra_spaces: true
+      notify: dconf_update
+  when:
+    - ubuntu2404STIG_stigrule_270678_manage | default(true) | bool
+    - ansible_facts.packages['gdm3'] is defined
+
+- name: "stigrule_270679_automount_open_lock"
+  ansible.builtin.lineinfile:
+    path: /etc/dconf/db/local.d/locks/00-security-settings-lock
+    regexp: '^/org/gnome/desktop/media-handling/automount-open$'
+    line: '/org/gnome/desktop/media-handling/automount-open'
+    create: true
+  notify: dconf_update
+  when:
+    - ubuntu2404STIG_stigrule_270679_manage | default(true) | bool
+    - ansible_facts.packages['gdm3'] is defined
+
+- name: "stigrule_270680_tmout_profile"
+  ansible.builtin.copy:
+    dest: "{{ ubuntu2404STIG_stigrule_270680__etc_profile_d_99_terminal_tmout_sh_dest }}"
+    content: "{{ ubuntu2404STIG_stigrule_270680__etc_profile_d_99_terminal_tmout_sh_content }}"
+  when:
+    - ubuntu2404STIG_stigrule_270680_manage | default(true) | bool
+
+- name: "stigrule_270681_rsyslog_remote_access"
+  block:
+    - name: "stigrule_270681_auth"
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.d/50-default.conf
+        regexp: '^auth\.\*'
+        line: "{{ ubuntu2404STIG_stigrule_270681_rsyslog_auth_line }}"
+        create: true
+      notify: rsyslog_restart
+    - name: "stigrule_270681_authpriv"
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.d/50-default.conf
+        regexp: '^authpriv\.\*'
+        line: "{{ ubuntu2404STIG_stigrule_270681_rsyslog_authpriv_line | default('authpriv.* /var/log/auth.log') }}"
+        create: true
+      notify: rsyslog_restart
+    - name: "stigrule_270681_daemon"
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.d/50-default.conf
+        regexp: '^daemon\.\*'
+        line: "{{ ubuntu2404STIG_stigrule_270681_rsyslog_daemon_line }}"
+        create: true
+      notify: rsyslog_restart
+  when:
+    - ubuntu2404STIG_stigrule_270681_manage | default(true) | bool
+
+- name: "stigrule_270683_useradd_inactive"
+  ansible.builtin.lineinfile:
+    path: /etc/default/useradd
+    regexp: '^INACTIVE='
+    line: "{{ ubuntu2404STIG_stigrule_270683_useradd_inactive_line }}"
+  when:
+    - ubuntu2404STIG_stigrule_270683_manage | default(true) | bool
+
+- name: "stigrule_270691_banner"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '(?i)^\s*Banner\s+'
+    line: "{{ ubuntu2404STIG_stigrule_270691_banner_line }}"
+    create: true
+  notify: ssh_restart
+  when:
+    - ubuntu2404STIG_stigrule_270691_manage | default(true) | bool
+    - ansible_facts.packages['openssh-server'] is defined
+
+- name: "stigrule_270691_issue_net"
+  ansible.builtin.copy:
+    dest: "{{ ubuntu2404STIG_stigrule_270691__etc_issue_net_dest }}"
+    content: "{{ ubuntu2404STIG_stigrule_270691__etc_issue_net_content }}"
+  when:
+    - ubuntu2404STIG_stigrule_270691_manage | default(true) | bool
+
+- name: "stigrule_270692_gdm_banner_enable"
+  community.general.ini_file:
+    path: /etc/gdm3/greeter.dconf-defaults
+    section: org/gnome/login-screen
+    option: banner-message-enable
+    value: "{{ ubuntu2404STIG_stigrule_270692__etc_gdm3_greeter_dconf_defaults_enable_value }}"
+    no_extra_spaces: true
+  notify: dconf_update
+  when:
+    - ubuntu2404STIG_stigrule_270692_manage | default(true) | bool
+    - ansible_facts.packages['gdm3'] is defined
+
+- name: "stigrule_270693_gdm_banner_text"
+  community.general.ini_file:
+    path: /etc/gdm3/greeter.dconf-defaults
+    section: org/gnome/login-screen
+    option: banner-message-text
+    value: "{{ ubuntu2404STIG_stigrule_270693__etc_gdm3_greeter_dconf_defaults_text_value }}"
+    no_extra_spaces: true
+  notify: dconf_update
+  when:
+    - ubuntu2404STIG_stigrule_270693_manage | default(true) | bool
+    - ansible_facts.packages['gdm3'] is defined
+
+- name: "stigrule_270695_allow_unauthenticated"
+  ansible.builtin.lineinfile:
+    path: /etc/apt/apt.conf.d/01-vendor-ubuntu
+    regexp: '^APT::Get::AllowUnauthenticated'
+    line: "{{ ubuntu2404STIG_stigrule_270695__etc_apt_apt_conf_d_01_vendor_ubuntu_line }}"
+    create: true
+  when:
+    - ubuntu2404STIG_stigrule_270695_manage | default(true) | bool
+
+- name: "stigrule_270705_pwquality_enforcing"
+  ansible.builtin.lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: '^\s*enforcing\s*='
+    line: "{{ ubuntu2404STIG_stigrule_270705_pwquality_enforcing_line }}"
+    create: true
+  when:
+    - ubuntu2404STIG_stigrule_270705_manage | default(true) | bool
+
+- name: "stigrule_270705_pam_pwquality"
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-password
+    regexp: '^\s*password\s+requisite\s+pam_pwquality\.so\b'
+    line: "{{ ubuntu2404STIG_stigrule_270705_pam_pwquality_line | default('password requisite pam_pwquality.so retry=3') }}"
+    insertbefore: BOF
+  when:
+    - ubuntu2404STIG_stigrule_270705_manage | default(true) | bool
+
+- name: "stigrule_270706_pam_faildelay"
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-auth
+    regexp: '^\s*auth\s+required\s+pam_faildelay\.so\b'
+    line: "{{ ubuntu2404STIG_stigrule_270706_pam_faildelay_line | default('auth    required    pam_faildelay.so    delay=4000000') }}"
+    insertbefore: BOF
+  when:
+    - ubuntu2404STIG_stigrule_270706_manage | default(true) | bool
+
+- name: "stigrule_270707_sudoers_authenticate_assert"
+  ansible.builtin.shell:
+    cmd: "grep -riE '!authenticate' /etc/sudoers /etc/sudoers.d/ || true"
+  register: _no_auth
+  changed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270707_manage | default(true) | bool
+
+- name: "stigrule_270707_sudoers_authenticate_check"
+  ansible.builtin.assert:
+    that:
+      - _no_auth.stdout | length == 0
+    fail_msg: "Found !authenticate in sudoers"
+    success_msg: "No !authenticate found in sudoers"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270707_manage | default(true) | bool
+    - _no_auth is defined
+
+- name: "stigrule_{{ item.id }}_ssh_setting"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: true
+  notify: ssh_restart
+  when:
+    - vars[item.manage_var] | default(true) | bool
+    - ansible_facts.packages['openssh-server'] is defined
+  loop:
+    - { id: '270708', manage_var: 'ubuntu2404STIG_stigrule_270708_manage', regexp: '(?i)^\s*X11Forwarding\s+', line: "{{ ubuntu2404STIG_stigrule_270708_X11Forwarding_line }}" }
+    - { id: '270709', manage_var: 'ubuntu2404STIG_stigrule_270709_manage', regexp: '(?i)^\s*X11UseLocalhost\s+', line: "{{ ubuntu2404STIG_stigrule_270709_X11UseLocalhost_line }}" }
+    - { id: '270717a', manage_var: 'ubuntu2404STIG_stigrule_270717_manage', regexp: '(?i)^\s*PermitEmptyPasswords\s+', line: "{{ ubuntu2404STIG_stigrule_270717_PermitEmptyPasswords_line }}" }
+    - { id: '270717b', manage_var: 'ubuntu2404STIG_stigrule_270717_manage', regexp: '(?i)^\s*PermitUserEnvironment\s+', line: "{{ ubuntu2404STIG_stigrule_270717_PermitUserEnvironment_line }}" }
+    - { id: '270722', manage_var: 'ubuntu2404STIG_stigrule_270722_manage', regexp: '(?i)^\s*PubkeyAuthentication\s+', line: "{{ ubuntu2404STIG_stigrule_270722_PubkeyAuthentication_line }}" }
+    - { id: '270741', manage_var: 'ubuntu2404STIG_stigrule_270741_manage', regexp: '(?i)^\s*UsePAM\s+', line: "{{ ubuntu2404STIG_stigrule_270741_UsePAM_line }}" }
+    - { id: '270742', manage_var: 'ubuntu2404STIG_stigrule_270742_manage', regexp: '(?i)^\s*ClientAliveCountMax\s+', line: "{{ ubuntu2404STIG_stigrule_270742_ClientAliveCountMax_line }}" }
+    - { id: '270743', manage_var: 'ubuntu2404STIG_stigrule_270743_manage', regexp: '(?i)^\s*ClientAliveInterval\s+', line: "{{ ubuntu2404STIG_stigrule_270743_ClientAliveInterval_line }}" }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_270711_media_keys_logout"
+  community.general.ini_file:
+    path: /etc/dconf/db/local.d/00-screensaver
+    section: org/gnome/settings-daemon/plugins/media-keys
+    option: logout
+    value: "{{ ubuntu2404STIG_stigrule_270711__etc_dconf_db_local_d_00_screensaver_media_keys_value }}"
+    no_extra_spaces: true
+  notify: dconf_update
+  when:
+    - ubuntu2404STIG_stigrule_270711_manage | default(true) | bool
+    - ansible_facts.packages['gdm3'] is defined
+
+- name: "stigrule_270712_ctrl_alt_del_target_disable"
+  ansible.builtin.systemd_service:
+    name: ctrl-alt-del.target
+    enabled: "{{ ubuntu2404STIG_stigrule_270712_ctrl_alt_del_target_disable_enabled }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270712_manage | default(true) | bool
+    - "'ctrl-alt-del.target' in ansible_facts.services"
+
+- name: "stigrule_270712_ctrl_alt_del_target_mask"
+  ansible.builtin.systemd_service:
+    name: ctrl-alt-del.target
+    masked: "{{ ubuntu2404STIG_stigrule_270712_ctrl_alt_del_target_mask_masked }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270712_manage | default(true) | bool
+    - "'ctrl-alt-del.target' in ansible_facts.services"
+
+- name: "stigrule_270718_usb_storage_disable"
+  block:
+    - name: "stigrule_270718_install_usb_storage_false"
+      ansible.builtin.lineinfile:
+        path: /etc/modprobe.d/DISASTIG.conf
+        regexp: '^install usb-storage /bin/false$'
+        line: "{{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_install_usb_storage_line }}"
+        create: true
+    - name: "stigrule_270718_blacklist_usb_storage"
+      ansible.builtin.lineinfile:
+        path: /etc/modprobe.d/DISASTIG.conf
+        regexp: '^blacklist usb-storage$'
+        line: "{{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_blacklist_usb_storage_line }}"
+        create: true
+  when:
+    - ubuntu2404STIG_stigrule_270718_manage | default(true) | bool
+- name: "stigrule_{{ item.id }}_simple_line"
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: "{{ item.create | default(true) }}"
+  when:
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270716', manage_var: 'ubuntu2404STIG_stigrule_270716_manage', path: '/etc/login.defs', regexp: '^UMASK', line: "{{ ubuntu2404STIG_stigrule_270716__etc_login_defs_line }}" }
+    - { id: '270726', manage_var: 'ubuntu2404STIG_stigrule_270726_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*ucredit', line: "{{ ubuntu2404STIG_stigrule_270726__etc_security_pwquality_conf_line }}" }
+    - { id: '270727', manage_var: 'ubuntu2404STIG_stigrule_270727_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*lcredit', line: "{{ ubuntu2404STIG_stigrule_270727__etc_security_pwquality_conf_line }}" }
+    - { id: '270728', manage_var: 'ubuntu2404STIG_stigrule_270728_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*dcredit', line: "{{ ubuntu2404STIG_stigrule_270728__etc_security_pwquality_conf_line }}" }
+    - { id: '270729', manage_var: 'ubuntu2404STIG_stigrule_270729_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*difok', line: "{{ ubuntu2404STIG_stigrule_270729__etc_security_pwquality_conf_line }}" }
+    - { id: '270730', manage_var: 'ubuntu2404STIG_stigrule_270730_manage', path: '/etc/login.defs', regexp: '^PASS_MIN_DAYS', line: "{{ ubuntu2404STIG_stigrule_270730__etc_login_defs_line }}" }
+    - { id: '270731', manage_var: 'ubuntu2404STIG_stigrule_270731_manage', path: '/etc/login.defs', regexp: '^PASS_MAX_DAYS', line: "{{ ubuntu2404STIG_stigrule_270731__etc_login_defs_line }}" }
+    - { id: '270732', manage_var: 'ubuntu2404STIG_stigrule_270732_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*minlen', line: "{{ ubuntu2404STIG_stigrule_270732__etc_security_pwquality_conf_line }}" }
+    - { id: '270733', manage_var: 'ubuntu2404STIG_stigrule_270733_manage', path: '/etc/security/pwquality.conf', regexp: '^\s*ocredit', line: "{{ ubuntu2404STIG_stigrule_270733__etc_security_pwquality_conf_line }}" }
+    - { id: '270736', manage_var: 'ubuntu2404STIG_stigrule_270736_manage', path: '/etc/sssd/sssd.conf', regexp: '^\s*ldap_user_certificate', line: "{{ ubuntu2404STIG_stigrule_270736__etc_sssd_sssd_conf_line }}" }
+    - { id: '270739', manage_var: 'ubuntu2404STIG_stigrule_270739_manage', path: '/etc/login.defs', regexp: '^ENCRYPT_METHOD', line: "{{ ubuntu2404STIG_stigrule_270739__etc_login_defs_line }}" }
+    - { id: '270752', manage_var: 'ubuntu2404STIG_stigrule_270752_manage', path: '/etc/chrony/chrony.conf', regexp: '^\s*makestep', line: "{{ ubuntu2404STIG_stigrule_270752_chrony_makestep_line }}", create: false }
+    - { id: '270773a', manage_var: 'ubuntu2404STIG_stigrule_270773_manage', path: '/etc/apt/apt.conf.d/50unattended-upgrades', regexp: '^Unattended-Upgrade::Remove-Unused-Dependencies', line: "{{ ubuntu2404STIG_stigrule_270773__etc_apt_apt_conf_d_50unattended_upgrades_Remove_Unused_Dependencies_line }}" }
+    - { id: '270773b', manage_var: 'ubuntu2404STIG_stigrule_270773_manage', path: '/etc/apt/apt.conf.d/50unattended-upgrades', regexp: '^Unattended-Upgrade::Remove-Unused-Kernel-Packages', line: "{{ ubuntu2404STIG_stigrule_270773__etc_apt_apt_conf_d_50unattended_upgrades_Remove_Unused_Kernel_Packages_line }}" }
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: "stigrule_270749_dmesg_restrict_runtime"
+  ansible.posix.sysctl:
+    name: kernel.dmesg_restrict
+    value: "{{ ubuntu2404STIG_stigrule_270749_dmesg_restrict_value }}"
+  when:
+    - ubuntu2404STIG_stigrule_270749_manage | default(true) | bool
+
+- name: "stigrule_270749_dmesg_restrict_conf"
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.d/10-kernel-hardening.conf
+    regexp: '^\s*kernel\.dmesg_restrict'
+    line: "{{ ubuntu2404STIG_stigrule_270749_dmesg_restrict_conf_line }}"
+    create: true
+  when:
+    - ubuntu2404STIG_stigrule_270749_manage | default(true) | bool
+
+- name: "stigrule_270753_tcp_syncookies_runtime"
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_syncookies
+    value: "{{ ubuntu2404STIG_stigrule_270753_net_ipv4_tcp_syncookies_value }}"
+  when:
+    - ubuntu2404STIG_stigrule_270753_manage | default(true) | bool
+
+- name: "stigrule_270753_tcp_syncookies_conf"
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^\s*net\.ipv4\.tcp_syncookies'
+    line: "{{ ubuntu2404STIG_stigrule_270753__etc_sysctl_conf_line }}"
+    create: true
+  when:
+    - ubuntu2404STIG_stigrule_270753_manage | default(true) | bool
+
+- name: "stigrule_270758_270760_journalctl_perms"
+  block:
+    - name: "stigrule_270758_journalctl_mode"
+      ansible.builtin.file:
+        path: /usr/bin/journalctl
+        mode: '0740'
+    - name: "stigrule_270759_journalctl_owner"
+      ansible.builtin.file:
+        path: /usr/bin/journalctl
+        owner: root
+    - name: "stigrule_270760_journalctl_group"
+      ansible.builtin.file:
+        path: /usr/bin/journalctl
+        group: root
+  when:
+    - ubuntu2404STIG_stigrule_270758_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270759_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270760_manage | default(true) | bool
+
+- name: "stigrule_270765_270770_log_path_perms"
+  block:
+    - name: "stigrule_270765_var_log_group"
+      ansible.builtin.file:
+        path: /var/log
+        group: syslog
+      when: ubuntu2404STIG_stigrule_270765_manage | default(true) | bool
+    - name: "stigrule_270766_var_log_owner"
+      ansible.builtin.file:
+        path: /var/log
+        owner: root
+      when: ubuntu2404STIG_stigrule_270766_manage | default(true) | bool
+    - name: "stigrule_270767_var_log_mode"
+      ansible.builtin.file:
+        path: /var/log
+        mode: '0755'
+      when: ubuntu2404STIG_stigrule_270767_manage | default(true) | bool
+    - name: "stigrule_270768_syslog_group"
+      ansible.builtin.file:
+        path: /var/log/syslog
+        group: adm
+      ignore_errors: true
+      when: ubuntu2404STIG_stigrule_270768_manage | default(true) | bool
+    - name: "stigrule_270769_syslog_owner"
+      ansible.builtin.file:
+        path: /var/log/syslog
+        owner: syslog
+      ignore_errors: true
+      when: ubuntu2404STIG_stigrule_270769_manage | default(true) | bool
+    - name: "stigrule_270770_syslog_mode"
+      ansible.builtin.file:
+        path: /var/log/syslog
+        mode: '0640'
+      ignore_errors: true
+      when: ubuntu2404STIG_stigrule_270770_manage | default(true) | bool
+
+- name: "stigrule_270818_270819_auditd_conf"
+  block:
+    - name: "stigrule_270818_space_left"
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: '^\s*space_left\s*='
+        line: "{{ ubuntu2404STIG_stigrule_270818_space_left_line }}"
+      notify: auditd_restart
+      when: ubuntu2404STIG_stigrule_270818_manage | default(true) | bool
+    - name: "stigrule_270818_space_left_action"
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: '^\s*space_left_action\s*='
+        line: "{{ ubuntu2404STIG_stigrule_270818_space_left_action_line }}"
+      notify: auditd_restart
+      when: ubuntu2404STIG_stigrule_270818_manage | default(true) | bool
+    - name: "stigrule_270819_action_mail_acct"
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: '^\s*action_mail_acct\s*='
+        line: "{{ ubuntu2404STIG_stigrule_270819_action_mail_acct_line }}"
+      notify: auditd_restart
+      when: ubuntu2404STIG_stigrule_270819_manage | default(true) | bool
+
+- name: "stigrule_270832_audit_rules_immutable"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/audit.rules
+    regexp: '^-e 2$'
+    line: "{{ ubuntu2404STIG_stigrule_270832__etc_audit_rules_d_audit_rules_e2_line }}"
+    create: true
+  notify: reload_audit_rules
+  when:
+    - ubuntu2404STIG_stigrule_270832_manage | default(true) | bool
+
+- name: "stigrule_274871_274873_dconf_locks"
+  block:
+    - name: "stigrule_274871_picture_uri"
+      community.general.ini_file:
+        path: /etc/dconf/db/local.d/00-security-settings
+        section: org/gnome/desktop/screensaver
+        option: picture-uri
+        value: "''"
+        no_extra_spaces: true
+      notify: dconf_update
+      when: ubuntu2404STIG_stigrule_274871_manage | default(true) | bool
+    - name: "stigrule_274871_picture_uri_lock"
+      ansible.builtin.lineinfile:
+        path: /etc/dconf/db/local.d/locks/00-security-settings-lock
+        regexp: '^/org/gnome/desktop/screensaver/picture-uri$'
+        line: '/org/gnome/desktop/screensaver/picture-uri'
+        create: true
+      notify: dconf_update
+      when: ubuntu2404STIG_stigrule_274871_manage | default(true) | bool
+    - name: "stigrule_274872_autorun_never_lock"
+      ansible.builtin.lineinfile:
+        path: /etc/dconf/db/local.d/locks/00-security-settings-lock
+        regexp: '^/org/gnome/desktop/media-handling/autorun-never$'
+        line: '/org/gnome/desktop/media-handling/autorun-never'
+        create: true
+      notify: dconf_update
+      when: ubuntu2404STIG_stigrule_274872_manage | default(true) | bool
+    - name: "stigrule_274873_smartcard_removal_action_lock"
+      ansible.builtin.lineinfile:
+        path: /etc/dconf/db/local.d/locks/00-security-settings-lock
+        regexp: '^/org/gnome/settings-daemon/peripherals/smartcard/removal-action$'
+        line: '/org/gnome/settings-daemon/peripherals/smartcard/removal-action'
+        create: true
+      notify: dconf_update
+      when: ubuntu2404STIG_stigrule_274873_manage | default(true) | bool
+
+- name: "stigrule_279938_nfs_absent_assert"
+  ansible.builtin.assert:
+    that:
+      - "'nfs-common' not in ansible_facts.packages"
+      - "'nfs-kernel-server' not in ansible_facts.packages"
+    fail_msg: "NFS packages are installed"
+    success_msg: "NFS packages are absent"
+  ignore_errors: true
+  when:
+    - ansible_check_mode | default(false)
+    - ubuntu2404STIG_stigrule_279938_manage | default(true) | bool
+
+- name: "stigrule_279938_nfs_remove"
+  ansible.builtin.apt:
+    name:
+      - nfs-common
+      - nfs-kernel-server
+    state: absent
+    purge: true
+    autoremove: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_279938_manage | default(true) | bool
+# =============================================================================
+# Audit rules loaded via augenrules
+# =============================================================================
+
+- name: "stigrule_{{ item.id }}_audit_rule"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/rules.d/stig.rules
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: true
+  notify: reload_audit_rules
+  when:
+    - vars[item.manage_var] | default(true) | bool
+  loop:
+    - { id: '270684', manage_var: 'ubuntu2404STIG_stigrule_270684_manage', regexp: '^-w /etc/passwd -p wa -k usergroup_modification$', line: "{{ ubuntu2404STIG_stigrule_270684__etc_audit_rules_d_stig_rules__etc_passwd_line }}" }
+    - { id: '270685', manage_var: 'ubuntu2404STIG_stigrule_270685_manage', regexp: '^-w /etc/group -p wa -k usergroup_modification$', line: "{{ ubuntu2404STIG_stigrule_270685__etc_audit_rules_d_stig_rules__etc_group_line }}" }
+    - { id: '270686', manage_var: 'ubuntu2404STIG_stigrule_270686_manage', regexp: '^-w /etc/shadow -p wa -k usergroup_modification$', line: "{{ ubuntu2404STIG_stigrule_270686__etc_audit_rules_d_stig_rules__etc_shadow_line }}" }
+    - { id: '270687', manage_var: 'ubuntu2404STIG_stigrule_270687_manage', regexp: '^-w /etc/gshadow -p wa -k usergroup_modification$', line: "{{ ubuntu2404STIG_stigrule_270687__etc_audit_rules_d_stig_rules__etc_gshadow_line }}" }
+    - { id: '270688', manage_var: 'ubuntu2404STIG_stigrule_270688_manage', regexp: '^-w /etc/security/opasswd -p wa -k usergroup_modification$', line: "{{ ubuntu2404STIG_stigrule_270688__etc_audit_rules_d_stig_rules__etc_security_opasswd_line }}" }
+    - { id: '270689a', manage_var: 'ubuntu2404STIG_stigrule_270689_manage', regexp: '^-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=execpriv$', line: "{{ ubuntu2404STIG_stigrule_270689__etc_audit_rules_d_stig_rules_execve_b64_euid_line }}" }
+    - { id: '270689b', manage_var: 'ubuntu2404STIG_stigrule_270689_manage', regexp: '^-a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=execpriv$', line: "{{ ubuntu2404STIG_stigrule_270689__etc_audit_rules_d_stig_rules_execve_b64_egid_line }}" }
+    - { id: '270689c', manage_var: 'ubuntu2404STIG_stigrule_270689_manage', regexp: '^-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=execpriv$', line: "{{ ubuntu2404STIG_stigrule_270689__etc_audit_rules_d_stig_rules_execve_b32_euid_line }}" }
+    - { id: '270689d', manage_var: 'ubuntu2404STIG_stigrule_270689_manage', regexp: '^-a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=execpriv$', line: "{{ ubuntu2404STIG_stigrule_270689__etc_audit_rules_d_stig_rules_execve_b32_egid_line }}" }
+    - { id: '270715', manage_var: 'ubuntu2404STIG_stigrule_270715_manage', regexp: '^-w /var/log/journal -p wa -k systemd_journal$', line: "{{ ubuntu2404STIG_stigrule_270715__etc_audit_rules_d_stig_rules__var_log_journal_line }}" }
+    - { id: '270740', manage_var: 'ubuntu2404STIG_stigrule_270740_manage', regexp: '^-w /var/log/sudo\.log -p wa -k maintenance$', line: "{{ ubuntu2404STIG_stigrule_270740__etc_audit_rules_d_stig_rules__var_log_sudo_log_line }}" }
+    - { id: '270778', manage_var: 'ubuntu2404STIG_stigrule_270778_manage', regexp: '^-a always,exit -F path=/bin/su -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-priv_change$', line: "{{ ubuntu2404STIG_stigrule_270778__etc_audit_rules_d_stig_rules__bin_su_line }}" }
+    - { id: '270779', manage_var: 'ubuntu2404STIG_stigrule_270779_manage', regexp: '^-a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chfn$', line: "{{ ubuntu2404STIG_stigrule_270779__etc_audit_rules_d_stig_rules__usr_bin_chfn_line }}" }
+    - { id: '270780', manage_var: 'ubuntu2404STIG_stigrule_270780_manage', regexp: '^-a always,exit -F path=/usr/bin/mount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-mount$', line: "{{ ubuntu2404STIG_stigrule_270780__etc_audit_rules_d_stig_rules__usr_bin_mount_line }}" }
+    - { id: '270781', manage_var: 'ubuntu2404STIG_stigrule_270781_manage', regexp: '^-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-umount$', line: "{{ ubuntu2404STIG_stigrule_270781__etc_audit_rules_d_stig_rules__usr_bin_umount_line }}" }
+    - { id: '270782', manage_var: 'ubuntu2404STIG_stigrule_270782_manage', regexp: '^-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh$', line: "{{ ubuntu2404STIG_stigrule_270782__etc_audit_rules_d_stig_rules__usr_bin_ssh_agent_line }}" }
+    - { id: '270783', manage_var: 'ubuntu2404STIG_stigrule_270783_manage', regexp: '^-a always,exit -F path=/usr/lib/openssh/ssh-keysign -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh$', line: "{{ ubuntu2404STIG_stigrule_270783__etc_audit_rules_d_stig_rules__usr_lib_openssh_ssh_keysign_line }}" }
+    - { id: '270786a', manage_var: 'ubuntu2404STIG_stigrule_270786_manage', regexp: '^-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270786__etc_audit_rules_d_stig_rules_b32_chmod_fchmod_fchmodat_line }}" }
+    - { id: '270786b', manage_var: 'ubuntu2404STIG_stigrule_270786_manage', regexp: '^-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270786__etc_audit_rules_d_stig_rules_b64_chmod_fchmod_fchmodat_line }}" }
+    - { id: '270787a', manage_var: 'ubuntu2404STIG_stigrule_270787_manage', regexp: '^-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access$', line: "{{ ubuntu2404STIG_stigrule_270787__etc_audit_rules_d_stig_rules_b32_creat_open_openat_open_by_handle_at_truncate_ftruncate_EPERM_line }}" }
+    - { id: '270787b', manage_var: 'ubuntu2404STIG_stigrule_270787_manage', regexp: '^-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access$', line: "{{ ubuntu2404STIG_stigrule_270787__etc_audit_rules_d_stig_rules_b32_creat_open_openat_open_by_handle_at_truncate_ftruncate_EACCES_line }}" }
+    - { id: '270787c', manage_var: 'ubuntu2404STIG_stigrule_270787_manage', regexp: '^-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access$', line: "{{ ubuntu2404STIG_stigrule_270787__etc_audit_rules_d_stig_rules_b64_creat_open_openat_open_by_handle_at_truncate_ftruncat_EPERM_line }}" }
+    - { id: '270787d', manage_var: 'ubuntu2404STIG_stigrule_270787_manage', regexp: '^-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access$', line: "{{ ubuntu2404STIG_stigrule_270787__etc_audit_rules_d_stig_rules_b64_creat_open_openat_open_by_handle_at_truncate_ftruncat_EACCES_line }}" }
+    - { id: '270788', manage_var: 'ubuntu2404STIG_stigrule_270788_manage', regexp: '^-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd$', line: "{{ ubuntu2404STIG_stigrule_270788__etc_audit_rules_d_stig_rules__usr_bin_sudo_line }}" }
+    - { id: '270789', manage_var: 'ubuntu2404STIG_stigrule_270789_manage', regexp: '^-a always,exit -F path=/usr/bin/sudoedit -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd$', line: "{{ ubuntu2404STIG_stigrule_270789__etc_audit_rules_d_stig_rules__usr_bin_sudoedit_line }}" }
+    - { id: '270790', manage_var: 'ubuntu2404STIG_stigrule_270790_manage', regexp: '^-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd$', line: "{{ ubuntu2404STIG_stigrule_270790__etc_audit_rules_d_stig_rules__usr_bin_chsh_line }}" }
+    - { id: '270791', manage_var: 'ubuntu2404STIG_stigrule_270791_manage', regexp: '^-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd$', line: "{{ ubuntu2404STIG_stigrule_270791__etc_audit_rules_d_stig_rules__usr_bin_newgrp_line }}" }
+    - { id: '270792', manage_var: 'ubuntu2404STIG_stigrule_270792_manage', regexp: '^-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270792__etc_audit_rules_d_stig_rules__usr_bin_chcon_line }}" }
+    - { id: '270793', manage_var: 'ubuntu2404STIG_stigrule_270793_manage', regexp: '^-a always,exit -F path=/sbin/apparmor_parser -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270793__etc_audit_rules_d_stig_rules__sbin_apparmor_parser_line }}" }
+    - { id: '270794', manage_var: 'ubuntu2404STIG_stigrule_270794_manage', regexp: '^-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270794__etc_audit_rules_d_stig_rules__usr_bin_setfacl_line }}" }
+    - { id: '270795', manage_var: 'ubuntu2404STIG_stigrule_270795_manage', regexp: '^-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng$', line: "{{ ubuntu2404STIG_stigrule_270795__etc_audit_rules_d_stig_rules__usr_bin_chacl_line }}" }
+    - { id: '270798', manage_var: 'ubuntu2404STIG_stigrule_270798_manage', regexp: '^-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-passwd$', line: "{{ ubuntu2404STIG_stigrule_270798__etc_audit_rules_d_stig_rules__usr_bin_passwd_line }}" }
+    - { id: '270799', manage_var: 'ubuntu2404STIG_stigrule_270799_manage', regexp: '^-a always,exit -F path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-unix-update$', line: "{{ ubuntu2404STIG_stigrule_270799__etc_audit_rules_d_stig_rules__sbin_unix_update_line }}" }
+    - { id: '270800', manage_var: 'ubuntu2404STIG_stigrule_270800_manage', regexp: '^-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-gpasswd$', line: "{{ ubuntu2404STIG_stigrule_270800__etc_audit_rules_d_stig_rules__usr_bin_gpasswd_line }}" }
+    - { id: '270801', manage_var: 'ubuntu2404STIG_stigrule_270801_manage', regexp: '^-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chage$', line: "{{ ubuntu2404STIG_stigrule_270801__etc_audit_rules_d_stig_rules__usr_bin_chage_line }}" }
+    - { id: '270802', manage_var: 'ubuntu2404STIG_stigrule_270802_manage', regexp: '^-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-usermod$', line: "{{ ubuntu2404STIG_stigrule_270802__etc_audit_rules_d_stig_rules__usr_sbin_usermod_line }}" }
+    - { id: '270803', manage_var: 'ubuntu2404STIG_stigrule_270803_manage', regexp: '^-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-crontab$', line: "{{ ubuntu2404STIG_stigrule_270803__etc_audit_rules_d_stig_rules__usr_bin_crontab_line }}" }
+    - { id: '270804', manage_var: 'ubuntu2404STIG_stigrule_270804_manage', regexp: '^-a always,exit -F path=/usr/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-pam_timestamp_check$', line: "{{ ubuntu2404STIG_stigrule_270804__etc_audit_rules_d_stig_rules__usr_sbin_pam_timestamp_check_line }}" }
+    - { id: '270806a', manage_var: 'ubuntu2404STIG_stigrule_270806_manage', regexp: '^-a always,exit -F arch=b32 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng$', line: "{{ ubuntu2404STIG_stigrule_270806__etc_audit_rules_d_stig_rules_delete_module_b32_line }}" }
+    - { id: '270806b', manage_var: 'ubuntu2404STIG_stigrule_270806_manage', regexp: '^-a always,exit -F arch=b64 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng$', line: "{{ ubuntu2404STIG_stigrule_270806__etc_audit_rules_d_stig_rules_delete_module_b64_line }}" }
+    - { id: '270807', manage_var: 'ubuntu2404STIG_stigrule_270807_manage', regexp: '^-w /etc/sudoers -p wa -k privilege_modification$', line: "{{ ubuntu2404STIG_stigrule_270807__etc_audit_rules_d_stig_rules__etc_sudoers_line }}" }
+    - { id: '270808', manage_var: 'ubuntu2404STIG_stigrule_270808_manage', regexp: '^-w /etc/sudoers.d -p wa -k privilege_modification$', line: "{{ ubuntu2404STIG_stigrule_270808__etc_audit_rules_d_stig_rules__etc_sudoers_d_line }}" }
+    - { id: '270815', manage_var: 'ubuntu2404STIG_stigrule_270815_manage', regexp: '^-w /usr/sbin/fdisk -p x -k fdisk$', line: "{{ ubuntu2404STIG_stigrule_270815__etc_audit_rules_d_stig_rules__usr_sbin_fdisk_line }}" }
+    - { id: '274870a', manage_var: 'ubuntu2404STIG_stigrule_274870_manage', regexp: '^-w /etc/cron.d/ -p wa -k cronjobs$', line: "{{ ubuntu2404STIG_stigrule_274870__etc_audit_rules_d_stig_rules__etc_cron_d__cronjobs_line }}" }
+    - { id: '274870b', manage_var: 'ubuntu2404STIG_stigrule_274870_manage', regexp: '^-w /var/spool/cron/ -p wa -k cronjobs$', line: "{{ ubuntu2404STIG_stigrule_274870__etc_audit_rules_d_stig_rules__var_spool_cron__cronjobs_line }}" }
+  loop_control:
+    label: "{{ item.id }}"
