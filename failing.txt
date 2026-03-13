@@ -1,0 +1,311 @@
+
+
+SV-270736r1066697	OPEN	CAT I	
+Ubuntu 24.04 LTS must map the authenticated identity to the user or group account for PKI-based authentication.
+View Technical Details
+SV-270744r1137699	OPEN	CAT I	
+Ubuntu 24.04 LTS must implement NIST FIPS-validated cryptography to protect classified information and for the following: To provision digital signatures, to generate cryptographic hashes, and to protect unclassified information requiring confidentiality and cryptographic protection in accordance with applicable federal laws, Executive Orders, directives, policies, regulations, and standards.
+View Technical Details
+SV-270651r1068395	OPEN	CAT II	
+Ubuntu 24.04 LTS must be configured so that the script which runs each 30 days or less to check file integrity is the default one.
+View Technical Details
+SV-270660r1066469	OPEN	CAT II	
+Ubuntu 24.04 LTS must be configured to use AppArmor.
+View Technical Details
+SV-270715r1066634	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for all events that affect the systemd journal files.
+View Technical Details
+SV-270723r1066658	OPEN	CAT II	
+Ubuntu 24.04 LTS must electronically verify Personal Identity Verification (PIV) credentials.
+View Technical Details
+SV-270724r1066661	OPEN	CAT II	
+Ubuntu 24.04 LTS must prevent direct login to the root account.
+View Technical Details
+SV-270735r1066694	OPEN	CAT II	
+Ubuntu 24.04 LTS, for PKI-based authentication, SSSD must validate certificates by constructing a certification path (which includes status information) to an accepted trust anchor.
+View Technical Details
+SV-270740r1066709	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for privileged activities, nonlocal maintenance, diagnostic sessions, and other system-level access.
+View Technical Details
+SV-270746r1155242	OPEN	CAT II	
+Ubuntu 24.04 LTS must disable kernel core dumps.
+View Technical Details
+SV-270754r1066751	OPEN	CAT II	
+Ubuntu 24.04 LTS must configure the uncomplicated firewall to rate-limit impacted network interfaces.
+View Technical Details
+SV-270772r1066805	OPEN	CAT II	
+Ubuntu 24.04 LTS must implement address space layout randomization to protect its memory from unauthorized code execution.
+View Technical Details
+SV-270778r1066823	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the su command.
+View Technical Details
+SV-270779r1066826	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chfn command.
+View Technical Details
+SV-270780r1066829	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the mount command.
+View Technical Details
+SV-270781r1066832	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the umount command.
+View Technical Details
+SV-270782r1066835	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the ssh-agent command.
+View Technical Details
+SV-270783r1066838	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the ssh-keysign command.
+View Technical Details
+SV-270784r1068371	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for any use of the setxattr, fsetxattr, lsetxattr, removexattr, fremovexattr, and lremovexattr system calls.
+View Technical Details
+SV-270785r1068373	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chown, fchown, fchownat, and lchown system calls.
+View Technical Details
+SV-270786r1068375	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chmod, fchmod, and fchmodat system calls.
+View Technical Details
+SV-270787r1068378	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the creat, open, openat, open_by_handle_at, truncate, and ftruncate system calls.
+View Technical Details
+SV-270788r1066853	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the sudo command.
+View Technical Details
+SV-270789r1066856	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the sudoedit command.
+View Technical Details
+SV-270790r1068380	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chsh command.
+View Technical Details
+SV-270791r1066862	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the newgrp command.
+View Technical Details
+SV-270792r1066865	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chcon command.
+View Technical Details
+SV-270793r1066868	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the apparmor_parser command.
+View Technical Details
+SV-270794r1066871	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the setfacl command.
+View Technical Details
+SV-270795r1066874	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chacl command.
+View Technical Details
+SV-270798r1068382	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the passwd command.
+View Technical Details
+SV-270799r1066886	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the unix_update command.
+View Technical Details
+SV-270800r1066889	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the gpasswd command.
+View Technical Details
+SV-270801r1066892	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the chage command.
+View Technical Details
+SV-270802r1066895	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the usermod command.
+View Technical Details
+SV-270803r1066898	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the crontab command.
+View Technical Details
+SV-270804r1066901	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the pam_timestamp_check command.
+View Technical Details
+SV-270806r1068386	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for successful/unsuccessful uses of the delete_module syscall.
+View Technical Details
+SV-270807r1066910	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records when successful/unsuccessful attempts to modify the /etc/sudoers file occur.
+View Technical Details
+SV-270808r1067100	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records when successful/unsuccessful attempts to modify the /etc/sudoers.d directory occur.
+View Technical Details
+SV-270809r1068388	OPEN	CAT II	
+Ubuntu 24.04 LTS must generate audit records for any successful/unsuccessful use of unlink, unlinkat, rename, renameat, and rmdir system calls.
+View Technical Details
+SV-270827r1066970	OPEN	CAT II	
+Ubuntu 24.04 LTS must be configured so that audit log files are not read or write-accessible by unauthorized users.
+View Technical Details
+SV-270830r1068397	OPEN	CAT II	
+Ubuntu 24.04 LTS must be configured so that the audit log directory is not write-accessible by unauthorized users.
+View Technical Details
+SV-274870r1155243	OPEN	CAT II	
+Ubuntu 24.04 LTS must audit any script or executable called by cron as root or by any privileged user.
+View Technical Details
+SV-270734r1155240	OPEN	CAT III	
+Ubuntu 24.04 LTS must be configured such that Pluggable Authentication Module (PAM) prohibits the use of cached authentications after one day.
+View Technical Details
+SV-270749r1137695	OPEN	CAT III	
+Ubuntu 24.04 LTS must restrict access to the kernel message buffer.
+View Technical Details
+SV-270818r1066943	OPEN	CAT III	
+Ubuntu 24.04 LTS must immediately notify the system administrator (SA) and information system security officer (ISSO) (at a minimum) when allocated audit record storage volume reaches 75 percent of the repository maximum audit record storage capacity.
+View Technical Details
+
+
+
+------
+ui
+-----
+V-256672
+Not Reviewed
+Not a Finding
+
+V-256671
+Not Reviewed
+Not a Finding
+
+V-256670
+Not Reviewed
+Not a Finding
+
+V-256669
+Not Reviewed
+Not a Finding
+
+V-256668
+Not Reviewed
+Not a Finding
+
+V-256667
+Not Reviewed
+Not a Finding
+
+V-256666
+Open (Finding)
+Not a Finding
+
+V-256664
+Open (Finding)
+Not a Finding
+
+V-256663
+Not Reviewed
+Not a Finding
+
+V-256661
+Not Reviewed
+Not a Finding
+
+V-256657
+Not Reviewed
+Not a Finding
+
+V-256656
+Open (Finding)
+Not a Finding
+
+V-256655
+Not Reviewed
+Not a Finding
+
+V-256654
+Not Reviewed
+Not a Finding
+
+V-256653
+Not Reviewed
+Not a Finding
+
+V-256652
+Not Reviewed
+Not a Finding
+
+V-256651
+Not Reviewed
+Not a Finding
+
+V-256650
+Not Reviewed
+Not a Finding
+
+V-256649
+Open (Finding)
+Not a Finding
+
+V-256648
+Not Reviewed
+Not a Finding
+
+V-256647
+Open (Finding)
+Not a Finding
+
+Group ID: V-256807 - labeled as OPEN, reviewed and verified as a FINDING
+Group ID: V-256805 - labeled as NOT REVIEWED, reviewed and changed to NOT A FINDING
+Group ID: V-256796 - labeled as OPEN, reviewed and  changed to NOT A FINDING
+Group ID: V-256793 - labeled as NOT REVIEWED, reviewed and changed to NOT A FINDING
+Group ID: V-256788 - labeled as OPEN, reviewed and changed to NOT A FINDING
+Group ID: V-256786 - labeled as NOT REVIEWED, reviewed and changed to NOT A FINDING
+Group ID: V-256785 - labeled as NOT REVIEWED, reviewed and changed to NOT A FINDING
+Group ID: V-256784 - labeled as OPEN, reviewed and changed to NOT A FINDING
+Group ID: V-256782 - labeled as OPEN, reviewed and changed to NOT A FINDING
+
+-256705 - XPath is set to empty (expected result)
+V-256704 - base.shutdown.port=-1 (expected result)
+V-256703 - bio.http.port=15005 (expected result)
+V-256697 - "Not reviewed"
+V-256695 - XPath is set to empty (expected result)
+V-256691 - acceptCount="300" (expected result)
+V-256690 - org.apache.catalina.startup.EXIT_ON_INIT_FAILURE=true (expected result)
+V-256688 - "Not reviewed"
+V-256684 - "Not reviewed"
+V-256683 - produces expected result
+V-256681 - "Not reviewed"
+V-256680 - "Not reviewed"
+V-256677 - produces expected result
+V-256734 - produces expected result
+V-256733 - no output produced (expected result)
+V-256732 - "Not reviewed" no output produced (expected result)
+V-256723 - produces expected result
+V-256721 - "Not reviewed" no output produced (expected result)
+V-256716 - "Not reviewed" no output produced (expected result)
+V-256714 - "Not reviewed" no output produced (expected result)
+V-256713 - "Not reviewed" no output produced (expected result)
+
+V-256772 - produces expected result
+V-256771 - produces expected result
+V-256770 - produces expected result
+V-256765 - produces expected result
+V-256762 - produces expected result
+V-256760 - produces expected result
+V-256755 - produces expected result
+V-256753 - "Not reviewed" produces expected result
+V-256752 - "Not reviewed" produces expected result
+V-256749 - this one is Red and was actually out of compliance. Can automatically remediate. 
+V-256533 Cat II Was incorrectly set to N/A. This wasn’t a finding.
+V-256590 Cat II Was set to Open but it actually wasn’t a finding. Fallback wasn't set at all = not a finding.
+V-256589 Cat II This was set to N/A but the correct value of 1 was returned.
+V-256565 Cat II This was set to N/A but nothing was returned = not a finding.
+V-256557 Cat II This was set as either Open or N/A but in truth the value was set to 2 which is more stringent than 6 which the STIG wanted.
+V-256540 Cat II This was either Open, NA, or not checked at all by the script. It says the permissions need to be at least a "w" but they are set to more stringent than that. This isnt a finding.
+V-256539 Cat II -Wasn’t checked by script; was set correctly.
+V-256538 Cat II -Wasn’t checked by script; was set correctly.
+V-256537 Cat II - Wasn't checked by script; was set correctly.
+V-256534 Cat II Was marked as Open but all the correct results were there, just slightly out of order. I have marked it as not a finding.
+V-256528 - Cat II. Per Rob, I have removed the max_log_file_action = IGNORE which he states fixes the issue as there were conflicting statements.
+V-256527 - Cat II I changed it from 2 to 5.
+V-256526 - Cat II -Wasn't checked by script, it involved running a command, getting a list, and running a new command against every account on that list. NOT a finding.
+V-256525 - Cat II not checked by script, was not a finding
+V-256520 Cat II not checked by script, not a finding.
+V-256519 Cat II not checked by script, not a finding.
+V-256518 Cat II not checked by script, not a finding.
+V-256517 Cat II not checked by script, not a finding.
+V-256513 Cat II I fixed this issue by adding the line it said to.
+V-256507 Cat II - I fixed this. I changed menlen to 8 and added minclass and maxsequence
+V-256506 -Cat II-I THINK I FIXED THIS BUT IM NOT SURE IF I DID IT RIGHT. There are multiple duplicate values now. Rob said it was fine.
+V-256497 Cat II  not checked by script, not a finding.
+V-256489 Cat II not checked by script, not a finding.
+V-256484 Cat II UNSURE IF THIS IS A FINDING. It is configured for logging just to a different location. I think its fine.
+V-256479 Cat II I fixed this.
+V-256478 Cat II -Im not sure why the script marked this as wrong, it looks good to me.
+V-256453 Cat II Script said it was open, but it is not a finding.
+V-256454 Cat II Script said it was open, but it is not a finding.
+V-256457 Cat II Script said it was N/A but I found it to simply be not a finding. (Disconnected Floppy Drives)
+V-256458 Cat III
+V-256461 Cat II
+V-256465 Cat II - Script said it was open, but it is not a finding.
+V-256463 Cat III - I fixed this by adding the value through PowerCLI
+V-256474 Cat II - Script said it was open, but it is not a finding.
+V-256475 Cat II - Script said it was open, but it is not a finding.
+V-256477 Cat II - Script said this was open, but upon inspection the Encrypted FT is set to Opportunistic within the GUI. However, PowerCLI command yielded no result. I have changed this to Not a Finding.
