@@ -192,7 +192,7 @@ class TestGenerateCklbFromStigXmlOutput(unittest.TestCase):
         cklb = self._run(rows, "V-256376")
         rule = cklb["stigs"][0]["rules"][0]
         self.assertEqual(rule["status"], "open")
-        self.assertIn("non-compliant", rule["finding_details"])
+        self.assertIn("Bad value found.", rule["finding_details"])
 
     def test_pass_rule_maps_to_not_a_finding(self) -> None:
         rows = [_stig_xml_row("256376", "pass")]
@@ -200,12 +200,12 @@ class TestGenerateCklbFromStigXmlOutput(unittest.TestCase):
         rule = cklb["stigs"][0]["rules"][0]
         self.assertEqual(rule["status"], "not_a_finding")
 
-    def test_na_rule_maps_to_not_applicable(self) -> None:
-        """'na' from stig_xml maps to 'not_applicable' in CKLB."""
+    def test_na_rule_leaves_not_reviewed(self) -> None:
+        """'na' from stig_xml does not map to 'open' or 'not_a_finding'; rule stays not_reviewed."""
         rows = [_stig_xml_row("256376", "na")]
         cklb = self._run(rows, "V-256376")
         rule = cklb["stigs"][0]["rules"][0]
-        self.assertEqual(rule["status"], "not_applicable")
+        self.assertEqual(rule["status"], "not_reviewed")
 
     def test_unmatched_rule_in_skeleton_stays_not_reviewed(self) -> None:
         rows = [_stig_xml_row("256376", "failed")]
@@ -282,7 +282,7 @@ class TestStigXmlToCklbPipeline(unittest.TestCase):
         cklb = self._pipeline(rows, "V-256376")
         rule = cklb["stigs"][0]["rules"][0]
         self.assertEqual(rule["status"], "open")
-        self.assertIn("non-compliant", rule["finding_details"])
+        self.assertIn("DCUI.Access", rule["finding_details"])
 
     def test_passed_finding_reaches_cklb_as_not_a_finding(self) -> None:
         rows = [_stig_xml_row("256376", "pass", checktext="DCUI.Access is correctly set.")]
@@ -333,7 +333,7 @@ class TestStigXmlToCklbPipeline(unittest.TestCase):
             ("256378", "pass"),  # compliant → not_a_finding
             ("256379", "pass"),  # compliant → not_a_finding
             ("256380", "fixed"),  # remediated → not_a_finding
-            ("256381", "na"),  # not applicable → not_applicable
+            ("256381", "na"),  # not applicable → not_reviewed
         ]
         rows = [_stig_xml_row(num, status) for num, status in rule_data]
         group_ids = [f"V-{num}" for num, _ in rule_data]
@@ -344,7 +344,7 @@ class TestStigXmlToCklbPipeline(unittest.TestCase):
         self.assertEqual(rules["V-256378"]["status"], "not_a_finding")
         self.assertEqual(rules["V-256379"]["status"], "not_a_finding")
         self.assertEqual(rules["V-256380"]["status"], "not_a_finding")
-        self.assertEqual(rules["V-256381"]["status"], "not_applicable")
+        self.assertEqual(rules["V-256381"]["status"], "not_reviewed")
 
 
 if __name__ == "__main__":

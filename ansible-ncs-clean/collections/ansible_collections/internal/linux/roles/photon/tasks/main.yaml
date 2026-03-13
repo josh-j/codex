@@ -1,5 +1,0 @@
----
-# internal.linux.photon : tasks/main.yaml
-
-- name: "Photon | Dispatch: {{ photon_action | default('discover') }}"
-  ansible.builtin.include_tasks: "{{ photon_action | default('discover') }}.yaml"

@@ -88,9 +88,7 @@ class TestGenerateCklb:
         # V-001 should be open
         r1 = rules[0]
         assert r1["status"] == "open"
-        assert "non-compliant" in r1["finding_details"]
-        assert "V-001" in r1["finding_details"]
-        assert "test-host" in r1["finding_details"]
+        assert r1["finding_details"] == "Failed check"
 
         # V-002 should be not_a_finding
         r2 = rules[1]
@@ -156,8 +154,8 @@ class TestGenerateCklb:
         result = json.loads(output_path.read_text())
         details = result["stigs"][0]["rules"][0]["finding_details"]
         assert re.search(r"<[^>]+>", details) is None
-        assert "non-compliant" in details
-        assert "V-001" in details
+        assert "Failed" in details
+        assert "wrong" in details
 
     def test_comments_populated_for_matched_rules(self, tmp_path):
         skeleton_path = tmp_path / "skeleton.json"

@@ -1,0 +1,1632 @@
+{
+  "title": "vca_perfcharts",
+  "id": "e1828923-aac3-47bd-bae5-b8e602eb6a80",
+  "stigs": [
+    {
+      "stig_name": "VMware vSphere 7.0 vCenter Appliance Perfcharts Security Technical Implementation Guide",
+      "display_name": "VMware vSphere 7.0 vCenter Appliance Perfcharts",
+      "stig_id": "VMW_vSphere_7-0_vCA_Perfcharts_STIG",
+      "release_info": "Release: 1 Benchmark Date: 07 Mar 2023",
+      "version": "1",
+      "uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+      "reference_identifier": "5522",
+      "size": 34,
+      "rules": [
+        {
+          "group_id_src": "V-256611",
+          "group_tree": [
+            {
+              "id": "V-256611",
+              "title": "SRG-APP-000001-WSR-000001",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256611",
+          "severity": "medium",
+          "group_title": "Performance Charts must limit the amount of time that each Transport Control Protocol (TCP) connection is kept alive.",
+          "rule_id_src": "SV-256611r888324_rule",
+          "rule_id": "SV-256611r888324",
+          "rule_version": "VCPF-70-000001",
+          "rule_title": "Performance Charts must limit the amount of time that each Transport Control Protocol (TCP) connection is kept alive.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nNavigate to each of the <Connector> nodes.\n\nConfigure each <Connector> node with the value:\n\nconnectionTimeout=\"20000\"\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Connector/@connectionTimeout' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nconnectionTimeout=\"20000\"\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Denial of service (DoS) is one threat against web servers. Many DoS attacks attempt to consume web server resources in such a way that no more resources are available to satisfy legitimate requests. \n\nIn Tomcat, the \"connectionTimeout\" attribute sets the number of milliseconds the server will wait after accepting a connection for the request Uniform Resource Identifier (URI) line to be presented. This timeout will also be used when reading the request body (if any). This prevents idle sockets that are not sending HTTP requests from consuming system resources and potentially denying new connections.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000054"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "c6237b81-7588-4fa1-944a-f928889398d4",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256612",
+          "group_tree": [
+            {
+              "id": "V-256612",
+              "title": "SRG-APP-000001-WSR-000001",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256612",
+          "severity": "medium",
+          "group_title": "Performance Charts must limit the number of concurrent connections permitted.",
+          "rule_id_src": "SV-256612r888327_rule",
+          "rule_id": "SV-256612r888327",
+          "rule_version": "VCPF-70-000002",
+          "rule_title": "Performance Charts must limit the number of concurrent connections permitted.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nNavigate to the <Executor> mode with the name of \"tomcatThreadPool\" and configure with the value 'maxThreads=\"300\"'.\n\nNote: The <Executor> node should be configured as follows:\n\n<Executor maxThreads=\"300\" minSpareThreads=\"50\" name=\"tomcatThreadPool\" namePrefix=\"tomcat-http--\"/>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Executor/@maxThreads' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nmaxThreads=\"300\"\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Resource exhaustion can occur when an unlimited number of concurrent requests are allowed on a website, facilitating a denial-of-service attack. Unless the number of requests is controlled, the web server can consume enough system resources to cause a system crash.\n\nMitigating this kind of attack will include limiting the number of concurrent HTTP/HTTPS requests. In Tomcat, each incoming request requires a thread for the duration of that request. If more simultaneous requests are received than can be handled by the currently available request processing threads, additional threads will be created up to the value of the \"maxThreads\" attribute.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000054"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "9ab8c019-4105-4a79-ba52-8fdf059a9549",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256613",
+          "group_tree": [
+            {
+              "id": "V-256613",
+              "title": "SRG-APP-000001-WSR-000001",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256613",
+          "severity": "medium",
+          "group_title": "Performance Charts must limit the maximum size of a POST request.",
+          "rule_id_src": "SV-256613r888330_rule",
+          "rule_id": "SV-256613r888330",
+          "rule_version": "VCPF-70-000003",
+          "rule_title": "Performance Charts must limit the maximum size of a POST request.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nNavigate to each of the <Connector> nodes.\n\nRemove any configuration for \"maxPostSize\".\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Connector/@maxPostSize' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nXPath set is empty\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "The \"maxPostSize\" value is the maximum size in bytes of the POST that will be handled by the container FORM URL parameter parsing. Limit its size to reduce exposure to a denial-of-service attack. If \"maxPostSize\" is not set, the default value of 2097152 (2MB) is used. Performance Charts is configured in its shipping state to not set a value for \"maxPostSize\".",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000054"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "5eaa2f4e-b48f-493a-ae2e-525f7b836347",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256614",
+          "group_tree": [
+            {
+              "id": "V-256614",
+              "title": "SRG-APP-000001-WSR-000002",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256614",
+          "severity": "medium",
+          "group_title": "Performance Charts must protect cookies from cross-site scripting (XSS).",
+          "rule_id_src": "SV-256614r888333_rule",
+          "rule_id": "SV-256614r888333",
+          "rule_version": "VCPF-70-000004",
+          "rule_title": "Performance Charts must protect cookies from cross-site scripting (XSS).",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml\n\nNavigate to the <session-config> node and configure it as follows:\n\n<session-config>\n  <cookie-config>\n    <http-only>true</http-only>\n    <secure>true</secure>\n  </cookie-config>\n  <session-timeout>30</session-timeout>\n</session-config>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '/web-app/session-config/cookie-config/http-only' -\n\nExpected result:\n\n<http-only>true</http-only>\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Cookies are a common way to save session state over the HTTP(S) protocol. If an attacker can compromise session data stored in a cookie, they are better able to launch an attack against the server and its applications.\n\nWhen a cookie is tagged with the \"HttpOnly\" flag, it tells the browser that this particular cookie should only be accessed by the originating server. Any attempt to access the cookie from client script is strictly forbidden.\n\nSatisfies: SRG-APP-000001-WSR-000002, SRG-APP-000439-WSR-000154",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000054",
+            "CCI-002418"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "847bf92e-3f65-4499-bfca-d4ba8d464e95",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256615",
+          "group_tree": [
+            {
+              "id": "V-256615",
+              "title": "SRG-APP-000016-WSR-000005",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256615",
+          "severity": "medium",
+          "group_title": "Performance Charts must record user access in a format that enables monitoring of remote access.",
+          "rule_id_src": "SV-256615r888336_rule",
+          "rule_id": "SV-256615r888336",
+          "rule_version": "VCPF-70-000005",
+          "rule_title": "Performance Charts must record user access in a format that enables monitoring of remote access.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nInside the <Host> node, find the \"AccessLogValve\" <Valve> node and replace the \"pattern\" element as follows:\n\npattern=\"%h %{X-Forwarded-For}i %l %u %t &quot;%r&quot; %s %b &quot;%{User-Agent}i&quot;\"\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml | sed '2 s/xmlns=\".*\"//g' |  xmllint --xpath '/Server/Service/Engine/Host/Valve[@className=\"org.apache.catalina.valves.AccessLogValve\"]/@pattern' -\n\nExpected result:\n\npattern=\"%h %{X-Forwarded-For}i %l %u %t &quot;%r&quot; %s %b &quot;%{User-Agent}i&quot;\"\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Remote access can be exploited by an attacker to compromise the server. By recording all remote access activities, it will be possible to determine the attacker's location, intent, and degree of success.\n\nTomcat can be configured with an \"AccessLogValve\", a component that can be inserted into the request processing pipeline to provide robust access logging. The \"AccessLogValve\" creates log files in the same format as those created by standard web servers. When \"AccessLogValve\" is properly configured, log files will contain all the forensic information necessary in the case of a security incident.\n\nSatisfies: SRG-APP-000016-WSR-000005, SRG-APP-000089-WSR-000047, SRG-APP-000093-WSR-000053, SRG-APP-000095-WSR-000056, SRG-APP-000096-WSR-000057, SRG-APP-000097-WSR-000058, SRG-APP-000098-WSR-000059, SRG-APP-000098-WSR-000060, SRG-APP-000099-WSR-000061, SRG-APP-000100-WSR-000064, SRG-APP-000374-WSR-000172, SRG-APP-000375-WSR-000171",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000067",
+            "CCI-000130",
+            "CCI-000131",
+            "CCI-000132",
+            "CCI-000133",
+            "CCI-000134",
+            "CCI-000169",
+            "CCI-001462",
+            "CCI-001487",
+            "CCI-001889",
+            "CCI-001890"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "529082e8-77a7-4f5f-a02a-32558acce423",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256616",
+          "group_tree": [
+            {
+              "id": "V-256616",
+              "title": "SRG-APP-000089-WSR-000047",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256616",
+          "severity": "medium",
+          "group_title": "Performance Charts must generate log records for system startup and shutdown.",
+          "rule_id_src": "SV-256616r888339_rule",
+          "rule_id": "SV-256616r888339",
+          "rule_version": "VCPF-70-000006",
+          "rule_title": "Performance Charts must generate log records for system startup and shutdown.",
+          "fix_text": "Navigate to and open:\n\n/etc/vmware/vmware-vmon/svcCfgfiles/perfcharts.json\n\nBelow the last line of the \"PreStartCommandArg\" block, add the following line:\n\n\"StreamRedirectFile\" : \"%VMWARE_LOG_DIR%/vmware/perfcharts/vmware-perfcharts-runtime.log\",\n\nRestart the appliance for changes to take effect.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep StreamRedirectFile /etc/vmware/vmware-vmon/svcCfgfiles/perfcharts.json\n\nExpected result:\n\n\"StreamRedirectFile\" : \"%VMWARE_LOG_DIR%/vmware/perfcharts/vmware-perfcharts-runtime.log\",\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Logging must be started as soon as possible when a service starts and when a service is stopped. Many forms of suspicious actions can be detected by analyzing logs for unexpected service starts and stops. Also, by starting to log immediately after a service starts, it becomes more difficult for suspicious activity to go unlogged.\n\nOn the vCenter Server Appliance (VCSA), the \"vmware-vmon\" service starts up the Java virtual machines (JVMs) for various vCenter processes, including Performance Charts, and the individual json config files control the early JVM logging. Ensuring these json files are configured correctly enables early Java \"stdout\" and \"stderr\" logging.\n\nSatisfies: SRG-APP-000089-WSR-000047, SRG-APP-000092-WSR-000055",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000169",
+            "CCI-001464"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "65b885f9-dbee-4bbf-895b-6957da447273",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256617",
+          "group_tree": [
+            {
+              "id": "V-256617",
+              "title": "SRG-APP-000118-WSR-000068",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256617",
+          "severity": "medium",
+          "group_title": "Performance Charts log files must only be modifiable by privileged users.",
+          "rule_id_src": "SV-256617r888342_rule",
+          "rule_id": "SV-256617r888342",
+          "rule_version": "VCPF-70-000007",
+          "rule_title": "Performance Charts log files must only be modifiable by privileged users.",
+          "fix_text": "At the command prompt, run the following commands:\n\n# chmod o-w <file>\n# chown perfcharts:users <file>\n\nNote: Substitute <file> with the listed file.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# find /storage/log/vmware/perfcharts/ -xdev -type f -a '(' -perm -o+w -o -not -user perfcharts -o -not -group users ')' -exec ls -ld {} \\;\n\nIf any files are returned, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Log data is essential in the investigation of events. The accuracy of the information is always pertinent. One of the first steps an attacker will undertake is the modification or deletion of log records to cover tracks and prolong discovery. The web server must protect the log data from unauthorized modification. Performance Charts restricts all modification of log files by default, but this configuration must be verified.\n\nSatisfies: SRG-APP-000118-WSR-000068, SRG-APP-000119-WSR-000069, SRG-APP-000120-WSR-000070",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000162",
+            "CCI-000163",
+            "CCI-000164"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "7ec5c122-66e5-45e3-b7d1-20ab60f4b4db",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256618",
+          "group_tree": [
+            {
+              "id": "V-256618",
+              "title": "SRG-APP-000131-WSR-000051",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256618",
+          "severity": "medium",
+          "group_title": "Performance Charts application files must be verified for their integrity.",
+          "rule_id_src": "SV-256618r888345_rule",
+          "rule_id": "SV-256618r888345",
+          "rule_version": "VCPF-70-000008",
+          "rule_title": "Performance Charts application files must be verified for their integrity.",
+          "fix_text": "Reinstall the vCenter Server Appliance (VCSA) or roll back to a backup. VMware does not support modifying the Performance Charts installation files manually.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# rpm -V VMware-perfcharts|grep \"^..5......\"|grep -v -E \"\\.properties|\\.conf|\\.xml|\\.password\"\n\nIf any files are returned, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Verifying the Security Token Service application code is unchanged from its shipping state is essential for file validation and nonrepudiation of Performance Charts. There is no reason the MD5 hash of the RPM original files should be changed after installation, excluding configuration files.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001749"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "89b018b6-d0f7-4633-924d-960e1fe1dbf7",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256619",
+          "group_tree": [
+            {
+              "id": "V-256619",
+              "title": "SRG-APP-000131-WSR-000073",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256619",
+          "severity": "medium",
+          "group_title": "Performance Charts must only run one webapp.",
+          "rule_id_src": "SV-256619r888348_rule",
+          "rule_id": "SV-256619r888348",
+          "rule_version": "VCPF-70-000009",
+          "rule_title": "Performance Charts must only run one webapp.",
+          "fix_text": "For each unexpected directory returned in the check, run the following command:\n\n# rm /usr/lib/vmware-perfcharts/tc-instance/webapps/<NAME>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# ls -A /usr/lib/vmware-perfcharts/tc-instance/webapps\n\nExpected result:\n\nstatsreport\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "VMware ships Performance Charts on the vCenter Server Appliance (VCSA)with one webapp. Any other path is potentially malicious and must be removed.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001749"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "84171d90-d8a5-4b05-8970-2b1815a89e27",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256620",
+          "group_tree": [
+            {
+              "id": "V-256620",
+              "title": "SRG-APP-000141-WSR-000015",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256620",
+          "severity": "medium",
+          "group_title": "Performance Charts must not be configured with unsupported realms.",
+          "rule_id_src": "SV-256620r888351_rule",
+          "rule_id": "SV-256620r888351",
+          "rule_version": "VCPF-70-000010",
+          "rule_title": "Performance Charts must not be configured with unsupported realms.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nRemove the <Realm> node returned in the check.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep UserDatabaseRealm /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nIf the command produces any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Performance Charts performs user authentication at the application level and not through Tomcat. Depending on the vCenter Server Appliance (VCSA) version, Performance Charts may come configured with a \"UserDatabaseRealm\". This should be removed as part of eliminating unnecessary features.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "244bd569-aae6-4e33-9e19-8c635586c0c9",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256621",
+          "group_tree": [
+            {
+              "id": "V-256621",
+              "title": "SRG-APP-000141-WSR-000075",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256621",
+          "severity": "medium",
+          "group_title": "Performance Charts must be configured to limit access to internal packages.",
+          "rule_id_src": "SV-256621r888354_rule",
+          "rule_id": "SV-256621r888354",
+          "rule_version": "VCPF-70-000011",
+          "rule_title": "Performance Charts must be configured to limit access to internal packages.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-sso/vmware-sts/conf/catalina.properties\n\nEnsure the \"package.access\" line is configured as follows:\n\npackage.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.jasper.,org.apache.tomcat.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep \"package.access\" /usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties\n\nExpected result:\n\npackage.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.jasper.,org.apache.tomcat.\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "The \"package.access\" entry in the \"catalina.properties\" file implements access control at the package level. When properly configured, a Security Exception will be reported if an errant or malicious webapp attempts to access the listed internal classes directly or if a new class is defined under the protected packages. \n\nPerformance Charts comes preconfigured with the appropriate packages defined in \"package.access\", and this configuration must be maintained.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "2338cb2b-b5ee-4b0e-9e11-a5f704f91c42",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256622",
+          "group_tree": [
+            {
+              "id": "V-256622",
+              "title": "SRG-APP-000141-WSR-000081",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256622",
+          "severity": "medium",
+          "group_title": "Performance Charts must have Multipurpose Internet Mail Extensions (MIMEs) that invoke operating system shell programs disabled.",
+          "rule_id_src": "SV-256622r888357_rule",
+          "rule_id": "SV-256622r888357",
+          "rule_version": "VCPF-70-000012",
+          "rule_title": "Performance Charts must have Multipurpose Internet Mail Extensions (MIMEs) that invoke operating system shell programs disabled.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nRemove any and all of the following nodes lines:\n\n<mime-type>application/x-csh</mime-type>\n<mime-type>application/x-shar</mime-type>\n<mime-type>application/x-sh</mime-type>\n<mime-type>application/x-ksh</mime-type>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts\n\nNote: Delete the entire mime-mapping node for the target mime-type.\n\nExample:\n\n<mime-mapping>\n    <extension>sh</extension>\n    <mime-type>application/x-sh</mime-type>\n</mime-mapping>",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep -En '(x-csh<)|(x-sh<)|(x-shar<)|(x-ksh<)' /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nIf the command produces any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "MIME mappings tell Performance Charts what type of program various file types and extensions are and what external utilities or programs are needed to execute the file type. By ensuring various shell script MIME types are not included in \"web.xml\", the server is protected against malicious users tricking the server into executing shell command files.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "e2069101-96ec-45a2-8634-42ae0ca08e5e",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256623",
+          "group_tree": [
+            {
+              "id": "V-256623",
+              "title": "SRG-APP-000141-WSR-000083",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256623",
+          "severity": "medium",
+          "group_title": "Performance Charts must have mappings set for Java servlet pages.",
+          "rule_id_src": "SV-256623r888360_rule",
+          "rule_id": "SV-256623r888360",
+          "rule_version": "VCPF-70-000013",
+          "rule_title": "Performance Charts must have mappings set for Java servlet pages.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nInside the <web-app> parent node, add the following:\n\n<servlet-mapping>\n    <servlet-name>jsp</servlet-name>\n    <url-pattern>*.jsp</url-pattern>\n    <url-pattern>*.jspx</url-pattern>\n</servlet-mapping>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command: \n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/servlet-mapping/servlet-name[text()=\"jsp\"]/parent::servlet-mapping' -\n\nExpected result:\n\n<servlet-mapping>\n    <servlet-name>jsp</servlet-name>\n    <url-pattern>*.jsp</url-pattern>\n    <url-pattern>*.jspx</url-pattern>\n</servlet-mapping>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Resource mapping is the process of tying a particular file type to a process in the web server that can serve that type of file to a requesting client and identify which file types are not to be delivered to a client.\n\nBy not specifying which files can and cannot be served to a user, the web server could deliver to a user web server configuration files, log files, password files, etc. \n\nBecause Tomcat is a Java-based web server, the main file extension used is *.jsp. This check ensures the *.jsp and *.jspx file types have been properly mapped to servlets.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "9538ef8a-9a79-42f6-9bb5-ed1f7198dbf3",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256624",
+          "group_tree": [
+            {
+              "id": "V-256624",
+              "title": "SRG-APP-000141-WSR-000085",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256624",
+          "severity": "medium",
+          "group_title": "Performance Charts must not have the Web Distributed Authoring (WebDAV) servlet installed.",
+          "rule_id_src": "SV-256624r888363_rule",
+          "rule_id": "SV-256624r888363",
+          "rule_version": "VCPF-70-000014",
+          "rule_title": "Performance Charts must not have the Web Distributed Authoring (WebDAV) servlet installed.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nFind the <servlet-name>webdav</servlet-name> node and remove the entire parent <servlet> block.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command: \n\n# grep -n 'webdav' /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nIf the command produces any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "WebDAV is an extension to the HTTP protocol that, when developed, was meant to allow users to create, change, and move documents on a server, typically a web server or web share. WebDAV is not widely used and has serious security concerns because it may allow clients to modify unauthorized files on the web server and must therefore be disabled.\n\nTomcat uses the \"org.apache.catalina.servlets.WebdavServlet\" servlet to provide WebDAV services. Because the WebDAV service has been found to have an excessive number of vulnerabilities, this servlet must not be installed. Performance Charts does not configure WebDAV by default.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "c40b0cce-b9de-4830-850a-4c63f9bb3571",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256625",
+          "group_tree": [
+            {
+              "id": "V-256625",
+              "title": "SRG-APP-000141-WSR-000086",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256625",
+          "severity": "medium",
+          "group_title": "Performance Charts must be configured with memory leak protection.",
+          "rule_id_src": "SV-256625r888366_rule",
+          "rule_id": "SV-256625r888366",
+          "rule_version": "VCPF-70-000015",
+          "rule_title": "Performance Charts must be configured with memory leak protection.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nNavigate to the <Server> node.\n\nAdd '<Listener className=\"org.apache.catalina.core.JreMemoryLeakPreventionListener\"/>' to the <Server> node.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command: \n\n# grep JreMemoryLeakPreventionListener /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\n<Listener className=\"org.apache.catalina.core.JreMemoryLeakPreventionListener\"/>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "The Java Runtime environment can cause a memory leak or lock files under certain conditions. Without memory leak protection, Performance Chart can continue to consume system resources, which will lead to \"OutOfMemoryErrors\" when reloading web applications.\n\nMemory leaks occur when JRE code uses the context class loader to load a singleton. This will cause a memory leak if a web application class loader happens to be the context class loader at the time. The \"JreMemoryLeakPreventionListener\" class is designed to initialize these singletons when Tomcat's common class loader is the context class loader. Proper use of JRE memory leak protection will ensure the hosted application does not consume system resources and cause an unstable environment.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "5da24ded-c5fc-4829-be5b-84469b937a01",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256626",
+          "group_tree": [
+            {
+              "id": "V-256626",
+              "title": "SRG-APP-000141-WSR-000087",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256626",
+          "severity": "medium",
+          "group_title": "Performance Charts must not have any symbolic links in the web content directory tree.",
+          "rule_id_src": "SV-256626r888369_rule",
+          "rule_id": "SV-256626r888369",
+          "rule_version": "VCPF-70-000016",
+          "rule_title": "Performance Charts must not have any symbolic links in the web content directory tree.",
+          "fix_text": "At the command prompt, run the following command:\n\nNote: Replace <file_name> for the name of any files that were returned.\n\n# unlink <file_name>\n\nRepeat the command for each file that was returned.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# find /usr/lib/vmware-perfcharts/tc-instance/webapps/ -type l -ls\n\nIf the command produces any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "A web server is designed to deliver content and execute scripts or applications on the request of a client or user. Containing user requests to files in the directory tree of the hosted web application and limiting the execution of scripts and applications guarantees the user is not accessing information protected outside the application's realm.\n\nBy checking that no symbolic links exist in the document root, the web server is protected from users jumping outside the hosted application directory tree and gaining access to the other directories, including the system root.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000381"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "a3e5ae98-f578-4fba-8563-890e136ea909",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256627",
+          "group_tree": [
+            {
+              "id": "V-256627",
+              "title": "SRG-APP-000211-WSR-000030",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256627",
+          "severity": "medium",
+          "group_title": "Performance Charts directory tree must have permissions in an out-of-the-box state.",
+          "rule_id_src": "SV-256627r888372_rule",
+          "rule_id": "SV-256627r888372",
+          "rule_version": "VCPF-70-000017",
+          "rule_title": "Performance Charts directory tree must have permissions in an out-of-the-box state.",
+          "fix_text": "At the command prompt, run the following command:\n\n# chown root:root <file_name>\n\nRepeat the command for each file that was returned.\n\nNote: Replace <file_name> for the name of the file that was returned.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# find /usr/lib/vmware-perfcharts/tc-instance/webapps/ -xdev -type f -a '(' -not -user root -a -not -user perfcharts -o -not -group root ')' -exec ls -la {} \\;\n\nIf the command produces any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Accounts on a web server are to be kept to a minimum. Only administrators, web managers, developers, auditors, and web authors require accounts on the machine hosting the web server. The resources to which these accounts have access must also be closely monitored and controlled. Performance Charts files must be adequately protected with correct permissions as applied out of the box.\n\nSatisfies: SRG-APP-000211-WSR-000030, SRG-APP-000380-WSR-000072",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001082",
+            "CCI-001813"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "11f36f65-b54e-44f7-adaa-810048270f82",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256628",
+          "group_tree": [
+            {
+              "id": "V-256628",
+              "title": "SRG-APP-000225-WSR-000140",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256628",
+          "severity": "medium",
+          "group_title": "Performance Charts must fail to a known safe state if system initialization fails, shutdown fails, or aborts fail.",
+          "rule_id_src": "SV-256628r888375_rule",
+          "rule_id": "SV-256628r888375",
+          "rule_version": "VCPF-70-000018",
+          "rule_title": "Performance Charts must fail to a known safe state if system initialization fails, shutdown fails, or aborts fail.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties\n\nAdd or change the following line:\n\norg.apache.catalina.startup.EXIT_ON_INIT_FAILURE=true\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command line, run the following command:\n\n# grep EXIT_ON_INIT_FAILURE /usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties\n\nExpected result:\n\norg.apache.catalina.startup.EXIT_ON_INIT_FAILURE = true\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Determining a safe state for failure and weighing that against a potential denial of service for users depends on what type of application the web server is hosting. For Performance Charts, it is preferable that the service abort startup on any initialization failure rather than continuing in a degraded, and potentially insecure, state.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001190"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "2ed6f18c-b08b-4df8-b3a9-4a3e1f14b0c0",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256629",
+          "group_tree": [
+            {
+              "id": "V-256629",
+              "title": "SRG-APP-000246-WSR-000149",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256629",
+          "severity": "medium",
+          "group_title": "Performance Charts must limit the number of allowed connections.",
+          "rule_id_src": "SV-256629r888378_rule",
+          "rule_id": "SV-256629r888378",
+          "rule_version": "VCPF-70-000019",
+          "rule_title": "Performance Charts must limit the number of allowed connections.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nConfigure the <Connector> node with the value:\n\nacceptCount=\"300\"\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Connector/@acceptCount' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nacceptCount=\"300\"\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Limiting the number of established connections to Performance Charts is a basic denial-of-service protection. Servers where the limit is too high or unlimited could run out of system resources and negatively affect system availability.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001094"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "56da7b98-7a53-4f7e-8d86-cc5d949f3171",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256630",
+          "group_tree": [
+            {
+              "id": "V-256630",
+              "title": "SRG-APP-000251-WSR-000157",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256630",
+          "severity": "medium",
+          "group_title": "Performance Charts must set \"URIEncoding\" to UTF-8.",
+          "rule_id_src": "SV-256630r888381_rule",
+          "rule_id": "SV-256630r888381",
+          "rule_version": "VCPF-70-000020",
+          "rule_title": "Performance Charts must set \"URIEncoding\" to UTF-8.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nConfigure the <Connector> node with the value 'URIEncoding=\"UTF-8\"'.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Connector/@URIEncoding' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nURIEncoding=\"UTF-8\"\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Invalid user input occurs when a user inserts data or characters into a hosted application's data entry field and the hosted application is unprepared to process that data. This results in unanticipated application behavior, potentially leading to an application compromise. Invalid user input is one of the primary methods employed when attempting to compromise an application. \n\nAn attacker can also enter Unicode characters into hosted applications in an effort to break out of the document home or root home directory or to bypass security checks. \n\nPerformance Charts must be configured to use a consistent character set via the \"URIEncoding\" attribute on the Connector nodes.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001310"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "28e6f021-2d14-47c1-8ea6-89b8c8a0c326",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256631",
+          "group_tree": [
+            {
+              "id": "V-256631",
+              "title": "SRG-APP-000251-WSR-000157",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256631",
+          "severity": "medium",
+          "group_title": "Performance Charts must use the \"setCharacterEncodingFilter\" filter.",
+          "rule_id_src": "SV-256631r888384_rule",
+          "rule_id": "SV-256631r888384",
+          "rule_version": "VCPF-70-000021",
+          "rule_title": "Performance Charts must use the \"setCharacterEncodingFilter\" filter.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml\n\nConfigure the <web-app> node with the child nodes listed below:\n\n<filter-mapping>\n    <filter-name>setCharacterEncodingFilter</filter-name>\n    <url-pattern>/*</url-pattern>\n</filter-mapping>\n\n   <filter>\n      <filter-name>setCharacterEncodingFilter</filter-name>\n      <filter-class>\n         org.apache.catalina.filters.SetCharacterEncodingFilter\n      </filter-class>\n      <init-param>\n         <param-name>encoding</param-name>\n         <param-value>UTF-8</param-value>\n      </init-param>\n      <init-param>\n         <param-name>ignore</param-name>\n         <param-value>true</param-value>\n      </init-param>\n      <async-supported>true</async-supported>\n   </filter>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n#  xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/filter-mapping/filter-name[text()=\"setCharacterEncodingFilter\"]/parent::filter-mapping' -\n\nExpected result:\n\n<filter-mapping>\n    <filter-name>setCharacterEncodingFilter</filter-name>\n    <url-pattern>/*</url-pattern>\n</filter-mapping>\n\nIf the output is does not match the expected result, this is a finding.\n\nAt the command prompt, run the following command:\n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/filter/filter-name[text()=\"setCharacterEncodingFilter\"]/parent::filter' -\n\nExpected result:\n\n   <filter>\n      <filter-name>setCharacterEncodingFilter</filter-name>\n      <filter-class>\n         org.apache.catalina.filters.SetCharacterEncodingFilter\n      </filter-class>\n      <init-param>\n         <param-name>encoding</param-name>\n         <param-value>UTF-8</param-value>\n      </init-param>\n      <init-param>\n         <param-name>ignore</param-name>\n         <param-value>true</param-value>\n      </init-param>\n      <async-supported>true</async-supported>\n   </filter>\n\nIf the output is does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Invalid user input occurs when a user inserts data or characters into a hosted application's data entry field and the hosted application is unprepared to process that data. This results in unanticipated application behavior, potentially leading to an application compromise. Invalid user input is one of the primary methods employed when attempting to compromise an application. \n\nAn attacker can also enter Unicode characters into hosted applications in an effort to break out of the document home or root home directory or to bypass security checks.\n\nVMware uses the standard Tomcat \"SetCharacterEncodingFilter\" to provide a layer of defense against character encoding attacks. Filters are Java objects that performs filtering tasks on the request to a resource (a servlet or static content), the response from a resource, or both.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001310"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "0f52b1b3-3149-4782-8ed0-9cb5f48fe490",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256632",
+          "group_tree": [
+            {
+              "id": "V-256632",
+              "title": "SRG-APP-000266-WSR-000142",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256632",
+          "severity": "medium",
+          "group_title": "Performance Charts must set the welcome-file node to a default web page.",
+          "rule_id_src": "SV-256632r888387_rule",
+          "rule_id": "SV-256632r888387",
+          "rule_version": "VCPF-70-000022",
+          "rule_title": "Performance Charts must set the welcome-file node to a default web page.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nAdd the following section under the <web-apps> node:\n\n<welcome-file-list>\n    <welcome-file>index.html</welcome-file>\n    <welcome-file>index.htm</welcome-file>\n    <welcome-file>index.jsp</welcome-file>\n</welcome-file-list>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n \n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/welcome-file-list' -\n\nExpected result:\n\n<welcome-file-list>\n    <welcome-file>index.html</welcome-file>\n    <welcome-file>index.htm</welcome-file>\n    <welcome-file>index.jsp</welcome-file>\n  </welcome-file-list>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Enumeration techniques, such as URL parameter manipulation, rely on being able to obtain information about the web server's directory structure by locating directories without default pages. In this scenario, the web server will display to the user a listing of the files in the directory being accessed.\n\nBy having a default hosted application web page, the anonymous web user will not obtain directory browsing information or an error message that reveals the server type and version. Ensuring every document directory has an \"index.jsp\" (or equivalent) file is one approach to mitigating the vulnerability.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "33fc7c24-1079-401f-864b-3670c1655d2e",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256633",
+          "group_tree": [
+            {
+              "id": "V-256633",
+              "title": "SRG-APP-000266-WSR-000142",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256633",
+          "severity": "medium",
+          "group_title": "Performance Charts must not show directory listings.",
+          "rule_id_src": "SV-256633r888390_rule",
+          "rule_id": "SV-256633r888390",
+          "rule_version": "VCPF-70-000023",
+          "rule_title": "Performance Charts must not show directory listings.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nSet the <param-value> to \"false\" in all <param-name>listing</param-name> nodes.\n\nNote: The setting should look like the following:\n\n<init-param>\n      <param-name>listings</param-name>\n      <param-value>false</param-value>\n</init-param>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '//param-name[text()=\"listings\"]/parent::init-param' -\n\nExpected result:\n\n<init-param>\n      <param-name>listings</param-name>\n      <param-value>false</param-value>\n</init-param>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Enumeration techniques, such as URL parameter manipulation, rely on being able to obtain information about the web server's directory structure by locating directories without default pages. In this scenario, the web server will display to the user a listing of the files in the directory being accessed. Ensuring directory listing is disabled is one approach to mitigating the vulnerability.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "615c4250-f036-4952-a413-8f9e09dedb34",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256634",
+          "group_tree": [
+            {
+              "id": "V-256634",
+              "title": "SRG-APP-000266-WSR-000159",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256634",
+          "severity": "medium",
+          "group_title": "Performance Charts must be configured to show error pages with minimal information.",
+          "rule_id_src": "SV-256634r888393_rule",
+          "rule_id": "SV-256634r888393",
+          "rule_version": "VCPF-70-000024",
+          "rule_title": "Performance Charts must be configured to show error pages with minimal information.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml\n\nAdd the following section under the <web-apps> node:\n\n<error-page>\n    <exception-type>java.lang.Throwable</exception-type>\n    <location>/http_error.jsp</location>\n</error-page>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n#  xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/error-page/exception-type[\"text()=java.lang.Throwable\"]/parent::error-page' -\n\nExpected result:\n\n<error-page>\n    <exception-type>java.lang.Throwable</exception-type>\n    <location>/http_error.jsp</location>\n</error-page>\n\nIf the output does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Web servers will often display error messages to client users, including enough information to aid in the debugging of the error. The information given back in error messages may display the web server type, version, patches installed, plug-ins and modules installed, type of code being used by the hosted application, and any backends being used for data storage.\n\nThis information could be used by an attacker to blueprint what type of attacks might be successful. Therefore, Performance Charts must be configured with a catchall error handler that redirects to a standard \"error.jsp\".",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "be9bb186-d1e1-4d4e-b084-2dd5644f47c5",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256635",
+          "group_tree": [
+            {
+              "id": "V-256635",
+              "title": "SRG-APP-000266-WSR-000159",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256635",
+          "severity": "medium",
+          "group_title": "Performance Charts must be configured to not show error reports.",
+          "rule_id_src": "SV-256635r888396_rule",
+          "rule_id": "SV-256635r888396",
+          "rule_version": "VCPF-70-000025",
+          "rule_title": "Performance Charts must be configured to not show error reports.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nLocate the following Host block:\n\n<Host ...>\n...\n</Host>\n\nInside this block, add the following on a new line:\n\n<Valve className=\"org.apache.catalina.valves.ErrorReportValve\" showServerInfo=\"false\" showReport=\"false\"/>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Engine/Host/Valve[@className=\"org.apache.catalina.valves.ErrorReportValve\"]' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\n<Valve className=\"org.apache.catalina.valves.ErrorReportValve\" showServerInfo=\"false\" showReport=\"false\"/>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Web servers will often display error messages to client users, including enough information to aid in the debugging of the error. The information given back in error messages may display the web server type, version, patches installed, plug-ins and modules installed, type of code being used by the hosted application, and any backends being used for data storage.\n\nThis information could be used by an attacker to blueprint what type of attacks might be successful. Therefore, Performance Charts must be configured with a catchall error handler that redirects to a standard \"error.jsp\".",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "aee5b69e-eb9c-499d-a915-8c9bbba60bff",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256636",
+          "group_tree": [
+            {
+              "id": "V-256636",
+              "title": "SRG-APP-000266-WSR-000159",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256636",
+          "severity": "medium",
+          "group_title": "Performance Charts must hide the server version.",
+          "rule_id_src": "SV-256636r888399_rule",
+          "rule_id": "SV-256636r888399",
+          "rule_version": "VCPF-70-000026",
+          "rule_title": "Performance Charts must hide the server version.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nConfigure the <Connector> node with the following value:\n\nserver=\"Anonymous\"\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --xpath '/Server/Service/Connector/@server' /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nExpected result:\n\nserver=\"Anonymous\"\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Web servers will often display error messages to client users, including enough information to aid in the debugging of the error. The information given back in error messages may display the web server type, version, patches installed, plug-ins and modules installed, type of code being used by the hosted application, and any backends being used for data storage.\n\nThis information could be used by an attacker to blueprint what type of attacks might be successful. Therefore, Performance Charts must be configured with a catchall error handler that redirects to a standard \"error.jsp\".",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "30090db7-ffee-414a-bb70-dc2f7de1b7e6",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256637",
+          "group_tree": [
+            {
+              "id": "V-256637",
+              "title": "SRG-APP-000266-WSR-000160",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256637",
+          "severity": "medium",
+          "group_title": "Performance Charts must not enable support for TRACE requests.",
+          "rule_id_src": "SV-256637r888402_rule",
+          "rule_id": "SV-256637r888402",
+          "rule_version": "VCPF-70-000027",
+          "rule_title": "Performance Charts must not enable support for TRACE requests.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nLocate and navigate to 'allowTrace=\"true\"'.\n\nRemove the 'allowTrace=\"true\"' setting.\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep allowTrace /usr/lib/vmware-perfcharts/tc-instance/conf/server.xml\n\nIf \"allowTrace\" is set to \"true\", this is a finding.\n\nIf no line is returned, this is not a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "\"TRACE\" is a technique for a user to request internal information about Tomcat. This is useful during product development but should not be enabled in production.\n\nAllowing an attacker to conduct a TRACE operation against Performance Charts will expose information that would be useful to perform a more targeted attack. Performance Charts provides the \"allowTrace\" parameter as means to disable responding to TRACE requests.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "84b413f3-3a9a-4fdc-a087-f00c81d876ad",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256638",
+          "group_tree": [
+            {
+              "id": "V-256638",
+              "title": "SRG-APP-000266-WSR-000160",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256638",
+          "severity": "medium",
+          "group_title": "Performance Charts must have the debug option turned off.",
+          "rule_id_src": "SV-256638r888405_rule",
+          "rule_id": "SV-256638r888405",
+          "rule_version": "VCPF-70-000028",
+          "rule_title": "Performance Charts must have the debug option turned off.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nNavigate to all <debug> nodes that are not set to \"0\".\n\nSet the <param-value> to \"0\" in all <param-name>debug</param-name> nodes.\n\nNote: The debug setting should look like the following:\n\n<init-param>\n      <param-name>debug</param-name>\n      <param-value>0</param-value>\n</init-param>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n \n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '//param-name[text()=\"debug\"]/parent::init-param' -\n\nExpected result:\n\n<init-param>\n      <param-name>debug</param-name>\n      <param-value>0</param-value>\n</init-param>\n\nIf the output of the command does not match the expected result, this is a finding.\n\nIf no lines is returned, this is not a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Information needed by an attacker to begin looking for possible vulnerabilities in a web server includes any information about the web server and plug-ins or modules being used. When debugging or trace information is enabled in a production web server, information about the web server, such as web server type, version, patches installed, plug-ins and modules installed, type of code being used by the hosted application, and any backends being used for data storage may be displayed. Because this information may be placed in logs and general messages during normal operation of the web server, an attacker does not need to cause an error condition to gain this information.\n\nThe Performance Charts Service can be configured to set the debugging level. By setting the debugging level to zero, no debugging information will be provided to a malicious user.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001312"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "c84e08b0-a270-4a30-ba20-1e943176080b",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256639",
+          "group_tree": [
+            {
+              "id": "V-256639",
+              "title": "SRG-APP-000357-WSR-000150",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256639",
+          "severity": "medium",
+          "group_title": "Performance Charts must properly configure log sizes and rotation.",
+          "rule_id_src": "SV-256639r888408_rule",
+          "rule_id": "SV-256639r888408",
+          "rule_version": "VCPF-70-000029",
+          "rule_title": "Performance Charts must properly configure log sizes and rotation.",
+          "fix_text": "Navigate to and open:\n\n/etc/vmware-perfcharts/log4j.properties\n\nEnsure the appender.rolling entries are configured as follows:\n\nappender.rolling.type = RollingFile\nappender.rolling.name = FileLog\nappender.rolling.fileName = /var/log/vmware/perfcharts/stats.log\nappender.rolling.filePattern = /var/log/vmware/perfcharts/stats-%i.log\nappender.rolling.policies.type = Policies\nappender.rolling.policies.size.type = SizeBasedTriggeringPolicy\nappender.rolling.policies.size.size = 5MB\nappender.rolling.strategy.type = DefaultRolloverStrategy\nappender.rolling.strategy.max = 10\nappender.rolling.layout.type = PatternLayout\nappender.rolling.layout.pattern = %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%t %-5p %c] %m%n\nappender.rolling.level = info\n\nNote: This fix is currently only applicable to 7.0 U2+ and is different in older versions.",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# rpm -V VMware-perfcharts|grep log4j|grep \"^..5......\"\n\nIf the command returns any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "To ensure the logging mechanism used by the web server has sufficient storage capacity in which to write the logs, the logging mechanism must be able to allocate log record storage capacity. Performance Charts properly sizes and configures log rotation during installation. This default configuration must be verified.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001849"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "4eea66d5-b75b-4319-8326-692a9c0a81a6",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256640",
+          "group_tree": [
+            {
+              "id": "V-256640",
+              "title": "SRG-APP-000358-WSR-000163",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256640",
+          "severity": "medium",
+          "group_title": "Rsyslog must be configured to monitor and ship Performance Charts log files.",
+          "rule_id_src": "SV-256640r888411_rule",
+          "rule_id": "SV-256640r888411",
+          "rule_version": "VCPF-70-000030",
+          "rule_title": "Rsyslog must be configured to monitor and ship Performance Charts log files.",
+          "fix_text": "Navigate to and open:\n\n/etc/vmware-syslog/vmware-services-perfcharts.conf\n\nCreate the file if it does not exist.\n\nSet the contents of the file as follows:\n\n#stats\ninput(type=\"imfile\"\n      File=\"/var/log/vmware/perfcharts/stats.log\"\n      Tag=\"perfcharts-stats\"\n      Severity=\"info\"\n      Facility=\"local0\")\n#localhost_access_log\ninput(type=\"imfile\"\n      File=\"/var/log/vmware/perfcharts/localhost_access_log.txt\"\n      Tag=\"perfcharts-localhost_access\"\n      Severity=\"info\"\n      Facility=\"local0\")\n#vmware-perfcharts-gc.log\ninput(type=\"imfile\"\n      File=\"/var/log/vmware/perfcharts/vmware-perfcharts-gc.log.*.current\"\n      Tag=\"perfcharts-gc\"\n      Severity=\"info\"\n      Facility=\"local0\")\n#vmware-perfcharts-runtime.log\ninput(type=\"imfile\"\n      File=\"/var/log/vmware/perfcharts/vmware-perfcharts-runtime.log.std*\"\n      Tag=\"perfcharts-runtime\"\n      Severity=\"info\"\n      Facility=\"local0\")",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# rpm -V VMware-visl-integration|grep vmware-services-perfcharts.conf|grep \"^..5......\"\n\nIf the command returns any output, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Performance Charts produces several logs that must be offloaded from the originating system. This information can then be used for diagnostic purposes, forensics purposes, or other purposes relevant to ensuring the availability and integrity of the hosted application.\n\nSatisfies: SRG-APP-000358-WSR-000163, SRG-APP-000125-WSR-000071",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001348",
+            "CCI-001851"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "e631cce9-4a93-4ff2-82b4-943d4090c416",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256641",
+          "group_tree": [
+            {
+              "id": "V-256641",
+              "title": "SRG-APP-000383-WSR-000175",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256641",
+          "severity": "medium",
+          "group_title": "Performance Charts must be configured with the appropriate ports.",
+          "rule_id_src": "SV-256641r888414_rule",
+          "rule_id": "SV-256641r888414",
+          "rule_version": "VCPF-70-000031",
+          "rule_title": "Performance Charts must be configured with the appropriate ports.",
+          "fix_text": "Navigate to and open:\n\n/etc/vmware-eam/catalina.properties\n\nNavigate to the ports specification section.\n\nAdd or modify the following lines:\n\nbio.http.port=13080\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep '^bio\\.' /usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties\n\nExpected result:\n\nbio.http.port=13080\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "Web servers provide numerous processes, features, and functionalities that use TCP/IP ports. Some of these processes may be deemed unnecessary or too unsecure to run on a production system. The ports that Performance Charts listens on are configured in the \"catalina.properties\" file and must be verified as accurate to their shipping state.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-001762"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "be08267d-b067-444b-ac5c-df0e38b12b67",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256642",
+          "group_tree": [
+            {
+              "id": "V-256642",
+              "title": "SRG-APP-000435-WSR-000147",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256642",
+          "severity": "medium",
+          "group_title": "Performance Charts must disable the shutdown port.",
+          "rule_id_src": "SV-256642r888417_rule",
+          "rule_id": "SV-256642r888417",
+          "rule_version": "VCPF-70-000032",
+          "rule_title": "Performance Charts must disable the shutdown port.",
+          "fix_text": "Navigate to and open:\n\n/etc/vmware-eam/catalina.properties\n\nNavigate to the ports specification section.\n\nAdd or modify the following line:\n\nbase.shutdown.port=-1\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# grep base.shutdown.port /usr/lib/vmware-perfcharts/tc-instance/conf/catalina.properties\n\nExpected result:\n\nbase.shutdown.port=-1\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "An attacker has at least two reasons to stop a web server. The first is to cause a denial of service, and the second is to put in place changes the attacker made to the web server configuration.\n\nIf the Tomcat shutdown port feature is enabled, a shutdown signal can be sent to Performance Charts through this port. To ensure availability, the shutdown port must be disabled.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-002385"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "1fb8e28d-6c2e-4552-b53d-babdd6afa81a",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256643",
+          "group_tree": [
+            {
+              "id": "V-256643",
+              "title": "SRG-APP-000439-WSR-000155",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256643",
+          "severity": "medium",
+          "group_title": "Performance Charts must set the secure flag for cookies.",
+          "rule_id_src": "SV-256643r888420_rule",
+          "rule_id": "SV-256643r888420",
+          "rule_version": "VCPF-70-000033",
+          "rule_title": "Performance Charts must set the secure flag for cookies.",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml\n\nNavigate to the <session-config> node and configure it as follows:\n\n<session-config>\n    <cookie-config>\n      <http-only>true</http-only>\n      <secure>true</secure>\n    </cookie-config>\n    <session-timeout>6</session-timeout>\n</session-config>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n \n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/webapps/statsreport/WEB-INF/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/session-config/cookie-config/secure' -\n\nExpected result:\n\n<secure>true</secure>\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "The secure flag is an option that can be set by the application server when sending a new cookie to the user within an HTTP response. The purpose of the secure flag is to prevent cookies from being observed by unauthorized parties due to the transmission of a cookie in clear text.\n\nBy setting the secure flag, the browser will prevent the transmission of a cookie over an unencrypted channel. The Performance Charts is configured to only be accessible over a Transport Layer Security (TLS) tunnel, but this cookie flag is still a recommended best practice.",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-002418"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "8d0cd2f1-2a12-4d4e-aa40-5a39a3dc9061",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        },
+        {
+          "group_id_src": "V-256644",
+          "group_tree": [
+            {
+              "id": "V-256644",
+              "title": "SRG-APP-000516-WSR-000174",
+              "description": "<GroupDescription></GroupDescription>"
+            }
+          ],
+          "group_id": "V-256644",
+          "severity": "medium",
+          "group_title": "Performance Charts default servlet must be set to \"readonly\".",
+          "rule_id_src": "SV-256644r888423_rule",
+          "rule_id": "SV-256644r888423",
+          "rule_version": "VCPF-70-000034",
+          "rule_title": "Performance Charts default servlet must be set to \"readonly\".",
+          "fix_text": "Navigate to and open:\n\n/usr/lib/vmware-perfcharts/tc-instance/conf/web.xml\n\nNavigate to the /<web-apps>/<servlet>/<servlet-name>default</servlet-name>/ node and remove the following node:\n\n<init-param>\n      <param-name>readonly</param-name>\n      <param-value>false</param-value>\n</init-param>\n\nRestart the service with the following command:\n\n# vmon-cli --restart perfcharts",
+          "weight": "10.0",
+          "check_content": "At the command prompt, run the following command:\n\n# xmllint --format /usr/lib/vmware-perfcharts/tc-instance/conf/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/servlet/servlet-name[text()=\"default\"]/../init-param/param-name[text()=\"readonly\"]/../param-value[text()=\"false\"]' -\n\nExpected result:\n\nXPath set is empty\n\nIf the output of the command does not match the expected result, this is a finding.",
+          "check_content_ref": {
+            "href": "U_VMW_vSphere_7-0_vCA_Perfcharts_STIG_V1R1_Manual-xccdf.xml",
+            "name": "M"
+          },
+          "classification": "Unclassified",
+          "discussion": "The default servlet (or DefaultServlet) is a special servlet provided with Tomcat that is called when no other suitable page is found in a particular folder. The DefaultServlet serves static resources as well as directory listings. The DefaultServlet is configured by default with the \"readonly\" parameter set to \"true\" where HTTP commands such as PUT and DELETE are rejected.\n\nChanging this to \"false\" allows clients to delete or modify static resources on the server and to upload new resources. DefaultServlet \"readonly\" must be set to \"true\", either literally or by absence (default).",
+          "false_positives": "",
+          "false_negatives": "",
+          "documentable": "false",
+          "security_override_guidance": "",
+          "potential_impacts": "",
+          "third_party_tools": "",
+          "ia_controls": "",
+          "responsibility": "",
+          "mitigations": "",
+          "mitigation_control": "",
+          "legacy_ids": [],
+          "ccis": [
+            "CCI-000366"
+          ],
+          "reference_identifier": "5522",
+          "uuid": "805fcd80-4cd5-4f8e-ba19-03108b25b60f",
+          "stig_uuid": "9b17f4fe-6a4e-4950-aa02-2fb2270292dd",
+          "status": "not_reviewed",
+          "overrides": {},
+          "comments": "",
+          "finding_details": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 metadata:
   host: win-srv-01
   raw_type: audit
-  timestamp: '2026-03-07T09:46:45+00:00'
+  timestamp: '2026-03-02T22:59:54+00:00'
   engine: ncs_collector_callback
 data:
   ansible_facts: {}

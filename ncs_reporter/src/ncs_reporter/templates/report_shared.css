@@ -1237,7 +1237,74 @@ details[open] > .details-box {
   line-height: 1.7;
   color: var(--text);
 }
+/* ==========================================================================
+   Alert Affected Items — expandable detail rows
+   ========================================================================== */
+.alert-expandable { cursor: pointer; }
+.alert-expandable:hover td { background: var(--surface-hover) !important; }
+.alert-expand-hint {
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+  margin-left: var(--space-8);
+  font-style: italic;
+}
+.alert-expandable:hover .alert-expand-hint { color: var(--brand); }
+.alert-expanded td { border-bottom-color: transparent; }
+.alert-detail-row td {
+  padding: 0 !important;
+  background: var(--surface-alt) !important;
+  border-bottom: 1px solid var(--line);
+}
+.alert-affected-items {
+  padding: var(--space-8) var(--space-16) var(--space-12);
+  max-height: 400px;
+  overflow-y: auto;
+}
+.affected-items-table {
+  width: 100%;
+  font-size: var(--text-xs);
+  border-collapse: collapse;
+}
+.affected-items-table th {
+  background: var(--surface);
+  font-weight: 600;
+  text-align: left;
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-soft);
+}
+.affected-items-table td {
+  padding: 3px var(--space-8);
+  border-bottom: 1px solid var(--line-subtle);
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.affected-items-table tbody tr:hover td { background: var(--surface-hover); }
+.affected-items-overflow {
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+  padding: var(--space-6) 0 var(--space-2);
+  font-style: italic;
+}
+.affected-items-list {
+  margin: 0;
+  padding-left: var(--space-20);
+  font-size: var(--text-sm);
+}
+.affected-items-list li { padding: var(--space-2) 0; }
 
+@media print {
+  .alert-detail-row { display: table-row !important; }
+  .alert-expand-hint { display: none !important; }
+  .affected-items-table th { background: #f0f0f0 !important; border: 0.5pt solid #000 !important; }
+  .affected-items-table td { border: 0.5pt solid #ccc !important; background: #fff !important; }
+}
 /* ==========================================================================
    Responsive
    ========================================================================== */

@@ -1,0 +1,54 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu/tasks/ubuntu2404_sitgs/00_prelude.yaml
+# Refactored Ubuntu 24.04 STIG task file.
+# Audit-mode tasks use explicit asserts/shell checks where the STIG check content
+# requires exact command semantics. Remediation-mode tasks use idempotent modules.
+# ansible-lint: skip-file
+
+- name: "Set NCS STIG target type to ubuntu"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_type: "ubuntu"
+  tags:
+    - always
+
+- name: "Set Ubuntu STIG execution phase"
+  ansible.builtin.set_fact:
+    _ubuntu2404_stig_phase: >-
+      {{ _ubuntu_stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+  changed_when: false
+  tags:
+    - always
+
+- name: "DEBUG | Phase and check_mode"
+  ansible.builtin.debug:
+    msg: "phase={{ _ubuntu2404_stig_phase }} check_mode={{ ansible_check_mode }}"
+
+- name: "Ubuntu STIG | Gather package facts"
+  ansible.builtin.package_facts:
+    manager: apt
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Gather service facts"
+  ansible.builtin.service_facts:
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Ensure auditd is installed (remediate only)"
+  ansible.builtin.apt:
+    name: auditd
+    state: present
+  register: _apt_auditd
+  until: _apt_auditd is success
+  retries: 12
+  delay: 10
+  when: not (ansible_check_mode | default(false))
+
+- name: "Ubuntu STIG | Ensure stig.rules exists (remediate only)"
+  ansible.builtin.file:
+    path: /etc/audit/rules.d/stig.rules
+    state: touch
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  when: not (ansible_check_mode | default(false))

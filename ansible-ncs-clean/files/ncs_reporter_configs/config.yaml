@@ -1,2 +1,0 @@
-# ncs-reporter config — schemas and platform config are embedded in schema YAMLs.
-# This directory is scanned for schema overrides when passed via --config-dir.

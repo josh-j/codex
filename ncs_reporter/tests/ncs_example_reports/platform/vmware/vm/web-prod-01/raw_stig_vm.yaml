@@ -2,7 +2,7 @@ metadata:
   host: web-prod-01
   raw_type: stig_vm
   audit_type: stig_vm
-  timestamp: '2026-03-07T09:46:45+00:00'
+  timestamp: '2026-03-02T22:59:54+00:00'
 target_type: vm
 data:
 - id: V-256400

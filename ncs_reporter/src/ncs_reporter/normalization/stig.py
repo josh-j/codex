@@ -13,11 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 def _severity_to_alert(raw_severity: Any) -> str:
-    sev = str(raw_severity or "medium").upper()
+    sev = str(raw_severity or "").upper().replace(" ", "_")
     if sev in ("CAT_I", "HIGH", "SEVERE"):
         return "CRITICAL"
     if sev in ("CAT_II", "MEDIUM", "MODERATE"):
         return "WARNING"
+    if not sev:
+        return "WARNING"  # explicit unknown-default, or "INFO" if you prefer
     return "INFO"
 
 
@@ -45,12 +47,12 @@ def _row_title(item: dict[str, Any]) -> str:
 
 def _row_description(item: dict[str, Any]) -> str:
     return str(
-        item.get("checktext") or item.get("details") or item.get("description") or item.get("finding_details") or ""
+        item.get("checktext") or item.get("details") or item.get("description") or ""
     )
 
 
 def _row_severity(item: dict[str, Any]) -> str:
-    return item.get("severity") or item.get("cat") or item.get("severity_override") or "medium"
+    return item.get("severity") or item.get("cat") or item.get("severity_override") or ""
 
 
 def normalize_stig(raw_bundle: dict[str, Any] | list[dict[str, Any]], stig_target_type: str = "") -> STIGAuditModel:

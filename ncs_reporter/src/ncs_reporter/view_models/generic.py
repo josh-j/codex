@@ -312,6 +312,102 @@ def _render_widget(
     }
 
 
+# ---------------------------------------------------------------------------
+# STIG widget helpers
+# ---------------------------------------------------------------------------
+
+def stig_view_to_node_widgets(
+    stig_host_view: dict[str, Any],
+    include_all_findings: bool = False,
+) -> list[dict[str, Any]]:
+    """Convert a stig_host_view dict into node widget dicts.
+
+    Produces a ``stig_summary`` widget (half-width, always) and a
+    ``stig_findings`` widget for open findings (when any exist).
+    Optionally appends a full findings table when *include_all_findings* is True.
+
+    The returned dicts are appended directly to ``node_view["widgets"]`` and
+    rendered by the ``generic_node_report.html.j2`` template — they bypass
+    ``_render_widget`` entirely since they are not schema-model instances.
+    """
+    target = stig_host_view.get("target", {})
+    summary = stig_host_view.get("summary", {})
+    by_status = summary.get("by_status", {})
+    findings_summary = summary.get("findings", {})
+    findings = stig_host_view.get("findings", [])
+
+    label = (target.get("target_type") or "STIG").upper()
+    # Stable slug for widget IDs — avoids TOC anchor collisions when multiple
+    # STIG types (e.g. esxi + photon) are embedded on the same node report.
+    slug = label.lower().replace(" ", "_")
+
+    open_findings = [
+        f for f in findings
+        if str(f.get("status", "")).lower() in ("open", "fail", "non-compliant")
+    ]
+
+    widgets: list[dict[str, Any]] = [
+        {
+            "id": f"stig-summary-{slug}",
+            "title": f"{label} STIG — Evaluation Summary",
+            "type": "stig_summary",
+            "layout": {"width": "half"},
+            "total": findings_summary.get("total", len(findings)),
+            "by_status": by_status,
+            "by_severity": {
+                "critical": findings_summary.get("critical", 0),
+                "warning": findings_summary.get("warning", 0),
+                "info": findings_summary.get("info", 0),
+            },
+            # Preserve the link to the dedicated STIG host report when it exists
+            "stig_report_url": stig_host_view.get("_report_url"),
+        },
+    ]
+
+    if open_findings:
+        widgets.append({
+            "id": f"stig-open-{slug}",
+            "title": f"{label} STIG — Open Findings ({len(open_findings)})",
+            "type": "stig_findings",
+            "layout": {"width": "full"},
+            "findings": open_findings,
+        })
+
+    if include_all_findings and findings:
+        widgets.append({
+            "id": f"stig-all-{slug}",
+            "title": f"{label} STIG — All Findings ({len(findings)})",
+            "type": "stig_findings",
+            "layout": {"width": "full"},
+            "findings": findings,
+        })
+
+    return widgets
+
+
+def merge_stig_into_node_view(
+    node_view: dict[str, Any],
+    stig_host_views: list[dict[str, Any]],
+    include_all_findings: bool = False,
+) -> None:
+    """Append STIG widgets to an existing node_view in-place.
+
+    Accepts a list so that hosts with multiple STIG audit types (e.g. a vCenter
+    node that has both an ESXi STIG and a VCSA STIG) can all be embedded in a
+    single pass.  Each view produces its own independently slugged widget group,
+    so TOC anchors never collide.
+    """
+    widgets = node_view.setdefault("widgets", [])
+    for stig_view in stig_host_views:
+        widgets.extend(
+            stig_view_to_node_widgets(stig_view, include_all_findings=include_all_findings)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Node + fleet view builders
+# ---------------------------------------------------------------------------
+
 def build_generic_node_view(
     schema: ReportSchema,
     hostname: str,
@@ -330,7 +426,13 @@ def build_generic_node_view(
     fields = normalized["fields"]
     alerts = normalized["alerts"]
     # Sort alerts by severity (CRITICAL first)
-    alerts.sort(key=lambda a: (a.get("severity") != "CRITICAL", a.get("category", ""), a.get("message", "")))
+    _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
+
+    alerts.sort(key=lambda a: (
+        _SEVERITY_ORDER.get(a.get("severity", "INFO"), 3),
+        a.get("category", ""),
+        a.get("message", ""),
+    ))
 
     health = normalized["health"]
     summary = normalized["summary"]
@@ -357,7 +459,7 @@ def build_generic_node_view(
     nav_with_tree = {**nav} if nav else {}
     if history:
         nav_with_tree["history"] = history
-        
+
     if hosts_data and hostname in hosts_data:
         current_plt_dir = hosts_data[hostname]
         depth = len(current_plt_dir.split("/")) + 1

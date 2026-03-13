@@ -1,0 +1,294 @@
+---
+# ubuntu2404_stigs/35_remaining_fs_audit.yaml
+# =============================================================================
+# Remaining filesystem and audit log controls
+# =============================================================================
+
+- name: "stigrule_270750_sticky_bit_check"
+  ansible.builtin.shell:
+    cmd: "find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null"
+  register: _stigrule_270750_sticky
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270750_manage | default(true) | bool
+
+- name: "stigrule_270750_sticky_bit_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270750_sticky.stdout | trim == ''
+    fail_msg: "World-writable directories without the sticky bit were found"
+    success_msg: "All world-writable directories have the sticky bit set"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270750_manage | default(true) | bool
+    - _stigrule_270750_sticky is defined
+    - _stigrule_270750_sticky is not ansible.builtin.skipped
+
+- name: "stigrule_270750_sticky_bit_remediate"
+  ansible.builtin.command:
+    cmd: "chmod a+t {{ item }}"
+  loop: "{{ _stigrule_270750_sticky.stdout_lines | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270750_manage | default(true) | bool
+    - _stigrule_270750_sticky is defined
+    - _stigrule_270750_sticky is not ansible.builtin.skipped
+    - _stigrule_270750_sticky.stdout | trim != ''
+
+# -----------------------------------------------------------------------------
+# Resolve audit log path context once
+# -----------------------------------------------------------------------------
+- name: "stigrule_audit_log_path_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      log_file="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1)"
+      test -n "$log_file"
+      printf '%s\n%s\n' "$log_file" "$(dirname "$log_file")"
+  register: _stigrule_audit_log_path
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - (_ubuntu2404_stig_phase == 'audit') or (not (ansible_check_mode | default(false)))
+    - >
+      ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270830_manage | default(true) | bool
+
+- name: "stigrule_audit_log_context"
+  ansible.builtin.set_fact:
+    _stigrule_audit_log_lines: "{{ _stigrule_audit_log_path.stdout_lines | default([]) }}"
+    _stigrule_audit_log_file: "{{ (_stigrule_audit_log_path.stdout_lines | default([]) | first) | default('') }}"
+    _stigrule_audit_log_dir: >-
+      {{
+        (
+          (_stigrule_audit_log_path.stdout_lines | default([]) | last)
+          if ((_stigrule_audit_log_path.stdout_lines | default([]) | length) > 1)
+          else ''
+        )
+      }}
+  when:
+    - _stigrule_audit_log_path is defined
+    - _stigrule_audit_log_path is not ansible.builtin.skipped
+
+- name: "stigrule_audit_log_files_find"
+  ansible.builtin.find:
+    paths: "{{ _stigrule_audit_log_dir }}"
+    file_type: file
+    recurse: false
+    hidden: true
+  register: _stigrule_audit_log_files
+  failed_when: false
+  when:
+    - _stigrule_audit_log_dir is defined
+    - _stigrule_audit_log_dir | length > 0
+# -----------------------------------------------------------------------------
+# 270827 - audit log files mode <= 0600
+# -----------------------------------------------------------------------------
+- name: "stigrule_270827_audit_log_mode_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for p in {{ (_stigrule_audit_log_files.files | default([]) | map(attribute='path') | list) | map('quote') | join(' ') }}; do
+        [ -e "$p" ] || continue
+        [ "$(stat -c '%a' "$p")" -le 600 ]
+      done
+  register: _stigrule_270827_audit_log_mode
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+- name: "stigrule_270828_audit_log_owner_assert"
+  ansible.builtin.assert:
+    that:
+      - (_stigrule_270828_audit_log_owner.rc | default(1)) == 0
+    fail_msg: "Audit log files are not all owned by root"
+    success_msg: "Audit log files are all owned by root"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
+    - _stigrule_270828_audit_log_owner is defined
+    - _stigrule_270828_audit_log_owner is not ansible.builtin.skipped
+
+- name: "stigrule_270827_audit_log_mode_remediate"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "0600"
+  loop: "{{ _stigrule_audit_log_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+# -----------------------------------------------------------------------------
+# 270828 - audit log files owner root
+# -----------------------------------------------------------------------------
+- name: "stigrule_270828_audit_log_owner_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for p in {{ (_stigrule_audit_log_files.files | default([]) | map(attribute='path') | list) | map('quote') | join(' ') }}; do
+        [ -e "$p" ] || continue
+        [ "$(stat -c '%U' "$p")" = "root" ]
+      done
+  register: _stigrule_270828_audit_log_owner
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+- name: "stigrule_270828_audit_log_owner_assert"
+  ansible.builtin.assert:
+    that:
+      - (_stigrule_270828_audit_log_owner.rc | default(1)) == 0
+    fail_msg: "Audit log files are not all owned by root"
+    success_msg: "Audit log files are all owned by root"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
+    - _stigrule_270828_audit_log_owner is defined
+    - _stigrule_270828_audit_log_owner is not ansible.builtin.skipped
+
+- name: "stigrule_270828_audit_log_owner_remediate"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+  loop: "{{ _stigrule_audit_log_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+# -----------------------------------------------------------------------------
+# 270829 - audit log_group root and files group root
+# -----------------------------------------------------------------------------
+- name: "stigrule_270829_audit_log_group_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      grep -Eq '^[[:space:]]*log_group[[:space:]]*=[[:space:]]*root[[:space:]]*$' /etc/audit/auditd.conf
+      for p in {{ (_stigrule_audit_log_files.files | default([]) | map(attribute='path') | list) | map('quote') | join(' ') }}; do
+        [ -e "$p" ] || continue
+        [ "$(stat -c '%G' "$p")" = "root" ]
+      done
+  register: _stigrule_270829_audit_log_group
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+- name: "stigrule_270829_audit_log_group_assert"
+  ansible.builtin.assert:
+    that:
+      - (_stigrule_270829_audit_log_group.rc | default(1)) == 0
+    fail_msg: "Audit log_group or audit log file group ownership is not compliant"
+    success_msg: "Audit log_group and audit log file group ownership are compliant"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+    - _stigrule_270829_audit_log_group is defined
+    - _stigrule_270829_audit_log_group is not ansible.builtin.skipped
+
+- name: "stigrule_270829_audit_log_group_config"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: "^[[:space:]]*log_group[[:space:]]*="
+    line: "log_group = root"
+    insertafter: "^[[:space:]]*log_file[[:space:]]*="
+    create: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+
+- name: "stigrule_270829_audit_log_group_remediate"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    group: root
+  loop: "{{ _stigrule_audit_log_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+    - _stigrule_audit_log_files is defined
+    - _stigrule_audit_log_files is not ansible.builtin.skipped
+
+- name: "stigrule_270829_auditd_reload_sighup"
+  ansible.builtin.command:
+    cmd: systemctl kill auditd -s SIGHUP
+  changed_when: true
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# 270830 - audit log directory mode <= 0750
+# -----------------------------------------------------------------------------
+- name: "stigrule_270830_audit_log_directory_mode_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      [ "$(stat -c '%a' {{ _stigrule_audit_log_dir | quote }})" -le 750 ]
+  register: _stigrule_270830_audit_log_directory_mode
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270830_manage | default(true) | bool
+    - _stigrule_audit_log_dir is defined
+    - _stigrule_audit_log_dir | length > 0
+
+- name: "stigrule_270830_audit_log_directory_mode_assert"
+  ansible.builtin.assert:
+    that:
+      - (_stigrule_270830_audit_log_directory_mode.rc | default(1)) == 0
+    fail_msg: "Audit log directory permissions are more permissive than 0750"
+    success_msg: "Audit log directory permissions are 0750 or less permissive"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270830_manage | default(true) | bool
+    - _stigrule_270830_audit_log_directory_mode is defined
+    - _stigrule_270830_audit_log_directory_mode is not ansible.builtin.skipped
+
+- name: "stigrule_270830_audit_log_directory_mode_remediate"
+  ansible.builtin.file:
+    path: "{{ _stigrule_audit_log_dir }}"
+    mode: "0750"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270830_manage | default(true) | bool
+    - _stigrule_audit_log_dir is defined
+    - _stigrule_audit_log_dir | length > 0

@@ -1,0 +1,299 @@
+---
+# Focused fixes for the rules that are still OPEN
+
+# -----------------------------------------------------------------------------
+# SV-270712r1068363
+# Ubuntu 24.04 LTS must disable the x86 Ctrl-Alt-Delete key sequence.
+# -----------------------------------------------------------------------------
+- name: "stigrule_270712_ctrl_alt_del_target_mask_disable"
+  ansible.builtin.systemd_service:
+    name: ctrl-alt-del.target
+    enabled: false
+    masked: true
+    daemon_reload: true
+    force: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270712_manage | default(true) | bool
+
+# Optional audit verification for exact STIG state
+- name: "stigrule_270712_ctrl_alt_del_status"
+  ansible.builtin.command:
+    cmd: systemctl is-enabled ctrl-alt-del.target
+  register: _stigrule_270712_enabled
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270712_manage | default(true) | bool
+
+- name: "stigrule_270712_ctrl_alt_del_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270712_enabled.stdout == "masked"
+    fail_msg: "ctrl-alt-del.target is not masked"
+    success_msg: "ctrl-alt-del.target is masked"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270712_manage | default(true) | bool
+    - _stigrule_270712_enabled is defined
+
+# -----------------------------------------------------------------------------
+# SV-270736r1066697
+# Ubuntu 24.04 LTS must map the authenticated identity to the user or group
+# account for PKI-based authentication.
+# -----------------------------------------------------------------------------
+- name: "stigrule_270736_sssd_conf_present"
+  ansible.builtin.file:
+    path: /etc/sssd/sssd.conf
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270736_manage | default(true) | bool
+
+- name: "stigrule_270736_ldap_user_certificate"
+  ansible.builtin.lineinfile:
+    path: /etc/sssd/sssd.conf
+    regexp: '^\s*ldap_user_certificate\s*='
+    line: "ldap_user_certificate=userCertificate;binary"
+    create: true
+    owner: root
+    group: root
+    mode: "0600"
+  when:
+    - ubuntu2404STIG_stigrule_270736_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270707r1101786
+# Ubuntu 24.04 LTS must require users to reauthenticate for privilege
+# escalation or when changing roles.
+# -----------------------------------------------------------------------------
+- name: "stigrule_270707_sudoers_files_find"
+  ansible.builtin.find:
+    paths: /etc/sudoers.d
+    file_type: file
+    hidden: true
+  register: _stigrule_270707_sudoers_files
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270707_manage | default(true) | bool
+
+- name: "stigrule_270707_sudoers_authenticate_remove"
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: '(^|[,\t ]+)!authenticate(?=([,\t ]|$))'
+    replace: '\1'
+    validate: "/usr/sbin/visudo -cf %s"
+  loop: "{{ ['/etc/sudoers'] + (_stigrule_270707_sudoers_files.files | default([]) | map(attribute='path') | list) }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270707_manage | default(true) | bool
+
+- name: "stigrule_270707_sudoers_cleanup_double_commas"
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: ',\s*,'
+    replace: ","
+    validate: "/usr/sbin/visudo -cf %s"
+  loop: "{{ ['/etc/sudoers'] + (_stigrule_270707_sudoers_files.files | default([]) | map(attribute='path') | list) }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270707_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270718r1134811
+# Ubuntu 24.04 LTS must disable automatic mounting of USB mass storage driver.
+# -----------------------------------------------------------------------------
+- name: "stigrule_270718_usb_storage_disable"
+  block:
+    - name: "stigrule_270718_install_usb_storage_false"
+      ansible.builtin.lineinfile:
+        path: /etc/modprobe.d/DISASTIG.conf
+        regexp: '^\s*install\s+usb-storage\s+'
+        line: "install usb-storage /bin/false"
+        create: true
+
+    - name: "stigrule_270718_blacklist_usb_storage"
+      ansible.builtin.lineinfile:
+        path: /etc/modprobe.d/DISASTIG.conf
+        regexp: '^\s*blacklist\s+usb-storage\s*$'
+        line: "blacklist usb-storage"
+        create: true
+
+    # Optional hardening at runtime so an already-loaded module is removed.
+    - name: "stigrule_270718_unload_usb_storage"
+      community.general.modprobe:
+        name: usb-storage
+        state: absent
+      failed_when: false
+  when:
+    - ubuntu2404STIG_stigrule_270718_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270741r1066712 / SV-270742r1066715
+# SSH settings must not conflict across sshd_config and sshd_config.d/*
+# -----------------------------------------------------------------------------
+- name: "stigrule_270741_270742_ssh_dropin"
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-stig-hardening.conf
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      UsePAM yes
+      ClientAliveCountMax 1
+      ClientAliveInterval {{ ubuntu2404STIG_stigrule_270743_ClientAliveInterval_line | regex_replace('^ClientAliveInterval\s+', '') }}
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: ssh_restart
+  when:
+    - not (ansible_check_mode | default(false))
+    - ansible_facts.packages['openssh-server'] is defined
+    - >
+      ubuntu2404STIG_stigrule_270741_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270742_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270743_manage | default(true) | bool
+
+# Remove conflicting directives from the base file so grep over sshd_config*
+# does not return contradictory results.
+- name: "stigrule_270741_270742_remove_conflicting_base_directives"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^\s*(UsePAM|ClientAliveCountMax|ClientAliveInterval)\s+'
+    state: absent
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: ssh_restart
+  when:
+    - not (ansible_check_mode | default(false))
+    - ansible_facts.packages['openssh-server'] is defined
+    - >
+      ubuntu2404STIG_stigrule_270741_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270742_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270743_manage | default(true) | bool
+
+# Optional audit using effective sshd settings.
+- name: "stigrule_270741_270742_sshd_effective_config"
+  ansible.builtin.command:
+    cmd: /usr/sbin/sshd -T
+  register: _stigrule_sshd_T
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ansible_facts.packages['openssh-server'] is defined
+    - >
+      ubuntu2404STIG_stigrule_270741_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270742_manage | default(true) | bool
+
+- name: "stigrule_270741_usepam_assert"
+  ansible.builtin.assert:
+    that:
+      - "'usepam yes' in (_stigrule_sshd_T.stdout | lower)"
+    fail_msg: "Effective sshd config does not set UsePAM yes"
+    success_msg: "Effective sshd config sets UsePAM yes"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270741_manage | default(true) | bool
+    - _stigrule_sshd_T is defined
+
+- name: "stigrule_270742_clientalivecountmax_assert"
+  ansible.builtin.assert:
+    that:
+      - "'clientalivecountmax 1' in (_stigrule_sshd_T.stdout | lower)"
+    fail_msg: "Effective sshd config does not set ClientAliveCountMax 1"
+    success_msg: "Effective sshd config sets ClientAliveCountMax 1"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270742_manage | default(true) | bool
+    - _stigrule_sshd_T is defined
+
+# -----------------------------------------------------------------------------
+# SV-270758r1066763
+# journalctl must be mode 0740
+# -----------------------------------------------------------------------------
+- name: "stigrule_270758_270760_journalctl_perms"
+  ansible.builtin.file:
+    path: /usr/bin/journalctl
+    owner: root
+    group: root
+    mode: "0740"
+  when:
+    - ubuntu2404STIG_stigrule_270758_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270759_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270760_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270765r1066784 / SV-270767r1066790
+# /var/log ownership and mode
+# -----------------------------------------------------------------------------
+- name: "stigrule_270765_270767_var_log_attrs"
+  ansible.builtin.file:
+    path: /var/log
+    owner: root
+    group: syslog
+    mode: "0755"
+  when:
+    - ubuntu2404STIG_stigrule_270765_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270766_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270767_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270832r1068399
+# audit rules must be immutable
+# -----------------------------------------------------------------------------
+- name: "stigrule_270832_audit_rules_persistent"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/rules.d/audit.rules
+    regexp: '^\s*-e\s+2\s*$'
+    line: "-e 2"
+    create: true
+    insertafter: EOF
+  notify: reload_audit_rules
+  when:
+    - ubuntu2404STIG_stigrule_270832_manage | default(true) | bool
+
+# Some environments need an explicit rebuild of /etc/audit/audit.rules.
+- name: "stigrule_270832_augenrules_load"
+  ansible.builtin.command:
+    cmd: augenrules --load
+  changed_when: false
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270832_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270749r1137695
+# kernel.dmesg_restrict must be 1 with no conflicting settings
+# -----------------------------------------------------------------------------
+- name: "stigrule_270749_dmesg_restrict_persistent"
+  ansible.posix.sysctl:
+    name: kernel.dmesg_restrict
+    value: "1"
+    sysctl_file: /etc/sysctl.d/10-kernel-hardening.conf
+    sysctl_set: true
+    state: present
+    reload: true
+  when:
+    - ubuntu2404STIG_stigrule_270749_manage | default(true) | bool
+
+# Remove common conflicting setting from /etc/sysctl.conf if present.
+- name: "stigrule_270749_remove_conflicting_sysctl_conf"
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^\s*kernel\.dmesg_restrict\s*='
+    state: absent
+  when:
+    - ubuntu2404STIG_stigrule_270749_manage | default(true) | bool

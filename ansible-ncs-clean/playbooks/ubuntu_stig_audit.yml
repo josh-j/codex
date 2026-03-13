@@ -1,9 +1,0 @@
----
-# playbooks/ubuntu_stig_audit.yml
-# Compatibility wrapper for Ubuntu STIG audit workflow.
-
-- name: "Composite Ubuntu STIG Audit | Discover"
-  ansible.builtin.import_playbook: ubuntu_discover.yml
-
-- name: "Composite Ubuntu STIG Audit | Verify"
-  ansible.builtin.import_playbook: ubuntu_stig_verify.yml

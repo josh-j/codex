@@ -52,7 +52,24 @@
       })(headers[i]);
     }
   }
+  // ---- alert affected items expansion ----
 
+  function initAlertExpanders() {
+    var rows = document.querySelectorAll('.alert-expandable');
+    for (var i = 0; i < rows.length; i++) {
+      (function (row) {
+        row.addEventListener('click', function () {
+          var detailId = row.getAttribute('data-alert-detail');
+          if (!detailId) return;
+          var detailRow = document.getElementById(detailId);
+          if (!detailRow) return;
+          var isVisible = detailRow.style.display !== 'none';
+          detailRow.style.display = isVisible ? 'none' : 'table-row';
+          row.classList.toggle('alert-expanded', !isVisible);
+        });
+      })(rows[i]);
+    }
+  }
   // ---- expand / collapse all ----
 
   function expandAll() {
@@ -72,28 +89,28 @@
   }
 
   // ---- TOC actions (expand / collapse all) ----
- 
+
   function injectTOCActions() {
     var toc = document.querySelector('.toc');
     if (!toc) return;
- 
+
     var actions = document.createElement('div');
     actions.className = 'toc-right';
- 
+
     var lkExpand = document.createElement('a');
     lkExpand.href = '#';
     lkExpand.textContent = 'Expand all';
-    lkExpand.addEventListener('click', function(e) { e.preventDefault(); expandAll(); });
- 
+    lkExpand.addEventListener('click', function (e) { e.preventDefault(); expandAll(); });
+
     var lkCollapse = document.createElement('a');
     lkCollapse.href = '#';
     lkCollapse.textContent = 'Collapse all';
-    lkCollapse.addEventListener('click', function(e) { e.preventDefault(); collapseAll(); });
- 
+    lkCollapse.addEventListener('click', function (e) { e.preventDefault(); collapseAll(); });
+
     var lkPrint = document.createElement('a');
     lkPrint.href = '#';
     lkPrint.textContent = 'Print report';
-    lkPrint.addEventListener('click', function(e) { e.preventDefault(); window.print(); });
+    lkPrint.addEventListener('click', function (e) { e.preventDefault(); window.print(); });
 
     actions.appendChild(lkExpand);
     actions.appendChild(lkCollapse);
@@ -145,7 +162,7 @@
       })(trees[i], i);
     }
   }
- 
+
   // ---- table sorting ----
 
   function _sortCompare(cellA, cellB, isAsc) {
@@ -244,7 +261,7 @@
       }
       var script = document.createElement('script');
       script.src = rootPath + 'search_index.js';
-      script.onload = function() {
+      script.onload = function () {
         searchIndex = window.NCS_SEARCH_INDEX;
         renderResults(searchInput.value.toLowerCase().trim());
       };
@@ -311,25 +328,25 @@
           var match = matches[j];
           var a = document.createElement('a');
           a.href = rootPath + match.u;
-          
+
           var textSpan = document.createElement('span');
           textSpan.textContent = match.h;
           a.appendChild(textSpan);
-          
+
           if (match.p) {
             var badge = document.createElement('span');
             badge.className = 'platform-badge';
             badge.textContent = match.p;
             a.appendChild(badge);
           }
-          
+
           searchResults.appendChild(a);
         }
       }
       searchResults.style.display = 'block';
     }
 
-    searchInput.addEventListener('focus', function() {
+    searchInput.addEventListener('focus', function () {
       if (!searchIndex) loadSearchIndexScript();
       renderResults(searchInput.value.toLowerCase().trim());
     });
@@ -337,7 +354,7 @@
     searchInput.addEventListener('input', function (e) {
       var query = e.target.value.toLowerCase().trim();
       filterLocalTables(query);
-      
+
       if (searchIndex) {
         renderResults(query);
       } else if (query.length > 0) {
@@ -346,13 +363,13 @@
     });
 
     // Close dropdown on click outside or escape
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       if (!searchContainer.contains(e.target)) {
         searchResults.style.display = 'none';
       }
     });
 
-    searchInput.addEventListener('keydown', function(e) {
+    searchInput.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         searchResults.style.display = 'none';
         searchInput.blur();
@@ -397,6 +414,7 @@
   function init() {
     initWidgetToggles();
     initGroupToggles();
+    initAlertExpanders();
     injectTOCActions();
     initNavDropdowns();
     initTableSorting();

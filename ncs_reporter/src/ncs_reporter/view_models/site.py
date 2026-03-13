@@ -78,6 +78,7 @@ def build_site_dashboard_view(
     report_date: str | None = None,
     report_id: str | None = None,
     registry: PlatformRegistry | None = None,
+    cklb_dir: Any = None,
 ) -> dict[str, Any]:
     reg = registry or default_registry()
     groups = dict(inventory_groups or {})
@@ -99,6 +100,7 @@ def build_site_dashboard_view(
         report_date=report_date,
         report_id=report_id,
         registry=reg,
+        cklb_dir=cklb_dir,
     )
 
     site_entries = reg.site_dashboard_entries()

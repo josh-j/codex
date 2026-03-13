@@ -293,8 +293,6 @@ def main() -> None:
             generated_fleet_dirs=_GENERATED_FLEET_DIRS,
             report_dir=p["report_dir"],
             platform_paths=p["paths"],
-            has_site_report=True,
-            has_stig_fleet=True,
         )
 
     # ------------------------------------------------------------------
@@ -404,7 +402,7 @@ def main() -> None:
         global_inventory_index=global_inventory_index,
         cklb_dir=cklb_root,
         generated_fleet_dirs=_GENERATED_FLEET_DIRS,
-        has_site_report=True,
+        stig_platforms_by_target={t: p for p in _PLATFORMS for t in p.get("target_types", [])},
     )
 
     # ------------------------------------------------------------------

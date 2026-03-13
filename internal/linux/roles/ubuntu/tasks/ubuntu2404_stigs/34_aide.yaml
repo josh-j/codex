@@ -1,0 +1,280 @@
+---
+# ubuntu2404_stigs/34_aide.yaml
+# =============================================================================
+# AIDE integrity controls
+# Fast audit path by default; optional deep integrity check
+# =============================================================================
+
+- name: "stigrule_270650_aide_compliance_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+
+      # AIDE binary must exist
+      command -v aide >/dev/null 2>&1
+
+      # Config must exist
+      test -f /etc/aide/aide.conf
+
+      # Initialized DB must exist (plain or gzipped)
+      test -f /var/lib/aide/aide.db || test -f /var/lib/aide/aide.db.gz
+
+      # Packaged default config should exist with aide-common
+      test -f /usr/share/aide/config/aide/aide.conf
+
+      # Must be schedulable by either the default cron script or the packaged timer
+      test -f /etc/cron.daily/dailyaidecheck \
+        || systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | grep -q '^dailyaidecheck.timer'
+  register: _stigrule_270650_aide_compliance
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_compliance_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270650_aide_compliance.rc == 0
+    fail_msg: "AIDE is not installed, configured, initialized, or schedulable"
+    success_msg: "AIDE is installed, configured, initialized, and schedulable"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - _stigrule_270650_aide_compliance is defined
+
+- name: "stigrule_270650_aide_deep_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      timeout {{ ubuntu2404STIG_stigrule_270650_deep_check_timeout | default(120) | int }}s \
+        aide --config=/etc/aide/aide.conf --check >/dev/null 2>&1
+  register: _stigrule_270650_aide_deep
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270650_run_deep_check | default(false) | bool
+
+- name: "stigrule_270650_aide_deep_check_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270650_aide_deep.rc in [0, 1]
+    fail_msg: >-
+      AIDE deep integrity check failed to complete cleanly
+      (rc={{ _stigrule_270650_aide_deep.rc | default('unknown') }})
+    success_msg: "AIDE deep integrity check executed successfully"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270650_run_deep_check | default(false) | bool
+    - _stigrule_270650_aide_deep is defined
+
+- name: "stigrule_270650_aide_package"
+  ansible.builtin.apt:
+    name:
+      - aide
+      - aide-common
+    state: present
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_db_stat_plain"
+  ansible.builtin.stat:
+    path: /var/lib/aide/aide.db
+  register: _stigrule_270650_aide_db_plain
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_db_stat_gz"
+  ansible.builtin.stat:
+    path: /var/lib/aide/aide.db.gz
+  register: _stigrule_270650_aide_db_gz
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_initialize"
+  ansible.builtin.command:
+    cmd: aideinit
+  register: _stigrule_270650_aideinit
+  changed_when: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - not (_stigrule_270650_aide_db_plain.stat.exists | default(false))
+    - not (_stigrule_270650_aide_db_gz.stat.exists | default(false))
+
+- name: "stigrule_270650_aide_database_copy"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      if [ -f /var/lib/aide/aide.db.new ]; then
+        cp -pf /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+      elif [ -f /var/lib/aide/aide.db.new.gz ]; then
+        cp -pf /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+      else
+        exit 1
+      fi
+  changed_when: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - _stigrule_270650_aideinit is defined
+    - _stigrule_270650_aideinit is not ansible.builtin.skipped
+    - (_stigrule_270650_aideinit.rc | default(1)) == 0
+
+- name: "stigrule_270651_aide_schedule_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+
+      test -f /etc/aide/aide.conf
+      test -f /usr/share/aide/config/aide/aide.conf
+      cmp -s /etc/aide/aide.conf /usr/share/aide/config/aide/aide.conf
+
+      if [ -f /etc/cron.daily/dailyaidecheck ]; then
+        grep -Fqx 'SCRIPT="/usr/share/aide/bin/dailyaidecheck"' /etc/cron.daily/dailyaidecheck
+      else
+        systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | grep -q '^dailyaidecheck.timer'
+        systemctl list-unit-files dailyaidecheck.service --no-legend 2>/dev/null | grep -q '^dailyaidecheck.service'
+      fi
+  register: _stigrule_270651_aide_schedule
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_aide_schedule_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270651_aide_schedule.rc == 0
+    fail_msg: "AIDE default configuration or default scheduled script/timer is missing"
+    success_msg: "AIDE default configuration and scheduled script/timer are present"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - _stigrule_270651_aide_schedule is defined
+
+- name: "stigrule_270651_aide_default_conf"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/aide/aide.conf
+    remote_src: true
+    dest: /etc/aide/aide.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_aide_default_schedule_stat"
+  ansible.builtin.stat:
+    path: /usr/share/aide/config/cron.daily/aide
+  register: _stigrule_270651_cron_src
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_aide_default_schedule"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/cron.daily/aide
+    remote_src: true
+    dest: /etc/cron.daily/dailyaidecheck
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - _stigrule_270651_cron_src.stat.exists | default(false)
+
+- name: "stigrule_270651_aide_timer_stat"
+  ansible.builtin.shell:
+    cmd: "systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | awk '{print $1}'"
+  register: _stigrule_270651_timer_unit
+  changed_when: false
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+
+- name: "stigrule_270651_enable_aide_timer"
+  ansible.builtin.systemd_service:
+    name: dailyaidecheck.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - _stigrule_270651_timer_unit.stdout | trim == 'dailyaidecheck.timer'
+
+- name: "stigrule_270831_aide_audit_tools_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for tool in auditctl auditd ausearch aureport autrace augenrules; do
+        grep -R -Eq "^/sbin/${tool}[[:space:]]+p\\+i\\+n\\+u\\+g\\+s\\+b\\+acl\\+xattrs\\+sha512$" \
+          /etc/aide/aide.conf /etc/aide/aide.conf.d/*.conf 2>/dev/null
+      done
+  register: _stigrule_270831_aide_audit_tools
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+
+- name: "stigrule_270831_aide_audit_tools_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270831_aide_audit_tools.rc == 0
+    fail_msg: "AIDE does not protect all required audit tools"
+    success_msg: "AIDE protects the required audit tools"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+    - _stigrule_270831_aide_audit_tools is defined
+
+- name: "stigrule_270831_aide_dropin_dir"
+  ansible.builtin.file:
+    path: /etc/aide/aide.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+
+- name: "stigrule_270831_aide_audit_tools_remediate"
+  ansible.builtin.copy:
+    dest: /etc/aide/aide.conf.d/99-stig-audit-tools.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # STIG 270831 - Audit Tools
+      /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool

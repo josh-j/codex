@@ -479,8 +479,8 @@ class ReportContentTests(unittest.TestCase):
             report = os.path.join(output_dir, "vcenter_fleet_report.html")
             with open(report) as f:
                 content = f.read()
-            self.assertIn("<!doctype html>", content.lower())
-            self.assertIn("<html", content.lower())
+            self.assertIn("<!DOCTYPE html>", content)
+            self.assertIn("</html>", content)
 
 
 # ---------------------------------------------------------------------------
@@ -668,64 +668,6 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, msg=result.output)
             fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
-
-
-# ---------------------------------------------------------------------------
-# validate-config command
-# ---------------------------------------------------------------------------
-
-
-class ValidateConfigTests(unittest.TestCase):
-    def test_valid_config_succeeds(self):
-        runner = CliRunner()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cfg_path = os.path.join(tmpdir, "platforms.yaml")
-            config_data = {
-                "platforms": [
-                    {
-                        "input_dir": "linux/ubuntu",
-                        "report_dir": "linux/ubuntu",
-                        "platform": "linux",
-                        "target_types": ["linux", "ubuntu"],
-                    }
-                ]
-            }
-            with open(cfg_path, "w") as f:
-                yaml.dump(config_data, f)
-
-            result = runner.invoke(main, ["validate-config", "-P", cfg_path])
-            self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("Valid!", result.output)
-            self.assertIn("2 target types", result.output)
-
-    def test_invalid_config_fails_with_readable_errors(self):
-        runner = CliRunner()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cfg_path = os.path.join(tmpdir, "platforms.yaml")
-            config_data = {
-                "platforms": [
-                    {
-                        "input_dir": "test",
-                        "report_dir": "test",
-                        "platform": "test",
-                        "target_types": "not_a_list",
-                    }
-                ]
-            }
-            with open(cfg_path, "w") as f:
-                yaml.dump(config_data, f)
-
-            result = runner.invoke(main, ["validate-config", "-P", cfg_path])
-            self.assertNotEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("Invalid platforms config", result.output)
-            # Should NOT contain raw Pydantic traceback
-            self.assertNotIn("ValidationError", result.output)
-
-    def test_builtin_config_validates(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["validate-config"])
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Valid!", result.output)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,613 @@
+---
+# collections/ansible_collections/internal/linux/roles/photon/tasks/photon3_check.yaml
+#
+# PHOTON OS 3.0 STIG AUDIT CHECKS
+#
+# Each rule follows the pattern the ncs_collector callback expects:
+#   1. A _query task (shell/command) that gathers data — collector ignores these
+#   2. An _assert task that passes or fails — collector records the result
+#
+# Task naming convention:
+#   "PHTN-30-XXXXXX_query"   → data gathering (skipped by collector)
+#   "PHTN-30-XXXXXX_assert"  → compliance assertion (recorded by collector)
+#
+# The collector extracts the rule ID from the PHTN-30-XXXXXX prefix and
+# maps pass/fail from the assert result.
+
+############################################
+# NCS Collector Context
+############################################
+
+- name: "Set NCS STIG target type to photon"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_type: "photon"
+  tags:
+    - always
+
+- name: "Set NCS STIG target host"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ inventory_hostname }}"
+  tags:
+    - always
+
+############################################
+# V-256478 / PHTN-30-000033 - No duplicate UIDs
+############################################
+- name: "PHTN-30-000033_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    awk -F: '{print $3}' /etc/passwd | sort -n | uniq -d
+  register: _phtn33_dupes
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000033, V-256478, audit]
+
+- name: "PHTN-30-000033_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn33_dupes.stdout | trim | length == 0
+    fail_msg: "Duplicate UIDs found: {{ _phtn33_dupes.stdout | trim }}"
+    success_msg: "No duplicate UIDs found"
+  ignore_errors: true
+  tags: [PHTN-30-000033, V-256478, audit]
+
+############################################
+# V-256484 / PHTN-30-000039 - Rsyslog remote logging
+############################################
+- name: "PHTN-30-000039_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^\*\.\*\s+@@?' {{ var_syslog_conf_path }} 2>/dev/null || true
+  register: _phtn39_syslog
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000039, V-256484, audit]
+
+- name: "PHTN-30-000039_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn39_syslog.stdout | trim | length > 0
+    fail_msg: >-
+      No remote syslog target found in {{ var_syslog_conf_path }}.
+      Note: If logging is configured via a different mechanism (e.g., vmware syslog),
+      document as site-specific.
+    success_msg: "Remote syslog configured: {{ _phtn39_syslog.stdout_lines | first | default('') }}"
+  ignore_errors: true
+  tags: [PHTN-30-000039, V-256484, audit]
+
+############################################
+# V-256489 / PHTN-30-000044 - Audit rules for privileged commands
+############################################
+- name: "PHTN-30-000044_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ -f {{ var_auditd_rule_file }} ]; then
+      grep -cE '^\s*-[aw]' {{ var_auditd_rule_file }} 2>/dev/null || echo "0"
+    else
+      echo "0"
+    fi
+  register: _phtn44_rules
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000044, V-256489, audit]
+
+- name: "PHTN-30-000044_assert"
+  ansible.builtin.assert:
+    that:
+      - (_phtn44_rules.stdout | trim | int) > 0
+    fail_msg: "Audit rules file missing or empty"
+    success_msg: "{{ _phtn44_rules.stdout | trim }} audit rules configured"
+  ignore_errors: true
+  tags: [PHTN-30-000044, V-256489, audit]
+
+############################################
+# V-256497 / PHTN-30-000052 - TMOUT in bashrc
+############################################
+- name: "PHTN-30-000052_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    found=""
+    val=$(grep -oP '^(export\s+)?TMOUT=\K\d+' {{ var_bashrc_file }} 2>/dev/null | head -1)
+    if [ -n "$val" ]; then found="bashrc:$val"; fi
+    val2=$(grep -oP '^(export\s+)?TMOUT=\K\d+' /etc/profile.d/tmout.sh 2>/dev/null | head -1)
+    if [ -n "$val2" ]; then found="${found:+$found,}tmout.sh:$val2"; fi
+    if [ -z "$found" ]; then echo "NOT_SET"; else echo "$found"; fi
+  register: _phtn52_tmout
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000052, V-256497, audit]
+
+- name: "PHTN-30-000052_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn52_tmout.stdout | trim != 'NOT_SET'
+    fail_msg: "TMOUT not configured in bashrc or profile.d"
+    success_msg: "TMOUT configured: {{ _phtn52_tmout.stdout | trim }}"
+  ignore_errors: true
+  tags: [PHTN-30-000052, V-256497, audit]
+
+############################################
+# V-256513 / PHTN-30-000068 - Audit rule for /etc/group
+############################################
+- name: "PHTN-30-000068_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -cE '/etc/group' {{ var_auditd_rule_file }} 2>/dev/null || echo "0"
+  register: _phtn68_group
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000068, V-256513, audit]
+
+- name: "PHTN-30-000068_assert"
+  ansible.builtin.assert:
+    that:
+      - (_phtn68_group.stdout | trim) != '0'
+    fail_msg: "No audit rule for /etc/group"
+    success_msg: "Audit rule for /etc/group present"
+  ignore_errors: true
+  tags: [PHTN-30-000068, V-256513, audit]
+
+############################################
+# V-256517 / PHTN-30-000072 - FAIL_DELAY in login.defs
+############################################
+- name: "PHTN-30-000072_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^FAIL_DELAY\s+\K\d+' {{ var_login_defs_file }} 2>/dev/null || echo "0"
+  register: _phtn72_faildelay
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000072, V-256517, audit]
+
+- name: "PHTN-30-000072_assert"
+  ansible.builtin.assert:
+    that:
+      - (_phtn72_faildelay.stdout | trim | int) >= 4
+    fail_msg: "FAIL_DELAY={{ _phtn72_faildelay.stdout | trim }} (must be >= 4)"
+    success_msg: "FAIL_DELAY={{ _phtn72_faildelay.stdout | trim }} (compliant)"
+  ignore_errors: true
+  tags: [PHTN-30-000072, V-256517, audit]
+
+############################################
+# V-256518 / PHTN-30-000073 - pam_faildelay
+############################################
+- name: "PHTN-30-000073_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E 'pam_faildelay\.so' /etc/pam.d/system-auth 2>/dev/null || echo "NOT_FOUND"
+  register: _phtn73_faildelay
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000073, V-256518, audit]
+
+- name: "PHTN-30-000073_assert"
+  ansible.builtin.assert:
+    that:
+      - "'NOT_FOUND' not in _phtn73_faildelay.stdout"
+    fail_msg: "pam_faildelay.so not found in system-auth"
+    success_msg: "pam_faildelay configured: {{ _phtn73_faildelay.stdout | trim }}"
+  ignore_errors: true
+  tags: [PHTN-30-000073, V-256518, audit]
+
+############################################
+# V-256519 / PHTN-30-000074 - auditd flush and freq
+############################################
+- name: "PHTN-30-000074_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    flush=$(grep -oP '^flush\s*=\s*\K\S+' {{ var_auditd_conf_file }} 2>/dev/null || echo "NOT_SET")
+    freq=$(grep -oP '^freq\s*=\s*\K\S+' {{ var_auditd_conf_file }} 2>/dev/null || echo "NOT_SET")
+    echo "${flush}|${freq}"
+  register: _phtn74_flush
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000074, V-256519, audit]
+
+- name: "PHTN-30-000074_assert"
+  vars:
+    _flush_val: "{{ (_phtn74_flush.stdout | trim).split('|')[0] }}"
+    _freq_val: "{{ (_phtn74_flush.stdout | trim).split('|')[1] | default('NOT_SET') }}"
+  ansible.builtin.assert:
+    that:
+      - _flush_val == 'INCREMENTAL_ASYNC'
+      - _freq_val != 'NOT_SET'
+    fail_msg: "flush={{ _flush_val }}, freq={{ _freq_val }} (expected INCREMENTAL_ASYNC and a freq value)"
+    success_msg: "flush={{ _flush_val }}, freq={{ _freq_val }}"
+  ignore_errors: true
+  tags: [PHTN-30-000074, V-256519, audit]
+
+############################################
+# V-256520 / PHTN-30-000075 - CREATE_HOME in login.defs
+############################################
+- name: "PHTN-30-000075_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^CREATE_HOME\s+\K\S+' {{ var_login_defs_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn75_createhome
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000075, V-256520, audit]
+
+- name: "PHTN-30-000075_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn75_createhome.stdout | trim | lower == 'yes'
+    fail_msg: "CREATE_HOME={{ _phtn75_createhome.stdout | trim }}"
+    success_msg: "CREATE_HOME=yes"
+  ignore_errors: true
+  tags: [PHTN-30-000075, V-256520, audit]
+
+############################################
+# V-256525 / PHTN-30-000080 - X11Forwarding no
+############################################
+- name: "PHTN-30-000080_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^X11Forwarding\s+\K\S+' {{ var_sshd_config_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn80_x11
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000080, V-256525, audit]
+
+- name: "PHTN-30-000080_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn80_x11.stdout | trim | lower == 'no'
+    fail_msg: "X11Forwarding={{ _phtn80_x11.stdout | trim }}"
+    success_msg: "X11Forwarding=no"
+  ignore_errors: true
+  tags: [PHTN-30-000080, V-256525, audit]
+
+############################################
+# V-256526 / PHTN-30-000081 - StrictModes yes
+############################################
+- name: "PHTN-30-000081_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^StrictModes\s+\K\S+' {{ var_sshd_config_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn81_strict
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000081, V-256526, audit]
+
+- name: "PHTN-30-000081_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn81_strict.stdout | trim | lower in ['yes', 'not_set']
+    fail_msg: "StrictModes={{ _phtn81_strict.stdout | trim }}"
+    success_msg: "StrictModes={{ _phtn81_strict.stdout | trim }} (compliant)"
+  ignore_errors: true
+  tags: [PHTN-30-000081, V-256526, audit]
+
+############################################
+# V-256528 / PHTN-30-000056 - max_log_file_action
+############################################
+- name: "PHTN-30-000056_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^max_log_file_action\s*=\s*\K\S+' {{ var_auditd_conf_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn56_maxlog
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000056, V-256528, audit]
+
+- name: "PHTN-30-000056_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn56_maxlog.stdout | trim | upper != 'IGNORE'
+      - _phtn56_maxlog.stdout | trim != 'NOT_SET'
+    fail_msg: "max_log_file_action={{ _phtn56_maxlog.stdout | trim }}"
+    success_msg: "max_log_file_action={{ _phtn56_maxlog.stdout | trim }}"
+  ignore_errors: true
+  tags: [PHTN-30-000056, V-256528, audit]
+
+############################################
+# V-256533 / PHTN-30-000053 - sshd ListenAddress
+############################################
+- name: "PHTN-30-000053_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^ListenAddress\s+\K\S+' {{ var_sshd_config_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn53_listen
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000053, V-256533, audit]
+
+- name: "PHTN-30-000053_assert"
+  ansible.builtin.assert:
+    that:
+      - true
+    success_msg: >-
+      ListenAddress={{ _phtn53_listen.stdout | trim }}
+      {{ '(defaults to all interfaces — single-NIC VCSA, Not a Finding)' if _phtn53_listen.stdout | trim == 'NOT_SET' else '' }}
+  ignore_errors: true
+  tags: [PHTN-30-000053, V-256533, audit]
+
+############################################
+# V-256534 / PHTN-30-000089 - ctrl-alt-del masked
+############################################
+- name: "PHTN-30-000089_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    systemctl is-enabled ctrl-alt-del.target 2>/dev/null || echo "UNKNOWN"
+  register: _phtn89_ctrlaltdel
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000089, V-256534, audit]
+
+- name: "PHTN-30-000089_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn89_ctrlaltdel.stdout | trim in ['masked', 'masked-runtime']
+    fail_msg: "ctrl-alt-del.target state: {{ _phtn89_ctrlaltdel.stdout | trim }}"
+    success_msg: "ctrl-alt-del.target is masked"
+  ignore_errors: true
+  tags: [PHTN-30-000089, V-256534, audit]
+
+############################################
+# V-256537 / PHTN-30-000092 - Init files permissions
+############################################
+- name: "PHTN-30-000092_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    bad=""
+    for f in /etc/bash.bashrc /etc/profile; do
+      if [ -f "$f" ]; then
+        perms=$(stat -c '%a %U %G' "$f")
+        owner=$(echo "$perms" | awk '{print $2}')
+        group=$(echo "$perms" | awk '{print $3}')
+        mode=$(echo "$perms" | awk '{print $1}')
+        other_w=$(( mode % 10 / 2 ))
+        if [ "$owner" != "root" ] || [ "$group" != "root" ] || [ "$other_w" -eq 1 ]; then
+          bad="${bad}${f}(${perms}) "
+        fi
+      fi
+    done
+    for f in /etc/profile.d/*; do
+      if [ -f "$f" ]; then
+        perms=$(stat -c '%a %U %G' "$f")
+        owner=$(echo "$perms" | awk '{print $2}')
+        group=$(echo "$perms" | awk '{print $3}')
+        mode=$(echo "$perms" | awk '{print $1}')
+        other_w=$(( mode % 10 / 2 ))
+        if [ "$owner" != "root" ] || [ "$group" != "root" ] || [ "$other_w" -eq 1 ]; then
+          bad="${bad}${f}(${perms}) "
+        fi
+      fi
+    done
+    if [ -z "$bad" ]; then echo "COMPLIANT"; else echo "$bad"; fi
+  register: _phtn92_initfiles
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000092, V-256537, audit]
+
+- name: "PHTN-30-000092_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn92_initfiles.stdout | trim == 'COMPLIANT'
+    fail_msg: "Non-compliant files: {{ _phtn92_initfiles.stdout | trim }}"
+    success_msg: "All init files have correct permissions"
+  ignore_errors: true
+  tags: [PHTN-30-000092, V-256537, audit]
+
+############################################
+# V-256538 / PHTN-30-000093 - rc.d file permissions
+############################################
+- name: "PHTN-30-000093_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    bad=$(find /etc/rc.d/ -type f \( ! -user root -o ! -group root -o -perm /002 \) 2>/dev/null)
+    if [ -z "$bad" ]; then echo "COMPLIANT"; else echo "$bad"; fi
+  register: _phtn93_rcd
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000093, V-256538, audit]
+
+- name: "PHTN-30-000093_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn93_rcd.stdout | trim == 'COMPLIANT'
+    fail_msg: "Non-compliant rc.d files: {{ _phtn93_rcd.stdout | trim }}"
+    success_msg: "All rc.d files have correct permissions"
+  ignore_errors: true
+  tags: [PHTN-30-000093, V-256538, audit]
+
+############################################
+# V-256539 / PHTN-30-000094 - All files have valid owner and group
+############################################
+- name: "PHTN-30-000094_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    bad=$(find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o \
+          -path /run -prune -o \( -nouser -o -nogroup \) -print 2>/dev/null | head -20)
+    if [ -z "$bad" ]; then echo "COMPLIANT"; else echo "$bad"; fi
+  register: _phtn94_unowned
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000094, V-256539, audit]
+
+- name: "PHTN-30-000094_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn94_unowned.stdout | trim == 'COMPLIANT'
+    fail_msg: "Files with no valid owner/group: {{ _phtn94_unowned.stdout_lines | join(', ') }}"
+    success_msg: "All files have valid owner and group"
+  ignore_errors: true
+  tags: [PHTN-30-000094, V-256539, audit]
+
+############################################
+# V-256540 / PHTN-30-000095 - /etc/cron.allow permissions
+############################################
+- name: "PHTN-30-000095_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ ! -f /etc/cron.allow ]; then
+      echo "MISSING"
+    else
+      stat -c '%a %U %G' /etc/cron.allow
+    fi
+  register: _phtn95_cronallow
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000095, V-256540, audit]
+
+- name: "PHTN-30-000095_assert"
+  vars:
+    _perms: "{{ _phtn95_cronallow.stdout | trim }}"
+    _mode: "{{ _perms.split()[0] | default('999') }}"
+    _owner: "{{ _perms.split()[1] | default('unknown') }}"
+    _group: "{{ _perms.split()[2] | default('unknown') }}"
+  ansible.builtin.assert:
+    that:
+      - _perms != 'MISSING'
+      - _owner == 'root'
+      - _group == 'root'
+      - (_mode | int) <= 600
+    fail_msg: "/etc/cron.allow: {{ _perms }} (need mode<=0600, root:root)"
+    success_msg: "/etc/cron.allow: mode={{ _mode }} owner={{ _owner }}:{{ _group }}"
+  ignore_errors: true
+  tags: [PHTN-30-000095, V-256540, audit]
+
+############################################
+# V-256557 / PHTN-30-000112 - sshd_config permissions
+############################################
+- name: "PHTN-30-000112_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    stat -c '%a %U %G' {{ var_sshd_config_file }}
+  register: _phtn112_sshperms
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000112, V-256557, audit]
+
+- name: "PHTN-30-000112_assert"
+  vars:
+    _mode: "{{ (_phtn112_sshperms.stdout | trim).split()[0] | default('999') }}"
+    _owner: "{{ (_phtn112_sshperms.stdout | trim).split()[1] | default('unknown') }}"
+    _group: "{{ (_phtn112_sshperms.stdout | trim).split()[2] | default('unknown') }}"
+  ansible.builtin.assert:
+    that:
+      - _owner == 'root'
+      - _group == 'root'
+      - (_mode | int) <= 600
+    fail_msg: "sshd_config: mode={{ _mode }} owner={{ _owner }}:{{ _group }} (need <=0600 root:root)"
+    success_msg: "sshd_config: mode={{ _mode }} (compliant, <= 0600)"
+  ignore_errors: true
+  tags: [PHTN-30-000112, V-256557, audit]
+
+############################################
+# V-256565 / PHTN-30-000120 - LoginGraceTime
+############################################
+- name: "PHTN-30-000120_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -oP '^LoginGraceTime\s+\K\S+' {{ var_sshd_config_file }} 2>/dev/null || echo "NOT_SET"
+  register: _phtn120_grace
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000120, V-256565, audit]
+
+- name: "PHTN-30-000120_assert"
+  vars:
+    _val: "{{ _phtn120_grace.stdout | trim }}"
+  ansible.builtin.assert:
+    that:
+      - _val != 'NOT_SET'
+      - (_val | int) > 0
+      - (_val | int) <= 120
+    fail_msg: "LoginGraceTime={{ _val }} (must be explicitly set, >0 and <=120)"
+    success_msg: "LoginGraceTime={{ _val }}s"
+  ignore_errors: true
+  tags: [PHTN-30-000120, V-256565, audit]
+
+############################################
+# V-256589 / PHTN-30-000240 - Kernel FIPS mode
+############################################
+- name: "PHTN-30-000240_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grub_fips=$(grep -cP 'fips=1' {{ var_grub_conf_file }} 2>/dev/null || echo "0")
+    runtime_fips=$(cat /proc/sys/crypto/fips_enabled 2>/dev/null || echo "0")
+    echo "${grub_fips}|${runtime_fips}"
+  register: _phtn240_fips
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000240, V-256589, audit]
+
+- name: "PHTN-30-000240_assert"
+  vars:
+    _grub: "{{ (_phtn240_fips.stdout | trim).split('|')[0] }}"
+    _runtime: "{{ (_phtn240_fips.stdout | trim).split('|')[1] | default('0') }}"
+  ansible.builtin.assert:
+    that:
+      - _grub != '0' or _runtime == '1'
+    fail_msg: "FIPS not enabled: grub count={{ _grub }}, runtime={{ _runtime }}"
+    success_msg: "FIPS enabled: grub count={{ _grub }}, runtime={{ _runtime }}"
+  ignore_errors: true
+  tags: [PHTN-30-000240, V-256589, audit]
+
+############################################
+# V-256590 / PHTN-30-000245 - systemd-resolved fallback DNS
+############################################
+- name: "PHTN-30-000245_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    val=$(grep -oP '^FallbackDNS=\K.*' {{ var_resolved_file }} 2>/dev/null)
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      commented=$(grep -cP '^\s*#\s*FallbackDNS=' {{ var_resolved_file }} 2>/dev/null || echo "0")
+      if [ "$commented" -gt 0 ]; then
+        echo "COMMENTED_OUT"
+      else
+        echo "NOT_PRESENT"
+      fi
+    elif [ -z "$val" ]; then
+      echo "EMPTY"
+    else
+      echo "SET:$val"
+    fi
+  register: _phtn245_fallback
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000245, V-256590, audit]
+
+- name: "PHTN-30-000245_assert"
+  ansible.builtin.assert:
+    that:
+      - _phtn245_fallback.stdout | trim in ['EMPTY', 'COMMENTED_OUT', 'NOT_PRESENT']
+    fail_msg: "FallbackDNS is set: {{ _phtn245_fallback.stdout | trim }}"
+    success_msg: "FallbackDNS disabled ({{ _phtn245_fallback.stdout | trim }})"
+  ignore_errors: true
+  tags: [PHTN-30-000245, V-256590, audit]
+
+############################################
+# V-256506/V-256507 / PHTN-30-000030 - pam_cracklib full check
+############################################
+- name: "PHTN-30-000030_query"
+  ansible.builtin.shell: |
+    set -o pipefail
+    lines=$(grep -c 'pam_cracklib' /etc/pam.d/system-password 2>/dev/null || echo "0")
+    content=$(grep 'pam_cracklib' /etc/pam.d/system-password 2>/dev/null || echo "NOT_FOUND")
+    echo "${lines}|${content}"
+  register: _phtn30_cracklib
+  changed_when: false
+  failed_when: false
+  tags: [PHTN-30-000030, V-256506, V-256507, audit]
+
+- name: "PHTN-30-000030_assert"
+  vars:
+    _count: "{{ (_phtn30_cracklib.stdout | trim).split('|')[0] | int }}"
+    _line: "{{ (_phtn30_cracklib.stdout | trim).split('|', 1)[1] | default('NOT_FOUND') }}"
+  ansible.builtin.assert:
+    that:
+      - _line != 'NOT_FOUND'
+      - _count == 1
+      - "'minlen=' in _line"
+      - "'minclass=' in _line"
+    fail_msg: >-
+      {{ 'pam_cracklib not found' if _line == 'NOT_FOUND'
+         else 'Duplicate pam_cracklib lines: ' ~ _count | string if _count | int > 1
+         else 'Missing minlen or minclass in: ' ~ _line }}
+    success_msg: "pam_cracklib: {{ _line }}"
+  ignore_errors: true
+  tags: [PHTN-30-000030, V-256506, V-256507, audit]

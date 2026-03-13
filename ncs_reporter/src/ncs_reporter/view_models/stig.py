@@ -1,11 +1,88 @@
 """STIG reporting view-model builders."""
 
+import json
+import logging
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from ..platform_registry import PlatformRegistry, default_registry
 from ..primitives import canonical_stig_status as _canonical_stig_status
 from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# CKLB loading helper (used by fleet view to resolve severity per rule)
+# ---------------------------------------------------------------------------
+
+_fleet_cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+
+def _load_cklb_for_fleet(cklb_path: Path) -> dict[str, dict[str, Any]]:
+    """Load a CKLB file and return a rule_id → rule dict lookup.
+
+    Results are cached for the lifetime of the process so repeated calls
+    for the same path (e.g. multiple audit types on the same host) don't
+    re-parse the JSON.
+    """
+    key = str(cklb_path)
+    if key in _fleet_cklb_cache:
+        return _fleet_cklb_cache[key]
+    try:
+        payload = json.loads(cklb_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.debug("Fleet CKLB load failed for %s: %s", cklb_path, exc)
+        _fleet_cklb_cache[key] = {}
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for stig in payload.get("stigs", []) if isinstance(payload, dict) else []:
+        if not isinstance(stig, dict):
+            continue
+        for rule in stig.get("rules", []) if isinstance(stig.get("rules"), list) else []:
+            if not isinstance(rule, dict):
+                continue
+            for k in ("rule_id", "rule_version", "group_id"):
+                val = str(rule.get(k) or "").strip()
+                if val and val not in out:
+                    out[val] = rule
+    _fleet_cklb_cache[key] = out
+    return out
+
+
+def _resolve_fleet_cklb(
+    cklb_dir: Any,
+    hostname: str,
+    payload: dict[str, Any],
+    registry: PlatformRegistry | None = None,
+) -> dict[str, dict[str, Any]] | None:
+    """Try to load a CKLB lookup for a host/target_type pair.
+
+    Returns the lookup dict or None if no CKLB is available.
+    Falls back to the skeleton file from the registry if no per-host
+    CKLB artifact exists yet.
+    """
+    if cklb_dir is None:
+        return None
+
+    reg = registry or default_registry()
+    target_type = str(payload.get("target_type", "")).strip().lower()
+    if not target_type:
+        return None
+
+    cklb_path = Path(cklb_dir) / f"{hostname}_{target_type}.cklb"
+    if cklb_path.is_file():
+        return _load_cklb_for_fleet(cklb_path)
+
+    # Fall back to skeleton
+    skeleton_file = reg.stig_skeleton_for_target(target_type)
+    if skeleton_file:
+        sk_path = Path(__file__).parent.parent / "cklb_skeletons" / skeleton_file
+        if sk_path.is_file():
+            return _load_cklb_for_fleet(sk_path)
+
+    return None
 
 
 def _canonical_stig_severity(value: Any) -> str:
@@ -102,11 +179,14 @@ def _normalize_stig_finding(
     )
     if cklb_rule:
         # Prefer raw finding data, but fill gaps from CKLB's canonical rule metadata.
+        # detail["description"] = str(
+        #     detail.get("description") or cklb_rule.get("discussion") or cklb_rule.get("finding_details") or ""
+        # )
         detail["description"] = str(
-            detail.get("description") or cklb_rule.get("discussion") or cklb_rule.get("finding_details") or ""
+            detail.get("description") or cklb_rule.get("discussion") or ""
         )
         detail["checktext"] = str(
-            detail.get("checktext") or cklb_rule.get("check_content") or cklb_rule.get("finding_details") or ""
+            detail.get("checktext") or cklb_rule.get("check_content") or ""
         )
         detail["fixtext"] = str(detail.get("fixtext") or cklb_rule.get("fix_text") or "")
         if cklb_rule.get("rule_id"):
@@ -116,11 +196,11 @@ def _normalize_stig_finding(
     status = _canonical_stig_status(raw_status)
 
     raw_severity = (
-        item.get("severity")
+        cklb_rule.get("severity")
+        or item.get("severity")
         or detail.get("original_severity")
         or detail.get("severity")
-        or cklb_rule.get("severity")
-        or "INFO"
+        or "medium"
     )
     severity = _canonical_stig_severity(raw_severity)
 
@@ -134,8 +214,8 @@ def _normalize_stig_finding(
     )
 
     title = str(
-        item.get("title")
-        or cklb_rule.get("rule_title")
+        cklb_rule.get("rule_title")
+        or item.get("title")
         or detail.get("title")
         or (str(item.get("message") or "")).replace("STIG Violation: ", "")
         or rule_id
@@ -355,6 +435,7 @@ def build_stig_fleet_view(
     nav: Mapping[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
     registry: PlatformRegistry | None = None,
+    cklb_dir: Any = None,
 ) -> dict[str, Any]:
     reg = registry or default_registry()
     rows = []
@@ -374,6 +455,13 @@ def build_stig_fleet_view(
             if not isinstance(payload, dict):
                 continue
 
+            # Resolve CKLB rule lookup for this host/target so severity,
+            # checktext, and fixtext can be hydrated from the authoritative
+            # DISA skeleton even when the raw audit data lacks them.
+            cklb_rule_lookup = _resolve_fleet_cklb(
+                cklb_dir, hostname, payload, registry=reg
+            )
+
             host_view = build_stig_host_view(
                 hostname,
                 audit_type,
@@ -383,6 +471,7 @@ def build_stig_fleet_view(
                 report_id=report_id,
                 nav=nav,
                 registry=reg,
+                cklb_rule_lookup=cklb_rule_lookup,
             )
             target = host_view["target"]
             summary = host_view["summary"]

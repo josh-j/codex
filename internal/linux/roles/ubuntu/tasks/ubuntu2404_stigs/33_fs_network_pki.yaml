@@ -1,0 +1,1275 @@
+---
+# ubuntu2404_stigs/33_fs_network_pki.yaml
+# =============================================================================
+# Filesystem, network, PKI, cryptography, and platform controls
+# =============================================================================
+
+- name: "stigrule_270694_ssh_confirm_script_check"
+  ansible.builtin.slurp:
+    src: /etc/profile.d/ssh_confirm.sh
+  register: _stigrule_270694_ssh_confirm
+  failed_when: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270694_manage | default(true) | bool
+
+- name: "stigrule_270694_ssh_confirm_script_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270694_ssh_confirm.content is defined
+      - (_stigrule_270694_ssh_confirm.content | b64decode) is search('SSH_CLIENT')
+      - (_stigrule_270694_ssh_confirm.content | b64decode) is search('DoD Notice and Consent Banner Acknowledgement')
+    fail_msg: "SSH acknowledgement script is missing or incomplete"
+    success_msg: "SSH acknowledgement script is present"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270694_manage | default(true) | bool
+    - _stigrule_270694_ssh_confirm is defined
+
+- name: "stigrule_270694_ssh_confirm_script_remediate"
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ssh_confirm.sh
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+        if [ -z "${DOD_SSH_BANNER_ACK:-}" ]; then
+          while true; do
+            read -r -p "DoD Notice and Consent Banner Acknowledgement [y/n]: " reply
+            case "$reply" in
+              y|Y)
+                export DOD_SSH_BANNER_ACK=1
+                break
+                ;;
+              n|N)
+                exit 1
+                ;;
+            esac
+          done
+        fi
+      fi
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270694_manage | default(true) | bool
+
+# =============================================================================
+# AIDE
+# =============================================================================
+
+- name: "stigrule_270650_aide_installed_check"
+  ansible.builtin.assert:
+    that:
+      - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+    fail_msg: "AIDE is not installed"
+    success_msg: "AIDE is installed"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_compliance_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      command -v aide >/dev/null 2>&1
+      test -f /etc/aide/aide.conf
+      test -f /var/lib/aide/aide.db || test -f /var/lib/aide/aide.db.gz
+      test -f /etc/cron.daily/dailyaidecheck || test -f /usr/share/aide/config/cron.daily/aide
+  register: _stigrule_270650_aide_compliance
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+
+- name: "stigrule_270650_aide_deep_check_run"
+  ansible.builtin.command:
+    cmd: aide -c /etc/aide/aide.conf --check
+  register: _stigrule_270650_aide_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270650_run_deep_check | default(false) | bool
+
+- name: "stigrule_270650_aide_check_assert"
+  ansible.builtin.assert:
+    that:
+      # AIDE returns 0 when no differences and 1 when differences are found.
+      - _stigrule_270650_aide_check.rc in [0, 1]
+    fail_msg: "AIDE check could not be executed successfully"
+    success_msg: "AIDE check executed successfully"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - _stigrule_270650_aide_check is defined
+
+- name: "stigrule_270650_aide_db_present"
+  ansible.builtin.stat:
+    path: /var/lib/aide/aide.db
+  register: _stigrule_270650_aide_db
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270650_aideinit"
+  ansible.builtin.command:
+    cmd: aideinit
+  register: _stigrule_270650_aideinit
+  changed_when: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+    - _stigrule_270650_aide_db.stat.exists is defined
+    - not _stigrule_270650_aide_db.stat.exists
+
+- name: "stigrule_270650_aide_db_copy_new"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for candidate in /var/lib/aide/aide.db.new /var/lib/aide/aide.db.new.gz; do
+        if [ -e "$candidate" ]; then
+          cp -pf "$candidate" /var/lib/aide/aide.db
+          exit 0
+        fi
+      done
+      exit 1
+  changed_when: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+    - _stigrule_270650_aideinit is defined
+    # - _stigrule_270650_aideinit.rc == 0
+
+- name: "stigrule_270651_aide_default_conf_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      test -f /etc/aide/aide.conf
+      test -f /usr/share/aide/config/aide/aide.conf
+      test "$(sha256sum /etc/aide/aide.conf | awk '{print $1}')" = \
+           "$(sha256sum /usr/share/aide/config/aide/aide.conf | awk '{print $1}')"
+  register: _stigrule_270651_aide_conf
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270651_aide_schedule_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      grep -r aide /etc/cron* /etc/crontab 2>/dev/null || true
+      systemctl list-unit-files dailyaidecheck.timer 2>/dev/null | grep -q '^dailyaidecheck.timer'
+  register: _stigrule_270651_aide_schedule
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270651_aide_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270651_aide_conf.rc == 0
+      - _stigrule_270651_aide_schedule.rc == 0
+    fail_msg: "AIDE default config or scheduling is not compliant"
+    success_msg: "AIDE default config and scheduling are compliant"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270651_restore_default_aide_conf"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/aide/aide.conf
+    remote_src: true
+    dest: /etc/aide/aide.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270651_restore_default_aide_cron_script"
+  ansible.builtin.copy:
+    src: /usr/share/aide/config/cron.daily/aide
+    remote_src: true
+    dest: /etc/cron.daily/dailyaidecheck
+    owner: root
+    group: root
+    mode: "0755"
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270651_enable_dailyaidecheck_timer"
+  ansible.builtin.systemd_service:
+    name: dailyaidecheck.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270831_aide_audit_tools_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for tool in /sbin/auditctl /sbin/auditd /sbin/ausearch /sbin/aureport /sbin/autrace /sbin/augenrules; do
+        grep -Eq "^${tool}[[:space:]]+.*sha512" /etc/aide/aide.conf
+      done
+  register: _stigrule_270831_aide_audit_tools
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+- name: "stigrule_270831_aide_audit_tools_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270831_aide_audit_tools.rc == 0
+    fail_msg: "AIDE audit tool integrity lines are missing or incomplete"
+    success_msg: "AIDE audit tool integrity lines are configured"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+    - _stigrule_270831_aide_audit_tools is defined
+
+- name: "stigrule_270831_aide_audit_tools_remediate"
+  ansible.builtin.blockinfile:
+    path: /etc/aide/aide.conf
+    marker: "# {mark} ANSIBLE MANAGED STIG 270831"
+    block: |
+      # Audit Tools
+      /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
+    create: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
+    - "'aide' in ansible_facts.packages or 'aide-common' in ansible_facts.packages"
+
+# =============================================================================
+# Filesystem path ownership / mode checks
+# =============================================================================
+
+- name: "stigrule_find_noncompliant_check"
+  ansible.builtin.shell:
+    cmd: "{{ item.cmd }}"
+  register: _stigrule_33_find_checks
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - lookup('vars', item.manage_var, default=true) | bool
+  loop:
+    - {
+        id: "270696",
+        manage_var: "ubuntu2404STIG_stigrule_270696_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' -perm /022 -print",
+      }
+    - {
+        id: "270697",
+        manage_var: "ubuntu2404STIG_stigrule_270697_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -user root -print",
+      }
+    - {
+        id: "270698",
+        manage_var: "ubuntu2404STIG_stigrule_270698_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 ! -user root -type d -print",
+      }
+    - {
+        id: "270699",
+        manage_var: "ubuntu2404STIG_stigrule_270699_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -group root -print",
+      }
+    - {
+        id: "270700",
+        manage_var: "ubuntu2404STIG_stigrule_270700_manage",
+        cmd: "find /lib /usr/lib /lib64 /usr/lib64 ! -group root -type d -print",
+      }
+    - {
+        id: "270701",
+        manage_var: "ubuntu2404STIG_stigrule_270701_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -print",
+      }
+    - {
+        id: "270702",
+        manage_var: "ubuntu2404STIG_stigrule_270702_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -print",
+      }
+    - id: "270703"
+      manage_var: "ubuntu2404STIG_stigrule_270703_manage"
+      cmd: >
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
+        -type f -perm -u=x -exec stat --format='%n %G' {} + |
+        awk '$2 != "root" && $2 != "daemon" && $2 != "adm" && $2 != "shadow" && $2 != "mail" && $2 != "crontab" && $2 != "_ssh"'
+    - {
+        id: "270756",
+        manage_var: "ubuntu2404STIG_stigrule_270756_manage",
+        cmd: "find /var/log -perm /137 ! -name '*[bw]tmp' ! -name '*lastlog' ! -name 'history' ! -name 'eipp.log.xz' -type f -print",
+      }
+    - {
+        id: "270761",
+        manage_var: "ubuntu2404STIG_stigrule_270761_manage",
+        cmd: "find /run/log/journal /var/log/journal -type d ! -group systemd-journal 2>/dev/null",
+      }
+    - {
+        id: "270762",
+        manage_var: "ubuntu2404STIG_stigrule_270762_manage",
+        cmd: "find /run/log/journal /var/log/journal -type f ! -group systemd-journal 2>/dev/null",
+      }
+    - {
+        id: "270763",
+        manage_var: "ubuntu2404STIG_stigrule_270763_manage",
+        cmd: "find /run/log/journal /var/log/journal -type d ! -user root 2>/dev/null",
+      }
+    - {
+        id: "270764",
+        manage_var: "ubuntu2404STIG_stigrule_270764_manage",
+        cmd: "find /run/log/journal /var/log/journal -type f ! -user root 2>/dev/null",
+      }
+    - {
+        id: "270775",
+        manage_var: "ubuntu2404STIG_stigrule_270775_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f -perm /137 -print",
+      }
+    - {
+        id: "270776",
+        manage_var: "ubuntu2404STIG_stigrule_270776_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f ! -user root -print",
+      }
+    - {
+        id: "270777",
+        manage_var: "ubuntu2404STIG_stigrule_270777_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f ! -group root -print",
+      }
+    - {
+        id: "270821",
+        manage_var: "ubuntu2404STIG_stigrule_270821_manage",
+        cmd: "stat -c '%n %a' /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null | awk '$2 > 755'",
+      }
+    - id: "270822"
+      manage_var: "ubuntu2404STIG_stigrule_270822_manage"
+      cmd: >
+        stat -c '%n %U' /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null |
+        awk '$2 != "root"'
+    - id: "270823"
+      manage_var: "ubuntu2404STIG_stigrule_270823_manage"
+      cmd: >
+        stat -c '%n %G' /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null |
+        awk '$2 != "root"'
+    - {
+        id: "270824",
+        manage_var: "ubuntu2404STIG_stigrule_270824_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -print",
+      }
+    - {
+        id: "270825",
+        manage_var: "ubuntu2404STIG_stigrule_270825_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -print",
+      }
+    - {
+        id: "270826",
+        manage_var: "ubuntu2404STIG_stigrule_270826_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -print",
+      }
+  loop_control:
+    label: "stigrule_{{ item.id }}"
+
+- name: "stigrule_find_noncompliant_assert"
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim == ''
+    fail_msg: "Noncompliant paths were found for STIG {{ item.item.id }}"
+    success_msg: "No noncompliant paths were found for STIG {{ item.item.id }}"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - item is mapping
+  loop: "{{ _stigrule_33_find_checks.results | default([]) }}"
+  loop_control:
+    label: "stigrule_{{ item.item.id if (item is mapping and item.item is defined) else 'unknown' }}"
+
+- name: "stigrule_filesystem_remediate"
+  ansible.builtin.shell:
+    cmd: "{{ item.cmd }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - lookup('vars', item.manage_var, default=true) | bool
+  loop:
+    - {
+        id: "270696",
+        manage_var: "ubuntu2404STIG_stigrule_270696_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' -perm /022 -exec chmod go-w {} +",
+      }
+    - {
+        id: "270697",
+        manage_var: "ubuntu2404STIG_stigrule_270697_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -user root -exec chown root {} +",
+      }
+    - {
+        id: "270698",
+        manage_var: "ubuntu2404STIG_stigrule_270698_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 ! -user root -type d -exec chown root {} +",
+      }
+    - {
+        id: "270699",
+        manage_var: "ubuntu2404STIG_stigrule_270699_manage",
+        cmd: "find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -group root -exec chgrp root {} +",
+      }
+    - {
+        id: "270700",
+        manage_var: "ubuntu2404STIG_stigrule_270700_manage",
+        cmd: "find /lib /usr/lib /lib64 /usr/lib64 ! -group root -type d -exec chgrp root {} +",
+      }
+    - {
+        id: "270701",
+        manage_var: "ubuntu2404STIG_stigrule_270701_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -exec chmod 0755 {} +",
+      }
+    - {
+        id: "270702",
+        manage_var: "ubuntu2404STIG_stigrule_270702_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec chown root {} +",
+      }
+    - {
+        id: "270703",
+        manage_var: "ubuntu2404STIG_stigrule_270703_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f -perm -u=x ! \\( -group root -o -group daemon -o -group adm -o -group shadow -o -group mail -o -group crontab -o -group _ssh \\) -exec chgrp root {} +",
+      }
+    - {
+        id: "270756",
+        manage_var: "ubuntu2404STIG_stigrule_270756_manage",
+        cmd: "find /var/log -perm /137 ! -name '*[bw]tmp' ! -name '*lastlog' ! -name 'history' ! -name 'eipp.log.xz' -type f -exec chmod 0640 {} +",
+      }
+    - {
+        id: "270761",
+        manage_var: "ubuntu2404STIG_stigrule_270761_manage",
+        cmd: "find /run/log/journal /var/log/journal -type d -exec chgrp systemd-journal {} + 2>/dev/null || true",
+      }
+    - {
+        id: "270762",
+        manage_var: "ubuntu2404STIG_stigrule_270762_manage",
+        cmd: "find /run/log/journal /var/log/journal -type f -exec chgrp systemd-journal {} + 2>/dev/null || true",
+      }
+    - {
+        id: "270763",
+        manage_var: "ubuntu2404STIG_stigrule_270763_manage",
+        cmd: "find /run/log/journal /var/log/journal -type d -exec chown root {} + 2>/dev/null || true",
+      }
+    - {
+        id: "270764",
+        manage_var: "ubuntu2404STIG_stigrule_270764_manage",
+        cmd: "find /run/log/journal /var/log/journal -type f -exec chown root {} + 2>/dev/null || true",
+      }
+    - {
+        id: "270775",
+        manage_var: "ubuntu2404STIG_stigrule_270775_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f -exec chmod 0640 {} +",
+      }
+    - {
+        id: "270776",
+        manage_var: "ubuntu2404STIG_stigrule_270776_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f -exec chown root {} +",
+      }
+    - {
+        id: "270777",
+        manage_var: "ubuntu2404STIG_stigrule_270777_manage",
+        cmd: "find /etc/audit -maxdepth 2 \\( -name 'audit*.rules' -o -name 'auditd.conf' -o -name 'stig.rules' \\) -type f -exec chgrp root {} +",
+      }
+    - {
+        id: "270821",
+        manage_var: "ubuntu2404STIG_stigrule_270821_manage",
+        cmd: "chmod 0755 /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null || true",
+      }
+    - {
+        id: "270822",
+        manage_var: "ubuntu2404STIG_stigrule_270822_manage",
+        cmd: "chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null || true",
+      }
+    - {
+        id: "270823",
+        manage_var: "ubuntu2404STIG_stigrule_270823_manage",
+        cmd: "chgrp root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules /sbin/audisp* 2>/dev/null || true",
+      }
+    - {
+        id: "270824",
+        manage_var: "ubuntu2404STIG_stigrule_270824_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec chmod 0755 {} +",
+      }
+    - {
+        id: "270825",
+        manage_var: "ubuntu2404STIG_stigrule_270825_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec chown root {} +",
+      }
+    - {
+        id: "270826",
+        manage_var: "ubuntu2404STIG_stigrule_270826_manage",
+        cmd: "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec chgrp root {} +",
+      }
+  loop_control:
+    label: "stigrule_{{ item.id }}"
+
+# =============================================================================
+# systemd journal permissions / ownership
+# =============================================================================
+
+- name: "stigrule_270757_270764_systemd_tmpfiles_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      systemd-tmpfiles --cat-config \
+        | grep -Fqx 'z /run/log/journal 2640 root systemd-journal - -'
+      systemd-tmpfiles --cat-config \
+        | grep -Fqx 'Z /run/log/journal/%m 2640 root systemd-journal - -'
+      systemd-tmpfiles --cat-config \
+        | grep -Fqx 'z /var/log/journal 2640 root systemd-journal - -'
+      systemd-tmpfiles --cat-config \
+        | grep -Fqx 'z /var/log/journal/%m 2640 root systemd-journal - -'
+      systemd-tmpfiles --cat-config \
+        | grep -Fqx 'z /var/log/journal/%m/system.journal 0640 root systemd-journal - -'
+  register: _stigrule_270757_tmpfiles
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270761_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270762_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270763_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270764_manage | default(true) | bool
+
+- name: "stigrule_270757_270764_systemd_tmpfiles_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270757_tmpfiles.rc == 0
+    fail_msg: "systemd tmpfiles journal rules are incomplete"
+    success_msg: "systemd tmpfiles journal rules are configured"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - _stigrule_270757_tmpfiles is defined
+
+- name: "stigrule_270757_270764_systemd_tmpfiles_remediate"
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/ubuntu-stig-journal.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      z /run/log/journal 2640 root systemd-journal - -
+      Z /run/log/journal/%m 2640 root systemd-journal - -
+      z /var/log/journal 2640 root systemd-journal - -
+      z /var/log/journal/%m 2640 root systemd-journal - -
+      z /var/log/journal/%m/system.journal 0640 root systemd-journal - -
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270761_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270762_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270763_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270764_manage | default(true) | bool
+
+- name: "stigrule_270757_journal_parent_dirs"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2640"
+  loop:
+    - /run/log/journal
+    - /var/log/journal
+  loop_control:
+    label: "{{ item }}"
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+
+- name: "stigrule_270757_find_journal_dirs"
+  ansible.builtin.find:
+    paths:
+      - /run/log/journal
+      - /var/log/journal
+    file_type: directory
+    recurse: true
+  register: _stigrule_270757_journal_dirs
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270761_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270763_manage | default(true) | bool
+
+- name: "stigrule_270757_fix_journal_dirs"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: systemd-journal
+    mode: "2640"
+  loop: "{{ _stigrule_270757_journal_dirs.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270761_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270763_manage | default(true) | bool
+
+- name: "stigrule_270757_find_journal_files"
+  ansible.builtin.find:
+    paths:
+      - /run/log/journal
+      - /var/log/journal
+    file_type: file
+    recurse: true
+  register: _stigrule_270757_journal_files
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270762_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270764_manage | default(true) | bool
+
+- name: "stigrule_270757_fix_journal_files"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: systemd-journal
+    mode: "0640"
+  loop: "{{ _stigrule_270757_journal_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270762_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270764_manage | default(true) | bool
+
+- name: "stigrule_270757_apply_tmpfiles"
+  ansible.builtin.command:
+    cmd: systemd-tmpfiles --create /etc/tmpfiles.d/ubuntu-stig-journal.conf
+  changed_when: false
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270761_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270762_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270763_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270764_manage | default(true) | bool
+
+# =============================================================================
+# Platform hardening
+# =============================================================================
+
+- name: "stigrule_270771_nx_check"
+  ansible.builtin.shell:
+    cmd: "dmesg | grep -i 'execute disable' || grep flags /proc/cpuinfo | grep -w nx | sort -u"
+  register: _stigrule_270771_nx
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270771_manage | default(true) | bool
+
+- name: "stigrule_270771_nx_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270771_nx.rc == 0
+    fail_msg: "NX is not active or the CPU does not advertise nx support"
+    success_msg: "NX is active or supported by the CPU"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270771_manage | default(true) | bool
+    - _stigrule_270771_nx is defined
+
+- name: "stigrule_270771_nx_remediate"
+  ansible.builtin.shell:
+    cmd: "grep -qw nx /proc/cpuinfo"
+  changed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270771_manage | default(true) | bool
+
+- name: "stigrule_270772_find_sysctl_dropins"
+  ansible.builtin.find:
+    paths:
+      - /etc/sysctl.d
+      - /run/sysctl.d
+      - /usr/local/lib/sysctl.d
+      - /usr/lib/sysctl.d
+      - /lib/sysctl.d
+    file_type: file
+  register: _stigrule_270772_sysctl_dropins
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+
+- name: "stigrule_270772_remove_conflicting_aslr_sysctl_dropins"
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: '^[[:space:]]*kernel\.randomize_va_space[[:space:]]*='
+    state: absent
+  loop: "{{ _stigrule_270772_sysctl_dropins.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+
+- name: "stigrule_270772_remove_conflicting_aslr_sysctl_main"
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^[[:space:]]*kernel\.randomize_va_space[[:space:]]*='
+    state: absent
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+
+- name: "stigrule_270772_reload_sysctl"
+  ansible.builtin.command:
+    cmd: sysctl --system
+  changed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+# =============================================================================
+# Firewall
+# =============================================================================
+
+- name: "stigrule_270719_firewall_policy_check"
+  ansible.builtin.command:
+    cmd: ufw status
+  register: _stigrule_270719_ufw_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270719_manage | default(true) | bool
+
+- name: "stigrule_270719_firewall_policy_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270719_ufw_status.rc == 0
+      - "'Status: active' in _stigrule_270719_ufw_status.stdout"
+    fail_msg: "ufw is not active for policy enforcement"
+    success_msg: "ufw is active for policy enforcement"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270719_manage | default(true) | bool
+    - _stigrule_270719_ufw_status is defined
+
+- name: "stigrule_270719_firewall_policy_remediate"
+  community.general.ufw:
+    state: enabled
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270719_manage | default(true) | bool
+
+- name: "stigrule_270719_firewall_policy_rules"
+  community.general.ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    direction: "{{ item.direction | default(omit) }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default(omit) }}"
+    from_ip: "{{ item.from_ip | default(omit) }}"
+    to_ip: "{{ item.to_ip | default(omit) }}"
+  loop: "{{ ubuntu2404STIG_stigrule_270719_allowed_ufw_rules | default([]) }}"
+  loop_control:
+    label: "{{ item.port | default(item.rule) }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270719_manage | default(true) | bool
+
+- name: "stigrule_270754_listening_services"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      ss -H -lntu | awk '
+        {
+          proto=$1
+          localaddr=$5
+          if (localaddr ~ /127\.0\.0\.1:/ || localaddr ~ /\[::1\]:/) next
+          sub(/^.*:/, "", localaddr)
+          if (localaddr ~ /^[0-9]+$/) print localaddr "/" proto
+        }
+      ' | sort -u
+  register: _stigrule_270754_listening
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - (_ubuntu2404_stig_phase == 'audit') or (not (ansible_check_mode | default(false)))
+    - ubuntu2404STIG_stigrule_270754_manage | default(true) | bool
+
+- name: "stigrule_270754_rate_limit_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      ufw status | grep -q '^Status: active'
+      while IFS= read -r portproto; do
+        [ -z "$portproto" ] && continue
+        port="${portproto%/*}"
+        proto="${portproto#*/}"
+        ufw status | grep -Eq "^${port}/${proto}[[:space:]]+LIMIT[[:space:]]"
+      done <<'EOF'
+      {{ _stigrule_270754_listening.stdout | default('') }}
+      EOF
+  register: _stigrule_270754_ufw_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270754_manage | default(true) | bool
+
+- name: "stigrule_270754_rate_limit_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270754_ufw_status.rc == 0
+    fail_msg: "One or more listening services do not have a UFW LIMIT rule"
+    success_msg: "All listening services have a UFW LIMIT rule"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270754_manage | default(true) | bool
+    - _stigrule_270754_ufw_status is defined
+
+- name: "stigrule_270754_enable_ufw"
+  community.general.ufw:
+    state: enabled
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270754_manage | default(true) | bool
+
+- name: "stigrule_270754_rate_limit_remediate"
+  community.general.ufw:
+    rule: limit
+    port: "{{ item.split('/')[0] }}"
+    proto: "{{ item.split('/')[1] }}"
+  loop: "{{ _stigrule_270754_listening.stdout_lines | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270754_manage | default(true) | bool
+
+- name: "stigrule_270755_wireless_check"
+  ansible.builtin.shell:
+    cmd: "ls -L -d /sys/class/net/*/wireless 2>/dev/null | xargs -r dirname | xargs -r basename"
+  register: _stigrule_270755_wireless
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270755_manage | default(true) | bool
+
+- name: "stigrule_270755_wireless_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270755_wireless.stdout | trim == ''
+    fail_msg: "Wireless interfaces were found"
+    success_msg: "No wireless interfaces were found"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270755_manage | default(true) | bool
+    - _stigrule_270755_wireless is defined
+
+- name: "stigrule_270755_wireless_remediate"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for iface in $(ls -L -d /sys/class/net/*/wireless 2>/dev/null | xargs -r dirname | xargs -r basename); do
+        ip link set "$iface" down || true
+      done
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270755_manage | default(true) | bool
+
+# =============================================================================
+# PKI / SSSD / PAM smart-card controls
+# =============================================================================
+
+- name: "stigrule_270723_270738_pam_pkcs11_policy_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      awk '/pkcs11_module[[:space:]]+opensc[[:space:]]*{/,/}/' /etc/pam_pkcs11/pam_pkcs11.conf \
+        | grep -E '^[[:space:]]*cert_policy[[:space:]]*=' \
+        | grep -v '^[[:space:]]*#' \
+        | grep -q 'ocsp_on'
+  register: _stigrule_270723_pam_pkcs11
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270723_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270737_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270738_manage | default(true) | bool
+
+- name: "stigrule_270723_270738_pam_pkcs11_policy_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270723_pam_pkcs11.rc == 0
+    fail_msg: "pam_pkcs11 cert_policy does not include the required OCSP/CRL settings"
+    success_msg: "pam_pkcs11 cert_policy includes the required OCSP/CRL settings"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - _stigrule_270723_pam_pkcs11 is defined
+
+- name: "stigrule_270723_270738_pam_pkcs11_policy_remediate"
+  ansible.builtin.replace:
+    path: /etc/pam_pkcs11/pam_pkcs11.conf
+    regexp: '^(\s*cert_policy\s*=\s*ca,signature)([^;]*);'
+    replace: '\1,ocsp_on,crl_auto;'
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270723_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270737_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270738_manage | default(true) | bool
+
+- name: "stigrule_270734_sssd_dropin_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      grep -R -E '^[[:space:]]*offline_credentials_expiration[[:space:]]*=[[:space:]]*1[[:space:]]*$' \
+        /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+      ! grep -R -E '^[[:space:]]*offline_credentials_expiration[[:space:]]*=[[:space:]]*[^1][[:space:]]*$' \
+        /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+  register: _stigrule_270734_sssd_cached_auth
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270734_manage | default(true) | bool
+
+- name: "stigrule_270734_sssd_dropin_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270734_sssd_cached_auth.rc == 0
+    fail_msg: "offline_credentials_expiration is missing, incorrect, or conflicting"
+    success_msg: "offline_credentials_expiration is configured correctly"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270734_manage | default(true) | bool
+    - _stigrule_270734_sssd_cached_auth is defined
+
+- name: "stigrule_270734_sssd_conf_d_present"
+  ansible.builtin.file:
+    path: /etc/sssd/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270734_manage | default(true) | bool
+
+- name: "stigrule_270734_offline_credentials_remediate"
+  ansible.builtin.copy:
+    dest: /etc/sssd/conf.d/90-stig-pam.conf
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [pam]
+      offline_credentials_expiration = 1
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270734_manage | default(true) | bool
+
+- name: "stigrule_270735_sssd_pki_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      grep -R -E '^[[:space:]]*services[[:space:]]*=.*pam' /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+      grep -R -E '^[[:space:]]*pam_cert_auth[[:space:]]*=[[:space:]]*True[[:space:]]*$' /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+      grep -R -E '^[[:space:]]*certificate_verification[[:space:]]*=[[:space:]]*ca_cert,ocsp[[:space:]]*$' /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+      grep -R -E '^[[:space:]]*ca_cert[[:space:]]*=[[:space:]]*/etc/ssl/certs/ca-certificates\.crt[[:space:]]*$' /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf 2>/dev/null
+  register: _stigrule_270735_sssd_pki
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270735_manage | default(true) | bool
+
+- name: "stigrule_270735_sssd_pki_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270735_sssd_pki.rc == 0
+    fail_msg: "SSSD PKI settings are incomplete"
+    success_msg: "SSSD PKI settings are configured"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270735_manage | default(true) | bool
+    - _stigrule_270735_sssd_pki is defined
+
+- name: "stigrule_270735_sssd_pki_dropin"
+  ansible.builtin.copy:
+    dest: /etc/sssd/conf.d/91-stig-pki.conf
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [sssd]
+      services = nss,pam,ssh
+
+      [pam]
+      pam_cert_auth = True
+      certificate_verification = ca_cert,ocsp
+      ca_cert = /etc/ssl/certs/ca-certificates.crt
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270735_manage | default(true) | bool
+
+- name: "stigrule_270744_fips_check"
+  ansible.builtin.command:
+    cmd: cat /proc/sys/crypto/fips_enabled
+  register: _stigrule_270744_fips
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
+
+- name: "stigrule_270744_fips_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270744_fips.stdout | trim == '1'
+    fail_msg: "FIPS mode is not enabled"
+    success_msg: "FIPS mode is enabled"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
+    - _stigrule_270744_fips is defined
+
+- name: "stigrule_270744_fips_grub_remediate"
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^(GRUB_CMDLINE_LINUX=")(.*)(")$'
+    line: '\1\2 fips=1\3'
+    backrefs: true
+  notify: update_grub
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
+
+- name: "stigrule_270744_fips_attach_and_enable"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      pro status >/dev/null 2>&1 || true
+      pro attach {{ ubuntu2404STIG_stigrule_270744_pro_token | quote }}
+      {{ ubuntu2404STIG_stigrule_270744_enable_command | default('pro enable fips-updates') }}
+    creates: /var/lib/ubuntu-advantage/messages/.dpkg-query-fips-updates
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270744_pro_token | default('') | length > 0
+
+- name: "stigrule_270745_dod_ca_check"
+  ansible.builtin.shell:
+    cmd: "grep -ir DOD /etc/ssl/certs"
+  register: _stigrule_270745_dod_ca
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270745_manage | default(true) | bool
+
+- name: "stigrule_270745_dod_ca_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270745_dod_ca.rc == 0
+    fail_msg: "No DoD CA certificates were found"
+    success_msg: "DoD CA certificates were found"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270745_manage | default(true) | bool
+    - _stigrule_270745_dod_ca is defined
+
+- name: "stigrule_270745_dod_ca_copy"
+  ansible.builtin.copy:
+    dest: "/usr/local/share/ca-certificates/{{ ubuntu2404STIG_stigrule_270745_dod_ca_filename }}"
+    content: "{{ ubuntu2404STIG_stigrule_270745_dod_ca_content }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: update_ca_certificates
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270745_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270745_dod_ca_content | default('') | length > 0
+
+- name: "stigrule_270746_kdump_check"
+  ansible.builtin.shell:
+    cmd: "systemctl is-enabled kdump-tools.service 2>/dev/null || true"
+  register: _stigrule_270746_kdump
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+
+- name: "stigrule_270746_kdump_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270746_kdump.stdout in ['masked', 'disabled', 'static', '']
+    fail_msg: "kdump-tools is enabled"
+    success_msg: "kdump-tools is not enabled"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+    - _stigrule_270746_kdump is defined
+
+- name: "stigrule_270746_kdump_unit_present"
+  ansible.builtin.shell:
+    cmd: "systemctl list-unit-files kdump-tools.service --no-legend 2>/dev/null | awk '{print $1}'"
+  register: _stigrule_270746_kdump_unit
+  changed_when: false
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+
+- name: "stigrule_270746_kdump_remediate"
+  ansible.builtin.systemd_service:
+    name: kdump-tools.service
+    enabled: false
+    masked: true
+    state: stopped
+    daemon_reload: true
+    force: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+    - _stigrule_270746_kdump_unit.stdout | trim == 'kdump-tools.service'
+
+- name: "stigrule_270747_crypttab_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      for entry in {{ ubuntu2404STIG_stigrule_270747_crypttab_entries | default([]) | map('quote') | join(' ') }}; do
+        grep -Fqx -- "$entry" /etc/crypttab
+      done
+  register: _stigrule_270747_crypttab
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270747_manage | default(true) | bool
+
+- name: "stigrule_270747_crypttab_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270747_crypttab.rc == 0
+    fail_msg: "Expected encrypted partition entries are missing from /etc/crypttab"
+    success_msg: "Expected encrypted partition entries are present in /etc/crypttab"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270747_manage | default(true) | bool
+    - _stigrule_270747_crypttab is defined
+
+- name: "stigrule_270747_crypttab_remediate"
+  ansible.builtin.blockinfile:
+    path: /etc/crypttab
+    marker: "# {mark} ANSIBLE MANAGED STIG 270747"
+    block: |
+      {% for entry in ubuntu2404STIG_stigrule_270747_crypttab_entries | default([]) %}
+      {{ entry }}
+      {% endfor %}
+    create: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270747_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270747_crypttab_entries | default([]) | length > 0
+
+- name: "stigrule_278917_vendor_support_check"
+  ansible.builtin.shell:
+    cmd: "grep DISTRIB_DESCRIPTION /etc/lsb-release && pro status"
+  register: _stigrule_278917_vendor
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_278917_manage | default(true) | bool
+
+- name: "stigrule_278917_vendor_support_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_278917_vendor.rc == 0
+      - _stigrule_278917_vendor.stdout is search('Ubuntu 24\\.04')
+    fail_msg: "Vendor support state could not be verified"
+    success_msg: "Vendor support state was verified"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_278917_manage | default(true) | bool
+    - _stigrule_278917_vendor is defined
+
+- name: "stigrule_278917_vendor_support_remediate"
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_278917_manage | default(true) | bool

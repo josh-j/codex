@@ -10,7 +10,9 @@ src/ncs_reporter/alerts.py
 src/ncs_reporter/cklb_export.py
 src/ncs_reporter/cli.py
 src/ncs_reporter/date_utils.py
+src/ncs_reporter/minify.py
 src/ncs_reporter/pathing.py
+src/ncs_reporter/platform_registry.py
 src/ncs_reporter/primitives.py
 src/ncs_reporter/schema_loader.py
 src/ncs_reporter.egg-info/PKG-INFO

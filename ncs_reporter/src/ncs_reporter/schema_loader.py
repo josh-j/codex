@@ -110,6 +110,11 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
             logger.warning("Skipping %s: not a YAML mapping", path)
             return None
 
+        # Skip fragment files (used via $include) — they lack required schema keys.
+        if "name" not in data or "detection" not in data:
+            logger.debug("Skipping %s: missing 'name'/'detection' (likely a fragment)", path)
+            return None
+
         data = _resolve_refs(data, path)
         data = _resolve_includes(data, path)
 

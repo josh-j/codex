@@ -1,0 +1,537 @@
+"""Platform and STIG HTML report renderers."""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Any
+
+from ._report_context import get_jinja_env, vm_kwargs, write_report
+from ._config import default_paths
+from .pathing import rel_href, render_template
+from .platform_registry import PlatformRegistry, default_registry
+from .schema_loader import discover_schemas
+from .view_models.generic import build_generic_fleet_view, build_generic_node_view, merge_stig_into_node_view
+from .view_models.stig import build_stig_fleet_view, build_stig_host_view
+
+logger = logging.getLogger("ncs_reporter")
+
+
+# ---------------------------------------------------------------------------
+# CKLB rule lookup (shared by build and render passes)
+# ---------------------------------------------------------------------------
+
+def _load_cklb_rule_lookup(
+    cklb_path: Path,
+    cache: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, dict[str, Any]]:
+    """Parse a CKLB file into a rule_id → rule dict. Results are cached by path."""
+    key = str(cklb_path)
+    if key in cache:
+        return cache[key]
+    if not cklb_path.is_file():
+        cache[key] = {}
+        return {}
+    try:
+        payload = json.loads(cklb_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Failed to parse CKLB %s: %s", cklb_path, exc)
+        cache[key] = {}
+        return {}
+
+    out: dict[str, dict[str, Any]] = {}
+    for stig in payload.get("stigs", []) if isinstance(payload, dict) else []:
+        if not isinstance(stig, dict):
+            continue
+        for rule in stig.get("rules", []) if isinstance(stig.get("rules"), list) else []:
+            if not isinstance(rule, dict):
+                continue
+            for id_key in ("rule_id", "rule_version", "group_id"):
+                val = str(rule.get(id_key) or "").strip()
+                if val and val not in out:
+                    out[val] = rule
+    cache[key] = out
+    return out
+
+
+def _resolve_cklb_lookup(
+    hostname: str,
+    target_type: str,
+    cklb_dir: Path | None,
+    registry: PlatformRegistry,
+    cache: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, dict[str, Any]]:
+    """Resolve CKLB lookup for a host/target, falling back to the skeleton file."""
+    if cklb_dir and target_type:
+        lookup = _load_cklb_rule_lookup(cklb_dir / f"{hostname}_{target_type}.cklb", cache)
+        if lookup:
+            return lookup
+    if target_type:
+        skeleton_file = registry.stig_skeleton_for_target(target_type)
+        if skeleton_file:
+            sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
+            return _load_cklb_rule_lookup(sk_path, cache)
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# STIG entry collection (shared first-pass logic)
+# ---------------------------------------------------------------------------
+
+def _collect_stig_entries(
+    hosts_data: dict[str, Any],
+    stamp: str,
+    registry: PlatformRegistry,
+) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, str]]]]:
+    """Enumerate hosts_data and collect STIG audit entries + report index.
+
+    Returns:
+        stig_entries: flat list of per-audit-type metadata dicts
+        all_stig_reports: hostname → [{target_type, host_report_abs, host_rel_dir}]
+    """
+    stig_entries: list[dict[str, Any]] = []
+    all_stig_reports: dict[str, list[dict[str, str]]] = {}
+
+    for hostname, bundle in hosts_data.items():
+        if not isinstance(bundle, dict):
+            continue
+        for audit_type, payload in bundle.items():
+            if not str(audit_type).lower().startswith("stig"):
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            target_type = str(payload.get("target_type", "")).strip().lower()
+            entry = registry.entry_for_target_type(target_type)
+            if entry is None:
+                linux_entries = registry.by_platform("linux")
+                entry = linux_entries[0] if linux_entries else None
+            if entry is None:
+                logger.warning("No STIG platform mapping for target_type '%s'", target_type)
+                continue
+
+            report_dir = entry.report_dir
+            path_templates = entry.paths.model_dump()
+            host_report_abs = render_template(
+                path_templates["report_stig_host"],
+                report_dir=report_dir,
+                schema_name="",
+                hostname=hostname,
+                target_type=target_type,
+                report_stamp=stamp,
+            )
+            host_rel_dir = str(Path(host_report_abs).parent).replace("\\", "/")
+
+            se = {
+                "hostname": hostname,
+                "bundle": bundle,
+                "audit_type": audit_type,
+                "payload": payload,
+                "target_type": target_type,
+                "entry": entry,
+                "report_dir": report_dir,
+                "path_templates": path_templates,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            }
+            stig_entries.append(se)
+            all_stig_reports.setdefault(hostname, []).append({
+                "target_type": target_type,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            })
+
+    return stig_entries, all_stig_reports
+
+
+def _build_stig_nav(
+    se: dict[str, Any],
+    all_stig_reports: dict[str, list[dict[str, str]]],
+    stig_fleet_abs: str,
+    site_report_abs: str | None,
+    has_site_report: bool,
+) -> tuple[dict[str, str], list[dict[str, str]], list[dict[str, str]]]:
+    """Build host_nav, stig_host_peers, and stig_siblings for one STIG entry."""
+    hostname = se["hostname"]
+    target_type = se["target_type"]
+    host_rel_dir = se["host_rel_dir"]
+
+    host_nav: dict[str, str] = {
+        "fleet_report": rel_href(host_rel_dir, stig_fleet_abs),
+        "fleet_label": "STIG Fleet Dashboard",
+    }
+    if has_site_report and site_report_abs:
+        host_nav["site_report"] = rel_href(host_rel_dir, site_report_abs)
+
+    # Peer hosts (all STIG hosts, preferring same target_type)
+    stig_host_peers: list[dict[str, str]] = []
+    seen_peers: set[str] = set()
+    for peer_host, peer_reports in sorted(all_stig_reports.items()):
+        if peer_host in seen_peers:
+            continue
+        seen_peers.add(peer_host)
+        pr = next((r for r in peer_reports if r["target_type"] == target_type), peer_reports[0])
+        peer_abs = pr["host_rel_dir"] + "/" + Path(pr["host_report_abs"]).name
+        stig_host_peers.append({"name": peer_host, "report": rel_href(host_rel_dir, peer_abs)})
+
+    # Siblings (other STIG types for same host)
+    stig_siblings: list[dict[str, str]] = sorted(
+        [
+            {
+                "name": f"{sr['target_type'].upper()} STIG",
+                "report": rel_href(host_rel_dir, sr["host_rel_dir"] + "/" + Path(sr["host_report_abs"]).name),
+            }
+            for sr in all_stig_reports.get(hostname, [])
+            if sr["target_type"] != target_type
+        ],
+        key=lambda x: x["name"],
+    )
+
+    return host_nav, stig_host_peers, stig_siblings
+
+
+# ---------------------------------------------------------------------------
+# Build pass: produce stig_host_views without writing files
+# ---------------------------------------------------------------------------
+
+def build_stig_host_views(
+    hosts_data: dict[str, Any],
+    common_vars: dict[str, str],
+    *,
+    cklb_dir: Path | None = None,
+    generated_fleet_dirs: set[str] | None = None,
+    global_inventory_index: dict[str, str] | None = None,
+    registry: PlatformRegistry | None = None,
+    has_site_report: bool = False,
+) -> dict[str, list[dict[str, Any]]]:
+    """Build stig_host_view dicts for all hosts without writing any files.
+
+    Called before parallel platform rendering so node reports can embed STIG
+    summary widgets.  Uses skeleton CKLB fallback when ``cklb_dir`` is None or
+    not yet populated.
+
+    Returns:
+        ``{hostname: [stig_host_view, ...]}`` — one view per STIG audit type.
+        Each view has a ``_report_url`` key with a relative href from the
+        corresponding node report directory to the STIG host report.
+    """
+    reg = registry or default_registry()
+    stamp = common_vars["report_stamp"]
+    kw = vm_kwargs(common_vars)
+    cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+    stig_entries, all_stig_reports = _collect_stig_entries(hosts_data, stamp, reg)
+
+    result: dict[str, list[dict[str, Any]]] = {}
+
+    for se in stig_entries:
+        hostname = se["hostname"]
+        target_type = se["target_type"]
+        path_templates = se["path_templates"]
+        report_dir = se["report_dir"]
+        host_rel_dir = se["host_rel_dir"]
+
+        stig_fleet_abs = render_template(
+            path_templates["report_stig_fleet"],
+            report_dir=report_dir, schema_name="", hostname=hostname,
+            target_type=target_type, report_stamp=stamp,
+        )
+        site_report_abs: str | None = None
+        if has_site_report:
+            site_report_abs = render_template(
+                path_templates["report_site"],
+                report_dir=report_dir, schema_name="", hostname=hostname,
+                target_type=target_type, report_stamp=stamp,
+            )
+
+        host_nav, stig_host_peers, stig_siblings = _build_stig_nav(
+            se, all_stig_reports, stig_fleet_abs, site_report_abs, has_site_report,
+        )
+        cklb_lookup = _resolve_cklb_lookup(hostname, target_type, cklb_dir, reg, cklb_cache)
+
+        host_view = build_stig_host_view(
+            hostname,
+            se["audit_type"],
+            se["payload"],
+            nav=host_nav,
+            host_bundle=se["bundle"],
+            hosts_data=global_inventory_index,
+            cklb_rule_lookup=cklb_lookup,
+            generated_fleet_dirs=generated_fleet_dirs,
+            history=[],
+            stig_host_peers=stig_host_peers,
+            stig_siblings=stig_siblings,
+            **kw,
+        )
+
+        # Annotate with a relative URL from the node report dir to this STIG report.
+        # Node reports live at platform/{report_dir}/{hostname}/health_report.html
+        if global_inventory_index and hostname in global_inventory_index:
+            node_plt_dir = global_inventory_index[hostname]
+            node_rel_dir = f"platform/{node_plt_dir}/{hostname}"
+            host_report_filename = Path(se["host_report_abs"]).name
+            stig_abs = f"{host_rel_dir}/{host_report_filename}"
+            host_view["_report_url"] = rel_href(node_rel_dir, stig_abs)
+
+        result.setdefault(hostname, []).append(host_view)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Platform renderer
+# ---------------------------------------------------------------------------
+
+def render_platform(
+    platform: str,
+    hosts_data: dict[str, Any],
+    output_path: Path,
+    common_vars: dict[str, str],
+    *,
+    global_inventory_index: dict[str, str] | None = None,
+    generated_fleet_dirs: set[str] | None = None,
+    report_dir: str | None = None,
+    platform_paths: dict[str, str] | None = None,
+    extra_schema_dirs: tuple[str, ...] = (),
+    schema_names_override: list[str] | None = None,
+    has_site_report: bool = False,
+    has_stig_fleet: bool = False,
+    stig_widgets_by_host: dict[str, list[dict[str, Any]]] | None = None,
+) -> None:
+    """Render node + fleet reports for one platform using the schema engine.
+
+    When *stig_widgets_by_host* is provided, STIG summary widgets are embedded
+    directly into each node report so operators don't have to navigate to a
+    separate STIG report to see compliance status.
+    """
+    schema_names = (
+        schema_names_override
+        if schema_names_override is not None
+        else default_registry().schema_names_for_platform(platform)
+    )
+    all_schemas = discover_schemas(extra_dirs=extra_schema_dirs)
+
+    schema = None
+    for name in schema_names:
+        schema = all_schemas.get(name)
+        if schema:
+            break
+
+    if schema is None:
+        logger.warning("No schema found for platform '%s' (tried: %s)", platform, schema_names)
+        return
+
+    if not report_dir:
+        logger.warning("Missing report_dir for platform '%s'", platform)
+        return
+    if not platform_paths:
+        logger.warning("Missing path templates for platform '%s'", platform)
+        return
+
+    env = get_jinja_env()
+    stamp = common_vars["report_stamp"]
+    kw = vm_kwargs(common_vars)
+    node_tpl = env.get_template("generic_node_report.html.j2")
+
+    schema_name_for_file = schema.name
+    fleet_report_abs = render_template(
+        platform_paths["report_fleet"],
+        report_dir=report_dir, schema_name=schema_name_for_file,
+        hostname="", target_type="", report_stamp=stamp,
+    )
+    fleet_filename = Path(fleet_report_abs).name
+    site_report_abs = render_template(
+        platform_paths["report_site"],
+        report_dir=report_dir, schema_name=schema_name_for_file,
+        hostname="", target_type="", report_stamp=stamp,
+    )
+
+    node_nav: dict[str, str] = {"fleet_label": f"{schema.display_name} Fleet"}
+    fleet_nav: dict[str, str] = {}
+
+    for hostname, bundle in hosts_data.items():
+        host_dir = output_path / hostname
+        host_dir.mkdir(exist_ok=True)
+        node_rel_dir = f"platform/{report_dir}/{hostname}"
+        node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
+        if has_site_report:
+            node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
+
+        history = _build_history(host_dir, "health_report")
+
+        node_view = build_generic_node_view(
+            schema,
+            hostname,
+            bundle,
+            nav=node_nav,
+            hosts_data=global_inventory_index,
+            generated_fleet_dirs=generated_fleet_dirs,
+            has_stig_fleet=has_stig_fleet,
+            history=history,
+            **kw,
+        )
+
+        # Embed STIG widgets when pre-built views are available for this host
+        if stig_widgets_by_host and hostname in stig_widgets_by_host:
+            merge_stig_into_node_view(node_view, stig_widgets_by_host[hostname])
+
+        content = node_tpl.render(generic_node_view=node_view, **common_vars)
+        write_report(host_dir, "health_report.html", content, stamp)
+
+    if has_site_report:
+        fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
+
+    fleet_view = build_generic_fleet_view(
+        schema,
+        hosts_data,
+        nav=fleet_nav,
+        hosts_data=global_inventory_index,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=has_stig_fleet,
+        **kw,
+    )
+    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
+    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
+    write_report(output_path, fleet_filename, content, stamp)
+
+
+# ---------------------------------------------------------------------------
+# STIG renderer
+# ---------------------------------------------------------------------------
+
+def render_stig(
+    hosts_data: dict[str, Any],
+    output_path: Path,
+    common_vars: dict[str, str],
+    global_inventory_index: dict[str, str] | None = None,
+    cklb_dir: Path | None = None,
+    generated_fleet_dirs: set[str] | None = None,
+    registry: PlatformRegistry | None = None,
+    has_site_report: bool = False,
+) -> None:
+    """Render per-host STIG reports and the fleet overview.
+
+    Always rebuilds host views from scratch using the fully-populated CKLB
+    directory (if available), so dedicated STIG HTML files have complete
+    check/fix content hydration.
+    """
+    reg = registry or default_registry()
+    env = get_jinja_env()
+    stamp = common_vars["report_stamp"]
+    kw = vm_kwargs(common_vars)
+    host_tpl = env.get_template("stig_host_report.html.j2")
+    all_hosts_data: dict[str, Any] = {}
+    cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+    stig_entries, all_stig_reports = _collect_stig_entries(hosts_data, stamp, reg)
+
+    for se in stig_entries:
+        hostname = se["hostname"]
+        target_type = se["target_type"]
+        path_templates = se["path_templates"]
+        report_dir = se["report_dir"]
+        host_report_abs = se["host_report_abs"]
+        host_rel_dir = se["host_rel_dir"]
+
+        stig_fleet_abs = render_template(
+            path_templates["report_stig_fleet"],
+            report_dir=report_dir, schema_name="", hostname=hostname,
+            target_type=target_type, report_stamp=stamp,
+        )
+        site_report_abs: str | None = None
+        if has_site_report:
+            site_report_abs = render_template(
+                path_templates["report_site"],
+                report_dir=report_dir, schema_name="", hostname=hostname,
+                target_type=target_type, report_stamp=stamp,
+            )
+
+        host_nav, stig_host_peers, stig_siblings = _build_stig_nav(
+            se, all_stig_reports, stig_fleet_abs, site_report_abs, has_site_report,
+        )
+        cklb_lookup = _resolve_cklb_lookup(hostname, target_type, cklb_dir, reg, cklb_cache)
+
+        host_dir = output_path / host_rel_dir
+        host_dir.mkdir(parents=True, exist_ok=True)
+
+        history = _build_history(host_dir, Path(host_report_abs).stem)
+
+        host_view = build_stig_host_view(
+            hostname,
+            se["audit_type"],
+            se["payload"],
+            nav=host_nav,
+            host_bundle=se["bundle"],
+            hosts_data=global_inventory_index,
+            cklb_rule_lookup=cklb_lookup,
+            generated_fleet_dirs=generated_fleet_dirs,
+            history=history,
+            stig_host_peers=stig_host_peers,
+            stig_siblings=stig_siblings,
+            **kw,
+        )
+
+        content = host_tpl.render(stig_host_view=host_view, **common_vars)
+        dest_name = Path(host_report_abs).name
+        with open(host_dir / dest_name, "w") as f:
+            f.write(content)
+        if stamp:
+            stem = Path(dest_name).stem
+            suffix = Path(dest_name).suffix or ".html"
+            with open(host_dir / f"{stem}_{stamp}{suffix}", "w") as f:
+                f.write(content)
+
+        all_hosts_data.setdefault(hostname, {})[se["audit_type"]] = se["payload"]
+
+    if not all_hosts_data:
+        return
+
+    first_entry = reg.entries[0] if reg.entries else None
+    fleet_paths = first_entry.paths.model_dump() if first_entry else default_paths()
+
+    stig_fleet_abs = render_template(
+        fleet_paths["report_stig_fleet"],
+        report_dir="", schema_name="", hostname="", target_type="", report_stamp=stamp,
+    )
+    stig_fleet_nav: dict[str, str] = {}
+    if has_site_report:
+        site_report_abs = render_template(
+            fleet_paths["report_site"],
+            report_dir="", schema_name="", hostname="", target_type="", report_stamp=stamp,
+        )
+        stig_fleet_nav["site_report"] = rel_href(".", site_report_abs)
+
+    fleet_view = build_stig_fleet_view(
+        all_hosts_data,
+        nav=stig_fleet_nav,
+        generated_fleet_dirs=generated_fleet_dirs,
+        cklb_dir=cklb_dir,
+        **kw,
+    )
+    fleet_tpl = env.get_template("stig_fleet_report.html.j2")
+    content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
+    write_report(output_path, Path(stig_fleet_abs).name, content, stamp)
+
+
+# ---------------------------------------------------------------------------
+# Shared utilities
+# ---------------------------------------------------------------------------
+
+def _build_history(host_dir: Path, file_stem: str) -> list[dict[str, str]]:
+    """Scan host_dir for stamped report files and return sorted history entries."""
+    history: list[dict[str, str]] = []
+    pattern = f"{re.escape(file_stem)}_*.html"
+    for f in host_dir.glob(pattern):
+        m = re.search(rf"{re.escape(file_stem)}_(\d+)\.html", f.name)
+        if m:
+            date_str = m.group(1)
+            display = (
+                f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+                if len(date_str) == 8
+                else date_str
+            )
+            history.append({"name": display, "url": f.name})
+    history.sort(key=lambda x: x["name"], reverse=True)
+    return history

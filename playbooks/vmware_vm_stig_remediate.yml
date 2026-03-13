@@ -1,0 +1,147 @@
+---
+# playbooks/vmware_vm_stig_remediate.yml
+# Automated security hardening remediation for VMware virtual machines.
+
+- name: "Phase 2b | Pre-Hardening VM Discovery & Snapshots"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "snapshot"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Discover all VMs on vCenter"
+      community.vmware.vmware_vm_info:
+        hostname: "{{ inventory_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+      register: _vcenter_vms
+      when: vm_stig_target_vms | default([]) | length == 0
+
+    - name: "Set VM target list from discovery"
+      ansible.builtin.set_fact:
+        vm_stig_target_vms: >-
+          {{ vm_stig_target_vms | default(None) or
+             _vcenter_vms.virtual_machines | default([])
+             | rejectattr('guest_name', 'match', '^vCLS-')
+             | map(attribute='guest_name') | list }}
+      when: vm_stig_target_vms | default([]) | length == 0
+
+    - name: "Build VM-to-datacenter map"
+      ansible.builtin.set_fact:
+        vm_datacenter_map: >-
+          {{ dict(
+             _vcenter_vms.virtual_machines | default([])
+             | rejectattr('guest_name', 'match', '^vCLS-')
+             | map(attribute='guest_name')
+             | zip(
+                 _vcenter_vms.virtual_machines | default([])
+                 | rejectattr('guest_name', 'match', '^vCLS-')
+                 | map(attribute='datacenter')
+               )
+          ) }}
+      when:
+        - vm_datacenter_map is not defined
+        - _vcenter_vms.virtual_machines is defined
+
+    - name: "Validate VM target list is provided"
+      ansible.builtin.assert:
+        that:
+          - vm_stig_target_vms | default([]) | length > 0
+        fail_msg: "No VM targets provided. Set vm_stig_target_vms (for example via just stig-harden-vm-*)."
+
+  tasks:
+    - name: Create safety snapshots
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+        tasks_from: snapshot
+      vars:
+        vm_snapshot_targets: "{{ vm_stig_target_vms | default([]) }}"
+        vm_snapshot_name: "Ansible_Pre_STIG_Hardening_{{ now(utc=true, fmt='%Y%m%d_%H%M%S') }}"
+        vm_snapshot_desc: "Safety snapshot before STIG remediation"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+- name: "Phase 2d | VM STIG Hardening (per vCenter)"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "remediate", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    vmware_stig_enable_hardening: true    # MUTATING — applies changes
+
+  pre_tasks:
+    - name: "Discover all VMs on vCenter (if not cached)"
+      community.vmware.vmware_vm_info:
+        hostname: "{{ inventory_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+      register: _vcenter_vms
+      when: vm_datacenter_map is not defined
+
+    - name: "Build VM-to-datacenter map (if not cached)"
+      ansible.builtin.set_fact:
+        vm_datacenter_map: >-
+          {{ dict(
+             _vcenter_vms.virtual_machines | default([])
+             | rejectattr('guest_name', 'match', '^vCLS-')
+             | map(attribute='guest_name')
+             | zip(
+                 _vcenter_vms.virtual_machines | default([])
+                 | rejectattr('guest_name', 'match', '^vCLS-')
+                 | map(attribute='datacenter')
+               )
+          ) }}
+      when:
+        - vm_datacenter_map is not defined
+        - _vcenter_vms.virtual_machines is defined
+
+  tasks:
+    - name: "Execute VM STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      when: vm_stig_target_vms | default([]) | length > 0
+
+- name: "Phase 2f | Post-Remediation VM STIG Audit"
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    vmware_stig_enable_hardening: false   # READ-ONLY
+
+  pre_tasks:
+    - name: "Discover all VMs on vCenter (if not cached)"
+      community.vmware.vmware_vm_info:
+        hostname: "{{ inventory_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+      register: _vcenter_vms
+      when: vm_datacenter_map is not defined
+
+    - name: "Build VM-to-datacenter map (if not cached)"
+      ansible.builtin.set_fact:
+        vm_datacenter_map: >-
+          {{ dict(
+             _vcenter_vms.virtual_machines | default([])
+             | rejectattr('guest_name', 'match', '^vCLS-')
+             | map(attribute='guest_name')
+             | zip(
+                 _vcenter_vms.virtual_machines | default([])
+                 | rejectattr('guest_name', 'match', '^vCLS-')
+                 | map(attribute='datacenter')
+               )
+          ) }}
+      when:
+        - vm_datacenter_map is not defined
+        - _vcenter_vms.virtual_machines is defined
+
+  tasks:
+    - name: "Execute Post-Remediation VM STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      when: vm_stig_target_vms | default([]) | length > 0

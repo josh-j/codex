@@ -41,11 +41,13 @@ def normalize_detail(detail: Any) -> dict[str, Any]:
 
 
 def canonical_severity(value: Any) -> str:
-    sev = str(value or "INFO").upper()
+    sev = str(value or "INFO").upper().replace(" ", "_")
     if sev in ("CRITICAL", "CAT_I", "HIGH", "SEVERE", "FAILED"):
         return "CRITICAL"
     if sev in ("WARNING", "WARN", "CAT_II", "MEDIUM", "MODERATE"):
         return "WARNING"
+    if sev in ("CAT_III", "LOW"):
+        return "INFO"
     return "INFO"
 
 
@@ -183,9 +185,10 @@ def canonical_stig_status(value: Any) -> str:
     text = str(value or "").strip().lower()
     if text in ("failed", "fail", "open", "finding", "non-compliant", "non_compliant"):
         return "open"
-    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated", "closed", "notafinding"):
+    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated",
+                "closed", "notafinding", "not_a_finding"):
         return "pass"
-    if text in ("na", "n/a", "not_applicable", "not applicable"):
+    if text in ("na", "n/a", "not_applicable", "not applicable", "not_applicable"):
         return "na"
     if text in ("not_reviewed", "not reviewed", "unreviewed"):
         return "not_reviewed"
