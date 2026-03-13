@@ -30,6 +30,9 @@
 - name: "Ubuntu STIG | Audit rules"
   ansible.builtin.import_tasks: ubuntu2404_stigs/40_audit_rules.yaml
 
+- name: "Ubuntu STIG | Flush handlers before audit rule verification"
+  ansible.builtin.meta: flush_handlers
+
 - name: "Ubuntu STIG | Audit rule audits"
   ansible.builtin.include_tasks: ubuntu2404_stigs/41_audit_rule_audits.yaml
   when: _ubuntu2404_stig_phase == 'audit'

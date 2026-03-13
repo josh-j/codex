@@ -61,6 +61,7 @@
     path: /etc/sssd/sssd.conf
     regexp: '^\s*ldap_user_certificate\s*='
     line: "ldap_user_certificate=userCertificate;binary"
+    insertafter: '^\[domain/'
     create: true
     owner: root
     group: root
@@ -297,3 +298,25 @@
     state: absent
   when:
     - ubuntu2404STIG_stigrule_270749_manage | default(true) | bool
+
+# -----------------------------------------------------------------------------
+# SV-270818r1068351 / SV-270819r1068354
+# auditd.conf space_left, space_left_action, action_mail_acct
+# -----------------------------------------------------------------------------
+- name: "stigrule_270818_270819_auditd_conf_remediate"
+  ansible.builtin.lineinfile:
+    path: /etc/audit/auditd.conf
+    regexp: '^\s*{{ item.key }}\s*='
+    line: "{{ item.line }}"
+    create: false
+  loop:
+    - { key: "space_left", line: "{{ ubuntu2404STIG_stigrule_270818_space_left_line }}" }
+    - { key: "space_left_action", line: "{{ ubuntu2404STIG_stigrule_270818_space_left_action_line }}" }
+    - { key: "action_mail_acct", line: "{{ ubuntu2404STIG_stigrule_270819_action_mail_acct_line }}" }
+  loop_control:
+    label: "{{ item.key }}"
+  notify: auditd_sighup
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270818_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270819_manage | default(true) | bool

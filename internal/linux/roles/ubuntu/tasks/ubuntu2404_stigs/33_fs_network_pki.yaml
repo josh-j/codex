@@ -773,6 +773,18 @@
   when:
     - not (ansible_check_mode | default(false))
     - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+
+- name: "stigrule_270772_aslr_persistent"
+  ansible.posix.sysctl:
+    name: kernel.randomize_va_space
+    value: "2"
+    sysctl_file: /etc/sysctl.d/10-kernel-hardening.conf
+    sysctl_set: true
+    state: present
+    reload: true
+  when:
+    - ubuntu2404STIG_stigrule_270772_manage | default(true) | bool
+
 # =============================================================================
 # Firewall
 # =============================================================================
@@ -1095,6 +1107,15 @@
     - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
     - _stigrule_270744_fips is defined
 
+- name: "stigrule_270744_fips_token_warning"
+  ansible.builtin.debug:
+    msg: >-
+      SV-270744: ubuntu2404STIG_stigrule_270744_pro_token is empty.
+      FIPS enablement requires an Ubuntu Pro token. Set this variable to remediate.
+  when:
+    - ubuntu2404STIG_stigrule_270744_manage | default(true) | bool
+    - ubuntu2404STIG_stigrule_270744_pro_token | default('') | length == 0
+
 - name: "stigrule_270744_fips_grub_remediate"
   ansible.builtin.lineinfile:
     path: /etc/default/grub
@@ -1200,6 +1221,46 @@
     - not (ansible_check_mode | default(false))
     - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
     - _stigrule_270746_kdump_unit.stdout | trim == 'kdump-tools.service'
+
+- name: "stigrule_270746_coredump_conf"
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/coredump.conf
+    regexp: '^\s*{{ item.key }}\s*='
+    line: "{{ item.key }}={{ item.value }}"
+    insertafter: '^\[Coredump\]'
+    create: true
+  loop:
+    - { key: "Storage", value: "none" }
+    - { key: "ProcessSizeMax", value: "0" }
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+
+- name: "stigrule_270746_core_pattern_sysctl"
+  ansible.posix.sysctl:
+    name: kernel.core_pattern
+    value: "|/bin/false"
+    sysctl_file: /etc/sysctl.d/10-kernel-hardening.conf
+    sysctl_set: true
+    state: present
+    reload: true
+  when:
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
+
+- name: "stigrule_270746_hard_core_limit"
+  ansible.builtin.lineinfile:
+    path: /etc/security/limits.d/core.conf
+    regexp: '^\*\s+hard\s+core\s+'
+    line: "* hard core 0"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270746_manage | default(true) | bool
 
 - name: "stigrule_270747_crypttab_check"
   ansible.builtin.shell:

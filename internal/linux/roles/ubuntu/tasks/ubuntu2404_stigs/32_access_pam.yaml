@@ -417,7 +417,7 @@
 - name: "stigrule_270724_root_status_assert"
   ansible.builtin.assert:
     that:
-      - _stigrule_270724_root_status.stdout is search(' root L ')
+      - _stigrule_270724_root_status.stdout is search('root L ')
     fail_msg: "Root account is not locked"
     success_msg: "Root account is locked"
   ignore_errors: true

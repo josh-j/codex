@@ -629,6 +629,14 @@
         line: "{{ ubuntu2404STIG_stigrule_270749_dmesg_restrict_conf_line }}",
       }
     - {
+        id: "270772",
+        manage_var: "ubuntu2404STIG_stigrule_270772_manage",
+        name: "kernel.randomize_va_space",
+        value: "{{ ubuntu2404STIG_stigrule_270772_randomize_va_space_value }}",
+        path: "/etc/sysctl.d/10-kernel-hardening.conf",
+        line: "{{ ubuntu2404STIG_stigrule_270772_randomize_va_space_conf_line }}",
+      }
+    - {
         id: "270753",
         manage_var: "ubuntu2404STIG_stigrule_270753_manage",
         name: "net.ipv4.tcp_syncookies",

@@ -9,7 +9,7 @@
     cmd: |
       set -e
       grep -Fqx -- {{ item.line | quote }} /etc/audit/rules.d/stig.rules
-      auditctl -l | grep -Fqx -- {{ item.line | quote }}
+      auditctl -l | grep -F -- {{ item.line | quote }}
   register: _stigrule_audit_rule_checks
   changed_when: false
   failed_when: false

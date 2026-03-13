@@ -111,18 +111,18 @@
     - _stigrule_audit_log_files is defined
     - _stigrule_audit_log_files is not ansible.builtin.skipped
 
-- name: "stigrule_270828_audit_log_owner_assert"
+- name: "stigrule_270827_audit_log_mode_assert"
   ansible.builtin.assert:
     that:
-      - (_stigrule_270828_audit_log_owner.rc | default(1)) == 0
-    fail_msg: "Audit log files are not all owned by root"
-    success_msg: "Audit log files are all owned by root"
+      - (_stigrule_270827_audit_log_mode.rc | default(1)) == 0
+    fail_msg: "Audit log files have permissions more permissive than 0600"
+    success_msg: "Audit log files have permissions of 0600 or less"
   ignore_errors: true
   when:
     - _ubuntu2404_stig_phase == 'audit'
-    - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
-    - _stigrule_270828_audit_log_owner is defined
-    - _stigrule_270828_audit_log_owner is not ansible.builtin.skipped
+    - ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
+    - _stigrule_270827_audit_log_mode is defined
+    - _stigrule_270827_audit_log_mode is not ansible.builtin.skipped
 
 - name: "stigrule_270827_audit_log_mode_remediate"
   ansible.builtin.file:

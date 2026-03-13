@@ -17,6 +17,10 @@
   ansible.builtin.command:
     cmd: augenrules --load
 
+- name: auditd_sighup
+  ansible.builtin.command:
+    cmd: systemctl kill auditd -s SIGHUP
+
 - name: auditd_restart
   ansible.builtin.service:
     name: auditd

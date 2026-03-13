@@ -367,6 +367,15 @@
     - not (ansible_check_mode | default(false))
     - ubuntu2404STIG_stigrule_270660_manage | default(true) | bool
 
+- name: "stigrule_270660_apparmor_enforce"
+  ansible.builtin.command:
+    cmd: aa-enforce /etc/apparmor.d/*
+  changed_when: true
+  failed_when: false
+  when:
+    - not (ansible_check_mode | default(false))
+    - ubuntu2404STIG_stigrule_270660_manage | default(true) | bool
+
 - name: "stigrule_270663_sssd_enable"
   ansible.builtin.service:
     name: sssd.service

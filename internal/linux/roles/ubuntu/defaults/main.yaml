@@ -386,6 +386,10 @@ ubuntu2404STIG_stigrule_270749_dmesg_restrict_value: "1"
 ubuntu2404STIG_stigrule_270753__etc_sysctl_conf_line: "net.ipv4.tcp_syncookies = 1"
 ubuntu2404STIG_stigrule_270753_net_ipv4_tcp_syncookies_value: "1"
 
+# ASLR
+ubuntu2404STIG_stigrule_270772_randomize_va_space_conf_line: "kernel.randomize_va_space = 2"
+ubuntu2404STIG_stigrule_270772_randomize_va_space_value: "2"
+
 # Auditd config
 ubuntu2404STIG_stigrule_270818_space_left_line: "space_left = 250000"
 ubuntu2404STIG_stigrule_270818_space_left_action_line: "space_left_action = email"
