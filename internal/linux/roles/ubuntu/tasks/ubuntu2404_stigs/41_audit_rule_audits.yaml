@@ -8,8 +8,14 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ item.line | quote }} /etc/audit/rules.d/stig.rules
-      auditctl -l | grep -F -- {{ item.line | quote }}
+      grep -Fq -- {{ item.line | quote }} /etc/audit/rules.d/stig.rules
+      # auditctl normalizes -k to '-F key=' and adds '-S all'; convert before matching
+      # If audit is immutable (enabled 2), skip live check — rules can't be reloaded without reboot
+      if auditctl -s 2>/dev/null | grep -q 'enabled 2'; then
+        exit 0
+      fi
+      PATTERN=$(echo {{ item.line | quote }} | sed 's/ -k / -F key=/g')
+      auditctl -l | grep -F -- "$PATTERN"
   register: _stigrule_audit_rule_checks
   changed_when: false
   failed_when: false

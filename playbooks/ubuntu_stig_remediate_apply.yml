@@ -15,6 +15,7 @@
         mode: "0600"
       delegate_to: localhost
       run_once: true
+      when: vault_logservers_private_key | default('') | trim | length > 0
 
   roles:
     - role: internal.linux.ubuntu
@@ -22,4 +23,4 @@
         ubuntu_action: stig
         ubuntu_enable_maintenance: true
         ubuntu_enable_stig_hardening: true
-        ansible_ssh_private_key_file: /tmp/logservers_key
+        ansible_ssh_private_key_file: "{{ '/tmp/logservers_key' if (vault_logservers_private_key | default('') | trim | length > 0) else omit }}"

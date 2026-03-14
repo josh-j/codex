@@ -83,7 +83,7 @@
     state: present
     update_cache: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
 
 - name: "stigrule_270650_aide_db_stat_plain"
@@ -91,7 +91,7 @@
     path: /var/lib/aide/aide.db
   register: _stigrule_270650_aide_db_plain
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
 
 - name: "stigrule_270650_aide_db_stat_gz"
@@ -99,7 +99,7 @@
     path: /var/lib/aide/aide.db.gz
   register: _stigrule_270650_aide_db_gz
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
 
 - name: "stigrule_270650_aide_initialize"
@@ -108,7 +108,7 @@
   register: _stigrule_270650_aideinit
   changed_when: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
     - not (_stigrule_270650_aide_db_plain.stat.exists | default(false))
     - not (_stigrule_270650_aide_db_gz.stat.exists | default(false))
@@ -126,11 +126,21 @@
       fi
   changed_when: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270650_manage | default(true) | bool
     - _stigrule_270650_aideinit is defined
     - _stigrule_270650_aideinit is not ansible.builtin.skipped
     - (_stigrule_270650_aideinit.rc | default(1)) == 0
+
+- name: "stigrule_270652_aide_silentreports_remediate"
+  ansible.builtin.lineinfile:
+    path: /etc/default/aide
+    regexp: '^\s*SILENTREPORTS\s*='
+    line: "SILENTREPORTS=no"
+    create: true
+  when:
+    - _ubuntu2404_stig_phase != 'audit'
+    - ubuntu2404STIG_stigrule_270652_manage | default(true) | bool
 
 - name: "stigrule_270651_aide_schedule_check"
   ansible.builtin.shell:
@@ -176,7 +186,7 @@
     group: root
     mode: "0644"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
 
 - name: "stigrule_270651_aide_default_schedule_stat"
@@ -184,7 +194,7 @@
     path: /usr/share/aide/config/cron.daily/aide
   register: _stigrule_270651_cron_src
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
 
 - name: "stigrule_270651_aide_default_schedule"
@@ -196,7 +206,7 @@
     group: root
     mode: "0755"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
     - _stigrule_270651_cron_src.stat.exists | default(false)
 
@@ -207,7 +217,7 @@
   changed_when: false
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
 
 - name: "stigrule_270651_enable_aide_timer"
@@ -218,7 +228,7 @@
     daemon_reload: true
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270651_manage | default(true) | bool
     - _stigrule_270651_timer_unit.stdout | trim == 'dailyaidecheck.timer'
 
@@ -258,7 +268,7 @@
     group: root
     mode: "0755"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool
 
 - name: "stigrule_270831_aide_audit_tools_remediate"
@@ -276,5 +286,5 @@
       /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
       /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270831_manage | default(true) | bool

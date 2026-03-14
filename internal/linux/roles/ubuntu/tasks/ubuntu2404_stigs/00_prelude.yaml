@@ -42,7 +42,25 @@
   until: _apt_auditd is success
   retries: 12
   delay: 10
-  when: not (ansible_check_mode | default(false))
+  when: _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Clear immutable audit flag if set (remediate only)"
+  ansible.builtin.shell:
+    cmd: |
+      if command -v auditctl >/dev/null 2>&1 && auditctl -s 2>/dev/null | grep -q 'enabled 2'; then
+        # Temporarily remove immutable rules file so auditd can restart cleanly
+        [ -f /etc/audit/rules.d/99-stig-immutable.rules ] && mv /etc/audit/rules.d/99-stig-immutable.rules /tmp/_stig_immutable_backup.rules
+        sed -i '/^-e 2/d' /etc/audit/rules.d/audit.rules 2>/dev/null || true
+        augenrules --load 2>/dev/null || service auditd restart 2>/dev/null || true
+        sleep 1
+        echo "cleared"
+      else
+        echo "not_immutable"
+      fi
+  register: _audit_immutable_clear
+  changed_when: "'cleared' in _audit_immutable_clear.stdout"
+  check_mode: false
+  when: _ubuntu2404_stig_phase != 'audit'
 
 - name: "Ubuntu STIG | Ensure stig.rules exists (remediate only)"
   ansible.builtin.file:
@@ -51,4 +69,4 @@
     mode: "0640"
     modification_time: preserve
     access_time: preserve
-  when: not (ansible_check_mode | default(false))
+  when: _ubuntu2404_stig_phase != 'audit'

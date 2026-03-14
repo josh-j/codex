@@ -35,7 +35,7 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270750_manage | default(true) | bool
     - _stigrule_270750_sticky is defined
     - _stigrule_270750_sticky is not ansible.builtin.skipped
@@ -56,7 +56,6 @@
   failed_when: false
   check_mode: false
   when:
-    - (_ubuntu2404_stig_phase == 'audit') or (not (ansible_check_mode | default(false)))
     - >
       ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
       or ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
@@ -132,7 +131,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270827_manage | default(true) | bool
     - _stigrule_audit_log_files is defined
     - _stigrule_audit_log_files is not ansible.builtin.skipped
@@ -179,7 +178,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270828_manage | default(true) | bool
     - _stigrule_audit_log_files is defined
     - _stigrule_audit_log_files is not ansible.builtin.skipped
@@ -227,7 +226,7 @@
     insertafter: "^[[:space:]]*log_file[[:space:]]*="
     create: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
 
 - name: "stigrule_270829_audit_log_group_remediate"
@@ -238,7 +237,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
     - _stigrule_audit_log_files is defined
     - _stigrule_audit_log_files is not ansible.builtin.skipped
@@ -249,7 +248,7 @@
   changed_when: true
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270829_manage | default(true) | bool
 
 # -----------------------------------------------------------------------------
@@ -288,7 +287,7 @@
     path: "{{ _stigrule_audit_log_dir }}"
     mode: "0750"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270830_manage | default(true) | bool
     - _stigrule_audit_log_dir is defined
     - _stigrule_audit_log_dir | length > 0

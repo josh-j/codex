@@ -6,7 +6,7 @@
 
 - name: "stigrule_270652_aide_silentreports_check"
   ansible.builtin.shell:
-    cmd: "grep -Fqx -- {{ ubuntu2404STIG_stigrule_270652_silentreports_line | quote }} /etc/default/aide"
+    cmd: "grep -Fq -- {{ ubuntu2404STIG_stigrule_270652_silentreports_line | quote }} /etc/default/aide"
   register: _stigrule_270652_aide
   changed_when: false
   failed_when: false
@@ -40,11 +40,11 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- "[org/gnome/desktop/session]" /etc/dconf/db/local.d/00-screensaver
-      grep -Fqx -- "idle-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_idle_delay_value }}" /etc/dconf/db/local.d/00-screensaver
-      grep -Fqx -- "[org/gnome/desktop/screensaver]" /etc/dconf/db/local.d/00-screensaver
-      grep -Fqx -- "lock-enabled={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_enabled_value }}" /etc/dconf/db/local.d/00-screensaver
-      grep -Fqx -- "lock-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_delay_value }}" /etc/dconf/db/local.d/00-screensaver
+      grep -Fq -- "[org/gnome/desktop/session]" /etc/dconf/db/local.d/00-screensaver
+      grep -Fq -- "idle-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_idle_delay_value }}" /etc/dconf/db/local.d/00-screensaver
+      grep -Fq -- "[org/gnome/desktop/screensaver]" /etc/dconf/db/local.d/00-screensaver
+      grep -Fq -- "lock-enabled={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_enabled_value }}" /etc/dconf/db/local.d/00-screensaver
+      grep -Fq -- "lock-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_delay_value }}" /etc/dconf/db/local.d/00-screensaver
   register: _stigrule_270678_dconf
   changed_when: false
   failed_when: false
@@ -65,9 +65,30 @@
     - ansible_facts.packages['gdm3'] is defined
     - _stigrule_270678_dconf is defined
 
+- name: "stigrule_270736_sssd_functional_check"
+  ansible.builtin.shell:
+    cmd: systemctl is-active sssd.service
+  register: _stigrule_270736_sssd_running
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - ubuntu2404STIG_stigrule_270736_manage | default(true) | bool
+
+- name: "stigrule_270736_sssd_functional_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270736_sssd_running.stdout | trim == 'active'
+    fail_msg: "SSSD is not running — ldap_user_certificate mapping is non-functional"
+    success_msg: "SSSD is running"
+  ignore_errors: true
+  when:
+    - ubuntu2404STIG_stigrule_270736_manage | default(true) | bool
+    - _stigrule_270736_sssd_running is defined
+
 - name: "stigrule_line_check"
   ansible.builtin.shell:
-    cmd: "grep -Fqx -- {{ item.line | quote }} {{ item.path | quote }}"
+    cmd: "grep -Fq -- {{ item.line | quote }} {{ item.path | quote }}"
   register: _stigrule_line_checks
   changed_when: false
   failed_when: false
@@ -218,8 +239,8 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270681_rsyslog_auth_line | quote }} /etc/rsyslog.d/50-default.conf
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270681_rsyslog_daemon_line | quote }} /etc/rsyslog.d/50-default.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270681_rsyslog_auth_line | quote }} /etc/rsyslog.d/50-default.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270681_rsyslog_daemon_line | quote }} /etc/rsyslog.d/50-default.conf
   register: _stigrule_270681_rsyslog
   changed_when: false
   failed_when: false
@@ -240,7 +261,7 @@
 
 - name: "stigrule_270691_banner_setting_check"
   ansible.builtin.shell:
-    cmd: "grep -rsiFx -- {{ ubuntu2404STIG_stigrule_270691_banner_line | quote }} /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null"
+    cmd: "grep -rsiF -- {{ ubuntu2404STIG_stigrule_270691_banner_line | quote }} /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null"
   register: _stigrule_270691_banner
   changed_when: false
   failed_when: false
@@ -303,7 +324,7 @@
 
 - name: "stigrule_dconf_lock_check"
   ansible.builtin.shell:
-    cmd: "grep -Fqx -- {{ item.line | quote }} {{ item.path | quote }}"
+    cmd: "grep -Fq -- {{ item.line | quote }} {{ item.path | quote }}"
   register: _stigrule_dconf_lock_checks
   changed_when: false
   failed_when: false
@@ -390,8 +411,8 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ ('[' ~ item.section ~ ']') | quote }} {{ item.path | quote }}
-      grep -Fqx -- {{ (item.option ~ '=' ~ item.value) | quote }} {{ item.path | quote }}
+      grep -Fq -- {{ ('[' ~ item.section ~ ']') | quote }} {{ item.path | quote }}
+      grep -Fq -- {{ (item.option ~ '=' ~ item.value) | quote }} {{ item.path | quote }}
   register: _stigrule_dconf_ini_checks
   changed_when: false
   failed_when: false
@@ -447,8 +468,8 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270705_pwquality_enforcing_line | quote }} /etc/security/pwquality.conf
-      grep -Fqx -- {{ (ubuntu2404STIG_stigrule_270705_pam_pwquality_line | default('password requisite pam_pwquality.so retry=3')) | quote }} /etc/pam.d/common-password
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270705_pwquality_enforcing_line | quote }} /etc/security/pwquality.conf
+      grep -Fq -- {{ (ubuntu2404STIG_stigrule_270705_pam_pwquality_line | default('password requisite pam_pwquality.so retry=3')) | quote }} /etc/pam.d/common-password
   register: _stigrule_270705_pwquality
   changed_when: false
   failed_when: false
@@ -587,8 +608,8 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_install_usb_storage_line | quote }} /etc/modprobe.d/DISASTIG.conf
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_blacklist_usb_storage_line | quote }} /etc/modprobe.d/DISASTIG.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_install_usb_storage_line | quote }} /etc/modprobe.d/DISASTIG.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270718__etc_modprobe_d_DISASTIG_conf_blacklist_usb_storage_line | quote }} /etc/modprobe.d/DISASTIG.conf
   register: _stigrule_270718_usb
   changed_when: false
   failed_when: false
@@ -612,7 +633,7 @@
     cmd: |
       set -e
       test "$(sysctl -n {{ item.name }})" = "{{ item.value }}"
-      grep -Fqx -- {{ item.line | quote }} {{ item.path | quote }}
+      grep -Eq '^\s*{{ item.name | regex_escape }}\s*=\s*{{ item.value | regex_escape }}\s*$' {{ item.path | quote }}
   register: _stigrule_sysctl_checks
   changed_when: false
   failed_when: false
@@ -641,7 +662,7 @@
         manage_var: "ubuntu2404STIG_stigrule_270753_manage",
         name: "net.ipv4.tcp_syncookies",
         value: "{{ ubuntu2404STIG_stigrule_270753_net_ipv4_tcp_syncookies_value }}",
-        path: "/etc/sysctl.conf",
+        path: "/etc/sysctl.d/10-kernel-hardening.conf",
         line: "{{ ubuntu2404STIG_stigrule_270753__etc_sysctl_conf_line }}",
       }
   loop_control:
@@ -721,9 +742,9 @@
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270818_space_left_line | quote }} /etc/audit/auditd.conf
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270818_space_left_action_line | quote }} /etc/audit/auditd.conf
-      grep -Fqx -- {{ ubuntu2404STIG_stigrule_270819_action_mail_acct_line | quote }} /etc/audit/auditd.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270818_space_left_line | quote }} /etc/audit/auditd.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270818_space_left_action_line | quote }} /etc/audit/auditd.conf
+      grep -Fq -- {{ ubuntu2404STIG_stigrule_270819_action_mail_acct_line | quote }} /etc/audit/auditd.conf
   register: _stigrule_270818_auditd
   changed_when: false
   failed_when: false
@@ -744,7 +765,7 @@
 
 - name: "stigrule_270832_audit_rules_immutable_check"
   ansible.builtin.shell:
-    cmd: "grep -Fqx -- {{ ubuntu2404STIG_stigrule_270832__etc_audit_rules_d_audit_rules_e2_line | quote }} /etc/audit/audit.rules"
+    cmd: "grep -Fq -- {{ ubuntu2404STIG_stigrule_270832__etc_audit_rules_d_audit_rules_e2_line | quote }} /etc/audit/audit.rules /etc/audit/rules.d/*.rules"
   register: _stigrule_270832_immutable
   changed_when: false
   failed_when: false

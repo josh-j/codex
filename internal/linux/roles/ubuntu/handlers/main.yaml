@@ -16,6 +16,7 @@
 - name: reload_audit_rules
   ansible.builtin.command:
     cmd: augenrules --load
+  failed_when: false
 
 - name: auditd_sighup
   ansible.builtin.command:

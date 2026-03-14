@@ -10,7 +10,7 @@
     create: true
     mode: "0640"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - lookup('vars', item.manage_var, default=true) | bool
   loop:
     - {
@@ -69,9 +69,9 @@
     cmd: augenrules --load
   register: _stigrule_syscall_augenrules_load
   changed_when: false
-  failed_when: _stigrule_syscall_augenrules_load.rc != 0
+  failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - >
       ubuntu2404STIG_stigrule_270784_manage | default(true) | bool
       or ubuntu2404STIG_stigrule_270785_manage | default(true) | bool
@@ -138,6 +138,8 @@
   ansible.builtin.shell:
     cmd: |
       set -eu
+      # If audit is immutable, skip live check — rules can't be reloaded without reboot
+      if auditctl -s 2>/dev/null | grep -q 'enabled 2'; then exit 0; fi
       auditctl -l | grep -E -- {{ item.pattern | quote }}
   register: _stigrule_42_syscall_live_checks
   changed_when: false

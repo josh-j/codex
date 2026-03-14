@@ -393,7 +393,7 @@ ubuntu2404STIG_stigrule_270772_randomize_va_space_value: "2"
 # Auditd config
 ubuntu2404STIG_stigrule_270818_space_left_line: "space_left = 250000"
 ubuntu2404STIG_stigrule_270818_space_left_action_line: "space_left_action = email"
-ubuntu2404STIG_stigrule_270819_action_mail_acct_line: "action_mail_acct = root@localhost"
+ubuntu2404STIG_stigrule_270819_action_mail_acct_line: "action_mail_acct = root@localhost.localdomain"
 ubuntu2404STIG_stigrule_270832__etc_audit_rules_d_audit_rules_e2_line: "-e 2"
 
 # =============================================================================

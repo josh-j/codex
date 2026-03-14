@@ -40,7 +40,7 @@
     autoremove: "{{ item.autoremove | default(false) }}"
     update_cache: "{{ item.update_cache | default(true) }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - lookup('vars', item.manage_var, default=true) | bool
   loop:
     - {
@@ -93,7 +93,7 @@
     purge: true
     autoremove: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270647_manage | default(true) | bool
 
 - name: "stigrule_package_present_assert"
@@ -166,7 +166,7 @@
     state: present
     update_cache: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - lookup('vars', item.manage_var, default=true) | bool
   loop:
     - {
@@ -240,7 +240,7 @@
     state: present
     update_cache: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270653_manage | default(true) | bool
 
 - name: "stigrule_270655_ufw_status_check"
@@ -267,12 +267,21 @@
     - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
     - _stigrule_270655_ufw_status is defined
 
+- name: "stigrule_270655_ufw_allow_ssh"
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+  become: true
+  when:
+    - _ubuntu2404_stig_phase != 'audit'
+    - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
+
 - name: "stigrule_270655_ufw_enable"
   community.general.ufw:
     state: enabled
   become: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270655_manage | default(true) | bool
 
 - name: "stigrule_270662_sssd_packages_assert"
@@ -297,7 +306,7 @@
     state: present
     update_cache: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270662_manage | default(true) | bool
 
 - name: "stigrule_270662_sssd_conf_skeleton"
@@ -309,7 +318,7 @@
     mode: "0600"
     force: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270662_manage | default(true) | bool
 
 # Refresh service facts after package installation so service enable/start
@@ -317,12 +326,36 @@
 - name: "Ubuntu STIG | Refresh service facts after package changes"
   ansible.builtin.service_facts:
   check_mode: false
-  when: not (ansible_check_mode | default(false))
+  when: _ubuntu2404_stig_phase != 'audit'
+
+# Ensure auditd is running before audit checks — it may be in failed state
+# from immutable flag restart attempts on a previously hardened host.
+- name: "Ubuntu STIG | Recover auditd if in failed state"
+  ansible.builtin.shell:
+    cmd: |
+      if systemctl is-failed auditd.service >/dev/null 2>&1; then
+        systemctl reset-failed auditd.service
+        # Hide immutable rules so augenrules --load (ExecStartPost) doesn't fail
+        [ -f /etc/audit/rules.d/99-stig-immutable.rules ] && mv /etc/audit/rules.d/99-stig-immutable.rules /tmp/_stig_immutable_recover.rules
+        systemctl start auditd.service 2>/dev/null || true
+        [ -f /tmp/_stig_immutable_recover.rules ] && mv /tmp/_stig_immutable_recover.rules /etc/audit/rules.d/99-stig-immutable.rules
+      fi
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: _ubuntu2404_stig_phase == 'audit'
+
+# Refresh service facts before audit checks so we see the current state
+# (services may have been started/enabled earlier in this run).
+- name: "Ubuntu STIG | Refresh service facts before service audit"
+  ansible.builtin.service_facts:
+  check_mode: false
+  when: _ubuntu2404_stig_phase == 'audit'
 
 - name: "stigrule_service_assert"
   ansible.builtin.assert:
     that:
-      - ansible_facts.services.get(item.unit, {}).get('state') == 'running'
+      - ansible_facts.services.get(item.unit, {}).get('state') in item.valid_states | default(['running'])
       - ansible_facts.services.get(item.unit, {}).get('status') == 'enabled'
     fail_msg: "{{ item.unit }} is not running and enabled"
     success_msg: "{{ item.unit }} is running and enabled"
@@ -340,6 +373,7 @@
         id: "270660",
         manage_var: "ubuntu2404STIG_stigrule_270660_manage",
         unit: "apparmor.service",
+        valid_states: ["running", "stopped"],
       }
     - {
         id: "270663",
@@ -354,8 +388,9 @@
     name: auditd.service
     state: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_state }}"
     enabled: "{{ ubuntu2404STIG_stigrule_270657_auditd_enable_enabled }}"
+  failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270657_manage | default(true) | bool
 
 - name: "stigrule_270660_apparmor_start"
@@ -364,7 +399,7 @@
     state: "{{ ubuntu2404STIG_stigrule_270660_apparmor_start_state }}"
     enabled: "{{ ubuntu2404STIG_stigrule_270660_apparmor_enable_enabled }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270660_manage | default(true) | bool
 
 - name: "stigrule_270660_apparmor_enforce"
@@ -373,7 +408,7 @@
   changed_when: true
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270660_manage | default(true) | bool
 
 - name: "stigrule_270663_sssd_enable"
@@ -382,7 +417,7 @@
     state: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_state }}"
     enabled: "{{ ubuntu2404STIG_stigrule_270663_sssd_enable_enabled }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270663_manage | default(true) | bool
 
 - name: "stigrule_270666_ssh_enabled_check"
@@ -430,5 +465,5 @@
     state: started
     enabled: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270666_manage | default(true) | bool

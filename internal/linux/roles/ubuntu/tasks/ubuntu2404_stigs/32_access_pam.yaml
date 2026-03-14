@@ -40,7 +40,7 @@
   register: _stigrule_270677_limits_d_files
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270677_manage | default(true) | bool
 
 - name: "stigrule_270677_remove_limits_conf_maxlogins"
@@ -49,7 +49,7 @@
     regexp: '^[[:space:]]*\*[[:space:]]+hard[[:space:]]+maxlogins[[:space:]]+'
     state: absent
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270677_manage | default(true) | bool
 
 - name: "stigrule_270677_remove_conflicting_limits_d_maxlogins"
@@ -61,7 +61,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270677_manage | default(true) | bool
 
 - name: "stigrule_270677_maxlogins_remediate"
@@ -73,7 +73,7 @@
     content: |
       * hard maxlogins 10
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270677_manage | default(true) | bool
 
 - name: "stigrule_270682_temporary_accounts_check"
@@ -112,15 +112,15 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270682_manage | default(true) | bool
 
 - name: "stigrule_270690_faillock_check"
   ansible.builtin.shell:
     cmd: |
       set -e
-      grep -Fqx -- 'auth [default=die] pam_faillock.so authfail' /etc/pam.d/common-auth
-      grep -Fqx -- 'auth sufficient pam_faillock.so authsucc' /etc/pam.d/common-auth
+      grep -Eq 'auth\s+\[.*default=die.*\]\s+pam_faillock\.so\s+authfail' /etc/pam.d/common-auth
+      grep -Fq -- 'auth sufficient pam_faillock.so authsucc' /etc/pam.d/common-auth
       grep -Eq '^audit$' /etc/security/faillock.conf
       grep -Eq '^silent$' /etc/security/faillock.conf
       grep -Eq '^deny *= *3$' /etc/security/faillock.conf
@@ -146,26 +146,6 @@
     - ubuntu2404STIG_stigrule_270690_manage | default(true) | bool
     - _stigrule_270690_faillock is defined
 
-- name: "stigrule_270690_faillock_pam_authfail"
-  ansible.builtin.lineinfile:
-    path: /etc/pam.d/common-auth
-    regexp: '^\s*auth\s+\[default=die\]\s+pam_faillock\.so\s+authfail\b'
-    line: "auth [default=die] pam_faillock.so authfail"
-    insertafter: "pam_unix.so"
-  when:
-    - not (ansible_check_mode | default(false))
-    - ubuntu2404STIG_stigrule_270690_manage | default(true) | bool
-
-- name: "stigrule_270690_faillock_pam_authsucc"
-  ansible.builtin.lineinfile:
-    path: /etc/pam.d/common-auth
-    regexp: '^\s*auth\s+sufficient\s+pam_faillock\.so\s+authsucc\b'
-    line: "auth sufficient pam_faillock.so authsucc"
-    insertafter: "pam_faillock.so authfail"
-  when:
-    - not (ansible_check_mode | default(false))
-    - ubuntu2404STIG_stigrule_270690_manage | default(true) | bool
-
 - name: "stigrule_270690_faillock_config"
   ansible.builtin.blockinfile:
     path: /etc/security/faillock.conf
@@ -178,12 +158,71 @@
       unlock_time = 0
     create: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270690_manage | default(true) | bool
+
+- name: "stigrule_270690_faillock_pam"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      PAM=/etc/pam.d/common-auth
+      MARKER="ANSIBLE MANAGED STIG 270690 pam_faillock"
+      if grep -q "$MARKER" "$PAM"; then echo "already_present"; exit 0; fi
+      python3 -c "
+      import re, sys
+      pam = open('$PAM').read()
+      # Bump pam_unix.so success=N by 2 to skip over the two new faillock lines
+      def bump(m):
+          return m.group(1) + '[success=' + str(int(m.group(2)) + 2) + m.group(3)
+      pam = re.sub(r'^(auth\s+)\[success=(\d+)(\s+default=ignore\]\s+pam_unix\.so)', bump, pam, flags=re.MULTILINE)
+      # Insert faillock block after pam_unix.so line
+      lines = pam.split('\n')
+      out = []
+      for line in lines:
+          out.append(line)
+          if 'pam_unix.so' in line and line.strip().startswith('auth'):
+              out.append('# BEGIN $MARKER')
+              out.append('auth [default=die] pam_faillock.so authfail')
+              out.append('auth sufficient pam_faillock.so authsucc')
+              out.append('# END $MARKER')
+      open('$PAM', 'w').write('\n'.join(out))
+      "
+      echo "applied"
+  register: _stigrule_270690_faillock_pam_result
+  changed_when: "'applied' in _stigrule_270690_faillock_pam_result.stdout"
+  when:
+    - _ubuntu2404_stig_phase != 'audit'
+    - ubuntu2404STIG_stigrule_270690_manage | default(true) | bool
+
+- name: "stigrule_270721_pkcs11_functional_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      dpkg -l pam-pkcs11 2>/dev/null | grep -q '^ii'
+      test -f /usr/lib/x86_64-linux-gnu/security/pam_pkcs11.so -o -f /usr/lib/security/pam_pkcs11.so
+  register: _stigrule_270721_pkcs11_functional
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270721_manage | default(true) | bool
+
+- name: "stigrule_270721_pkcs11_functional_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270721_pkcs11_functional.rc == 0
+    fail_msg: "pam_pkcs11 is not installed — smartcard authentication cannot function"
+    success_msg: "pam_pkcs11 module is installed and present"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270721_manage | default(true) | bool
+    - _stigrule_270721_pkcs11_functional is defined
 
 - name: "stigrule_single_line_check"
   ansible.builtin.shell:
-    cmd: "grep -Fqx -- {{ item.line | quote }} {{ item.path | quote }}"
+    cmd: "grep -Fq -- {{ item.line | quote }} {{ item.path | quote }}"
   register: _stigrule_32_single_line_checks
   changed_when: false
   failed_when: false
@@ -241,7 +280,7 @@
     line: "dictcheck=1"
     create: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270704_manage | default(true) | bool
 
 - name: "stigrule_270713_blank_passwords_check"
@@ -274,7 +313,7 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270713_manage | default(true) | bool
     - _stigrule_270713_blank_passwords is defined
     - _stigrule_270713_blank_passwords.stdout_lines is defined
@@ -308,7 +347,7 @@
     regexp: '\snullok\b'
     replace: ""
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270714_manage | default(true) | bool
 
 - name: "stigrule_270714_nullok_common_auth"
@@ -317,7 +356,7 @@
     regexp: '\snullok\b'
     replace: ""
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270714_manage | default(true) | bool
 
 - name: "stigrule_270720_duplicate_uid_check"
@@ -351,7 +390,7 @@
   loop_control:
     label: "{{ item.name }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270720_manage | default(true) | bool
 
 - name: "stigrule_270721_pam_pkcs11_remediate"
@@ -361,8 +400,35 @@
     line: "auth [success=2 default=ignore] pam_pkcs11.so"
     insertbefore: BOF
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270721_manage | default(true) | bool
+
+- name: "stigrule_270723_270738_pkcs11_functional_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      dpkg -l pam-pkcs11 2>/dev/null | grep -q '^ii'
+      test -f /usr/lib/x86_64-linux-gnu/security/pam_pkcs11.so -o -f /usr/lib/security/pam_pkcs11.so
+  register: _stigrule_270723_pkcs11_functional
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - ubuntu2404STIG_stigrule_270723_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270737_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270738_manage | default(true) | bool
+
+- name: "stigrule_270723_270738_pkcs11_functional_assert"
+  ansible.builtin.assert:
+    that:
+      - _stigrule_270723_pkcs11_functional.rc == 0
+    fail_msg: "pam_pkcs11 is not installed — smartcard cert_policy checks cannot function"
+    success_msg: "pam_pkcs11 module is installed and present"
+  ignore_errors: true
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - _stigrule_270723_pkcs11_functional is defined
 
 - name: "stigrule_270723_270738_pam_pkcs11_policy_check"
   ansible.builtin.shell:
@@ -391,6 +457,18 @@
     - _ubuntu2404_stig_phase == 'audit'
     - _stigrule_270723_pam_pkcs11 is defined
 
+- name: "stigrule_270723_pam_pkcs11_use_module_remediate"
+  ansible.builtin.lineinfile:
+    path: /etc/pam_pkcs11/pam_pkcs11.conf
+    regexp: '^\s*use_pkcs11_module\b'
+    line: "use_pkcs11_module = opensc;"
+    create: true
+  when:
+    - _ubuntu2404_stig_phase != 'audit'
+    - ubuntu2404STIG_stigrule_270723_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270737_manage | default(true) | bool
+      or ubuntu2404STIG_stigrule_270738_manage | default(true) | bool
+
 - name: "stigrule_270723_270738_pam_pkcs11_policy_remediate"
   ansible.builtin.lineinfile:
     path: /etc/pam_pkcs11/pam_pkcs11.conf
@@ -398,7 +476,7 @@
     line: "cert_policy = ca,signature,ocsp_on,crl_auto;"
     create: true
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270723_manage | default(true) | bool
       or ubuntu2404STIG_stigrule_270737_manage | default(true) | bool
       or ubuntu2404STIG_stigrule_270738_manage | default(true) | bool
@@ -430,7 +508,7 @@
   ansible.builtin.command:
     cmd: passwd -l root
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270724_manage | default(true) | bool
 
 - name: "stigrule_270725_sha512_remediate"
@@ -439,7 +517,7 @@
     regexp: '^\s*password\s+\[success=1 default=ignore\]\s+pam_unix\.so\b'
     line: "password [success=1 default=ignore] pam_unix.so obscure sha512"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270725_manage | default(true) | bool
 
 - name: "stigrule_270734_offline_credentials_remediate"
@@ -459,7 +537,7 @@
         block: |
           [pam]
       when: >
-        ('[pam]' not in (lookup('ansible.builtin.file', '/etc/sssd/sssd.conf', errors='ignore') | default('')))
+        ('[pam]' not in (lookup('ansible.builtin.file', '/etc/sssd/sssd.conf', errors='ignore') | default('', true)))
       ignore_errors: true
 
     - name: "stigrule_270734_offline_credentials_line"
@@ -473,7 +551,7 @@
         group: root
         mode: "0600"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270734_manage | default(true) | bool
 
 - name: "stigrule_270748_sudo_group_members_check"
@@ -507,7 +585,7 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270748_manage | default(true) | bool
     - _stigrule_270748_sudo_group is defined
     - _stigrule_270748_sudo_group.stdout is defined
@@ -542,7 +620,7 @@
     cmd: "test -n {{ ubuntu2404STIG_stigrule_270751_chrony_server | quote }}"
   changed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270751_manage | default(true) | bool
 
 - name: "stigrule_270751_chrony_server_remediate"
@@ -553,7 +631,7 @@
     create: true
   notify: chrony_restart
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270751_manage | default(true) | bool
     - ubuntu2404STIG_stigrule_270751_chrony_server | default('') | length > 0
 
@@ -598,7 +676,7 @@
       z /var/log/journal/%m 2640 root systemd-journal - -
       z /var/log/journal/%m/system.journal 0640 root systemd-journal - -
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_journal_parent_dirs"
@@ -615,7 +693,7 @@
     label: "{{ item }}"
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_find_journal_dirs"
@@ -628,7 +706,7 @@
   register: _stigrule_270757_journal_dirs
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_fix_journal_dir_modes"
@@ -641,7 +719,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_find_journal_files"
@@ -654,7 +732,7 @@
   register: _stigrule_270757_journal_files
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_fix_journal_file_modes"
@@ -667,7 +745,7 @@
   loop_control:
     label: "{{ item.path }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_270757_apply_tmpfiles"
@@ -676,7 +754,7 @@
   changed_when: false
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_270757_manage | default(true) | bool
 
 - name: "stigrule_274868_nopasswd_check"
@@ -710,7 +788,7 @@
   register: _stigrule_274868_sudoers_files
   failed_when: false
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_274868_manage | default(true) | bool
 
 - name: "stigrule_274868_nopasswd_remove"
@@ -723,7 +801,7 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_274868_manage | default(true) | bool
 
 - name: "stigrule_274868_nopasswd_cleanup_double_commas"
@@ -736,7 +814,7 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_274868_manage | default(true) | bool
 
 - name: "stigrule_274869_privilege_elevation_check"
@@ -772,5 +850,5 @@
   loop_control:
     label: "{{ item }}"
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - ubuntu2404STIG_stigrule_274869_manage | default(true) | bool

@@ -63,7 +63,7 @@
     create: true
   notify: ssh_restart
   when:
-    - not (ansible_check_mode | default(false))
+    - _ubuntu2404_stig_phase != 'audit'
     - lookup('vars', item.manage_var, default=true) | bool
     - ansible_facts.packages['openssh-server'] is defined
   loop:
