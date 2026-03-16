@@ -1,0 +1,364 @@
+---
+# =============================================================================
+# Access control, PAM, accounts, and privilege elevation — migrated to internal.core.stig
+# =============================================================================
+
+# --- 270677 - maxlogins <= 10 ---
+- name: "stigrule_270677"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270677_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -e
+        grep -rE '^\s*\*\s+hard\s+maxlogins\s+([0-9]|10)(\s|$)' \
+          /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null
+        ! grep -rE '^\s*\*\s+hard\s+maxlogins\s+([1-9][1-9]|[0-9]{3,})(\s|$)' \
+          /etc/security/limits.conf /etc/security/limits.d/*.conf 2>/dev/null
+    cmd: |
+      set -eu
+      sed -i '/^\s*\*\s\+hard\s\+maxlogins\s/d' /etc/security/limits.conf
+      for f in /etc/security/limits.d/*.conf; do
+        [ -f "$f" ] && sed -i '/^\s*\*\s\+hard\s\+maxlogins\s/d' "$f"
+      done
+      echo '* hard maxlogins 10' > /etc/security/limits.d/maxlogins.conf
+      chown root:root /etc/security/limits.d/maxlogins.conf
+      chmod 0644 /etc/security/limits.d/maxlogins.conf
+
+# --- 270682 - temporary accounts must have expiration ---
+- name: "stigrule_270682"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270682_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -e
+        for acct in {{ ubuntu2404STIG_stigrule_270682_temporary_accounts | default([]) | join(' ') }}; do
+          test -n "$acct"
+          expiry="$(chage -l "$acct" | awk -F': ' '/Account expires/ {print $2}')"
+          test "$expiry" != "never"
+        done
+    cmd: |
+      set -eu
+      for acct in {{ ubuntu2404STIG_stigrule_270682_temporary_accounts | default([]) | join(' ') }}; do
+        chage -E "$(date -d +3days +%Y-%m-%d)" "$acct"
+      done
+
+# --- 270690 - faillock configuration ---
+- name: "stigrule_270690"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270690_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -e
+        grep -Eq 'auth\s+\[.*default=die.*\]\s+pam_faillock\.so\s+authfail' /etc/pam.d/common-auth
+        grep -Fq 'auth sufficient pam_faillock.so authsucc' /etc/pam.d/common-auth
+        grep -Eq '^audit$' /etc/security/faillock.conf
+        grep -Eq '^silent$' /etc/security/faillock.conf
+        grep -Eq '^deny *= *3$' /etc/security/faillock.conf
+        grep -Eq '^fail_interval *= *900$' /etc/security/faillock.conf
+        grep -Eq '^unlock_time *= *0$' /etc/security/faillock.conf
+    cmd: |
+      set -e
+      # faillock.conf settings
+      cat > /tmp/_stig_faillock_block <<'FLEOF'
+      # BEGIN ANSIBLE MANAGED STIG 270690
+      audit
+      silent
+      deny = 3
+      fail_interval = 900
+      unlock_time = 0
+      # END ANSIBLE MANAGED STIG 270690
+      FLEOF
+      if ! grep -q 'ANSIBLE MANAGED STIG 270690' /etc/security/faillock.conf 2>/dev/null; then
+        cat /tmp/_stig_faillock_block >> /etc/security/faillock.conf
+      fi
+      rm -f /tmp/_stig_faillock_block
+      # PAM faillock lines
+      PAM=/etc/pam.d/common-auth
+      MARKER="ANSIBLE MANAGED STIG 270690 pam_faillock"
+      if ! grep -q "$MARKER" "$PAM"; then
+        python3 -c "
+      import re
+      pam = open('$PAM').read()
+      def bump(m):
+          return m.group(1) + '[success=' + str(int(m.group(2)) + 2) + m.group(3)
+      pam = re.sub(r'^(auth\s+)\[success=(\d+)(\s+default=ignore\]\s+pam_unix\.so)', bump, pam, flags=re.MULTILINE)
+      lines = pam.split('\n')
+      out = []
+      for line in lines:
+          out.append(line)
+          if 'pam_unix.so' in line and line.strip().startswith('auth'):
+              out.append('# BEGIN $MARKER')
+              out.append('auth [default=die] pam_faillock.so authfail')
+              out.append('auth sufficient pam_faillock.so authsucc')
+              out.append('# END $MARKER')
+      open('$PAM', 'w').write('\n'.join(out))
+      "
+      fi
+
+# --- 270704 - dictcheck ---
+- name: "stigrule_270704"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270704_manage | default(true) }}"
+    path: /etc/security/pwquality.conf
+    regexp: "^dictcheck="
+    line: "dictcheck=1"
+    create: true
+
+# --- 270713 - no blank passwords ---
+- name: "stigrule_270713"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270713_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        [ -z "$(awk -F: '!$2 {print $1}' /etc/shadow)" ]
+    cmd: |
+      set -eu
+      awk -F: '!$2 {print $1}' /etc/shadow | while read -r acct; do
+        passwd -l "$acct"
+      done
+
+# --- 270714 - remove nullok from PAM ---
+- name: "stigrule_270714"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270714_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "! grep -q 'nullok' /etc/pam.d/common-password /etc/pam.d/common-auth"
+    cmd: |
+      set -eu
+      sed -i 's/\s\+nullok\b//g' /etc/pam.d/common-password /etc/pam.d/common-auth
+
+# --- 270720 - no duplicate UIDs ---
+- name: "stigrule_270720"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270720_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        [ -z "$(awk -F: 'list[$3]++{print $1, $3}' /etc/passwd)" ]
+    cmd: "true"
+
+# --- 270721 - pam_pkcs11 auth line ---
+- name: "stigrule_270721"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270721_manage | default(true) }}"
+    _stig_gate_packages: [libpam-pkcs11]
+    path: /etc/pam.d/common-auth
+    regexp: '^\s*auth\s+\[success=2 default=ignore\]\s+pam_pkcs11\.so\b'
+    line: "auth [success=2 default=ignore] pam_pkcs11.so"
+    insertbefore: BOF
+
+# --- 270723/270737/270738 - pam_pkcs11 cert_policy ---
+- name: "stigrule_270723"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270723_manage | default(true) }}"
+    _stig_gate_packages: [libpam-pkcs11]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -e
+        grep -Eq '^use_pkcs11_module' /etc/pam_pkcs11/pam_pkcs11.conf
+        grep -Eq 'cert_policy *= *ca,signature,ocsp_on,crl_(auto|offline);' /etc/pam_pkcs11/pam_pkcs11.conf
+    cmd: |
+      set -eu
+      mkdir -p /etc/pam_pkcs11
+      grep -qE '^\s*use_pkcs11_module\b' /etc/pam_pkcs11/pam_pkcs11.conf 2>/dev/null && \
+        sed -i 's/^\s*use_pkcs11_module.*/use_pkcs11_module = opensc;/' /etc/pam_pkcs11/pam_pkcs11.conf || \
+        echo 'use_pkcs11_module = opensc;' >> /etc/pam_pkcs11/pam_pkcs11.conf
+      grep -qE '^\s*cert_policy\s*=' /etc/pam_pkcs11/pam_pkcs11.conf && \
+        sed -i 's/^\s*cert_policy\s*=.*/cert_policy = ca,signature,ocsp_on,crl_auto;/' /etc/pam_pkcs11/pam_pkcs11.conf || \
+        echo 'cert_policy = ca,signature,ocsp_on,crl_auto;' >> /etc/pam_pkcs11/pam_pkcs11.conf
+
+- name: "stigrule_270737"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270737_manage | default(true) }}"
+    _stig_gate_packages: [libpam-pkcs11]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "grep -Eq 'cert_policy *= *ca,signature,ocsp_on,crl_(auto|offline);' /etc/pam_pkcs11/pam_pkcs11.conf"
+    cmd: "true"
+
+- name: "stigrule_270738"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270738_manage | default(true) }}"
+    _stig_gate_packages: [libpam-pkcs11]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "grep -Eq 'cert_policy *= *ca,signature,ocsp_on,crl_(auto|offline);' /etc/pam_pkcs11/pam_pkcs11.conf"
+    cmd: "true"
+
+# --- 270724 - root account locked ---
+- name: "stigrule_270724"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270724_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "passwd -S root | grep -q 'root L '"
+    cmd: "passwd -l root"
+
+# --- 270725 - pam_unix sha512 ---
+- name: "stigrule_270725"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270725_manage | default(true) }}"
+    path: /etc/pam.d/common-password
+    regexp: '^\s*password\s+\[success=1 default=ignore\]\s+pam_unix\.so\b'
+    line: "password [success=1 default=ignore] pam_unix.so obscure sha512"
+
+# --- 270734 - SSSD offline_credentials_expiration ---
+- name: "stigrule_270734"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270734_manage | default(true) }}"
+    _stig_gate_packages: [sssd]
+    _stig_gate_status: failed
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "grep -Fq 'offline_credentials_expiration = 1' /etc/sssd/sssd.conf"
+    cmd: |
+      set -eu
+      touch /etc/sssd/sssd.conf
+      chown root:root /etc/sssd/sssd.conf
+      chmod 0600 /etc/sssd/sssd.conf
+      if ! grep -q '^\[pam\]' /etc/sssd/sssd.conf; then
+        printf '\n[pam]\n' >> /etc/sssd/sssd.conf
+      fi
+      grep -qE '^\s*offline_credentials_expiration\s*=' /etc/sssd/sssd.conf && \
+        sed -i 's/^\s*offline_credentials_expiration\s*=.*/offline_credentials_expiration = 1/' /etc/sssd/sssd.conf || \
+        sed -i '/^\[pam\]/a offline_credentials_expiration = 1' /etc/sssd/sssd.conf
+
+# --- 270748 - sudo group members ---
+- name: "stigrule_270748"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270748_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        members="$(getent group sudo | cut -d: -f4)"
+        allowed="{{ ubuntu2404STIG_stigrule_270748_authorized_sudo_members | default([]) | join(' ') }}"
+        echo "$members" | tr ',' '\n' | while IFS= read -r m; do
+          [ -z "$m" ] && continue
+          echo " $allowed " | grep -q " $m " || exit 1
+        done
+    cmd: |
+      set -eu
+      members="$(getent group sudo | cut -d: -f4)"
+      allowed="{{ ubuntu2404STIG_stigrule_270748_authorized_sudo_members | default([]) | join(' ') }}"
+      echo "$members" | tr ',' '\n' | while IFS= read -r m; do
+        [ -z "$m" ] && continue
+        if ! echo " $allowed " | grep -q " $m "; then
+          gpasswd -d "$m" sudo
+        fi
+      done
+
+# --- 270751 - chrony authoritative server ---
+- name: "stigrule_270751"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270751_manage | default(true) }}"
+    _stig_gate_packages: [chrony]
+    _stig_gate_vars:
+      ubuntu2404STIG_stigrule_270751_chrony_server: "non-empty"
+    _stig_notify: [chrony_restart]
+    path: /etc/chrony/chrony.conf
+    regexp: '^server\s+'
+    line: "server {{ ubuntu2404STIG_stigrule_270751_chrony_server }} iburst maxpoll 16"
+    create: true
+  notify: chrony_restart
+
+# --- 270757 - journal permissions ---
+- name: "stigrule_270757"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270757_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -e
+        ! find /run/log/journal /var/log/journal -type d -exec stat -c '%a %n' {} \; 2>/dev/null \
+          | awk '$1+0 > 2640 { print; found=1 } END { exit(found ? 0 : 1) }'
+        ! find /run/log/journal /var/log/journal -type f -exec stat -c '%a %n' {} \; 2>/dev/null \
+          | awk '$1+0 > 640 { print; found=1 } END { exit(found ? 0 : 1) }'
+    cmd: |
+      set -eu
+      cat > /etc/tmpfiles.d/ubuntu-stig-journal.conf <<'JEOF'
+      z /run/log/journal 2640 root systemd-journal - -
+      Z /run/log/journal/%m 2640 root systemd-journal - -
+      z /var/log/journal 2640 root systemd-journal - -
+      z /var/log/journal/%m 2640 root systemd-journal - -
+      z /var/log/journal/%m/system.journal 0640 root systemd-journal - -
+      JEOF
+      for d in /run/log/journal /var/log/journal; do
+        [ -d "$d" ] && find "$d" -type d -exec chown root:systemd-journal {} \; -exec chmod 2640 {} \;
+        [ -d "$d" ] && find "$d" -type f -exec chown root:systemd-journal {} \; -exec chmod 0640 {} \;
+      done
+      systemd-tmpfiles --create /etc/tmpfiles.d/ubuntu-stig-journal.conf 2>/dev/null || true
+
+# --- 274868 - remove NOPASSWD from sudoers ---
+- name: "stigrule_274868"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_274868_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "! grep -riE 'NOPASSWD' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '#'"
+    cmd: |
+      set -eu
+      for f in /etc/sudoers /etc/sudoers.d/*; do
+        [ -f "$f" ] || continue
+        if grep -qiE 'NOPASSWD' "$f"; then
+          sed -i 's/\(^\|[, \t]\)NOPASSWD:\([, \t]\|$\)/\1\2/gi' "$f"
+          sed -i 's/,\s*,/,/g' "$f"
+        fi
+      done
+
+# --- 274869 - no overly broad ALL sudoers entries ---
+- name: "stigrule_274869"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_274869_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: "! grep -iwR 'ALL' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '#' | grep -E 'ALL ALL=\\(ALL\\) ALL|ALL ALL=\\(ALL:ALL\\) ALL'"
+    cmd: |
+      set -eu
+      for f in /etc/sudoers /etc/sudoers.d/*; do
+        [ -f "$f" ] || continue
+        sed -i 's/^\s*ALL\s\+ALL=\((ALL\|ALL:ALL)\)\s\+ALL\s*$/# ANSIBLE REMOVED STIG 274869 overly broad rule/' "$f"
+      done

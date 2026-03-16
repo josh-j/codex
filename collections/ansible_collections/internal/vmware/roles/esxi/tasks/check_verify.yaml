@@ -1,0 +1,19 @@
+---
+# check_verify.yaml — Phase 2 post-remediation re-audit
+# Always runs in check_mode regardless of vmware_stig_enable_hardening
+
+- name: "ESXi STIG | Verify each host"
+  ansible.builtin.include_tasks: esxi_v7r4.yaml
+  loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
+  loop_control:
+    loop_var: _current_esxi_host
+    label: "{{ _current_esxi_host }}"
+  args:
+    apply:
+      check_mode: true
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ _current_esxi_host }}"
+        stig_target_type: "esxi"
+        stig_platform: "vmware/esxi"
+  ignore_errors: true

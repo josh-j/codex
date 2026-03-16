@@ -1,0 +1,5 @@
+---
+
+- name: Include migrated Perfcharts STIG implementation
+  ansible.builtin.include_tasks:
+    file: perfcharts_stig_migrated.yml

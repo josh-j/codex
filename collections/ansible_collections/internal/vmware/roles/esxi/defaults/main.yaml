@@ -1,0 +1,183 @@
+---
+# collections/ansible_collections/internal/vmware/roles/esxi/defaults/main.yaml
+
+# =========================================================================
+# Pipeline config
+# =========================================================================
+esxi_action: stig
+vmware_stig_enable_hardening: false
+esxi_stig_target_hosts: []
+esxi_stig_enable_ssh_checks: true
+
+# =========================================================================
+# Site-specific values (MUST be set in group_vars for hardening mode)
+# =========================================================================
+esxi_stig_syslog_host: ""
+esxi_stig_ntp_servers: []
+esxi_stig_ad_domain: ""
+esxi_stig_ad_join_user: ""
+esxi_stig_ad_join_password: ""
+esxi_stig_ad_admin_group: ""
+esxi_stig_log_dir: ""
+esxi_stig_expected_build: ""
+esxi_stig_welcome_message: |
+  You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only. By using this IS (which includes any device attached to this IS), you consent to the following conditions:
+
+  - The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.
+
+  - At any time, the USG may inspect and seize data stored on this IS.
+
+  - Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose.
+
+  - This IS includes security measures (e.g., authentication and access controls) to protect USG interests--not for your personal benefit or privacy.
+
+  - Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
+
+# =========================================================================
+# Configurable STIG values (defaults match DISA STIG expected values)
+# =========================================================================
+esxi_stig_dcui_access: "root"
+esxi_stig_account_lock_failures: 3
+esxi_stig_account_unlock_time: 900
+esxi_stig_log_level: "info"
+esxi_stig_password_quality: "similar=deny retry=3 min=disabled,disabled,disabled,disabled,15"
+esxi_stig_password_history: 5
+esxi_stig_password_max_days: 90
+esxi_stig_mob_enabled: "false"
+esxi_stig_shell_interactive_timeout: 120
+esxi_stig_shell_timeout: 600
+esxi_stig_dcui_timeout: 120
+esxi_stig_share_force_salting: 2
+esxi_stig_block_guest_bpdu: 1
+esxi_stig_dvfilter_bind_ip: ""
+esxi_stig_disabled_protocols: "sslv3,tlsv1,tlsv1.1"
+esxi_stig_suppress_shell_warning: 0
+esxi_stig_suppress_ht_warning: 0
+esxi_stig_syslog_check_ssl_certs: "true"
+esxi_stig_memory_eager_zero: 1
+esxi_stig_api_session_timeout: 30
+esxi_stig_host_client_timeout: 600
+esxi_stig_ssh_banner: ""
+esxi_stig_acceptance_level: "partner"
+esxi_stig_lockdown_level: "lockdownNormal"
+esxi_stig_portgroup_remediation_vlan_id: 0
+
+# =========================================================================
+# Rule toggles — SAFE rules (enable by default)
+# =========================================================================
+
+# CAT I
+esxi_70_000074_Manage: true # V-256429: TLS 1.2 only
+
+# CAT II — Config manager (advanced settings)
+esxi_70_000002_Manage: true # V-256376: DCUI.Access
+# CAUTION: Clears lockdown exception list. Only meaningful when lockdown is enabled.
+esxi_70_000003_Manage: false # V-256377: Lockdown exceptions
+esxi_70_000004_Manage: true # V-256378: Syslog host (requires esxi_stig_syslog_host)
+esxi_70_000005_Manage: true # V-256379: Account lock failures
+esxi_70_000006_Manage: true # V-256380: Account unlock time
+esxi_70_000007_Manage: true # V-256381: Welcome banner (requires esxi_stig_welcome_message)
+esxi_70_000008_Manage: true # V-256382: SSH /etc/issue banner
+esxi_70_000030_Manage: true # V-256396: Log level
+esxi_70_000031_Manage: true # V-256397: Password complexity
+esxi_70_000032_Manage: true # V-256398: Password history
+esxi_70_000034_Manage: true # V-256399: MOB disabled
+esxi_70_000041_Manage: true # V-256405: Shell interactive timeout
+esxi_70_000042_Manage: true # V-256406: Shell timeout
+esxi_70_000043_Manage: true # V-256407: DCUI timeout
+esxi_70_000045_Manage: true # V-256408: Persistent logging (requires esxi_stig_log_dir)
+esxi_70_000055_Manage: true # V-256416: Memory salting
+esxi_70_000058_Manage: true # V-256419: BPDU filter
+esxi_70_000062_Manage: true # V-256423: dvFilter bind IP
+esxi_70_000079_Manage: true # V-256432: Shell warning not suppressed
+esxi_70_000081_Manage: true # V-256433: HT warning not suppressed
+esxi_70_000086_Manage: true # V-256438: Syslog SSL cert check
+esxi_70_000087_Manage: true # V-256439: Volatile key destruction
+esxi_70_000088_Manage: true # V-256440: API session timeout
+esxi_70_000089_Manage: true # V-256441: Host client timeout
+esxi_70_000091_Manage: true # V-256443: Password max days
+
+# CAT II — Service manager
+esxi_70_000083_Manage: true # V-256435: SLPD stopped
+esxi_70_000097_Manage: true # V-256448: CIM watchdog stopped
+
+# CAT II — NTP / acceptance level
+esxi_70_000046_Manage: true # V-256409: NTP servers (requires esxi_stig_ntp_servers)
+esxi_70_000047_Manage: true # V-256410: VIB acceptance level
+
+# CAT II — Network audit (port groups / vSwitches)
+esxi_70_000048_Manage: true # V-256411: PG forged transmits
+esxi_70_000049_Manage: true # V-256412: PG MAC changes
+esxi_70_000050_Manage: true # V-256413: PG promiscuous mode
+esxi_70_000059_Manage: true # V-256420: vSwitch forged transmits
+esxi_70_000060_Manage: true # V-256421: vSwitch MAC changes
+esxi_70_000061_Manage: true # V-256422: vSwitch promiscuous mode
+esxi_70_000063_Manage: true # V-256424: VLAN 4095 trunk
+esxi_70_000064_Manage: true # V-256425: Reserved VLANs
+esxi_70_000065_Manage: true # V-256426: Native VLAN 1
+
+# CAT II — Firewall
+esxi_70_000056_Manage: true # V-256417: Firewall rules
+esxi_70_000057_Manage: false # V-256418: Firewall default policy (CAUTION: can break connectivity)
+
+# CAT II — Advanced settings (esxcli-based)
+esxi_70_000084_Manage: true # V-256436: Audit records
+esxi_70_000085_Manage: true # V-256437: Syslog x509 strict
+esxi_70_000095_Manage: true # V-256447: Secure Boot enforcement
+
+# CAT II — Firmware / audit-only
+esxi_70_000072_Manage: true # V-256427: Patches current (audit only)
+esxi_70_000076_Manage: true # V-256430: Secure Boot (audit only)
+esxi_70_000078_Manage: true # V-256431: LDAP TLS (audit only)
+esxi_70_000090_Manage: true # V-256442: rhttpproxy FIPS
+esxi_70_000092_Manage: true # V-256444: VM overrides (audit only)
+esxi_70_000093_Manage: true # V-256445: VM logger (audit only)
+esxi_70_000094_Manage: true # V-256446: TPM encryption
+
+# CAT II — SSH config
+esxi_70_000009_Manage: true # V-256383: SSH banner directive
+esxi_70_000010_Manage: true # V-256384: SSH FIPS 140-2
+esxi_70_000012_Manage: true # V-256385: IgnoreRhosts
+esxi_70_000013_Manage: true # V-256386: HostbasedAuthentication
+esxi_70_000016_Manage: true # V-256388: PermitUserEnvironment
+esxi_70_000020_Manage: true # V-256389: StrictModes
+esxi_70_000021_Manage: true # V-256390: Compression
+esxi_70_000022_Manage: true # V-256391: GatewayPorts
+esxi_70_000023_Manage: true # V-256392: X11Forwarding
+esxi_70_000025_Manage: true # V-256393: PermitTunnel
+esxi_70_000082_Manage: true # V-256434: TCP forwarding
+esxi_70_000274_Manage: true # V-256449: FIPS ciphers
+
+# CAT III — SSH config
+esxi_70_000015_Manage: true # V-256387: PermitEmptyPasswords
+esxi_70_000026_Manage: true # V-256394: ClientAliveCountMax
+esxi_70_000027_Manage: true # V-256395: ClientAliveInterval
+
+# CAT II — Manual / audit-only
+esxi_70_000038_Manage: true # V-256403: Host profiles (debug msg only)
+esxi_70_000070_Manage: true # V-256428: CIM account access (debug msg only)
+
+# =========================================================================
+# DANGEROUS rules — disabled by default, enable explicitly when ready
+# =========================================================================
+
+# CAUTION: Lockdown mode blocks direct ESXi access.
+# If vCenter goes down, you cannot manage the host.
+esxi_70_000001_Manage: false # V-256375: Lockdown mode
+
+# CAUTION: Disables SSH. Enable only after all SSH-dependent config is applied.
+# Should be the LAST rule applied in hardening sequence.
+esxi_70_000035_Manage: false # V-256400: SSH service stopped
+
+# CAUTION: Disables ESXi Shell. Same concern as SSH.
+esxi_70_000036_Manage: false # V-256401: ESXi Shell stopped
+
+# CAUTION: Requires working Active Directory. If AD is unreachable, login fails.
+esxi_70_000037_Manage: false # V-256402: AD join
+esxi_70_000039_Manage: false # V-256404: AD admin group (requires esxi_stig_ad_admin_group)
+
+# CAUTION: SNMP disable — only if SNMP is not used for monitoring
+esxi_70_000053_Manage: true # V-256414: SNMP (disables if default community)
+
+# CAUTION: iSCSI CHAP — only if iSCSI is used
+esxi_70_000054_Manage: true # V-256415: iSCSI CHAP (safe — skips if no iSCSI)

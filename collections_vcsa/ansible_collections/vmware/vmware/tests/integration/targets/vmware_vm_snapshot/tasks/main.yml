@@ -1,0 +1,233 @@
+---
+- name: Test
+  when: run_on_vcenter
+  environment: "{{ environment_auth_vars }}"
+
+  block:
+    - name: Create Virtual Machine From OVF Template
+      vmware.vmware.deploy_content_library_ovf:
+        library_item_name: "{{ rhel9_content_library_ovf }}"
+        vm_name: "{{ vm }}"
+        datacenter: "{{ vm_datacenter }}"
+        datastore: "{{ datastore }}"
+        cluster: "{{ vm_cluster }}"
+
+    - name: Create a snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap1
+        description: snap1_description
+      register: _create
+
+    - name: Create a snapshot - Idempotence
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap1
+        description: snap1_description
+      register: _create_idem
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify snapshot created
+      ansible.builtin.assert:
+        that:
+          - snapshot_info.name == 'snap1'
+          - snapshot_info.name == _create.snapshot.name
+          - snapshot_info.id == _create.snapshot.id
+          - snapshot_info.description == 'snap1_description'
+          - _create_idem is not changed
+      vars:
+        snapshot_info: "{{ info.guests[0].snapshots[0] }}"
+
+    - name: Create a second snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap1_2
+
+    - name: Revert VM to first snapshot
+      vmware.vmware.vm_snapshot_revert:
+        moid: "{{ _create.vm.moid }}"
+        snapshot_name: snap1
+      register: _revert
+
+    - name: Remove unused snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        snapshot_name: snap1_2
+        state: absent
+
+    - name: Rename Snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap1
+        description: snap1_description
+        new_snapshot_name: new_name1
+      register: _rename
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify snapshot renamed
+      ansible.builtin.assert:
+        that:
+          - snapshot_info.name == 'new_name1'
+          - _revert is ansible.builtin.changed
+          - _revert.snapshot.id == info.guests[0].current_snapshot.id
+      vars:
+        snapshot_info: "{{ info.guests[0].snapshots[0] }}"
+
+    - name: Take a second snap with more options
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap02
+        quiesce: true
+        memory_dump: true
+
+    - name: Take even more snaps
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap0{{ item }}
+      loop:
+        - 3
+        - 4
+        - 5
+        - 6
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify snapshot length
+      ansible.builtin.assert:
+        that:
+          - info.guests[0].snapshots | length == 6
+
+    - name: Remove a single snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: absent
+        snapshot_name: snap06
+      register: _rm_single
+
+    - name: Remove a snapshot - Idemptoence
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: absent
+        snapshot_name: snap06
+      register: _rm_single_idem
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify snapshot length
+      ansible.builtin.assert:
+        that:
+          - info.guests[0].snapshots | length == 5
+          - _rm_single_idem is not changed
+
+    - name: Remove a snapshot and snapshot subtree
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: absent
+        remove_children: true
+        snapshot_name: snap04
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify snapshot length
+      ansible.builtin.assert:
+        that:
+          - info.guests[0].snapshots | length == 3
+          - _rm_single_idem is not changed
+
+    - name: Remove all snapshots of a VM
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: absent
+        remove_all: True
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify all snapshots removed
+      ansible.builtin.assert:
+        that:
+          - info.guests[0].snapshots | length == 0
+
+    - name: Create a snapshot
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        state: present
+        snapshot_name: snap1
+        description: snap1_description
+      register: _create
+
+    - name: Remove a snapshot with a snapshot id
+      vmware.vmware.vm_snapshot:
+        datacenter: "{{ vm_datacenter }}"
+        folder: "/{{ vm_datacenter }}/vm/"
+        name: "{{ vm }}"
+        snapshot_id: "{{ _create.snapshot.id }}"
+        state: absent
+
+    - name: Gather some info from vm
+      vmware.vmware.guest_info:
+        name: "{{ vm }}"
+      register: info
+
+    - name: Verify all snapshots removed
+      ansible.builtin.assert:
+        that:
+          - info.guests[0].snapshots | length == 0
+
+  always:
+    - name: "Test teardown: Destroy VM guest {{ vm }}"
+      community.vmware.vmware_guest:
+        cluster: "{{ vm_cluster }}"
+        datacenter: "{{ vm_datacenter }}"
+        state: absent
+        force: true
+        name: "{{ vm }}"

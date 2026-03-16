@@ -1,0 +1,373 @@
+---
+# =============================================================================
+# File and directory permissions — Photon OS 3.0 STIG
+# =============================================================================
+
+# --- PHTN-30-000016 - Audit log file permissions (0600) ---
+- name: "stigrule_PHTN-30-000016"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_audit_logs_permissions }}"
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+        [ -n "$logdir" ] || logdir="/var/log/audit"
+        [ -z "$(find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' -perm /177 -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+      [ -n "$logdir" ] || logdir="/var/log/audit"
+      find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' -exec chmod 0600 {} +
+
+# --- PHTN-30-000017 - Audit log file owner (root) ---
+- name: "stigrule_PHTN-30-000017"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_audit_logs_owner }}"
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+        [ -n "$logdir" ] || logdir="/var/log/audit"
+        [ -z "$(find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' ! -user root -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+      [ -n "$logdir" ] || logdir="/var/log/audit"
+      find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' ! -user root -exec chown root {} +
+
+# --- PHTN-30-000018 - Audit log file group (root) ---
+- name: "stigrule_PHTN-30-000018"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_audit_logs_group }}"
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+        [ -n "$logdir" ] || logdir="/var/log/audit"
+        [ -z "$(find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' ! -group root -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      logdir=$(awk '/^\s*log_file\s*=/ {sub(/.*=\s*/, ""); print; exit}' {{ var_auditd_conf_file }} | xargs dirname 2>/dev/null)
+      [ -n "$logdir" ] || logdir="/var/log/audit"
+      find "$logdir" -maxdepth 1 -name '*.log' ! -name 'auth.log' ! -group root -exec chgrp root {} +
+
+# --- PHTN-30-000019 - Audit config file permissions (0640) ---
+- name: "stigrule_PHTN-30-000019"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_audit_config_permissions }}"
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/audit/ -type f -perm /137 -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/audit/ -type f -exec chmod 0640 {} +
+
+# --- PHTN-30-000040 - /var/log permissions (0755) ---
+- name: "stigrule_PHTN-30-000040"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_log_dir_permissions }}"
+    path: /var/log
+    mode: "0755"
+    owner: root
+    group: root
+
+# --- PHTN-30-000041 - /var/log/messages permissions (0640) ---
+- name: "stigrule_PHTN-30-000041"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_log_messages_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        test -f /var/log/messages
+        perms=$(stat -c '%a %U %G' /var/log/messages)
+        echo "$perms" | grep -qE '^640 root root'
+    cmd: |
+      set -eu
+      touch /var/log/messages
+      chmod 0640 /var/log/messages
+      chown root:root /var/log/messages
+
+# --- PHTN-30-000047 - auditd.conf owner/group (root:root) ---
+- name: "stigrule_PHTN-30-000047"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_audit_conf_permissions }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    owner: root
+    group: root
+
+# --- PHTN-30-000048 - Audit tool binary permissions (0750) ---
+- name: "stigrule_PHTN-30-000048"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_audit_tools_permissions }}"
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        for f in /usr/sbin/auditctl /usr/sbin/auditd /usr/sbin/augenrules /usr/sbin/aureport /usr/sbin/ausearch /usr/sbin/autrace /usr/sbin/audispd; do
+          [ ! -f "$f" ] && continue
+          perms=$(stat -c '%a' "$f")
+          [ "$perms" = "750" ] || exit 1
+        done
+    cmd: |
+      set -eu
+      for f in /usr/sbin/auditctl /usr/sbin/auditd /usr/sbin/augenrules /usr/sbin/aureport /usr/sbin/ausearch /usr/sbin/autrace /usr/sbin/audispd; do
+        [ -f "$f" ] && chmod 0750 "$f"
+      done
+
+# --- PHTN-30-000049 - /usr/lib file permissions (disabled by default) ---
+- name: "stigrule_PHTN-30-000049"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_usr_lib_perms }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /usr/lib -type f \( ! -user root -o ! -group root \) -print 2>/dev/null | head -1)" ]
+    cmd: |
+      set -eu
+      find /usr/lib -type f ! -user root -exec chown root {} +
+      find /usr/lib -type f ! -group root -exec chgrp root {} +
+
+# --- PHTN-30-000090 - /etc/skel file permissions ---
+- name: "stigrule_PHTN-30-000090"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_skel_config_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/skel -type f -perm /177 -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/skel -type f -exec chmod 0600 {} +
+
+# --- PHTN-30-000091 - /root directory permissions (0700) ---
+- name: "stigrule_PHTN-30-000091"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_root_dir_permissions }}"
+    path: /root
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+# --- PHTN-30-000092 - Init files permissions ---
+- name: "stigrule_PHTN-30-000092"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_init_files_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        bad=""
+        for f in /etc/bash.bashrc /etc/profile; do
+          [ -f "$f" ] || continue
+          perms=$(stat -c '%a %U %G' "$f")
+          owner=$(echo "$perms" | awk '{print $2}')
+          group=$(echo "$perms" | awk '{print $3}')
+          mode=$(echo "$perms" | awk '{print $1}')
+          other_w=$(( (mode % 10) & 2 ))
+          [ "$owner" = "root" ] && [ "$group" = "root" ] && [ "$other_w" -eq 0 ] || bad="${bad}$f "
+        done
+        for f in /etc/profile.d/*; do
+          [ -f "$f" ] || continue
+          perms=$(stat -c '%a %U %G' "$f")
+          owner=$(echo "$perms" | awk '{print $2}')
+          group=$(echo "$perms" | awk '{print $3}')
+          mode=$(echo "$perms" | awk '{print $1}')
+          other_w=$(( (mode % 10) & 2 ))
+          [ "$owner" = "root" ] && [ "$group" = "root" ] && [ "$other_w" -eq 0 ] || bad="${bad}$f "
+        done
+        [ -z "$bad" ]
+    cmd: |
+      set -eu
+      for f in /etc/bash.bashrc /etc/profile; do
+        [ -f "$f" ] && chown root:root "$f" && chmod o-w "$f"
+      done
+      for f in /etc/profile.d/*; do
+        [ -f "$f" ] && chown root:root "$f" && chmod o-w "$f"
+      done
+
+# --- PHTN-30-000093 - rc.d file permissions ---
+- name: "stigrule_PHTN-30-000093"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_rcd_files_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/rc.d/ -type f \( ! -user root -o ! -group root -o -perm /002 \) -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/rc.d/ -type f \( ! -user root -o ! -group root -o -perm /002 \) -exec sh -c 'chown root:root "$1" && chmod o-w "$1"' _ {} \;
+
+# --- PHTN-30-000094 - All files have owner/group (audit-only) ---
+- name: "stigrule_PHTN-30-000094"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ run_files_have_owner | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o \( -nouser -o -nogroup \) -print 2>/dev/null | head -1)" ]
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000095 - /etc/cron.allow permissions (0600) ---
+- name: "stigrule_PHTN-30-000095"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_cron_allow_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        test -f /etc/cron.allow
+        perms=$(stat -c '%a %U %G' /etc/cron.allow)
+        echo "$perms" | grep -qE '^600 root root'
+    cmd: |
+      set -eu
+      touch /etc/cron.allow
+      chmod 0600 /etc/cron.allow
+      chown root:root /etc/cron.allow
+
+# --- PHTN-30-000096 - Cron job file permissions (0644) ---
+- name: "stigrule_PHTN-30-000096"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_cron_files_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly -type f -perm /133 -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly -type f -exec chmod 0644 {} + 2>/dev/null || true
+
+# --- PHTN-30-000097 - Cron directory permissions (0755) ---
+- name: "stigrule_PHTN-30-000097"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_cron_dir_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        for d in /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly; do
+          test -d "$d"
+          perms=$(stat -c '%a %U %G' "$d")
+          echo "$perms" | grep -qE '^755 root root'
+        done
+    cmd: |
+      set -eu
+      for d in /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly; do
+        mkdir -p "$d"
+        chmod 0755 "$d"
+        chown root:root "$d"
+      done
+
+# --- PHTN-30-000108 - SSH public key permissions (0644) ---
+- name: "stigrule_PHTN-30-000108"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_ssh_pubkeys_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/ssh -name '*.pub' \( -perm /133 -o ! -user root -o ! -group root \) -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/ssh -name '*.pub' -exec chmod 0644 {} +
+      find /etc/ssh -name '*.pub' -exec chown root:root {} +
+
+# --- PHTN-30-000109 - SSH private key permissions (0600) ---
+- name: "stigrule_PHTN-30-000109"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_ssh_prikeys_permissions }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -z "$(find /etc/ssh -name 'ssh_host_*' ! -name '*.pub' \( -perm /177 -o ! -user root -o ! -group root \) -print 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      find /etc/ssh -name 'ssh_host_*' ! -name '*.pub' -exec chmod 0600 {} +
+      find /etc/ssh -name 'ssh_host_*' ! -name '*.pub' -exec chown root:root {} +
+
+# --- PHTN-30-000111 - Boot config permissions ---
+- name: "stigrule_PHTN-30-000111"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_boot_config_file_permissions }}"
+    _stig_gate_files: ['{{ var_grub_conf_file }}']
+    path: '{{ var_grub_conf_file }}'
+    owner: root
+    group: root
+    mode: "o-w"
+
+# --- PHTN-30-000112 - sshd_config permissions (0600) ---
+- name: "stigrule_PHTN-30-000112"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_ssh_config_file_permissions }}"
+    path: '{{ var_sshd_config_file }}'
+    owner: root
+    group: root
+    mode: "0600"
+
+# --- PHTN-30-000113 - Sysctl config file permissions ---
+- name: "stigrule_PHTN-30-000113"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_sysctl_file_permissions }}"
+    _stig_gate_files: ['{{ var_sysctl_conf_file }}']
+    path: '{{ var_sysctl_conf_file }}'
+    owner: root
+    group: root
+    mode: "o-w"

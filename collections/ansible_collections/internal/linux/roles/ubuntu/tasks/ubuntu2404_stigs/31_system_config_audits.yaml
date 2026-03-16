@@ -1,0 +1,242 @@
+---
+# =============================================================================
+# Audit completion for direct file and config rules — migrated to internal.core.stig
+#
+# Many audits previously here are now handled by check_mode probes or validators
+# in 30_system_config.yaml. This file covers:
+# - GDM/dconf rules (NA on headless via gdm3 gate)
+# - Individual SSH settings (per-rule structured results)
+# - Audit-only rules with no remediation (270772, 270768-270770)
+# - Rules whose remediation uses copy with content: (270680, 270691)
+# =============================================================================
+
+# --- 270680 - TMOUT profile content ---
+- name: "stigrule_270680"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270680_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        test -f {{ ubuntu2404STIG_stigrule_270680__etc_profile_d_99_terminal_tmout_sh_dest | quote }}
+    cmd: "true"
+
+# --- 270691 - SSH banner setting + /etc/issue.net content ---
+- name: "stigrule_270691"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270691_manage | default(true) }}"
+    _stig_gate_packages: [openssh-server]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        sshd -T 2>/dev/null | grep -qi '^banner /etc/issue.net$'
+        test -f {{ ubuntu2404STIG_stigrule_270691__etc_issue_net_dest | quote }}
+    cmd: "true"
+
+# --- Individual SSH setting audits ---
+- block:
+    - name: "stigrule_270708"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: "sshd -T 2>/dev/null | grep -qi '^x11forwarding no$'"
+        cmd: "true"
+
+    - name: "stigrule_270709"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: "sshd -T 2>/dev/null | grep -qi '^x11uselocalhost yes$'"
+        cmd: "true"
+
+    - name: "stigrule_270717"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: |
+            set -eu
+            cfg="$(sshd -T 2>/dev/null)"
+            echo "$cfg" | grep -qi '^permitemptypasswords no$'
+            echo "$cfg" | grep -qi '^permituserenvironment no$'
+        cmd: "true"
+
+    - name: "stigrule_270722"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: "sshd -T 2>/dev/null | grep -qi '^pubkeyauthentication yes$'"
+        cmd: "true"
+
+    - name: "stigrule_270742"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: "sshd -T 2>/dev/null | grep -qi '^clientalivecountmax 1$'"
+        cmd: "true"
+
+    - name: "stigrule_270743"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_270743_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: "sshd -T 2>/dev/null | grep -qi '^clientaliveinterval 600$'"
+        cmd: "true"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: ansible.builtin.shell
+      _stig_use_check_mode_probe: false
+      _stig_validate: ansible.builtin.shell
+      _stig_gate_packages: [openssh-server]
+
+# --- Audit-only sysctl: 270772 (randomize_va_space) ---
+- name: "stigrule_270772"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270772_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: '[ "$(sysctl -n kernel.randomize_va_space)" = "{{ ubuntu2404STIG_stigrule_270772_randomize_va_space_value }}" ]'
+    cmd: "true"
+
+# --- Audit-only syslog file attrs: 270768 (group), 270769 (owner), 270770 (mode) ---
+- name: "stigrule_270768"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270768_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: '[ "$(stat -c %G /var/log/syslog 2>/dev/null)" = "adm" ]'
+    cmd: "true"
+
+- name: "stigrule_270769"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270769_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: '[ "$(stat -c %U /var/log/syslog 2>/dev/null)" = "syslog" ]'
+    cmd: "true"
+
+- name: "stigrule_270770"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270770_manage | default(true) }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: '[ "$(stat -c %a /var/log/syslog 2>/dev/null)" = "640" ]'
+    cmd: "true"
+
+# =============================================================================
+# GDM / dconf — NA on headless servers (gated on gdm3 package)
+# =============================================================================
+
+- name: "stigrule_270678"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270678_manage | default(true) }}"
+    _stig_gate_packages: [gdm3]
+    _stig_gate_status: not_applicable
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -Fq '[org/gnome/desktop/session]' /etc/dconf/db/local.d/00-screensaver
+        grep -Fq 'idle-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_idle_delay_value }}' /etc/dconf/db/local.d/00-screensaver
+        grep -Fq '[org/gnome/desktop/screensaver]' /etc/dconf/db/local.d/00-screensaver
+        grep -Fq 'lock-enabled={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_enabled_value }}' /etc/dconf/db/local.d/00-screensaver
+        grep -Fq 'lock-delay={{ ubuntu2404STIG_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_delay_value }}' /etc/dconf/db/local.d/00-screensaver
+    cmd: "true"
+
+- block:
+    - name: "stigrule_270679"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_validate_args:
+          cmd: "grep -Fq '/org/gnome/desktop/media-handling/automount-open' /etc/dconf/db/local.d/locks/00-security-settings-lock"
+        cmd: "true"
+
+    - name: "stigrule_274871"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_274871_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: |
+            set -eu
+            grep -Fq "picture-uri=''" /etc/dconf/db/local.d/00-security-settings
+            grep -Fq '/org/gnome/desktop/screensaver/picture-uri' /etc/dconf/db/local.d/locks/00-security-settings-lock
+        cmd: "true"
+
+    - name: "stigrule_274872"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_274872_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: "grep -Fq '/org/gnome/desktop/media-handling/autorun-never' /etc/dconf/db/local.d/locks/00-security-settings-lock"
+        cmd: "true"
+
+    - name: "stigrule_274873"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_274873_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: "grep -Fq '/org/gnome/settings-daemon/peripherals/smartcard/removal-action' /etc/dconf/db/local.d/locks/00-security-settings-lock"
+        cmd: "true"
+
+    - name: "stigrule_270692"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_270692_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: |
+            set -eu
+            grep -Fq '[org/gnome/login-screen]' /etc/gdm3/greeter.dconf-defaults
+            grep -Fq 'banner-message-enable={{ ubuntu2404STIG_stigrule_270692__etc_gdm3_greeter_dconf_defaults_enable_value }}' /etc/gdm3/greeter.dconf-defaults
+        cmd: "true"
+
+    - name: "stigrule_270693"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_270693_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: |
+            set -eu
+            grep -Fq '[org/gnome/login-screen]' /etc/gdm3/greeter.dconf-defaults
+            grep -Fq 'banner-message-text={{ ubuntu2404STIG_stigrule_270693__etc_gdm3_greeter_dconf_defaults_text_value }}' /etc/gdm3/greeter.dconf-defaults
+        cmd: "true"
+
+    - name: "stigrule_270711"
+      internal.core.stig:
+        _stig_audit_only: true
+        _stig_manage: "{{ ubuntu2404STIG_stigrule_270711_manage | default(true) }}"
+        _stig_validate_args:
+          cmd: |
+            set -eu
+            grep -Fq '[org/gnome/settings-daemon/plugins/media-keys]' /etc/dconf/db/local.d/00-screensaver
+            grep -Fq 'logout={{ ubuntu2404STIG_stigrule_270711__etc_dconf_db_local_d_00_screensaver_media_keys_value }}' /etc/dconf/db/local.d/00-screensaver
+        cmd: "true"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: ansible.builtin.shell
+      _stig_use_check_mode_probe: false
+      _stig_validate: ansible.builtin.shell
+      _stig_gate_packages: [gdm3]
+      _stig_gate_status: not_applicable

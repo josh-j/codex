@@ -44,7 +44,17 @@
       "Bash(.venv/bin/pip install:*)",
       "Bash(git:*)",
       "Bash(rg:*)",
-      "Bash(/Users/joshj/dev/codex/ncs_reporter/.venv/bin/python3:*)"
+      "Bash(/Users/joshj/dev/codex/ncs_reporter/.venv/bin/python3:*)",
+      "Bash(grep -n \"SV-270736\\\\|SV-270744\\\\|SV-270651\\\\|SV-270660\\\\|SV-270715\\\\|SV-270723\\\\|SV-270724\\\\|SV-270735\\\\|SV-270740\\\\|SV-270746\\\\|SV-270754\\\\|SV-270772\" /home/sio/codex/internal/linux/roles/ubuntu/tasks/ubuntu2404_stigs/*.yaml)",
+      "Bash(.venv/bin/ansible-playbook playbooks/ubuntu_stig_remediate_apply.yml \\\\\n  -l 192.168.2.111 \\\\\n  -e \"vault_ubuntu_server_password=ineption\" \\\\\n  -e \"vault_logservers_private_key=''\" \\\\\n  -e \"ansible_user=josh\" \\\\\n  -e \"ansible_password=ineption\" \\\\\n  -e \"ansible_become_password=ineption\" \\\\\n  2>&1 | tee /tmp/remediate_output.txt; echo \"EXIT_CODE=$?\")",
+      "Bash(jq '.stigs[0].rules[] | select\\(.rule_title | contains\\(\"faillock\"\\) or contains\\(\"failed attempt\"\\)\\) | .rule_version' /home/sio/codex/files/ncs_reporter_configs/cklb_skeletons/U_CAN_Ubuntu_24-04_LTS_STIG_V1R4.cklb 2>/dev/null | head -20)",
+      "Bash(jq '.stigs[0].rules[] | select\\(.rule_title | test\\(\"failed attempt|account lockout|faillock\"; \"i\"\\)\\) | {rule_version, rule_title, severity}' /home/sio/codex/files/ncs_reporter_configs/cklb_skeletons/U_CAN_Ubuntu_24-04_LTS_STIG_V1R4.cklb)",
+      "Bash(jq '.stigs[0].rules[] | select\\(.check_content | test\\(\"faillock|pam_faillock\"; \"i\"\\)\\) | {rule_version, rule_title}' /home/sio/codex/files/ncs_reporter_configs/cklb_skeletons/U_CAN_Ubuntu_24-04_LTS_STIG_V1R4.cklb)",
+      "Bash(ANSIBLE_CALLBACKS_ENABLED=ncs_collector,ansible.posix.profile_tasks .venv/bin/ansible-playbook playbooks/ubuntu_stig_remediate_apply.yml -i inventory/ --limit 192.168.2.111 -v -e \"vault_ubuntu_server_password=ineption\" 2>&1 | tee /tmp/stig_remediate_profiled.log | tail -80)",
+      "Bash(cd /home/sio/codex && ANSIBLE_CALLBACKS_ENABLED=internal.core.ncs_collector .venv/bin/ansible-playbook playbooks/photon_stig_audit.yml -i \"192.168.2.117,\" -v -e \"ansible_user=root ansible_password=1neption ansible_python_interpreter=/usr/bin/python3 photon_target_hosts=all\" 2>&1)",
+      "Bash(sshpass -p 'ineption' ssh -o StrictHostKeyChecking=no root@192.168.2.36 'qm rollback 104 pre-stig-audit' 2>&1)",
+      "Bash(sshpass -p 'ineption' ssh -tt -o StrictHostKeyChecking=no root@192.168.2.120 <<'EOF'\nshell\nxmllint --format /usr/lib/vmware-eam/web/webapps/eam/WEB-INF/web.xml | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/filter-mapping/filter-name[text\\(\\)=\"setCharacterEncodingFilter\"]/parent::filter-mapping' -\nexit\nexit\nEOF)",
+      "Bash(sshpass -p 'ineption' ssh -o StrictHostKeyChecking=no -o RequestTTY=force root@192.168.2.120 'shell.set --enabled true' 2>&1 || true)"
     ]
   }
 }

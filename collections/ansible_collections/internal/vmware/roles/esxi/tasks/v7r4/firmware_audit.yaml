@@ -1,0 +1,95 @@
+---
+# tasks/v7r4/firmware_audit.yaml
+# Firmware / audit rules using internal.core.stig_pwsh.
+# Audit-only rules need no script. Remediation scripts are plain PowerShell.
+
+# --- V-256427 / ESXI-70-000072: Patches current (build check) ---
+- name: "stigrule_256427"
+  internal.core.stig_pwsh:
+    _stig_audit_only: true
+    _stig_manage: "{{ (esxi_70_000072_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _host_build_compliant
+        equals: "true"
+
+# --- V-256430 / ESXI-70-000076: Secure Boot status ---
+- name: "stigrule_256430"
+  internal.core.stig_pwsh:
+    _stig_audit_only: true
+    _stig_manage: "{{ (esxi_70_000076_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _encryption_require_secure_boot
+        equals: "true"
+
+# --- V-256431 / ESXI-70-000078: DOD-approved certificates ---
+# Uses openssl s_client, not PowerCLI — stays as regular stig.
+- name: "stigrule_256431"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_skip_post_validate: true
+    _stig_manage: "{{ esxi_70_000078_Manage | default(true) }}"
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -o pipefail
+        issuer=$(echo | openssl s_client -connect '{{ _current_esxi_host }}:443' 2>/dev/null \
+          | openssl x509 -noout -issuer 2>/dev/null || echo 'UNKNOWN')
+        echo "$issuer" | grep -qvi 'VMware Installer'
+    cmd: "true"
+
+# --- V-256444 / ESXI-70-000092: VM config overrides ---
+- name: "stigrule_256444"
+  internal.core.stig_pwsh:
+    _stig_audit_only: true
+    _stig_manage: "{{ (esxi_70_000092_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _vm_overrides_compliant
+        equals: "true"
+
+# --- V-256445 / ESXI-70-000093: VM logger level ---
+- name: "stigrule_256445"
+  internal.core.stig_pwsh:
+    _stig_audit_only: true
+    _stig_manage: "{{ (esxi_70_000093_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _adv_Config_HostAgent_log_level
+        equals: "info"
+
+# --- V-256442 / ESXI-70-000090: rhttpproxy FIPS 140-2 ---
+- name: "stigrule_256442"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000090_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _fips_rhttpproxy_enabled
+        equals: "true"
+    script: |
+      $args = $esxcli.system.security.fips140.rhttpproxy.set.CreateArgs()
+      $args.enable = $true
+      $esxcli.system.security.fips140.rhttpproxy.set.Invoke($args) | Out-Null
+
+# --- V-256446 / ESXI-70-000094: TPM encryption ---
+- name: "stigrule_256446"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000094_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _encryption_mode
+        equals: "TPM"
+    script: |
+      $args = $esxcli.system.settings.encryption.set.CreateArgs()
+      $args.mode = 'TPM'
+      $esxcli.system.settings.encryption.set.Invoke($args) | Out-Null
+
+# --- V-256414 / ESXI-70-000053: SNMP ---
+- name: "stigrule_256414"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000053_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _snmp_compliant
+        equals: "true"
+    script: |
+      $args = $esxcli.system.snmp.set.CreateArgs()
+      $args.enable = $false
+      $esxcli.system.snmp.set.Invoke($args) | Out-Null

@@ -7,7 +7,6 @@
   become: false
   tags: ["photon", "stig", "security"]
   vars:
-    photon_version: "{{ photon_os_version | default('3') }}"
     ansible_connection: ssh
     ansible_user: root
     ansible_password: "{{ vault_vcenter_ssh_password }}"

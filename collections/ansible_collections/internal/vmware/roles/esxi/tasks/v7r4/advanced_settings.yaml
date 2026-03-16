@@ -1,0 +1,45 @@
+---
+# tasks/v7r4/advanced_settings.yaml
+# Advanced settings rules using internal.core.stig_pwsh.
+
+# --- V-256436 / ESXI-70-000084: Audit records storage and remote transmission ---
+- name: "stigrule_256436"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000084_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _audit_storage_active
+        equals: "true"
+      - var: _audit_remote_active
+        equals: "true"
+    script: |
+      $args = $esxcli.system.auditrecords.local.set.CreateArgs()
+      $args.size = '100'
+      $esxcli.system.auditrecords.local.set.Invoke($args) | Out-Null
+      $esxcli.system.auditrecords.local.enable.Invoke() | Out-Null
+      $esxcli.system.auditrecords.remote.enable.Invoke() | Out-Null
+      $esxcli.system.syslog.reload.Invoke() | Out-Null
+
+# --- V-256437 / ESXI-70-000085: Syslog x509 strict compliance ---
+- name: "stigrule_256437"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000085_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _syslog_strict_x509
+        equals: "true"
+    script: |
+      $args = $esxcli.system.syslog.config.set.CreateArgs()
+      $args.x509strict = $true
+      $esxcli.system.syslog.config.set.Invoke($args) | Out-Null
+      $esxcli.system.syslog.reload.Invoke() | Out-Null
+
+# --- V-256447 / ESXI-70-000095: Require Secure Boot ---
+- name: "stigrule_256447"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000095_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _encryption_require_secure_boot
+        equals: "true"
+    script: |
+      $args = $esxcli.system.settings.encryption.set.CreateArgs()
+      $args.requiresecureboot = $true
+      $esxcli.system.settings.encryption.set.Invoke($args) | Out-Null

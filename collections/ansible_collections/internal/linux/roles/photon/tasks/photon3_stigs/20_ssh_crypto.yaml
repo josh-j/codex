@@ -1,0 +1,184 @@
+---
+# =============================================================================
+# SSH hardening — Photon OS 3.0 STIG
+# ~22 rules, mostly lineinfile on sshd_config
+# =============================================================================
+
+# --- PHTN-30-000003 - SSH Banner ---
+- name: "stigrule_PHTN-30-000003"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_sshd_banner }}"
+    _stig_notify: [photon_restart_sshd]
+    path: '{{ var_sshd_config_file }}'
+    regexp: '^#?\s*Banner\s'
+    line: "Banner {{ var_sshd_banner }}"
+    state: present
+  notify: photon_restart_sshd
+
+- name: "stigrule_PHTN-30-000003 - Deploy DoD banner"
+  ansible.builtin.template:
+    src: issue
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - run_sshd_banner | bool
+    - _photon3_stig_phase != 'audit'
+
+# --- SSH sshd_config lineinfile rules ---
+- block:
+    - name: "stigrule_PHTN-30-000006"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_syslogfacility }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*SyslogFacility\s'
+        line: "SyslogFacility {{ var_sshd_syslogfacility }}"
+
+    - name: "stigrule_PHTN-30-000008"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_loglevel }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*LogLevel\s'
+        line: "LogLevel {{ var_sshd_loglevel }}"
+
+    - name: "stigrule_PHTN-30-000009"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_fipsmode }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*FipsMode\s'
+        line: "FipsMode {{ var_sshd_fipsmode }}"
+
+    - name: "stigrule_PHTN-30-000037"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_clientaliveinterval }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*ClientAliveInterval\s'
+        line: "ClientAliveInterval {{ var_sshd_clientaliveinterval }}"
+
+    - name: "stigrule_PHTN-30-000038"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_clientalivecountmax }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*ClientAliveCountMax\s'
+        line: "ClientAliveCountMax {{ var_sshd_clientalivecountmax }}"
+
+    - name: "stigrule_PHTN-30-000053"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_listenaddress }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*ListenAddress\s'
+        line: "ListenAddress {{ ansible_default_ipv4.address | default('0.0.0.0') }}"
+
+    - name: "stigrule_PHTN-30-000064"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_ciphers }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*Ciphers\s'
+        line: "Ciphers {{ var_sshd_ciphers }}"
+
+    - name: "stigrule_PHTN-30-000078"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_gssapiauthentication }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*GSSAPIAuthentication\s'
+        line: "GSSAPIAuthentication {{ var_sshd_gssapiauthentication }}"
+
+    - name: "stigrule_PHTN-30-000079"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_permituserenvironment }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*PermitUserEnvironment\s'
+        line: "PermitUserEnvironment {{ var_sshd_permituserenvironment }}"
+
+    - name: "stigrule_PHTN-30-000080"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_x11forwarding }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*X11Forwarding\s'
+        line: "X11Forwarding {{ var_sshd_x11forwarding }}"
+
+    - name: "stigrule_PHTN-30-000081"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_strictmodes }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*StrictModes\s'
+        line: "StrictModes {{ var_sshd_strictmodes }}"
+
+    - name: "stigrule_PHTN-30-000082"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_kerberosauth }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*KerberosAuthentication\s'
+        line: "KerberosAuthentication {{ var_sshd_kerberosauth }}"
+
+    - name: "stigrule_PHTN-30-000083"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_permitemptypasswords }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*PermitEmptyPasswords\s'
+        line: "PermitEmptyPasswords {{ var_sshd_permitemptypasswords }}"
+
+    - name: "stigrule_PHTN-30-000084"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_compression }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*Compression\s'
+        line: "Compression {{ var_sshd_compression }}"
+
+    - name: "stigrule_PHTN-30-000085"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_printlastlog }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*PrintLastLog\s'
+        line: "PrintLastLog {{ var_sshd_printlastlog }}"
+
+    - name: "stigrule_PHTN-30-000086"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_ignorerhosts }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*IgnoreRhosts\s'
+        line: "IgnoreRhosts {{ var_sshd_ignorerhosts }}"
+
+    - name: "stigrule_PHTN-30-000087"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_ignoreuserknownhosts }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*IgnoreUserKnownHosts\s'
+        line: "IgnoreUserKnownHosts {{ var_sshd_ignoreuserknownhosts }}"
+
+    - name: "stigrule_PHTN-30-000088"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_maxauthtries }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*MaxAuthTries\s'
+        line: "MaxAuthTries {{ var_sshd_maxauthtries }}"
+
+    - name: "stigrule_PHTN-30-000115"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_hostbasedauth }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*HostbasedAuthentication\s'
+        line: "HostbasedAuthentication {{ var_sshd_hostbasedauth }}"
+
+    - name: "stigrule_PHTN-30-000119"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_allowtcpforwarding }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*AllowTcpForwarding\s'
+        line: "AllowTcpForwarding {{ var_sshd_allowtcpforwarding }}"
+
+    - name: "stigrule_PHTN-30-000120"
+      internal.core.stig:
+        _stig_manage: "{{ run_sshd_logingracetime }}"
+        path: '{{ var_sshd_config_file }}'
+        regexp: '^#?\s*LoginGraceTime\s'
+        line: "LoginGraceTime {{ var_sshd_logingracetime }}"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: ansible.builtin.lineinfile
+      _stig_notify: [photon_restart_sshd]
+      state: present
+  notify: photon_restart_sshd

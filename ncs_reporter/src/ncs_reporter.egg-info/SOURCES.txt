@@ -3,7 +3,10 @@ pyproject.toml
 src/ncs_path_contract/__init__.py
 src/ncs_path_contract/resolver.py
 src/ncs_reporter/__init__.py
+src/ncs_reporter/_config.py
+src/ncs_reporter/_renderers.py
 src/ncs_reporter/_report_context.py
+src/ncs_reporter/_schema_utils.py
 src/ncs_reporter/_stig_apply.py
 src/ncs_reporter/aggregation.py
 src/ncs_reporter/alerts.py

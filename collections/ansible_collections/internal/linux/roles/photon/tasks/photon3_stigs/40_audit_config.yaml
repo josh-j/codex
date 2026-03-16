@@ -1,0 +1,401 @@
+---
+# =============================================================================
+# Auditd configuration — Photon OS 3.0 STIG
+# =============================================================================
+
+# --- PHTN-30-000001 - Audit rules template ---
+# Template modules are action plugins and cannot be wrapped by internal.core.stig.
+# Use phase-gated raw template (like Ubuntu banner pattern) + shell validator for audit.
+- name: "stigrule_PHTN-30-000001"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_auditd_rules }}"
+    _stig_gate_packages: [audit]
+    _stig_notify: [photon_reload_auditd]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        [ -f {{ var_auditd_rule_file }} ]
+        grep -cE '^\s*-[aw]' {{ var_auditd_rule_file }} | grep -qv '^0$'
+    cmd: "true"
+
+- name: "stigrule_PHTN-30-000001 - Deploy audit rules template"
+  ansible.builtin.template:
+    src: photon3/audit.STIG.rules
+    dest: '{{ var_auditd_rule_file }}'
+    owner: root
+    group: root
+    mode: "0640"
+  when:
+    - run_auditd_rules | bool
+    - "'audit' in (ansible_facts.packages | default({}))"
+    - _photon3_stig_phase != 'audit'
+  notify: photon_reload_auditd
+
+# --- PHTN-30-000013 - Enable and start auditd ---
+- name: "stigrule_PHTN-30-000013"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.service
+    _stig_manage: "{{ run_auditd_service_enable }}"
+    _stig_gate_packages: [audit]
+    name: auditd
+    state: started
+    enabled: true
+
+# --- Auditd.conf lineinfile rules (flattened — no module_defaults block) ---
+- name: "stigrule_PHTN-30-000010"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_write_logs }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*write_logs\s*='
+    line: "write_logs = {{ var_auditd_write_logs }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000011"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_log_format }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*log_format\s*='
+    line: "log_format = {{ var_auditd_log_format }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000014"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_space_left_action }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*space_left_action\s*='
+    line: "space_left_action = {{ var_auditd_space_left_action }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000015 - disk_full_action"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_disk_full_action }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*disk_full_action\s*='
+    line: "disk_full_action = {{ var_auditd_disk_full_action }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000015 - disk_error_action"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_disk_error_action }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*disk_error_action\s*='
+    line: "disk_error_action = {{ var_auditd_disk_error_action }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000015 - admin_space_left_action"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_admin_space_left_action }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*admin_space_left_action\s*='
+    line: "admin_space_left_action = {{ var_auditd_admin_space_left_action }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000055"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_num_logs }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*num_logs\s*='
+    line: "num_logs = {{ var_auditd_num_logs }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000056"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_max_log_file_action }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*max_log_file_action\s*='
+    line: "max_log_file_action = {{ var_auditd_max_log_file_action }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000057"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_space_left }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*space_left\s*='
+    line: "space_left = {{ var_auditd_space_left }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000074 - flush"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_flush }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*flush\s*='
+    line: "flush = {{ var_auditd_flush }}"
+    state: present
+
+- name: "stigrule_PHTN-30-000074 - freq"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_auditd_freq }}"
+    _stig_gate_packages: [audit]
+    path: '{{ var_auditd_conf_file }}'
+    regexp: '^\s*freq\s*='
+    line: "freq = {{ var_auditd_freq }}"
+    state: present
+
+# =============================================================================
+# Audit rules template validation — verify specific rules exist in template
+# =============================================================================
+
+# --- PHTN-30-000012 - Audit account creation events ---
+- name: "stigrule_PHTN-30-000012"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/etc/passwd' {{ var_auditd_rule_file }}
+        grep -qE '/etc/shadow' {{ var_auditd_rule_file }}
+        grep -qE '/etc/group' {{ var_auditd_rule_file }}
+        grep -qE '/etc/gshadow' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000020 - Audit user/group modification ---
+- name: "stigrule_PHTN-30-000020"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE -- '-w\s+/etc/passwd' {{ var_auditd_rule_file }}
+        grep -qE -- '-w\s+/etc/group' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000042 - Audit account modifications (passwd command) ---
+- name: "stigrule_PHTN-30-000042"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/usr/bin/passwd' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000043 - Audit account modifications (chage) ---
+- name: "stigrule_PHTN-30-000043"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/usr/bin/chage' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000044 - Audit privileged commands ---
+- name: "stigrule_PHTN-30-000044"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE -- '-a\s+always,exit' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000045 - Audit account removal events ---
+- name: "stigrule_PHTN-30-000045"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/usr/sbin/userdel|/usr/sbin/groupdel' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000054 - Audit execution of privileged functions ---
+- name: "stigrule_PHTN-30-000054"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'execve' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000067 - Audit /etc/passwd changes ---
+- name: "stigrule_PHTN-30-000067"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/etc/passwd' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000068 - Audit /etc/group changes ---
+- name: "stigrule_PHTN-30-000068"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/etc/group' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000069 - Audit /etc/shadow changes ---
+- name: "stigrule_PHTN-30-000069"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/etc/shadow' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000070 - Audit /etc/gshadow changes ---
+- name: "stigrule_PHTN-30-000070"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_gate_packages: [audit]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '/etc/gshadow' {{ var_auditd_rule_file }}
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# =============================================================================
+# GRUB / Boot
+# =============================================================================
+
+# --- PHTN-30-000031 - Grub password (manual check) ---
+- name: "stigrule_PHTN-30-000031"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: false
+    cmd: "true"
+
+# --- PHTN-30-000046 - audit=1 in grub ---
+- name: "stigrule_PHTN-30-000046"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_grub_enable_audit }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'audit=1' /proc/cmdline || grep -qE 'audit=1' {{ var_grub_conf_file }}
+    cmd: |
+      set -eu
+      if [ -f /etc/default/grub ]; then
+        if grep -qE '^GRUB_CMDLINE_LINUX=' /etc/default/grub; then
+          if ! grep -qE 'audit=1' /etc/default/grub; then
+            sed -i 's/^\(GRUB_CMDLINE_LINUX=".*\)"/\1 audit=1"/' /etc/default/grub
+          fi
+        else
+          echo 'GRUB_CMDLINE_LINUX="audit=1"' >> /etc/default/grub
+        fi
+        grub2-mkconfig -o {{ var_grub_conf_file }} 2>/dev/null || true
+      else
+        # Photon 3 minimal — edit grub.cfg directly
+        if ! grep -qE 'audit=1' {{ var_grub_conf_file }}; then
+          sed -i 's|\(linux.*\)|\1 audit=1|' {{ var_grub_conf_file }}
+        fi
+      fi
+
+# --- PHTN-30-000240 - Kernel FIPS mode (disabled by default) ---
+- name: "stigrule_PHTN-30-000240"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_kernel_fips }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'fips=1' {{ var_grub_conf_file }} || [ "$(cat /proc/sys/crypto/fips_enabled 2>/dev/null)" = "1" ]
+    cmd: |
+      set -eu
+      if [ -f /etc/default/grub ]; then
+        if ! grep -qE 'fips=1' /etc/default/grub; then
+          sed -i 's/^\(GRUB_CMDLINE_LINUX=".*\)"/\1 fips=1"/' /etc/default/grub
+          grub2-mkconfig -o {{ var_grub_conf_file }} 2>/dev/null || true
+        fi
+      fi

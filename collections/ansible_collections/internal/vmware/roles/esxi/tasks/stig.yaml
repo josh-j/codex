@@ -1,0 +1,64 @@
+---
+# internal.vmware.esxi : tasks/stig.yaml
+
+# Phase 0: Preconditions
+- name: "ESXi STIG | Phase 0 | Validate target hosts"
+  ansible.builtin.assert:
+    that: esxi_stig_target_hosts | default([]) | length > 0
+    fail_msg: "No ESXi hosts defined in esxi_stig_target_hosts"
+
+- name: "ESXi STIG | Phase 0 | Compute phase hint"
+  ansible.builtin.set_fact:
+    _stig_audit_only: "{{ not (vmware_stig_enable_hardening | default(false) | bool) }}"
+    _stig_phase_hint: "{{ (vmware_stig_enable_hardening | default(false) | bool) | ternary('remediate', 'audit') }}"
+  changed_when: false
+
+- name: "ESXi STIG | Phase 0 | Validate required STIG settings"
+  when: vmware_stig_enable_hardening | default(false) | bool
+  ansible.builtin.assert:
+    that:
+      - (not (esxi_70_000004_Manage | default(true) | bool)) or (esxi_stig_syslog_host | default('') | length > 0)
+      - (not (esxi_70_000007_Manage | default(true) | bool)) or (esxi_stig_welcome_message | default('') | length > 0)
+      - (not (esxi_70_000046_Manage | default(true) | bool)) or (esxi_stig_ntp_servers | default([]) | length > 0)
+      - (not (esxi_70_000039_Manage | default(true) | bool)) or (esxi_stig_ad_admin_group | default('') | length > 0)
+      - (not (esxi_70_000045_Manage | default(true) | bool)) or (esxi_stig_log_dir | default('') | length > 0)
+    fail_msg: >-
+      Required STIG variables are empty while their rules are enabled.
+      Set the variables or disable the rules via *_Manage: false.
+
+# Phase 1: Evaluate/Remediate
+- name: "ESXi STIG | Run checks"
+  ansible.builtin.include_tasks: check.yaml
+  tags: [checks, stig, security]
+
+- name: "ESXi STIG | Log completion"
+  ansible.builtin.debug:
+    msg: "ESXi STIG audit completed. Results emitted via ncs_collector."
+
+# Phase 2: Post-remediation verification (remediate mode only)
+- name: "ESXi STIG | Phase 2 | Set phase to audit for verification"
+  ansible.builtin.set_fact:
+    _stig_phase_hint: "audit"
+    _stig_active_phase: "audit"
+  changed_when: false
+  when:
+    - not (_stig_audit_only | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "ESXi STIG | Phase 2 | Post-remediation audit"
+  when:
+    - not (_stig_audit_only | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+  block:
+    - name: "ESXi STIG | Phase 2 | Verify remediation"
+      ansible.builtin.include_tasks: check_verify.yaml
+      tags: [checks, stig, security, verify]
+
+    - name: "ESXi STIG | Phase 2 | Flag verification complete"
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true
+      changed_when: false
+  rescue:
+    - name: "ESXi STIG | Phase 2 | Log verification failure"
+      ansible.builtin.debug:
+        msg: "Post-remediation STIG audit failed. Exporting partial results."

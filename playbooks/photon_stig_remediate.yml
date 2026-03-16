@@ -1,6 +1,6 @@
 ---
 # playbooks/photon_stig_remediate.yml
-# Automated STIG hardening and remediation for VMware Photon OS 5.0.
+# Automated STIG hardening and remediation for VMware Photon OS 3.0.
 
 - name: "Phase 2: Photon STIG Remediation"
   hosts: "{{ photon_target_hosts | default('photon_servers') }}"

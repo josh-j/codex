@@ -1,0 +1,5 @@
+# VMware vSphere 7.0 vCenter Server Appliance vSphere UI Ansible Role
+
+- name: Include migrated UI STIG implementation
+  ansible.builtin.include_tasks:
+    file: ui_stig_migrated.yml

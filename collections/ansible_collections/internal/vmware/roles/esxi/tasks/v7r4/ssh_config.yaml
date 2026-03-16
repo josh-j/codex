@@ -1,0 +1,289 @@
+---
+# tasks/v7r4/ssh_config.yaml
+# SSH Configuration Rules — wrapped in internal.core.stig
+# Gated behind esxi_stig_enable_ssh_checks
+
+# --- V-256384 / ESXI-70-000010: SSH FIPS 140-2 mode ---
+- name: "stigrule_256384"
+  internal.core.stig_pwsh:
+    _stig_manage: "{{ (esxi_70_000010_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_validate_expr:
+      - var: _fips_ssh_enabled
+        equals: "true"
+    script: |
+      $args = $esxcli.system.security.fips140.ssh.set.CreateArgs()
+      $args.enable = $true
+      $esxcli.system.security.fips140.ssh.set.Invoke($args) | Out-Null
+
+# =========================================================================
+# sshd_config rules — self-contained SSH gather via PowerCLI
+#
+# ESXi 7.x has no esxcli namespace for sshd config, so we must SSH in.
+# This block temporarily starts SSH via PowerCLI if it isn't running,
+# fetches `sshd -T`, then restores the original SSH service state.
+# This avoids depending on whether pre/post-flight left SSH running.
+# =========================================================================
+
+- name: "ESXi STIG | Gather sshd_config (self-contained)"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+
+      # 1. Use PowerCLI to ensure SSH is running + firewall allows us
+      ssh_state=$(pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' -ErrorAction SilentlyContinue;
+      if (-not \$vmhost) { \$vmhost = Get-VMHost | Select-Object -First 1 };
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+
+      # Capture and temporarily allow all IPs on SSH firewall ruleset
+      \$sshFw = \$esxcli.network.firewall.ruleset.allowedip.list.Invoke(@{rulesetid='sshServer'});
+      \$origAllIp = (\$sshFw | Where-Object { \$_.AllowedIPAddresses -eq 'All' }) -ne \$null;
+      if (-not \$origAllIp) {
+        \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$true}) | Out-Null;
+        Write-Host 'FW_OPENED';
+      } else {
+        Write-Host 'FW_ALREADY_OPEN';
+      }
+
+      # Start SSH if needed
+      \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' };
+      if (-not \$svc.Running) {
+        Start-VMHostService -HostService \$svc -Confirm:\$false | Out-Null;
+        Start-Sleep -Seconds 3;
+        Write-Host 'STARTED';
+      } else {
+        Write-Host 'ALREADY_RUNNING';
+      }
+      " | tr -d '\r' | tail -1)
+
+      # 2. Fetch sshd config via SSH
+      config=$(sshpass -e ssh \
+        -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 \
+        -o PubkeyAuthentication=no \
+        {{ vault_vcenter_ssh_username | default('root') }}@{{ _current_esxi_host }} \
+        '/usr/lib/vmware/openssh/bin/sshd -T' 2>/dev/null)
+      ssh_rc=$?
+
+      # 3. Restore SSH service and firewall state
+      pwsh -NoProfile -Command "
+      {{ _pwsh_preamble }}
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' -ErrorAction SilentlyContinue;
+      if (-not \$vmhost) { \$vmhost = Get-VMHost | Select-Object -First 1 };
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+
+      # Restore SSH firewall
+      \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$false}) | Out-Null;
+
+      # Stop SSH if we started it
+      \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' };
+      if (\$svc.Running) {
+        Stop-VMHostService -HostService \$svc -Confirm:\$false | Out-Null;
+      }
+      " | tr -d '\r' > /dev/null 2>&1
+
+      # 4. Output the config (or fail)
+      if [ $ssh_rc -eq 0 ] && [ -n "$config" ]; then
+        echo "$config"
+      else
+        echo "SSHD_GATHER_FAILED" >&2
+        exit 1
+      fi
+  environment:
+    SSHPASS: "{{ vault_vcenter_ssh_password | default(vmware_password) | string | trim }}"
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  register: _sshd_config_result
+  changed_when: false
+  check_mode: false
+  no_log: false
+  ignore_errors: true  # noqa: ignore-errors — if gather fails, validators mark rules as failed
+  when: esxi_stig_enable_ssh_checks | default(true) | bool
+
+- name: "ESXi STIG | SSH gather failed — marking all SSH rules as not-assessable"
+  ansible.builtin.debug:
+    msg: >-
+      sshd_config gather failed for {{ _current_esxi_host }}. All sshd_config
+      STIG rules will be recorded as failed (not assessable).
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - _sshd_config_result is failed
+
+- name: "ESXi STIG | Parse sshd_config lines"
+  ansible.builtin.set_fact:
+    _sshd_config_lines: "{{ (_sshd_config_result.stdout | default('')).split('\n') }}"
+  check_mode: false
+  changed_when: false
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - _sshd_config_result is not skipped
+    - not (_sshd_config_result.failed | default(false))
+
+# Pre-compute each sshd setting from parsed lines into simple facts.
+# This avoids Jinja2 early-resolution issues inside _stig_validate_args,
+# since Ansible templates action-plugin args before set_fact values
+# from earlier tasks in the same include are available.
+- name: "ESXi STIG | Extract sshd settings"
+  ansible.builtin.set_fact:
+    _sshd_val_banner: "{{ _sshd_config_lines | select('match', '(?i)^banner\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_ignorerhosts: "{{ _sshd_config_lines | select('match', '(?i)^ignorerhosts\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_hostbasedauthentication: "{{ _sshd_config_lines | select('match', '(?i)^hostbasedauthentication\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_permitemptypasswords: "{{ _sshd_config_lines | select('match', '(?i)^permitemptypasswords\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_permituserenvironment: "{{ _sshd_config_lines | select('match', '(?i)^permituserenvironment\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_strictmodes: "{{ _sshd_config_lines | select('match', '(?i)^strictmodes\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_compression: "{{ _sshd_config_lines | select('match', '(?i)^compression\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_gatewayports: "{{ _sshd_config_lines | select('match', '(?i)^gatewayports\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_x11forwarding: "{{ _sshd_config_lines | select('match', '(?i)^x11forwarding\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_permittunnel: "{{ _sshd_config_lines | select('match', '(?i)^permittunnel\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_clientalivecountmax: "{{ _sshd_config_lines | select('match', '(?i)^clientalivecountmax\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_clientaliveinterval: "{{ _sshd_config_lines | select('match', '(?i)^clientaliveinterval\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_allowtcpforwarding: "{{ _sshd_config_lines | select('match', '(?i)^allowtcpforwarding\\s') | list | first | default('') | lower | trim }}"
+    _sshd_val_ciphers: "{{ _sshd_config_lines | select('match', '(?i)^ciphers\\s') | list | first | default('') | lower | trim }}"
+    _sshd_gather_ok: true
+  check_mode: false
+  changed_when: false
+  when:
+    - esxi_stig_enable_ssh_checks | default(true) | bool
+    - _sshd_config_lines is defined
+    - _sshd_config_lines | length > 0
+
+# --- V-256383 / ESXI-70-000009: SSH banner ---
+- name: "stigrule_256383"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000009_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_banner
+        equals: "banner /etc/issue"
+    cmd: "true"
+
+# --- V-256385 / ESXI-70-000012: IgnoreRhosts ---
+- name: "stigrule_256385"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000012_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_ignorerhosts
+        equals: "ignorerhosts yes"
+    cmd: "true"
+
+# --- V-256386 / ESXI-70-000013: HostbasedAuthentication ---
+- name: "stigrule_256386"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000013_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_hostbasedauthentication
+        equals: "hostbasedauthentication no"
+    cmd: "true"
+
+# --- V-256387 / ESXI-70-000015: PermitEmptyPasswords ---
+- name: "stigrule_256387"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000015_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_permitemptypasswords
+        equals: "permitemptypasswords no"
+    cmd: "true"
+
+# --- V-256388 / ESXI-70-000016: PermitUserEnvironment ---
+- name: "stigrule_256388"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000016_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_permituserenvironment
+        equals: "permituserenvironment no"
+    cmd: "true"
+
+# --- V-256389 / ESXI-70-000020: StrictModes ---
+- name: "stigrule_256389"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000020_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_strictmodes
+        equals: "strictmodes yes"
+    cmd: "true"
+
+# --- V-256390 / ESXI-70-000021: Compression ---
+- name: "stigrule_256390"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000021_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_compression
+        equals: "compression no"
+    cmd: "true"
+
+# --- V-256391 / ESXI-70-000022: GatewayPorts ---
+- name: "stigrule_256391"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000022_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_gatewayports
+        equals: "gatewayports no"
+    cmd: "true"
+
+# --- V-256392 / ESXI-70-000023: X11Forwarding ---
+- name: "stigrule_256392"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000023_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_x11forwarding
+        equals: "x11forwarding no"
+    cmd: "true"
+
+# --- V-256393 / ESXI-70-000025: PermitTunnel ---
+- name: "stigrule_256393"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000025_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_permittunnel
+        equals: "permittunnel no"
+    cmd: "true"
+
+# --- V-256394 / ESXI-70-000026: ClientAliveCountMax ---
+- name: "stigrule_256394"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000026_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_clientalivecountmax
+        equals: "clientalivecountmax 3"
+    cmd: "true"
+
+# --- V-256395 / ESXI-70-000027: ClientAliveInterval ---
+- name: "stigrule_256395"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000027_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_clientaliveinterval
+        equals: "clientaliveinterval 200"
+    cmd: "true"
+
+# --- V-256434 / ESXI-70-000082: AllowTcpForwarding ---
+- name: "stigrule_256434"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000082_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_allowtcpforwarding
+        equals: "allowtcpforwarding no"
+    cmd: "true"
+
+# --- V-256449 / ESXI-70-000274: FIPS ciphers ---
+- name: "stigrule_256449"
+  internal.core.stig:
+    _stig_manage: "{{ (esxi_70_000274_Manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+    _stig_audit_only: true
+    _stig_validate_expr:
+      - var: _sshd_val_ciphers
+        equals: "ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+    cmd: "true"

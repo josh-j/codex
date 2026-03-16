@@ -1,0 +1,116 @@
+---
+# =============================================================================
+# AIDE integrity controls — migrated to internal.core.stig
+# Rules: 270650 (AIDE installed/configured), 270651 (AIDE schedule/config),
+#        270652 (SILENTREPORTS), 270831 (audit tools monitoring)
+# =============================================================================
+
+# --- 270650 - AIDE installed, configured, initialized, schedulable ---
+- name: "stigrule_270650"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270650_manage | default(true) }}"
+    _stig_gate_packages: [auditd]
+    _stig_gate_status: failed
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        command -v aide >/dev/null 2>&1
+        test -f /etc/aide/aide.conf
+        test -f /var/lib/aide/aide.db || test -f /var/lib/aide/aide.db.gz
+        test -f /usr/share/aide/config/aide/aide.conf
+        test -f /etc/cron.daily/dailyaidecheck \
+          || systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | grep -q '^dailyaidecheck.timer'
+    cmd: |
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get install -y aide aide-common
+      if [ ! -f /var/lib/aide/aide.db ] && [ ! -f /var/lib/aide/aide.db.gz ]; then
+        aideinit
+        if [ -f /var/lib/aide/aide.db.new ]; then
+          cp -pf /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+        elif [ -f /var/lib/aide/aide.db.new.gz ]; then
+          cp -pf /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+        fi
+      fi
+
+# --- 270651 - AIDE default config and schedule ---
+- name: "stigrule_270651"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270651_manage | default(true) }}"
+    _stig_gate_packages: [aide]
+    _stig_gate_status: failed
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        test -f /etc/aide/aide.conf
+        test -f /usr/share/aide/config/aide/aide.conf
+        cmp -s /etc/aide/aide.conf /usr/share/aide/config/aide/aide.conf
+        if [ -f /etc/cron.daily/dailyaidecheck ]; then
+          grep -Fqx 'SCRIPT="/usr/share/aide/bin/dailyaidecheck"' /etc/cron.daily/dailyaidecheck
+        else
+          systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | grep -q '^dailyaidecheck.timer'
+          systemctl list-unit-files dailyaidecheck.service --no-legend 2>/dev/null | grep -q '^dailyaidecheck.service'
+        fi
+    cmd: |
+      set -eu
+      cp -pf /usr/share/aide/config/aide/aide.conf /etc/aide/aide.conf
+      chown root:root /etc/aide/aide.conf
+      chmod 0644 /etc/aide/aide.conf
+      if [ -f /usr/share/aide/config/cron.daily/aide ]; then
+        cp -pf /usr/share/aide/config/cron.daily/aide /etc/cron.daily/dailyaidecheck
+        chown root:root /etc/cron.daily/dailyaidecheck
+        chmod 0755 /etc/cron.daily/dailyaidecheck
+      fi
+      if systemctl list-unit-files dailyaidecheck.timer --no-legend 2>/dev/null | grep -q '^dailyaidecheck.timer'; then
+        systemctl daemon-reload
+        systemctl enable --now dailyaidecheck.timer
+      fi
+
+# --- 270652 - AIDE SILENTREPORTS=no ---
+- name: "stigrule_270652"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270652_manage | default(true) }}"
+    path: /etc/default/aide
+    regexp: '^\s*SILENTREPORTS\s*='
+    line: "SILENTREPORTS=no"
+    create: true
+
+# --- 270831 - AIDE must protect audit tools ---
+- name: "stigrule_270831"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ ubuntu2404STIG_stigrule_270831_manage | default(true) }}"
+    _stig_gate_packages: [aide]
+    _stig_gate_status: failed
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        for tool in auditctl auditd ausearch aureport autrace augenrules; do
+          grep -R -Eq "^/sbin/${tool}[[:space:]]+p\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512$" \
+            /etc/aide/aide.conf /etc/aide/aide.conf.d/*.conf 2>/dev/null
+        done
+    cmd: |
+      set -eu
+      mkdir -p /etc/aide/aide.conf.d
+      chown root:root /etc/aide/aide.conf.d
+      chmod 0755 /etc/aide/aide.conf.d
+      cat > /etc/aide/aide.conf.d/99-stig-audit-tools.conf <<'AIDEEOF'
+      # STIG 270831 - Audit Tools
+      /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512
+      /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512
+      AIDEEOF
+      chown root:root /etc/aide/aide.conf.d/99-stig-audit-tools.conf
+      chmod 0644 /etc/aide/aide.conf.d/99-stig-audit-tools.conf

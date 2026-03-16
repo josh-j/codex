@@ -1,0 +1,5 @@
+---
+
+- name: Include migrated EAM STIG implementation
+  ansible.builtin.include_tasks:
+    file: eam_stig_migrated.yml

@@ -1,0 +1,231 @@
+---
+
+- name: Create time stamp
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: Backup files...if restoring be sure to restore permissions that original file had!!
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-rhttpproxy-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  loop:
+    - "{{ var_config_xml_path }}"
+    - "{{ var_syslog_conf_path }}"
+    - "{{ var_syslog_conf_path2 }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "stigrule_VCRP-70-000001"
+  internal.core.stig:
+    _stig_id: VCRP-70-000001
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_config_tcpkeepalivetimesec | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify:
+      - restart rhttpproxy
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        value="$(xmllint --xpath '/config/envoy/L4Filter/tcpKeepAliveTimeSec/text()' '{{ var_config_xml_path }}' 2>&1 || true)"
+        [ "$value" = "180" ] || [ "$value" = "XPath set is empty" ]
+    path: "{{ var_config_xml_path }}"
+    xpath: /config/envoy/L4Filter/tcpKeepAliveTimeSec
+    value: "{{ var_config_xml_tcpkeepalivetimesec }}"
+    state: present
+
+- name: "stigrule_VCRP-70-000002"
+  internal.core.stig:
+    _stig_id: VCRP-70-000002
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_config_maxhttpsconnections | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify:
+      - restart rhttpproxy
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        value="$(xmllint --xpath '/config/envoy/L4Filter/maxHttpsConnections/text()' '{{ var_config_xml_path }}' 2>&1 || true)"
+        [ "$value" = "2048" ] || [ "$value" = "XPath set is empty" ]
+    path: "{{ var_config_xml_path }}"
+    xpath: /config/envoy/L4Filter/maxHttpsConnections
+    value: "{{ var_config_xml_maxhttpsconnections }}"
+    state: present
+
+- name: "stigrule_VCRP-70-000003"
+  internal.core.stig:
+    _stig_id: VCRP-70-000003
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_config_fips | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify:
+      - restart rhttpproxy
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath 'string(/config/vmacore/ssl/fips)' '{{ var_config_xml_path }}' 2>/dev/null || true)" = "true"
+    path: "{{ var_config_xml_path }}"
+    xpath: /config/vmacore/ssl/fips
+    value: "{{ var_config_xml_fips }}"
+    state: present
+
+- name: "stigrule_VCRP-70-000004"
+  internal.core.stig:
+    _stig_id: VCRP-70-000004
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_config_tls | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify:
+      - restart rhttpproxy
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        value="$(xmllint --xpath '/config/vmacore/ssl/protocols' '{{ var_config_xml_path }}' 2>&1 || true)"
+        [ "$value" = "XPath set is empty" ] || [ "$value" = "<protocols>tls1.2</protocols>" ]
+    path: "{{ var_config_xml_path }}"
+    xpath: /config/vmacore/ssl/protocols
+    value: "{{ var_config_xml_tls }}"
+    state: present
+
+- name: "stigrule_VCRP-70-000005"
+  internal.core.stig:
+    _stig_id: VCRP-70-000005
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_key_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(stat -c '%n permissions are %a, is owned by %U and group owned by %G' '{{ var_key_path }}')" = \
+          "{{ var_key_path }} permissions are 600, is owned by root and group owned by root"
+    path: "{{ var_key_path }}"
+    state: file
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: "VCRP-70-000006 | Remediate SSL block"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      python3 - <<'PY'
+      import xml.etree.ElementTree as ET
+
+      config_xml = "{{ var_config_xml_path }}"
+      tree = ET.parse(config_xml)
+      root = tree.getroot()
+
+      ssl_elem = root.find("./ssl")
+      if ssl_elem is None:
+          ssl_elem = ET.SubElement(root, "ssl")
+      else:
+          for child in list(ssl_elem):
+              ssl_elem.remove(child)
+
+      ET.SubElement(ssl_elem, "privateKey").text = "{{ var_config_xml_ssl_private_key }}"
+      ET.SubElement(ssl_elem, "certificate").text = "{{ var_config_xml_ssl_cert }}"
+      ET.SubElement(ssl_elem, "vecsServerName").text = "{{ var_config_xml_ssl_vecs }}"
+
+      tree.write(config_xml, encoding="UTF-8", xml_declaration=True)
+      PY
+  when:
+    - run_config_ssl | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart rhttpproxy
+
+- name: "stigrule_VCRP-70-000006"
+  internal.core.stig:
+    _stig_id: VCRP-70-000006
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_config_ssl | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        ssl_block="$(xmllint --xpath '/config/ssl' '{{ var_config_xml_path }}' 2>/dev/null || true)"
+        grep -Fq '<privateKey>{{ var_config_xml_ssl_private_key }}</privateKey>' <<<"$ssl_block"
+        grep -Fq '<certificate>{{ var_config_xml_ssl_cert }}</certificate>' <<<"$ssl_block"
+        grep -Fq '<vecsServerName>{{ var_config_xml_ssl_vecs }}</vecsServerName>' <<<"$ssl_block"
+    cmd: "true"
+
+- name: "VCRP-70-000007 | Deploy vmware-services-rhttpproxy.conf"
+  ansible.builtin.template:
+    src: vmware-services-rhttpproxy.conf
+    dest: "{{ var_syslog_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_syslog_config_rhttpproxy | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "stigrule_VCRP-70-000007"
+  internal.core.stig:
+    _stig_id: VCRP-70-000007
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_syslog_config_rhttpproxy | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(rpm -V VMware-visl-integration 2>/dev/null | grep vmware-services-rhttpproxy.conf | grep '^..5......' || true)"
+    cmd: "true"
+
+- name: "VCRP-70-000008 | Deploy vmware-services-envoy.conf"
+  ansible.builtin.template:
+    src: vmware-services-envoy.conf
+    dest: "{{ var_syslog_conf_path2 }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_syslog_config_envoy | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "stigrule_VCRP-70-000008"
+  internal.core.stig:
+    _stig_id: VCRP-70-000008
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_syslog_config_envoy | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(rpm -V VMware-visl-integration 2>/dev/null | grep vmware-services-envoy.conf | grep '^..5......' || true)"
+    cmd: "true"

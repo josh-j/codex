@@ -1,0 +1,97 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu/tasks/ubuntu2404_sitgs/00_prelude.yaml
+# Refactored Ubuntu 24.04 STIG task file.
+# Audit-mode tasks use explicit asserts/shell checks where the STIG check content
+# requires exact command semantics. Remediation-mode tasks use idempotent modules.
+# ansible-lint: skip-file
+
+- name: "Set NCS STIG target type to ubuntu"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_type: "ubuntu"
+  tags:
+    - always
+
+- name: "Set Ubuntu STIG execution phase"
+  ansible.builtin.set_fact:
+    _ubuntu2404_stig_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+    _stig_active_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+  changed_when: false
+  tags:
+    - always
+
+- name: "DEBUG | Phase and check_mode"
+  ansible.builtin.debug:
+    msg: "phase={{ _ubuntu2404_stig_phase }} check_mode={{ ansible_check_mode }}"
+
+- name: "Ubuntu STIG | Gather package facts"
+  ansible.builtin.package_facts:
+    manager: apt
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Gather service facts"
+  ansible.builtin.service_facts:
+  check_mode: false
+  tags: [always]
+
+- name: "Ubuntu STIG | Ensure auditd is installed (remediate only)"
+  ansible.builtin.apt:
+    name: auditd
+    state: present
+  register: _apt_auditd
+  until: _apt_auditd is success
+  retries: 12
+  delay: 10
+  when: _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Ensure sssd is installed (remediate only)"
+  ansible.builtin.apt:
+    name:
+      - sssd
+      - libpam-sss
+      - libnss-sss
+    state: present
+  register: _apt_sssd
+  until: _apt_sssd is success
+  retries: 12
+  delay: 10
+  when: _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Refresh package facts after prereq installs"
+  ansible.builtin.package_facts:
+    manager: apt
+  check_mode: false
+  when: (_apt_auditd is changed) or (_apt_sssd is changed)
+
+- name: "Ubuntu STIG | Clear immutable audit flag if set (remediate only)"
+  ansible.builtin.shell:
+    cmd: |
+      if command -v auditctl >/dev/null 2>&1 && auditctl -s 2>/dev/null | grep -q 'enabled 2'; then
+        # Temporarily remove immutable rules file so auditd can restart cleanly
+        [ -f /etc/audit/rules.d/99-stig-immutable.rules ] && mv /etc/audit/rules.d/99-stig-immutable.rules /tmp/_stig_immutable_backup.rules
+        sed -i '/^-e 2/d' /etc/audit/rules.d/audit.rules 2>/dev/null || true
+        augenrules --load 2>/dev/null || service auditd restart 2>/dev/null || true
+        sleep 1
+        echo "cleared"
+      else
+        echo "not_immutable"
+      fi
+  register: _audit_immutable_clear
+  changed_when: "'cleared' in _audit_immutable_clear.stdout"
+  check_mode: false
+  when:
+    - "'auditd' in ansible_facts.packages"
+    - _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Ensure stig.rules exists (remediate only)"
+  ansible.builtin.file:
+    path: /etc/audit/rules.d/stig.rules
+    state: touch
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  when:
+    - "'auditd' in ansible_facts.packages"
+    - _ubuntu2404_stig_phase != 'audit'
