@@ -95,3 +95,22 @@ vmch_70_000022_Manage: true
 # --- V-256471 / VMCH-70-000023: 3D features disabled ---
 # DISABLED: Breaks VMs running GPU-accelerated workloads, Horizon VDI
 # desktops with 3D graphics, or CAD/visualization applications
+vmch_70_000023_Manage: true
+
+# --- V-256472 / VMCH-70-000024: vMotion encryption required ---
+vmch_70_000024_Manage: true
+
+# --- V-256473 / VMCH-70-000025: Logging enabled ---
+vmch_70_000025_Manage: true
+
+# --- V-256474 / VMCH-70-000026: Log rotation size ---
+vmch_70_000026_Manage: true
+
+# --- V-256475 / VMCH-70-000027: Log retention ---
+vmch_70_000027_Manage: true
+
+# --- V-256476 / VMCH-70-000028: PCI passthrough disabled ---
+vmch_70_000028_Manage: true
+
+# --- V-256477 / VMCH-70-000029: FT encryption required ---
+vmch_70_000029_Manage: true
