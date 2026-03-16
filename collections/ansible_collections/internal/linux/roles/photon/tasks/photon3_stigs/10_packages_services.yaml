@@ -33,29 +33,6 @@
     _stig_skip_post_validate: true
     cmd: "true"
 
-# --- PHTN-30-000058 - NTP server configuration ---
-- name: "stigrule_PHTN-30-000058"
-  internal.core.stig:
-    _stig_apply: ansible.builtin.shell
-    _stig_use_check_mode_probe: false
-    _stig_manage: "{{ run_set_ntp_server }}"
-    _stig_gate_files: ['{{ var_ntp_conf_file }}']
-    _stig_gate_status: not_reviewed
-    _stig_validate: ansible.builtin.shell
-    _stig_validate_args:
-      cmd: |
-        set -eu
-        grep -qE '^\s*server\s+\S+' {{ var_ntp_conf_file }}
-    cmd: |
-      set -eu
-      sed -i '/^\s*server\s/d' {{ var_ntp_conf_file }}
-      {% for srv in var_ntp_servers %}
-      {% if srv %}
-      echo "server {{ srv }} iburst" >> {{ var_ntp_conf_file }}
-      {% endif %}
-      {% endfor %}
-      systemctl restart ntpd 2>/dev/null || systemctl restart systemd-timesyncd 2>/dev/null || true
-
 # --- PHTN-30-000059/000060 - tdnf gpgcheck ---
 - name: "stigrule_PHTN-30-000059"
   internal.core.stig:

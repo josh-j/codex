@@ -64,13 +64,6 @@
         regexp: '^#?\s*ClientAliveCountMax\s'
         line: "ClientAliveCountMax {{ var_sshd_clientalivecountmax }}"
 
-    - name: "stigrule_PHTN-30-000053"
-      internal.core.stig:
-        _stig_manage: "{{ run_sshd_listenaddress }}"
-        path: '{{ var_sshd_config_file }}'
-        regexp: '^#?\s*ListenAddress\s'
-        line: "ListenAddress {{ ansible_default_ipv4.address | default('0.0.0.0') }}"
-
     - name: "stigrule_PHTN-30-000064"
       internal.core.stig:
         _stig_manage: "{{ run_sshd_ciphers }}"

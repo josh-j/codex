@@ -7,21 +7,45 @@
     that: vm_stig_target_vms | default([]) | length > 0
     fail_msg: "No VMs defined in vm_stig_target_vms"
 
+- name: "VM STIG | Phase 0 | Compute phase hint"
+  ansible.builtin.set_fact:
+    _stig_audit_only: "{{ not (vmware_stig_enable_hardening | default(false) | bool) }}"
+    _stig_phase_hint: "{{ (vmware_stig_enable_hardening | default(false) | bool) | ternary('remediate', 'audit') }}"
+  changed_when: false
+
 # Phase 1: Evaluate/Remediate
-- name: "VM STIG | Phase 1 | Execute audit/hardening"
+- name: "VM STIG | Run checks"
+  ansible.builtin.include_tasks: check.yaml
+  tags: [checks, stig, security]
+
+- name: "VM STIG | Log completion"
+  ansible.builtin.debug:
+    msg: "VM STIG audit completed. Results emitted via ncs_collector."
+
+# Phase 2: Post-remediation verification (remediate mode only)
+- name: "VM STIG | Phase 2 | Set phase to audit for verification"
+  ansible.builtin.set_fact:
+    _stig_phase_hint: "audit"
+    _stig_active_phase: "audit"
+  changed_when: false
+  when:
+    - not (_stig_audit_only | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VM STIG | Phase 2 | Post-remediation audit"
+  when:
+    - not (_stig_audit_only | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
   block:
-    - name: "VM STIG | Run checks"
-      ansible.builtin.import_tasks: check.yaml
-      tags: [checks, stig, security]
+    - name: "VM STIG | Phase 2 | Verify remediation"
+      ansible.builtin.include_tasks: check_verify.yaml
+      tags: [checks, stig, security, verify]
 
-  rescue:
-    - name: "VM STIG | Mark audit as failed"
+    - name: "VM STIG | Phase 2 | Flag verification complete"
       ansible.builtin.set_fact:
-        _stig_audit_failed: true
+        _stig_audit_ran: true
       changed_when: false
-
-  always:
-    - name: "VM STIG | Log completion"
-
+  rescue:
+    - name: "VM STIG | Phase 2 | Log verification failure"
       ansible.builtin.debug:
-        msg: "VM STIG audit completed. Results emitted via ncs_collector."
+        msg: "Post-remediation VM STIG audit failed. Exporting partial results."

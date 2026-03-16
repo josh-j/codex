@@ -438,32 +438,6 @@
     line: "INACTIVE={{ var_useradd_inactive }}"
     state: present
 
-# --- PHTN-30-000039 - rsyslog remote server ---
-- name: "stigrule_PHTN-30-000039"
-  internal.core.stig:
-    _stig_apply: ansible.builtin.lineinfile
-    _stig_manage: "{{ run_set_syslog_server }}"
-    _stig_gate_packages: [rsyslog]
-    _stig_gate_vars:
-      var_syslog_server_name: "non-empty"
-    _stig_gate_status: not_reviewed
-    _stig_notify: [photon_restart_rsyslog]
-    path: '{{ var_syslog_conf_path }}'
-    regexp: '^\*\.\*\s+@@?'
-    line: "*.* {{ '@@' if var_syslog_server_protocol == 'tcp' else '@' }}{{ var_syslog_server_name }}:{{ var_syslog_server_port | default('514') }}"
-    state: present
-  notify: photon_restart_rsyslog
-
-# --- PHTN-30-000052 - TMOUT in bashrc ---
-- name: "stigrule_PHTN-30-000052"
-  internal.core.stig:
-    _stig_apply: ansible.builtin.lineinfile
-    _stig_manage: "{{ run_configure_bash_tmout }}"
-    path: '{{ var_bashrc_file }}'
-    regexp: '^\s*(export\s+)?TMOUT\s*='
-    line: "TMOUT={{ var_tmout_sh }}"
-    state: present
-
 # --- PHTN-30-000062 - NOPASSWD in sudoers (audit-only) ---
 - name: "stigrule_PHTN-30-000062"
   internal.core.stig:
@@ -479,22 +453,6 @@
     _stig_skip_post_validate: true
     cmd: "true"
 
-# --- PHTN-30-000077 - Default umask in profile.d ---
-- name: "stigrule_PHTN-30-000077"
-  internal.core.stig:
-    _stig_apply: ansible.builtin.shell
-    _stig_use_check_mode_probe: false
-    _stig_manage: "{{ run_configure_default_umask }}"
-    _stig_validate: ansible.builtin.shell
-    _stig_validate_args:
-      cmd: |
-        set -eu
-        grep -qE '^\s*umask\s+077' {{ var_umask_file }}
-    cmd: |
-      set -eu
-      mkdir -p "$(dirname {{ var_umask_file }})"
-      echo 'umask 077' > {{ var_umask_file }}
-      chmod 0644 {{ var_umask_file }}
 
 # =============================================================================
 # Sysctl rules

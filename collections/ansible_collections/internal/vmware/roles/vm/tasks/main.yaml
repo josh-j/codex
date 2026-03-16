@@ -8,6 +8,12 @@
       username: "{{ vmware_username }}"
       password: "{{ vmware_password }}"
       validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    internal.core.stig:
+      _stig_module_defaults:
+        hostname: "{{ _vcenter_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   block:
     - name: "VM | Run: {{ vm_action | default('stig') }}"
       ansible.builtin.include_tasks: "{{ vm_action | default('stig') }}.yaml"

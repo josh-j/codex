@@ -140,22 +140,6 @@
         [ -f "$f" ] && chmod 0750 "$f"
       done
 
-# --- PHTN-30-000049 - /usr/lib file permissions (disabled by default) ---
-- name: "stigrule_PHTN-30-000049"
-  internal.core.stig:
-    _stig_apply: ansible.builtin.shell
-    _stig_use_check_mode_probe: false
-    _stig_manage: "{{ run_usr_lib_perms }}"
-    _stig_validate: ansible.builtin.shell
-    _stig_validate_args:
-      cmd: |
-        set -eu
-        [ -z "$(find /usr/lib -type f \( ! -user root -o ! -group root \) -print 2>/dev/null | head -1)" ]
-    cmd: |
-      set -eu
-      find /usr/lib -type f ! -user root -exec chown root {} +
-      find /usr/lib -type f ! -group root -exec chgrp root {} +
-
 # --- PHTN-30-000090 - /etc/skel file permissions ---
 - name: "stigrule_PHTN-30-000090"
   internal.core.stig:

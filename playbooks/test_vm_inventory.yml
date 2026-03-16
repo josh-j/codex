@@ -1,0 +1,12 @@
+---
+all:
+  children:
+    vcenters:
+      hosts:
+        esxi_standalone:
+          ansible_host: 127.0.0.1
+          ansible_connection: local
+          vmware_hostname: "192.168.2.118"
+          vmware_username: "root"
+          vmware_password: "12qwaszx!@QWASZX"
+          vmware_validate_certs: false
