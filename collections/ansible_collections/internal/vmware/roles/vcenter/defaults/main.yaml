@@ -1,12 +1,16 @@
 ---
-# collections/ansible_collections/internal/vmware/roles/vcenter/defaults/main.yaml
+# internal.vmware.vcenter : defaults/main.yaml
 
-# --- Connection Defaults ---
+# =============================================================================
+# Connection Defaults
+# =============================================================================
 # vmware_username: "administrator@vsphere.local"
 # vmware_password: ""
 vmware_validate_certs: false
 
-# --- Performance/Safety Toggles ---
+# =============================================================================
+# Performance/Safety Toggles
+# =============================================================================
 vcenter_action: collect
 vmware_discovery_timeout: 30
 vmware_skip_discovery: false
@@ -19,7 +23,9 @@ vcenter_collect_storage: true
 vcenter_collect_workload: true
 vcenter_collect_snapshots: true
 
-# --- Thresholds (Used by ncs-reporter) ---
+# =============================================================================
+# Thresholds (Used by ncs-reporter)
+# =============================================================================
 vmware_cpu_critical_pct: 90.0
 vmware_memory_critical_pct: 90.0
 vmware_datastore_free_critical_pct: 10.0
@@ -27,7 +33,9 @@ vmware_datastore_free_warning_pct: 15.0
 vmware_snapshot_age_warning_days: 7
 vmware_snapshot_size_warning_gb: 100.0
 
-# --- STIG Settings ---
+# =============================================================================
+# STIG Settings
+# =============================================================================
 vmware_stig_enable_audit: true
 vmware_stig_enable_hardening: false
 vmware_stig_export_cklb: true
@@ -36,7 +44,9 @@ vcenter_stig_include_photon: false
 vcenter_stig_photon_version: "3"
 vcenter_stig_create_backups: true
 
-# --- Simulation Settings ---
+# =============================================================================
+# Simulation Settings
+# =============================================================================
 simulation_mode: false
 simulation_vcenter_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter/vcsa"
 simulation_vcenter_fixture_file: "{{ simulation_vcenter_fixture_root }}/{{ inventory_hostname }}/raw_vcenter.yaml"

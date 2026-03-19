@@ -1,17 +1,6 @@
 # syslog variables
-# enter fqdn or ip here
-var_syslog_server_name: ''
-var_syslog_server_port: ''
-# udp, tcp, or tls
-var_syslog_server_protocol: 'tcp'
 var_syslog_authpriv_log: '/var/log/audit/auth.log'
 var_syslog_conf_path: '/etc/rsyslog.conf'
-
-# ntp variables
-var_ntp_conf_file: '/etc/ntp.conf'
-var_ntp_servers:
-  - ""
-  - ""
 
 # limits.conf variables
 var_limits_conf_file: '/etc/security/limits.conf'
@@ -128,5 +117,4 @@ var_useradd_file: '/etc/default/useradd'
 var_grub_conf_file: '/boot/grub2/grub.cfg'
 var_bashrc_file: '/etc/bash.bashrc'
 var_tdnf_conf_file: '/etc/tdnf/tdnf.conf'
-var_umask_file: '/etc/profile.d/umask.sh'
 var_resolved_file: '/etc/systemd/resolved.conf'

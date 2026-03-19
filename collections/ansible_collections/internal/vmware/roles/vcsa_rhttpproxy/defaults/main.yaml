@@ -1,0 +1,41 @@
+---
+# internal.vmware.vcsa_rhttpproxy : defaults/main.yaml
+#
+# Default values for all vCSA Reverse Proxy (rhttpproxy) V7R4 STIG rules.
+# Override in inventory group_vars, host_vars, or via -e on the CLI.
+
+# =============================================================================
+# 0. ROLE CONFIG
+# =============================================================================
+# Create backups of files?
+run_create_backups: true
+
+# =============================================================================
+# 1. TOGGLE FLAGS
+#
+# Set any value to false to skip that rule during hardening.
+# =============================================================================
+
+# VCRP-70-000001
+run_config_tcpkeepalivetimesec: true
+
+# VCRP-70-000002
+run_config_maxhttpsconnections: true
+
+# VCRP-70-000003
+run_config_fips: true
+
+# VCRP-70-000004
+run_config_tls: true
+
+# VCRP-70-000005
+run_key_permissions: true
+
+# VCRP-70-000006
+run_config_ssl: true
+
+# VCRP-70-000007
+run_syslog_config_rhttpproxy: true
+
+# VCRP-70-000008
+run_syslog_config_envoy: true

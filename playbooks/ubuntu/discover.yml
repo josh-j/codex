@@ -1,0 +1,12 @@
+---
+# playbooks/ubuntu/discover.yml
+# Read-only Ubuntu discovery and health collection.
+
+- name: "Ubuntu | Discover"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "audit", "discover", "system"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: discover

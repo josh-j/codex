@@ -1,0 +1,6 @@
+---
+# playbooks/vmware/collect.yml
+# Compatibility alias for VMware full collection.
+
+- name: "Composite VMware Collect | Full Audit"
+  ansible.builtin.import_playbook: audit.yml

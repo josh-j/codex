@@ -1,5 +1,0 @@
----
-
-- name: Include migrated PostgreSQL STIG implementation
-  ansible.builtin.include_tasks:
-    file: postgresql_stig_migrated.yml

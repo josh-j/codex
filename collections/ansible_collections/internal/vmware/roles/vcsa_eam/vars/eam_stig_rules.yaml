@@ -1,7 +1,7 @@
 ---
 # vars/eam_stig_rules.yaml
 # Data-driven XML STIG rules for VCSA 7.0 EAM (ESX Agent Manager)
-# Used by xml_evaluator.yml (xmllint-based, no community.general.xml)
+# Used by xml_evaluator.yaml (xmllint-based, no community.general.xml)
 #
 # check_type values:
 #   attribute   — xmllint checks xpath/@attribute = expected

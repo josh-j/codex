@@ -1,0 +1,13 @@
+---
+# playbooks/ubuntu/patch_apply.yml
+# Apply Ubuntu package updates using the remediation action.
+
+- name: "Ubuntu | Patch (Apply)"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "patching", "updates", "apply"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: remediate
+      tags: ["patching"]

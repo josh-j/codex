@@ -1,6 +1,6 @@
 ---
 # Data-driven XML rules for rhttpproxy STIG remediation.
-# Consumed by xml_evaluator.yml.
+# Consumed by xml_evaluator.yaml.
 
 rhttpproxy_xml_rules:
   - stig_id: "VCRP-70-000001"

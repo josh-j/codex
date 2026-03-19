@@ -7,23 +7,23 @@
 
 # Phase 1: Environment Readiness
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: setup_env.yml
+  ansible.builtin.import_playbook: infra/setup_env.yml
 
 # Phase 2: VMware STIG Audit
 - name: "Phase 2: VMware Infrastructure STIG Audit"
-  ansible.builtin.import_playbook: vmware_stig_audit.yml
+  ansible.builtin.import_playbook: vmware/stig_audit.yml
 
 # Phase 3: Linux Fleet STIG Audit
 - name: "Phase 3: Ubuntu STIG Audit"
-  ansible.builtin.import_playbook: ubuntu_stig_audit.yml
+  ansible.builtin.import_playbook: ubuntu/stig_audit.yml
 
 - name: "Phase 3b: Photon OS STIG Audit"
-  ansible.builtin.import_playbook: photon_stig_audit.yml
+  ansible.builtin.import_playbook: photon/stig_audit.yml
 
 # Phase 4: Windows Fleet STIG Audit
 - name: "Phase 4: Windows Server STIG Audit"
-  ansible.builtin.import_playbook: windows_stig_audit.yml
+  ansible.builtin.import_playbook: windows/stig_audit.yml
 
 # Phase 5: Unified Infrastructure Reporting
 - name: "Phase 5: Unified Compliance Reporting"
-  ansible.builtin.import_playbook: generate_reports.yml
+  ansible.builtin.import_playbook: infra/generate_reports.yml

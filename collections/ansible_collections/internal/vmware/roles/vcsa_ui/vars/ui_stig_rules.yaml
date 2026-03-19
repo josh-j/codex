@@ -1,6 +1,6 @@
 ---
 # Data-driven XML rules for vSphere UI STIG remediation.
-# Consumed by xml_evaluator.yml.
+# Consumed by xml_evaluator.yaml.
 
 ui_xml_rules:
   - stig_id: "VCUI-70-000001"

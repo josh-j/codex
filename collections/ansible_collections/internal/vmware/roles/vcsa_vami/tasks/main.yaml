@@ -1,0 +1,10 @@
+---
+
+- name: Include VAMI
+  ansible.builtin.include_tasks:
+    file: vami.yaml
+    apply:
+      tags:
+        - vami
+  tags:
+    - always

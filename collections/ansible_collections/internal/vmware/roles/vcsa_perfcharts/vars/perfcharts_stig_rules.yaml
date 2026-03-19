@@ -1,6 +1,6 @@
 ---
 # Data-driven XML rules for Perfcharts STIG remediation.
-# Consumed by xml_evaluator.yml.
+# Consumed by xml_evaluator.yaml.
 
 perfcharts_xml_rules:
   - stig_id: "VCPF-70-000001"

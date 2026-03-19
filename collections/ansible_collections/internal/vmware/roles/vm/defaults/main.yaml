@@ -45,13 +45,13 @@ vmch_70_000007_Manage: true
 # DISABLED: Removing floppy devices can break VMs that use them for guest
 # customization specs, unattended installs, or answer files. Remediation
 # removes the device permanently — re-adding requires VM power-off.
-vmch_70_000008_Manage: true
+vmch_70_000008_Manage: false
 
 # --- V-256458 / VMCH-70-000009: CD-ROM devices removed ---
 # DISABLED: Many VMs mount ISOs for VMware Tools installation, OS patching,
 # or application deployment. Removing the CD-ROM breaks these workflows
 # and the device cannot be re-added without powering off the VM.
-vmch_70_000009_Manage: true
+vmch_70_000009_Manage: false
 
 # --- V-256459 / VMCH-70-000010: Parallel ports removed ---
 vmch_70_000010_Manage: true
@@ -63,7 +63,7 @@ vmch_70_000011_Manage: true
 # DISABLED: Removing USB controllers breaks VMs using USB passthrough for
 # hardware dongles, smart cards, or CAC readers. The controller cannot be
 # re-added while the VM is powered on.
-vmch_70_000012_Manage: true
+vmch_70_000012_Manage: false
 
 # --- V-256462 / VMCH-70-000013: Console connections limited ---
 vmch_70_000013_Manage: true
@@ -95,7 +95,7 @@ vmch_70_000022_Manage: true
 # --- V-256471 / VMCH-70-000023: 3D features disabled ---
 # DISABLED: Breaks VMs running GPU-accelerated workloads, Horizon VDI
 # desktops with 3D graphics, or CAD/visualization applications
-vmch_70_000023_Manage: true
+vmch_70_000023_Manage: false
 
 # --- V-256472 / VMCH-70-000024: vMotion encryption required ---
 vmch_70_000024_Manage: true

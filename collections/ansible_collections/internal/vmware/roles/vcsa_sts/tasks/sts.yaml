@@ -1,0 +1,5 @@
+---
+
+- name: Include migrated STS STIG implementation
+  ansible.builtin.include_tasks:
+    file: sts_stig_migrated.yaml

@@ -3,13 +3,13 @@
 # Collection-only pipeline (no report rendering).
 
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: setup_env.yml
+  ansible.builtin.import_playbook: infra/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware_audit.yml
+  ansible.builtin.import_playbook: vmware/audit.yml
 
 - name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: ubuntu_audit.yml
+  ansible.builtin.import_playbook: ubuntu/audit.yml
 
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows_audit.yml
+  ansible.builtin.import_playbook: windows/audit.yml
