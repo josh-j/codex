@@ -1,17 +1,17 @@
 ---
-# collections/ansible_collections/internal/vmware/roles/esxi/defaults/main.yaml
+# internal.vmware.esxi : defaults/main.yaml
 
-# =========================================================================
+# =============================================================================
 # Pipeline config
-# =========================================================================
+# =============================================================================
 esxi_action: stig
 vmware_stig_enable_hardening: false
 esxi_stig_target_hosts: []
 esxi_stig_enable_ssh_checks: true
 
-# =========================================================================
+# =============================================================================
 # Site-specific values (MUST be set in group_vars for hardening mode)
-# =========================================================================
+# =============================================================================
 esxi_stig_syslog_host: ""
 esxi_stig_ntp_servers: []
 esxi_stig_ad_domain: ""
@@ -33,9 +33,9 @@ esxi_stig_welcome_message: |
 
   - Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
 
-# =========================================================================
+# =============================================================================
 # Configurable STIG values (defaults match DISA STIG expected values)
-# =========================================================================
+# =============================================================================
 esxi_stig_dcui_access: "root"
 esxi_stig_account_lock_failures: 3
 esxi_stig_account_unlock_time: 900
@@ -62,17 +62,15 @@ esxi_stig_acceptance_level: "partner"
 esxi_stig_lockdown_level: "lockdownNormal"
 esxi_stig_portgroup_remediation_vlan_id: 0
 
-# =========================================================================
+# =============================================================================
 # Rule toggles — SAFE rules (enable by default)
-# =========================================================================
+# =============================================================================
 
 # CAT I
 esxi_70_000074_Manage: true # V-256429: TLS 1.2 only
 
 # CAT II — Config manager (advanced settings)
 esxi_70_000002_Manage: true # V-256376: DCUI.Access
-# CAUTION: Clears lockdown exception list. Only meaningful when lockdown is enabled.
-esxi_70_000003_Manage: false # V-256377: Lockdown exceptions
 esxi_70_000004_Manage: true # V-256378: Syslog host (requires esxi_stig_syslog_host)
 esxi_70_000005_Manage: true # V-256379: Account lock failures
 esxi_70_000006_Manage: true # V-256380: Account unlock time
@@ -157,27 +155,45 @@ esxi_70_000027_Manage: true # V-256395: ClientAliveInterval
 esxi_70_000038_Manage: true # V-256403: Host profiles (debug msg only)
 esxi_70_000070_Manage: true # V-256428: CIM account access (debug msg only)
 
-# =========================================================================
+# =============================================================================
 # DANGEROUS rules — disabled by default, enable explicitly when ready
-# =========================================================================
+# =============================================================================
 
-# CAUTION: Lockdown mode blocks direct ESXi access.
-# If vCenter goes down, you cannot manage the host.
-esxi_70_000001_Manage: false # V-256375: Lockdown mode
+# --- V-256375 / ESXI-70-000001: Lockdown mode ---
+# DISABLED: Lockdown mode blocks direct ESXi access. If vCenter goes down,
+# you cannot manage the host until lockdown is removed via DCUI.
+esxi_70_000001_Manage: false
 
-# CAUTION: Disables SSH. Enable only after all SSH-dependent config is applied.
-# Should be the LAST rule applied in hardening sequence.
-esxi_70_000035_Manage: false # V-256400: SSH service stopped
+# --- V-256377 / ESXI-70-000003: Lockdown exceptions ---
+# DISABLED: Clears lockdown exception list. Only meaningful when lockdown is
+# enabled. Review the exception list before enabling.
+esxi_70_000003_Manage: false
 
-# CAUTION: Disables ESXi Shell. Same concern as SSH.
-esxi_70_000036_Manage: false # V-256401: ESXi Shell stopped
+# --- V-256400 / ESXI-70-000035: SSH service stopped ---
+# DISABLED: Disables SSH. Enable only after all SSH-dependent config is
+# applied. Should be the LAST rule applied in hardening sequence.
+esxi_70_000035_Manage: false
 
-# CAUTION: Requires working Active Directory. If AD is unreachable, login fails.
-esxi_70_000037_Manage: false # V-256402: AD join
-esxi_70_000039_Manage: false # V-256404: AD admin group (requires esxi_stig_ad_admin_group)
+# --- V-256401 / ESXI-70-000036: ESXi Shell stopped ---
+# DISABLED: Disables ESXi Shell. Same concern as SSH — enable only after
+# all shell-dependent configuration is complete.
+esxi_70_000036_Manage: false
 
-# CAUTION: SNMP disable — only if SNMP is not used for monitoring
-esxi_70_000053_Manage: true # V-256414: SNMP (disables if default community)
+# --- V-256402 / ESXI-70-000037: AD join ---
+# DISABLED: Requires working Active Directory. If AD is unreachable, login
+# fails for all non-local accounts.
+esxi_70_000037_Manage: false
 
-# CAUTION: iSCSI CHAP — only if iSCSI is used
-esxi_70_000054_Manage: true # V-256415: iSCSI CHAP (safe — skips if no iSCSI)
+# --- V-256404 / ESXI-70-000039: AD admin group ---
+# DISABLED: Requires AD join (ESXI-70-000037) to be enabled first.
+# Set esxi_stig_ad_admin_group before enabling.
+esxi_70_000039_Manage: false
+
+# --- V-256414 / ESXI-70-000053: SNMP disabled ---
+# DISABLED: Disables SNMP if default community string is set. Only enable
+# if SNMP is not used for monitoring.
+esxi_70_000053_Manage: true
+
+# --- V-256415 / ESXI-70-000054: iSCSI CHAP ---
+# NOTE: Safe — automatically skips if no iSCSI adapters are present.
+esxi_70_000054_Manage: true

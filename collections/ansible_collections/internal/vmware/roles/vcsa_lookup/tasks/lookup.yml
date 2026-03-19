@@ -1,5 +1,0 @@
----
-
-- name: Include migrated Lookup STIG implementation
-  ansible.builtin.include_tasks:
-    file: lookup_stig_migrated.yml

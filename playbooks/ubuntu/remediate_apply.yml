@@ -1,0 +1,12 @@
+---
+# playbooks/ubuntu/remediate_apply.yml
+# Apply non-STIG Ubuntu remediation changes.
+
+- name: "Ubuntu | Remediate (Apply)"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  tags: ["ubuntu", "remediate", "apply", "system"]
+  roles:
+    - role: internal.linux.ubuntu
+      vars:
+        ubuntu_action: remediate

@@ -1,0 +1,6 @@
+---
+# playbooks/ubuntu/audit.yml
+# Compatibility wrapper for Ubuntu audit collection.
+
+- name: "Composite Ubuntu Audit | Discover"
+  ansible.builtin.import_playbook: discover.yml

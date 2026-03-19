@@ -1,7 +1,7 @@
 ---
 # vcsa_vami/vars/vami_stig_rules.yaml
 # Data-driven rules for VAMI STIG lineinfile tasks.
-# Consumed by lineinfile_evaluator.yml.
+# Consumed by lineinfile_evaluator.yaml.
 
 vami_lineinfile_rules:
   - stig_id: "VCLD-70-000001"

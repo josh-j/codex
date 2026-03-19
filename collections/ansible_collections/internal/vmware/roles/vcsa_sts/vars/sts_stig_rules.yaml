@@ -1,6 +1,6 @@
 ---
 # Data-driven XML rules for STS STIG remediation.
-# Consumed by xml_evaluator.yml.
+# Consumed by xml_evaluator.yaml.
 
 sts_xml_rules:
   - stig_id: "VCST-70-000001"

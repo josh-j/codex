@@ -1,6 +1,6 @@
 ---
 # Data-driven XML rules for Lookup Service STIG remediation.
-# Consumed by xml_evaluator.yml.
+# Consumed by xml_evaluator.yaml.
 
 lookup_xml_rules:
   - stig_id: "VCLU-70-000001"

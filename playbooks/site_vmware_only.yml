@@ -3,10 +3,10 @@
 # VMware-only pipeline with report generation.
 
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: setup_env.yml
+  ansible.builtin.import_playbook: infra/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware_audit.yml
+  ansible.builtin.import_playbook: vmware/audit.yml
 
 - name: "Phase 4: Unified Infrastructure Reporting"
-  ansible.builtin.import_playbook: generate_reports.yml
+  ansible.builtin.import_playbook: infra/generate_reports.yml

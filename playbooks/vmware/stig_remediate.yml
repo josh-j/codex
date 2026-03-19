@@ -1,0 +1,12 @@
+---
+# playbooks/vmware/stig_remediate.yml
+# Compatibility wrapper that runs VMware STIG remediation targets (ESXi, VM, VCSA).
+
+- name: "Composite VMware STIG Remediation | ESXi"
+  ansible.builtin.import_playbook: esxi_stig_remediate.yml
+
+- name: "Composite VMware STIG Remediation | VM"
+  ansible.builtin.import_playbook: vm_stig_remediate.yml
+
+- name: "Composite VMware STIG Remediation | VCSA"
+  ansible.builtin.import_playbook: vcsa_stig_remediate.yml

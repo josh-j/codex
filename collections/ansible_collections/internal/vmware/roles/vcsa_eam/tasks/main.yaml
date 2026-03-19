@@ -1,0 +1,10 @@
+---
+
+- name: Include EAM
+  ansible.builtin.include_tasks:
+    file: eam.yaml
+    apply:
+      tags:
+        - eam
+  tags:
+    - always

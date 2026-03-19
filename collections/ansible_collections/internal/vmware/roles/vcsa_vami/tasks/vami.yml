@@ -1,3 +1,0 @@
-- name: Include migrated VAMI STIG implementation
-  ansible.builtin.include_tasks:
-    file: vami_stig_migrated.yml

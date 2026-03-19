@@ -2,7 +2,7 @@
 # internal.vmware.vcenter : tasks/stig.yaml
 
 - name: "vCenter STIG | Load VCSA profile vars"
-  ansible.builtin.include_vars: "vcsa_{{ vcenter_stig_profile | default('v1r4') }}.yml"
+  ansible.builtin.include_vars: "vcsa_{{ vcenter_stig_profile | default('v1r4') }}.yaml"
 
 - name: "vCenter STIG | Optional Photon baseline"
   ansible.builtin.include_role:

@@ -1,5 +1,0 @@
----
-
-- name: Include migrated rhttpproxy STIG implementation
-  ansible.builtin.include_tasks:
-    file: rhttpproxy_stig_migrated.yml

@@ -1,0 +1,106 @@
+---
+# internal.vmware.vcsa_ui : defaults/main.yaml
+#
+# Default values for all vSphere UI (VCUI) V7R4 STIG rules.
+# Override in inventory group_vars, host_vars, or via -e on the CLI.
+
+# =============================================================================
+# TOGGLE FLAGS
+#
+# Rules disabled by default are marked with the reason. Enable them only
+# after confirming your environment can tolerate the change.
+# =============================================================================
+
+# Create backups of files?
+run_create_backups: true
+
+# --- VCUI-70-000001: Connection timeout ---
+run_connection_timeout: true
+
+# --- VCUI-70-000002: Max threads ---
+run_max_threads: true
+
+# --- VCUI-70-000003: Max POST size ---
+run_max_post_size: true
+
+# --- VCUI-70-000004: HTTP-only cookies ---
+run_http_only: true
+
+# --- VCUI-70-000005: Access valve pattern ---
+run_access_valve_pattern: true
+
+# --- VCUI-70-000006: JSON stream redirect file ---
+run_json_stream_redirect_file: true
+
+# --- VCUI-70-000007: Logs permissions ---
+run_logs_permissions: true
+
+# --- VCUI-70-000010: User database realm ---
+run_user_database_realm: true
+
+# --- VCUI-70-000011: Catalina properties package access ---
+run_catalina_props_package_access: true
+
+# --- VCUI-70-000012: Removed MIME mappings ---
+run_removed_mime_mappings: true
+
+# --- VCUI-70-000013: Java servlet ---
+run_java_servlet: true
+
+# --- VCUI-70-000014: Remove WebDAV ---
+run_remove_webdav: true
+
+# --- VCUI-70-000015: Memory leak prevention ---
+run_mem_leak_prevention: true
+
+# --- VCUI-70-000017: Web application file permissions ---
+# DISABLED: Recursively changing file permissions on the vSphere UI web
+# application directory can break the service if ownership or permissions
+# are set incorrectly. The UI service may fail to start or lose access
+# to its own files, requiring manual SSH recovery to restore permissions.
+run_web_files_permissions: false
+
+# --- VCUI-70-000018: Session cookies ---
+run_session_cookies: true
+
+# --- VCUI-70-000019: Catalina properties init failure ---
+run_catalina_props_init_failure: true
+
+# --- VCUI-70-000020: Accept count ---
+run_accept_count: true
+
+# --- VCUI-70-000021: URI encoding ---
+run_uri_encoding: true
+
+# --- VCUI-70-000022: Web welcome file ---
+run_web_welcome_file: true
+
+# --- VCUI-70-000023: Web remove listings ---
+run_web_remove_listings: true
+
+# --- VCUI-70-000024: Minimize info ---
+run_min_info: true
+
+# --- VCUI-70-000025: Show server info ---
+run_show_server_info: true
+
+# --- VCUI-70-000026: Allow TRACE ---
+run_allow_trace: true
+
+# --- VCUI-70-000027: Web remove debug ---
+run_web_remove_debug: true
+
+# --- VCUI-70-000029: Syslog config ---
+run_syslog_config: true
+
+# --- VCUI-70-000030: Catalina properties ports ---
+run_catalina_props_ports: true
+
+# --- VCUI-70-000031: Server shutdown port ---
+run_server_shutdownport: true
+
+# --- VCUI-70-000032: Web cookie secure ---
+run_web_cookie_secure: true
+
+# --- VCUI-70-000033: Web remove readonly ---
+run_web_remove_readonly: true

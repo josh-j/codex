@@ -1,9 +1,0 @@
----
-# playbooks/windows_patch.yml
-# Compatibility wrapper for Windows patch workflow.
-
-- name: "Composite Windows Patch | Apply Updates"
-  ansible.builtin.import_playbook: windows_update.yml
-
-- name: "Composite Windows Patch | Post-Patch Audit"
-  ansible.builtin.import_playbook: windows_post_patch_audit.yml

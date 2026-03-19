@@ -1,0 +1,12 @@
+---
+# playbooks/ubuntu/remediate.yml
+# Compatibility wrapper for Ubuntu remediation workflow.
+
+- name: "Composite Ubuntu Remediate | Pre-Discover"
+  ansible.builtin.import_playbook: discover.yml
+
+- name: "Composite Ubuntu Remediate | Apply"
+  ansible.builtin.import_playbook: remediate_apply.yml
+
+- name: "Composite Ubuntu Remediate | Post-Discover"
+  ansible.builtin.import_playbook: discover.yml

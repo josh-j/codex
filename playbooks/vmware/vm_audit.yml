@@ -1,0 +1,20 @@
+---
+# playbooks/vmware/vm_audit.yml
+# Read-only audit focused on VM inventory and snapshot state.
+
+- name: Phase 2c | VMware VM Workload Audit
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  roles:
+    - role: internal.vmware.vcenter
+      vars:
+        vcenter_action: collect
+        vcenter_collect_appliance: false
+        vcenter_collect_inventory: true
+        vcenter_collect_alarms: false
+        vcenter_collect_datacenters: true
+        vcenter_collect_compute: false
+        vcenter_collect_storage: false
+        vcenter_collect_workload: true
+        vcenter_collect_snapshots: true
