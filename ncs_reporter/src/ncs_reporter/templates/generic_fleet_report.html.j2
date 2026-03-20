@@ -72,22 +72,66 @@
         <div class="widget-body widget-table-view">
         <table>
             <thead>
-                <tr><th class="th-severity">Severity</th><th>Message</th></tr>
+                <tr><th class="th-severity">Severity</th><th class="th-category">Category</th><th>Message</th></tr>
             </thead>
             <tbody>
             {% for group in alert_groups %}
                 {% set gid = loop.index %}
                 <tr class="group-hdr" data-group="{{ gid }}">
-                    <td colspan="2">
+                    <td colspan="3">
                         <span class="group-toggle"></span>
-                        <strong>{{ group.host }}</strong>
+                        <strong><a href="{{ group.node_report }}">{{ group.host }}</a></strong>
                     </td>
                 </tr>
                 {% for alert in group.alerts %}
-                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}" data-group="{{ gid }}">
+                {% set has_items = alert.get('affected_items', []) | length > 0 %}
+                {% set fleet_alert_id = 'fleet-alert-' ~ gid ~ '-' ~ loop.index %}
+                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }} {{ 'alert-expandable' if has_items else '' }}" data-group="{{ gid }}" {% if has_items %}data-alert-detail="{{ fleet_alert_id }}"{% endif %}>
                     <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} severity-cell">{{ alert.severity }}</td>
-                    <td>{{ alert.get('message', '') }}</td>
+                    <td class="nowrap subtle-text strong-text alert-category">{{ alert.get('category', '') }}</td>
+                    <td>
+                        {{ alert.get('message', '') }}
+                        {% if has_items %}<span class="alert-expand-hint">({{ alert.affected_items | length }} item{{ 's' if alert.affected_items | length != 1 else '' }})</span>{% endif %}
+                        {% if alert.get('detail') %}
+                        <div class="alert-details">
+                            {% for dk, dv in alert.detail.items() %}
+                            <span><strong>{{ dk }}:</strong> {{ dv }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
                 </tr>
+                {% if has_items %}
+                {% set items = alert.affected_items %}
+                {% set display_items = items[:50] %}
+                {% set remaining = items | length - 50 %}
+                {% set sample = display_items[0] if display_items else {} %}
+                {% set col_keys = sample.keys() | list if sample is mapping else [] %}
+                {% set skip_keys = ['tags', 'attributes', 'moid', 'uuid', 'instance_uuid', 'datastore_url', 'backup_info'] %}
+                {% set display_cols = [] %}
+                {% for k in col_keys %}{% if k not in skip_keys and not k.startswith('_') %}{% if display_cols.append(k) %}{% endif %}{% endif %}{% endfor %}
+                {% set display_cols = display_cols[:8] %}
+                <tr class="alert-detail-row group-row" id="{{ fleet_alert_id }}" data-group="{{ gid }}" style="display: none;">
+                    <td colspan="3">
+                        <div class="alert-affected-items">
+                            {% if display_cols %}
+                            <table class="affected-items-table">
+                                <thead><tr>{% for col in display_cols %}<th>{{ col | replace('_', ' ') | title }}</th>{% endfor %}</tr></thead>
+                                <tbody>
+                                {% for item in display_items %}
+                                    <tr>{% for col in display_cols %}{% set val = item[col] if item is mapping else item %}<td>{% if val is mapping or (val is iterable and val is not string) %}<span class="subtle-text">{{ val | length }} items</span>{% else %}{{ val }}{% endif %}</td>{% endfor %}</tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            {% if remaining > 0 %}<div class="affected-items-overflow">&hellip;and {{ remaining }} more item{{ 's' if remaining != 1 else '' }}</div>{% endif %}
+                            {% else %}
+                            <ul class="affected-items-list">{% for item in display_items %}<li>{{ item }}</li>{% endfor %}</ul>
+                            {% if remaining > 0 %}<div class="affected-items-overflow">&hellip;and {{ remaining }} more</div>{% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
                 {% endfor %}
             {% endfor %}
             </tbody>
