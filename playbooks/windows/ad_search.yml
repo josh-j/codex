@@ -1,0 +1,12 @@
+---
+# playbooks/windows/ad_search.yml
+# Active Directory user/computer search with optional BitLocker key recovery.
+
+- name: "Windows | AD Search"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, ad, search]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: ad_search

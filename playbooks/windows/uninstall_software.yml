@@ -1,0 +1,12 @@
+---
+# playbooks/windows/uninstall_software.yml
+# Uninstall Win32 apps, AppX packages, VC++ cleanup, winget removal.
+
+- name: "Windows | Software Uninstall"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, uninstall, software]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: uninstall_software

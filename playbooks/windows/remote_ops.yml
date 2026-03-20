@@ -1,0 +1,12 @@
+---
+# playbooks/windows/remote_ops.yml
+# Quick remote operations: reboot, shutdown, logoff, gpupdate, message, uptime.
+
+- name: "Windows | Remote Operations"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, remote_ops]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: remote_ops

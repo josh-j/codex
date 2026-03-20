@@ -19,6 +19,8 @@ path_prefix: "windows_raw_audit.data"
 fleet_columns:
   - { label: "Collected At", field: collected_at, width: "160px" }
   - { label: "CCM Status", field: ccm_service_state, width: "100px" }
+  - { label: "Reboot", field: health_reboot_pending, width: "80px" }
+  - { label: "Disk Alert", field: health_disk_alert, width: "80px" }
   - { label: "Critical", field: _critical_count, width: "70px" }
   - { label: "Warning", field: _warning_count, width: "70px" }
 
@@ -45,8 +47,6 @@ fields:
     fallback: "unknown"
 
   # --- ConfigMgr applications (PowerShell JSON) ---
-  # The raw field is Ansible's win_powershell output format.
-  # unwrap_ps_json.py extracts it; key="AllApps" gives the full app list.
 
   raw_configmgr_apps:
     path: ".configmgr_apps"
@@ -83,6 +83,130 @@ fields:
   update_results:
     path: ".update_results"
     type: list
+
+  # =========================================================================
+  # Health fields (from windows_action: health)
+  # =========================================================================
+
+  health_os_info:
+    path: ".health.os_info"
+    type: dict
+    fallback: {}
+
+  health_hostname:
+    path: ".health.os_info.hostname"
+    fallback: ""
+
+  health_os_name:
+    path: ".health.os_info.os_name"
+    fallback: ""
+
+  health_uptime_hours:
+    path: ".health.os_info.uptime_hours"
+    fallback: 0
+
+  health_disk:
+    path: ".health.disk"
+    type: list
+    fallback: []
+
+  health_disk_alert:
+    script: "eval_expr.py"
+    script_args:
+      expr: "any(d.get('UsedPct',0) > 80 for d in (record.get('health_disk') or []))"
+      true_value: "WARNING"
+      false_value: "OK"
+    fallback: "N/A"
+
+  health_memory_cpu:
+    path: ".health.memory_cpu"
+    type: dict
+    fallback: {}
+
+  health_memory_used_pct:
+    path: ".health.memory_cpu.memory_used_pct"
+    fallback: 0
+
+  health_cpu_load_pct:
+    path: ".health.memory_cpu.cpu_load_pct"
+    fallback: 0
+
+  health_services:
+    path: ".health.services"
+    type: list
+    fallback: []
+
+  health_network:
+    path: ".health.network"
+    type: list
+    fallback: []
+
+  health_reboot_pending:
+    path: ".health.reboot_pending.reboot_pending"
+    fallback: false
+
+  health_reboot_reasons:
+    path: ".health.reboot_pending.reasons"
+    type: list
+    fallback: []
+
+  health_event_logs:
+    path: ".health.event_logs"
+    type: dict
+    fallback: {}
+
+  health_event_count:
+    path: ".health.event_logs.event_count"
+    fallback: 0
+
+  health_events:
+    path: ".health.event_logs.events"
+    type: list
+    fallback: []
+
+  health_secure_channel:
+    path: ".health.secure_channel.secure_channel"
+    fallback: "N/A"
+
+  health_software_versions:
+    path: ".health.software_versions"
+    type: list
+    fallback: []
+
+  # =========================================================================
+  # Vulnerability scan fields (from windows_action: vuln_scan)
+  # =========================================================================
+
+  vuln_total_findings:
+    path: ".vuln_scan.results.total_findings"
+    fallback: 0
+
+  vuln_remediated:
+    path: ".vuln_scan.results.remediated"
+    fallback: 0
+
+  vuln_open:
+    path: ".vuln_scan.results.open"
+    fallback: 0
+
+  vuln_findings:
+    path: ".vuln_scan.results.findings"
+    type: list
+    fallback: []
+
+  # =========================================================================
+  # KB status fields (from windows_action: kb_install)
+  # =========================================================================
+
+  kb_detection:
+    path: ".kb_install.detection"
+    type: list
+    fallback: []
+
+  kb_install_results:
+    path: ".kb_install.install_results"
+    type: list
+    fallback: []
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -126,6 +250,78 @@ alerts:
     message: "ConfigMgr applications have pending updates"
     affected_items_field: apps_to_update
 
+  # ---- Health: Reboot Pending ----
+
+  - id: reboot_pending
+    category: "Health"
+    severity: WARNING
+    condition:
+      op: eq_bool
+      field: health_reboot_pending
+      value: true
+    message: "System has a pending reboot ({health_reboot_reasons})"
+    detail_fields: [health_reboot_pending, health_reboot_reasons]
+
+  # ---- Health: Disk Space ----
+
+  - id: disk_space_warning
+    category: "Health"
+    severity: WARNING
+    condition:
+      op: eq_str
+      field: health_disk_alert
+      value: "WARNING"
+    message: "One or more disks exceed 80% usage"
+    detail_fields: [health_disk]
+
+  # ---- Health: Memory ----
+
+  - id: memory_high
+    category: "Health"
+    severity: WARNING
+    condition:
+      op: gt_num
+      field: health_memory_used_pct
+      value: 85
+    message: "Memory usage is high ({health_memory_used_pct}%)"
+    detail_fields: [health_memory_used_pct]
+
+  # ---- Health: Secure Channel ----
+
+  - id: secure_channel_failed
+    category: "Health"
+    severity: CRITICAL
+    condition:
+      op: eq_str
+      field: health_secure_channel
+      value: "FAILED"
+    message: "Domain secure channel test FAILED"
+    detail_fields: [health_secure_channel]
+
+  # ---- Health: Critical Events ----
+
+  - id: critical_events
+    category: "Health"
+    severity: WARNING
+    condition:
+      op: gt_num
+      field: health_event_count
+      value: 0
+    message: "{health_event_count} critical/error events in recent logs"
+    detail_fields: [health_event_count]
+
+  # ---- Vulnerability ----
+
+  - id: open_vulnerabilities
+    category: "Security"
+    severity: WARNING
+    condition:
+      op: gt_num
+      field: vuln_open
+      value: 0
+    message: "{vuln_open} open vulnerability findings"
+    detail_fields: [vuln_open, vuln_total_findings, vuln_remediated]
+
 # ---------------------------------------------------------------------------
 # Sections (template rendering)
 # ---------------------------------------------------------------------------
@@ -135,11 +331,72 @@ widgets:
     title: "Active Alerts"
     type: alert_panel
 
-  - id: services
-    title: "Services"
+  - id: system_info
+    title: "System Information"
     type: key_value
     fields:
+      - { label: "Hostname", field: health_hostname }
+      - { label: "OS", field: health_os_name }
+      - { label: "Uptime (hours)", field: health_uptime_hours }
       - { label: "CCMExec State", field: ccm_service_state }
+      - { label: "Reboot Pending", field: health_reboot_pending }
+      - { label: "Secure Channel", field: health_secure_channel }
+
+  - id: health_disk
+    title: "Disk Usage"
+    type: table
+    rows_field: health_disk
+    columns:
+      - { label: "Drive", field: DeviceID }
+      - { label: "Size (GB)", field: SizeGB }
+      - { label: "Free (GB)", field: FreeGB }
+      - { label: "Used %", field: UsedPct, badge: true }
+
+  - id: health_memory
+    title: "Memory & CPU"
+    type: key_value
+    fields:
+      - { label: "Memory Used %", field: health_memory_used_pct }
+      - { label: "CPU Load %", field: health_cpu_load_pct }
+
+  - id: health_services
+    title: "Critical Services"
+    type: table
+    rows_field: health_services
+    columns:
+      - { label: "Service", field: display_name }
+      - { label: "Status", field: status, badge: true }
+      - { label: "Start Type", field: start_type }
+
+  - id: health_events
+    title: "Recent Critical/Error Events"
+    type: table
+    rows_field: health_events
+    columns:
+      - { label: "Time", field: time }
+      - { label: "Log", field: log }
+      - { label: "Level", field: level, badge: true }
+      - { label: "Source", field: source }
+      - { label: "ID", field: id }
+      - { label: "Message", field: message }
+
+  - id: vuln_summary
+    title: "Vulnerability Summary"
+    type: key_value
+    fields:
+      - { label: "Total Findings", field: vuln_total_findings }
+      - { label: "Remediated", field: vuln_remediated }
+      - { label: "Open", field: vuln_open }
+
+  - id: vuln_findings
+    title: "Vulnerability Findings"
+    type: table
+    rows_field: vuln_findings
+    columns:
+      - { label: "Plugin ID", field: plugin_id }
+      - { label: "Severity", field: severity, badge: true }
+      - { label: "Title", field: title }
+      - { label: "Remediated", field: remediated, badge: true }
 
   - id: configmgr_apps
     title: "ConfigMgr Applications"
@@ -166,3 +423,21 @@ widgets:
       - { label: "Application", field: application }
       - { label: "Status", field: status, badge: true }
       - { label: "Failed", field: failed, badge: true }
+
+  - id: kb_status
+    title: "KB Detection Status"
+    type: table
+    rows_field: kb_detection
+    columns:
+      - { label: "KB", field: kb }
+      - { label: "Installed", field: installed, badge: true }
+      - { label: "Detection Method", field: method }
+
+  - id: software_inventory
+    title: "Installed Software"
+    type: table
+    rows_field: health_software_versions
+    columns:
+      - { label: "Name", field: name }
+      - { label: "Version", field: version }
+      - { label: "Publisher", field: publisher }

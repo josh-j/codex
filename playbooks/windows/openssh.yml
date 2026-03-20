@@ -1,0 +1,12 @@
+---
+# playbooks/windows/openssh.yml
+# Install and configure OpenSSH Server on Windows targets.
+
+- name: "Windows | Install OpenSSH Server"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, openssh, ssh]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: openssh

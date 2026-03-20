@@ -1,0 +1,41 @@
+---
+# checks/health/event_logs.yaml — Recent critical/error events
+
+- name: "Health | Event Logs | Gather recent errors"
+  ansible.windows.win_powershell:
+    script: |
+      param([int]$Hours)
+      $since = (Get-Date).AddHours(-$Hours)
+      $events = @()
+      foreach ($log in @('System', 'Application')) {
+        try {
+          $entries = Get-WinEvent -FilterHashtable @{
+            LogName   = $log
+            Level     = @(1, 2)  # Critical, Error
+            StartTime = $since
+          } -MaxEvents 25 -ErrorAction SilentlyContinue
+          foreach ($e in $entries) {
+            $events += @{
+              log       = $log
+              level     = if ($e.Level -eq 1) { 'Critical' } else { 'Error' }
+              id        = $e.Id
+              source    = $e.ProviderName
+              time      = $e.TimeCreated.ToString('o')
+              message   = $e.Message.Substring(0, [math]::Min(200, $e.Message.Length))
+            }
+          }
+        } catch {}
+      }
+      @{
+        event_count = $events.Count
+        events      = @($events)
+      } | ConvertTo-Json -Depth 3 -Compress
+    parameters:
+      Hours: "{{ windows_health_event_log_hours }}"
+  register: _health_events_result
+  changed_when: false
+
+- name: "Health | Event Logs | Stage results"
+  ansible.builtin.set_fact:
+    _health_event_logs: "{{ _health_events_result.output[0] | from_json }}"
+  changed_when: false

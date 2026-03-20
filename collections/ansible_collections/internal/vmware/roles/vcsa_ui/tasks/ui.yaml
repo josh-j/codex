@@ -1,5 +1,735 @@
-# VMware vSphere 7.0 vCenter Server Appliance vSphere UI Ansible Role
+---
 
-- name: Include migrated UI STIG implementation
-  ansible.builtin.include_tasks:
-    file: ui_stig_migrated.yaml
+- name: "UI | Create backup timestamp"
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "UI | Backup config files"
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-ui-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  loop:
+    - "{{ var_server_xml_path }}"
+    - "{{ var_web_xml_path }}"
+    - "{{ var_context_xml_path }}"
+    - "{{ var_json_path }}"
+    - "{{ var_catalina_props_path }}"
+    - "{{ var_syslog_conf_path }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCUI-70-000011/000019/000030 | Deploy compliant catalina.properties"
+  ansible.builtin.template:
+    src: catalina.properties
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0640"
+    force: true
+  when:
+    - (run_catalina_props_package_access | bool) or
+      (run_catalina_props_init_failure | bool) or
+      (run_catalina_props_ports | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCUI-70-000029 | Deploy vmware-services-vsphere-ui.conf"
+  ansible.builtin.template:
+    src: vmware-services-vsphere-ui.conf
+    dest: "{{ var_syslog_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_syslog_config | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "VCUI-70-000006 | Normalize vsphere-ui.json"
+  ansible.builtin.lineinfile:
+    path: "{{ var_json_path }}"
+    regexp: '^.*"StreamRedirectFile".*$'
+    line: '    "StreamRedirectFile": "{{ var_json_stream_redirect_file }}",'
+    insertafter: '^.*WorkingDir.*$'
+    firstmatch: true
+    state: present
+  when:
+    - run_json_stream_redirect_file | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000007 | Discover non-compliant UI log files"
+  ansible.builtin.find:
+    paths: "{{ var_logs_path }}"
+    file_type: file
+    excludes:
+      - vsphere-ui-rpm.log
+  register: _vcui_logs
+  when: run_logs_permissions | bool
+
+- name: "VCUI-70-000007 | Correct UI log ownership and mode"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: file
+    owner: vsphere-ui
+    group: users
+    mode: "0644"
+  loop: "{{ _vcui_logs.files | default([]) }}"
+  when:
+    - run_logs_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCUI-70-000017 | Discover non-compliant UI files"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      find {{ var_files_web_path }} -xdev -type f -a '(' -perm -o+w -o -not -user root -o -not -group root ')' -print
+  register: _vcui_bad_files
+  changed_when: false
+  when: run_web_files_permissions | bool
+
+- name: "VCUI-70-000017 | Correct UI file ownership and mode"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    owner: root
+    group: root
+    mode: o-w
+  loop: "{{ _vcui_bad_files.stdout_lines | default([]) }}"
+  when:
+    - run_web_files_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCUI-70-000004/000018 | Normalize context.xml"
+  community.general.xml:
+    path: "{{ var_context_xml_path }}"
+    xpath: /Context
+    attribute: "{{ item.attribute }}"
+    value: "{{ item.value }}"
+    state: present
+  loop:
+    - { attribute: "useHttpOnly", value: "{{ var_context_xml_http_only }}" }
+    - { attribute: "sessionCookiePath", value: "{{ var_context_xml_session_cookie_path }}" }
+  when:
+    - ((run_http_only | bool) or (run_session_cookies | bool))
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000012 | Remove prohibited MIME mappings"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: "{{ item }}"
+    state: absent
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  loop:
+    - '/x:web-app/x:mime-mapping[x:extension="csh"]'
+    - '/x:web-app/x:mime-mapping[x:extension="sh"]'
+    - '/x:web-app/x:mime-mapping[x:extension="shar"]'
+    - '/x:web-app/x:mime-mapping[x:extension="ksh"]'
+  when:
+    - run_removed_mime_mappings | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000013 | Ensure JSP servlet mappings"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: "{{ item.xpath }}"
+    value: "{{ item.value }}"
+    state: present
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  loop:
+    - { xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[1]', value: '{{ var_web_xml_servlet_jsp_url_pattern1 }}' }
+    - { xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[2]', value: '{{ var_web_xml_servlet_jsp_url_pattern2 }}' }
+  when:
+    - run_java_servlet | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000014 | Remove WebDAV servlet mapping"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="webdav"]/..'
+    state: absent
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  when:
+    - run_remove_webdav | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000022 | Ensure welcome-file list"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: "{{ item.xpath }}"
+    value: "{{ item.value }}"
+    state: present
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  loop:
+    - { xpath: '/x:web-app/x:welcome-file-list/x:welcome-file[1]', value: '{{ var_web_xml_welcome_file_list1 }}' }
+    - { xpath: '/x:web-app/x:welcome-file-list/x:welcome-file[2]', value: '{{ var_web_xml_welcome_file_list2 }}' }
+    - { xpath: '/x:web-app/x:welcome-file-list/x:welcome-file[3]', value: '{{ var_web_xml_welcome_file_list3 }}' }
+  when:
+    - run_web_welcome_file | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000023 | Normalize listings init-param"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="listings"]/x:param-value'
+    value: "false"
+    state: present
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  when:
+    - run_web_remove_listings | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000027 | Normalize debug init-param"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="debug"]/x:param-value'
+    value: "0"
+    state: present
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  when:
+    - run_web_remove_debug | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000032 | Normalize secure cookie flag"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:session-config/x:cookie-config/x:secure'
+    value: "{{ var_web_xml_cookie_secure }}"
+    state: present
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  when:
+    - run_web_cookie_secure | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000033 | Remove readonly=false override"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="readonly" and x:param-value="false"]'
+    state: absent
+    namespaces:
+      x: http://xmlns.jcp.org/xml/ns/javaee
+  when:
+    - run_web_remove_readonly | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "VCUI-70-000001/000002/000003/000005/000010/000015/000020/000021/000024/000025/000026/000031 | Normalize server.xml"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      python3 - <<'PY'
+      import re
+      import xml.etree.ElementTree as ET
+      from pathlib import Path
+
+      path = Path("{{ var_server_xml_path }}")
+      tree = ET.parse(path)
+      root = tree.getroot()
+      service = root.find("./Service")
+      engine = service.find("./Engine")
+      host = engine.find("./Host")
+      connector = service.find('./Connector[@port="${http.port}"]')
+
+      root.set("port", "{{ var_server_xml_shutdown_port }}")
+      connector.set("connectionTimeout", "{{ var_server_xml_connectiontimeout }}")
+      connector.set("maxThreads", "{{ var_server_xml_maxthreads }}")
+      connector.set("acceptCount", "{{ var_server_xml_acceptcount }}")
+      connector.set("URIEncoding", "{{ var_server_xml_uriencoding }}")
+      connector.set("server", "{{ var_server_xml_server }}")
+      connector.attrib.pop("maxPostSize", None)
+      connector.attrib.pop("allowTrace", None)
+
+      if root.find('./Listener[@className="org.apache.catalina.core.JreMemoryLeakPreventionListener"]') is None:
+          listener = ET.Element("Listener")
+          listener.set("className", "org.apache.catalina.core.JreMemoryLeakPreventionListener")
+          root.insert(0, listener)
+
+      for realm in list(engine.findall("./Realm")):
+          engine.remove(realm)
+
+      hashed_client = "#hashedClientId#"
+      hashed_request = "#hashedRequestId#"
+      pattern = '%h %{x-forwarded-for}i %l %u %t "%r" %s %b %{' + hashed_client + '}s %{' + hashed_request + '}r %I %D'
+      access = host.find('./Valve[@className="org.apache.catalina.valves.AccessLogValve"]')
+      access.set("pattern", pattern)
+
+      error = host.find('./Valve[@className="org.apache.catalina.valves.ErrorReportValve"]')
+      if error is None:
+          error = ET.SubElement(host, "Valve")
+          error.set("className", "org.apache.catalina.valves.ErrorReportValve")
+      error.set("showServerInfo", "false")
+      error.set("showReport", "false")
+
+      tree.write(path, encoding="UTF-8", xml_declaration=True)
+
+      text = path.read_text()
+      text = re.sub(
+          r'<Valve className="org\.apache\.catalina\.valves\.ErrorReportValve"[^>]*/>',
+          '<Valve className="org.apache.catalina.valves.ErrorReportValve" showServerInfo="false" showReport="false"/>',
+          text,
+          count=1,
+      )
+      path.write_text(text)
+      PY
+  when:
+    - ((run_connection_timeout | bool) or
+       (run_max_threads | bool) or
+       (run_max_post_size | bool) or
+       (run_access_valve_pattern | bool) or
+       (run_user_database_realm | bool) or
+       (run_mem_leak_prevention | bool) or
+       (run_accept_count | bool) or
+       (run_uri_encoding | bool) or
+       (run_min_info | bool) or
+       (run_show_server_info | bool) or
+       (run_allow_trace | bool) or
+       (run_server_shutdownport | bool))
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart vsphere-ui
+
+- name: "stigrule_VCUI-70-000001"
+  internal.core.stig:
+    _stig_id: VCUI-70-000001
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_connection_timeout | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@connectionTimeout' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = ' connectionTimeout=\"300000\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000002"
+  internal.core.stig:
+    _stig_id: VCUI-70-000002
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_max_threads | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@maxThreads' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = ' maxThreads=\"800\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000003"
+  internal.core.stig:
+    _stig_id: VCUI-70-000003
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_max_post_size | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@maxPostSize' '{{ var_server_xml_path }}' 2>&1 || true)\" = 'XPath set is empty'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000004"
+  internal.core.stig:
+    _stig_id: VCUI-70-000004
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_http_only | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Context/@useHttpOnly' '{{ var_context_xml_path }}' 2>/dev/null || true)\" = ' useHttpOnly=\"true\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000005"
+  internal.core.stig:
+    _stig_id: VCUI-70-000005
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_access_valve_pattern | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          python3 - <<'PY'
+          import subprocess
+          hashed_client = "#hashedClientId#"
+          hashed_request = "#hashedRequestId#"
+          pattern = '%h %{x-forwarded-for}i %l %u %t "%r" %s %b %{' + hashed_client + '}s %{' + hashed_request + '}r %I %D'
+          cmd = "xmllint --format '{{ var_server_xml_path }}' | xmllint --xpath '/Server/Service/Engine/Host/Valve[@className=\"org.apache.catalina.valves.AccessLogValve\"]/@pattern' - 2>/dev/null || true"
+          out = subprocess.check_output(['/bin/bash', '-lc', cmd], text=True).strip()
+          expected = 'pattern="' + pattern.replace('"', '&quot;') + '"'
+          raise SystemExit(0 if out == expected else 1)
+          PY
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000006"
+  internal.core.stig:
+    _stig_id: VCUI-70-000006
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_json_stream_redirect_file | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "grep -F '\"StreamRedirectFile\": \"%VMWARE_LOG_DIR%/vmware/vsphere-ui/logs/vsphere-ui-runtime.log\",' '{{ var_json_path }}'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000007"
+  internal.core.stig:
+    _stig_id: VCUI-70-000007
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_logs_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(find {{ var_logs_path }} -xdev -type f ! -name 'vsphere-ui-rpm.log' -a '(' -perm /022 -o -not -user vsphere-ui -o -not -group users ')' -exec ls -ld {} \\; )\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000008"
+  internal.core.stig:
+    _stig_id: VCUI-70-000008
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(rpm -V vsphere-ui | grep '^..5......' | grep -v -E '\\.prop|\\.pass|\\.xml|\\.json' || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000009"
+  internal.core.stig:
+    _stig_id: VCUI-70-000009
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "diff <(find /usr/lib/vmware-vsphere-ui/plugin-packages/vsphere-client/plugins -type f | sort) <(rpm -ql vsphere-ui | grep '/usr/lib/vmware-vsphere-ui/plugin-packages/vsphere-client/plugins/' | sort) >/dev/null"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000010"
+  internal.core.stig:
+    _stig_id: VCUI-70-000010
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_user_database_realm | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Engine/Realm' '{{ var_server_xml_path }}' 2>&1 || true)\" = 'XPath set is empty'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000011"
+  internal.core.stig:
+    _stig_id: VCUI-70-000011
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_package_access | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "grep -Fx 'package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.jasper.,org.apache.tomcat.' '{{ var_catalina_props_path }}'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000012"
+  internal.core.stig:
+    _stig_id: VCUI-70-000012
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_removed_mime_mappings | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(grep -En '(x-csh<)|(x-sh<)|(x-shar<)|(x-ksh<)' '{{ var_web_xml_path }}' || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000013"
+  internal.core.stig:
+    _stig_id: VCUI-70-000013
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_java_servlet | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "block=\"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/servlet-mapping/servlet-name[text()=\"jsp\"]/parent::servlet-mapping' - 2>/dev/null || true)\"; printf '%s\\n' \"$block\" | grep -F '<servlet-name>jsp</servlet-name>'; printf '%s\\n' \"$block\" | grep -F '<url-pattern>*.jsp</url-pattern>'; printf '%s\\n' \"$block\" | grep -F '<url-pattern>*.jspx</url-pattern>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000014"
+  internal.core.stig:
+    _stig_id: VCUI-70-000014
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_remove_webdav | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/servlet-mapping/servlet-name[text()=\"webdav\"]/parent::servlet-mapping' - 2>&1 || true)\" = 'XPath set is empty'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000015"
+  internal.core.stig:
+    _stig_id: VCUI-70-000015
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_mem_leak_prevention | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Listener[@className=\"org.apache.catalina.core.JreMemoryLeakPreventionListener\"]' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = '<Listener className=\"org.apache.catalina.core.JreMemoryLeakPreventionListener\"/>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000016"
+  internal.core.stig:
+    _stig_id: VCUI-70-000016
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(find /usr/lib/vmware-vsphere-ui/server/static/ -type l -ls || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000017"
+  internal.core.stig:
+    _stig_id: VCUI-70-000017
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(find {{ var_files_web_path }} -xdev -type f -a '(' -perm -o+w -o -not -user root -o -not -group root ')' -exec ls -ld {} \\; )\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000018"
+  internal.core.stig:
+    _stig_id: VCUI-70-000018
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_session_cookies | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Context/@sessionCookiePath' '{{ var_context_xml_path }}' 2>/dev/null || true)\" = ' sessionCookiePath=\"/ui\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000019"
+  internal.core.stig:
+    _stig_id: VCUI-70-000019
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_init_failure | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "grep -Fx 'org.apache.catalina.startup.EXIT_ON_INIT_FAILURE=true' '{{ var_catalina_props_path }}'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000020"
+  internal.core.stig:
+    _stig_id: VCUI-70-000020
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_accept_count | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@acceptCount' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = ' acceptCount=\"300\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000021"
+  internal.core.stig:
+    _stig_id: VCUI-70-000021
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_uri_encoding | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@URIEncoding' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = ' URIEncoding=\"UTF-8\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000022"
+  internal.core.stig:
+    _stig_id: VCUI-70-000022
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_welcome_file | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "block=\"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/welcome-file-list' - 2>/dev/null || true)\"; printf '%s\\n' \"$block\" | grep -F '<welcome-file>index.html</welcome-file>'; printf '%s\\n' \"$block\" | grep -F '<welcome-file>index.htm</welcome-file>'; printf '%s\\n' \"$block\" | grep -F '<welcome-file>index.jsp</welcome-file>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000023"
+  internal.core.stig:
+    _stig_id: VCUI-70-000023
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_remove_listings | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "block=\"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '//param-name[text()=\"listings\"]/parent::init-param' - 2>/dev/null || true)\"; printf '%s\\n' \"$block\" | grep -F '<param-name>listings</param-name>'; printf '%s\\n' \"$block\" | grep -F '<param-value>false</param-value>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000024"
+  internal.core.stig:
+    _stig_id: VCUI-70-000024
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_min_info | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --xpath '/Server/Service/Connector[@port=\"${http.port}\"]/@server' '{{ var_server_xml_path }}' 2>/dev/null || true)\" = ' server=\"Anonymous\"'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000025"
+  internal.core.stig:
+    _stig_id: VCUI-70-000025
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_show_server_info | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --format '{{ var_server_xml_path }}' | xmllint --xpath '/Server/Service/Engine/Host/Valve[@className=\"org.apache.catalina.valves.ErrorReportValve\"]' - 2>/dev/null || true)\" = '<Valve className=\"org.apache.catalina.valves.ErrorReportValve\" showServerInfo=\"false\" showReport=\"false\"/>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000026"
+  internal.core.stig:
+    _stig_id: VCUI-70-000026
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_allow_trace | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(grep allowTrace '{{ var_server_xml_path }}' | grep 'true' || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000027"
+  internal.core.stig:
+    _stig_id: VCUI-70-000027
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_remove_debug | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "block=\"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '//param-name[text()=\"debug\"]/parent::init-param' - 2>/dev/null || true)\"; printf '%s\\n' \"$block\" | grep -F '<param-name>debug</param-name>'; printf '%s\\n' \"$block\" | grep -F '<param-value>0</param-value>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000028"
+  internal.core.stig:
+    _stig_id: VCUI-70-000028
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(rpm -V vsphere-ui | grep serviceability.xml | grep '^..5......' || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000029"
+  internal.core.stig:
+    _stig_id: VCUI-70-000029
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_syslog_config | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test -z \"$(rpm -V VMware-visl-integration | grep vmware-services-vsphere-ui.conf | grep '^..5......' || true)\""]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000030"
+  internal.core.stig:
+    _stig_id: VCUI-70-000030
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_ports | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "grep '\\.port' '{{ var_catalina_props_path }}' | grep -Fx 'http.port=5090' >/dev/null && grep '\\.port' '{{ var_catalina_props_path }}' | grep -Fx 'proxy.port=443' >/dev/null && test \"$(grep '\\.port' '{{ var_catalina_props_path }}' | wc -l)\" -eq 2"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000031"
+  internal.core.stig:
+    _stig_id: VCUI-70-000031
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_server_shutdownport | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --format '{{ var_server_xml_path }}' | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '/Server/@port' - 2>/dev/null || true)\" = ' port=\"${shutdown.port}\"' && grep shutdown '{{ var_json_path }}' | sed -e 's/^[ ]*//' | grep -Fx '\"-Dshutdown.port=-1\",' >/dev/null"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000032"
+  internal.core.stig:
+    _stig_id: VCUI-70-000032
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_cookie_secure | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/session-config/cookie-config/secure' - 2>/dev/null || true)\" = '<secure>true</secure>'"]
+    cmd: "true"
+
+- name: "stigrule_VCUI-70-000033"
+  internal.core.stig:
+    _stig_id: VCUI-70-000033
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_remove_readonly | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv: [/bin/bash, -lc, "test \"$(xmllint --format '{{ var_web_xml_path }}' | sed 's/xmlns=\".*\"//g' | xmllint --xpath '/web-app/servlet/servlet-name[text()=\"default\"]/../init-param/param-name[text()=\"readonly\"]/../param-value[text()=\"false\"]' - 2>&1 || true)\" = 'XPath set is empty'"]
+    cmd: "true"

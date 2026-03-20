@@ -1,0 +1,99 @@
+---
+# internal.windows.windows : tasks/vuln_scan.yaml
+# ACAS vulnerability scan import + live remediation status check.
+
+- name: "Vuln Scan | Orchestrator"
+  vars:
+    _vuln_scan_failed: false
+  block:
+    - name: "Vuln Scan | Validate input file"
+      ansible.builtin.assert:
+        that:
+          - windows_vuln_scan_file | length > 0
+        fail_msg: "windows_vuln_scan_file must be set to a CSV or XLSX path on the control node"
+
+    - name: "Vuln Scan | Read scan file"
+      ansible.builtin.slurp:
+        src: "{{ windows_vuln_scan_file }}"
+      register: _vuln_scan_raw
+      delegate_to: localhost
+
+    - name: "Vuln Scan | Parse findings and check status"
+      ansible.windows.win_powershell:
+        script: |
+          param([string]$ScanDataB64, [string]$Format, [string]$Hostname)
+          $bytes = [Convert]::FromBase64String($ScanDataB64)
+          $tempFile = Join-Path $env:TEMP "acas_scan.$Format"
+          [IO.File]::WriteAllBytes($tempFile, $bytes)
+
+          $findings = @()
+          if ($Format -eq 'csv') {
+            $rows = Import-Csv $tempFile
+            foreach ($row in $rows) {
+              # Match rows for this host
+              $rowHost = if ($row.PSObject.Properties['Host']) { $row.Host }
+                         elseif ($row.PSObject.Properties['DNS Name']) { $row.'DNS Name' }
+                         elseif ($row.PSObject.Properties['NetBIOS Name']) { $row.'NetBIOS Name' }
+                         else { '' }
+              if ($rowHost -and ($rowHost -like "*$Hostname*" -or $Hostname -like "*$rowHost*")) {
+                $pluginId = if ($row.PSObject.Properties['Plugin ID']) { $row.'Plugin ID' } else { $row.PluginID }
+                $severity = if ($row.PSObject.Properties['Risk']) { $row.Risk }
+                            elseif ($row.PSObject.Properties['Severity']) { $row.Severity }
+                            else { 'Info' }
+                $title = if ($row.PSObject.Properties['Plugin Name']) { $row.'Plugin Name' }
+                         elseif ($row.PSObject.Properties['Name']) { $row.Name }
+                         else { "Plugin $pluginId" }
+
+                # Check if a KB-based fix is installed
+                $remediated = $false
+                if ($row.PSObject.Properties['Solution'] -and $row.Solution -match 'KB(\d+)') {
+                  $kb = "KB$($Matches[1])"
+                  $installed = Get-HotFix -Id $kb -ErrorAction SilentlyContinue
+                  if ($installed) { $remediated = $true }
+                }
+
+                $findings += @{
+                  plugin_id  = $pluginId
+                  severity   = $severity
+                  title      = $title
+                  host       = $rowHost
+                  remediated = $remediated
+                }
+              }
+            }
+          }
+          Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+          @{
+            host           = $Hostname
+            total_findings = $findings.Count
+            remediated     = @($findings | Where-Object { $_.remediated }).Count
+            open           = @($findings | Where-Object { -not $_.remediated }).Count
+            findings       = @($findings)
+          } | ConvertTo-Json -Depth 3 -Compress
+        parameters:
+          ScanDataB64: "{{ _vuln_scan_raw.content }}"
+          Format: "{{ windows_vuln_scan_format }}"
+          Hostname: "{{ inventory_hostname }}"
+      register: _vuln_scan_result
+      changed_when: false
+
+  rescue:
+    - name: "Vuln Scan | Mark failure"
+      ansible.builtin.set_fact:
+        _vuln_scan_failed: true
+      changed_when: false
+
+  always:
+    - name: "Vuln Scan | Emit telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "windows"
+            name: "vuln_scan"
+            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+            payload:
+              results: "{{ _vuln_scan_result.output[0] | default('{}') | from_json }}"
+              scan_file: "{{ windows_vuln_scan_file }}"
+              scan_failed: "{{ _vuln_scan_failed | bool }}"
+        per_host: true
+      changed_when: false

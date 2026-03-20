@@ -1,0 +1,12 @@
+---
+# playbooks/windows/kb_install.yml
+# KB detection (3-method) and installation via DISM/WU COM.
+
+- name: "Windows | KB Detection & Installation"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, kb, patching]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: kb_install
