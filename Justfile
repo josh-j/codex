@@ -162,6 +162,10 @@ site-reports:
 site-vmware:
     {{ ansible_playbook }} playbooks/site_vmware_only.yml
 
+# Run Windows-only collection and reporting
+site-windows:
+    {{ ansible_playbook }} playbooks/site_windows_only.yml
+
 # Run VMware health audit (all sites or limited)
 audit-vmware target="vcenters":
     {{ ansible_playbook }} playbooks/vmware/audit.yml -l {{ target }} -v
@@ -186,6 +190,14 @@ audit-windows target="windows_servers":
 update-windows:
     {{ ansible_playbook }} playbooks/windows/update.yml
 
+# Run Windows health check
+health-windows target="windows_servers":
+    {{ ansible_playbook }} playbooks/windows/health.yml -l {{ target }}
+
+# Run Windows cleanup
+cleanup-windows target="windows_servers":
+    {{ ansible_playbook }} playbooks/windows/cleanup.yml -l {{ target }}
+
 # Run Windows post-patch audit phase
 audit-windows-post-patch:
     {{ ansible_playbook }} playbooks/windows/post_patch_audit.yml
@@ -197,6 +209,66 @@ audit-linux-host hostname:
 # Audit a specific Windows host
 audit-windows-host hostname:
     {{ ansible_playbook }} playbooks/windows/audit.yml -l {{ hostname }}
+
+# =============================================================================
+# Windows Administration (targeted single-host actions)
+# =============================================================================
+
+# Run Windows health check on a target
+windows-health target:
+    {{ ansible_playbook }} playbooks/windows/health.yml -l {{ target }}
+
+# Run Windows vulnerability scan on a target
+windows-vuln-scan target:
+    {{ ansible_playbook }} playbooks/windows/vuln_scan.yml -l {{ target }}
+
+# Apply Windows registry fixes on a target
+windows-registry-fix target:
+    {{ ansible_playbook }} playbooks/windows/registry_fix.yml -l {{ target }}
+
+# Install a Windows KB update on a target
+windows-kb-install target:
+    {{ ansible_playbook }} playbooks/windows/kb_install.yml -l {{ target }}
+
+# Update software on a Windows target
+windows-update-software target:
+    {{ ansible_playbook }} playbooks/windows/update_software.yml -l {{ target }}
+
+# Uninstall software from a Windows target
+windows-uninstall-software target:
+    {{ ansible_playbook }} playbooks/windows/uninstall_software.yml -l {{ target }}
+
+# Run disk/temp cleanup on a Windows target
+windows-cleanup target:
+    {{ ansible_playbook }} playbooks/windows/cleanup.yml -l {{ target }}
+
+# Run Windows Update on a target
+windows-update target:
+    {{ ansible_playbook }} playbooks/windows/windows_update.yml -l {{ target }}
+
+# Manage a Windows service (action: start|stop|restart, name: service name)
+windows-service target action name:
+    {{ ansible_playbook }} playbooks/windows/service.yml -l {{ target }} -e 'service_action={{ action }} service_name={{ name }}'
+
+# Manage a Windows scheduled task (action: create|delete|enable|disable, name: task name)
+windows-scheduled-task target action name:
+    {{ ansible_playbook }} playbooks/windows/scheduled_task.yml -l {{ target }} -e 'task_action={{ action }} task_name={{ name }}'
+
+# Enable WinRM on a Windows target
+windows-winrm-enable target:
+    {{ ansible_playbook }} playbooks/windows/winrm_enable.yml -l {{ target }}
+
+# Run remote operations on a Windows target (op: operation name)
+windows-remote-ops target op:
+    {{ ansible_playbook }} playbooks/windows/remote_ops.yml -l {{ target }} -e 'remote_op={{ op }}'
+
+# Search Active Directory (type: user|group|computer, term: search term)
+windows-ad-search type term:
+    {{ ansible_playbook }} playbooks/windows/ad_search.yml -e 'ad_search_type={{ type }} ad_search_term={{ term }}'
+
+# Install/configure OpenSSH on a Windows target
+windows-openssh target:
+    {{ ansible_playbook }} playbooks/windows/openssh.yml -l {{ target }}
 
 # =============================================================================
 # STIG Audits (read-only compliance checks)
