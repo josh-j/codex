@@ -1,0 +1,14 @@
+---
+# playbooks/vcsa/audit.yml
+# Read-only audit focused on vCenter appliance health and active alarms.
+
+- name: Phase 2a | vCenter Control Plane Audit
+  hosts: vcenters
+  connection: local
+  gather_facts: false
+  roles:
+    - role: internal.vmware.vcenter_collect
+      vars:
+        vcsa_collect_appliance: true
+        vcsa_collect_inventory: false
+        vcsa_collect_alarms: true

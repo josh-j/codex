@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -300,6 +301,26 @@ def _registry_from_config_dir(config_dir: str | None) -> PlatformRegistry | None
         return None
 
 
+def _merge_platform_data(platform_data: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Merge per-platform aggregated data into a single global dict."""
+    merged: dict[str, Any] = {
+        "metadata": {
+            "generated_at": datetime.now().isoformat(),
+            "fleet_stats": {"total_hosts": 0, "critical_alerts": 0, "warning_alerts": 0},
+        },
+        "hosts": {},
+    }
+    for p_data in platform_data.values():
+        if not p_data or "hosts" not in p_data:
+            continue
+        merged["hosts"].update(p_data["hosts"])
+        p_stats = p_data.get("metadata", {}).get("fleet_stats", {})
+        merged["metadata"]["fleet_stats"]["critical_alerts"] += p_stats.get("critical_alerts", 0)
+        merged["metadata"]["fleet_stats"]["warning_alerts"] += p_stats.get("warning_alerts", 0)
+    merged["metadata"]["fleet_stats"]["total_hosts"] = len(merged["hosts"])
+    return merged
+
+
 # ---------------------------------------------------------------------------
 # all
 # ---------------------------------------------------------------------------
@@ -368,6 +389,7 @@ def all_cmd(
     global_inventory_index: dict[str, str] = {}
     platforms_by_report_dir: dict[str, dict[str, Any]] = {str(p["report_dir"]): p for p in platforms}
     runtime_registry = PlatformRegistry([PlatformEntry.model_validate(p) for p in platforms])
+    all_platform_data: dict[str, dict[str, Any]] = {}
 
     for p in platforms:
         p_dir = p_root / p["input_dir"]
@@ -378,6 +400,7 @@ def all_cmd(
         if not p_data or not p_data["hosts"]:
             click.echo(f"No data for {p['input_dir']}, skipping.")
             continue
+        all_platform_data[p["input_dir"]] = p_data
         for hostname in p_data["hosts"]:
             global_inventory_index[hostname] = p["report_dir"]
         state_path = str(p_dir / p["state_file"])
@@ -402,11 +425,11 @@ def all_cmd(
 
     generated_fleet_dirs = {str(t["report_dir"]) for t in render_tasks}
 
-    # --- Step 1b: Global aggregation (needed by STIG build pass + site dashboard) ---
+    # --- Step 1b: Global aggregation (merge already-collected platform data) ---
     click.echo("--- Aggregating Global State ---")
     all_hosts_state = p_root / "all_hosts_state.yaml"
-    global_data = load_all_reports(str(p_root), host_normalizer=normalize_host_bundle)
-    if not global_data:
+    global_data = _merge_platform_data(all_platform_data)
+    if not global_data["hosts"]:
         click.echo("No global data found; skipping site dashboard and STIG rendering.")
         return
 
@@ -823,7 +846,7 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None, config_dir:
 
 @main.command("stig-apply")
 @click.argument("artifact", type=click.Path(exists=True, path_type=Path))
-@click.option("--inventory", default="inventory/production/hosts.yaml", show_default=True)
+@click.option("--inventory", default="inventory/production/", show_default=True)
 @click.option("--limit", required=True)
 @click.option("--target-type", default="")
 @click.option("--target-host", default="")

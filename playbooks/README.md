@@ -10,7 +10,10 @@ playbooks/
 ├── site*.yml           # Top-level orchestrators
 ├── group_vars/         # Shared variables
 ├── templates/          # Shared Jinja2 templates
-├── vmware/             # VMware (ESXi, VM, vCenter, VCSA) playbooks
+├── vmware/             # VMware cross-component orchestrators
+├── esxi/               # ESXi STIG and audit playbooks
+├── vcsa/               # VCSA (vCenter Server Appliance) playbooks
+├── vm/                 # VM STIG and audit playbooks
 ├── ubuntu/             # Ubuntu/Linux playbooks
 ├── windows/            # Windows playbooks
 ├── photon/             # Photon OS playbooks
@@ -37,10 +40,10 @@ These playbooks are purely collectors that gather un-normalized state via the `n
 - **`ubuntu/audit.yml`**: Read-only collection of Linux system health, hardware utilization, service status, and security configuration.
 - **`ubuntu/discover.yml`**: Phase playbook for Ubuntu discovery only.
 - **`vmware/audit.yml`**: Full read-only VMware collection (vCenter + ESXi + VM data) for unified reporting.
-- **`vmware/vcenter_audit.yml`**: Read-only VMware control-plane audit focused on vCenter appliance and alarms.
-- **`vmware/vcsa_stig_audit.yml`**: Read-only VCSA STIG audit for appliance security controls.
-- **`vmware/esxi_audit.yml`**: Read-only VMware infrastructure audit focused on ESXi hosts and datastores.
-- **`vmware/vm_audit.yml`**: Read-only VMware workload audit focused on VMs and snapshots.
+- **`vcsa/audit.yml`**: Read-only VMware control-plane audit focused on vCenter appliance and alarms.
+- **`vcsa/stig_audit.yml`**: Read-only VCSA STIG audit for appliance security controls.
+- **`esxi/audit.yml`**: Read-only VMware infrastructure audit focused on ESXi hosts and datastores.
+- **`vm/audit.yml`**: Read-only VMware workload audit focused on VMs and snapshots.
 - **`windows/audit.yml`**: Read-only collection of Windows health metrics, installed software, and update status.
 - **`windows/post_patch_audit.yml`**: Phase playbook for post-patch Windows verification.
 - **`vmware/collect.yml`**: Compatibility alias to `vmware/audit.yml`.
@@ -51,9 +54,7 @@ Security-focused playbooks for baseline verification and automated enforcement.
 
 - **`**/stig_audit.yml`**: Read-only compliance verification. Executes checks against DISA STIG requirements and emits raw STIG telemetry via `ncs_collector`.
 - **`**/stig_remediate.yml`**: State enforcement. Applies configuration changes to align systems with STIG security requirements.
-- **`vmware/vcsa_stig_remediate.yml`**: VCSA STIG hardening plus post-remediation compliance verification.
-- **`ubuntu/remediate.yml`**: General security hardening and configuration enforcement for Ubuntu hosts outside the formal STIG baseline.
-- **`ubuntu/remediate_apply.yml`**: Phase playbook that applies non-STIG Ubuntu remediation.
+- **`vcsa/stig_remediate.yml`**: VCSA STIG hardening plus post-remediation compliance verification.
 - **`ubuntu/stig_remediate_apply.yml`**: Phase playbook that applies Ubuntu STIG remediation.
 - **`ubuntu/stig_verify.yml`**: Phase playbook that runs Ubuntu STIG verification.
 
@@ -73,8 +74,9 @@ Standard execution via `ansible-playbook`:
 ansible-playbook playbooks/site.yml
 
 # Read-only VMware STIG audits
-ansible-playbook playbooks/vmware/esxi_stig_audit.yml
-ansible-playbook playbooks/vmware/vm_stig_audit.yml
+ansible-playbook playbooks/esxi/stig_audit.yml
+ansible-playbook playbooks/vm/stig_audit.yml
+ansible-playbook playbooks/vcsa/stig_audit.yml
 
 # Ubuntu package patching
 ansible-playbook playbooks/ubuntu/patch.yml

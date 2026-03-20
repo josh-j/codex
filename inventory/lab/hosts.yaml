@@ -1,0 +1,16 @@
+---
+# Lab / test inventory.
+# Used by playbooks/test/ for standalone ESXi testing.
+
+all:
+  children:
+    esxi_standalone:
+      hosts: {}
+        # lab-esxi01.yourdomain.mil:
+        #   ansible_host: 10.0.0.50
+        #   ansible_user: root
+        #   ansible_password: changeme
+        #   vmware_hostname: lab-esxi01.yourdomain.mil
+        #   vmware_username: root
+        #   vmware_password: changeme
+        #   vmware_validate_certs: false

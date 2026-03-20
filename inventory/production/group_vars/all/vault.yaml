@@ -1,0 +1,11 @@
+---
+# Vault-encrypted variable placeholders.
+# Create the real vault with:
+#   ansible-vault create inventory/production/group_vars/all/vault.yaml
+#
+# Expected variables:
+#   vault_ubuntu_server_password    — SSH/become password for Ubuntu hosts
+#   vault_vcenter_ssh_password      — SSH password for vCenter/Photon appliances
+#   vault_rotate_password           — new password used by password-rotation playbooks
+#   vault_samba_user_password       — Samba/AD service account password
+#   vault_logservers_private_key    — private key for log-server SSH connections

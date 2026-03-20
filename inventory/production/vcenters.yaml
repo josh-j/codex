@@ -1,0 +1,24 @@
+---
+all:
+  children:
+    vcenters:
+      children:
+        site1_vcenters:
+        site2_vcenters:
+        site3_vcenters:
+        site4_vcenters:
+        site5_vcenters:
+        site6_vcenters:
+
+    site1_vcenters:
+      hosts: {}
+    site2_vcenters:
+      hosts: {}
+    site3_vcenters:
+      hosts: {}
+    site4_vcenters:
+      hosts: {}
+    site5_vcenters:
+      hosts: {}
+    site6_vcenters:
+      hosts: {}

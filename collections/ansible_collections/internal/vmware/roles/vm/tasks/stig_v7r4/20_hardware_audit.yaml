@@ -1,0 +1,160 @@
+---
+# v7r4/hardware_audit.yaml — Hardware device rules + programmatic audit + manual rules
+# 5 hardware device rules, 4 programmatic audit rules, 2 manual/policy rules = 11 rules
+
+# =========================================================================
+# HARDWARE DEVICE RULES (V-256457 through V-256461)
+# Validate via _stig_validate_expr against bulk-gathered device counts.
+# Remediate via community.vmware.vmware_guest hardware removal.
+# =========================================================================
+
+- block:
+    # --- V-256457 / VMCH-70-000008: Floppy devices removed ---
+    - name: "stigrule_256457"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_hw_floppy
+            equals: "0"
+        hardware:
+          floppy:
+            - state: absent
+
+    # --- V-256458 / VMCH-70-000009: CD-ROM devices removed ---
+    - name: "stigrule_256458"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_hw_cdrom
+            equals: "0"
+        hardware:
+          cdrom:
+            - state: absent
+
+    # --- V-256459 / VMCH-70-000010: Parallel ports removed ---
+    - name: "stigrule_256459"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_hw_parallel
+            equals: "0"
+        hardware:
+          parallel:
+            - state: absent
+
+    # --- V-256460 / VMCH-70-000011: Serial ports removed ---
+    - name: "stigrule_256460"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_hw_serial
+            equals: "0"
+        hardware:
+          serial:
+            - state: absent
+
+    # --- V-256461 / VMCH-70-000012: USB controllers removed ---
+    - name: "stigrule_256461"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_hw_usb
+            equals: "0"
+        hardware:
+          usb_controller:
+            - state: absent
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: community.vmware.vmware_guest
+      _stig_use_check_mode_probe: false
+      _stig_skip_post_validate: true
+      name: "{{ _current_vm_name }}"
+      datacenter: "{{ _current_vm_datacenter }}"
+
+# =========================================================================
+# PROGRAMMATIC AUDIT RULES (audit-only, validated via bulk gather)
+# =========================================================================
+
+- block:
+    # --- V-256455 / VMCH-70-000006: No non-persistent disks ---
+    - name: "stigrule_256455"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_non_persistent_disks
+            equals: "0"
+        _stig_na_reason: "Disk persistence mode cannot be auto-remediated — requires manual reconfiguration"
+        executable: /bin/bash
+        cmd: "true"
+
+    # --- V-256466 / VMCH-70-000018: Shared salt values disabled ---
+    - name: "stigrule_256466"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_pshare_salt_present
+            equals: "false"
+        _stig_na_reason: "Shared salt removal cannot be auto-remediated via vmware_guest"
+        executable: /bin/bash
+        cmd: "true"
+
+    # --- V-256467 / VMCH-70-000019: No dvFilter network API access ---
+    - name: "stigrule_256467"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_dvfilter_count
+            equals: "0"
+        _stig_na_reason: "dvFilter removal cannot be auto-remediated — may break network filtering"
+        executable: /bin/bash
+        cmd: "true"
+
+    # --- V-256476 / VMCH-70-000028: No PCI passthrough ---
+    - name: "stigrule_256476"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_pci_passthrough_count
+            equals: "0"
+        _stig_na_reason: "PCI passthrough removal cannot be auto-remediated — may break hardware-dependent workloads"
+        executable: /bin/bash
+        cmd: "true"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: ansible.builtin.shell
+      _stig_use_check_mode_probe: false
+      _stig_audit_only: true
+      _stig_skip_post_validate: true
+
+# =========================================================================
+# MANUAL / POLICY RULES (require human verification)
+# =========================================================================
+
+# --- V-256468 / VMCH-70-000020: Template usage for deployment ---
+- name: "stigrule_256468"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        echo "VMCH-70-000020: Template usage for VM deployment requires manual policy verification for {{ _current_vm_name }}"
+        exit 1
+    _stig_skip_post_validate: true
+    _stig_na_reason: "Requires manual verification — organizational deployment policy"
+    _stig_gate_status: not_reviewed
+    executable: /bin/bash
+    cmd: "true"
+
+# --- V-256469 / VMCH-70-000021: Console usage minimization ---
+- name: "stigrule_256469"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        echo "VMCH-70-000021: VM console usage minimization requires manual policy verification for {{ _current_vm_name }}"
+        exit 1
+    _stig_skip_post_validate: true
+    _stig_na_reason: "Requires manual verification — organizational console usage policy"
+    _stig_gate_status: not_reviewed
+    executable: /bin/bash
+    cmd: "true"

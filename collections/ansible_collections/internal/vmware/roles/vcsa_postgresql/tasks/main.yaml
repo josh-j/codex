@@ -2,7 +2,7 @@
 
 - name: Include PostgreSQL
   ansible.builtin.include_tasks:
-    file: postgresql.yaml
+    file: stig_v1r4/postgresql.yaml
     apply:
       tags:
         - postgresql

@@ -59,11 +59,11 @@ just windows-health <hostname>
 just audit-windows <hostname>
 ```
 
-The inventory group (`inventory/production/hosts.yaml`) is pre-configured with SSH + GSSAPI connection vars.
+The inventory group (`inventory/production/group_vars/windows_servers.yaml`) is pre-configured with SSH + GSSAPI connection vars.
 
 ## Configuration
 
-### Inventory Variables (`inventory/production/hosts.yaml`)
+### Inventory Variables (`inventory/production/group_vars/windows_servers.yaml`)
 
 The `windows_servers` group sets these connection vars:
 
@@ -103,19 +103,16 @@ windows_openssh_allow_groups:
 
 ## Inventory Setup
 
-Add your Windows hosts to `inventory/production/hosts.yaml`:
+Add your Windows hosts to `inventory/production/windows_servers.yaml` under the appropriate site group:
 
 ```yaml
-    windows_servers:
-      vars:
-        ansible_connection: ssh
-        ansible_shell_type: powershell
-        ansible_user: svc-ansible@YOURDOMAIN.MIL
-        ansible_ssh_common_args: '-o GSSAPIAuthentication=yes -o GSSAPIServerIdentity=yes'
+    site1_windows_servers:
       hosts:
         win-app01.yourdomain.mil:
         win-db01.yourdomain.mil:
 ```
+
+Connection vars (`ansible_connection`, `ansible_shell_type`, etc.) are inherited from `group_vars/windows_servers.yaml`.
 
 ## Verification
 

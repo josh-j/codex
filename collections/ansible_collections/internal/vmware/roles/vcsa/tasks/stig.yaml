@@ -1,0 +1,174 @@
+---
+# internal.vmware.vcsa : tasks/stig.yaml
+# =============================================================================
+# VCSA STIG — three-phase audit/remediate orchestrator
+#
+# Phase 0: Determine run mode and set context
+# Phase 1: Execute STIG tasks (profile vars + Photon baseline + sub-role loop)
+# Phase 2: Post-remediation verification (re-run sub-role loop in check_mode)
+# =============================================================================
+
+# =============================================================================
+# Phase 0 | Preconditions
+# =============================================================================
+- name: "VCSA STIG | Phase 0 | Backward-compat aliases"
+  ansible.builtin.set_fact:
+    vcsa_stig_enable_audit: >-
+      {{ vmware_stig_enable_audit
+         | default(vcenter_stig_enable_audit
+         | default(vcsa_stig_enable_audit)) | default(true) }}
+    vcsa_stig_enable_hardening: >-
+      {{ vmware_stig_enable_hardening
+         | default(vcenter_stig_enable_hardening
+         | default(vcsa_stig_enable_hardening)) | default(false) }}
+  changed_when: false
+
+# Back-set vmware_stig_enable_hardening so the 8 VCSA sub-roles
+# (eam, lookup, perfcharts, postgresql, rhttpproxy, sts, ui, vami)
+# continue working — they have 100+ inline references to vmware_stig_enable_hardening.
+- name: "VCSA STIG | Phase 0 | Back-set vmware_stig_enable_hardening for sub-roles"
+  ansible.builtin.set_fact:
+    vmware_stig_enable_hardening: "{{ vcsa_stig_enable_hardening }}"
+  changed_when: false
+
+- name: "VCSA STIG | Phase 0 | Determine run mode"
+  ansible.builtin.set_fact:
+    _stig_audit_only: >-
+      {{ (vcsa_stig_enable_audit | default(true) | bool)
+         and not (vcsa_stig_enable_hardening | default(false) | bool) }}
+  changed_when: false
+
+- name: "VCSA STIG | Phase 0 | Register target context for ncs_collector"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ inventory_hostname }}"
+    _ncs_stig_target_type: "vcsa"
+  tags:
+    - always
+
+- name: "VCSA STIG | Phase 0 | Set phase hint for included tasks"
+  ansible.builtin.set_fact:
+    _stig_phase_hint: "{{ 'audit' if (_stig_audit_only | bool) else 'remediate' }}"
+    _stig_active_phase: "{{ 'audit' if (_stig_audit_only | bool) else 'remediate' }}"
+  changed_when: false
+
+# =============================================================================
+# Phase 1 | Evaluate / Remediate
+# =============================================================================
+- name: "VCSA STIG | Phase 1 | Evaluate and/or remediate"
+  when:
+    - vcsa_stig_enable_audit | default(true) | bool or vcsa_stig_enable_hardening | default(false) | bool
+  block:
+    - name: "VCSA STIG | Load VCSA profile vars"
+      ansible.builtin.include_vars: "vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
+
+    - name: "VCSA STIG | Optional Photon baseline"
+      ansible.builtin.include_role:
+        name: internal.linux.photon
+      vars:
+        photon_action: "{{ 'remediate' if (vcsa_stig_enable_hardening | default(false) | bool) else 'stig' }}"
+        photon_stig_enable_hardening: "{{ vcsa_stig_enable_hardening | default(false) | bool }}"
+      when: vcsa_stig_include_photon | default(false) | bool
+
+    - name: "VCSA STIG | Execute VCSA service roles"
+      ansible.builtin.include_tasks: stig_role_wrapper.yaml
+      loop: "{{ vcsa_stig_roles | default(vcenter_stig_roles | default(_vcsa_stig_default_role_list)) }}"
+      loop_control:
+        loop_var: _vcsa_role
+        label: "{{ _vcsa_role | regex_replace('internal\\.vmware\\.vcsa_?', '') }}"
+      vars:
+        _vcsa_role_map:
+          # internal.vmware.vcsa_misc: "vcsa"
+          internal.vmware.vcsa_eam: "eam"
+          internal.vmware.vcsa_lookup: "lookup_svc"
+          internal.vmware.vcsa_perfcharts: "perfcharts"
+          internal.vmware.vcsa_postgresql: "postgresql"
+          internal.vmware.vcsa_rhttpproxy: "rhttpproxy"
+          internal.vmware.vcsa_sts: "sts"
+          internal.vmware.vcsa_ui: "ui"
+          internal.vmware.vcsa_vami: "vami"
+        _vcsa_stig_default_role_list:
+          # - internal.vmware.vcsa_misc
+          - internal.vmware.vcsa_eam
+          - internal.vmware.vcsa_lookup
+          - internal.vmware.vcsa_perfcharts
+          - internal.vmware.vcsa_postgresql
+          - internal.vmware.vcsa_rhttpproxy
+          - internal.vmware.vcsa_sts
+          - internal.vmware.vcsa_ui
+          - internal.vmware.vcsa_vami
+
+    - name: "VCSA STIG | Phase 1b | Flag run as complete"
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true
+        _stig_remediation_ran: "{{ not (_stig_audit_only | bool) }}"
+      changed_when: false
+  rescue:
+    - name: "VCSA STIG | Phase 1r | Set failure flag"
+      ansible.builtin.set_fact:
+        _stig_run_failed: true
+      changed_when: false
+
+    - name: "VCSA STIG | Phase 1r | Log failure"
+      ansible.builtin.debug:
+        msg: >-
+          VCSA STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
+          failed on {{ inventory_hostname }}. Partial results emitted via ncs_collector.
+  always:
+    - name: "VCSA STIG | Phase 1 | Log completion"
+      ansible.builtin.debug:
+        msg: >-
+          VCSA STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
+          completed on {{ inventory_hostname }}. Results emitted via ncs_collector.
+
+# =============================================================================
+# Phase 2 | Post-remediation verification (remediate mode only)
+# =============================================================================
+- name: "VCSA STIG | Phase 2 | Set phase hint to audit"
+  ansible.builtin.set_fact:
+    _stig_phase_hint: "audit"
+    _stig_active_phase: "audit"
+  changed_when: false
+  when:
+    - not (_stig_audit_only | bool)
+    - vcsa_stig_enable_audit | default(true) | bool
+
+- name: "VCSA STIG | Phase 2 | Post-remediation audit"
+  when:
+    - not (_stig_audit_only | bool)
+    - vcsa_stig_enable_audit | default(true) | bool
+  block:
+    - name: "VCSA STIG | Phase 2a | Verify remediation (check_mode)"
+      ansible.builtin.include_tasks: stig_role_wrapper.yaml
+      loop: "{{ vcsa_stig_roles | default(vcenter_stig_roles | default(_vcsa_stig_default_role_list)) }}"
+      loop_control:
+        loop_var: _vcsa_role
+        label: "{{ _vcsa_role | regex_replace('internal\\.vmware\\.vcsa_?', '') }}"
+      vars:
+        _stig_phase2_verify: true
+        _vcsa_role_map:
+          internal.vmware.vcsa_eam: "eam"
+          internal.vmware.vcsa_lookup: "lookup_svc"
+          internal.vmware.vcsa_perfcharts: "perfcharts"
+          internal.vmware.vcsa_postgresql: "postgresql"
+          internal.vmware.vcsa_rhttpproxy: "rhttpproxy"
+          internal.vmware.vcsa_sts: "sts"
+          internal.vmware.vcsa_ui: "ui"
+          internal.vmware.vcsa_vami: "vami"
+        _vcsa_stig_default_role_list:
+          - internal.vmware.vcsa_eam
+          - internal.vmware.vcsa_lookup
+          - internal.vmware.vcsa_perfcharts
+          - internal.vmware.vcsa_postgresql
+          - internal.vmware.vcsa_rhttpproxy
+          - internal.vmware.vcsa_sts
+          - internal.vmware.vcsa_ui
+          - internal.vmware.vcsa_vami
+
+    - name: "VCSA STIG | Phase 2b | Flag verification as complete"
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true
+      changed_when: false
+  rescue:
+    - name: "VCSA STIG | Phase 2r | Log verification failure"
+      ansible.builtin.debug:
+        msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."

@@ -2,7 +2,7 @@
 
 - name: Include Lookup
   ansible.builtin.include_tasks:
-    file: lookup.yaml
+    file: stig_v1r4/lookup.yaml
     apply:
       tags:
         - lookup

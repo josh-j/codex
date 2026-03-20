@@ -1,0 +1,9 @@
+---
+# Site 5 vCenter overrides.
+# Values here apply only to hosts in the site5_vcenters group.
+
+# esxi_stig_syslog_host: syslog.site5.yourdomain.mil
+# esxi_stig_ntp_servers:
+#   - 10.5.0.53
+#   - 10.5.0.54
+# esxi_stig_ad_domain: site5.yourdomain.mil

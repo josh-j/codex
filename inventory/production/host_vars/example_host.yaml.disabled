@@ -1,0 +1,13 @@
+---
+# Per-host variable overrides.
+#
+# To use: copy this file and rename it to match the inventory hostname, e.g.:
+#   cp example_host.yaml.disabled ubuntu-srv01.site1.yourdomain.mil.yaml
+#
+# Any variable set here overrides group_vars for this specific host.
+
+# ansible_user: special-account
+# ansible_port: 2222
+# stig_skip_rules:
+#   - V-123456
+#   - V-234567

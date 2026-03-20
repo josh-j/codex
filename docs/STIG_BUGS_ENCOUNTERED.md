@@ -237,7 +237,7 @@ Pro token was defined, producing confusing failures.
 FIPS is not enabled and no token available.
 
 **Plugin prevents:** Yes. `_stig_gate_vars` with
-`ubuntu2404STIG_stigrule_270744_pro_token: "non-empty"` gates the rule.
+`stig_2404_stigrule_270744_pro_token: "non-empty"` gates the rule.
 
 ---
 

@@ -1,0 +1,6 @@
+---
+# Defaults for all Windows hosts.
+ansible_connection: ssh
+ansible_shell_type: powershell
+ansible_user: svc-ansible@YOURDOMAIN.MIL
+ansible_ssh_common_args: '-o GSSAPIAuthentication=yes -o GSSAPIServerIdentity=yes'

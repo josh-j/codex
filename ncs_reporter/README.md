@@ -178,7 +178,7 @@ Continue to next rule? [y/n/abort]: y
 
 1. Detects target type from artifact (`target_type`, `metadata.audit_type`, or filename), unless overridden via `--target-type`
 2. Filters findings to `status=open`
-3. For ESXi, generates an all-disabled vars file (`esxi_70_NNNNNN_Manage: false`) and applies selected rules interactively
+3. For ESXi, generates an all-disabled vars file (`esxi_70_NNNNNN_manage: false`) and applies selected rules interactively
 4. For non-ESXi targets, runs the mapped remediation playbook with target host scoping:
    - `vm` -> `playbooks/vmware_vm_stig_remediate.yml`
    - `vcsa` -> `playbooks/vmware_vcsa_stig_remediate.yml`
@@ -188,7 +188,7 @@ Continue to next rule? [y/n/abort]: y
 ESXi command pattern:
    ```bash
    ansible-playbook <generated-temp-playbook>.yaml \
-     -i inventory/production/hosts.yaml \
+     -i inventory/production/ \
      -l <limit> \
      -e ...
    ```
@@ -202,7 +202,7 @@ ESXi command pattern:
 | `--target-type` | auto | Override target type (`esxi`, `vm`, `vcsa`, `photon`, `ubuntu`) |
 | `--target-host` | auto | Override target host used for host-scoped vars |
 | `--esxi-host` | auto | Legacy alias for `--target-host` (ESXi mode) |
-| `--inventory` | `inventory/production/hosts.yaml` | Inventory path |
+| `--inventory` | `inventory/production/` | Inventory path |
 | `--skip-snapshot` | off | Skip the pre-hardening snapshot phase |
 | `-e` / `--extra-vars` | — | Extra vars passed to every ansible invocation (repeatable) |
 | `--dry-run` | off | Print generated commands without executing |

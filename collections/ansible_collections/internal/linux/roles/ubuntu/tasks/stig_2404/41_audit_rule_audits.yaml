@@ -1,0 +1,193 @@
+---
+# stig_2404/41_audit_rule_audits.yaml
+# =============================================================================
+# Audit completion for augenrules-managed audit rules
+#
+# Performance optimization: instead of 42 sequential SSH round-trips (each
+# running grep + auditctl), we build the rule list locally, send it in a
+# single shell call, and parse the JSON result.
+# =============================================================================
+
+# --- Build the list of id|line pairs for the batch check ---
+- name: "stigrule_audit_rule_build_checklist"
+  ansible.builtin.set_fact:
+    _audit_check_rules: >-
+      {{
+        _audit_rule_items
+        | selectattr('managed', 'equalto', true)
+        | map(attribute='entry')
+        | list
+      }}
+  vars:
+    _audit_rule_items:
+      - managed: "{{ stig_2404_stigrule_270684_manage | default(true) | bool }}"
+        entry: "270684|-w /etc/passwd -p wa -k usergroup_modification"
+      - managed: "{{ stig_2404_stigrule_270685_manage | default(true) | bool }}"
+        entry: "270685|-w /etc/group -p wa -k usergroup_modification"
+      - managed: "{{ stig_2404_stigrule_270686_manage | default(true) | bool }}"
+        entry: "270686|-w /etc/shadow -p wa -k usergroup_modification"
+      - managed: "{{ stig_2404_stigrule_270687_manage | default(true) | bool }}"
+        entry: "270687|-w /etc/gshadow -p wa -k usergroup_modification"
+      - managed: "{{ stig_2404_stigrule_270688_manage | default(true) | bool }}"
+        entry: "270688|-w /etc/security/opasswd -p wa -k usergroup_modification"
+      - managed: "{{ stig_2404_stigrule_270689_manage | default(true) | bool }}"
+        entry: "270689a|-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=execpriv"
+      - managed: "{{ stig_2404_stigrule_270689_manage | default(true) | bool }}"
+        entry: "270689b|-a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=execpriv"
+      - managed: "{{ stig_2404_stigrule_270689_manage | default(true) | bool }}"
+        entry: "270689c|-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=execpriv"
+      - managed: "{{ stig_2404_stigrule_270689_manage | default(true) | bool }}"
+        entry: "270689d|-a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=execpriv"
+      - managed: "{{ stig_2404_stigrule_270715_manage | default(true) | bool }}"
+        entry: "270715|-w /var/log/journal -p wa -k systemd_journal"
+      - managed: "{{ stig_2404_stigrule_270740_manage | default(true) | bool }}"
+        entry: "270740|-w /var/log/sudo.log -p wa -k maintenance"
+      - managed: "{{ stig_2404_stigrule_270778_manage | default(true) | bool }}"
+        entry: "270778|-a always,exit -F path=/bin/su -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-priv_change"
+      - managed: "{{ stig_2404_stigrule_270779_manage | default(true) | bool }}"
+        entry: "270779|-a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chfn"
+      - managed: "{{ stig_2404_stigrule_270780_manage | default(true) | bool }}"
+        entry: "270780|-a always,exit -F path=/usr/bin/mount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-mount"
+      - managed: "{{ stig_2404_stigrule_270781_manage | default(true) | bool }}"
+        entry: "270781|-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-umount"
+      - managed: "{{ stig_2404_stigrule_270782_manage | default(true) | bool }}"
+        entry: "270782|-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh"
+      - managed: "{{ stig_2404_stigrule_270783_manage | default(true) | bool }}"
+        entry: "270783|-a always,exit -F path=/usr/lib/openssh/ssh-keysign -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh"
+      - managed: "{{ stig_2404_stigrule_270786_manage | default(true) | bool }}"
+        entry: "270786a|-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270786_manage | default(true) | bool }}"
+        entry: "270786b|-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270787_manage | default(true) | bool }}"
+        entry: "270787a|-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access"
+      - managed: "{{ stig_2404_stigrule_270787_manage | default(true) | bool }}"
+        entry: "270787b|-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access"
+      - managed: "{{ stig_2404_stigrule_270787_manage | default(true) | bool }}"
+        entry: "270787c|-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access"
+      - managed: "{{ stig_2404_stigrule_270787_manage | default(true) | bool }}"
+        entry: "270787d|-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access"
+      - managed: "{{ stig_2404_stigrule_270788_manage | default(true) | bool }}"
+        entry: "270788|-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd"
+      - managed: "{{ stig_2404_stigrule_270789_manage | default(true) | bool }}"
+        entry: "270789|-a always,exit -F path=/usr/bin/sudoedit -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd"
+      - managed: "{{ stig_2404_stigrule_270790_manage | default(true) | bool }}"
+        entry: "270790|-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd"
+      - managed: "{{ stig_2404_stigrule_270791_manage | default(true) | bool }}"
+        entry: "270791|-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd"
+      - managed: "{{ stig_2404_stigrule_270792_manage | default(true) | bool }}"
+        entry: "270792|-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270793_manage | default(true) | bool }}"
+        entry: "270793|-a always,exit -F path=/sbin/apparmor_parser -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270794_manage | default(true) | bool }}"
+        entry: "270794|-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270795_manage | default(true) | bool }}"
+        entry: "270795|-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270798_manage | default(true) | bool }}"
+        entry: "270798|-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-passwd"
+      - managed: "{{ stig_2404_stigrule_270799_manage | default(true) | bool }}"
+        entry: "270799|-a always,exit -F path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-unix-update"
+      - managed: "{{ stig_2404_stigrule_270800_manage | default(true) | bool }}"
+        entry: "270800|-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-gpasswd"
+      - managed: "{{ stig_2404_stigrule_270801_manage | default(true) | bool }}"
+        entry: "270801|-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chage"
+      - managed: "{{ stig_2404_stigrule_270802_manage | default(true) | bool }}"
+        entry: "270802|-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-usermod"
+      - managed: "{{ stig_2404_stigrule_270803_manage | default(true) | bool }}"
+        entry: "270803|-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-crontab"
+      - managed: "{{ stig_2404_stigrule_270804_manage | default(true) | bool }}"
+        entry: "270804|-a always,exit -F path=/usr/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-pam_timestamp_check"
+      - managed: "{{ stig_2404_stigrule_270806_manage | default(true) | bool }}"
+        entry: "270806a|-a always,exit -F arch=b32 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270806_manage | default(true) | bool }}"
+        entry: "270806b|-a always,exit -F arch=b64 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270807_manage | default(true) | bool }}"
+        entry: "270807|-w /etc/sudoers -p wa -k privilege_modification"
+      - managed: "{{ stig_2404_stigrule_270808_manage | default(true) | bool }}"
+        entry: "270808|-w /etc/sudoers.d -p wa -k privilege_modification"
+      - managed: "{{ stig_2404_stigrule_270815_manage | default(true) | bool }}"
+        entry: "270815|-w /usr/sbin/fdisk -p x -k fdisk"
+      - managed: "{{ stig_2404_stigrule_274870_manage | default(true) | bool }}"
+        entry: "274870a|-w /etc/cron.d/ -p wa -k cronjobs"
+      - managed: "{{ stig_2404_stigrule_274870_manage | default(true) | bool }}"
+        entry: "274870b|-w /var/spool/cron/ -p wa -k cronjobs"
+      - managed: "{{ stig_2404_stigrule_270796_manage | default(true) | bool }}"
+        entry: "270796a|-a always,exit -F arch=b32 -S init_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270796_manage | default(true) | bool }}"
+        entry: "270796b|-a always,exit -F arch=b64 -S init_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270797_manage | default(true) | bool }}"
+        entry: "270797a|-a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270797_manage | default(true) | bool }}"
+        entry: "270797b|-a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=-1 -k module_chng"
+      - managed: "{{ stig_2404_stigrule_270805_manage | default(true) | bool }}"
+        entry: "270805|-w /var/log/lastlog -p wa -k logins"
+      - managed: "{{ stig_2404_stigrule_270810_manage | default(true) | bool }}"
+        entry: "270810|-w /var/log/wtmp -p wa -k logins"
+      - managed: "{{ stig_2404_stigrule_270811_manage | default(true) | bool }}"
+        entry: "270811|-w /var/log/btmp -p wa -k logins"
+      - managed: "{{ stig_2404_stigrule_270812_manage | default(true) | bool }}"
+        entry: "270812|-w /var/run/utmp -p wa -k logins"
+      - managed: "{{ stig_2404_stigrule_270813_manage | default(true) | bool }}"
+        entry: "270813|-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+      - managed: "{{ stig_2404_stigrule_270814_manage | default(true) | bool }}"
+        entry: "270814|-a always,exit -F path=/sbin/apparmor_parser -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng"
+  when: "'auditd' in ansible_facts.packages"
+
+# --- Single batched SSH call to verify all audit rules at once ---
+- name: "stigrule_audit_rule_batch_check"
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      RULES_FILE=/etc/audit/rules.d/stig.rules
+      IMMUTABLE=false
+      auditctl -s 2>/dev/null | grep -q 'enabled 2' && IMMUTABLE=true
+      LOADED=""
+      $IMMUTABLE || LOADED=$(auditctl -l 2>/dev/null)
+
+      echo "["
+      first=true
+      while IFS='|' read -r id line; do
+        # skip blank lines
+        [ -z "$id" ] && continue
+        rc=0
+        msg=""
+        grep -Fq -- "$line" "$RULES_FILE" 2>/dev/null || { rc=1; msg="not in stig.rules"; }
+        if [ $rc -eq 0 ] && ! $IMMUTABLE; then
+          PATTERN=$(echo "$line" | sed 's/ -k / -F key=/g')
+          echo "$LOADED" | grep -Fq -- "$PATTERN" || { rc=1; msg="not in loaded rules"; }
+        fi
+        $first || echo ","
+        first=false
+        printf '{"id":"%s","rc":%d,"msg":"%s"}' "$id" "$rc" "$msg"
+      done <<'ENDOFRULES'
+      {% for entry in _audit_check_rules %}
+      {{ entry }}
+      {% endfor %}
+      ENDOFRULES
+      echo ""
+      echo "]"
+  register: _audit_batch_result
+  check_mode: false
+  changed_when: false
+  when:
+    - "'auditd' in ansible_facts.packages"
+    - _audit_check_rules | default([]) | length > 0
+
+# --- Parse the batch JSON output ---
+- name: "stigrule_audit_rule_parse_results"
+  ansible.builtin.set_fact:
+    _audit_batch_parsed: "{{ _audit_batch_result.stdout | from_json }}"
+  when:
+    - _audit_batch_result is not skipped
+    - _audit_batch_result.rc == 0
+
+# --- Assert each rule result (local evaluation, no SSH) ---
+- name: "stigrule_audit_rule_assert"
+  ansible.builtin.assert:
+    that:
+      - item.rc == 0
+    fail_msg: "Audit rule for STIG {{ item.id }} is missing: {{ item.msg }}"
+    success_msg: "Audit rule for STIG {{ item.id }} is present in both stig.rules and the loaded audit rule set"
+  ignore_errors: true
+  loop: "{{ _audit_batch_parsed | default([]) }}"
+  loop_control:
+    label: "stigrule_{{ item.id }}"

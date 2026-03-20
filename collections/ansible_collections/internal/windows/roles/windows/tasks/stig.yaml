@@ -4,13 +4,7 @@
 # =============================================================================
 # Phase 0 | Initialize
 # =============================================================================
-
-- name: "Windows STIG | Phase 0 | Initialize state"
-  ansible.builtin.set_fact:
-    _stig_audit_ran: false
-    _stig_audit_failed: false
-    audit_full_list: []
-  changed_when: false
+- import_tasks: stig_prelude.yaml
 
 # =============================================================================
 # Phase 1 | Ingest Inputs / Evaluate
@@ -37,20 +31,27 @@
       when: windows_stig_enable_hardening | default(false) | bool
       tags: [windows, stig, security, remediate]
 
-    - name: "Windows STIG | Phase 1b.3 | Refresh checks after remediation"
-      ansible.builtin.import_tasks: stig_check.yaml
+    - name: "Windows STIG | Phase 1b.3 | Flag remediation as complete"
+      ansible.builtin.set_fact:
+        _stig_remediation_ran: true
+      changed_when: false
       when: windows_stig_enable_hardening | default(false) | bool
-      tags: [windows, stig, security, checks]
   rescue:
     - name: "Windows STIG | Phase 1b.r | Mark native check failure"
       ansible.builtin.set_fact:
-        _stig_audit_failed: true
+        _stig_run_failed: true
       changed_when: false
 
     - name: "Windows STIG | Phase 1b.r | Fail native-only mode"
       when: windows_stig_native_checks_only | default(false) | bool
       ansible.builtin.fail:
         msg: "Windows Server STIG native checks failed on {{ inventory_hostname }}."
+  always:
+    - name: "Windows STIG | Phase 1 | Log completion"
+      ansible.builtin.debug:
+        msg: >-
+          Windows STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
+          completed on {{ inventory_hostname }}.
 
 - name: "Windows STIG | Phase 1c.1 | Mark audit ran if checks performed"
   when:
@@ -62,7 +63,39 @@
   changed_when: false
 
 # =============================================================================
-# Phase 2 | Export
+# Phase 2 | Post-remediation verification (remediate mode only)
+# =============================================================================
+
+- name: "Windows STIG | Phase 2 | Set phase hint to audit"
+  ansible.builtin.set_fact:
+    _stig_phase_hint: "audit"
+    _stig_active_phase: "audit"
+  changed_when: false
+  when:
+    - not (_stig_audit_only | bool)
+    - windows_stig_enable_audit | default(true) | bool
+
+- name: "Windows STIG | Phase 2 | Post-remediation audit"
+  when:
+    - not (_stig_audit_only | bool)
+    - windows_stig_enable_audit | default(true) | bool
+    - _stig_remediation_ran | default(false)
+  block:
+    - name: "Windows STIG | Phase 2a | Refresh checks after remediation"
+      ansible.builtin.import_tasks: stig_check.yaml
+      tags: [windows, stig, security, checks, verify]
+
+    - name: "Windows STIG | Phase 2b | Flag verification as complete"
+      ansible.builtin.set_fact:
+        _stig_audit_ran: true
+      changed_when: false
+  rescue:
+    - name: "Windows STIG | Phase 2r | Log verification failure"
+      ansible.builtin.debug:
+        msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
+
+# =============================================================================
+# Phase 3 | Export
 # =============================================================================
 
 - name: Windows STIG | Emit telemetry

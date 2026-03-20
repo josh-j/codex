@@ -7,7 +7,7 @@
 # the audit state to confirm compliance.
 
 - name: "Phase 3c: Windows Server STIG Remediation"
-  hosts: windows_servers
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
   gather_facts: false
   vars:
     master_enable_windows_stig: true

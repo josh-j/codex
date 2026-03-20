@@ -64,9 +64,9 @@ def rule_version_to_manage_var(rule_version: str) -> str:
     """Convert rule_version string to Ansible manage-var name.
 
     Examples:
-        'ESXI-70-000001' -> 'esxi_70_000001_Manage'
+        'ESXI-70-000001' -> 'esxi_70_000001_manage'
     """
-    return re.sub(r"[-]", "_", rule_version).lower() + "_Manage"
+    return re.sub(r"[-]", "_", rule_version).lower() + "_manage"
 
 
 def load_esxi_rule_metadata(skeleton_path: Path = SKELETON_PATH) -> dict[str, RuleMetadata]:
@@ -78,7 +78,7 @@ def load_esxi_rule_metadata(skeleton_path: Path = SKELETON_PATH) -> dict[str, Ru
 
 
 def generate_all_disabled_vars(metadata: dict[str, RuleMetadata]) -> dict[str, bool]:
-    """Return a dict with every _Manage var set to False."""
+    """Return a dict with every _manage var set to False."""
     return {meta.manage_var: False for meta in metadata.values()}
 
 
@@ -192,9 +192,9 @@ def resolve_generic_apply_plan(target_type: str) -> tuple[str, str | None]:
     """Return (playbook_path, target_var_name)."""
     t = target_type.lower()
     if t == "vm":
-        return ("playbooks/vmware_vm_stig_remediate.yml", "vm_stig_target_vms")
+        return ("playbooks/vm/stig_remediate.yml", "vm_stig_target_vms")
     if t in {"vcsa", "vcenter"}:
-        return ("playbooks/vmware_vcsa_stig_remediate.yml", "vcenter_stig_target_hosts")
+        return ("playbooks/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts")
     if t == "photon":
         return ("playbooks/photon_stig_remediate.yml", "photon_target_hosts")
     if t in {"ubuntu", "linux"}:
@@ -269,7 +269,7 @@ def build_ansible_args(
         limit,
         f"-e@{all_disabled_file}",
         f"-e{manage_var}=true",
-        "-evmware_stig_enable_hardening=true",
+        "-eesxi_stig_enable_hardening=true",
         f"-eesxi_stig_target_hosts=['{esxi_host}']",
     ]
     if tags:
@@ -292,7 +292,7 @@ def build_interactive_playbook(
     """Generate a single Ansible playbook YAML with ``pause`` tasks for interactive application.
 
     The generated play:
-    - Sets all 75 ``_Manage`` vars to ``false`` at play level.
+    - Sets all 75 ``_manage`` vars to ``false`` at play level.
     - For each failing rule: emits a debug banner, a ``pause`` prompt, an abort
       ``fail`` guard, and an ``include_role`` that enables only that rule.
     - Targets ``esxi_stig_target_hosts`` at play-vars level so every role call
@@ -353,7 +353,7 @@ def build_interactive_playbook(
         "gather_facts": False,
         "vars": {
             **all_disabled,
-            "vmware_stig_enable_hardening": True,
+            "esxi_stig_enable_hardening": True,
             "esxi_stig_target_hosts": [esxi_host],
         },
         "tasks": tasks,

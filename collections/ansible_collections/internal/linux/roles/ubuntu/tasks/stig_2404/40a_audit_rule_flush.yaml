@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# Audit rule flush — extracted from main.yaml
+# Runs between 40_audit_rules and 41_audit_rule_audits
+# =============================================================================
+
+- name: "Ubuntu STIG | Shelter immutable rules before handler flush"
+  ansible.builtin.shell:
+    cmd: >
+      [ -f /etc/audit/rules.d/99-stig-immutable.rules ] &&
+      mv /etc/audit/rules.d/99-stig-immutable.rules /tmp/_stig_immutable_stash.rules &&
+      echo "stashed" || echo "none"
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Flush handlers before audit rule verification"
+  ansible.builtin.meta: flush_handlers
+
+- name: "Ubuntu STIG | Load audit rules (without immutable flag)"
+  ansible.builtin.command:
+    cmd: augenrules --load
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - _ubuntu2404_stig_phase == 'audit'
+    - "'auditd.service' in ansible_facts.services | default({})"

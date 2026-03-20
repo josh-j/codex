@@ -1,0 +1,94 @@
+---
+# =============================================================================
+# SSH, systemd, and system service hardening — split from 30_system_config.yaml
+# =============================================================================
+
+# --- 270712 - disable Ctrl-Alt-Delete ---
+- name: "stigrule_270712"
+  internal.core.stig:
+    _stig_check: '[ "$(systemctl is-enabled ctrl-alt-del.target 2>/dev/null)" = "masked" ]'
+    cmd: |
+      set -eu
+      systemctl disable ctrl-alt-del.target 2>/dev/null || true
+      systemctl mask ctrl-alt-del.target
+      systemctl daemon-reload
+
+# --- 270736 - SSSD ldap_user_certificate ---
+- name: "stigrule_270736"
+  internal.core.stig:
+    _stig_gate_packages: [sssd]
+    _stig_gate_status: failed
+    _stig_check: "grep -qE '^\\s*ldap_user_certificate\\s*=\\s*userCertificate;binary' /etc/sssd/sssd.conf"
+    cmd: |
+      set -eu
+      touch /etc/sssd/sssd.conf
+      chown root:root /etc/sssd/sssd.conf
+      chmod 0600 /etc/sssd/sssd.conf
+      if grep -qE '^\s*ldap_user_certificate\s*=' /etc/sssd/sssd.conf; then
+        sed -i 's/^\s*ldap_user_certificate\s*=.*/ldap_user_certificate=userCertificate;binary/' /etc/sssd/sssd.conf
+      else
+        echo 'ldap_user_certificate=userCertificate;binary' >> /etc/sssd/sssd.conf
+      fi
+
+# --- 270707 - sudoers must not contain !authenticate ---
+- name: "stigrule_270707"
+  internal.core.stig:
+    _stig_check: "! grep -rE '!authenticate' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '^#'"
+    cmd: |
+      set -eu
+      for f in /etc/sudoers /etc/sudoers.d/*; do
+        [ -f "$f" ] || continue
+        if grep -qE '!authenticate' "$f"; then
+          sed -i 's/\(^\|[, \t]\)!authenticate\([, \t]\|$\)/\1\2/g' "$f"
+          sed -i 's/,\s*,/,/g' "$f"
+        fi
+      done
+
+# --- 270718 - disable USB mass storage ---
+- name: "stigrule_270718"
+  internal.core.stig:
+    _stig_check: |
+      set -eu
+      grep -qE '^\s*install\s+usb-storage\s+/bin/false' /etc/modprobe.d/DISASTIG.conf
+      grep -qE '^\s*blacklist\s+usb-storage\s*$' /etc/modprobe.d/DISASTIG.conf
+    cmd: |
+      set -eu
+      grep -qE '^\s*install\s+usb-storage\s+' /etc/modprobe.d/DISASTIG.conf 2>/dev/null && \
+        sed -i 's|^\s*install\s\+usb-storage\s\+.*|install usb-storage /bin/false|' /etc/modprobe.d/DISASTIG.conf || \
+        echo 'install usb-storage /bin/false' >> /etc/modprobe.d/DISASTIG.conf
+      grep -qE '^\s*blacklist\s+usb-storage\s*$' /etc/modprobe.d/DISASTIG.conf 2>/dev/null || \
+        echo 'blacklist usb-storage' >> /etc/modprobe.d/DISASTIG.conf
+      modprobe -r usb-storage 2>/dev/null || true
+
+# --- SSH drop-in hardening (covers 270741, 270742, 270743, 270708, 270709, 270717, 270722, 270691) ---
+- name: "stigrule_270741"
+  internal.core.stig:
+    _stig_gate_packages: [openssh-server]
+    _stig_notify: [ssh_restart]
+    _stig_check: |
+      set -eu
+      cfg="$(sshd -T 2>/dev/null)"
+      echo "$cfg" | grep -qi '^usepam yes$'
+      echo "$cfg" | grep -qi '^clientalivecountmax 1$'
+      echo "$cfg" | grep -qi '^x11forwarding no$'
+      echo "$cfg" | grep -qi '^x11uselocalhost yes$'
+      echo "$cfg" | grep -qi '^permitemptypasswords no$'
+      echo "$cfg" | grep -qi '^permituserenvironment no$'
+      echo "$cfg" | grep -qi '^pubkeyauthentication yes$'
+      echo "$cfg" | grep -qi '^banner /etc/issue.net$'
+    cmd: |
+      set -eu
+      cat > /etc/ssh/sshd_config.d/99-stig-hardening.conf <<'SSHEOF'
+      UsePAM yes
+      ClientAliveCountMax 1
+      ClientAliveInterval {{ stig_2404_stigrule_270743_ClientAliveInterval_line | regex_replace('^ClientAliveInterval\s+', '') }}
+      X11Forwarding no
+      X11UseLocalhost yes
+      PermitEmptyPasswords no
+      PermitUserEnvironment no
+      PubkeyAuthentication yes
+      Banner /etc/issue.net
+      SSHEOF
+      chown root:root /etc/ssh/sshd_config.d/99-stig-hardening.conf
+      chmod 0600 /etc/ssh/sshd_config.d/99-stig-hardening.conf
+      sed -i '/^\s*\(UsePAM\|ClientAliveCountMax\|ClientAliveInterval\|X11Forwarding\|X11UseLocalhost\|PermitEmptyPasswords\|PermitUserEnvironment\|PubkeyAuthentication\|Banner\)\s/d' /etc/ssh/sshd_config

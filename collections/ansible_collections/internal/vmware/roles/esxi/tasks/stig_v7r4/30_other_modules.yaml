@@ -1,0 +1,38 @@
+---
+# Other module tasks — wrapped in internal.core.stig
+
+# --- V-256409 / ESXI-70-000046: NTP servers ---
+- name: "stigrule_256409"
+  internal.core.stig:
+    _stig_apply: community.vmware.vmware_host_ntp
+    _stig_gate_vars:
+      esxi_stig_ntp_servers: non-empty
+    esxi_hostname: "{{ _current_esxi_host }}"
+    state: present
+    ntp_servers: "{{ esxi_stig_ntp_servers }}"
+
+# --- V-256409 / ESXI-70-000046: NTP service running (companion task) ---
+- name: "ESXi STIG | Ensure ntpd service is running"
+  community.vmware.vmware_host_service_manager:
+    esxi_hostname: "{{ _current_esxi_host }}"
+    service_name: ntpd
+    service_policy: "on"
+    state: start
+  when:
+    - esxi_70_000046_manage | default(true) | bool
+    - esxi_stig_ntp_servers | default([]) | length > 0
+
+# --- V-256410 / ESXI-70-000047: VIB acceptance level ---
+- name: "stigrule_256410"
+  internal.core.stig:
+    _stig_apply: community.vmware.vmware_host_acceptance
+    esxi_hostname: "{{ _current_esxi_host }}"
+    state: >-
+      {{
+        (esxi_stig_acceptance_level | default('partner') | string)
+        | replace('PartnerSupported', 'partner')
+        | replace('CommunitySupported', 'community')
+        | replace('VMwareAccepted', 'vmware_accepted')
+        | replace('VMwareCertified', 'vmware_certified')
+        | lower
+      }}

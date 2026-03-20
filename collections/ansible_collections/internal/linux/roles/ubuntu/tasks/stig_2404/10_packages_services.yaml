@@ -1,0 +1,232 @@
+---
+# =============================================================================
+# Package management and core services — migrated to internal.core.stig
+# =============================================================================
+
+# --- Packages that must be absent ---
+- name: "stigrule_270645"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: systemd-timesyncd
+    state: absent
+    purge: true
+
+- name: "stigrule_270646"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: ntp
+    state: absent
+    purge: true
+
+- name: "stigrule_270647"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: telnetd
+    state: absent
+    purge: true
+    autoremove: true
+
+- name: "stigrule_270648"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: rsh-server
+    state: absent
+
+- name: "stigrule_279938"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: nfs-kernel-server
+    state: absent
+
+# --- Packages that must be present ---
+- name: "stigrule_270649"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: aide
+    state: present
+    update_cache: true
+
+- name: "stigrule_270654"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: ufw
+    state: present
+    update_cache: true
+
+- name: "stigrule_270656"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: auditd
+    state: present
+    update_cache: true
+
+- name: "stigrule_270659"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: apparmor
+    state: present
+    update_cache: true
+
+- name: "stigrule_270661"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: libpam-pwquality
+    state: present
+    update_cache: true
+
+- name: "stigrule_270664"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: chrony
+    state: present
+    update_cache: true
+
+- name: "stigrule_270665"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: openssh-server
+    state: present
+    update_cache: true
+
+- name: "stigrule_270672"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: opensc-pkcs11
+    state: present
+    update_cache: true
+
+- name: "stigrule_270673"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: libpam-pkcs11
+    state: present
+    update_cache: true
+
+- name: "stigrule_270674"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.apt
+    name: vlock
+    state: present
+    update_cache: true
+
+# --- Infrastructure: refresh package facts so later gate checks see new packages ---
+- name: "Ubuntu STIG | Refresh package facts after STIG apt installs"
+  ansible.builtin.package_facts:
+    manager: apt
+  check_mode: false
+  when: _ubuntu2404_stig_phase != 'audit'
+
+# --- 270653 - rsyslog installed and running ---
+- name: "stigrule_270653"
+  internal.core.stig:
+    _stig_check: |
+      set -eu
+      dpkg -s rsyslog >/dev/null 2>&1
+      systemctl is-active rsyslog.service >/dev/null 2>&1
+    cmd: |
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get install -y rsyslog
+      systemctl enable --now rsyslog.service
+
+# --- 270655 - ufw active ---
+- name: "stigrule_270655"
+  internal.core.stig:
+    _stig_gate_packages: [ufw]
+    _stig_check: "ufw status | grep -q 'Status: active'"
+    cmd: |
+      set -eu
+      ufw allow OpenSSH
+      ufw --force enable
+
+# --- 270662 - SSSD package set + skeleton config ---
+- name: "stigrule_270662"
+  internal.core.stig:
+    _stig_check: |
+      set -eu
+      dpkg -s sssd >/dev/null 2>&1
+      dpkg -s libpam-sss >/dev/null 2>&1
+      dpkg -s libnss-sss >/dev/null 2>&1
+    cmd: |
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get install -y sssd libpam-sss libnss-sss
+
+# --- Infrastructure: refresh service facts + auditd recovery ---
+- name: "Ubuntu STIG | Refresh service facts after package changes"
+  ansible.builtin.service_facts:
+  check_mode: false
+  when: _ubuntu2404_stig_phase != 'audit'
+
+- name: "Ubuntu STIG | Recover auditd if in failed state"
+  ansible.builtin.shell:
+    cmd: |
+      if systemctl is-failed auditd.service >/dev/null 2>&1; then
+        systemctl reset-failed auditd.service
+        [ -f /etc/audit/rules.d/99-stig-immutable.rules ] && mv /etc/audit/rules.d/99-stig-immutable.rules /tmp/_stig_immutable_recover.rules
+        systemctl start auditd.service 2>/dev/null || true
+        [ -f /tmp/_stig_immutable_recover.rules ] && mv /tmp/_stig_immutable_recover.rules /etc/audit/rules.d/99-stig-immutable.rules
+      fi
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - "'auditd' in ansible_facts.packages"
+    - _ubuntu2404_stig_phase == 'audit'
+
+# --- Service controls ---
+- name: "stigrule_270657"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.service
+    _stig_gate_packages: [auditd]
+    name: auditd.service
+    state: "{{ stig_2404_stigrule_270657_auditd_enable_state }}"
+    enabled: "{{ stig_2404_stigrule_270657_auditd_enable_enabled }}"
+
+- name: "stigrule_270660"
+  internal.core.stig:
+    _stig_gate_packages: [apparmor]
+    _stig_check: |
+      set -eu
+      systemctl is-enabled apparmor.service >/dev/null 2>&1
+    cmd: |
+      set -eu
+      systemctl enable apparmor.service
+      systemctl start apparmor.service || true
+      aa-enforce /etc/apparmor.d/* 2>/dev/null || true
+
+# --- 270662 skeleton config (must precede sssd service start) ---
+- name: "stigrule_270662_sssd_conf_skeleton"
+  ansible.builtin.template:
+    src: "{{ role_path }}/tasks/stig_2404/templates/sssd.conf.j2"
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  when:
+    - "'sssd' in ansible_facts.packages"
+    - _ubuntu2404_stig_phase != 'audit'
+    - stig_2404_stigrule_270662_manage | default(true) | bool
+
+- name: "stigrule_270663"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.service
+    _stig_gate_packages: [sssd]
+    _stig_gate_status: failed
+    name: sssd.service
+    state: "{{ stig_2404_stigrule_270663_sssd_enable_state }}"
+    enabled: "{{ stig_2404_stigrule_270663_sssd_enable_enabled }}"
+
+- name: "stigrule_270666"
+  internal.core.stig:
+    _stig_gate_packages: [openssh-server]
+    _stig_check: |
+      set -eu
+      enabled="$(systemctl is-enabled ssh.service 2>/dev/null)"
+      [ "$enabled" = "enabled" ] || [ "$enabled" = "static" ] || [ "$enabled" = "alias" ]
+      systemctl is-active ssh >/dev/null 2>&1
+    cmd: |
+      set -eu
+      systemctl enable ssh.service
+      systemctl start ssh.service

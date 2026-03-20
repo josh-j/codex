@@ -1,5 +1,7 @@
 """Report aggregation and normalization for ncs_reporter."""
 
+import hashlib
+import json
 import logging
 import os
 import sys
@@ -236,10 +238,29 @@ def load_ncs_reports(report_dir: str, audit_filter: str | None = None) -> dict[s
     )
 
 
+def _hosts_hash(data: dict[str, Any]) -> str:
+    """Deterministic hash of the hosts sub-dict."""
+    raw = json.dumps(data.get("hosts", {}), sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def hosts_unchanged(new_data: dict[str, Any], state_path: str) -> bool:
-    """Return True if the hosts in new_data match the existing state file."""
+    """Return True if the hosts in new_data match the existing state file.
+
+    Uses a `.sha256` sidecar file for fast comparison instead of re-parsing
+    the full state YAML.  Falls back to full YAML comparison if the sidecar
+    is missing (first run after upgrade).
+    """
     if not os.path.isfile(state_path):
         return False
+    hash_path = state_path + ".sha256"
+    new_hash = _hosts_hash(new_data)
+    try:
+        with open(hash_path, encoding="utf-8") as f:
+            return f.read().strip() == new_hash
+    except OSError:
+        pass
+    # Fallback: full YAML comparison (sidecar not yet written)
     try:
         with open(state_path, encoding="utf-8") as f:
             existing = yaml.safe_load(f)
@@ -259,6 +280,10 @@ def write_output(data: dict[str, Any], output_path: str | os.PathLike[str]) -> N
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
         if isinstance(data, dict) and "hosts" in data:
             logger.info("Aggregated %d hosts into %s", len(data["hosts"]), output_path)
+            # Write hash sidecar for fast hosts_unchanged() checks
+            hash_path = str(output_path) + ".sha256"
+            with open(hash_path, "w", encoding="utf-8") as hf:
+                hf.write(_hosts_hash(data))
         else:
             logger.info("Wrote data to %s", output_path)
     except OSError as e:

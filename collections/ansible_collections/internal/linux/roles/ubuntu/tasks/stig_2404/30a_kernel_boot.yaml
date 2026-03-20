@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# Kernel, boot, and sysctl hardening — split from 30_system_config.yaml
+# =============================================================================
+
+# --- 270749 - kernel.dmesg_restrict sysctl ---
+# NOTE: Must come before 270753 — creates /etc/sysctl.d/10-kernel-hardening.conf
+#       that 270753 appends to.
+- name: "stigrule_270749"
+  internal.core.stig:
+    _stig_check: '[ "$(sysctl -n kernel.dmesg_restrict)" = "1" ]'
+    cmd: |
+      set -eu
+      sed -i '/^\s*kernel\.dmesg_restrict\s*=/d' /etc/sysctl.conf
+      echo 'kernel.dmesg_restrict = 1' > /etc/sysctl.d/10-kernel-hardening.conf
+      sysctl -p /etc/sysctl.d/10-kernel-hardening.conf
+
+# --- 270753 - tcp_syncookies sysctl ---
+- name: "stigrule_270753"
+  internal.core.stig:
+    _stig_check: '[ "$(sysctl -n net.ipv4.tcp_syncookies)" = "1" ]'
+    cmd: |
+      set -eu
+      grep -qE '^\s*net\.ipv4\.tcp_syncookies\s*=' /etc/sysctl.d/10-kernel-hardening.conf 2>/dev/null && \
+        sed -i 's/^\s*net\.ipv4\.tcp_syncookies\s*=.*/net.ipv4.tcp_syncookies = 1/' /etc/sysctl.d/10-kernel-hardening.conf || \
+        echo 'net.ipv4.tcp_syncookies = 1' >> /etc/sysctl.d/10-kernel-hardening.conf
+      sysctl -p /etc/sysctl.d/10-kernel-hardening.conf
+
+# --- 270746 - Kernel core dumps disabled ---
+- name: "stigrule_270746"
+  internal.core.stig:
+    _stig_check: |
+      set -eu
+      [ "$(sysctl -n kernel.core_pattern)" = "|/bin/false" ]
+      grep -qE '^\s*\*\s+hard\s+core\s+0' /etc/security/limits.conf
+    cmd: |
+      set -eu
+      echo 'kernel.core_pattern=|/bin/false' > /etc/sysctl.d/10-no-coredump.conf
+      sysctl -p /etc/sysctl.d/10-no-coredump.conf
+      grep -qE '^\s*\*\s+hard\s+core\s+' /etc/security/limits.conf && \
+        sed -i 's/^\s*\*\s\+hard\s\+core\s\+.*/* hard core 0/' /etc/security/limits.conf || \
+        echo '* hard core 0' >> /etc/security/limits.conf
+
+# --- 270747 - LUKS full disk encryption ---
+- name: "stigrule_270747"
+  internal.core.stig:
+    _stig_audit_only: true
+    _stig_check: |
+      set -eu
+      blkid -t TYPE=crypto_LUKS | grep -q . || grep -q '^[^#]' /etc/crypttab 2>/dev/null
+    cmd: "true"
+
+# --- 270675 - GRUB password ---
+- name: "stigrule_270675"
+  internal.core.stig:
+    _stig_gate_vars:
+      stig_2404_stigrule_270675_grub_pbkdf2_hash: "non-empty"
+    _stig_gate_status: not_reviewed
+    _stig_check: "grep -qE '^set superusers=' /etc/grub.d/40_custom && grep -qE '^password_pbkdf2 ' /etc/grub.d/40_custom"
+    cmd: |
+      set -eu
+      cat > /etc/grub.d/40_custom <<'GRUBEOF'
+      #!/bin/sh
+      exec tail -n +3 $0
+      set superusers="root"
+      password_pbkdf2 root {{ stig_2404_stigrule_270675_grub_pbkdf2_hash }}
+      GRUBEOF
+      chmod 0755 /etc/grub.d/40_custom
+      update-grub
+
+# --- 270676 - GRUB audit=1 ---
+- name: "stigrule_270676"
+  internal.core.stig:
+    _stig_check: "grep -qE '^GRUB_CMDLINE_LINUX=.*audit=1' /etc/default/grub"
+    cmd: |
+      set -eu
+      if grep -qE '^GRUB_CMDLINE_LINUX=' /etc/default/grub; then
+        sed -i 's/^\(GRUB_CMDLINE_LINUX=".*\)"/\1 audit=1"/' /etc/default/grub
+      else
+        echo 'GRUB_CMDLINE_LINUX="audit=1"' >> /etc/default/grub
+      fi
+      update-grub
+
+# --- 278917 - Vendor-supported release ---
+- name: "stigrule_278917"
+  internal.core.stig:
+    _stig_audit_only: true
+    _stig_check: |
+      set -eu
+      . /etc/os-release
+      [ "$ID" = "ubuntu" ]
+      [ "$VERSION_ID" = "24.04" ]
+    cmd: "true"

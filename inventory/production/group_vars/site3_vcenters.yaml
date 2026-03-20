@@ -1,0 +1,9 @@
+---
+# Site 3 vCenter overrides.
+# Values here apply only to hosts in the site3_vcenters group.
+
+# esxi_stig_syslog_host: syslog.site3.yourdomain.mil
+# esxi_stig_ntp_servers:
+#   - 10.3.0.53
+#   - 10.3.0.54
+# esxi_stig_ad_domain: site3.yourdomain.mil
