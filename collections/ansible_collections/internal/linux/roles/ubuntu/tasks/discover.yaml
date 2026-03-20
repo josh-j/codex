@@ -110,6 +110,7 @@
     data:
       ncs_collect:
         platform: "ubuntu"
+        platform_dir: "{{ _ncs_platform_dir | default('linux/ubuntu') }}"
         name: "discovery"
         report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
         payload: "{{ ubuntu_raw_discovery | default({}) }}"
