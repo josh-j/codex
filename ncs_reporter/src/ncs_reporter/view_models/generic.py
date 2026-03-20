@@ -571,12 +571,19 @@ def build_generic_fleet_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
+                "node_report": f"{host}/health_report.html",
                 "platform": schema.display_name,
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
             }
         _host_groups[host]["alerts"].append(
-            {"severity": alert["severity"], "message": alert.get("message", ""), "category": alert.get("category", "")}
+            {
+                "severity": alert["severity"],
+                "message": alert.get("message", ""),
+                "category": alert.get("category", ""),
+                "affected_items": alert.get("affected_items", []),
+                "detail": alert.get("detail", {}),
+            }
         )
 
     alert_groups = [_host_groups[h] for h in _host_order]
