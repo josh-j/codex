@@ -1,11 +1,11 @@
 ---
-# playbooks/ubuntu/patch_apply.yml
-# Apply Ubuntu package updates.
+# playbooks/ubuntu/update_apply.yml
+# Apply Ubuntu apt update + dist-upgrade with SSH key support.
 
-- name: "Ubuntu | Patch (Apply)"
+- name: "Ubuntu | Update (Apply)"
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
-  tags: ["ubuntu", "patching", "updates", "apply"]
+  tags: ["ubuntu", "update", "patching", "apply"]
   pre_tasks:
     - name: Write SSH key to temp file
       copy:
