@@ -2,4 +2,4 @@
 # internal.linux.ubuntu : tasks/main.yaml
 
 - name: "Ubuntu | Dispatch: {{ ubuntu_action | default('discover') }}"
-  ansible.builtin.include_tasks: "{{ ubuntu_action | default('discover') }}.yaml"
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/{{ ubuntu_action | default('discover') }}.yaml"
