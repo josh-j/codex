@@ -270,6 +270,10 @@ windows-ad-search type term:
 windows-openssh target:
     {{ ansible_playbook }} playbooks/windows/openssh.yml -l {{ target }}
 
+# Bootstrap OpenSSH on Windows targets via WinRM (first-time setup)
+windows-openssh-bootstrap target transport="kerberos":
+    {{ ansible_playbook }} playbooks/windows/openssh.yml -l {{ target }} -e 'ansible_connection=winrm ansible_winrm_transport={{ transport }} ansible_port=5985'
+
 # =============================================================================
 # STIG Audits (read-only compliance checks)
 # =============================================================================
