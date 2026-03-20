@@ -7,3 +7,10 @@ all:
           ansible_user: josh
           ansible_password: ineption
           ansible_become_password: ineption
+    windows_servers:
+      vars:
+        ansible_connection: ssh
+        ansible_shell_type: powershell
+        ansible_user: svc-ansible@YOURDOMAIN.MIL
+        ansible_ssh_common_args: '-o GSSAPIAuthentication=yes -o GSSAPIServerIdentity=yes'
+      hosts: {}

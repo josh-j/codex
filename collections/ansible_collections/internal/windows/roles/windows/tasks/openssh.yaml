@@ -63,6 +63,40 @@
         type: string
       when: windows_openssh_default_shell == 'powershell'
 
+    - name: "OpenSSH | Deploy managed sshd_config"
+      ansible.windows.win_template:
+        src: sshd_config.j2
+        dest: 'C:\ProgramData\ssh\sshd_config'
+      register: _openssh_config_result
+      when: windows_openssh_manage_config | bool
+
+    - name: "OpenSSH | Restart sshd after config change"
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when:
+        - windows_openssh_manage_config | bool
+        - _openssh_config_result is changed
+
+    - name: "OpenSSH | Set ACL on administrators_authorized_keys"
+      ansible.windows.win_powershell:
+        script: |
+          $keyFile = 'C:\ProgramData\ssh\administrators_authorized_keys'
+          if (-not (Test-Path $keyFile)) { New-Item -Path $keyFile -ItemType File -Force | Out-Null }
+          $acl = Get-Acl $keyFile
+          $acl.SetAccessRuleProtection($true, $false)
+          $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            'BUILTIN\Administrators', 'FullControl', 'Allow')
+          $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            'NT AUTHORITY\SYSTEM', 'FullControl', 'Allow')
+          $acl.SetAccessRule($adminRule)
+          $acl.SetAccessRule($systemRule)
+          Set-Acl $keyFile $acl
+          'configured'
+      register: _openssh_acl_result
+      changed_when: "_openssh_acl_result.output[0] == 'configured'"
+      when: windows_openssh_allow_pubkey | bool
+
   rescue:
     - name: "OpenSSH | Mark failure"
       ansible.builtin.set_fact:

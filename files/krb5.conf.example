@@ -1,0 +1,19 @@
+# Example krb5.conf for Ansible control node — Kerberos/GSSAPI to domain-joined Windows
+# Copy to /etc/krb5.conf and update realm/KDC values for your environment.
+
+[libdefaults]
+    default_realm = YOURDOMAIN.MIL
+    dns_lookup_realm = false
+    dns_lookup_kdc = true
+    forwardable = true
+
+[realms]
+    YOURDOMAIN.MIL = {
+        kdc = dc01.yourdomain.mil
+        kdc = dc02.yourdomain.mil
+        admin_server = dc01.yourdomain.mil
+    }
+
+[domain_realm]
+    .yourdomain.mil = YOURDOMAIN.MIL
+    yourdomain.mil = YOURDOMAIN.MIL

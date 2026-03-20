@@ -148,3 +148,11 @@ windows_ad_bitlocker_recovery: false
 # OpenSSH Settings (windows_action: openssh)
 # =============================================================================
 windows_openssh_default_shell: "powershell"
+windows_openssh_manage_config: true
+windows_openssh_allow_gssapi: true
+windows_openssh_allow_password: false
+windows_openssh_allow_pubkey: false
+windows_openssh_allow_groups: []          # e.g. ["SG-Ansible-Admins", "Domain Admins"]
+windows_openssh_max_auth_tries: 3
+windows_openssh_client_alive_interval: 300
+windows_openssh_client_alive_count_max: 3
