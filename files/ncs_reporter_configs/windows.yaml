@@ -256,9 +256,9 @@ alerts:
     category: "Health"
     severity: WARNING
     condition:
-      op: eq_bool
+      op: eq
       field: health_reboot_pending
-      value: true
+      threshold: 1
     message: "System has a pending reboot ({health_reboot_reasons})"
     detail_fields: [health_reboot_pending, health_reboot_reasons]
 
@@ -280,9 +280,9 @@ alerts:
     category: "Health"
     severity: WARNING
     condition:
-      op: gt_num
+      op: gt
       field: health_memory_used_pct
-      value: 85
+      threshold: 85
     message: "Memory usage is high ({health_memory_used_pct}%)"
     detail_fields: [health_memory_used_pct]
 
@@ -304,9 +304,9 @@ alerts:
     category: "Health"
     severity: WARNING
     condition:
-      op: gt_num
+      op: gt
       field: health_event_count
-      value: 0
+      threshold: 0
     message: "{health_event_count} critical/error events in recent logs"
     detail_fields: [health_event_count]
 
@@ -316,9 +316,9 @@ alerts:
     category: "Security"
     severity: WARNING
     condition:
-      op: gt_num
+      op: gt
       field: vuln_open
-      value: 0
+      threshold: 0
     message: "{vuln_open} open vulnerability findings"
     detail_fields: [vuln_open, vuln_total_findings, vuln_remediated]
 
