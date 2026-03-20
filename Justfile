@@ -178,6 +178,14 @@ audit-vmware-site site:
 audit-ubuntu target="ubuntu_servers":
     {{ ansible_playbook }} playbooks/ubuntu/audit.yml -l {{ target }}
 
+# Run Ubuntu apt update + dist-upgrade
+update-ubuntu target="ubuntu_servers":
+    {{ ansible_playbook }} playbooks/ubuntu/update.yml -l {{ target }}
+
+# Run Ubuntu update (apply only, skip discover)
+update-ubuntu-apply target="ubuntu_servers":
+    {{ ansible_playbook }} playbooks/ubuntu/update_apply.yml -l {{ target }}
+
 # Run Ubuntu discovery phase only
 audit-ubuntu-discover:
     {{ ansible_playbook }} playbooks/ubuntu/discover.yml
