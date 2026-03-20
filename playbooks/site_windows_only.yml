@@ -1,18 +1,15 @@
 ---
-# playbooks/site_collect_only.yml
-# Collection-only pipeline (no report rendering).
+# playbooks/site_windows_only.yml
+# Windows-only pipeline with report generation.
 
 - name: "Phase 1: Initialize Reporting Environment"
   ansible.builtin.import_playbook: infra/setup_env.yml
-
-- name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware/audit.yml
-
-- name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: ubuntu/audit.yml
 
 - name: "Phase 3b: Windows System Audit"
   ansible.builtin.import_playbook: windows/audit.yml
 
 - name: "Phase 3c: Windows System Health Check"
   ansible.builtin.import_playbook: windows/health.yml
+
+- name: "Phase 4: Unified Infrastructure Reporting"
+  ansible.builtin.import_playbook: infra/generate_reports.yml

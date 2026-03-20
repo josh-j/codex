@@ -23,6 +23,10 @@
 - name: "Phase 3b: Windows System Audit"
   ansible.builtin.import_playbook: windows/audit.yml
 
+# Phase 3c: Windows Health Check
+- name: "Phase 3c: Windows System Health Check"
+  ansible.builtin.import_playbook: windows/health.yml
+
 # Phase 4: Reporting & Dashboards (Decoupled Engine)
 - name: "Phase 4: Unified Infrastructure Reporting"
   ansible.builtin.import_playbook: infra/generate_reports.yml
