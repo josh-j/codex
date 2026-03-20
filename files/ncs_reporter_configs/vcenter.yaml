@@ -299,25 +299,6 @@ fields:
       metric: total_mem_used_pct
     type: float
 
-  # --- VM compliance counts (from get_vms_list.py normalized output) ---
-
-  vms_missing_owner_count:
-    script: "scripts/count_vm_compliance.py"
-    script_args:
-      metric: missing_owner
-    type: int
-
-  vms_missing_backup_tag_count:
-    script: "scripts/count_vm_compliance.py"
-    script_args:
-      metric: missing_backup_tag
-    type: int
-
-  vms_missing_backup_count:
-    script: "scripts/count_vm_compliance.py"
-    script_args:
-      metric: missing_backup
-    type: int
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -503,10 +484,12 @@ alerts:
     category: "Workload Inventory"
     severity: INFO
     condition:
-      op: gt
-      field: powered_off_vm_count
+      op: filter_count
+      field: virtual_machines
+      filter_field: power_state
+      filter_value: "poweredOff"
       threshold: 0
-    message: "{powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
+    message: "Powered-off VMs detected — review for cleanup or licensing"
     affected_items_field: virtual_machines
 
   # ---- Datastore over-provisioning ----
@@ -642,30 +625,39 @@ alerts:
     category: "Workload Compliance"
     severity: WARNING
     condition:
-      op: gt
-      field: vms_missing_owner_count
+      op: filter_multi
+      field: virtual_machines
+      filters:
+        - { filter_field: power_state, filter_value: "poweredOn" }
+        - { filter_field: owner_email, filter_value: "" }
       threshold: 0
-    message: "{vms_missing_owner_count} powered-on VM(s) missing an Owner Email attribute"
+    message: "Powered-on VMs missing an Owner Email attribute"
     affected_items_field: virtual_machines
 
   - id: vms_missing_backup_tag
     category: "Data Protection"
     severity: WARNING
     condition:
-      op: gt
-      field: vms_missing_backup_tag_count
+      op: filter_multi
+      field: virtual_machines
+      filters:
+        - { filter_field: power_state, filter_value: "poweredOn" }
+        - { filter_field: backup_tag, filter_value: "" }
       threshold: 0
-    message: "{vms_missing_backup_tag_count} powered-on VM(s) missing a Backup Schedule tag"
+    message: "Powered-on VMs missing a Backup Schedule tag"
     affected_items_field: virtual_machines
 
   - id: vms_no_recent_backup
     category: "Data Protection"
     severity: CRITICAL
     condition:
-      op: gt
-      field: vms_missing_backup_count
+      op: filter_multi
+      field: virtual_machines
+      filters:
+        - { filter_field: power_state, filter_value: "poweredOn" }
+        - { filter_field: backup_last_time, filter_value: "" }
       threshold: 0
-    message: "{vms_missing_backup_count} powered-on VM(s) have no recorded backup"
+    message: "Powered-on VMs with no recorded backup"
     affected_items_field: virtual_machines
 
   # ---- Snapshots ----
