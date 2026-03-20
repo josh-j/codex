@@ -105,6 +105,7 @@ def build_site_dashboard_view(
 
     site_entries = reg.site_dashboard_entries()
 
+    host_report_dirs: dict[str, str] = {}
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for entry in site_entries:
             audit_key = entry.site_audit_key
@@ -113,6 +114,8 @@ def build_site_dashboard_view(
             audit = _get_schema_audit(bundle, audit_key)
             if not audit:
                 continue
+            if hostname not in host_report_dirs:
+                host_report_dirs[hostname] = entry.report_dir
 
             display = entry.display_name or entry.platform.capitalize()
             category = entry.site_category or display
@@ -167,6 +170,7 @@ def build_site_dashboard_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
+                "node_report": f"platform/{host_report_dirs[host]}/{host}/health_report.html" if host in host_report_dirs else "",
                 "platform": alert.get("platform", ""),
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
