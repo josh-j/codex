@@ -4,8 +4,8 @@ An Ansible collection for VMware infrastructure auditing and data collection. Fo
 
 ## Roles
 
-### `internal.vmware.vcenter`
-Performs deep inventory and health discovery of vCenter instances. 
+### `internal.vmware.vcsa`
+Performs deep inventory and health discovery of vCenter Server Appliance (VCSA) instances.
 - **Action:** Executes standard VMware modules and custom collectors.
 - **Handoff:** Saves raw module results to `raw_discovery.yaml` using the `internal.core.state:save_raw` task.
 - **Idiomatic:** Uses `module_defaults` to centralize connection parameters.
@@ -28,9 +28,9 @@ Shared utility tasks, including `init_vcenter.yaml` for standardized hostname an
 - name: Collect VMware Discovery Data
   hosts: vcenters
   roles:
-    - role: internal.vmware.vcenter
+    - role: internal.vmware.vcsa
       vars:
-        vcenter_action: collect
+        vcsa_action: collect
 ```
 
 

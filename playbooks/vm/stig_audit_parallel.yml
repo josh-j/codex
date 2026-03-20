@@ -1,0 +1,55 @@
+---
+# playbooks/vm/stig_audit_parallel.yml
+
+- name: "Phase 2b-pre | Discover VMs and build target list"
+  hosts: "{{ site }}_vcenters"
+  connection: local
+  gather_facts: false
+  strategy: linear
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Validate site variable is provided"
+      ansible.builtin.assert:
+        that:
+          - site is defined
+          - site | length > 0
+        fail_msg: "Please specify a site (e.g., -e 'site=tyfq')"
+
+  tasks:
+    - name: "Discover and validate VM targets"
+      ansible.builtin.include_tasks: _discover.yml
+
+    - name: "Register dynamic VM host group"
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: _stig_vm_targets
+        vcenter: "{{ inventory_hostname }}"
+        site: "{{ site }}"
+        vm_datacenter: "{{ vm_datacenter_map[item] | default('') }}"
+        vmware_username: "{{ vmware_username }}"
+        vmware_password: "{{ vmware_password }}"
+        vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
+      loop: "{{ vm_stig_target_vms | reject('match', '^vCLS-') | list }}"
+      changed_when: false
+
+- name: "Phase 2b | VM STIG Audit (parallel per VM)"
+  hosts: _stig_vm_targets
+  connection: local
+  gather_facts: false
+  strategy: free
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    _current_vm_name: "{{ inventory_hostname }}"
+    _vcenter_hostname: "{{ vcenter }}"
+    _current_vm_datacenter: "{{ vm_datacenter | default(omit) }}"
+    vm_datacenter_map: "{{ { inventory_hostname: vm_datacenter | default('') } }}"
+    vm_stig_target_vms:
+      - "{{ inventory_hostname }}"
+  roles:
+    - role: internal.vmware.common
+    - role: internal.vmware.vm
+      vars:
+        vm_stig_enable_hardening: false

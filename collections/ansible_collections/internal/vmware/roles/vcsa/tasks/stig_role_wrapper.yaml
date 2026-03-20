@@ -1,0 +1,24 @@
+---
+# internal.vmware.vcsa : tasks/stig_role_wrapper.yaml
+# Included once per VCSA role from stig.yaml loop.
+
+- name: "VCSA STIG | Register target for callback ({{ _vcsa_role }})"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ inventory_hostname }}"
+    _ncs_stig_target_type: "{{ _vcsa_role_map[_vcsa_role] | default('vcsa') }}"
+  check_mode: false
+  changed_when: false
+
+- name: "VCSA STIG | Include {{ _vcsa_role }}"
+  ansible.builtin.include_role:
+    name: "{{ _vcsa_role }}"
+    apply:
+      check_mode: "{{ (_stig_phase2_verify | default(false) | bool) or (not (vcsa_stig_enable_hardening | default(false) | bool)) }}"
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ inventory_hostname }}"
+        stig_target_type: "{{ _vcsa_role_map[_vcsa_role] | default('vcsa') }}"
+        stig_platform: "vmware/vcenter/vcsa"
+  vars:
+    run_create_backups: "{{ vcsa_stig_create_backups | default(true) | bool }}"
+    photon_version: "{{ vcsa_stig_photon_version | default('3') | string }}"

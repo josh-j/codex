@@ -13,7 +13,7 @@
   tags: ["vmware", "stig", "audit", "esxi"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    vmware_stig_enable_hardening: false
+    esxi_stig_enable_hardening: false
   pre_tasks:
     # Pre-set _vcenter_hostname so common role's init_vcenter is a no-op.
     # For standalone ESXi the "vCenter" endpoint IS the ESXi host.
@@ -29,4 +29,4 @@
   roles:
     - role: internal.vmware.esxi
       vars:
-        vmware_stig_enable_hardening: false
+        esxi_stig_enable_hardening: false

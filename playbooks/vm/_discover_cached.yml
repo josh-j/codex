@@ -1,0 +1,35 @@
+---
+# Shared cached VM discovery: re-discover only if datacenter map is missing.
+# Used by later phases that expect prior discovery to have populated the cache.
+# Optional variables:
+#   _vmware_discovery_hostname  — override for vCenter/ESXi hostname (default: inventory_hostname)
+#   vm_stig_exclude_pattern     — regex to exclude VMs (default: '^$' = exclude nothing)
+
+- name: "Discover all VMs on vCenter (if not cached)"
+  community.vmware.vmware_vm_info:
+    hostname: "{{ _vmware_discovery_hostname | default(inventory_hostname) }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  register: _vcenter_vms
+  when: vm_datacenter_map is not defined
+
+- name: "Filter discovered VM list (if not cached)"
+  ansible.builtin.set_fact:
+    _filtered_vms: >-
+      {{ _vcenter_vms.virtual_machines | default([])
+         | rejectattr('guest_name', 'match', '^vCLS-')
+         | rejectattr('guest_name', 'match', vm_stig_exclude_pattern | default('^$'))
+         | list }}
+  when:
+    - vm_datacenter_map is not defined
+    - _vcenter_vms.virtual_machines is defined
+
+- name: "Build VM-to-datacenter map (if not cached)"
+  ansible.builtin.set_fact:
+    vm_datacenter_map: >-
+      {{ dict(_filtered_vms | map(attribute='guest_name')
+         | zip(_filtered_vms | map(attribute='datacenter'))) }}
+  when:
+    - vm_datacenter_map is not defined
+    - _filtered_vms is defined

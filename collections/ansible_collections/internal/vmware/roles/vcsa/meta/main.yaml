@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: NCS
+  description: VMware VCSA (vCenter Server Appliance) Inventory, Discovery, and STIG
+  company: NCS
+  license: proprietary
+  min_ansible_version: "2.10"
+  platforms:
+    - name: GenericUNIX
+      versions:
+        - all
+  galaxy_tags:
+    - vmware
+    - vcsa
+    - vcenter
+    - infrastructure
+
+dependencies: []

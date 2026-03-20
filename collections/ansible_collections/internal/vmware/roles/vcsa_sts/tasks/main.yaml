@@ -2,7 +2,7 @@
 
 - name: Include STS
   ansible.builtin.include_tasks:
-    file: sts.yaml
+    file: stig_v1r4/sts.yaml
     apply:
       tags:
         - sts

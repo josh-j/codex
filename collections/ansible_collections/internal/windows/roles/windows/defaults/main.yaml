@@ -23,7 +23,8 @@ windows_audit_enforce_preference: "Immediate"
 windows_audit_update_priority: "Normal"
 
 # --- STIG Settings ---
-windows_stig_enable_audit: false
+windows_stig_enable_audit: true
+windows_stig_enable_hardening: false
 windows_stig_native_checks_only: false
 windows_stig_require_input: false
 windows_stig_target_type: "windows_server_2022"

@@ -1,0 +1,15 @@
+---
+# internal.vmware.vcsa : tasks/main.yaml
+
+- name: "VCSA | Backward-compat guard — collect action moved to vcenter_collect role"
+  ansible.builtin.fail:
+    msg: >-
+      The 'collect' action has been moved to the internal.vmware.vcenter_collect role.
+      Update your playbook to use 'role: internal.vmware.vcenter_collect' instead of
+      'role: internal.vmware.vcsa' with 'vcsa_action: collect'.
+  when: (vcsa_action | default(vcenter_action | default('stig'))) == 'collect'
+  tags: [always]
+
+- name: "VCSA STIG | Execute"
+  ansible.builtin.include_tasks: stig.yaml
+  tags: [always]

@@ -2,7 +2,7 @@
 
 - name: Include EAM
   ansible.builtin.include_tasks:
-    file: eam.yaml
+    file: stig_v1r4/eam.yaml
     apply:
       tags:
         - eam

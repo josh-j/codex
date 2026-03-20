@@ -1,0 +1,341 @@
+---
+# collections/ansible_collections/internal/linux/roles/ubuntu/tasks/stig_2404/default.yaml
+
+# =============================================================================
+# SITE-SPECIFIC — must be configured per-environment before use
+# =============================================================================
+
+# Audisp remote syslog/SIEM destination (SV-270658)
+stig_2404_stigrule_270658_remote_server: ""
+
+# NTP server (SV-270751)
+stig_2404_stigrule_270751_chrony_server: "172.25.70.11"
+
+# Authorized sudo members (SV-270748)
+stig_2404_stigrule_270748_authorized_sudo_members:
+  - "josh"
+
+# SSSD / LDAP (SV-270734/735/736)
+stig_2404_sssd_domain: "area52.afnoapps.usaf.mil"
+stig_2404_sssd_ldap_uri: "ldap://ftfa-dc-006v.area52.afnoapps.usaf.mil"
+stig_2404_sssd_ldap_search_base: "DC=area52,DC=afnoapps,DC=usaf,DC=mil"
+
+# DoD Root CA (SV-270745)
+stig_2404_stigrule_270745_dod_ca_filename: "dod-root-ca.crt"
+stig_2404_stigrule_270745_dod_ca_content: ""
+
+# Ubuntu Pro token (SV-270744)
+stig_2404_stigrule_270744_pro_token: ""
+
+# GRUB password hash (SV-270675)
+stig_2404_stigrule_270675_grub_pbkdf2_hash: ""
+
+# LUKS/crypttab entries (SV-270747)
+stig_2404_stigrule_270747_crypttab_entries:
+  - "cryptpart    UUID=b02f4154-b7a2-4cf7-abfc-d4b85363d32a    none    luks"
+
+# Audit log directory (SV-270816)
+stig_2404_stigrule_270816_audit_log_mountpoint: "/var/log/audit"
+stig_2404_stigrule_270816_min_free_kb: "13639976"
+
+# Weekly audit offload rsync target (SV-270817)
+stig_2404_stigrule_270817_audit_offload_destination: ""
+
+# UFW rate-limited services (SV-270754)
+stig_2404_stigrule_270754_limited_services: []
+
+# UFW allowed rules (SV-270719)
+stig_2404_stigrule_270719_allowed_ufw_rules:
+  - { rule: "allow", port: "514", proto: "tcp" }
+  - { rule: "allow", port: "514", proto: "udp" }
+  - { rule: "allow", port: "22", proto: "tcp" }
+  - { rule: "allow", port: "514", proto: "tcp" }
+  - { rule: "allow", port: "123", proto: "udp" }
+  - { rule: "allow", port: "Anywhere", proto: "tcp" }
+
+# =============================================================================
+# STIG CONFIGURATION VALUES — safe defaults, override in group/host vars
+# =============================================================================
+
+# --- Packages & services ---
+stig_2404_stigrule_270650_run_deep_check: false
+stig_2404_stigrule_270650_deep_check_timeout: 120
+stig_2404_stigrule_270652_silentreports_line: "SILENTREPORTS=no"
+stig_2404_stigrule_270657_auditd_enable_enabled: true
+stig_2404_stigrule_270657_auditd_enable_state: "started"
+stig_2404_stigrule_270660_apparmor_enable_enabled: true
+stig_2404_stigrule_270660_apparmor_start_state: "started"
+stig_2404_stigrule_270663_sssd_enable_enabled: true
+stig_2404_stigrule_270663_sssd_enable_state: "started"
+stig_2404_stigrule_270666_ssh_active_enabled: true
+stig_2404_stigrule_270666_ssh_start_state: "started"
+
+# --- SSH crypto ---
+stig_2404_stigrule_270667_Ciphers_line: "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr"
+stig_2404_stigrule_270668_MACs_line: "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
+stig_2404_stigrule_270669_KexAlgorithms_line: "KexAlgorithms ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group14-sha256"
+stig_2404_stigrule_270670_Ciphers_line: "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr"
+stig_2404_stigrule_270671_MACs_line: "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
+stig_2404_stigrule_270743_ClientAliveInterval_line: "ClientAliveInterval 600"
+
+# --- Accounts, PAM & password quality ---
+stig_2404_stigrule_270683_useradd_inactive_line: "INACTIVE=35"
+stig_2404_stigrule_270705_pam_pwquality_line: "password requisite pam_pwquality.so retry=3"
+stig_2404_stigrule_270705_pwquality_enforcing_line: "enforcing = 1"
+stig_2404_stigrule_270706_pam_faildelay_line: "auth    required    pam_faildelay.so    delay=4000000"
+stig_2404_stigrule_270716__etc_login_defs_line: "UMASK 077"
+stig_2404_stigrule_270726__etc_security_pwquality_conf_line: "ucredit=-1"
+stig_2404_stigrule_270727__etc_security_pwquality_conf_line: "lcredit=-1"
+stig_2404_stigrule_270728__etc_security_pwquality_conf_line: "dcredit=-1"
+stig_2404_stigrule_270729__etc_security_pwquality_conf_line: "difok=8"
+stig_2404_stigrule_270730__etc_login_defs_line: "PASS_MIN_DAYS 1"
+stig_2404_stigrule_270731__etc_login_defs_line: "PASS_MAX_DAYS 60"
+stig_2404_stigrule_270732__etc_security_pwquality_conf_line: "minlen=15"
+stig_2404_stigrule_270733__etc_security_pwquality_conf_line: "ocredit=-1"
+stig_2404_stigrule_270739__etc_login_defs_line: "ENCRYPT_METHOD SHA512"
+
+# --- Desktop / GDM / screensaver ---
+stig_2404_stigrule_270678__etc_dconf_db_local_d_00_screensaver_idle_delay_value: "uint32 900"
+stig_2404_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_delay_value: "uint32 600"
+stig_2404_stigrule_270678__etc_dconf_db_local_d_00_screensaver_lock_enabled_value: "true"
+stig_2404_stigrule_270692__etc_gdm3_greeter_dconf_defaults_enable_value: "true"
+stig_2404_stigrule_270693__etc_gdm3_greeter_dconf_defaults_text_value: "'You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only.\\n\\nBy using this IS (which includes any device attached to this IS), you consent to the following conditions:\\n\\n-The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.\\n\\n-At any time, the USG may inspect and seize data stored on this IS.\\n\\n-Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose.\\n\\n-This IS includes security measures (e.g., authentication and access controls) to protect USG interests--not for your personal benefit or privacy.\\n\\n-Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.'"
+stig_2404_stigrule_270711__etc_dconf_db_local_d_00_screensaver_media_keys_value: "['']"
+
+# --- Banner ---
+stig_2404_stigrule_270691__etc_issue_net_dest: "/etc/issue.net"
+stig_2404_stigrule_270691__etc_issue_net_content: |
+  You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only.
+
+  By using this IS (which includes any device attached to this IS), you consent to the following conditions:
+
+  -The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.
+
+  -At any time, the USG may inspect and seize data stored on this IS.
+
+  -Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose.
+
+  -This IS includes security measures (e.g., authentication and access controls) to protect USG interests--not for your personal benefit or privacy.
+
+  -Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
+
+# --- Shell timeout & logging ---
+stig_2404_stigrule_270680__etc_profile_d_99_terminal_tmout_sh_content: |
+  TMOUT=600
+stig_2404_stigrule_270680__etc_profile_d_99_terminal_tmout_sh_dest: "/etc/profile.d/99-terminal_tmout.sh"
+stig_2404_stigrule_270681_rsyslog_auth_line: "auth.*,authpriv.* /var/log/secure"
+stig_2404_stigrule_270681_rsyslog_daemon_line: "daemon.* /var/log/messages"
+
+# --- APT ---
+stig_2404_stigrule_270695__etc_apt_apt_conf_d_01_vendor_ubuntu_line: 'APT::Get::AllowUnauthenticated "false";'
+stig_2404_stigrule_270773__etc_apt_apt_conf_d_50unattended_upgrades_Remove_Unused_Dependencies_line: 'Unattended-Upgrade::Remove-Unused-Dependencies "true";'
+stig_2404_stigrule_270773__etc_apt_apt_conf_d_50unattended_upgrades_Remove_Unused_Kernel_Packages_line: 'Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";'
+
+# --- NTP ---
+stig_2404_stigrule_270752_chrony_makestep_line: "makestep 1 -1"
+
+# --- Kernel ---
+stig_2404_stigrule_270772_randomize_va_space_value: "2"
+
+# --- Auditd ---
+stig_2404_stigrule_270818_space_left_line: "space_left = 25%"
+stig_2404_stigrule_270818_space_left_action_line: "space_left_action = email"
+stig_2404_stigrule_270819_action_mail_acct_line: "action_mail_acct = root@localhost.localdomain"
+
+# =============================================================================
+# STIG MANAGE FLAGS — set to false to skip individual controls
+# =============================================================================
+
+stig_2404_stigrule_270645_manage: true
+stig_2404_stigrule_270646_manage: true
+stig_2404_stigrule_270647_manage: true
+stig_2404_stigrule_270648_manage: true
+stig_2404_stigrule_270649_manage: true
+stig_2404_stigrule_270650_manage: true
+stig_2404_stigrule_270651_manage: true
+stig_2404_stigrule_270652_manage: true
+stig_2404_stigrule_270653_manage: true
+stig_2404_stigrule_270654_manage: true
+stig_2404_stigrule_270655_manage: true
+stig_2404_stigrule_270656_manage: true
+stig_2404_stigrule_270657_manage: true
+stig_2404_stigrule_270658_manage: false # Need to offload audit logs to another server to enable
+stig_2404_stigrule_270659_manage: true
+stig_2404_stigrule_270660_manage: true
+stig_2404_stigrule_270661_manage: true
+stig_2404_stigrule_270662_manage: true
+stig_2404_stigrule_270663_manage: true
+stig_2404_stigrule_270664_manage: true
+stig_2404_stigrule_270665_manage: true
+stig_2404_stigrule_270666_manage: true
+stig_2404_stigrule_270667_manage: true
+stig_2404_stigrule_270668_manage: true
+stig_2404_stigrule_270669_manage: true
+stig_2404_stigrule_270670_manage: true
+stig_2404_stigrule_270671_manage: true
+stig_2404_stigrule_270672_manage: true
+stig_2404_stigrule_270673_manage: true
+stig_2404_stigrule_270674_manage: true
+stig_2404_stigrule_270675_manage: false
+stig_2404_stigrule_270676_manage: true
+stig_2404_stigrule_270677_manage: true
+stig_2404_stigrule_270678_manage: true
+stig_2404_stigrule_270679_manage: true
+stig_2404_stigrule_270680_manage: true
+stig_2404_stigrule_270681_manage: true
+stig_2404_stigrule_270682_manage: true
+stig_2404_stigrule_270684_manage: true
+stig_2404_stigrule_270685_manage: true
+stig_2404_stigrule_270686_manage: true
+stig_2404_stigrule_270687_manage: true
+stig_2404_stigrule_270688_manage: true
+stig_2404_stigrule_270689_manage: true
+stig_2404_stigrule_270690_manage: true
+stig_2404_stigrule_270691_manage: true
+stig_2404_stigrule_270692_manage: true
+stig_2404_stigrule_270693_manage: true
+stig_2404_stigrule_270694_manage: true
+stig_2404_stigrule_270695_manage: true
+stig_2404_stigrule_270696_manage: true
+stig_2404_stigrule_270697_manage: true
+stig_2404_stigrule_270698_manage: true
+stig_2404_stigrule_270699_manage: true
+stig_2404_stigrule_270700_manage: true
+stig_2404_stigrule_270701_manage: true
+stig_2404_stigrule_270702_manage: true
+stig_2404_stigrule_270703_manage: true
+stig_2404_stigrule_270704_manage: true
+stig_2404_stigrule_270705_manage: true
+stig_2404_stigrule_270706_manage: true
+stig_2404_stigrule_270707_manage: true
+stig_2404_stigrule_270708_manage: true
+stig_2404_stigrule_270709_manage: true
+stig_2404_stigrule_270711_manage: true
+stig_2404_stigrule_270712_manage: true
+stig_2404_stigrule_270713_manage: true
+stig_2404_stigrule_270714_manage: true
+stig_2404_stigrule_270715_manage: true
+stig_2404_stigrule_270716_manage: true
+stig_2404_stigrule_270717_manage: true
+stig_2404_stigrule_270718_manage: true
+stig_2404_stigrule_270719_manage: true
+stig_2404_stigrule_270720_manage: true
+stig_2404_stigrule_270721_manage: true
+stig_2404_stigrule_270722_manage: true
+stig_2404_stigrule_270723_manage: true
+stig_2404_stigrule_270724_manage: true
+stig_2404_stigrule_270725_manage: true
+stig_2404_stigrule_270726_manage: true
+stig_2404_stigrule_270727_manage: true
+stig_2404_stigrule_270728_manage: true
+stig_2404_stigrule_270729_manage: true
+stig_2404_stigrule_270730_manage: true
+stig_2404_stigrule_270731_manage: true
+stig_2404_stigrule_270732_manage: true
+stig_2404_stigrule_270733_manage: true
+stig_2404_stigrule_270734_manage: true
+stig_2404_stigrule_270735_manage: true
+stig_2404_stigrule_270736_manage: true
+stig_2404_stigrule_270737_manage: true
+stig_2404_stigrule_270738_manage: true
+stig_2404_stigrule_270739_manage: true
+stig_2404_stigrule_270740_manage: true
+stig_2404_stigrule_270741_manage: true
+stig_2404_stigrule_270742_manage: true
+stig_2404_stigrule_270743_manage: true
+stig_2404_stigrule_270744_manage: true
+stig_2404_stigrule_270745_manage: true
+stig_2404_stigrule_270746_manage: true
+stig_2404_stigrule_270747_manage: true
+stig_2404_stigrule_270748_manage: true
+stig_2404_stigrule_270749_manage: true
+stig_2404_stigrule_270750_manage: true
+stig_2404_stigrule_270751_manage: true
+stig_2404_stigrule_270752_manage: true
+stig_2404_stigrule_270753_manage: true
+stig_2404_stigrule_270754_manage: true
+stig_2404_stigrule_270755_manage: true
+stig_2404_stigrule_270756_manage: true
+stig_2404_stigrule_270757_manage: true
+stig_2404_stigrule_270758_manage: true
+stig_2404_stigrule_270759_manage: true
+stig_2404_stigrule_270760_manage: true
+stig_2404_stigrule_270761_manage: true
+stig_2404_stigrule_270762_manage: true
+stig_2404_stigrule_270763_manage: true
+stig_2404_stigrule_270764_manage: true
+stig_2404_stigrule_270765_manage: true
+stig_2404_stigrule_270766_manage: true
+stig_2404_stigrule_270767_manage: true
+stig_2404_stigrule_270768_manage: true
+stig_2404_stigrule_270769_manage: true
+stig_2404_stigrule_270770_manage: true
+stig_2404_stigrule_270771_manage: true
+stig_2404_stigrule_270772_manage: true
+stig_2404_stigrule_270773_manage: true
+stig_2404_stigrule_270775_manage: true
+stig_2404_stigrule_270776_manage: true
+stig_2404_stigrule_270777_manage: true
+stig_2404_stigrule_270778_manage: true
+stig_2404_stigrule_270779_manage: true
+stig_2404_stigrule_270780_manage: true
+stig_2404_stigrule_270781_manage: true
+stig_2404_stigrule_270782_manage: true
+stig_2404_stigrule_270783_manage: true
+stig_2404_stigrule_270784_manage: true
+stig_2404_stigrule_270785_manage: true
+stig_2404_stigrule_270786_manage: true
+stig_2404_stigrule_270787_manage: true
+stig_2404_stigrule_270788_manage: true
+stig_2404_stigrule_270789_manage: true
+stig_2404_stigrule_270790_manage: true
+stig_2404_stigrule_270791_manage: true
+stig_2404_stigrule_270792_manage: true
+stig_2404_stigrule_270793_manage: true
+stig_2404_stigrule_270794_manage: true
+stig_2404_stigrule_270795_manage: true
+stig_2404_stigrule_270796_manage: true
+stig_2404_stigrule_270797_manage: true
+stig_2404_stigrule_270798_manage: true
+stig_2404_stigrule_270799_manage: true
+stig_2404_stigrule_270800_manage: true
+stig_2404_stigrule_270801_manage: true
+stig_2404_stigrule_270802_manage: true
+stig_2404_stigrule_270803_manage: true
+stig_2404_stigrule_270804_manage: true
+stig_2404_stigrule_270805_manage: true
+stig_2404_stigrule_270806_manage: true
+stig_2404_stigrule_270807_manage: true
+stig_2404_stigrule_270808_manage: true
+stig_2404_stigrule_270809_manage: true
+stig_2404_stigrule_270810_manage: true
+stig_2404_stigrule_270811_manage: true
+stig_2404_stigrule_270812_manage: true
+stig_2404_stigrule_270813_manage: true
+stig_2404_stigrule_270814_manage: true
+stig_2404_stigrule_270815_manage: true
+stig_2404_stigrule_270816_manage: true
+stig_2404_stigrule_270817_manage: true
+stig_2404_stigrule_270818_manage: true
+stig_2404_stigrule_270819_manage: true
+stig_2404_stigrule_270820_manage: true
+stig_2404_stigrule_270821_manage: true
+stig_2404_stigrule_270822_manage: true
+stig_2404_stigrule_270823_manage: true
+stig_2404_stigrule_270824_manage: true
+stig_2404_stigrule_270825_manage: true
+stig_2404_stigrule_270826_manage: true
+stig_2404_stigrule_270827_manage: true
+stig_2404_stigrule_270828_manage: true
+stig_2404_stigrule_270829_manage: true
+stig_2404_stigrule_270830_manage: true
+stig_2404_stigrule_270831_manage: true
+stig_2404_stigrule_270832_manage: true
+stig_2404_stigrule_274868_manage: true
+stig_2404_stigrule_274869_manage: true
+stig_2404_stigrule_274870_manage: true
+stig_2404_stigrule_274871_manage: true
+stig_2404_stigrule_274872_manage: true
+stig_2404_stigrule_274873_manage: true
+stig_2404_stigrule_278917_manage: true
+stig_2404_stigrule_279938_manage: true

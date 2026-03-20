@@ -1,0 +1,5 @@
+---
+# Lab-specific global variables.
+
+# report_directory: /tmp/codex-lab-reports
+# vmware_validate_certs: false

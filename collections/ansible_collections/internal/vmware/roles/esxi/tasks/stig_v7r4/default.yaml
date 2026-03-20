@@ -1,0 +1,125 @@
+---
+# v7r4/default.yaml — Manage flag aliases for _stig_manage_prefix auto-resolution
+#
+# Maps esxi_v7r4_stigrule_{V-number}_manage → existing esxi_70_* toggle vars.
+# Loaded via include_vars in 00_prelude.yaml. The action plugin resolves
+# _stig_manage automatically when _stig_manage_prefix is set, so individual
+# rules no longer need an explicit _stig_manage parameter.
+
+# =========================================================================
+# Config manager rules (bulk_ok gated)
+# =========================================================================
+esxi_v7r4_stigrule_256376_manage: "{{ (esxi_70_000002_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256378_manage: "{{ (esxi_70_000004_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256379_manage: "{{ (esxi_70_000005_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256380_manage: "{{ (esxi_70_000006_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256381_manage: "{{ (esxi_70_000007_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256382_manage: "{{ (esxi_70_000008_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256396_manage: "{{ (esxi_70_000030_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256397_manage: "{{ (esxi_70_000031_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256398_manage: "{{ (esxi_70_000032_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256399_manage: "{{ (esxi_70_000034_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256404_manage: "{{ (esxi_70_000039_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256405_manage: "{{ (esxi_70_000041_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256406_manage: "{{ (esxi_70_000042_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256407_manage: "{{ (esxi_70_000043_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256408_manage: "{{ (esxi_70_000045_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256416_manage: "{{ (esxi_70_000055_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256419_manage: "{{ (esxi_70_000058_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256423_manage: "{{ (esxi_70_000062_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256429_manage: "{{ (esxi_70_000074_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256432_manage: "{{ (esxi_70_000079_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256433_manage: "{{ (esxi_70_000081_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256438_manage: "{{ (esxi_70_000086_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256439_manage: "{{ (esxi_70_000087_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256440_manage: "{{ (esxi_70_000088_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256441_manage: "{{ (esxi_70_000089_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256443_manage: "{{ (esxi_70_000091_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# =========================================================================
+# Advanced settings / esxcli-based rules (bulk_ok gated)
+# =========================================================================
+esxi_v7r4_stigrule_256436_manage: "{{ (esxi_70_000084_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256437_manage: "{{ (esxi_70_000085_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256447_manage: "{{ (esxi_70_000095_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# =========================================================================
+# Service manager rules (no bulk_ok gate — uses vmware_host_service_manager)
+# =========================================================================
+esxi_v7r4_stigrule_256400_manage: "{{ esxi_70_000035_manage | default(true) }}"
+esxi_v7r4_stigrule_256401_manage: "{{ esxi_70_000036_manage | default(true) }}"
+esxi_v7r4_stigrule_256435_manage: "{{ esxi_70_000083_manage | default(true) }}"
+esxi_v7r4_stigrule_256448_manage: "{{ esxi_70_000097_manage | default(true) }}"
+
+# =========================================================================
+# Other modules (NTP, acceptance level — no bulk_ok gate)
+# =========================================================================
+esxi_v7r4_stigrule_256409_manage: "{{ esxi_70_000046_manage | default(true) }}"
+esxi_v7r4_stigrule_256410_manage: "{{ esxi_70_000047_manage | default(true) }}"
+
+# =========================================================================
+# AD domain join (bulk_ok gated)
+# =========================================================================
+esxi_v7r4_stigrule_256402_manage: "{{ (esxi_70_000037_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# =========================================================================
+# Network / port group / vSwitch audit (bulk_ok gated)
+# =========================================================================
+esxi_v7r4_stigrule_256411_manage: "{{ (esxi_70_000048_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256412_manage: "{{ (esxi_70_000049_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256413_manage: "{{ (esxi_70_000050_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256420_manage: "{{ (esxi_70_000059_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256421_manage: "{{ (esxi_70_000060_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256422_manage: "{{ (esxi_70_000061_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256418_manage: "{{ (esxi_70_000057_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256424_manage: "{{ (esxi_70_000063_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256425_manage: "{{ (esxi_70_000064_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256426_manage: "{{ (esxi_70_000065_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# =========================================================================
+# Firmware / audit rules (mixed gating)
+# =========================================================================
+esxi_v7r4_stigrule_256427_manage: "{{ (esxi_70_000072_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256430_manage: "{{ (esxi_70_000076_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256431_manage: "{{ esxi_70_000078_manage | default(true) }}"
+esxi_v7r4_stigrule_256444_manage: "{{ (esxi_70_000092_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256445_manage: "{{ (esxi_70_000093_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256442_manage: "{{ (esxi_70_000090_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256446_manage: "{{ (esxi_70_000094_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256414_manage: "{{ (esxi_70_000053_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# =========================================================================
+# Remaining audit-only / manual rules (no bulk_ok gate)
+# =========================================================================
+esxi_v7r4_stigrule_256403_manage: "{{ esxi_70_000038_manage | default(true) }}"
+esxi_v7r4_stigrule_256428_manage: "{{ esxi_70_000070_manage | default(true) }}"
+
+# =========================================================================
+# SSH config rules
+# =========================================================================
+# FIPS SSH — uses stig_pwsh, gates on bulk_ok + ssh_checks
+esxi_v7r4_stigrule_256384_manage: "{{ (esxi_70_000010_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+
+# sshd_config rules — gate on ssh_checks + sshd_gather_ok
+esxi_v7r4_stigrule_256383_manage: "{{ (esxi_70_000009_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256385_manage: "{{ (esxi_70_000012_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256386_manage: "{{ (esxi_70_000013_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256387_manage: "{{ (esxi_70_000015_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256388_manage: "{{ (esxi_70_000016_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256389_manage: "{{ (esxi_70_000020_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256390_manage: "{{ (esxi_70_000021_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256391_manage: "{{ (esxi_70_000022_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256392_manage: "{{ (esxi_70_000023_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256393_manage: "{{ (esxi_70_000025_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256394_manage: "{{ (esxi_70_000026_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256395_manage: "{{ (esxi_70_000027_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256434_manage: "{{ (esxi_70_000082_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+esxi_v7r4_stigrule_256449_manage: "{{ (esxi_70_000274_manage | default(true)) and (esxi_stig_enable_ssh_checks | default(true)) and (_sshd_gather_ok | default(false)) }}"
+
+# =========================================================================
+# Explicit remediation rules (bulk_ok gated)
+# =========================================================================
+esxi_v7r4_stigrule_256375_manage: "{{ (esxi_70_000001_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256377_manage: "{{ (esxi_70_000003_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256415_manage: "{{ (esxi_70_000054_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+esxi_v7r4_stigrule_256417_manage: "{{ (esxi_70_000056_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"

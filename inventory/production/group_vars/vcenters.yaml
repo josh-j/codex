@@ -1,0 +1,4 @@
+---
+# Defaults for all vCenter hosts.
+# Per-host vmware_hostname/username/password are set in hosts.yaml.
+vmware_validate_certs: false

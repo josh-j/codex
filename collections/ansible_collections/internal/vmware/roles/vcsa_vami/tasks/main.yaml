@@ -2,7 +2,7 @@
 
 - name: Include VAMI
   ansible.builtin.include_tasks:
-    file: vami.yaml
+    file: stig_v1r4/vami.yaml
     apply:
       tags:
         - vami

@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: NCS
+  description: Collect vCenter inventory, health, and alarm data via REST API
+  company: NCS
+  license: proprietary
+  min_ansible_version: "2.10"
+  platforms:
+    - name: GenericUNIX
+      versions:
+        - all
+  galaxy_tags:
+    - vmware
+    - vcenter
+    - infrastructure
+    - collect
+
+dependencies: []

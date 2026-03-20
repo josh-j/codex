@@ -7,14 +7,8 @@
   gather_facts: false
   tags: ["ubuntu", "patching", "updates", "apply"]
   pre_tasks:
-    - name: Write SSH key to temp file
-      copy:
-        content: "{{ vault_logservers_private_key }}"
-        dest: /tmp/logservers_key
-        mode: "0600"
-      delegate_to: localhost
-      run_once: true
-      when: vault_logservers_private_key | default('') | trim | length > 0
+    - name: Prepare SSH key
+      ansible.builtin.include_tasks: _pre_ssh_key.yml
   roles:
     - role: internal.linux.ubuntu
       vars:

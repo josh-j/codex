@@ -1,0 +1,7 @@
+---
+# Defaults for all Ubuntu hosts.
+ansible_user: svc-ansible
+ansible_become: true
+ansible_become_method: sudo
+ansible_password: "{{ vault_ubuntu_server_password }}"
+ansible_become_password: "{{ vault_ubuntu_server_password }}"

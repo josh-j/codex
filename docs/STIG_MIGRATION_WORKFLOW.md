@@ -238,7 +238,7 @@ Critical setup tasks that run before any STIG rules:
 - name: "stigrule_256379"
   internal.core.stig:
     _stig_apply: community.vmware.vmware_host_config_manager
-    _stig_manage: "{{ (esxi_70_000005_Manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
+    _stig_manage: "{{ (esxi_70_000005_manage | default(true)) and (_esxi_bulk_ok | default(false)) }}"
     _stig_validate_expr:
       - var: _adv_Security_AccountLockFailures
         equals: "{{ esxi_stig_account_lock_failures | default(3) }}"

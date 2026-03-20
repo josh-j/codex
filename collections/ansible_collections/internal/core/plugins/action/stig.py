@@ -16,6 +16,7 @@ class ActionModule(ActionBase):
         "_stig_audit_only",
         "_stig_phase",
         "_stig_manage",
+        "_stig_manage_prefix",
         "_stig_gate",
         "_stig_gate_packages",
         "_stig_gate_services",
@@ -23,6 +24,7 @@ class ActionModule(ActionBase):
         "_stig_gate_files",
         "_stig_gate_vars",
         "_stig_remediation_errors",
+        "_stig_check",
         "_stig_validate",
         "_stig_validate_args",
         "_stig_validate_expr",
@@ -79,7 +81,23 @@ class ActionModule(ActionBase):
         if phase == "end":
             return self._run_end(raw_args, task_vars, result)
 
-        manage = self._to_bool(raw_args.pop("_stig_manage", True))
+        # Infer stig_id early so auto-manage lookup can use it.
+        explicit_stig_id = raw_args.pop("_stig_id", None)
+        stig_id = explicit_stig_id or self._infer_stig_id(self._task.get_name())
+
+        # Auto-resolve _stig_manage from host var when not explicitly provided.
+        raw_args.pop("_stig_manage_prefix", None)  # consumed by begin, strip here
+        manage_raw = raw_args.pop("_stig_manage", None)
+        if manage_raw is not None:
+            manage = self._to_bool(manage_raw)
+        else:
+            manage_prefix = str(task_vars.get("_stig_manage_prefix", "")).strip()
+            if manage_prefix and stig_id:
+                var_name = f"{manage_prefix}stigrule_{stig_id}_manage"
+                manage = self._to_bool(task_vars.get(var_name, True))
+            else:
+                manage = True
+
         if not manage:
             result_key = raw_args.pop("_stig_result_key", "stig")
             result.update(
@@ -98,13 +116,26 @@ class ActionModule(ActionBase):
             return result
 
         # Wrapper metadata
-        explicit_stig_id = raw_args.pop("_stig_id", None)
         audit_only = self._to_bool(raw_args.pop("_stig_audit_only", False))
         notify = raw_args.pop("_stig_notify", []) or []
+        stig_check = raw_args.pop("_stig_check", None)
         validate_module = raw_args.pop("_stig_validate", None)
         validate_args = raw_args.pop("_stig_validate_args", {}) or {}
         validate_expr = raw_args.pop("_stig_validate_expr", None)
-        use_check_mode_probe = self._to_bool(raw_args.pop("_stig_use_check_mode_probe", True))
+
+        # _stig_check is a shorthand: shell command where rc=0 = compliant.
+        if stig_check is not None:
+            if validate_module or validate_expr:
+                raise AnsibleActionFail(
+                    "_stig_check is mutually exclusive with _stig_validate / _stig_validate_expr."
+                )
+            validate_module = "ansible.builtin.shell"
+            validate_args = {"cmd": stig_check}
+            # _stig_check implies no check_mode probe.
+            raw_args.pop("_stig_use_check_mode_probe", None)
+            use_check_mode_probe = False
+        else:
+            use_check_mode_probe = self._to_bool(raw_args.pop("_stig_use_check_mode_probe", True))
         strict_verify = self._to_bool(raw_args.pop("_stig_strict_verify", False))
         na_reason = raw_args.pop("_stig_na_reason", None)
         gate_status = str(raw_args.pop("_stig_gate_status", "na")).strip().lower()
@@ -133,8 +164,6 @@ class ActionModule(ActionBase):
             gate.setdefault("files", gate_files)
         if gate_vars:
             gate.setdefault("vars", gate_vars)
-
-        stig_id = explicit_stig_id or self._infer_stig_id(self._task.get_name())
 
         gate_eval = self._evaluate_gate(gate=gate, task_vars=task_vars)
         if not gate_eval["passed"]:
@@ -389,6 +418,7 @@ class ActionModule(ActionBase):
         """Handle _stig_phase=begin — gather facts once and set active phase."""
         gather_list = list(raw_args.pop("_stig_begin_gather", []) or [])
         result_key = raw_args.pop("_stig_result_key", "stig")
+        manage_prefix = raw_args.pop("_stig_manage_prefix", "")
 
         # Strip remaining stig keys so they don't bleed into module args.
         for key in list(raw_args):
@@ -430,17 +460,25 @@ class ActionModule(ActionBase):
         # will override this when it calls begin with the correct phase.
         active_phase = str(raw_args.pop("_stig_active_phase", "audit")).strip().lower()
 
+        set_fact_args: dict[str, Any] = {"_stig_active_phase": active_phase}
+        if manage_prefix:
+            set_fact_args["_stig_manage_prefix"] = manage_prefix
+
         set_fact_result = self._run_module(
             module_name="ansible.builtin.set_fact",
-            module_args={"_stig_active_phase": active_phase},
+            module_args=set_fact_args,
             task_vars=task_vars,
         )
+
+        facts: dict[str, Any] = {"_stig_active_phase": active_phase}
+        if manage_prefix:
+            facts["_stig_manage_prefix"] = manage_prefix
 
         result.update(
             changed=False,
             failed=False,
             skipped=False,
-            ansible_facts={"_stig_active_phase": active_phase},
+            ansible_facts=facts,
             **{
                 result_key: self._build_stig_result(
                     task_vars=task_vars,

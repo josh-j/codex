@@ -1,0 +1,50 @@
+---
+# stig_v7r4/00_prelude.yaml — ESXi STIG initialization
+# Extracted from stig_v7r4/main.yaml for consistency with Ubuntu refactor pattern.
+
+- name: "ESXi STIG | Register target host for callback"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ _current_esxi_host }}"
+    _ncs_stig_target_type: "esxi"
+    _stig_active_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# PowerCLI connection preamble
+# =========================================================================
+- name: "ESXi STIG | Set PowerCLI preamble"
+  ansible.builtin.set_fact:
+    _pwsh_preamble: >-
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:\$false | Out-Null;
+      Set-PowerCLIConfiguration -ParticipateInCeip:\$false -Confirm:\$false | Out-Null;
+      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force -WarningAction SilentlyContinue | Out-Null;
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# Load manage flag aliases for _stig_manage_prefix auto-resolution
+# =========================================================================
+- name: "ESXi STIG | Load STIG defaults"
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/tasks/stig_v7r4/default.yaml"
+  tags:
+    - always
+
+- name: "ESXi STIG | Set manage prefix"
+  ansible.builtin.set_fact:
+    _stig_manage_prefix: "esxi_v7r4_"
+  changed_when: false
+  tags:
+    - always
+
+# =========================================================================
+# Pre-flight: unlock → bulk gather
+# =========================================================================
+- name: "ESXi STIG | Pre-flight unlock"
+  ansible.builtin.include_tasks: stig_v7r4/pre_stig.yaml
+  when: esxi_stig_pre_unlock | default(true) | bool
+
+- name: "ESXi STIG | Bulk PowerCLI gather"
+  ansible.builtin.include_tasks: stig_v7r4/pwsh_bulk_gather.yaml

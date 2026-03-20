@@ -1,0 +1,256 @@
+---
+# vmware_host_config_manager tasks — wrapped in internal.core.stig
+# Audit uses _stig_validate_expr against pre-gathered _adv_* facts.
+# Remediation still uses vmware_host_config_manager to apply changes.
+
+- block:
+    # --- V-256376 / ESXI-70-000002: DCUI.Access list ---
+    - name: "stigrule_256376"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_DCUI_Access
+            equals: "{{ esxi_stig_dcui_access | default('root') }}"
+        options:
+          DCUI.Access: "{{ esxi_stig_dcui_access | default('root') }}"
+
+    # --- V-256378 / ESXI-70-000004: Remote syslog ---
+    - name: "stigrule_256378"
+      internal.core.stig:
+        _stig_gate_vars:
+          esxi_stig_syslog_host: non-empty
+        _stig_validate_expr:
+          - var: _adv_Syslog_global_logHost
+            equals: "{{ esxi_stig_syslog_host }}"
+        options:
+          Syslog.global.logHost: "{{ esxi_stig_syslog_host }}"
+
+    # --- V-256379 / ESXI-70-000005: Account lock failures ---
+    - name: "stigrule_256379"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Security_AccountLockFailures
+            equals: "{{ esxi_stig_account_lock_failures | default(3) }}"
+        options:
+          Security.AccountLockFailures: "{{ esxi_stig_account_lock_failures | default(3) }}"
+
+    # --- V-256380 / ESXI-70-000006: Account unlock timeout ---
+    - name: "stigrule_256380"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Security_AccountUnlockTime
+            equals: "{{ esxi_stig_account_unlock_time | default(900) }}"
+        options:
+          Security.AccountUnlockTime: "{{ esxi_stig_account_unlock_time | default(900) }}"
+
+    # --- V-256381 / ESXI-70-000007: DoD welcome banner ---
+    - name: "stigrule_256381"
+      internal.core.stig:
+        _stig_gate_vars:
+          esxi_stig_welcome_message: non-empty
+        _stig_validate_expr:
+          - var: _adv_Annotations_WelcomeMessage
+            not_empty: true
+        options:
+          Annotations.WelcomeMessage: "{{ esxi_stig_welcome_message }}"
+
+    # --- V-256382 / ESXI-70-000008: SSH /etc/issue banner ---
+    - name: "stigrule_256382"
+      internal.core.stig:
+        _stig_gate_vars:
+          esxi_stig_ssh_banner: non-empty
+        _stig_validate_expr:
+          - var: _adv_Config_Etc_issue
+            not_empty: true
+        options:
+          Config.Etc.issue: "{{ esxi_stig_ssh_banner }}"
+
+    # --- V-256396 / ESXI-70-000030: Log level ---
+    - name: "stigrule_256396"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Config_HostAgent_log_level
+            equals: "{{ esxi_stig_log_level | default('info') }}"
+        options:
+          Config.HostAgent.log.level: "{{ esxi_stig_log_level | default('info') }}"
+
+    # --- V-256397 / ESXI-70-000031: Password complexity ---
+    - name: "stigrule_256397"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Security_PasswordQualityControl
+            equals: "{{ esxi_stig_password_quality | default('retry=3 min=disabled,disabled,disabled,disabled,15') }}"
+        options:
+          Security.PasswordQualityControl: "{{ esxi_stig_password_quality | default('retry=3 min=disabled,disabled,disabled,disabled,15') }}"
+
+    # --- V-256398 / ESXI-70-000032: Password history ---
+    - name: "stigrule_256398"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Security_PasswordHistory
+            equals: "{{ esxi_stig_password_history | default(5) }}"
+        options:
+          Security.PasswordHistory: "{{ esxi_stig_password_history | default(5) }}"
+
+    # --- V-256399 / ESXI-70-000034: MOB disabled ---
+    - name: "stigrule_256399"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Config_HostAgent_plugins_solo_enableMob
+            equals: "{{ esxi_stig_mob_enabled | default('false') }}"
+        options:
+          Config.HostAgent.plugins.solo.enableMob: "{{ esxi_stig_mob_enabled | default('false') }}"
+
+    # --- V-256404 / ESXI-70-000039: AD admin group ---
+    - name: "stigrule_256404"
+      internal.core.stig:
+        _stig_gate_vars:
+          esxi_stig_ad_admin_group: non-empty
+        _stig_validate_expr:
+          - var: _adv_Config_HostAgent_plugins_hostsvc_esxAdminsGroup
+            equals: "{{ esxi_stig_ad_admin_group }}"
+        options:
+          Config.HostAgent.plugins.hostsvc.esxAdminsGroup: "{{ esxi_stig_ad_admin_group }}"
+
+    # --- V-256405 / ESXI-70-000041: Shell interactive timeout ---
+    - name: "stigrule_256405"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_ESXiShellInteractiveTimeOut
+            equals: "{{ esxi_stig_shell_interactive_timeout | default(120) }}"
+        options:
+          UserVars.ESXiShellInteractiveTimeOut: "{{ esxi_stig_shell_interactive_timeout | default(120) }}"
+
+    # --- V-256406 / ESXI-70-000042: Shell timeout ---
+    - name: "stigrule_256406"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_ESXiShellTimeOut
+            equals: "{{ esxi_stig_shell_timeout | default(600) }}"
+        options:
+          UserVars.ESXiShellTimeOut: "{{ esxi_stig_shell_timeout | default(600) }}"
+
+    # --- V-256407 / ESXI-70-000043: DCUI timeout ---
+    - name: "stigrule_256407"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_DcuiTimeOut
+            equals: "{{ esxi_stig_dcui_timeout | default(120) }}"
+        options:
+          UserVars.DcuiTimeOut: "{{ esxi_stig_dcui_timeout | default(120) }}"
+
+    # --- V-256408 / ESXI-70-000045: Persistent logging ---
+    - name: "stigrule_256408"
+      internal.core.stig:
+        _stig_gate_vars:
+          esxi_stig_log_dir: non-empty
+        _stig_validate_expr:
+          - var: _adv_Syslog_global_logDir
+            equals: "{{ esxi_stig_log_dir }}"
+        options:
+          Syslog.global.logDir: "{{ esxi_stig_log_dir }}"
+
+    # --- V-256416 / ESXI-70-000055: Memory salting ---
+    - name: "stigrule_256416"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Mem_ShareForceSalting
+            equals: "{{ esxi_stig_share_force_salting | default(2) }}"
+        options:
+          Mem.ShareForceSalting: "{{ esxi_stig_share_force_salting | default(2) }}"
+
+    # --- V-256419 / ESXI-70-000058: BPDU filter ---
+    - name: "stigrule_256419"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Net_BlockGuestBPDU
+            equals: "{{ esxi_stig_block_guest_bpdu | default(1) }}"
+        options:
+          Net.BlockGuestBPDU: "{{ esxi_stig_block_guest_bpdu | default(1) }}"
+
+    # --- V-256423 / ESXI-70-000062: dvFilter bind IP ---
+    - name: "stigrule_256423"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Net_DVFilterBindIpAddress
+            equals: "{{ esxi_stig_dvfilter_bind_ip | default('') }}"
+        options:
+          Net.DVFilterBindIpAddress: "{{ esxi_stig_dvfilter_bind_ip | default('') }}"
+
+    # --- V-256429 / ESXI-70-000074: TLS 1.2 only ---
+    - name: "stigrule_256429"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_ESXiVPsDisabledProtocols
+            equals_unordered: "{{ esxi_stig_disabled_protocols | default('tlsv1,tlsv1.1,sslv3') }}"
+        options:
+          UserVars.ESXiVPsDisabledProtocols: "{{ esxi_stig_disabled_protocols | default('tlsv1,tlsv1.1,sslv3') }}"
+
+    # --- V-256432 / ESXI-70-000079: Shell warning not suppressed ---
+    - name: "stigrule_256432"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_SuppressShellWarning
+            equals: "{{ esxi_stig_suppress_shell_warning | default(0) }}"
+        options:
+          UserVars.SuppressShellWarning: "{{ esxi_stig_suppress_shell_warning | default(0) }}"
+
+    # --- V-256433 / ESXI-70-000081: HT warning not suppressed ---
+    - name: "stigrule_256433"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_SuppressHyperthreadWarning
+            equals: "{{ esxi_stig_suppress_ht_warning | default(0) }}"
+        options:
+          UserVars.SuppressHyperthreadWarning: "{{ esxi_stig_suppress_ht_warning | default(0) }}"
+
+    # --- V-256438 / ESXI-70-000086: Syslog SSL cert check ---
+    - name: "stigrule_256438"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Syslog_global_logCheckSSLCerts
+            equals: "{{ esxi_stig_syslog_check_ssl_certs | default('true') }}"
+        options:
+          Syslog.global.logCheckSSLCerts: "{{ esxi_stig_syslog_check_ssl_certs | default('true') }}"
+
+    # --- V-256439 / ESXI-70-000087: Volatile key destruction ---
+    - name: "stigrule_256439"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Mem_MemEagerZero
+            equals: "{{ esxi_stig_memory_eager_zero | default(1) }}"
+        options:
+          Mem.MemEagerZero: "{{ esxi_stig_memory_eager_zero | default(1) }}"
+
+    # --- V-256440 / ESXI-70-000088: API session timeout ---
+    - name: "stigrule_256440"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Config_HostAgent_vmacore_soap_sessionTimeout
+            equals: "{{ esxi_stig_api_session_timeout | default(30) }}"
+        options:
+          Config.HostAgent.vmacore.soap.sessionTimeout: "{{ esxi_stig_api_session_timeout | default(30) }}"
+
+    # --- V-256441 / ESXI-70-000089: Host client timeout ---
+    - name: "stigrule_256441"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_UserVars_HostClientSessionTimeout
+            equals: "{{ esxi_stig_host_client_timeout | default(600) }}"
+        options:
+          UserVars.HostClientSessionTimeout: "{{ esxi_stig_host_client_timeout | default(600) }}"
+
+    # --- V-256443 / ESXI-70-000091: Password max days ---
+    - name: "stigrule_256443"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _adv_Security_PasswordMaxDays
+            equals: "{{ esxi_stig_password_max_days | default(90) }}"
+        options:
+          Security.PasswordMaxDays: "{{ esxi_stig_password_max_days | default(90) }}"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: community.vmware.vmware_host_config_manager
+      _stig_use_check_mode_probe: false
+      _stig_skip_post_validate: true
+      esxi_hostname: "{{ _current_esxi_host }}"

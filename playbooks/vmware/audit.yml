@@ -11,11 +11,9 @@
   hosts: vcenters
   connection: local
   gather_facts: false
-  strategy: linear # ← add this
+  strategy: linear
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   roles:
-    - role: internal.vmware.vcenter
-      vars:
-        vcenter_action: collect
-        # Default thresholds are defined in roles/vcenter/defaults/main.yaml
+    - role: internal.vmware.vcenter_collect
+      # Default thresholds are defined in roles/vcenter_collect/defaults/main.yaml

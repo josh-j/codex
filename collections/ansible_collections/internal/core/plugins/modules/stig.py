@@ -32,10 +32,20 @@ options:
     default: audit
   _stig_manage:
     description:
-      - Whether this control is enabled.
+      - Whether this control is enabled. When omitted and C(_stig_manage_prefix)
+        is set (via C(_stig_phase=begin)), the plugin auto-resolves by looking up
+        C({prefix}stigrule_{id}_manage) in host/group vars, defaulting to C(true).
     required: false
     type: bool
     default: true
+  _stig_manage_prefix:
+    description:
+      - Variable name prefix for auto-resolving C(_stig_manage). Set once during
+        C(_stig_phase=begin) and stored as a host fact. For example, setting
+        C(stig_2404_) causes the plugin to look up
+        C(stig_2404_stigrule_{id}_manage) for each rule.
+    required: false
+    type: str
   _stig_gate:
     description:
       - Optional gate object with keys C(packages), C(services),
@@ -99,6 +109,15 @@ options:
     type: str
     choices: [warn, halt, ignore]
     default: warn
+  _stig_check:
+    description:
+      - Shorthand for a shell-based compliance check. Provide a shell command
+        where C(rc=0) means compliant. Automatically sets C(_stig_validate) to
+        C(ansible.builtin.shell), C(_stig_validate_args) to C({cmd: <command>}),
+        and C(_stig_use_check_mode_probe) to C(false). Mutually exclusive with
+        C(_stig_validate) and C(_stig_validate_expr).
+    required: false
+    type: str
   _stig_validate:
     description:
       - Optional validator module run after remediation to confirm compliance.
@@ -223,7 +242,7 @@ EXAMPLES = r"""
   internal.core.stig:
     _stig_apply: ansible.builtin.lineinfile
     _stig_phase: "{{ _ubuntu2404_stig_phase }}"
-    _stig_manage: "{{ ubuntu2404STIG_stigrule_270741_manage | default(true) }}"
+    _stig_manage: "{{ stig_2404_stigrule_270741_manage | default(true) }}"
     path: /etc/ssh/sshd_config
     regexp: '^\s*UsePAM\s+'
     line: 'UsePAM yes'
@@ -249,7 +268,28 @@ EXAMPLES = r"""
     _stig_apply: ansible.builtin.command
     cmd: ua enable fips --assume-yes
     _stig_gate_vars:
-      ubuntu2404STIG_stigrule_270744_pro_token: "non-empty"
+      stig_2404_stigrule_270744_pro_token: "non-empty"
+
+# _stig_check shorthand — shell command where rc=0 = compliant
+- name: "stigrule_270755"
+  internal.core.stig:
+    _stig_check: |
+      [ -z "$(ls -L -d /sys/class/net/*/wireless 2>/dev/null)" ]
+    cmd: |
+      set -eu
+      for iface in $(ls -L -d /sys/class/net/*/wireless 2>/dev/null \
+        | xargs -r dirname | xargs -r basename); do
+        ip link set "$iface" down || true
+      done
+
+# Auto-manage with prefix — begin sets the prefix, tasks omit _stig_manage
+- name: "Ubuntu STIG | Begin"
+  internal.core.stig:
+    _stig_phase: begin
+    _stig_manage_prefix: "stig_2404_"
+    _stig_begin_gather:
+      - package_facts
+      - service_facts
 
 # Lifecycle: end a STIG pass
 - name: "Ubuntu STIG | End"

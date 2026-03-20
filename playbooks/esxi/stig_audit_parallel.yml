@@ -1,0 +1,16 @@
+---
+# playbooks/esxi/stig_audit_parallel.yml
+- name: "ESXi STIG Audit (parallel per host)"
+  hosts: "{{ target_group | default('sdhm_esxi_hosts') }}"
+  connection: local
+  gather_facts: false
+  vars:
+    _current_esxi_host: "{{ inventory_hostname }}"
+    _vcenter_hostname: "{{ hostvars[inventory_hostname]['vcenter'] | default(groups[site ~ '_vcenters'] | first) }}"
+  roles:
+    - role: internal.vmware.common
+    - role: internal.vmware.esxi
+      vars:
+        esxi_stig_enable_hardening: false
+        esxi_stig_target_hosts:
+          - "{{ inventory_hostname }}"

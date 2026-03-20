@@ -1,0 +1,5 @@
+---
+# Defaults for all Photon OS (vCenter appliance) hosts.
+ansible_user: root
+ansible_become: false
+ansible_password: "{{ vault_vcenter_ssh_password }}"

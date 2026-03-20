@@ -7,8 +7,8 @@
 # =============================================================================
 # 0. PIPELINE BEHAVIOUR & ROLE CONFIG
 # =============================================================================
-vmware_stig_enable_hardening: false
-vmware_stig_enable_audit: true
+vm_stig_enable_hardening: false
+vm_stig_enable_audit: true
 vmware_stig_target: "vm"
 vm_stig_target_vms: []
 vm_action: stig
@@ -21,96 +21,96 @@ vm_action: stig
 # =============================================================================
 
 # --- V-256450 / VMCH-70-000001: Copy operations disabled ---
-vmch_70_000001_Manage: true
+vmch_70_000001_manage: true
 
 # --- V-256451 / VMCH-70-000002: Drag and drop disabled ---
-vmch_70_000002_Manage: true
+vmch_70_000002_manage: true
 
 # --- V-256452 / VMCH-70-000003: Paste operations disabled ---
-vmch_70_000003_Manage: true
+vmch_70_000003_manage: true
 
 # --- V-256453 / VMCH-70-000004: Disk shrinking disabled ---
-vmch_70_000004_Manage: true
+vmch_70_000004_manage: true
 
 # --- V-256454 / VMCH-70-000005: Disk wiping disabled ---
-vmch_70_000005_Manage: true
+vmch_70_000005_manage: true
 
 # --- V-256455 / VMCH-70-000006: Disk persistence (manual) ---
-vmch_70_000006_Manage: true
+vmch_70_000006_manage: true
 
 # --- V-256456 / VMCH-70-000007: HGFS file transfers disabled ---
-vmch_70_000007_Manage: true
+vmch_70_000007_manage: true
 
 # --- V-256457 / VMCH-70-000008: Floppy devices removed ---
 # DISABLED: Removing floppy devices can break VMs that use them for guest
 # customization specs, unattended installs, or answer files. Remediation
 # removes the device permanently — re-adding requires VM power-off.
-vmch_70_000008_Manage: false
+vmch_70_000008_manage: false
 
 # --- V-256458 / VMCH-70-000009: CD-ROM devices removed ---
 # DISABLED: Many VMs mount ISOs for VMware Tools installation, OS patching,
 # or application deployment. Removing the CD-ROM breaks these workflows
 # and the device cannot be re-added without powering off the VM.
-vmch_70_000009_Manage: false
+vmch_70_000009_manage: false
 
 # --- V-256459 / VMCH-70-000010: Parallel ports removed ---
-vmch_70_000010_Manage: true
+vmch_70_000010_manage: true
 
 # --- V-256460 / VMCH-70-000011: Serial ports removed ---
-vmch_70_000011_Manage: true
+vmch_70_000011_manage: true
 
 # --- V-256461 / VMCH-70-000012: USB controllers removed ---
 # DISABLED: Removing USB controllers breaks VMs using USB passthrough for
 # hardware dongles, smart cards, or CAC readers. The controller cannot be
 # re-added while the VM is powered on.
-vmch_70_000012_Manage: false
+vmch_70_000012_manage: false
 
 # --- V-256462 / VMCH-70-000013: Console connections limited ---
-vmch_70_000013_Manage: true
+vmch_70_000013_manage: true
 
 # --- V-256463 / VMCH-70-000015: VMX info messages limited ---
-vmch_70_000015_Manage: true
+vmch_70_000015_manage: true
 
 # --- V-256464 / VMCH-70-000016: Unauthorized device connection prevented ---
-vmch_70_000016_Manage: true
+vmch_70_000016_manage: true
 
 # --- V-256465 / VMCH-70-000017: Guest host info gathering disabled ---
-vmch_70_000017_Manage: true
+vmch_70_000017_manage: true
 
 # --- V-256466 / VMCH-70-000018: Shared salt values disabled ---
-vmch_70_000018_Manage: true
+vmch_70_000018_manage: true
 
 # --- V-256467 / VMCH-70-000019: dvFilter network API (manual) ---
-vmch_70_000019_Manage: true
+vmch_70_000019_manage: true
 
 # --- V-256468 / VMCH-70-000020: Template usage (manual) ---
-vmch_70_000020_Manage: true
+vmch_70_000020_manage: true
 
 # --- V-256469 / VMCH-70-000021: Console usage minimization (manual) ---
-vmch_70_000021_Manage: true
+vmch_70_000021_manage: true
 
 # --- V-256470 / VMCH-70-000022: Guest OS locks on console close ---
-vmch_70_000022_Manage: true
+vmch_70_000022_manage: true
 
 # --- V-256471 / VMCH-70-000023: 3D features disabled ---
 # DISABLED: Breaks VMs running GPU-accelerated workloads, Horizon VDI
 # desktops with 3D graphics, or CAD/visualization applications
-vmch_70_000023_Manage: false
+vmch_70_000023_manage: false
 
 # --- V-256472 / VMCH-70-000024: vMotion encryption required ---
-vmch_70_000024_Manage: true
+vmch_70_000024_manage: true
 
 # --- V-256473 / VMCH-70-000025: Logging enabled ---
-vmch_70_000025_Manage: true
+vmch_70_000025_manage: true
 
 # --- V-256474 / VMCH-70-000026: Log rotation size ---
-vmch_70_000026_Manage: true
+vmch_70_000026_manage: true
 
 # --- V-256475 / VMCH-70-000027: Log retention ---
-vmch_70_000027_Manage: true
+vmch_70_000027_manage: true
 
 # --- V-256476 / VMCH-70-000028: PCI passthrough disabled ---
-vmch_70_000028_Manage: true
+vmch_70_000028_manage: true
 
 # --- V-256477 / VMCH-70-000029: FT encryption required ---
-vmch_70_000029_Manage: true
+vmch_70_000029_manage: true

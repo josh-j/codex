@@ -1,9 +1,9 @@
 ---
 # check_verify.yaml — Phase 2 post-remediation re-audit
-# Always runs in check_mode regardless of vmware_stig_enable_hardening
+# Always runs in check_mode regardless of vm_stig_enable_hardening
 
 - name: "VM STIG | Verify each VM"
-  ansible.builtin.include_tasks: vm_v7r4.yaml
+  ansible.builtin.include_tasks: stig_v7r4/main.yaml
   loop: "{{ vm_stig_target_vms | reject('match', '^vCLS-') | list }}"
   loop_control:
     loop_var: _current_vm_name

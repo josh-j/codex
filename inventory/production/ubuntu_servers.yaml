@@ -1,0 +1,28 @@
+---
+all:
+  children:
+    ubuntu_servers:
+      children:
+        site1_ubuntu_servers:
+        site2_ubuntu_servers:
+        site3_ubuntu_servers:
+        site4_ubuntu_servers:
+        site5_ubuntu_servers:
+        site6_ubuntu_servers:
+
+    site1_ubuntu_servers:
+      hosts:
+        192.168.2.111:
+          ansible_user: josh
+          ansible_password: "{{ vault_ubuntu_server_password }}"
+          ansible_become_password: "{{ vault_ubuntu_server_password }}"
+    site2_ubuntu_servers:
+      hosts: {}
+    site3_ubuntu_servers:
+      hosts: {}
+    site4_ubuntu_servers:
+      hosts: {}
+    site5_ubuntu_servers:
+      hosts: {}
+    site6_ubuntu_servers:
+      hosts: {}

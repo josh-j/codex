@@ -2,7 +2,7 @@
 
 - name: Include Rhttpproxy
   ansible.builtin.include_tasks:
-    file: rhttpproxy.yaml
+    file: stig_v1r4/rhttpproxy.yaml
     apply:
       tags:
         - rhttpproxy

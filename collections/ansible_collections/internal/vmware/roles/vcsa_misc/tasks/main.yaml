@@ -2,7 +2,7 @@
 
 - name: Include Misc
   ansible.builtin.include_tasks:
-    file: misc.yaml
+    file: stig_v1r4/misc.yaml
     apply:
       tags:
         - misc

@@ -39,7 +39,7 @@
   block:
     - name: "Photon STIG | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks:
-        file: photon3.yaml
+        file: stig_photon3/main.yaml
         apply:
           check_mode: "{{ _stig_audit_only | bool }}"
           tags: [stig_task]
@@ -87,7 +87,7 @@
   block:
     - name: "Photon STIG | Phase 2a | Verify remediation (check_mode)"
       ansible.builtin.include_tasks:
-        file: photon3.yaml
+        file: stig_photon3/main.yaml
         apply:
           check_mode: true
           tags: [stig_task]

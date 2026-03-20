@@ -1,0 +1,24 @@
+---
+all:
+  children:
+    windows_servers:
+      children:
+        site1_windows_servers:
+        site2_windows_servers:
+        site3_windows_servers:
+        site4_windows_servers:
+        site5_windows_servers:
+        site6_windows_servers:
+
+    site1_windows_servers:
+      hosts: {}
+    site2_windows_servers:
+      hosts: {}
+    site3_windows_servers:
+      hosts: {}
+    site4_windows_servers:
+      hosts: {}
+    site5_windows_servers:
+      hosts: {}
+    site6_windows_servers:
+      hosts: {}

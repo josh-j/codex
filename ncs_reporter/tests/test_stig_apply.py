@@ -30,16 +30,16 @@ from ncs_reporter._stig_apply import (
 
 class TestRuleVersionToManageVar(unittest.TestCase):
     def test_canonical(self) -> None:
-        self.assertEqual(rule_version_to_manage_var("ESXI-70-000001"), "esxi_70_000001_Manage")
+        self.assertEqual(rule_version_to_manage_var("ESXI-70-000001"), "esxi_70_000001_manage")
 
     def test_trailing_zeros(self) -> None:
-        self.assertEqual(rule_version_to_manage_var("ESXI-70-000100"), "esxi_70_000100_Manage")
+        self.assertEqual(rule_version_to_manage_var("ESXI-70-000100"), "esxi_70_000100_manage")
 
     def test_all_digits(self) -> None:
-        # Ensure dashes become underscores and case is lowered before _Manage
+        # Ensure dashes become underscores and case is lowered before _manage
         result = rule_version_to_manage_var("ESXI-70-000035")
         self.assertTrue(result.startswith("esxi_70_"))
-        self.assertTrue(result.endswith("_Manage"))
+        self.assertTrue(result.endswith("_manage"))
 
 
 class TestLoadEsxiRuleMetadata(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestLoadEsxiRuleMetadata(unittest.TestCase):
         self.assertIsInstance(rule, RuleMetadata)
         self.assertEqual(rule.rule_version, "ESXI-70-000001")
         self.assertIn("lockdown", rule.rule_title.lower())
-        self.assertEqual(rule.manage_var, "esxi_70_000001_Manage")
+        self.assertEqual(rule.manage_var, "esxi_70_000001_manage")
 
     def test_severity_present(self) -> None:
         meta = load_esxi_rule_metadata()
@@ -72,7 +72,7 @@ class TestGenerateAllDisabledVars(unittest.TestCase):
         meta = load_esxi_rule_metadata()
         disabled = generate_all_disabled_vars(meta)
         for key in disabled:
-            self.assertTrue(key.endswith("_Manage"), f"Bad key: {key}")
+            self.assertTrue(key.endswith("_manage"), f"Bad key: {key}")
 
 
 class TestGetFailingRules(unittest.TestCase):
@@ -214,8 +214,8 @@ class TestBuildInteractivePlaybook(unittest.TestCase):
         plays = self._build([self._row("ESXI-70-000001")])
         # Play-level vars should have all 75 manage vars set to False
         play_vars = plays[0]["vars"]
-        self.assertFalse(play_vars["esxi_70_000001_Manage"])
-        self.assertFalse(play_vars["esxi_70_000002_Manage"])
+        self.assertFalse(play_vars["esxi_70_000001_manage"])
+        self.assertFalse(play_vars["esxi_70_000002_manage"])
 
     def test_three_tasks_per_rule(self) -> None:
         # 3 tasks per rule: pause (with banner in prompt), abort-fail, include_role
@@ -232,7 +232,7 @@ class TestBuildInteractivePlaybook(unittest.TestCase):
     def test_apply_task_enables_only_target_rule(self) -> None:
         plays = self._build([self._row("ESXI-70-000001")])
         apply_task = plays[0]["tasks"][2]  # 3rd task: include_role
-        self.assertTrue(apply_task["vars"]["esxi_70_000001_Manage"])
+        self.assertTrue(apply_task["vars"]["esxi_70_000001_manage"])
 
     def test_apply_task_has_when_condition(self) -> None:
         plays = self._build([self._row("ESXI-70-000001")])
@@ -256,7 +256,7 @@ class TestBuildInteractivePlaybook(unittest.TestCase):
         plays = self._build([row])
         # V-256375 → ESXI-70-000001
         apply_task = plays[0]["tasks"][2]
-        self.assertTrue(apply_task["vars"]["esxi_70_000001_Manage"])
+        self.assertTrue(apply_task["vars"]["esxi_70_000001_manage"])
 
 
 class TestInferRuleVersion(unittest.TestCase):
@@ -301,9 +301,9 @@ class TestBuildAnsibleArgs(unittest.TestCase):
     def test_basic_structure(self) -> None:
         args = build_ansible_args(
             playbook="playbooks/vmware_stig_remediate.yml",
-            inventory="inventory/production/hosts.yaml",
+            inventory="inventory/production/",
             limit="vcenter1",
-            manage_var="esxi_70_000001_Manage",
+            manage_var="esxi_70_000001_manage",
             all_disabled_file="/tmp/disabled.yaml",
             esxi_host="esxi-01.local",
         )
@@ -312,8 +312,8 @@ class TestBuildAnsibleArgs(unittest.TestCase):
         self.assertIn("-l", args)
         self.assertIn("vcenter1", args)
         self.assertIn("-e@/tmp/disabled.yaml", args)
-        self.assertIn("-eesxi_70_000001_Manage=true", args)
-        self.assertIn("-evmware_stig_enable_hardening=true", args)
+        self.assertIn("-eesxi_70_000001_manage=true", args)
+        self.assertIn("-eesxi_stig_enable_hardening=true", args)
         self.assertIn("-eesxi_stig_target_hosts=['esxi-01.local']", args)
 
     def test_skip_tags_included(self) -> None:
@@ -321,7 +321,7 @@ class TestBuildAnsibleArgs(unittest.TestCase):
             playbook="p.yml",
             inventory="i.yaml",
             limit="vc1",
-            manage_var="esxi_70_000001_Manage",
+            manage_var="esxi_70_000001_manage",
             all_disabled_file="/tmp/d.yaml",
             esxi_host="esxi-01.local",
             skip_tags=["snapshot", "vm"],
@@ -334,7 +334,7 @@ class TestBuildAnsibleArgs(unittest.TestCase):
             playbook="p.yml",
             inventory="i.yaml",
             limit="vc1",
-            manage_var="esxi_70_000001_Manage",
+            manage_var="esxi_70_000001_manage",
             all_disabled_file="/tmp/d.yaml",
             esxi_host="esxi-01.local",
             extra_vars=("foo=bar", "baz=qux"),
@@ -350,7 +350,7 @@ class TestBuildAnsibleArgs(unittest.TestCase):
             playbook="p.yml",
             inventory="i.yaml",
             limit="vc1",
-            manage_var="esxi_70_000035_Manage",
+            manage_var="esxi_70_000035_manage",
             all_disabled_file="/tmp/d.yaml",
             esxi_host="esxi-02.site1.local",
         )
@@ -388,7 +388,7 @@ class TestGenericTargetHelpers(unittest.TestCase):
     def test_resolve_generic_apply_plan(self) -> None:
         self.assertEqual(
             resolve_generic_apply_plan("vcsa"),
-            ("playbooks/vmware_vcsa_stig_remediate.yml", "vcenter_stig_target_hosts"),
+            ("playbooks/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
         )
         self.assertEqual(
             resolve_generic_apply_plan("photon"),
@@ -398,7 +398,7 @@ class TestGenericTargetHelpers(unittest.TestCase):
     def test_build_generic_apply_args_includes_target_var(self) -> None:
         args = build_generic_apply_args(
             playbook="playbooks/photon_stig_remediate.yml",
-            inventory="inventory/production/hosts.yaml",
+            inventory="inventory/production/",
             limit="linux",
             target_var="photon_target_hosts",
             target_host="photon-01.local",
@@ -481,7 +481,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         self.assertIn("DRY-RUN", result.output)
         # Generated YAML should contain the rule's manage var and the esxi host
-        self.assertIn("esxi_70_000001_Manage", result.output)
+        self.assertIn("esxi_70_000001_manage", result.output)
         self.assertIn("esxi_stig_target_hosts", result.output)
         self.assertIn("esxi-01.local", result.output)
         # Generated YAML should include the apply role task
@@ -510,7 +510,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
         # V-256375 maps to ESXI-70-000001 via the skeleton group_id map
-        self.assertIn("esxi_70_000001_Manage", result.output)
+        self.assertIn("esxi_70_000001_manage", result.output)
         self.assertNotIn("Could not determine rule_version", result.output)
 
     def test_snapshot_note_shown_without_skip_snapshot(self) -> None:
@@ -711,7 +711,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vmware_vm_stig_remediate.yml", result.output)
+        self.assertIn("playbooks/vm/stig_remediate.yml", result.output)
         self.assertIn("vm_stig_target_vms=['app01.example.local']", result.output)
 
     def test_vcsa_dry_run_generates_vcsa_remediation_command(self) -> None:
@@ -737,8 +737,8 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vmware_vcsa_stig_remediate.yml", result.output)
-        self.assertIn("vcenter_stig_target_hosts=['vcsa01.example.local']", result.output)
+        self.assertIn("playbooks/vcsa/stig_remediate.yml", result.output)
+        self.assertIn("vcsa_stig_target_hosts=['vcsa01.example.local']", result.output)
 
     def test_photon_dry_run_generates_photon_remediation_command(self) -> None:
         from click.testing import CliRunner
