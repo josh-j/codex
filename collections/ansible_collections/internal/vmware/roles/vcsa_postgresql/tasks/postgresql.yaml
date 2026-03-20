@@ -1,5 +1,552 @@
 ---
 
-- name: Include migrated PostgreSQL STIG implementation
-  ansible.builtin.include_tasks:
-    file: postgresql_stig_migrated.yaml
+- name: "PostgreSQL | Create backup timestamp"
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "PostgreSQL | Backup config files"
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-postgresql-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  loop:
+    - "{{ var_postgres_conf_file }}"
+    - "{{ var_postgres_hba_conf_file }}"
+    - "{{ var_syslog_conf_path }}"
+    - "{{ var_syslog_conf_path2 }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCPG-70-000003 | Discover PostgreSQL config files"
+  ansible.builtin.find:
+    paths: /storage/db/vpostgres
+    file_type: file
+    patterns: "*conf*"
+  register: _vcpg_conf_files
+  when: run_postgres_conf_file_permissions | bool
+
+- name: "VCPG-70-000003 | Normalize PostgreSQL config file permissions"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: file
+    mode: "0600"
+    owner: vpostgres
+    group: vpgmongrp
+  loop: "{{ _vcpg_conf_files.files | default([]) }}"
+  when:
+    - run_postgres_conf_file_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCPG-70-000005 | Discover PostgreSQL log files"
+  ansible.builtin.find:
+    paths: "{{ var_postgres_log_path }}"
+    file_type: file
+    patterns: "*"
+  register: _vcpg_log_files
+  when: run_postgres_log_file_permissions | bool
+
+- name: "VCPG-70-000005 | Normalize PostgreSQL log file permissions"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: file
+    mode: "0600"
+    owner: vpostgres
+    group: vpgmongrp
+  loop: "{{ _vcpg_log_files.files | default([]) }}"
+  when:
+    - run_postgres_log_file_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCPG-70-000012 | Normalize server.key permissions"
+  ansible.builtin.file:
+    path: /storage/db/vpostgres_ssl/server.key
+    state: file
+    mode: "0600"
+    owner: vpostgres
+    group: vpgmongrp
+  when:
+    - run_postgres_key_file_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCPG-70-000019 | Deploy vmware-services-vmware-postgres-archiver.conf"
+  ansible.builtin.template:
+    src: vmware-services-vmware-postgres-archiver.conf
+    dest: "{{ var_syslog_conf_path2 }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_postgres_syslog_config | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "VCPG-70-000019 | Deploy vmware-services-vmware-vpostgres.conf"
+  ansible.builtin.template:
+    src: vmware-services-vmware-vpostgres.conf
+    dest: "{{ var_syslog_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_postgres_syslog_config | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "VCPG-70-000007 | Normalize PostgreSQL create privileges"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    changed=0
+
+    if [ "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "select rolcreatedb from pg_roles where rolname='vc';")" != "t" ]; then
+      /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER ROLE vc CREATEDB;"
+      changed=1
+    fi
+
+    if [ "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "select rolcreatedb from pg_roles where rolname='vlcmuser';")" != "t" ]; then
+      /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER ROLE vlcmuser CREATEDB;"
+      changed=1
+    fi
+
+    if /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "select 1 from pg_auth_members am join pg_roles role on am.roleid = role.oid join pg_roles member on am.member = member.oid where member.rolname='vlcmuser' and role.rolname='pg_monitor';" | grep -qx '1'; then
+      /opt/vmware/vpostgres/current/bin/psql -U postgres -c "REVOKE pg_monitor FROM vlcmuser;"
+      changed=1
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+      echo changed
+    fi
+  args:
+    executable: /bin/bash
+  register: _vcpg_role_privs
+  changed_when: "'changed' in (_vcpg_role_privs.stdout | default(''))"
+  when:
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCPG-70-000020 | Normalize log_timezone"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_timezone;")" != "{{ var_postgres_conf_log_timezone }}" ]; then
+      /opt/vmware/vpostgres/current/bin/psql -U postgres -c "ALTER SYSTEM SET log_timezone = '{{ var_postgres_conf_log_timezone }}';"
+      echo changed
+    fi
+  args:
+    executable: /bin/bash
+  register: _vcpg_log_timezone
+  changed_when: "'changed' in (_vcpg_log_timezone.stdout | default(''))"
+  when:
+    - run_postgres_conf_log_timezone | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - reload vpostgres config
+
+- name: "stigrule_VCPG-70-000001"
+  internal.core.stig:
+    _stig_id: VCPG-70-000001
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          set -eu
+          value="$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW max_connections;")"
+          [ "$value" -ge 100 ] && [ "$value" -le 1000 ]
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000002"
+  internal.core.stig:
+    _stig_id: VCPG-70-000002
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_log_line_prefix | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_line_prefix;")" = '{{ var_postgres_conf_log_line_prefix }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET log_line_prefix = '{{ var_postgres_conf_log_line_prefix }}';"
+
+- name: "stigrule_VCPG-70-000003"
+  internal.core.stig:
+    _stig_id: VCPG-70-000003
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_conf_file_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(find /storage/db/vpostgres/*conf* -xdev -type f -a '(' -not -perm 600 -o -not -user vpostgres -o -not -group vpgmongrp ')' -exec ls -ld {} \;)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000004"
+  internal.core.stig:
+    _stig_id: VCPG-70-000004
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_log_truncate_on_rotation | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_truncate_on_rotation;")" = '{{ var_postgres_conf_log_truncate_on_rotation }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET log_truncate_on_rotation = '{{ var_postgres_conf_log_truncate_on_rotation }}';"
+
+- name: "stigrule_VCPG-70-000005"
+  internal.core.stig:
+    _stig_id: VCPG-70-000005
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_log_file_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(find /var/log/vmware/vpostgres/* -xdev -type f -a '(' -not -perm 600 -o -not -user vpostgres -o -not -group vpgmongrp ')' -exec ls -ld {} \;)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000006"
+  internal.core.stig:
+    _stig_id: VCPG-70-000006
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(/opt/vmware/vpostgres/current/bin/psql -d VCDB -U postgres -t -A -c "\dt;" | grep -v 'table|vc' || true)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000007"
+  internal.core.stig:
+    _stig_id: VCPG-70-000007
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          create_lines="$(/opt/vmware/vpostgres/current/bin/psql -U postgres -c "\du;" | grep "Create" || true)"
+          printf '%s\n' "$create_lines" | grep -Eq '^\s*postgres\s+\| Superuser, Create role, Create DB, Replication, Bypass RLS \| \{\}$'
+          printf '%s\n' "$create_lines" | grep -Eq '^\s*vc\s+\| Create DB\s+\| \{\}$'
+          printf '%s\n' "$create_lines" | grep -Eq '^\s*vlcmuser\s+\| Create DB\s+\| \{\}$'
+          test "$(printf '%s\n' "$create_lines" | sed '/^\s*$/d' | wc -l)" -eq 3
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000008"
+  internal.core.stig:
+    _stig_id: VCPG-70-000008
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_port | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW port;")" = '{{ var_postgres_conf_port }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET port = '{{ var_postgres_conf_port }}';"
+
+- name: "stigrule_VCPG-70-000009"
+  internal.core.stig:
+    _stig_id: VCPG-70-000009
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_hba_conf_local_trust | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(grep -v "^#" /storage/db/vpostgres/pg_hba.conf | grep trust || true)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000010"
+  internal.core.stig:
+    _stig_id: VCPG-70-000010
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_ps_encryption | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW password_encryption;")" = '{{ var_postgres_conf_pw_encryption }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET password_encryption = '{{ var_postgres_conf_pw_encryption }}';"
+
+- name: "stigrule_VCPG-70-000011"
+  internal.core.stig:
+    _stig_id: VCPG-70-000011
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_ssl | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW ssl;")" = '{{ var_postgres_conf_ssl }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET ssl = '{{ var_postgres_conf_ssl }}';"
+
+- name: "stigrule_VCPG-70-000012"
+  internal.core.stig:
+    _stig_id: VCPG-70-000012
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_postgres_key_file_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(stat -c "%a:%U:%G" /storage/db/vpostgres_ssl/server.key)" = '600:vpostgres:vpgmongrp'
+    path: /storage/db/vpostgres_ssl/server.key
+    state: file
+    mode: "0600"
+    owner: vpostgres
+    group: vpgmongrp
+
+- name: "stigrule_VCPG-70-000013"
+  internal.core.stig:
+    _stig_id: VCPG-70-000013
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_ssl_ciphers | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW ssl_ciphers;")" = '{{ var_postgres_conf_ssl_ciphers }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET ssl_ciphers = '{{ var_postgres_conf_ssl_ciphers }}';"
+
+- name: "stigrule_VCPG-70-000014"
+  internal.core.stig:
+    _stig_id: VCPG-70-000014
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_conf_write_log_entries | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          output="$(
+            /opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SELECT name,setting FROM pg_settings WHERE name IN ('fsync','full_page_writes','synchronous_commit');"
+          )"
+          printf '%s\n' "$output" | grep -Fxq 'fsync|on'
+          printf '%s\n' "$output" | grep -Fxq 'full_page_writes|on'
+          printf '%s\n' "$output" | grep -Fxq 'synchronous_commit|on'
+    cmd: "true"
+
+- name: "VCPG-70-000014 | Normalize fsync/full_page_writes/synchronous_commit"
+  ansible.builtin.command:
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "{{ item }}"
+  loop:
+    - "ALTER SYSTEM SET fsync = '{{ var_postgres_conf_fsync }}';"
+    - "ALTER SYSTEM SET full_page_writes = '{{ var_postgres_conf_full_page_writes }}';"
+    - "ALTER SYSTEM SET synchronous_commit = '{{ var_postgres_conf_synchronous_commit }}';"
+  when:
+    - run_postgres_conf_write_log_entries | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - reload vpostgres config
+
+- name: "stigrule_VCPG-70-000015"
+  internal.core.stig:
+    _stig_id: VCPG-70-000015
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -c "\dp .*.;" | grep -E "information_schema|pg_catalog" | awk -F '|' '{print $4}' | awk -F '/' '{print $1}' | grep -v '=r' | grep -v '^[[:space:]]*$' | grep -v postgres || true)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000016"
+  internal.core.stig:
+    _stig_id: VCPG-70-000016
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_client_min_messages | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW client_min_messages;")" = '{{ var_postgres_conf_client_min_messages }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET client_min_messages = '{{ var_postgres_conf_client_min_messages }}';"
+
+- name: "stigrule_VCPG-70-000017"
+  internal.core.stig:
+    _stig_id: VCPG-70-000017
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_logging_collector | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW logging_collector;")" = '{{ var_postgres_conf_logging_collector }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET logging_collector = '{{ var_postgres_conf_logging_collector }}';"
+
+- name: "stigrule_VCPG-70-000018"
+  internal.core.stig:
+    _stig_id: VCPG-70-000018
+    _stig_apply: ansible.builtin.command
+    _stig_manage: "{{ run_postgres_conf_log_destination | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_destination;")" = '{{ var_postgres_conf_log_destination }}'
+    argv:
+      - /opt/vmware/vpostgres/current/bin/psql
+      - -U
+      - postgres
+      - -c
+      - "ALTER SYSTEM SET log_destination = '{{ var_postgres_conf_log_destination }}';"
+
+- name: "stigrule_VCPG-70-000019"
+  internal.core.stig:
+    _stig_id: VCPG-70-000019
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_syslog_config | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test -z "$(rpm -V VMware-Postgres-cis-visl-scripts 2>/dev/null | grep -E 'vmware-services-vmware-vpostgres.conf|vmware-services-vmware-postgres-archiver.conf' | grep '^..5......' || true)"
+    cmd: "true"
+
+- name: "stigrule_VCPG-70-000020"
+  internal.core.stig:
+    _stig_id: VCPG-70-000020
+    _stig_apply: ansible.builtin.command
+    _stig_audit_only: true
+    _stig_manage: "{{ run_postgres_conf_log_timezone | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [reload vpostgres config]
+    _stig_validate: ansible.builtin.command
+    _stig_validate_args:
+      argv:
+        - /bin/bash
+        - -lc
+        - |
+          test "$(/opt/vmware/vpostgres/current/bin/psql -U postgres -A -t -c "SHOW log_timezone;")" = '{{ var_postgres_conf_log_timezone }}'
+    argv: [/bin/true]

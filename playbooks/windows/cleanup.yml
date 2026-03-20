@@ -1,0 +1,12 @@
+---
+# playbooks/windows/cleanup.yml
+# Machine cleanup — temp files and stale user profile removal.
+
+- name: "Windows | Machine Cleanup"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, cleanup]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: cleanup

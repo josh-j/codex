@@ -1,0 +1,12 @@
+---
+# playbooks/windows/winrm_enable.yml
+# Enable and configure WinRM on targets.
+
+- name: "Windows | WinRM Enable"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, winrm]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: winrm_enable

@@ -1,0 +1,100 @@
+---
+# internal.windows.windows : tasks/remote_ops.yaml
+# Quick remote operations: reboot, shutdown, logoff, gpupdate, message, uptime.
+
+- name: "Remote Ops | Reboot"
+  when: windows_remote_op == 'reboot'
+  block:
+    - name: "Remote Ops | Cancel pending shutdown"
+      ansible.windows.win_shell: shutdown /a
+      ignore_errors: true
+      changed_when: false
+
+    - name: "Remote Ops | Restart computer"
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        pre_reboot_delay: "{{ windows_remote_reboot_delay }}"
+
+- name: "Remote Ops | Shutdown"
+  ansible.windows.win_powershell:
+    script: |
+      Stop-Computer -Force
+  when: windows_remote_op == 'shutdown'
+
+- name: "Remote Ops | Logoff users"
+  ansible.windows.win_powershell:
+    script: |
+      $sessions = query user 2>&1
+      $results = @()
+      foreach ($line in ($sessions | Select-Object -Skip 1)) {
+        if ($line -match '^\s*(\S+)\s+.*\s+(\d+)\s+') {
+          $user = $Matches[1]
+          $id = $Matches[2]
+          logoff $id /server:localhost
+          $results += @{ user = $user; session_id = $id; logged_off = $true }
+        }
+      }
+      @($results) | ConvertTo-Json -Compress
+  register: _logoff_result
+  when: windows_remote_op == 'logoff'
+  changed_when: false
+
+- name: "Remote Ops | GPUpdate"
+  ansible.windows.win_powershell:
+    script: |
+      $result = @{ success = $false; output = '' }
+      try {
+        $output = gpupdate /force 2>&1
+        $result.output = ($output | Out-String).Trim()
+        $result.success = $true
+      } catch {
+        $result.output = $_.Exception.Message
+      }
+      $result | ConvertTo-Json -Compress
+  register: _gpupdate_result
+  when: windows_remote_op == 'gpupdate'
+  changed_when: false
+
+- name: "Remote Ops | Send message"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$Message)
+      msg * /server:localhost $Message
+      @{ sent = $true; message = $Message } | ConvertTo-Json -Compress
+    parameters:
+      Message: "{{ windows_remote_message }}"
+  register: _message_result
+  when:
+    - windows_remote_op == 'message'
+    - windows_remote_message | length > 0
+
+- name: "Remote Ops | Get uptime"
+  ansible.windows.win_powershell:
+    script: |
+      $os = Get-CimInstance Win32_OperatingSystem
+      $uptime = (Get-Date) - $os.LastBootUpTime
+      @{
+        last_boot  = $os.LastBootUpTime.ToString('o')
+        uptime     = "$($uptime.Days)d $($uptime.Hours)h $($uptime.Minutes)m"
+        days       = $uptime.Days
+        hours      = [math]::Round($uptime.TotalHours, 1)
+      } | ConvertTo-Json -Compress
+  register: _uptime_result
+  when: windows_remote_op == 'uptime'
+  changed_when: false
+
+- name: "Remote Ops | Emit telemetry"
+  ansible.builtin.set_stats:
+    data:
+      ncs_collect:
+        platform: "windows"
+        name: "remote_ops"
+        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+        payload:
+          operation: "{{ windows_remote_op }}"
+          logoff: "{{ _logoff_result.output[0] | default('[]') | from_json }}"
+          gpupdate: "{{ _gpupdate_result.output[0] | default('{}') | from_json }}"
+          message: "{{ _message_result.output[0] | default('{}') | from_json }}"
+          uptime: "{{ _uptime_result.output[0] | default('{}') | from_json }}"
+    per_host: true
+  changed_when: false

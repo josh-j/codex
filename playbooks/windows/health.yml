@@ -1,0 +1,14 @@
+---
+# playbooks/windows/health.yml
+# Comprehensive system health check for Windows fleet.
+# Collects OS info, disk, memory/CPU, services, network, reboot pending,
+# event logs, secure channel, and software inventory.
+
+- name: "Windows | System Health Check"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, health]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: health

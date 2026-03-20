@@ -1,0 +1,39 @@
+---
+# updates/general.yaml — Generic app updates via winget
+
+- name: "Update Software | General | Update all via winget"
+  ansible.windows.win_powershell:
+    script: |
+      $result = @{ app = 'winget-all'; before = ''; after = ''; success = $false; message = '' }
+
+      $winget = Get-Command winget -ErrorAction SilentlyContinue
+      if (-not $winget) {
+        $result.message = 'winget not available'
+        $result | ConvertTo-Json -Compress
+        return
+      }
+
+      try {
+        # List available upgrades
+        $upgrades = winget upgrade --accept-source-agreements 2>&1
+        $result.before = ($upgrades | Out-String).Trim()
+
+        # Perform upgrade all
+        $proc = Start-Process 'winget' -ArgumentList 'upgrade --all --silent --accept-source-agreements --accept-package-agreements' -Wait -PassThru -NoNewWindow
+        $result.success = ($proc.ExitCode -eq 0)
+        $result.message = "winget upgrade --all exit code: $($proc.ExitCode)"
+
+        # Check remaining upgrades
+        $remaining = winget upgrade --accept-source-agreements 2>&1
+        $result.after = ($remaining | Out-String).Trim()
+      } catch {
+        $result.message = "Error: $($_.Exception.Message)"
+      }
+      $result | ConvertTo-Json -Compress
+  register: _general_update_result
+  changed_when: false
+
+- name: "Update Software | General | Stage result"
+  ansible.builtin.set_fact:
+    _update_software_results: "{{ _update_software_results | default([]) + [_general_update_result.output[0] | from_json] }}"
+  changed_when: false

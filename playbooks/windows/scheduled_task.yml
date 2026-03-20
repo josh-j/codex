@@ -1,0 +1,12 @@
+---
+# playbooks/windows/scheduled_task.yml
+# Remote scheduled task management — list, run, enable, disable, delete.
+
+- name: "Windows | Scheduled Task Management"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, scheduled_task]
+  roles:
+    - role: internal.windows.windows
+      vars:
+        windows_action: scheduled_task

@@ -1,0 +1,108 @@
+---
+# internal.windows.windows : tasks/cleanup.yaml
+# Machine cleanup — temp files and stale profile removal.
+
+- name: "Cleanup | Orchestrator"
+  vars:
+    _cleanup_failed: false
+  block:
+    # --- Temp File Cleanup ---
+    - name: "Cleanup | Temp Files | Remove temporary files"
+      ansible.windows.win_powershell:
+        script: |
+          $results = @{ paths_cleaned = @(); total_freed_mb = 0; errors = @() }
+          $targets = @(
+            $env:TEMP,
+            'C:\Windows\Temp',
+            'C:\Windows\SoftwareDistribution\Download'
+          )
+          # Add per-user temp dirs
+          Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $userTemp = Join-Path $_.FullName 'AppData\Local\Temp'
+            if (Test-Path $userTemp) { $targets += $userTemp }
+          }
+
+          foreach ($path in $targets) {
+            if (-not (Test-Path $path)) { continue }
+            $before = (Get-ChildItem $path -Recurse -Force -ErrorAction SilentlyContinue |
+              Measure-Object -Property Length -Sum).Sum / 1MB
+            try {
+              Get-ChildItem $path -Recurse -Force -ErrorAction SilentlyContinue |
+                Where-Object { -not $_.PSIsContainer } |
+                Remove-Item -Force -ErrorAction SilentlyContinue
+              Get-ChildItem $path -Recurse -Force -Directory -ErrorAction SilentlyContinue |
+                Sort-Object { $_.FullName.Length } -Descending |
+                Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+            } catch {}
+            $after = (Get-ChildItem $path -Recurse -Force -ErrorAction SilentlyContinue |
+              Measure-Object -Property Length -Sum).Sum / 1MB
+            $freed = [math]::Round($before - $after, 2)
+            $results.paths_cleaned += @{ path = $path; freed_mb = $freed }
+            $results.total_freed_mb += $freed
+          }
+          $results.total_freed_mb = [math]::Round($results.total_freed_mb, 2)
+          $results | ConvertTo-Json -Depth 2 -Compress
+      register: _cleanup_temp_result
+      when: windows_cleanup_temp | bool
+      changed_when: false
+
+    # --- Stale Profile Cleanup ---
+    - name: "Cleanup | Profiles | Remove stale user profiles"
+      ansible.windows.win_powershell:
+        script: |
+          param([int]$InactiveDays)
+          $cutoff = (Get-Date).AddDays(-$InactiveDays)
+          $results = @{ profiles_removed = @(); profiles_skipped = @() }
+
+          # Get profiles from registry
+          $profileList = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList' -ErrorAction SilentlyContinue
+          foreach ($entry in $profileList) {
+            $sid = $entry.PSChildName
+            $profilePath = (Get-ItemProperty $entry.PSPath -ErrorAction SilentlyContinue).ProfileImagePath
+            if (-not $profilePath -or -not (Test-Path $profilePath)) { continue }
+
+            # Skip system profiles
+            if ($profilePath -match '(systemprofile|LocalService|NetworkService|Public|Default)') { continue }
+
+            # Check last use time via NTUser.dat modification
+            $ntuser = Join-Path $profilePath 'NTUSER.DAT'
+            if (Test-Path $ntuser) {
+              $lastMod = (Get-Item $ntuser -Force).LastWriteTime
+              if ($lastMod -lt $cutoff) {
+                try {
+                  $cimProfile = Get-CimInstance Win32_UserProfile -Filter "SID='$sid'" -ErrorAction Stop
+                  Remove-CimInstance $cimProfile -ErrorAction Stop
+                  $results.profiles_removed += @{ path = $profilePath; last_used = $lastMod.ToString('o') }
+                } catch {
+                  $results.profiles_skipped += @{ path = $profilePath; reason = $_.Exception.Message }
+                }
+              }
+            }
+          }
+          $results | ConvertTo-Json -Depth 2 -Compress
+        parameters:
+          InactiveDays: "{{ windows_cleanup_profile_days }}"
+      register: _cleanup_profiles_result
+      when: windows_cleanup_profiles | bool
+      changed_when: false
+
+  rescue:
+    - name: "Cleanup | Mark failure"
+      ansible.builtin.set_fact:
+        _cleanup_failed: true
+      changed_when: false
+
+  always:
+    - name: "Cleanup | Emit telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect:
+            platform: "windows"
+            name: "cleanup"
+            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+            payload:
+              temp: "{{ _cleanup_temp_result.output[0] | default('{}') | from_json }}"
+              profiles: "{{ _cleanup_profiles_result.output[0] | default('{}') | from_json }}"
+              failed: "{{ _cleanup_failed | bool }}"
+        per_host: true
+      changed_when: false

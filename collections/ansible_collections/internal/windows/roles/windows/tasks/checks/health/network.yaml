@@ -1,0 +1,21 @@
+---
+# checks/health/network.yaml — Network adapter information
+
+- name: "Health | Network | Gather adapters"
+  ansible.windows.win_powershell:
+    script: |
+      $adapters = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" |
+        Select-Object Description, MACAddress,
+          @{N='IPAddress';E={$_.IPAddress -join ', '}},
+          @{N='Subnet';E={$_.IPSubnet -join ', '}},
+          @{N='Gateway';E={$_.DefaultIPGateway -join ', '}},
+          @{N='DNS';E={$_.DNSServerSearchOrder -join ', '}},
+          DHCPEnabled
+      @($adapters) | ConvertTo-Json -Compress
+  register: _health_network_result
+  changed_when: false
+
+- name: "Health | Network | Stage results"
+  ansible.builtin.set_fact:
+    _health_network: "{{ _health_network_result.output[0] | from_json | default([]) }}"
+  changed_when: false
