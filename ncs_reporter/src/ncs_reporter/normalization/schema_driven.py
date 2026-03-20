@@ -853,6 +853,46 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _filter_affected_items(condition: Any, items: list[Any]) -> list[Any]:
+    """Filter *items* to only those matching the alert *condition*.
+
+    For list-filtering conditions (``computed_filter``, ``filter_count``,
+    ``filter_multi``) this returns the subset of items that actually triggered
+    the alert.  For scalar conditions the full list is returned unchanged.
+    """
+    if isinstance(condition, ComputedFilterCondition):
+        result: list[Any] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            try:
+                val = _safe_eval_expr(condition.expression, item)
+            except Exception:
+                continue
+            if condition.cmp == "range":
+                if condition.min is not None and condition.max is not None and condition.min <= val < condition.max:
+                    result.append(item)
+            else:
+                comparator = _OPS.get(condition.cmp)
+                if comparator and condition.threshold is not None and comparator(val, condition.threshold):
+                    result.append(item)
+        return result
+
+    if isinstance(condition, FilterCountCondition):
+        return [
+            item for item in items
+            if isinstance(item, dict) and item.get(condition.filter_field) == condition.filter_value
+        ]
+
+    if isinstance(condition, MultiFilterCondition):
+        return [
+            item for item in items
+            if isinstance(item, dict) and all(item.get(f.filter_field) == f.filter_value for f in condition.filters)
+        ]
+
+    return items
+
+
 def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[dict[str, Any]]:
     """Evaluate all alert rules and return alert dicts compatible with build_alerts()."""
     alerts: list[dict[str, Any]] = []
@@ -880,7 +920,15 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
 
         affected_items: list[Any] = []
         if rule.affected_items_field:
-            affected_items = safe_list(fields.get(rule.affected_items_field, []))
+            raw_items = safe_list(fields.get(rule.affected_items_field, []))
+            # When the affected_items_field is the same list the condition
+            # filters, narrow down to only the items that actually triggered
+            # the alert instead of showing the entire list.
+            cond_field = getattr(rule.condition, "field", None)
+            if cond_field and cond_field == rule.affected_items_field:
+                affected_items = _filter_affected_items(rule.condition, raw_items)
+            else:
+                affected_items = raw_items
 
         alerts.append(
             {
