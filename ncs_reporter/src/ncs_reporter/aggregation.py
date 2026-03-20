@@ -236,6 +236,20 @@ def load_ncs_reports(report_dir: str, audit_filter: str | None = None) -> dict[s
     )
 
 
+def hosts_unchanged(new_data: dict[str, Any], state_path: str) -> bool:
+    """Return True if the hosts in new_data match the existing state file."""
+    if not os.path.isfile(state_path):
+        return False
+    try:
+        with open(state_path, encoding="utf-8") as f:
+            existing = yaml.safe_load(f)
+        if not isinstance(existing, dict):
+            return False
+        return existing.get("hosts") == new_data.get("hosts")
+    except Exception:
+        return False
+
+
 def write_output(data: dict[str, Any], output_path: str | os.PathLike[str]) -> None:
     parent = os.path.dirname(output_path)
     if parent:
