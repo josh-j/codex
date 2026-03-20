@@ -29,7 +29,7 @@ from ._report_context import (
 )
 from ._renderers import build_stig_host_views, render_platform, render_stig
 from ._schema_utils import schema_from_bundle, schema_template
-from .aggregation import load_all_reports, normalize_host_bundle, write_output
+from .aggregation import hosts_unchanged, load_all_reports, normalize_host_bundle, write_output
 from .cklb_export import generate_cklb
 from .models.platforms_config import PlatformEntry
 from .pathing import rel_href, render_template
@@ -313,6 +313,7 @@ def _registry_from_config_dir(config_dir: str | None) -> PlatformRegistry | None
 @click.option("--config-dir", default=None, type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.option("--extra-schema-dir", "-S", multiple=True, metavar="DIR")
 @click.option("--platforms-config", "-P", default=None, type=click.Path(exists=True))
+@click.option("--force", is_flag=True, default=False, help="Force re-render even if data is unchanged.")
 def all_cmd(
     platform_root: str,
     reports_root: str,
@@ -321,6 +322,7 @@ def all_cmd(
     config_dir: str | None,
     extra_schema_dir: tuple[str, ...],
     platforms_config: str | None,
+    force: bool,
 ) -> None:
     """Run full aggregation and rendering for all platforms and the site dashboard."""
     p_root = Path(platform_root)
@@ -378,7 +380,11 @@ def all_cmd(
             continue
         for hostname in p_data["hosts"]:
             global_inventory_index[hostname] = p["report_dir"]
-        write_output(p_data, str(p_dir / p["state_file"]))
+        state_path = str(p_dir / p["state_file"])
+        if not force and hosts_unchanged(p_data, state_path):
+            click.echo(f"  {p['input_dir']} unchanged, skipping.")
+            continue
+        write_output(p_data, state_path)
         if p.get("render", True):
             output_dir = r_root / "platform" / p["report_dir"]
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -404,7 +410,11 @@ def all_cmd(
         click.echo("No global data found; skipping site dashboard and STIG rendering.")
         return
 
-    write_output(global_data, str(all_hosts_state))
+    global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
+    if global_changed:
+        write_output(global_data, str(all_hosts_state))
+    else:
+        click.echo("  Global state unchanged.")
     global_hosts = global_data.get("hosts", global_data)
 
     # --- Step 1c: Build STIG host views (skeleton fallback; CKLB not yet generated) ---
@@ -455,13 +465,16 @@ def all_cmd(
                     click.echo(f"  ERROR rendering {name}: {exc}")
 
     # --- Step 3: Site dashboard ---
-    click.echo("--- Processing Global Site Dashboard ---")
-    groups_data = _load_groups(effective_groups_file)
-    site_view = build_site_dashboard_view(global_data, inventory_groups=groups_data, **vm_kwargs(common_vars))
-    env = get_jinja_env()
-    content = env.get_template("site_health_report.html.j2").render(site_dashboard_view=site_view, **common_vars)
-    (r_root / "site_health_report.html").write_text(content)
-    click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
+    if not global_changed:
+        click.echo("--- Skipping Global Site Dashboard (unchanged) ---")
+    else:
+        click.echo("--- Processing Global Site Dashboard ---")
+        groups_data = _load_groups(effective_groups_file)
+        site_view = build_site_dashboard_view(global_data, inventory_groups=groups_data, **vm_kwargs(common_vars))
+        env = get_jinja_env()
+        content = env.get_template("site_health_report.html.j2").render(site_dashboard_view=site_view, **common_vars)
+        (r_root / "site_health_report.html").write_text(content)
+        click.echo(f"Global dashboard generated at {r_root}/site_health_report.html")
 
     # Search index
     search_index = []
@@ -490,29 +503,35 @@ def all_cmd(
     click.echo(f"Search index generated at {r_root}/search_index.js")
 
     # --- Step 4: CKLB export ---
-    click.echo("--- Generating CKLB Artifacts ---")
-    cklb_output = r_root / "cklb"
-    cklb_output.mkdir(parents=True, exist_ok=True)
-    _generate_cklb_artifacts(
-        load_hosts_data(str(all_hosts_state)),
-        cklb_output,
-        registry=runtime_registry,
-        config_dir=Path(config_dir) if config_dir else None,
-    )
+    if not global_changed:
+        click.echo("--- Skipping CKLB Artifacts (unchanged) ---")
+    else:
+        click.echo("--- Generating CKLB Artifacts ---")
+        cklb_output = r_root / "cklb"
+        cklb_output.mkdir(parents=True, exist_ok=True)
+        _generate_cklb_artifacts(
+            load_hosts_data(str(all_hosts_state)),
+            cklb_output,
+            registry=runtime_registry,
+            config_dir=Path(config_dir) if config_dir else None,
+        )
 
     # --- Step 5: STIG fleet rendering (full CKLB-hydrated dedicated STIG reports) ---
-    click.echo("--- Processing STIG Fleet Reports ---")
-    render_stig(
-        global_hosts,
-        r_root,
-        common_vars,
-        global_inventory_index=global_inventory_index,
-        cklb_dir=r_root / "cklb",
-        generated_fleet_dirs=generated_fleet_dirs,
-        registry=runtime_registry,
-        has_site_report=True,
-    )
-    click.echo("STIG fleet reports and CKLB artifacts generated.")
+    if not global_changed:
+        click.echo("--- Skipping STIG Fleet Reports (unchanged) ---")
+    else:
+        click.echo("--- Processing STIG Fleet Reports ---")
+        render_stig(
+            global_hosts,
+            r_root,
+            common_vars,
+            global_inventory_index=global_inventory_index,
+            cklb_dir=r_root / "cklb",
+            generated_fleet_dirs=generated_fleet_dirs,
+            registry=runtime_registry,
+            has_site_report=True,
+        )
+        click.echo("STIG fleet reports and CKLB artifacts generated.")
 
 
 # ---------------------------------------------------------------------------
