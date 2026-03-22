@@ -14,11 +14,6 @@
       password: "{{ vmware_password }}"
       validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
 
-    vmware.vmware.cluster_info:
-      hostname: "{{ _vcenter_hostname }}"
-      username: "{{ vmware_username }}"
-      password: "{{ vmware_password }}"
-      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
     vmware.vmware.appliance_info:
       hostname: "{{ _vcenter_hostname }}"
       username: "{{ vmware_username }}"

@@ -1,0 +1,22 @@
+---
+# internal.vmware.vm : collect/assemble.yaml
+# Assembles raw VM workload data into vmware_raw_vm.
+
+- name: Assemble raw VM workload context
+  ansible.builtin.set_fact:
+    vmware_raw_vm:
+      datacenters_info: "{{ _raw_datacenters | default({}) }}"
+      vms_info: "{{ _raw_vms | default({}) }}"
+      snapshots_info:
+        snapshots: >-
+          {{
+            _raw_snapshots.results | default([])
+            | selectattr('vmware_all_snapshots_info', 'defined')
+            | map(attribute='vmware_all_snapshots_info')
+            | flatten | list
+          }}
+      config: "{{ vcenter.config | default({}) }}"
+      collection_status: "{{ 'FAILED' if vm_collect_failed | default(false) | bool else 'SUCCESS' }}"
+      collection_error: "{{ vm_connectivity_error | default('') }}"
+  changed_when: false
+  no_log: true

@@ -1,18 +1,20 @@
 ---
 galaxy_info:
   author: NCS
-  description: VMware VCSA (vCenter Server Appliance) Inventory, Discovery, and STIG
+  description: VMware VCSA STIG audit and remediation orchestration
   company: NCS
-  license: proprietary
-  min_ansible_version: "2.10"
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
   platforms:
     - name: GenericUNIX
       versions:
         - all
   galaxy_tags:
-    - vmware
-    - vcsa
-    - vcenter
-    - infrastructure
+        - vmware
+        - vcsa
+        - vcenter
+        - stig
+        - audit
 
-dependencies: []
+dependencies:
+  - role: internal.vmware.common

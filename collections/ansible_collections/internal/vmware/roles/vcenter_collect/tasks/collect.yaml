@@ -1,32 +1,18 @@
 ---
 # internal.vmware.vcenter_collect : tasks/collect.yaml
+# VCSA-only collection: appliance health, backup, alarms.
 
 - name: Collect | Initialize Collection State
   block:
-    - name: Ensure local facts are available for timestamping
-      ansible.builtin.setup:
-        gather_subset:
-          - min
-      delegate_to: localhost
-      changed_when: false
-
-    - name: Set shared controller timestamps
-      ansible.builtin.set_fact:
-        _vmware_controller_epoch: "{{ ansible_facts['date_time']['epoch'] | int }}"
-        _vmware_controller_collected_at: "{{ ansible_facts['date_time']['iso8601'] }}"
-      changed_when: false
-
-    - name: Collect | Initialize raw module placeholders
-      ansible.builtin.set_fact:
-        _raw_appliance_health: {}
-        _raw_appliance_backup: {}
-        _raw_datacenters: {}
-        _raw_clusters: {}
-        _raw_datastores: {}
-        _raw_vms: {}
-        _raw_snapshots: {}
-        _raw_alarms: {}
-      changed_when: false
+    - name: Collect | Bootstrap shared collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_collection
+      vars:
+        vmware_collection_raw_placeholders:
+          _raw_appliance_health: {}
+          _raw_appliance_backup: {}
+          _raw_alarms: {}
 
     - name: Collect | Simulated vCenter State
       ansible.builtin.include_tasks: collect/simulated.yaml
@@ -40,13 +26,6 @@
         - not (simulation_mode | default(false) | bool)
         - vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
 
-    - name: Collect | vCenter Inventory State
-      ansible.builtin.include_tasks: collect/inventory.yaml
-      tags: [collect, inventory]
-      when:
-        - not (simulation_mode | default(false) | bool)
-        - vcsa_collect_inventory | default(vcenter_collect_inventory | default(true)) | bool
-
     - name: Collect | vCenter Active Alarms
       ansible.builtin.include_tasks: collect/alarms.yaml
       tags: [collect, alarms]
@@ -55,10 +34,10 @@
         - vcsa_collect_alarms | default(vcenter_collect_alarms | default(true)) | bool
 
   always:
-    - name: Finalize | Assemble Raw Context
-      ansible.builtin.include_tasks: assemble.yaml
-      tags: [collect]
-
-    - name: Finalize | Export Raw State
-      ansible.builtin.include_tasks: export.yaml
-      tags: [collect]
+    - name: Finalize vCenter collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: finalize_collection
+      vars:
+        vmware_collection_assemble_task: assemble.yaml
+        vmware_collection_export_task: export.yaml

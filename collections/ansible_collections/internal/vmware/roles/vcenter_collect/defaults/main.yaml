@@ -14,23 +14,7 @@ vmware_validate_certs: false
 vmware_discovery_timeout: 30
 vmware_skip_discovery: false
 vcsa_collect_appliance: true
-vcsa_collect_inventory: true
 vcsa_collect_alarms: true
-vcsa_collect_datacenters: true
-vcsa_collect_compute: true
-vcsa_collect_storage: true
-vcsa_collect_workload: true
-vcsa_collect_snapshots: true
-
-# =============================================================================
-# Thresholds (Used by ncs-reporter)
-# =============================================================================
-vmware_cpu_critical_pct: 90.0
-vmware_memory_critical_pct: 90.0
-vmware_datastore_free_critical_pct: 10.0
-vmware_datastore_free_warning_pct: 15.0
-vmware_snapshot_age_warning_days: 7
-vmware_snapshot_size_warning_gb: 100.0
 
 # =============================================================================
 # Simulation Settings

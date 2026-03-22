@@ -699,7 +699,7 @@ class TestComputeFields:
 
 
 # ---------------------------------------------------------------------------
-# vcenter.yaml schema round-trip validation
+# vcsa.yaml schema round-trip validation
 # ---------------------------------------------------------------------------
 
 
@@ -708,15 +708,14 @@ class TestVcenterSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vcenter"
         assert s.platform == "vmware"
-        # Verify all new condition types are present
+        # Verify condition types present in VCSA schema
         ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
         assert "eq_str" in ops
-        assert "computed_filter" in ops
-        assert "filter_multi" in ops
+        assert "filter_count" in ops
         # Verify compute field
         assert "appliance_uptime_days" in s.fields
         assert s.fields["appliance_uptime_days"].compute is not None
@@ -726,11 +725,9 @@ class TestVcenterSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
 
-        # Bundle mirrors the raw YAML file structure exactly (read_report no longer
-        # unwraps the data key, so schema paths match what is on disk).
         bundle = {
             "vmware_raw_vcenter": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
@@ -754,30 +751,6 @@ class TestVcenterSchema:
                         }
                     },
                     "appliance_backup_info": {"schedules": []},
-                    "datacenters_info": {"value": [{"name": "DC1", "datacenter": "dc-1"}]},
-                    "datastores_info": {
-                        "datastores": [
-                            {
-                                "name": "ds-prod",
-                                "type": "VMFS",
-                                "capacity": 1000,
-                                "freeSpace": 80,
-                                "accessible": True,
-                                "maintenanceMode": "normal",
-                            },
-                        ]
-                    },
-                    "vms_info": {
-                        "virtual_machines": [
-                            {
-                                "guest_name": "vm1",
-                                "power_state": "poweredOn",
-                                "tools_status": "toolsNotRunning",
-                                "cluster": "cluster1",
-                            },
-                        ]
-                    },
-                    "snapshots_info": {"snapshots": []},
                     "alarms_info": {"alarms": [], "count": 0, "python": "/usr/bin/python3"},
                 },
             }
@@ -792,12 +765,107 @@ class TestVcenterSchema:
         assert "ssh_enabled" in fired
         # no_backup_schedule fires (count == 0)
         assert "no_backup_schedule" in fired
-        # ds-prod is at 8% free — critical space fires
-        assert "datastore_critical_space" in fired
-        # vm_tools_not_running fires (poweredOn + toolsNotRunning)
-        assert "vm_tools_not_running" in fired
         # Overall health should be CRITICAL
         assert result["health"] == "CRITICAL"
+
+
+class TestEsxiHealthSchema:
+    def test_esxi_health_schema_loads_and_validates(self) -> None:
+        from pathlib import Path
+        from ncs_reporter.schema_loader import load_schema_from_file
+
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi_health.yaml"
+        s = load_schema_from_file(schema_path)
+        assert s.name == "esxi_health"
+        assert s.platform == "vmware"
+        ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
+        assert "computed_filter" in ops
+        assert "cluster_count" in s.fields
+        assert "datastore_count" in s.fields
+
+    def test_esxi_health_schema_fires_on_synthetic_bundle(self) -> None:
+        from pathlib import Path
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi_health.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "vmware_raw_esxi": {
+                "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
+                "data": {
+                    "datacenters_info": {"datacenter_info": [{"name": "DC1"}]},
+                    "clusters_info": {"results": []},
+                    "datastores_info": {
+                        "datastores": [
+                            {
+                                "name": "ds-prod",
+                                "type": "VMFS",
+                                "capacity": 1000,
+                                "freeSpace": 80,
+                                "accessible": True,
+                                "maintenanceMode": "normal",
+                                "provisioned": 500,
+                            },
+                        ]
+                    },
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fired = {a["id"] for a in result["alerts"]}
+        # ds-prod is at 8% free — critical space fires
+        assert "datastore_critical_space" in fired
+
+
+class TestVmHealthSchema:
+    def test_vm_health_schema_loads_and_validates(self) -> None:
+        from pathlib import Path
+        from ncs_reporter.schema_loader import load_schema_from_file
+
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
+        s = load_schema_from_file(schema_path)
+        assert s.name == "vm_health"
+        assert s.platform == "vmware"
+        ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
+        assert "filter_multi" in ops
+        assert "vm_count" in s.fields
+        assert "snapshot_count" in s.fields
+
+    def test_vm_health_schema_fires_on_synthetic_bundle(self) -> None:
+        from pathlib import Path
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "vmware_raw_vm": {
+                "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
+                "data": {
+                    "datacenters_info": {"datacenter_info": [{"name": "DC1"}]},
+                    "vms_info": {
+                        "virtual_machines": [
+                            {
+                                "guest_name": "vm1",
+                                "power_state": "poweredOn",
+                                "tools_status": "toolsNotRunning",
+                                "cluster": "cluster1",
+                            },
+                        ]
+                    },
+                    "snapshots_info": {"snapshots": []},
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fired = {a["id"] for a in result["alerts"]}
+        # vm_tools_not_running fires (poweredOn + toolsNotRunning)
+        assert "vm_tools_not_running" in fired
 
 
 class TestPhotonSchema:
@@ -934,11 +1002,11 @@ class TestScriptFields:
         mountpoints = {m["mountpoint"] for m in fields["real_mounts"]}
         assert mountpoints == {"/", "/data"}
 
-    def test_vcenter_schema_aged_snapshot_field_exists(self) -> None:
+    def test_vm_health_schema_aged_snapshot_field_exists(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcenter.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
         s = load_schema_from_file(schema_path)
         assert "aged_snapshot_count" in s.fields
         spec = s.fields["aged_snapshot_count"]

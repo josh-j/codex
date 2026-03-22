@@ -744,6 +744,8 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                     "python": "/usr/bin/python3",
                 },
                 "config": {"infrastructure_vm_patterns": ["^vCenter$", "^ESXi-.*$"]},
+                "collection_status": "SUCCESS",
+                "collection_error": "",
             },
         }
     }
