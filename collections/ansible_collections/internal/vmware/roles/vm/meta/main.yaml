@@ -1,11 +1,13 @@
----
-# collections/ansible_collections/internal/vmware/roles/stig/meta/main.yaml
-
 galaxy_info:
   author: NCS Automation
-  description: Consolidated VMware STIG compliance auditing for ESXi hosts and VM guests
-  license: proprietary
+  description: VMware VM audit collection, snapshot workflows, and STIG orchestration
+  license: GPL-3.0-or-later
   min_ansible_version: "2.15"
+  galaxy_tags:
+    - vmware
+    - vm
+    - stig
+    - audit
 
 collections:
   - community.vmware

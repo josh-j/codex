@@ -7,13 +7,6 @@
   connection: local
   gather_facts: false
   roles:
-    - role: internal.vmware.vcenter_collect
+    - role: internal.vmware.esxi
       vars:
-        vcsa_collect_appliance: false
-        vcsa_collect_inventory: true
-        vcsa_collect_alarms: false
-        vcsa_collect_datacenters: true
-        vcsa_collect_compute: true
-        vcsa_collect_storage: true
-        vcsa_collect_workload: false
-        vcsa_collect_snapshots: false
+        esxi_action: collect

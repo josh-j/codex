@@ -1,0 +1,34 @@
+---
+# internal.vmware.vm : tasks/collect.yaml
+# Collects VM workload data: datacenters, VMs, snapshots.
+
+- name: VM Collect | Initialize Collection State
+  block:
+    - name: VM Collect | Bootstrap shared collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_collection
+      vars:
+        vmware_collection_raw_placeholders:
+          _raw_datacenters: {}
+          _raw_vms: {}
+          _raw_snapshots: {}
+
+    - name: VM Collect | Simulated State
+      ansible.builtin.include_tasks: collect/simulated.yaml
+      tags: [collect, simulation]
+      when: simulation_mode | default(false) | bool
+
+    - name: VM Collect | Inventory State
+      ansible.builtin.include_tasks: collect/inventory.yaml
+      tags: [collect, inventory]
+      when: not (simulation_mode | default(false) | bool)
+
+  always:
+    - name: Finalize VM collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: finalize_collection
+      vars:
+        vmware_collection_assemble_task: collect/assemble.yaml
+        vmware_collection_export_task: collect/export.yaml

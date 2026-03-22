@@ -1,7 +1,7 @@
 ---
 # internal.vmware.vcenter_collect : tasks/collect/simulated.yaml
-# Loads fixture data shaped like callback raw_vcenter artifacts and maps it onto
-# the same _raw_* variables expected by assemble.yaml.
+# Loads fixture data and maps it onto _raw_* variables expected by assemble.yaml.
+# VCSA-only: appliance health, backup, alarms.
 
 - name: Simulation | Ensure fixture exists for vCenter host
   ansible.builtin.stat:
@@ -36,14 +36,5 @@
   ansible.builtin.set_fact:
     _raw_appliance_health: "{{ _sim_vcenter_payload.appliance_health_info | default({}) }}"
     _raw_appliance_backup: "{{ _sim_vcenter_payload.appliance_backup_info | default({}) }}"
-    _raw_datacenters: "{{ _sim_vcenter_payload.datacenters_info | default({}) }}"
-    _raw_clusters: "{{ _sim_vcenter_payload.clusters_info | default({}) }}"
-    _raw_datastores:
-      results:
-        - datastores: "{{ _sim_vcenter_payload.datastores_info.datastores | default([]) }}"
-    _raw_vms: "{{ _sim_vcenter_payload.vms_info | default({}) }}"
-    _raw_snapshots:
-      results:
-        - guest_snapshots: "{{ _sim_vcenter_payload.snapshots_info.snapshots | default([]) }}"
     _raw_alarms: "{{ _sim_vcenter_payload.alarms_info | default({}) }}"
   changed_when: false

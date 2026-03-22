@@ -1,6 +1,15 @@
 ---
 # internal.vmware.vm : tasks/main.yaml
 
+- name: "VM | Validate action"
+  ansible.builtin.assert:
+    that:
+      - (vm_action | default('stig')) in (vm_supported_actions | default(['collect', 'snapshot', 'stig']))
+    fail_msg: >-
+      Unsupported vm_action '{{ vm_action | default('stig') }}'.
+      Supported values: {{ vm_supported_actions | default(['collect', 'snapshot', 'stig']) | join(', ') }}.
+  changed_when: false
+
 - name: "VM | Dispatch: {{ vm_action | default('stig') }}"
   module_defaults:
     group/community.vmware.vmware:

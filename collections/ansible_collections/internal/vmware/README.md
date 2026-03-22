@@ -1,45 +1,70 @@
 # internal.vmware
 
-An Ansible collection for VMware infrastructure auditing and data collection. Following the **NCS Decoupled Architecture**, this collection focuses strictly on data collection across the fleet, while processing and reporting are handled by the `ncs-reporter` Python CLI.
+An Ansible collection for VMware audit collection and STIG automation.
 
-## Roles
+The maintained audit entrypoints are:
 
-### `internal.vmware.vcsa`
-Performs deep inventory and health discovery of vCenter Server Appliance (VCSA) instances.
-- **Action:** Executes standard VMware modules and custom collectors.
-- **Handoff:** Saves raw module results to `raw_discovery.yaml` using the `internal.core.state:save_raw` task.
-- **Idiomatic:** Uses `module_defaults` to centralize connection parameters.
+- `internal.vmware.vcenter_collect` for vCenter appliance health, backup state, and active alarms
+- `internal.vmware.esxi` for ESXi inventory collection and ESXi STIG workflows
+- `internal.vmware.vm` for VM inventory collection, snapshot state, and VM STIG workflows
 
-### `internal.vmware.esxi`
-Handles host-level configuration and STIG auditing against ESXi hypervisors.
-- **Action:** Runs native compliance checks against individual ESXi hosts.
-
-### `internal.vmware.vm`
-Handles virtual machine level configuration, snapshotting, and STIG auditing.
-- **Action:** Creates safety snapshots, runs STIG checks against VMs.
-
-### `internal.vmware.common`
-Shared utility tasks, including `init_vcenter.yaml` for standardized hostname and credential resolution.
-
+`internal.vmware.vcsa` remains the VCSA STIG role. The service-specific VCSA roles such as `vcsa_sts` and `vcsa_lookup` are internal composition roles and should not be used as standalone audit entrypoints.
 
 ## Usage
 
+Read-only VMware fleet audit:
+
 ```yaml
-- name: Collect VMware Discovery Data
+- name: VMware health and compliance audit
   hosts: vcenters
+  connection: local
+  gather_facts: false
   roles:
-    - role: internal.vmware.vcsa
+    - role: internal.vmware.vcenter_collect
+    - role: internal.vmware.esxi
       vars:
-        vcsa_action: collect
+        esxi_action: collect
+    - role: internal.vmware.vm
+      vars:
+        vm_action: collect
 ```
 
+Targeted STIG entrypoints:
 
-## Structure
-- `plugins/modules/`: Custom Ansible modules (e.g., `vmware_triggered_alarms_info`).
-- `roles/*/tasks/`: Pure Ansible YAML tasks for collection.
-- `meta/runtime.yml`: Collection metadata and plugin routing.
+- `internal.vmware.vcsa` for VCSA STIG audit/remediation
+- `internal.vmware.esxi` with `esxi_action: stig`
+- `internal.vmware.vm` with `vm_action: stig`
+
+## Supported Actions
+
+- `internal.vmware.vcenter_collect`: `collect`
+- `internal.vmware.esxi`: `collect`, `stig`
+- `internal.vmware.vm`: `collect`, `snapshot`, `stig`
+
+Unsupported action values now fail early with an explicit assertion instead of a task-file lookup error.
+
+## Data Contracts
+
+The collection exports three raw payload families through `set_stats` for the `internal.core.ncs_collector` callback:
+
+- `vmware_raw_vcenter`
+- `vmware_raw_esxi`
+- `vmware_raw_vm`
+
+Their canonical top-level keys are documented in [docs/SCHEMA.md](/home/sio/codex/collections/ansible_collections/internal/vmware/docs/SCHEMA.md).
 
 ## Requirements
-- `community.vmware` collection.
-- `vmware.vmware_rest` collection.
-- `pyVmomi` and `vSphere Automation SDK` installed in the Ansible Python environment.
+
+- `ansible-core >= 2.15`
+- `community.vmware`
+- `vmware.vmware`
+- `pyVmomi` for the custom alarm collector
+
+## Layout
+
+- `roles/common`: shared VMware connection and collection helper tasks
+- `roles/vcenter_collect`: vCenter audit collection pipeline
+- `roles/esxi`: ESXi collection and STIG pipeline
+- `roles/vm`: VM collection, snapshot, and STIG pipeline
+- `roles/vcsa*`: VCSA STIG orchestration and service-specific subroles
+- `plugins/modules/vmware_triggered_alarms_info.py`: internal custom collector

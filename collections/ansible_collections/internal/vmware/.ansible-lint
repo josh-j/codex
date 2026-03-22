@@ -1,0 +1,5 @@
+---
+exclude_paths:
+  - roles/vcsa_*/templates/
+  - roles/*/templates/
+

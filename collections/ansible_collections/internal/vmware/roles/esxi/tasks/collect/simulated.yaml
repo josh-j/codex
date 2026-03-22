@@ -1,0 +1,41 @@
+---
+# internal.vmware.esxi : collect/simulated.yaml
+# Loads ESXi fixture data and maps it onto _raw_* variables expected by assemble.yaml.
+
+- name: Simulation | Ensure fixture exists for vCenter host
+  ansible.builtin.stat:
+    path: "{{ simulation_esxi_fixture_file }}"
+  register: _sim_esxi_fixture
+  delegate_to: localhost
+  changed_when: false
+
+- name: Simulation | Abort when fixture file is missing
+  ansible.builtin.assert:
+    that:
+      - _sim_esxi_fixture.stat.exists
+    fail_msg: "Simulation fixture not found: {{ simulation_esxi_fixture_file }}"
+    success_msg: "Loaded simulation fixture: {{ simulation_esxi_fixture_file }}"
+
+- name: Simulation | Load fixture document
+  ansible.builtin.set_fact:
+    _sim_esxi_doc: "{{ lookup('ansible.builtin.file', simulation_esxi_fixture_file) | from_yaml }}"
+  changed_when: false
+
+- name: Simulation | Normalize fixture payload envelope
+  ansible.builtin.set_fact:
+    _sim_esxi_payload: >-
+      {{
+        _sim_esxi_doc.data
+        if (_sim_esxi_doc is mapping and _sim_esxi_doc.data is defined)
+        else (_sim_esxi_doc | default({}))
+      }}
+  changed_when: false
+
+- name: Simulation | Map fixture payload to raw module variables
+  ansible.builtin.set_fact:
+    _raw_datacenters: "{{ _sim_esxi_payload.datacenters_info | default({}) }}"
+    _raw_clusters: "{{ _sim_esxi_payload.clusters_info | default({}) }}"
+    _raw_datastores:
+      results:
+        - datastores: "{{ _sim_esxi_payload.datastores_info.datastores | default([]) }}"
+  changed_when: false

@@ -1,30 +1,43 @@
-"""Expected bundle data key sets for each platform.
-
-These sets were extracted from the Ansible task files that assemble raw collection bundles:
-
-- VCENTER_DATA_KEYS: from ``collections/ansible_collections/internal/vmware/roles/vcenter/tasks/assemble.yaml``
-  (the ``data`` sub-dict of the ``vmware_raw_vcenter`` set_fact)
-- LINUX_DATA_KEYS: from ``collections/ansible_collections/internal/linux/roles/ubuntu/tasks/discover.yaml``
-  (the ``ubuntu_raw_discovery`` set_fact payload)
-- WINDOWS_DATA_KEYS: from ``collections/ansible_collections/internal/windows/roles/windows/tasks/audit.yaml``
-  (the ``_win_raw_payload`` set_fact payload)
-
-Update these sets when the corresponding Ansible roles change their set_fact structures.
-"""
+"""Expected bundle data key sets for platform raw collection contracts."""
 
 from __future__ import annotations
 
-VCENTER_DATA_KEYS: set[str] = {
-    "appliance_health_info",
-    "appliance_backup_info",
-    "datacenters_info",
-    "clusters_info",
-    "datastores_info",
-    "vms_info",
-    "snapshots_info",
-    "alarms_info",
-    "config",
-}
+from pathlib import Path
+
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
+    task_file = REPO_ROOT / relative_path
+    tasks = yaml.safe_load(task_file.read_text(encoding="utf-8")) or []
+    for task in tasks:
+        if not isinstance(task, dict):
+            continue
+        payload = task.get("ansible.builtin.set_fact")
+        if not isinstance(payload, dict) or fact_name not in payload:
+            continue
+        fact_payload = payload[fact_name]
+        if isinstance(fact_payload, dict):
+            return set(fact_payload.keys())
+    return set()
+
+
+VCENTER_DATA_KEYS = _extract_set_fact_keys(
+    "collections/ansible_collections/internal/vmware/roles/vcenter_collect/tasks/assemble.yaml",
+    "vmware_raw_vcenter",
+)
+
+ESXI_DATA_KEYS = _extract_set_fact_keys(
+    "collections/ansible_collections/internal/vmware/roles/esxi/tasks/collect/assemble.yaml",
+    "vmware_raw_esxi",
+)
+
+VM_DATA_KEYS = _extract_set_fact_keys(
+    "collections/ansible_collections/internal/vmware/roles/vm/tasks/collect/assemble.yaml",
+    "vmware_raw_vm",
+)
 
 LINUX_DATA_KEYS: set[str] = {
     "ansible_facts",

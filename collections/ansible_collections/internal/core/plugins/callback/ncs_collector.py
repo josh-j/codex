@@ -275,18 +275,23 @@ class CallbackModule(CallbackBase):
 
         for host in stats.processed.keys():
             custom_stats = all_custom.get(host, {})
-            if not custom_stats or "ncs_collect" not in custom_stats:
+            if not custom_stats:
                 continue
 
-            collect_data = custom_stats["ncs_collect"]
-            if not isinstance(collect_data, dict):
+            collect_keys = [k for k in custom_stats if k.startswith("ncs_collect")]
+            if not collect_keys:
                 continue
 
-            report_dir = collect_data.get("report_directory")
-            if isinstance(report_dir, str) and report_dir.strip():
-                self._host_report_dirs[host] = report_dir.strip()
+            for collect_key in collect_keys:
+                collect_data = custom_stats[collect_key]
+                if not isinstance(collect_data, dict):
+                    continue
 
-            self._persist_host_data(host, collect_data)
+                report_dir = collect_data.get("report_directory")
+                if isinstance(report_dir, str) and report_dir.strip():
+                    self._host_report_dirs[host] = report_dir.strip()
+
+                self._persist_host_data(host, collect_data)
 
         self._persist_stig_task_data()
 

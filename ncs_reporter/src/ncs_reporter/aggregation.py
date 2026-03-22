@@ -198,12 +198,16 @@ def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, An
     output = dict(bundle)
 
     # Normalize legacy key aliases so schema detection always finds canonical keys.
-    if "raw_discovery" in bundle and "ubuntu_raw_discovery" not in bundle:
-        output["ubuntu_raw_discovery"] = bundle["raw_discovery"]
-    if "raw_vcenter" in bundle and "vmware_raw_vcenter" not in bundle:
-        output["vmware_raw_vcenter"] = bundle["raw_vcenter"]
-    if "raw_audit" in bundle and "windows_raw_audit" not in bundle:
-        output["windows_raw_audit"] = bundle["raw_audit"]
+    _legacy_aliases = {
+        "raw_discovery": "ubuntu_raw_discovery",
+        "raw_vcenter": "vmware_raw_vcenter",
+        "raw_esxi": "vmware_raw_esxi",
+        "raw_vm": "vmware_raw_vm",
+        "raw_audit": "windows_raw_audit",
+    }
+    for legacy_key, canonical_key in _legacy_aliases.items():
+        if legacy_key in bundle and canonical_key not in bundle:
+            output[canonical_key] = bundle[legacy_key]
 
     # STIG normalization (kept in Python — orthogonal to schema system)
     stig_keys = [k for k in bundle.keys() if str(k).lower().startswith("stig")]

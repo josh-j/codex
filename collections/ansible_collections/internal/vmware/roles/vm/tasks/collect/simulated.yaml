@@ -1,0 +1,41 @@
+---
+# internal.vmware.vm : collect/simulated.yaml
+# Loads VM fixture data and maps it onto _raw_* variables expected by assemble.yaml.
+
+- name: Simulation | Ensure fixture exists for vCenter host
+  ansible.builtin.stat:
+    path: "{{ simulation_vm_fixture_file }}"
+  register: _sim_vm_fixture
+  delegate_to: localhost
+  changed_when: false
+
+- name: Simulation | Abort when fixture file is missing
+  ansible.builtin.assert:
+    that:
+      - _sim_vm_fixture.stat.exists
+    fail_msg: "Simulation fixture not found: {{ simulation_vm_fixture_file }}"
+    success_msg: "Loaded simulation fixture: {{ simulation_vm_fixture_file }}"
+
+- name: Simulation | Load fixture document
+  ansible.builtin.set_fact:
+    _sim_vm_doc: "{{ lookup('ansible.builtin.file', simulation_vm_fixture_file) | from_yaml }}"
+  changed_when: false
+
+- name: Simulation | Normalize fixture payload envelope
+  ansible.builtin.set_fact:
+    _sim_vm_payload: >-
+      {{
+        _sim_vm_doc.data
+        if (_sim_vm_doc is mapping and _sim_vm_doc.data is defined)
+        else (_sim_vm_doc | default({}))
+      }}
+  changed_when: false
+
+- name: Simulation | Map fixture payload to raw module variables
+  ansible.builtin.set_fact:
+    _raw_datacenters: "{{ _sim_vm_payload.datacenters_info | default({}) }}"
+    _raw_vms: "{{ _sim_vm_payload.vms_info | default({}) }}"
+    _raw_snapshots:
+      results:
+        - vmware_all_snapshots_info: "{{ _sim_vm_payload.snapshots_info.snapshots | default([]) }}"
+  changed_when: false

@@ -1,9 +1,23 @@
 ---
 # internal.vmware.esxi : tasks/main.yaml
 
+- name: "ESXi | Validate action"
+  ansible.builtin.assert:
+    that:
+      - (esxi_action | default('stig')) in (esxi_supported_actions | default(['collect', 'stig']))
+    fail_msg: >-
+      Unsupported esxi_action '{{ esxi_action | default('stig') }}'.
+      Supported values: {{ esxi_supported_actions | default(['collect', 'stig']) | join(', ') }}.
+  changed_when: false
+
 - name: "ESXi | Dispatch: {{ esxi_action | default('stig') }}"
   module_defaults:
     group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vmware.vmware.cluster_info:
       hostname: "{{ _vcenter_hostname }}"
       username: "{{ vmware_username }}"
       password: "{{ vmware_password }}"

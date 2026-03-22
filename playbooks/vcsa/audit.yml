@@ -8,7 +8,3 @@
   gather_facts: false
   roles:
     - role: internal.vmware.vcenter_collect
-      vars:
-        vcsa_collect_appliance: true
-        vcsa_collect_inventory: false
-        vcsa_collect_alarms: true

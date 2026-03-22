@@ -5,9 +5,11 @@ version: 1.0.0
 readme: README.md
 authors:
   - NCS
-description: VMware automation and auditing roles.
+description: VMware audit collection, reporting handoff, and STIG automation roles.
 license: ["GPL-3.0-or-later"]
 tags:
   - infrastructure
   - security
+  - vmware
+  - compliance
 repository: https://web.git.mil/dct/ansible-ncs

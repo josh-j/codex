@@ -1,0 +1,331 @@
+name: esxi_health
+display_name: "VMware ESXi Infrastructure Health"
+platform:
+  name: vmware
+  input_dir: vmware/vcenter
+  report_dir: vmware/vcenter
+  display_name: VMware
+  asset_label: vCenters
+  inventory_groups: [vcenters]
+
+detection:
+  keys_any: [vmware_raw_esxi]
+
+path_prefix: "vmware_raw_esxi.data"
+
+fleet_columns:
+  - { label: "Clusters", field: cluster_count, width: "80px" }
+  - { label: "ESXi Hosts", field: esxi_host_count, width: "80px" }
+  - { label: "Datastores", field: datastore_count, width: "80px" }
+
+# ---------------------------------------------------------------------------
+# Fields
+# ---------------------------------------------------------------------------
+
+fields:
+  datacenters:
+    path: ".datacenters_info.datacenter_info"
+    type: list
+
+  datacenter_count:
+    path: ".datacenters_info.datacenter_info | len_if_list"
+    type: int
+
+  clusters_info_results:
+    path: ".clusters_info.results"
+    type: list
+
+  cluster_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_count
+    type: int
+
+  esxi_host_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: esxi_host_count
+    type: int
+
+  datastores_raw:
+    path: ".datastores_info.datastores"
+    type: list
+
+  datastores:
+    path: ".datastores_info.datastores"
+    type: list
+    list_map:
+      capacity_gb: "{capacity} / 1073741824"
+      free_gb: "{freeSpace} / 1073741824"
+      used_pct: "({capacity} - {freeSpace}) / {capacity} * 100"
+
+  datastore_count:
+    path: ".datastores_info.datastores | len_if_list"
+    type: int
+
+  clusters:
+    script: "get_clusters_list.py"
+    type: list
+
+  cluster_ha_disabled_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_ha_disabled_count
+    type: int
+
+  cluster_drs_disabled_count:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: cluster_drs_disabled_count
+    type: int
+
+  total_allocated_vcpu:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_cpu_capacity
+    type: int
+
+  total_allocated_mem_mb:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_mem_capacity
+    type: int
+
+  total_used_cpu_pct:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_cpu_used_pct
+    type: float
+
+  total_used_mem_pct:
+    script: "count_clusters_and_hosts.py"
+    script_args:
+      metric: total_mem_used_pct
+    type: float
+
+# ---------------------------------------------------------------------------
+# Alerts
+# ---------------------------------------------------------------------------
+
+alerts:
+  - id: no_datacenters
+    category: "Infrastructure"
+    severity: CRITICAL
+    condition:
+      op: lte
+      field: datacenter_count
+      threshold: 0
+    message: "Inventory gap: no datacenters detected in vCenter"
+
+  - id: no_esxi_hosts
+    category: "Infrastructure"
+    severity: CRITICAL
+    condition:
+      op: lte
+      field: esxi_host_count
+      threshold: 0
+    message: "Inventory gap: no ESXi hosts detected in vCenter"
+
+  - id: cluster_ha_disabled
+    category: "Cluster Availability"
+    severity: WARNING
+    condition:
+      op: gt
+      field: cluster_ha_disabled_count
+      threshold: 0
+    message: "{cluster_ha_disabled_count} cluster(s) have HA disabled — reduced fault tolerance"
+
+  - id: cluster_drs_disabled
+    category: "Cluster Availability"
+    severity: INFO
+    condition:
+      op: gt
+      field: cluster_drs_disabled_count
+      threshold: 0
+    message: "{cluster_drs_disabled_count} cluster(s) have DRS disabled — no automatic load balancing"
+
+  - id: cluster_cpu_critical
+    category: "Cluster Resources"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{cpu_usage_pct}"
+      cmp: gte
+      threshold: 90.0
+    message: "One or more clusters have critically high CPU utilization (≥90%)"
+
+  - id: cluster_cpu_warning
+    category: "Cluster Resources"
+    severity: WARNING
+    suppress_if: cluster_cpu_critical
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{cpu_usage_pct}"
+      cmp: gte
+      threshold: 80.0
+    message: "One or more clusters have elevated CPU utilization (≥80%)"
+
+  - id: cluster_mem_critical
+    category: "Cluster Resources"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{mem_usage_pct}"
+      cmp: gte
+      threshold: 90.0
+    message: "One or more clusters have critically high memory utilization (≥90%)"
+
+  - id: cluster_mem_warning
+    category: "Cluster Resources"
+    severity: WARNING
+    suppress_if: cluster_mem_critical
+    condition:
+      op: computed_filter
+      field: clusters
+      expression: "{mem_usage_pct}"
+      cmp: gte
+      threshold: 80.0
+    message: "One or more clusters have elevated memory utilization (≥80%)"
+
+  - id: datastore_critical_space
+    category: "Storage Capacity"
+    severity: CRITICAL
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{freeSpace} / {capacity} * 100"
+      cmp: lte
+      threshold: 10.0
+    message: "One or more datastores have critically low free space (≤10%)"
+    affected_items_field: datastores_raw
+
+  - id: datastore_warning_space
+    category: "Storage Capacity"
+    severity: WARNING
+    suppress_if: datastore_critical_space
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{freeSpace} / {capacity} * 100"
+      cmp: lte
+      threshold: 15.0
+    message: "One or more datastores have low free space (≤15%)"
+    affected_items_field: datastores_raw
+
+  - id: datastore_inaccessible
+    category: "Storage Connectivity"
+    severity: CRITICAL
+    condition:
+      op: filter_count
+      field: datastores_raw
+      filter_field: accessible
+      filter_value: false
+      threshold: 0
+    message: "One or more datastores are INACCESSIBLE"
+    affected_items_field: datastores_raw
+
+  - id: datastore_overprovisioned
+    category: "Storage Capacity"
+    severity: INFO
+    condition:
+      op: computed_filter
+      field: datastores_raw
+      expression: "{provisioned} / {capacity} * 100"
+      cmp: gte
+      threshold: 200.0
+    message: "One or more datastores are thin-provisioned beyond 2x capacity — monitor for space contention"
+
+# ---------------------------------------------------------------------------
+# Widgets
+# ---------------------------------------------------------------------------
+
+widgets:
+  - id: alerts
+    title: "Active Alerts"
+    type: alert_panel
+
+  - id: inventory_kpis
+    title: "Infrastructure KPIs"
+    type: stat_cards
+    layout: { width: "full" }
+    cards:
+      - { field: datacenter_count, label: "Datacenters" }
+      - { field: cluster_count, label: "Clusters" }
+      - { field: esxi_host_count, label: "ESXi Hosts" }
+      - { field: datastore_count, label: "Datastores" }
+
+  - id: ds_capacity
+    title: "Datastore Capacity"
+    type: bar_chart
+    layout: { width: "half" }
+    rows_field: datastores
+    label_field: name
+    value_field: used_pct
+    max: 100
+    thresholds: { 75: yellow, 90: red }
+
+  - id: datastores
+    title: "Datastores"
+    type: table
+    rows_field: datastores
+    columns:
+      - { label: "Name", field: name }
+      - { label: "Type", field: type }
+      - { label: "Capacity (GB)", field: capacity_gb }
+      - { label: "Free (GB)", field: free_gb }
+      - label: "Used %"
+        field: used_pct
+        style_rules:
+          - condition: { op: gt, field: used_pct, threshold: 90 }
+            css_class: "sv-critical"
+          - condition: { op: gt, field: used_pct, threshold: 75 }
+            css_class: "sv-warning"
+      - label: "Accessible"
+        field: accessible
+        badge: true
+        style_rules:
+          - condition: { op: eq, field: accessible, threshold: 0.0 }
+            css_class: "sv-critical"
+      - { label: "Maintenance", field: maintenanceMode }
+
+  - id: clusters
+    title: "Clusters"
+    type: table
+    rows_field: clusters
+    columns:
+      - { label: "Name", field: name }
+      - { label: "Datacenter", field: datacenter }
+      - { label: "DRS", field: drs_enabled, badge: true }
+      - { label: "HA", field: ha_enabled, badge: true }
+      - { label: "Hosts", field: host_count }
+      - label: "CPU %"
+        field: cpu_usage_pct
+        style_rules:
+          - condition: { op: gt, field: cpu_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
+      - label: "Mem %"
+        field: mem_usage_pct
+        style_rules:
+          - condition: { op: gt, field: mem_usage_pct, threshold: 85 }
+            css_class: "sv-critical"
+
+  - id: cluster_cpu
+    title: "Cluster CPU Utilization"
+    type: bar_chart
+    rows_field: clusters
+    label_field: name
+    value_field: cpu_usage_pct
+    max: 100
+    thresholds: { 80: yellow, 90: red }
+
+  - id: cluster_mem
+    title: "Cluster Memory Utilization"
+    type: bar_chart
+    rows_field: clusters
+    label_field: name
+    value_field: mem_usage_pct
+    max: 100
+    thresholds: { 80: yellow, 90: red }
