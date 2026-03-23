@@ -384,6 +384,7 @@ def all_cmd(
             "state_file": f"{_schema.platform}_fleet_state.yaml",
             "render": True,
             "schema_name": _schema.name,
+            "schema_names": [_schema.name],
             "target_types": [],
             "paths": default_paths(),
         })
@@ -440,8 +441,8 @@ def all_cmd(
                 "platform_paths": p["paths"],
                 "extra_schema_dirs": _extra_dirs,
             }
-            if p.get("schema_name") is not None:
-                task["schema_names_override"] = [p["schema_name"]]
+            if p.get("schema_names"):
+                task["schema_names_override"] = p["schema_names"]
             render_tasks.append(task)
 
     generated_fleet_dirs = {str(t["report_dir"]) for t in render_tasks}

@@ -302,6 +302,11 @@ def render_platform(
 ) -> None:
     """Render node + fleet reports for one platform using the schema engine.
 
+    When multiple schemas match for a platform, each schema produces its own
+    fleet report and per-host node report.  The first (primary) schema renders
+    node reports as ``health_report.html``; additional schemas use
+    ``{schema_name}_report.html``.
+
     When *stig_widgets_by_host* is provided, STIG summary widgets are embedded
     directly into each node report so operators don't have to navigate to a
     separate STIG report to see compliance status.
@@ -313,13 +318,14 @@ def render_platform(
     )
     all_schemas = discover_schemas(extra_dirs=extra_schema_dirs)
 
-    schema = None
+    # Resolve all matching schemas (not just the first)
+    matched_schemas = []
     for name in schema_names:
-        schema = all_schemas.get(name)
-        if schema:
-            break
+        s = all_schemas.get(name)
+        if s:
+            matched_schemas.append(s)
 
-    if schema is None:
+    if not matched_schemas:
         logger.warning("No schema found for platform '%s' (tried: %s)", platform, schema_names)
         return
 
@@ -334,67 +340,83 @@ def render_platform(
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
     node_tpl = env.get_template("generic_node_report.html.j2")
+    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
 
-    schema_name_for_file = schema.name
-    fleet_report_abs = render_template(
-        platform_paths["report_fleet"],
-        report_dir=report_dir, schema_name=schema_name_for_file,
-        hostname="", target_type="", report_stamp=stamp,
-    )
-    fleet_filename = Path(fleet_report_abs).name
-    site_report_abs = render_template(
-        platform_paths["report_site"],
-        report_dir=report_dir, schema_name=schema_name_for_file,
-        hostname="", target_type="", report_stamp=stamp,
-    )
+    # Render each schema independently
+    for schema_idx, schema in enumerate(matched_schemas):
+        is_primary = schema_idx == 0
+        node_file_stem = "health_report" if is_primary else f"{schema.name}_report"
 
-    node_nav: dict[str, str] = {"fleet_label": f"{schema.display_name} Fleet"}
-    fleet_nav: dict[str, str] = {}
+        schema_name_for_file = schema.name
+        fleet_report_abs = render_template(
+            platform_paths["report_fleet"],
+            report_dir=report_dir, schema_name=schema_name_for_file,
+            hostname="", target_type="", report_stamp=stamp,
+        )
+        fleet_filename = Path(fleet_report_abs).name
+        site_report_abs = render_template(
+            platform_paths["report_site"],
+            report_dir=report_dir, schema_name=schema_name_for_file,
+            hostname="", target_type="", report_stamp=stamp,
+        )
 
-    for hostname, bundle in hosts_data.items():
-        host_dir = output_path / hostname
-        host_dir.mkdir(exist_ok=True)
-        node_rel_dir = f"platform/{report_dir}/{hostname}"
-        node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
+        node_nav: dict[str, str] = {"fleet_label": f"{schema.display_name} Fleet"}
+        fleet_nav: dict[str, str] = {}
+
+        for hostname, bundle in hosts_data.items():
+            host_dir = output_path / hostname
+            host_dir.mkdir(exist_ok=True)
+            node_rel_dir = f"platform/{report_dir}/{hostname}"
+            node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
+            if has_site_report:
+                node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
+
+            # Build links to sibling schema reports for this host
+            sibling_reports = []
+            for sib in matched_schemas:
+                sib_stem = "health_report" if sib is matched_schemas[0] else f"{sib.name}_report"
+                sibling_reports.append({
+                    "label": sib.display_name or sib.name,
+                    "url": f"{sib_stem}.html",
+                    "active": sib is schema,
+                })
+            node_nav["sibling_reports"] = sibling_reports  # type: ignore[assignment]
+
+            history = _build_history(host_dir, node_file_stem)
+
+            node_view = build_generic_node_view(
+                schema,
+                hostname,
+                bundle,
+                nav=node_nav,
+                hosts_data=global_inventory_index,
+                generated_fleet_dirs=generated_fleet_dirs,
+                has_stig_fleet=has_stig_fleet,
+                history=history,
+                **kw,
+            )
+
+            # Embed STIG widgets only into the primary node report
+            if is_primary and stig_widgets_by_host and hostname in stig_widgets_by_host:
+                merge_stig_into_node_view(node_view, stig_widgets_by_host[hostname])
+
+            content = node_tpl.render(generic_node_view=node_view, **common_vars)
+            write_report(host_dir, f"{node_file_stem}.html", content, stamp)
+
         if has_site_report:
-            node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
+            fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
 
-        history = _build_history(host_dir, "health_report")
-
-        node_view = build_generic_node_view(
+        fleet_view = build_generic_fleet_view(
             schema,
-            hostname,
-            bundle,
-            nav=node_nav,
+            hosts_data,
+            nav=fleet_nav,
             hosts_data=global_inventory_index,
             generated_fleet_dirs=generated_fleet_dirs,
             has_stig_fleet=has_stig_fleet,
-            history=history,
             **kw,
         )
-
-        # Embed STIG widgets when pre-built views are available for this host
-        if stig_widgets_by_host and hostname in stig_widgets_by_host:
-            merge_stig_into_node_view(node_view, stig_widgets_by_host[hostname])
-
-        content = node_tpl.render(generic_node_view=node_view, **common_vars)
-        write_report(host_dir, "health_report.html", content, stamp)
-
-    if has_site_report:
-        fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
-
-    fleet_view = build_generic_fleet_view(
-        schema,
-        hosts_data,
-        nav=fleet_nav,
-        hosts_data=global_inventory_index,
-        generated_fleet_dirs=generated_fleet_dirs,
-        has_stig_fleet=has_stig_fleet,
-        **kw,
-    )
-    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
-    content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
-    write_report(output_path, fleet_filename, content, stamp)
+        content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
+        write_report(output_path, fleet_filename, content, stamp)
 
 
 # ---------------------------------------------------------------------------
