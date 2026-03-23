@@ -1,11 +1,14 @@
-"""Shared CKLB file parsing utilities."""
+"""Shared CKLB file parsing and lookup utilities."""
 
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .platform_registry import PlatformRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -49,3 +52,23 @@ def load_cklb_lookup(
     if cache is not None:
         cache[key] = result
     return result
+
+
+def resolve_cklb_lookup(
+    hostname: str,
+    target_type: str,
+    cklb_dir: Path | None,
+    registry: PlatformRegistry,
+    cache: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, dict[str, Any]]:
+    """Resolve CKLB lookup for a host/target, falling back to the skeleton file."""
+    if cklb_dir and target_type:
+        lookup = load_cklb_lookup(cklb_dir / f"{hostname}_{target_type}.cklb", cache)
+        if lookup:
+            return lookup
+    if target_type:
+        skeleton_file = registry.stig_skeleton_for_target(target_type)
+        if skeleton_file:
+            sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
+            return load_cklb_lookup(sk_path, cache)
+    return {}
