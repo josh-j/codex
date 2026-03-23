@@ -46,11 +46,11 @@
       ansible.builtin.include_tasks:
         file: >-
           {{
-            'collect.yaml'
+            role_path ~ '/tasks/collect.yaml'
             if _ncs_requested_action == 'collect'
-            else 'password_status.yaml'
+            else role_path ~ '/tasks/password_status.yaml'
             if _ncs_requested_operation == 'password_status'
-            else 'rotate_password.yaml'
+            else role_path ~ '/tasks/rotate_password.yaml'
             if _ncs_requested_operation == 'rotate_password'
-            else 'stig.yaml'
+            else role_path ~ '/tasks/stig.yaml'
           }}

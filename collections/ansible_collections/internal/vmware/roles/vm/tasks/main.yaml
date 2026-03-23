@@ -40,9 +40,9 @@
       ansible.builtin.include_tasks:
         file: >-
           {{
-            'collect.yaml'
+            role_path ~ '/tasks/collect.yaml'
             if _ncs_requested_action == 'collect'
-            else 'snapshot.yaml'
+            else role_path ~ '/tasks/snapshot.yaml'
             if _ncs_requested_operation == 'snapshot'
-            else 'stig.yaml'
+            else role_path ~ '/tasks/stig.yaml'
           }}
