@@ -13,4 +13,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: openssh
+        ncs_action: remediate
+        ncs_operation: openssh

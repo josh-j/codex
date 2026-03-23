@@ -18,7 +18,6 @@
 # Role behaviour
 # =============================================================================
 
-photon_action: discover
 photon_skip_export: false
 photon_stig_enable_audit: true
 photon_stig_enable_hardening: false

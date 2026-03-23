@@ -1,5 +1,44 @@
 ---
 # internal.linux.ubuntu : tasks/main.yaml
 
-- name: "Ubuntu | Dispatch: {{ ubuntu_action | default('discover') }}"
-  ansible.builtin.include_tasks: "{{ role_path }}/tasks/{{ ubuntu_action | default('discover') }}.yaml"
+- name: "Ubuntu | Resolve public interface"
+  ansible.builtin.set_fact:
+    _ncs_requested_action: >-
+      {{ ncs_action | default('collect') }}
+    _ncs_requested_profile: >-
+      {{ ncs_profile | default('none') }}
+    _ncs_requested_operation: >-
+      {{ ncs_operation | default('none') }}
+  changed_when: false
+
+- name: "Ubuntu | Validate public interface"
+  ansible.builtin.assert:
+    that:
+      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
+      - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
+      - (_ncs_requested_operation == 'none') or (_ncs_requested_operation in ['maintain', 'patch', 'password_status', 'rotate_password'])
+      - not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')
+      - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
+      - (_ncs_requested_operation not in ['patch', 'maintain', 'rotate_password']) or (_ncs_requested_action == 'remediate')
+      - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
+    fail_msg: >-
+      Unsupported ubuntu role interface:
+      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
+  changed_when: false
+
+- name: "Ubuntu | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }} / {{ _ncs_requested_operation }}"
+  ansible.builtin.include_tasks:
+    file: >-
+      {{
+        role_path ~ '/tasks/stig.yaml'
+        if _ncs_requested_profile == 'stig'
+        else role_path ~ '/tasks/maintain.yaml'
+        if _ncs_requested_operation == 'maintain'
+        else role_path ~ '/tasks/update.yaml'
+        if _ncs_requested_operation == 'patch'
+        else role_path ~ '/tasks/password_status.yaml'
+        if _ncs_requested_operation == 'password_status'
+        else role_path ~ '/tasks/passwords.yaml'
+        if _ncs_requested_operation == 'rotate_password'
+        else role_path ~ '/tasks/discover.yaml'
+      }}

@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: update_software
+        ncs_action: remediate
+        ncs_operation: update_software

@@ -11,14 +11,9 @@ vm_stig_enable_hardening: false
 vm_stig_enable_audit: true
 vmware_stig_target: "vm"
 vm_stig_target_vms: []
-vm_action: stig
-vm_supported_actions:
-  - collect
-  - snapshot
-  - stig
 
 # =============================================================================
-# Collection toggles (used by vm_action: collect)
+# Collection toggles (used by ncs_action: collect)
 # =============================================================================
 vm_collect_workload: true
 vm_collect_snapshots: true
@@ -30,7 +25,7 @@ vmware_snapshot_age_warning_days: 7
 vmware_snapshot_size_warning_gb: 100.0
 
 # =============================================================================
-# Simulation Settings (used by vm_action: collect)
+# Simulation Settings (used by ncs_action: collect)
 # =============================================================================
 simulation_vm_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter"
 simulation_vm_fixture_file: "{{ simulation_vm_fixture_root }}/{{ inventory_hostname }}/raw_vm.yaml"

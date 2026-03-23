@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: service
+        ncs_action: remediate
+        ncs_operation: service

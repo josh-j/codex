@@ -12,5 +12,6 @@
   roles:
     - role: internal.linux.ubuntu
       vars:
-        ubuntu_action: update
+        ncs_action: remediate
+        ncs_operation: patch
         ansible_ssh_private_key_file: "{{ '/tmp/logservers_key' if (vault_logservers_private_key | default('') | trim | length > 0) else omit }}"

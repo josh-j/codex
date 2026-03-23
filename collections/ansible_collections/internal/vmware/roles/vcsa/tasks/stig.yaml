@@ -23,6 +23,11 @@
          | default(vcsa_stig_enable_hardening)) | default(false) }}
   changed_when: false
 
+- name: "VCSA STIG | Phase 0 | Resolve canonical action"
+  ansible.builtin.set_fact:
+    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+  changed_when: false
+
 # Back-set vmware_stig_enable_hardening so the 8 VCSA sub-roles
 # (eam, lookup, perfcharts, postgresql, rhttpproxy, sts, ui, vami)
 # continue working — they have 100+ inline references to vmware_stig_enable_hardening.
@@ -34,8 +39,9 @@
 - name: "VCSA STIG | Phase 0 | Determine run mode"
   ansible.builtin.set_fact:
     _stig_audit_only: >-
-      {{ (vcsa_stig_enable_audit | default(true) | bool)
-         and not (vcsa_stig_enable_hardening | default(false) | bool) }}
+      {{ _ncs_stig_action in ['audit', 'verify'] }}
+    vcsa_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+    vcsa_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
   changed_when: false
 
 - name: "VCSA STIG | Phase 0 | Register target context for ncs_collector"
@@ -56,7 +62,7 @@
 # =============================================================================
 - name: "VCSA STIG | Phase 1 | Evaluate and/or remediate"
   when:
-    - vcsa_stig_enable_audit | default(true) | bool or vcsa_stig_enable_hardening | default(false) | bool
+    - _ncs_stig_action in ['audit', 'remediate']
   block:
     - name: "VCSA STIG | Load VCSA profile vars"
       ansible.builtin.include_vars: "vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
@@ -65,8 +71,8 @@
       ansible.builtin.include_role:
         name: internal.linux.photon
       vars:
-        photon_action: "{{ 'remediate' if (vcsa_stig_enable_hardening | default(false) | bool) else 'stig' }}"
-        photon_stig_enable_hardening: "{{ vcsa_stig_enable_hardening | default(false) | bool }}"
+        ncs_action: "{{ 'remediate' if (vcsa_stig_enable_hardening | default(false) | bool) else 'audit' }}"
+        ncs_profile: stig
       when: vcsa_stig_include_photon | default(false) | bool
 
     - name: "VCSA STIG | Execute VCSA service roles"
@@ -129,13 +135,11 @@
     _stig_active_phase: "audit"
   changed_when: false
   when:
-    - not (_stig_audit_only | bool)
-    - vcsa_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
 
 - name: "VCSA STIG | Phase 2 | Post-remediation audit"
   when:
-    - not (_stig_audit_only | bool)
-    - vcsa_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
   block:
     - name: "VCSA STIG | Phase 2a | Verify remediation (check_mode)"
       ansible.builtin.include_tasks: stig_role_wrapper.yaml

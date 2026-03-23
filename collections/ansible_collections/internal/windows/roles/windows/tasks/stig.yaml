@@ -6,6 +6,20 @@
 # =============================================================================
 - import_tasks: stig_prelude.yaml
 
+- name: "Windows STIG | Phase 0 | Resolve canonical action"
+  ansible.builtin.set_fact:
+    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+  changed_when: false
+
+- name: "Windows STIG | Phase 0 | Normalize compatibility flags"
+  ansible.builtin.set_fact:
+    windows_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+    windows_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
+    _stig_audit_only: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+    _stig_phase_hint: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
+    _stig_active_phase: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
+  changed_when: false
+
 # =============================================================================
 # Phase 1 | Ingest Inputs / Evaluate
 # =============================================================================
@@ -19,8 +33,8 @@
 
 - name: "Windows STIG | Phase 1b | Run native checks"
   when:
+    - _ncs_stig_action in ['audit', 'remediate']
     - not (_stig_audit_ran | default(false))
-    - windows_stig_enable_audit | default(true) | bool
   block:
     - name: "Windows STIG | Phase 1b.1 | Execute native baseline checks"
       ansible.builtin.import_tasks: stig_check.yaml
@@ -28,14 +42,14 @@
 
     - name: "Windows STIG | Phase 1b.2 | Execute native remediation"
       ansible.builtin.import_tasks: stig_remediate.yaml
-      when: windows_stig_enable_hardening | default(false) | bool
+      when: _ncs_stig_action == 'remediate'
       tags: [windows, stig, security, remediate]
 
     - name: "Windows STIG | Phase 1b.3 | Flag remediation as complete"
       ansible.builtin.set_fact:
         _stig_remediation_ran: true
       changed_when: false
-      when: windows_stig_enable_hardening | default(false) | bool
+      when: _ncs_stig_action == 'remediate'
   rescue:
     - name: "Windows STIG | Phase 1b.r | Mark native check failure"
       ansible.builtin.set_fact:
@@ -72,14 +86,11 @@
     _stig_active_phase: "audit"
   changed_when: false
   when:
-    - not (_stig_audit_only | bool)
-    - windows_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
 
 - name: "Windows STIG | Phase 2 | Post-remediation audit"
   when:
-    - not (_stig_audit_only | bool)
-    - windows_stig_enable_audit | default(true) | bool
-    - _stig_remediation_ran | default(false)
+    - _ncs_stig_action == 'verify'
   block:
     - name: "Windows STIG | Phase 2a | Refresh checks after remediation"
       ansible.builtin.import_tasks: stig_check.yaml

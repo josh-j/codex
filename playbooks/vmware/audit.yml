@@ -18,7 +18,7 @@
     - role: internal.vmware.vcenter_collect
     - role: internal.vmware.esxi
       vars:
-        esxi_action: collect
+        ncs_action: collect
     - role: internal.vmware.vm
       vars:
-        vm_action: collect
+        ncs_action: collect

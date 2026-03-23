@@ -1,16 +1,28 @@
 ---
 # internal.vmware.vm : tasks/main.yaml
 
+- name: "VM | Resolve public interface"
+  ansible.builtin.set_fact:
+    _ncs_requested_action: "{{ ncs_action | default('collect') }}"
+    _ncs_requested_profile: "{{ ncs_profile | default('none') }}"
+    _ncs_requested_operation: "{{ ncs_operation | default('none') }}"
+  changed_when: false
+
 - name: "VM | Validate action"
   ansible.builtin.assert:
     that:
-      - (vm_action | default('stig')) in (vm_supported_actions | default(['collect', 'snapshot', 'stig']))
+      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
+      - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
+      - (_ncs_requested_operation == 'none') or (_ncs_requested_operation == 'snapshot')
+      - not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')
+      - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
+      - (_ncs_requested_operation == 'none') or (_ncs_requested_action == 'remediate')
     fail_msg: >-
-      Unsupported vm_action '{{ vm_action | default('stig') }}'.
-      Supported values: {{ vm_supported_actions | default(['collect', 'snapshot', 'stig']) | join(', ') }}.
+      Unsupported VM role interface:
+      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
   changed_when: false
 
-- name: "VM | Dispatch: {{ vm_action | default('stig') }}"
+- name: "VM | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }} / {{ _ncs_requested_operation }}"
   module_defaults:
     group/community.vmware.vmware:
       hostname: "{{ _vcenter_hostname }}"
@@ -24,5 +36,13 @@
         password: "{{ vmware_password }}"
         validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   block:
-    - name: "VM | Run: {{ vm_action | default('stig') }}"
-      ansible.builtin.include_tasks: "{{ vm_action | default('stig') }}.yaml"
+    - name: "VM | Run dispatcher"
+      ansible.builtin.include_tasks:
+        file: >-
+          {{
+            'collect.yaml'
+            if _ncs_requested_action == 'collect'
+            else 'snapshot.yaml'
+            if _ncs_requested_operation == 'snapshot'
+            else 'stig.yaml'
+          }}

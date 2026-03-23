@@ -3,6 +3,9 @@
 This directory contains the Ansible playbooks for fleet-wide auditing, remediation, and reporting.
 Playbooks are organized into platform subdirectories for discoverability.
 
+Most platform playbooks now drive roles through the shared interface:
+`ncs_action`, optional `ncs_profile`, and optional `ncs_operation`.
+
 ## Directory Structure
 
 ```

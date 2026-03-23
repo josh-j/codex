@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: registry_fix
+        ncs_action: remediate
+        ncs_operation: registry_fix

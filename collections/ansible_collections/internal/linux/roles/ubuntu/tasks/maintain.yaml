@@ -11,7 +11,6 @@
     upgrade: dist
     update_cache: true
   become: true
-  when: ubuntu_enable_maintenance | default(false) | bool
 
 - name: "Ubuntu Maintenance | Check if reboot is required"
   ansible.builtin.stat:

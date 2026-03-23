@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: winrm_enable
+        ncs_action: remediate
+        ncs_operation: winrm_enable

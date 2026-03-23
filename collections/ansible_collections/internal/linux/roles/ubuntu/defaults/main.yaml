@@ -4,8 +4,6 @@
 # ROLE BEHAVIOR — actions, feature flags, thresholds
 # =============================================================================
 
-ubuntu_action: discover
-
 ubuntu_skip_discovery: false
 ubuntu_skip_export: false
 

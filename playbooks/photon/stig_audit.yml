@@ -14,7 +14,8 @@
   roles:
     - role: internal.linux.photon
       vars:
-        photon_action: discover
+        ncs_action: collect
     - role: internal.linux.photon
       vars:
-        photon_action: stig
+        ncs_action: audit
+        ncs_profile: stig

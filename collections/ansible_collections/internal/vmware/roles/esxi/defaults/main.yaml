@@ -4,17 +4,13 @@
 # =============================================================================
 # Pipeline config
 # =============================================================================
-esxi_action: stig
-esxi_supported_actions:
-  - collect
-  - stig
 esxi_stig_enable_audit: true
 esxi_stig_enable_hardening: false
 esxi_stig_target_hosts: []
 esxi_stig_enable_ssh_checks: true
 
 # =============================================================================
-# Collection toggles (used by esxi_action: collect)
+# Collection toggles (used by ncs_action: collect)
 # =============================================================================
 esxi_collect_datacenters: true
 esxi_collect_compute: true
@@ -29,7 +25,7 @@ vmware_datastore_free_critical_pct: 10.0
 vmware_datastore_free_warning_pct: 15.0
 
 # =============================================================================
-# Simulation Settings (used by esxi_action: collect)
+# Simulation Settings (used by ncs_action: collect)
 # =============================================================================
 simulation_esxi_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter"
 simulation_esxi_fixture_file: "{{ simulation_esxi_fixture_root }}/{{ inventory_hostname }}/raw_esxi.yaml"

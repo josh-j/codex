@@ -9,4 +9,4 @@
   roles:
     - role: internal.vmware.vm
       vars:
-        vm_action: collect
+        ncs_action: collect

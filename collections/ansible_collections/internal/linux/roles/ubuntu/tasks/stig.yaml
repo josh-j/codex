@@ -17,11 +17,17 @@
     ubuntu_stig_enable_hardening: "{{ ubuntu_enable_stig_hardening | default(ubuntu_stig_enable_hardening) | default(false) }}"
   changed_when: false
 
+- name: "Ubuntu STIG | Phase 0 | Resolve canonical action"
+  ansible.builtin.set_fact:
+    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+  changed_when: false
+
 - name: "Ubuntu STIG | Phase 0 | Determine run mode"
   ansible.builtin.set_fact:
     _stig_audit_only: >-
-      {{ (ubuntu_stig_enable_audit | default(true) | bool)
-         and not (ubuntu_stig_enable_hardening | default(false) | bool) }}
+      {{ _ncs_stig_action in ['audit', 'verify'] }}
+    ubuntu_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+    ubuntu_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
   changed_when: false
 
 - name: "Ubuntu STIG | Phase 0 | Register target context for ncs_collector"
@@ -41,7 +47,7 @@
 # =============================================================================
 - name: "Ubuntu STIG | Phase 1 | Evaluate and/or remediate"
   when:
-    - ubuntu_stig_enable_audit | default(true) | bool or ubuntu_stig_enable_hardening | default(false) | bool
+    - _ncs_stig_action in ['audit', 'remediate']
   block:
     - name: "Ubuntu STIG | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks:
@@ -83,13 +89,11 @@
     _stig_active_phase: "audit"
   changed_when: false
   when:
-    - not (_stig_audit_only | bool)
-    - ubuntu_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
 
 - name: "Ubuntu STIG | Phase 2 | Post-remediation audit"
   when:
-    - not (_stig_audit_only | bool)
-    - ubuntu_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
   block:
     - name: "Ubuntu STIG | Phase 2a | Verify remediation (check_mode)"
       ansible.builtin.include_tasks:
