@@ -180,7 +180,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
   -i /tmp/vcsa-eam-inventory.yml \
   playbooks/vmware_vcsa_stig_audit.yml \
   -l test-vcsa-eam \
-  -e '{"vault_vcenter_ssh_password":"Ineption123!","vcenter_stig_roles":["internal.vmware.vcsa_sts"]}'
+  -e '{"vault_vcenter_ssh_password":"Ineption123!","vcsa_stig_services":[{"name":"sts","target_type":"sts"}]}'
 ```
 
 #### Single-role remediation example
@@ -192,7 +192,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
   -i /tmp/vcsa-eam-inventory.yml \
   playbooks/vmware_vcsa_stig_remediate.yml \
   -l test-vcsa-eam \
-  -e '{"vault_vcenter_ssh_password":"Ineption123!","vcenter_stig_roles":["internal.vmware.vcsa_sts"]}'
+  -e '{"vault_vcenter_ssh_password":"Ineption123!","vcsa_stig_services":[{"name":"sts","target_type":"sts"}]}'
 ```
 
 ### Report Generation

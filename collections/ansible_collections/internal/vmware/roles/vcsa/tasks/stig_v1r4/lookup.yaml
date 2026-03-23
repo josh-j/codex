@@ -358,7 +358,7 @@
 
 - name: "VCLU-70-000011/000018/000029 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: catalina.properties
+    src: lookup_catalina.properties
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root

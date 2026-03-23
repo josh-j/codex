@@ -4,8 +4,8 @@
 # VCSA STIG — three-phase audit/remediate orchestrator
 #
 # Phase 0: Determine run mode and set context
-# Phase 1: Execute STIG tasks (profile vars + Photon baseline + sub-role loop)
-# Phase 2: Post-remediation verification (re-run sub-role loop in check_mode)
+# Phase 1: Execute STIG tasks (profile vars + Photon baseline + service loop)
+# Phase 2: Post-remediation verification (re-run service loop in check_mode)
 # =============================================================================
 
 # =============================================================================
@@ -28,10 +28,9 @@
     _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
   changed_when: false
 
-# Back-set vmware_stig_enable_hardening so the 8 VCSA sub-roles
-# (eam, lookup, perfcharts, postgresql, rhttpproxy, sts, ui, vami)
+# Back-set vmware_stig_enable_hardening so the VCSA service tasks
 # continue working — they have 100+ inline references to vmware_stig_enable_hardening.
-- name: "VCSA STIG | Phase 0 | Back-set vmware_stig_enable_hardening for sub-roles"
+- name: "VCSA STIG | Phase 0 | Back-set vmware_stig_enable_hardening for service tasks"
   ansible.builtin.set_fact:
     vmware_stig_enable_hardening: "{{ vcsa_stig_enable_hardening }}"
   changed_when: false
@@ -75,33 +74,27 @@
         ncs_profile: stig
       when: vcsa_stig_include_photon | default(false) | bool
 
-    - name: "VCSA STIG | Execute VCSA service roles"
-      ansible.builtin.include_tasks: stig_role_wrapper.yaml
-      loop: "{{ vcsa_stig_roles | default(vcenter_stig_roles | default(_vcsa_stig_default_role_list)) }}"
+    - name: "VCSA STIG | Execute VCSA service tasks"
+      ansible.builtin.include_tasks:
+        file: "{{ role_path }}/tasks/stig_service.yaml"
+        apply:
+          check_mode: "{{ (_stig_phase2_verify | default(false) | bool) or (not (vcsa_stig_enable_hardening | default(false) | bool)) }}"
+          tags: [stig_task]
+      loop: "{{ vcsa_stig_services | default(_vcsa_stig_default_services) }}"
       loop_control:
-        loop_var: _vcsa_role
-        label: "{{ _vcsa_role | regex_replace('internal\\.vmware\\.vcsa_?', '') }}"
+        loop_var: _vcsa_service
+        label: "{{ _vcsa_service.name }}"
       vars:
-        _vcsa_role_map:
-          # internal.vmware.vcsa_misc: "vcsa"
-          internal.vmware.vcsa_eam: "eam"
-          internal.vmware.vcsa_lookup: "lookup_svc"
-          internal.vmware.vcsa_perfcharts: "perfcharts"
-          internal.vmware.vcsa_postgresql: "postgresql"
-          internal.vmware.vcsa_rhttpproxy: "rhttpproxy"
-          internal.vmware.vcsa_sts: "sts"
-          internal.vmware.vcsa_ui: "ui"
-          internal.vmware.vcsa_vami: "vami"
-        _vcsa_stig_default_role_list:
-          # - internal.vmware.vcsa_misc
-          - internal.vmware.vcsa_eam
-          - internal.vmware.vcsa_lookup
-          - internal.vmware.vcsa_perfcharts
-          - internal.vmware.vcsa_postgresql
-          - internal.vmware.vcsa_rhttpproxy
-          - internal.vmware.vcsa_sts
-          - internal.vmware.vcsa_ui
-          - internal.vmware.vcsa_vami
+        _vcsa_stig_default_services:
+          # - { name: misc, target_type: vcsa }
+          - { name: eam, target_type: eam }
+          - { name: lookup, target_type: lookup_svc }
+          - { name: perfcharts, target_type: perfcharts }
+          - { name: postgresql, target_type: postgresql }
+          - { name: rhttpproxy, target_type: rhttpproxy }
+          - { name: sts, target_type: sts }
+          - { name: ui, target_type: ui }
+          - { name: vami, target_type: vami }
 
     - name: "VCSA STIG | Phase 1b | Flag run as complete"
       ansible.builtin.set_fact:
@@ -142,31 +135,26 @@
     - _ncs_stig_action == 'verify'
   block:
     - name: "VCSA STIG | Phase 2a | Verify remediation (check_mode)"
-      ansible.builtin.include_tasks: stig_role_wrapper.yaml
-      loop: "{{ vcsa_stig_roles | default(vcenter_stig_roles | default(_vcsa_stig_default_role_list)) }}"
+      ansible.builtin.include_tasks:
+        file: "{{ role_path }}/tasks/stig_service.yaml"
+        apply:
+          check_mode: true
+          tags: [stig_task]
+      loop: "{{ vcsa_stig_services | default(_vcsa_stig_default_services) }}"
       loop_control:
-        loop_var: _vcsa_role
-        label: "{{ _vcsa_role | regex_replace('internal\\.vmware\\.vcsa_?', '') }}"
+        loop_var: _vcsa_service
+        label: "{{ _vcsa_service.name }}"
       vars:
         _stig_phase2_verify: true
-        _vcsa_role_map:
-          internal.vmware.vcsa_eam: "eam"
-          internal.vmware.vcsa_lookup: "lookup_svc"
-          internal.vmware.vcsa_perfcharts: "perfcharts"
-          internal.vmware.vcsa_postgresql: "postgresql"
-          internal.vmware.vcsa_rhttpproxy: "rhttpproxy"
-          internal.vmware.vcsa_sts: "sts"
-          internal.vmware.vcsa_ui: "ui"
-          internal.vmware.vcsa_vami: "vami"
-        _vcsa_stig_default_role_list:
-          - internal.vmware.vcsa_eam
-          - internal.vmware.vcsa_lookup
-          - internal.vmware.vcsa_perfcharts
-          - internal.vmware.vcsa_postgresql
-          - internal.vmware.vcsa_rhttpproxy
-          - internal.vmware.vcsa_sts
-          - internal.vmware.vcsa_ui
-          - internal.vmware.vcsa_vami
+        _vcsa_stig_default_services:
+          - { name: eam, target_type: eam }
+          - { name: lookup, target_type: lookup_svc }
+          - { name: perfcharts, target_type: perfcharts }
+          - { name: postgresql, target_type: postgresql }
+          - { name: rhttpproxy, target_type: rhttpproxy }
+          - { name: sts, target_type: sts }
+          - { name: ui, target_type: ui }
+          - { name: vami, target_type: vami }
 
     - name: "VCSA STIG | Phase 2b | Flag verification as complete"
       ansible.builtin.set_fact:
