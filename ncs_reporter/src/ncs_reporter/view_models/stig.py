@@ -12,7 +12,121 @@ from .common import _iter_hosts, _status_from_health, build_meta, canonical_seve
 
 logger = logging.getLogger(__name__)
 
+from ..pathing import rel_href, render_template
+
 _fleet_cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+
+def collect_stig_entries(
+    hosts_data: dict[str, Any],
+    stamp: str,
+    registry: PlatformRegistry,
+) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, str]]]]:
+    """Enumerate hosts_data and collect STIG audit entries + report index.
+
+    Returns:
+        stig_entries: flat list of per-audit-type metadata dicts
+        all_stig_reports: hostname → [{target_type, host_report_abs, host_rel_dir}]
+    """
+    stig_entries: list[dict[str, Any]] = []
+    all_stig_reports: dict[str, list[dict[str, str]]] = {}
+
+    for hostname, bundle in hosts_data.items():
+        if not isinstance(bundle, dict):
+            continue
+        for audit_type, payload in bundle.items():
+            if not str(audit_type).lower().startswith("stig"):
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            target_type = str(payload.get("target_type", "")).strip().lower()
+            entry = registry.entry_for_target_type(target_type)
+            if entry is None:
+                linux_entries = registry.by_platform("linux")
+                entry = linux_entries[0] if linux_entries else None
+            if entry is None:
+                logger.warning("No STIG platform mapping for target_type '%s'", target_type)
+                continue
+
+            report_dir = entry.report_dir
+            path_templates = entry.paths.model_dump()
+            host_report_abs = render_template(
+                path_templates["report_stig_host"],
+                report_dir=report_dir,
+                schema_name="",
+                hostname=hostname,
+                target_type=target_type,
+                report_stamp=stamp,
+            )
+            host_rel_dir = str(Path(host_report_abs).parent).replace("\\", "/")
+
+            se = {
+                "hostname": hostname,
+                "bundle": bundle,
+                "audit_type": audit_type,
+                "payload": payload,
+                "target_type": target_type,
+                "entry": entry,
+                "report_dir": report_dir,
+                "path_templates": path_templates,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            }
+            stig_entries.append(se)
+            all_stig_reports.setdefault(hostname, []).append({
+                "target_type": target_type,
+                "host_report_abs": host_report_abs,
+                "host_rel_dir": host_rel_dir,
+            })
+
+    return stig_entries, all_stig_reports
+
+
+def build_stig_nav(
+    se: dict[str, Any],
+    all_stig_reports: dict[str, list[dict[str, str]]],
+    stig_fleet_abs: str,
+    site_report_abs: str | None,
+    has_site_report: bool,
+) -> tuple[dict[str, str], list[dict[str, str]], list[dict[str, str]]]:
+    """Build host_nav, stig_host_peers, and stig_siblings for one STIG entry."""
+    hostname = se["hostname"]
+    target_type = se["target_type"]
+    host_rel_dir = se["host_rel_dir"]
+
+    host_nav: dict[str, str] = {
+        "fleet_report": rel_href(host_rel_dir, stig_fleet_abs),
+        "fleet_label": "STIG Fleet Dashboard",
+    }
+    if has_site_report and site_report_abs:
+        host_nav["site_report"] = rel_href(host_rel_dir, site_report_abs)
+
+    # Peer hosts (all STIG hosts, preferring same target_type)
+    stig_host_peers: list[dict[str, str]] = []
+    seen_peers: set[str] = set()
+    for peer_host, peer_reports in sorted(all_stig_reports.items()):
+        if peer_host in seen_peers:
+            continue
+        seen_peers.add(peer_host)
+        pr = next((r for r in peer_reports if r["target_type"] == target_type), peer_reports[0])
+        peer_abs = pr["host_rel_dir"] + "/" + Path(pr["host_report_abs"]).name
+        stig_host_peers.append({"name": peer_host, "report": rel_href(host_rel_dir, peer_abs)})
+
+    # Siblings (other STIG types for same host)
+    stig_siblings: list[dict[str, str]] = sorted(
+        [
+            {
+                "name": f"{sr['target_type'].upper()} STIG",
+                "report": rel_href(host_rel_dir, sr["host_rel_dir"] + "/" + Path(sr["host_report_abs"]).name),
+            }
+            for sr in all_stig_reports.get(hostname, [])
+            if sr["target_type"] != target_type
+        ],
+        key=lambda x: x["name"],
+    )
+
+    return host_nav, stig_host_peers, stig_siblings
 
 
 def _resolve_fleet_cklb(
