@@ -207,7 +207,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         status) in the Security Compliance section.
         """
         # Add ESXi STIG data alongside the vmware platform data already set up in setUp
-        esxi_dir = self.platform_root / "vmware" / "esxi-01"
+        esxi_dir = self.platform_root / "vmware" / "esxi" / "esxi-01"
         esxi_dir.mkdir(parents=True, exist_ok=True)
         stig_raw = {
             "metadata": {

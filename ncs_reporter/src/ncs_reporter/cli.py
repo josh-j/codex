@@ -313,7 +313,11 @@ def _merge_platform_data(platform_data: dict[str, dict[str, Any]]) -> dict[str, 
     for p_data in platform_data.values():
         if not p_data or "hosts" not in p_data:
             continue
-        merged["hosts"].update(p_data["hosts"])
+        for hostname, bundle in p_data["hosts"].items():
+            if hostname in merged["hosts"] and isinstance(bundle, dict):
+                merged["hosts"][hostname].update(bundle)
+            else:
+                merged["hosts"][hostname] = bundle
         p_stats = p_data.get("metadata", {}).get("fleet_stats", {})
         merged["metadata"]["fleet_stats"]["critical_alerts"] += p_stats.get("critical_alerts", 0)
         merged["metadata"]["fleet_stats"]["warning_alerts"] += p_stats.get("warning_alerts", 0)

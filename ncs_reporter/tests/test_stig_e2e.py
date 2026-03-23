@@ -20,7 +20,7 @@ class TestStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "esxi-01"
+        self.host_dir = self.platform_root / "vmware" / "esxi" / "esxi-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 
@@ -185,7 +185,7 @@ class TestVmStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vc-01"
+        self.host_dir = self.platform_root / "vmware" / "vm" / "vc-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 

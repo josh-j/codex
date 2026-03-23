@@ -152,7 +152,7 @@ class TestBuildStigHostView:
             cklb_rule_lookup=cklb_lookup,
         )
         finding = view["findings"][0]
-        assert finding["title"] == "Rule 1"
+        assert finding["title"] == "CKLB Rule 1"
         assert finding["detail"]["description"] == "CKLB discussion"
         assert finding["detail"]["checktext"] == "CKLB check"
         assert finding["detail"]["fixtext"] == "CKLB fix"

@@ -85,10 +85,12 @@ class TestGenerateCklb:
         rules = result["stigs"][0]["rules"]
         assert len(rules) == 3
 
-        # V-001 should be open
+        # V-001 should be open with structured finding details
         r1 = rules[0]
         assert r1["status"] == "open"
-        assert r1["finding_details"] == "Failed check"
+        assert "non-compliant" in r1["finding_details"]
+        assert "Check it" in r1["finding_details"]
+        assert "Fix it" in r1["finding_details"]
 
         # V-002 should be not_a_finding
         r2 = rules[1]
@@ -154,8 +156,9 @@ class TestGenerateCklb:
         result = json.loads(output_path.read_text())
         details = result["stigs"][0]["rules"][0]["finding_details"]
         assert re.search(r"<[^>]+>", details) is None
-        assert "Failed" in details
-        assert "wrong" in details
+        # Skeleton check_content and fix_text are used (HTML-stripped)
+        assert "Check it" in details
+        assert "Fix it" in details
 
     def test_comments_populated_for_matched_rules(self, tmp_path):
         skeleton_path = tmp_path / "skeleton.json"

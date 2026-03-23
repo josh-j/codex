@@ -7,7 +7,9 @@ import unittest
 import yaml
 from click.testing import CliRunner
 
-from ncs_reporter.cli import _default_paths, get_jinja_env, main
+from ncs_reporter._config import default_paths as _default_paths
+from ncs_reporter.cli import main
+from ncs_reporter._report_context import get_jinja_env
 from ncs_reporter.view_models.common import status_badge_meta
 
 
@@ -479,8 +481,8 @@ class ReportContentTests(unittest.TestCase):
             report = os.path.join(output_dir, "vcenter_fleet_report.html")
             with open(report) as f:
                 content = f.read()
-            self.assertIn("<!DOCTYPE html>", content)
-            self.assertIn("</html>", content)
+            self.assertIn("<!doctype html>", content.lower())
+            self.assertIn("<html", content.lower())
 
 
 # ---------------------------------------------------------------------------

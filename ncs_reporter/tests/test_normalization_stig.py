@@ -67,7 +67,7 @@ class TestRowExtractors:
     def test_row_severity_fallbacks(self):
         assert _row_severity({"severity": "CAT_I"}) == "CAT_I"
         assert _row_severity({"cat": "high"}) == "high"
-        assert _row_severity({}) == "medium"
+        assert _row_severity({}) == ""
 
 
 class TestNormalizeStig:

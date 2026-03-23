@@ -105,15 +105,24 @@ class TestNewFeaturesE2E(unittest.TestCase):
         # 5. Verify New Widgets in Node Report
         node_report = (self.reports_root / "platform" / "test" / "host-01" / "health_report.html").read_text()
 
-        # Progress Bar (check for percentage and the container style)
+        # Progress Bar (check for percentage — minifier may remove spaces)
         self.assertIn("75.5%", node_report)
-        self.assertIn('style="width: 75.5%', node_report)
+        self.assertTrue(
+            'style="width: 75.5%' in node_report or 'width:75.5%' in node_report,
+            "Progress bar width style must be present in minified or unminified form",
+        )
 
         # Markdown
         self.assertIn("Hello **World**", node_report)
 
-        # Layout (flex-basis check)
-        self.assertIn("flex: 1 1 calc(50% - 7px)", node_report)
+        # Layout (flex-basis check — minifier may simplify style values)
+        self.assertTrue(
+            "flex: 1 1 calc(50% - 7px)" in node_report or "flex:calc(50% - 7px)" in node_report,
+            "Half-width layout flex style must be present in minified or unminified form",
+        )
 
-        # data-root calculation for nested node report
-        self.assertIn('data-root="../../../"', node_report)
+        # data-root calculation for nested node report (minifier may strip quotes)
+        self.assertTrue(
+            'data-root="../../../"' in node_report or 'data-root=../../../>' in node_report,
+            "data-root attribute must reference site root (3 levels up)",
+        )
