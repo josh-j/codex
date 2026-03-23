@@ -18,7 +18,7 @@
 
 - name: "ESXi STIG | Phase 0 | Resolve canonical action"
   ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+    _ncs_stig_action: "{{ esxi_ncs_requested_action | default(ncs_action | default('audit')) }}"
   changed_when: false
 
 - name: "ESXi STIG | Phase 0 | Validate target hosts"
