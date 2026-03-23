@@ -14,24 +14,33 @@ def _read_yaml(relative_path: str) -> dict:
     return yaml.safe_load((REPO_ROOT / relative_path).read_text(encoding="utf-8")) or {}
 
 
+def _extract_actions_from_main_yaml(main_yaml_path: Path) -> list[str]:
+    """Extract valid actions from the inline assert block in main.yaml.
+
+    The current role pattern validates actions via an ``assert`` task with
+    ``_ncs_requested_action in ['collect', 'audit', ...]``.
+    """
+    import re
+
+    content = main_yaml_path.read_text(encoding="utf-8")
+    match = re.search(r"_ncs_requested_action\s+in\s+\[([^\]]+)\]", content)
+    if not match:
+        return []
+    raw = match.group(1)
+    return [a.strip().strip("'\"") for a in raw.split(",")]
+
+
 def test_vmware_supported_actions_match_task_files() -> None:
-    role_actions = {
-        "collections/ansible_collections/internal/vmware/roles/esxi/defaults/main.yaml": (
-            "esxi_supported_actions",
-            VMWARE_ROOT / "roles" / "esxi" / "tasks",
-        ),
-        "collections/ansible_collections/internal/vmware/roles/vm/defaults/main.yaml": (
-            "vm_supported_actions",
-            VMWARE_ROOT / "roles" / "vm" / "tasks",
-        ),
+    role_tasks = {
+        "esxi": VMWARE_ROOT / "roles" / "esxi" / "tasks",
+        "vm": VMWARE_ROOT / "roles" / "vm" / "tasks",
     }
 
-    for defaults_path, (actions_key, task_dir) in role_actions.items():
-        defaults = _read_yaml(defaults_path)
-        actions = defaults.get(actions_key, [])
-        assert actions, f"{actions_key} should not be empty"
-        missing = [action for action in actions if not (task_dir / f"{action}.yaml").is_file()]
-        assert not missing, f"{actions_key} contains actions without task files: {missing}"
+    for role_name, task_dir in role_tasks.items():
+        main_yaml = task_dir / "main.yaml"
+        assert main_yaml.is_file(), f"{role_name} main.yaml should exist"
+        actions = _extract_actions_from_main_yaml(main_yaml)
+        assert actions, f"{role_name} supported actions should not be empty"
 
 
 def test_vmware_public_readme_matches_supported_surface() -> None:

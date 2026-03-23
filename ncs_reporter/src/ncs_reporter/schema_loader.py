@@ -298,20 +298,34 @@ def build_platform_entries_from_schemas(
 
     Each schema with a ``platform_spec`` produces one primary entry and zero or more
     sub-entries (non-renderable, STIG-only entries like vcsa/esxi/vm under vmware).
+
+    When multiple schemas share the same ``input_dir``, the first one encountered
+    becomes the primary entry and subsequent schemas are merged into its
+    ``schema_names`` list.  Schemas with ``sub_entries`` are processed first so
+    they always serve as the primary.
     """
     entries: list[dict[str, Any]] = []
-    seen_platforms: set[str] = set()
+    seen_input_dirs: dict[str, dict[str, Any]] = {}
 
-    for schema in schemas.values():
-        spec: PlatformSpec | None = schema.platform_spec
-        if spec is None:
-            continue
+    # Process schemas with sub_entries first so they become the primary entry
+    # for their input_dir (they carry the richest metadata).
+    platform_schemas = [s for s in schemas.values() if s.platform_spec is not None]
+    platform_schemas.sort(key=lambda s: (not s.platform_spec.sub_entries,))
+
+    for schema in platform_schemas:
+        spec: PlatformSpec = schema.platform_spec  # type: ignore[assignment]
 
         platform_name = spec.name or schema.platform or schema.name
+        input_dir = spec.input_dir or schema.platform or schema.name
+
+        if input_dir in seen_input_dirs:
+            # Merge into existing primary entry
+            seen_input_dirs[input_dir]["schema_names"].append(schema.name)
+            continue
 
         # Primary entry
         primary: dict[str, Any] = {
-            "input_dir": spec.input_dir or schema.platform or schema.name,
+            "input_dir": input_dir,
             "report_dir": spec.report_dir or schema.platform or schema.name,
             "platform": platform_name,
             "state_file": spec.state_file,
@@ -327,7 +341,7 @@ def build_platform_entries_from_schemas(
             "site_category": spec.site_category,
         }
         entries.append(primary)
-        seen_platforms.add(platform_name)
+        seen_input_dirs[input_dir] = primary
 
         # Sub-entries (non-renderable)
         for sub in spec.sub_entries:
