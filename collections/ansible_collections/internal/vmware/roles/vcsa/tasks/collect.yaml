@@ -1,6 +1,10 @@
 ---
-# internal.vmware.vcenter_collect : tasks/collect.yaml
-# VCSA-only collection: appliance health, backup, alarms.
+# internal.vmware.vcsa : tasks/collect.yaml
+# VCSA collection: appliance health, backup schedule, alarms.
+
+- name: Collect | Preflight
+  ansible.builtin.include_tasks: preflight.yaml
+  tags: [always]
 
 - name: Collect | Save caller role path
   ansible.builtin.set_fact:
@@ -44,5 +48,5 @@
         name: internal.vmware.common
         tasks_from: finalize_collection
       vars:
-        vmware_collection_assemble_task: "{{ _caller_role_path }}/tasks/assemble.yaml"
-        vmware_collection_export_task: "{{ _caller_role_path }}/tasks/export.yaml"
+        vmware_collection_assemble_task: "{{ _caller_role_path }}/tasks/collect/assemble.yaml"
+        vmware_collection_export_task: "{{ _caller_role_path }}/tasks/collect/export.yaml"

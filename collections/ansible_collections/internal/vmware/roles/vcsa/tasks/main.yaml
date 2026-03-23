@@ -8,19 +8,10 @@
     _ncs_requested_operation: "none"
   changed_when: false
 
-- name: "VCSA | Backward-compat guard — collect action moved to vcenter_collect role"
-  ansible.builtin.fail:
-    msg: >-
-      The 'collect' action has been moved to the internal.vmware.vcenter_collect role.
-      Update your playbook to use 'role: internal.vmware.vcenter_collect' instead of
-      'role: internal.vmware.vcsa' with 'ncs_action: collect'.
-  when: _ncs_requested_action == 'collect'
-  tags: [always]
-
 - name: "VCSA | Validate public interface"
   ansible.builtin.assert:
     that:
-      - _ncs_requested_action in ['audit', 'remediate', 'verify', 'collect']
+      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
       - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
       - (_ncs_requested_operation == 'none')
       - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
@@ -29,7 +20,40 @@
       action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
   changed_when: false
 
-- name: "VCSA STIG | Execute"
-  ansible.builtin.include_tasks: stig.yaml
-  when: _ncs_requested_profile == 'stig'
-  tags: [always]
+- name: "VCSA | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }}"
+  module_defaults:
+    group/community.vmware.vmware:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vmware.vmware.appliance_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    vmware.vmware.vcsa_backup_schedule_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    internal.vmware.vmware_triggered_alarms_info:
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    internal.core.stig:
+      _stig_module_defaults:
+        hostname: "{{ _vcenter_hostname }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  block:
+    - name: "VCSA | Run dispatcher"
+      ansible.builtin.include_tasks:
+        file: >-
+          {{
+            role_path ~ '/tasks/collect.yaml'
+            if _ncs_requested_action == 'collect'
+            else role_path ~ '/tasks/stig.yaml'
+          }}

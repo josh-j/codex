@@ -6,7 +6,7 @@ This document defines the maintained raw payload contracts emitted by the `inter
 
 ### `vmware_raw_vcenter`
 
-Exported by `internal.vmware.vcenter_collect`.
+Exported by `internal.vmware.vcsa` with `ncs_action: collect`.
 
 | Key | Type | Description |
 | :--- | :--- | :--- |

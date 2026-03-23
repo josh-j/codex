@@ -1,5 +1,6 @@
 ---
-# internal.vmware.vcenter_collect : tasks/preflight.yaml
+# internal.vmware.vcsa : tasks/preflight.yaml
+# vCenter connectivity check for collection actions.
 
 - name: Initialize shared vCenter connection context
   ansible.builtin.include_role:
@@ -46,6 +47,6 @@
         vmware_raw_vcenter: {}
       changed_when: false
     - name: Export failure state
-      ansible.builtin.include_tasks: export.yaml
+      ansible.builtin.include_tasks: collect/export.yaml
     - name: Stop execution for this vCenter
       ansible.builtin.meta: end_host

@@ -15,7 +15,9 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   roles:
-    - role: internal.vmware.vcenter_collect
+    - role: internal.vmware.vcsa
+      vars:
+        ncs_action: collect
     - role: internal.vmware.esxi
       vars:
         ncs_action: collect

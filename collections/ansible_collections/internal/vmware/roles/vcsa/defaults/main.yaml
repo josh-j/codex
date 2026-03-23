@@ -16,3 +16,16 @@ vcsa_stig_profile: "v1r4"
 vcsa_stig_include_photon: false
 vcsa_stig_photon_version: "3"
 vcsa_stig_create_backups: true
+
+# =============================================================================
+# Collection Toggles
+# =============================================================================
+vcsa_collect_appliance: true
+vcsa_collect_alarms: true
+
+# =============================================================================
+# Simulation Settings
+# =============================================================================
+simulation_mode: false
+simulation_vcsa_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter/vcsa"
+simulation_vcsa_fixture_file: "{{ simulation_vcsa_fixture_root }}/{{ inventory_hostname }}/raw_vcenter.yaml"
