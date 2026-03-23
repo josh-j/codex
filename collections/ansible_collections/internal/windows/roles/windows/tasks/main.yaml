@@ -34,13 +34,13 @@
   ansible.builtin.include_tasks:
     file: >-
       {{
-        'stig.yaml'
+        role_path ~ '/tasks/stig.yaml'
         if _ncs_requested_profile == 'stig'
-        else 'health.yaml'
+        else role_path ~ '/tasks/health.yaml'
         if _ncs_requested_profile == 'health'
-        else 'audit.yaml'
+        else role_path ~ '/tasks/audit.yaml'
         if _ncs_requested_operation == 'patch'
-        else _ncs_requested_operation ~ '.yaml'
+        else role_path ~ '/tasks/' ~ _ncs_requested_operation ~ '.yaml'
         if _ncs_requested_operation != 'none'
-        else 'audit.yaml'
+        else role_path ~ '/tasks/audit.yaml'
       }}

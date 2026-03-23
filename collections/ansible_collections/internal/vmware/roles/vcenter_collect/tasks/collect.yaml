@@ -39,5 +39,5 @@
         name: internal.vmware.common
         tasks_from: finalize_collection
       vars:
-        vmware_collection_assemble_task: assemble.yaml
-        vmware_collection_export_task: export.yaml
+        vmware_collection_assemble_task: "{{ role_path }}/tasks/assemble.yaml"
+        vmware_collection_export_task: "{{ role_path }}/tasks/export.yaml"
