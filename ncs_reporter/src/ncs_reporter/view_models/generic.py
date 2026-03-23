@@ -113,6 +113,214 @@ def _auto_layout(widget: Any) -> dict[str, Any]:
     return layout
 
 
+def _render_key_value(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a KeyValueWidget."""
+    rows = []
+    for kv in widget.fields:
+        value = fields.get(kv.field, "")
+        rows.append({"label": kv.label, "value": _format_value(kv.format, value), "badge": kv.badge})
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "key_value",
+        "layout": _auto_layout(widget),
+        "rows": rows,
+    }
+
+
+def _render_table(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a TableWidget."""
+    raw_rows = fields.get(widget.rows_field, [])
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+    table_rows = []
+    for item in raw_rows:
+        if not isinstance(item, dict):
+            item = {"value": item}
+        rendered_cells = [
+            _render_table_cell(
+                col, item, ctx.get("hosts_data"), ctx.get("current_platform_dir"), ctx.get("generated_fleet_dirs")
+            )
+            for col in widget.columns
+        ]
+        table_rows.append(rendered_cells)
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "table",
+        "layout": _auto_layout(widget),
+        "columns": [c.model_dump() for c in widget.columns],
+        "rows": table_rows,
+    }
+
+
+def _render_progress_bar(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a ProgressBarWidget."""
+    value = fields.get(widget.field, 0.0)
+    try:
+        pct = max(0, min(100, float(value)))
+    except (ValueError, TypeError):
+        pct = 0.0
+
+    label_text = ""
+    if widget.label:
+        label_text = str(fields.get(widget.label, ""))
+
+    color: str = widget.color
+    if color == "auto":
+        color = _resolve_threshold_color(pct, widget.thresholds)
+
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "progress_bar",
+        "layout": _auto_layout(widget),
+        "percent": pct,
+        "label": label_text,
+        "color": color,
+    }
+
+
+def _render_markdown(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a MarkdownWidget."""
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "markdown",
+        "layout": _auto_layout(widget),
+        "content": widget.content,
+    }
+
+
+def _render_alert_panel(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render an AlertPanelWidget."""
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "alert_panel",
+        "layout": _auto_layout(widget),
+        "alerts": ctx.get("alerts", []),
+    }
+
+
+def _render_stat_cards(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a StatCardsWidget."""
+    cards_rendered = []
+    for card in widget.cards:
+        value = fields.get(card.field, 0)
+        display = _format_value(card.format, value)
+
+        resolved_color: str = card.color
+        if resolved_color == "auto":
+            try:
+                num_val = float(value)
+            except (ValueError, TypeError):
+                num_val = 0.0
+            resolved_color = _resolve_threshold_color(num_val, card.thresholds)
+
+        cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "stat_cards",
+        "layout": _auto_layout(widget),
+        "cards": cards_rendered,
+    }
+
+
+def _render_bar_chart(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a BarChartWidget."""
+    raw_rows = fields.get(widget.rows_field, [])
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+    bars = []
+    for item in raw_rows:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get(widget.label_field, ""))
+        try:
+            val = float(item.get(widget.value_field, 0))
+        except (ValueError, TypeError):
+            val = 0.0
+        width_pct = min(100.0, max(0.0, val / widget.max * 100)) if widget.max else 0.0
+        color = _resolve_threshold_color(val, widget.thresholds)
+        bars.append({"label": label, "value": val, "width_pct": width_pct, "color": color})
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "bar_chart",
+        "layout": _auto_layout(widget),
+        "bars": bars,
+    }
+
+
+def _render_list(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a ListWidget."""
+    raw_items = fields.get(widget.items_field, [])
+    if not isinstance(raw_items, list):
+        raw_items = []
+    display_items = []
+    for item in raw_items:
+        if widget.display_field and isinstance(item, dict):
+            display_items.append(str(item.get(widget.display_field, "")))
+        else:
+            display_items.append(str(item))
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "list",
+        "layout": _auto_layout(widget),
+        "items": display_items,
+        "style": widget.style,
+        "empty_text": widget.empty_text,
+    }
+
+
+def _render_grouped_table(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a GroupedTableWidget."""
+    raw_rows = fields.get(widget.rows_field, [])
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+    # Group by the group_by field, preserving insertion order
+    groups: dict[str, list[list[dict[str, Any]]]] = {}
+    for item in raw_rows:
+        if not isinstance(item, dict):
+            item = {"value": item}
+        group_key = str(item.get(widget.group_by, ""))
+        if group_key not in groups:
+            groups[group_key] = []
+        rendered_cells = [
+            _render_table_cell(
+                col, item, ctx.get("hosts_data"), ctx.get("current_platform_dir"), ctx.get("generated_fleet_dirs")
+            )
+            for col in widget.columns
+        ]
+        groups[group_key].append(rendered_cells)
+    return {
+        "id": widget.id,
+        "title": widget.title,
+        "type": "grouped_table",
+        "layout": _auto_layout(widget),
+        "columns": [c.model_dump() for c in widget.columns],
+        "groups": groups,
+    }
+
+
+# Dispatch dictionary mapping widget classes to their render handlers.
+# Each handler has the signature: (widget, fields, ctx) -> dict[str, Any]
+_WIDGET_DISPATCH: dict[type, Any] = {
+    KeyValueWidget: _render_key_value,
+    TableWidget: _render_table,
+    ProgressBarWidget: _render_progress_bar,
+    MarkdownWidget: _render_markdown,
+    AlertPanelWidget: _render_alert_panel,
+    StatCardsWidget: _render_stat_cards,
+    BarChartWidget: _render_bar_chart,
+    ListWidget: _render_list,
+    GroupedTableWidget: _render_grouped_table,
+}
+
+
 def _render_widget(
     widget: Any,
     fields: dict[str, Any],
@@ -127,177 +335,18 @@ def _render_widget(
         if not evaluate_condition(widget.visible_if, fields):
             return None
 
-    if isinstance(widget, KeyValueWidget):
-        rows = []
-        for kv in widget.fields:
-            value = fields.get(kv.field, "")
-            rows.append({"label": kv.label, "value": _format_value(kv.format, value), "badge": kv.badge})
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "key_value",
-            "layout": _auto_layout(widget),
-            "rows": rows,
-        }
+    ctx: dict[str, Any] = {
+        "alerts": alerts,
+        "hosts_data": hosts_data,
+        "current_platform_dir": current_platform_dir,
+        "generated_fleet_dirs": generated_fleet_dirs,
+    }
 
-    if isinstance(widget, TableWidget):
-        raw_rows = fields.get(widget.rows_field, [])
-        if not isinstance(raw_rows, list):
-            raw_rows = []
-        table_rows = []
-        for item in raw_rows:
-            if not isinstance(item, dict):
-                item = {"value": item}
-            rendered_cells = [
-                _render_table_cell(col, item, hosts_data, current_platform_dir, generated_fleet_dirs)
-                for col in widget.columns
-            ]
-            table_rows.append(rendered_cells)
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "table",
-            "layout": _auto_layout(widget),
-            "columns": [c.model_dump() for c in widget.columns],
-            "rows": table_rows,
-        }
+    handler = _WIDGET_DISPATCH.get(type(widget))
+    if handler is not None:
+        return handler(widget, fields, ctx)
 
-    if isinstance(widget, ProgressBarWidget):
-        value = fields.get(widget.field, 0.0)
-        try:
-            pct = max(0, min(100, float(value)))
-        except (ValueError, TypeError):
-            pct = 0.0
-
-        label_text = ""
-        if widget.label:
-            label_text = str(fields.get(widget.label, ""))
-
-        color: str = widget.color
-        if color == "auto":
-            color = _resolve_threshold_color(pct, widget.thresholds)
-
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "progress_bar",
-            "layout": _auto_layout(widget),
-            "percent": pct,
-            "label": label_text,
-            "color": color,
-        }
-
-    if isinstance(widget, MarkdownWidget):
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "markdown",
-            "layout": _auto_layout(widget),
-            "content": widget.content,
-        }
-
-    if isinstance(widget, AlertPanelWidget):
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "alert_panel",
-            "layout": _auto_layout(widget),
-            "alerts": alerts,
-        }
-
-    if isinstance(widget, StatCardsWidget):
-        cards_rendered = []
-        for card in widget.cards:
-            value = fields.get(card.field, 0)
-            display = _format_value(card.format, value)
-
-            resolved_color: str = card.color
-            if resolved_color == "auto":
-                try:
-                    num_val = float(value)
-                except (ValueError, TypeError):
-                    num_val = 0.0
-                resolved_color = _resolve_threshold_color(num_val, card.thresholds)
-
-            cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "stat_cards",
-            "layout": _auto_layout(widget),
-            "cards": cards_rendered,
-        }
-
-    if isinstance(widget, BarChartWidget):
-        raw_rows = fields.get(widget.rows_field, [])
-        if not isinstance(raw_rows, list):
-            raw_rows = []
-        bars = []
-        for item in raw_rows:
-            if not isinstance(item, dict):
-                continue
-            label = str(item.get(widget.label_field, ""))
-            try:
-                val = float(item.get(widget.value_field, 0))
-            except (ValueError, TypeError):
-                val = 0.0
-            width_pct = min(100.0, max(0.0, val / widget.max * 100)) if widget.max else 0.0
-            color = _resolve_threshold_color(val, widget.thresholds)
-            bars.append({"label": label, "value": val, "width_pct": width_pct, "color": color})
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "bar_chart",
-            "layout": _auto_layout(widget),
-            "bars": bars,
-        }
-
-    if isinstance(widget, ListWidget):
-        raw_items = fields.get(widget.items_field, [])
-        if not isinstance(raw_items, list):
-            raw_items = []
-        display_items = []
-        for item in raw_items:
-            if widget.display_field and isinstance(item, dict):
-                display_items.append(str(item.get(widget.display_field, "")))
-            else:
-                display_items.append(str(item))
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "list",
-            "layout": _auto_layout(widget),
-            "items": display_items,
-            "style": widget.style,
-            "empty_text": widget.empty_text,
-        }
-
-    if isinstance(widget, GroupedTableWidget):
-        raw_rows = fields.get(widget.rows_field, [])
-        if not isinstance(raw_rows, list):
-            raw_rows = []
-        # Group by the group_by field, preserving insertion order
-        groups: dict[str, list[list[dict[str, Any]]]] = {}
-        for item in raw_rows:
-            if not isinstance(item, dict):
-                item = {"value": item}
-            group_key = str(item.get(widget.group_by, ""))
-            if group_key not in groups:
-                groups[group_key] = []
-            rendered_cells = [
-                _render_table_cell(col, item, hosts_data, current_platform_dir, generated_fleet_dirs)
-                for col in widget.columns
-            ]
-            groups[group_key].append(rendered_cells)
-        return {
-            "id": widget.id,
-            "title": widget.title,
-            "type": "grouped_table",
-            "layout": _auto_layout(widget),
-            "columns": [c.model_dump() for c in widget.columns],
-            "groups": groups,
-        }
-
+    # Fallback for unknown widget types
     layout_val = {"width": "full"}
     if hasattr(widget, "layout"):
         lo = getattr(widget, "layout")
