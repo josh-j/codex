@@ -787,12 +787,6 @@ def evaluate_condition(condition: Any, fields: dict[str, Any]) -> bool:
         # min <= val < max
         return condition.min <= value < condition.max
 
-    if isinstance(condition, ExistsCondition):
-        if condition.op == "exists":
-            return condition.field in fields
-        else:  # not_exists
-            return condition.field not in fields
-
     if isinstance(condition, ComputedFilterCondition):
         lst = safe_list(fields.get(condition.field, []))
         if condition.cmp == "range":
