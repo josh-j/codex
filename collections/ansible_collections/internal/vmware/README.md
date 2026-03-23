@@ -8,7 +8,7 @@ The maintained audit entrypoints are:
 - `internal.vmware.esxi` for ESXi inventory collection and ESXi STIG workflows
 - `internal.vmware.vm` for VM inventory collection, snapshot state, and VM STIG workflows
 
-`internal.vmware.vcsa` remains the VCSA STIG role. The service-specific VCSA roles such as `vcsa_sts` and `vcsa_lookup` are internal composition roles and should not be used as standalone audit entrypoints.
+`internal.vmware.vcsa` is the VCSA STIG role. All service-specific tasks (eam, lookup, perfcharts, postgresql, rhttpproxy, sts, ui, vami) are consolidated within the vcsa role.
 
 ## Usage
 

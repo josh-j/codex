@@ -31,7 +31,7 @@
 
 - name: "VCUI-70-000011/000019/000030 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: catalina.properties
+    src: ui_catalina.properties
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root
