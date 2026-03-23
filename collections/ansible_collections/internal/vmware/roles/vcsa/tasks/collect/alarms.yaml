@@ -1,5 +1,5 @@
 ---
-# internal.vmware.vcenter_collect : collect/alarms.yaml
+# internal.vmware.vcsa : tasks/collect/alarms.yaml
 
 - name: Alarms | Get triggered alarms via custom module
   internal.vmware.vmware_triggered_alarms_info:

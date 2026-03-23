@@ -67,9 +67,21 @@
   when:
     - _ncs_stig_action in ['audit', 'remediate']
   block:
-    - name: "ESXi STIG | Phase 1a | Run STIG tasks"
-      ansible.builtin.include_tasks: check.yaml
-      tags: [checks, stig, security]
+    - name: "ESXi STIG | Phase 1a | Process each host"
+      ansible.builtin.include_tasks: stig_v7r4/main.yaml
+      loop: "{{ esxi_stig_target_hosts | unique | list }}"
+      loop_control:
+        loop_var: _current_esxi_host
+        label: "{{ _current_esxi_host }}"
+      args:
+        apply:
+          check_mode: "{{ not (esxi_stig_enable_hardening | default(false) | bool) }}"
+          tags: [stig_task]
+          vars:
+            stig_target_host: "{{ _current_esxi_host }}"
+            stig_target_type: "esxi"
+            stig_platform: "vmware/esxi"
+      ignore_errors: true
 
     - name: "ESXi STIG | Phase 1b | Flag run as complete"
       ansible.builtin.set_fact:
@@ -109,9 +121,21 @@
   when:
     - _ncs_stig_action == 'verify'
   block:
-    - name: "ESXi STIG | Phase 2a | Verify remediation"
-      ansible.builtin.include_tasks: check_verify.yaml
-      tags: [checks, stig, security, verify]
+    - name: "ESXi STIG | Phase 2a | Verify each host"
+      ansible.builtin.include_tasks: stig_v7r4/main.yaml
+      loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
+      loop_control:
+        loop_var: _current_esxi_host
+        label: "{{ _current_esxi_host }}"
+      args:
+        apply:
+          check_mode: true
+          tags: [stig_task]
+          vars:
+            stig_target_host: "{{ _current_esxi_host }}"
+            stig_target_type: "esxi"
+            stig_platform: "vmware/esxi"
+      ignore_errors: true
 
     - name: "ESXi STIG | Phase 2b | Flag verification as complete"
       ansible.builtin.set_fact:

@@ -47,7 +47,6 @@ def test_vmware_public_readme_matches_supported_surface() -> None:
     readme = (VMWARE_ROOT / "README.md").read_text(encoding="utf-8")
 
     for role_name in (
-        "internal.vmware.vcenter_collect",
         "internal.vmware.esxi",
         "internal.vmware.vm",
         "internal.vmware.vcsa",

@@ -1,6 +1,5 @@
 ---
-# internal.vmware.vcenter_collect : tasks/assemble.yaml
-# VCSA-only assembly: appliance health, backup, alarms.
+# internal.vmware.vcsa : tasks/collect/assemble.yaml
 
 - name: Assemble raw vCenter context
   ansible.builtin.set_fact:

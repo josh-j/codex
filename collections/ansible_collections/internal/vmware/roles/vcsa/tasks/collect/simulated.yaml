@@ -1,7 +1,6 @@
 ---
-# internal.vmware.vcenter_collect : tasks/collect/simulated.yaml
+# internal.vmware.vcsa : tasks/collect/simulated.yaml
 # Loads fixture data and maps it onto _raw_* variables expected by assemble.yaml.
-# VCSA-only: appliance health, backup, alarms.
 
 - name: Simulation | Ensure fixture exists for vCenter host
   ansible.builtin.stat:

@@ -1,5 +1,5 @@
 ---
-# internal.vmware.vcenter_collect : collect/appliance.yaml
+# internal.vmware.vcsa : tasks/collect/appliance.yaml
 
 - name: Appliance | Gather system data
   vmware.vmware.appliance_info:

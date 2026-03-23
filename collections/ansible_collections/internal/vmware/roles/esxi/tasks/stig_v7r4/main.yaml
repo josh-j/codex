@@ -1,6 +1,6 @@
 ---
 # internal.vmware.stig : esxi/stig_v7r4/main.yaml
-# Per-host V7R4 STIG dispatcher. Included via check.yaml per ESXi host.
+# Per-host V7R4 STIG dispatcher. Included via stig.yaml per ESXi host.
 
 - import_tasks: stig_v7r4/00_prelude.yaml
 

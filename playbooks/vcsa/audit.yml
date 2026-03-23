@@ -7,4 +7,6 @@
   connection: local
   gather_facts: false
   roles:
-    - role: internal.vmware.vcenter_collect
+    - role: internal.vmware.vcsa
+      vars:
+        ncs_action: collect

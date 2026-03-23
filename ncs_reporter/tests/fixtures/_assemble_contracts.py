@@ -25,7 +25,7 @@ def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
 
 
 VCENTER_DATA_KEYS = _extract_set_fact_keys(
-    "collections/ansible_collections/internal/vmware/roles/vcenter_collect/tasks/assemble.yaml",
+    "collections/ansible_collections/internal/vmware/roles/vcsa/tasks/collect/assemble.yaml",
     "vmware_raw_vcenter",
 )
 
