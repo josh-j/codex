@@ -14,7 +14,6 @@ import yaml
 from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.normalization.stig import normalize_stig
 from ncs_reporter.platform_registry import PlatformRegistry, default_registry
-from ncs_reporter.primitives import canonical_severity  # noqa: F401
 from ncs_reporter.schema_loader import detect_schemas_for_bundle
 
 logger = logging.getLogger(__name__)
