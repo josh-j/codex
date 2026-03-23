@@ -326,34 +326,23 @@ def _merge_platform_data(platform_data: dict[str, dict[str, Any]]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------
-# all
+# all – helper functions
 # ---------------------------------------------------------------------------
 
 
-@main.command("all")
-@click.option("--platform-root", required=True, type=click.Path(exists=True))
-@click.option("--reports-root", required=True, type=click.Path())
-@click.option("--groups", "groups_file", type=click.Path(exists=True))
-@click.option("--report-stamp")
-@click.option("--config-dir", default=None, type=click.Path(exists=True, file_okay=False, dir_okay=True))
-@click.option("--extra-schema-dir", "-S", multiple=True, metavar="DIR")
-@click.option("--platforms-config", "-P", default=None, type=click.Path(exists=True))
-@click.option("--force", is_flag=True, default=False, help="Force re-render even if data is unchanged.")
-def all_cmd(
-    platform_root: str,
-    reports_root: str,
-    groups_file: str | None,
-    report_stamp: str | None,
+def _resolve_effective_config(
     config_dir: str | None,
+    report_stamp: str | None,
+    groups_file: str | None,
     extra_schema_dir: tuple[str, ...],
     platforms_config: str | None,
-    force: bool,
-) -> None:
-    """Run full aggregation and rendering for all platforms and the site dashboard."""
-    p_root = Path(platform_root)
-    r_root = Path(reports_root)
-    r_root.mkdir(parents=True, exist_ok=True)
+) -> tuple[dict[str, Any], str | None, str | None, tuple[str, ...], list[dict[str, Any]]]:
+    """Resolve config_yaml, effective stamp, groups file, extra dirs, and platforms list.
 
+    Returns ``(common_vars_seed, effective_stamp, effective_groups_file,
+    extra_dirs, platforms)``.  The caller still needs to call
+    ``generate_timestamps`` on *effective_stamp*.
+    """
     config_yaml = load_config_yaml(config_dir)
     effective_stamp = report_stamp or (
         str(config_yaml["report_stamp"]) if config_yaml.get("report_stamp") is not None else None
@@ -363,20 +352,27 @@ def all_cmd(
         if isinstance(config_yaml.get("groups_file"), str) and config_yaml["groups_file"].strip()
         else None
     )
-    common_vars = generate_timestamps(effective_stamp)
 
     _extra_dirs, _platforms_cfg = resolve_config_dir(config_dir, extra_schema_dir, platforms_config, config_yaml)
     platforms = load_platforms(_platforms_cfg, extra_schema_dirs=_extra_dirs)
 
-    # Augment with custom schema platforms not already in the config
-    _configured_platforms = {p["platform"] for p in platforms}
-    _custom_seen: set[str] = set()
-    for _schema in discover_schemas(extra_dirs=_extra_dirs).values():
-        if _schema.platform in _configured_platforms or _schema.platform in _custom_seen:
+    return config_yaml, effective_stamp, effective_groups_file, _extra_dirs, platforms
+
+
+def _augment_platforms_from_schemas(
+    platforms: list[dict[str, Any]],
+    extra_dirs: tuple[str, ...],
+    p_root: Path,
+) -> None:
+    """Discover schemas not already in *platforms* and append synthetic entries in-place."""
+    configured_platforms = {p["platform"] for p in platforms}
+    custom_seen: set[str] = set()
+    for _schema in discover_schemas(extra_dirs=extra_dirs).values():
+        if _schema.platform in configured_platforms or _schema.platform in custom_seen:
             continue
         if not (p_root / _schema.platform).is_dir():
             continue
-        _custom_seen.add(_schema.platform)
+        custom_seen.add(_schema.platform)
         platforms.append({
             "input_dir": _schema.platform,
             "report_dir": _schema.platform,
@@ -389,7 +385,25 @@ def all_cmd(
             "paths": default_paths(),
         })
 
-    # --- Step 1: Platform aggregation (sequential I/O) ---
+
+def _aggregate_platforms(
+    platforms: list[dict[str, Any]],
+    p_root: Path,
+    r_root: Path,
+    extra_dirs: tuple[str, ...],
+    force: bool,
+) -> tuple[
+    list[dict[str, Any]],
+    dict[str, str],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    PlatformRegistry,
+]:
+    """Load platform data, write state files, and build render tasks.
+
+    Returns ``(render_tasks, global_inventory_index, all_platform_data,
+    platforms_by_report_dir, runtime_registry)``.
+    """
     render_tasks: list[dict[str, Any]] = []
     global_inventory_index: dict[str, str] = {}
     platforms_by_report_dir: dict[str, dict[str, Any]] = {str(p["report_dir"]): p for p in platforms}
@@ -439,77 +453,66 @@ def all_cmd(
                 "output_path": output_dir,
                 "report_dir": p["report_dir"],
                 "platform_paths": p["paths"],
-                "extra_schema_dirs": _extra_dirs,
+                "extra_schema_dirs": extra_dirs,
             }
             if p.get("schema_names"):
                 task["schema_names_override"] = p["schema_names"]
             render_tasks.append(task)
 
-    generated_fleet_dirs = {str(t["report_dir"]) for t in render_tasks}
+    return render_tasks, global_inventory_index, all_platform_data, platforms_by_report_dir, runtime_registry
 
-    # --- Step 1b: Global aggregation (merge already-collected platform data) ---
-    click.echo("--- Aggregating Global State ---")
-    all_hosts_state = p_root / "all_hosts_state.yaml"
-    global_data = _merge_platform_data(all_platform_data)
-    if not global_data["hosts"]:
-        click.echo("No global data found; skipping site dashboard and STIG rendering.")
+
+def _render_platforms(
+    render_tasks: list[dict[str, Any]],
+    common_vars: dict[str, Any],
+    global_inventory_index: dict[str, str],
+    generated_fleet_dirs: set[str],
+    stig_host_views: dict[str, Any],
+) -> None:
+    """Render platform reports in parallel using a thread pool."""
+    if not render_tasks:
         return
+    with ThreadPoolExecutor(max_workers=min(len(render_tasks), 3)) as pool:
+        futures = {
+            pool.submit(
+                render_platform,
+                t["platform"],
+                t["hosts_data"],
+                t["output_path"],
+                common_vars,
+                global_inventory_index=global_inventory_index,
+                generated_fleet_dirs=generated_fleet_dirs,
+                report_dir=t["report_dir"],
+                platform_paths=t["platform_paths"],
+                extra_schema_dirs=t.get("extra_schema_dirs", ()),
+                schema_names_override=t.get("schema_names_override"),
+                has_site_report=True,
+                has_stig_fleet=True,
+                stig_widgets_by_host=stig_host_views,
+            ): t["platform"]
+            for t in render_tasks
+        }
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                future.result()
+                click.echo(f"  Rendered {name} reports.")
+            except Exception as exc:
+                logger.error("Failed to render %s: %s", name, exc)
+                click.echo(f"  ERROR rendering {name}: {exc}")
 
-    global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
-    if global_changed:
-        write_output(global_data, str(all_hosts_state))
-    else:
-        click.echo("  Global state unchanged.")
-    global_hosts = global_data.get("hosts", global_data)
 
-    # --- Step 1c: Build STIG host views (skeleton fallback; CKLB not yet generated) ---
-    # These are embedded into node reports during step 2 so operators see compliance
-    # status inline without navigating to a separate STIG report.
-    click.echo("--- Pre-building STIG widget views ---")
-    stig_host_views = build_stig_host_views(
-        global_hosts,
-        common_vars,
-        cklb_dir=None,
-        generated_fleet_dirs=generated_fleet_dirs,
-        global_inventory_index=global_inventory_index,
-        registry=runtime_registry,
-        has_site_report=True,
-    )
-    if stig_host_views:
-        click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
-
-    # --- Step 2: Parallel platform rendering ---
-    if render_tasks:
-        with ThreadPoolExecutor(max_workers=min(len(render_tasks), 3)) as pool:
-            futures = {
-                pool.submit(
-                    render_platform,
-                    t["platform"],
-                    t["hosts_data"],
-                    t["output_path"],
-                    common_vars,
-                    global_inventory_index=global_inventory_index,
-                    generated_fleet_dirs=generated_fleet_dirs,
-                    report_dir=t["report_dir"],
-                    platform_paths=t["platform_paths"],
-                    extra_schema_dirs=t.get("extra_schema_dirs", ()),
-                    schema_names_override=t.get("schema_names_override"),
-                    has_site_report=True,
-                    has_stig_fleet=True,
-                    stig_widgets_by_host=stig_host_views,
-                ): t["platform"]
-                for t in render_tasks
-            }
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    future.result()
-                    click.echo(f"  Rendered {name} reports.")
-                except Exception as exc:
-                    logger.error("Failed to render %s: %s", name, exc)
-                    click.echo(f"  ERROR rendering {name}: {exc}")
-
-    # --- Step 3: Site dashboard ---
+def _render_site_and_search(
+    r_root: Path,
+    global_data: dict[str, Any],
+    global_changed: bool,
+    effective_groups_file: str | None,
+    common_vars: dict[str, Any],
+    global_inventory_index: dict[str, str],
+    platforms_by_report_dir: dict[str, dict[str, Any]],
+) -> None:
+    """Render the site dashboard and generate the search index."""
+    # Site dashboard
     if not global_changed:
         click.echo("--- Skipping Global Site Dashboard (unchanged) ---")
     else:
@@ -547,7 +550,20 @@ def all_cmd(
     )
     click.echo(f"Search index generated at {r_root}/search_index.js")
 
-    # --- Step 4: CKLB export ---
+
+def _render_stig_and_cklb(
+    r_root: Path,
+    global_hosts: dict[str, Any],
+    global_changed: bool,
+    all_hosts_state: Path,
+    common_vars: dict[str, Any],
+    global_inventory_index: dict[str, str],
+    generated_fleet_dirs: set[str],
+    runtime_registry: PlatformRegistry,
+    config_dir: str | None,
+) -> None:
+    """Generate CKLB artifacts and render STIG fleet reports."""
+    # CKLB export
     if not global_changed:
         click.echo("--- Skipping CKLB Artifacts (unchanged) ---")
     else:
@@ -561,7 +577,7 @@ def all_cmd(
             config_dir=Path(config_dir) if config_dir else None,
         )
 
-    # --- Step 5: STIG fleet rendering (full CKLB-hydrated dedicated STIG reports) ---
+    # STIG fleet rendering
     if not global_changed:
         click.echo("--- Skipping STIG Fleet Reports (unchanged) ---")
     else:
@@ -577,6 +593,95 @@ def all_cmd(
             has_site_report=True,
         )
         click.echo("STIG fleet reports and CKLB artifacts generated.")
+
+
+# ---------------------------------------------------------------------------
+# all
+# ---------------------------------------------------------------------------
+
+
+@main.command("all")
+@click.option("--platform-root", required=True, type=click.Path(exists=True))
+@click.option("--reports-root", required=True, type=click.Path())
+@click.option("--groups", "groups_file", type=click.Path(exists=True))
+@click.option("--report-stamp")
+@click.option("--config-dir", default=None, type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option("--extra-schema-dir", "-S", multiple=True, metavar="DIR")
+@click.option("--platforms-config", "-P", default=None, type=click.Path(exists=True))
+@click.option("--force", is_flag=True, default=False, help="Force re-render even if data is unchanged.")
+def all_cmd(
+    platform_root: str,
+    reports_root: str,
+    groups_file: str | None,
+    report_stamp: str | None,
+    config_dir: str | None,
+    extra_schema_dir: tuple[str, ...],
+    platforms_config: str | None,
+    force: bool,
+) -> None:
+    """Run full aggregation and rendering for all platforms and the site dashboard."""
+    p_root = Path(platform_root)
+    r_root = Path(reports_root)
+    r_root.mkdir(parents=True, exist_ok=True)
+
+    # Step 0: Resolve configuration
+    _config_yaml, effective_stamp, effective_groups_file, extra_dirs, platforms = (
+        _resolve_effective_config(config_dir, report_stamp, groups_file, extra_schema_dir, platforms_config)
+    )
+    common_vars = generate_timestamps(effective_stamp)
+
+    _augment_platforms_from_schemas(platforms, extra_dirs, p_root)
+
+    # Step 1: Platform aggregation (sequential I/O)
+    render_tasks, global_inventory_index, all_platform_data, platforms_by_report_dir, runtime_registry = (
+        _aggregate_platforms(platforms, p_root, r_root, extra_dirs, force)
+    )
+    generated_fleet_dirs = {str(t["report_dir"]) for t in render_tasks}
+
+    # Step 1b: Global aggregation (merge already-collected platform data)
+    click.echo("--- Aggregating Global State ---")
+    all_hosts_state = p_root / "all_hosts_state.yaml"
+    global_data = _merge_platform_data(all_platform_data)
+    if not global_data["hosts"]:
+        click.echo("No global data found; skipping site dashboard and STIG rendering.")
+        return
+
+    global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
+    if global_changed:
+        write_output(global_data, str(all_hosts_state))
+    else:
+        click.echo("  Global state unchanged.")
+    global_hosts = global_data.get("hosts", global_data)
+
+    # Step 1c: Build STIG host views (skeleton fallback; CKLB not yet generated)
+    click.echo("--- Pre-building STIG widget views ---")
+    stig_host_views = build_stig_host_views(
+        global_hosts,
+        common_vars,
+        cklb_dir=None,
+        generated_fleet_dirs=generated_fleet_dirs,
+        global_inventory_index=global_inventory_index,
+        registry=runtime_registry,
+        has_site_report=True,
+    )
+    if stig_host_views:
+        click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
+
+    # Step 2: Parallel platform rendering
+    _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views)
+
+    # Step 3: Site dashboard + search index
+    _render_site_and_search(
+        r_root, global_data, global_changed, effective_groups_file,
+        common_vars, global_inventory_index, platforms_by_report_dir,
+    )
+
+    # Step 4 & 5: CKLB export + STIG fleet rendering
+    _render_stig_and_cklb(
+        r_root, global_hosts, global_changed, all_hosts_state,
+        common_vars, global_inventory_index, generated_fleet_dirs,
+        runtime_registry, config_dir,
+    )
 
 
 # ---------------------------------------------------------------------------
