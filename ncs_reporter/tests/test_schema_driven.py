@@ -770,25 +770,25 @@ class TestVcenterSchema:
 
 
 class TestEsxiHealthSchema:
-    def test_esxi_health_schema_loads_and_validates(self) -> None:
+    def test_esxi_schema_loads_and_validates(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi_health.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
-        assert s.name == "esxi_health"
+        assert s.name == "esxi"
         assert s.platform == "vmware"
         ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
         assert "computed_filter" in ops
         assert "cluster_count" in s.fields
         assert "datastore_count" in s.fields
 
-    def test_esxi_health_schema_fires_on_synthetic_bundle(self) -> None:
+    def test_esxi_schema_fires_on_synthetic_bundle(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi_health.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -821,25 +821,25 @@ class TestEsxiHealthSchema:
 
 
 class TestVmHealthSchema:
-    def test_vm_health_schema_loads_and_validates(self) -> None:
+    def test_vm_schema_loads_and_validates(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
         s = load_schema_from_file(schema_path)
-        assert s.name == "vm_health"
+        assert s.name == "vm"
         assert s.platform == "vmware"
         ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
         assert "filter_multi" in ops
         assert "vm_count" in s.fields
         assert "snapshot_count" in s.fields
 
-    def test_vm_health_schema_fires_on_synthetic_bundle(self) -> None:
+    def test_vm_schema_fires_on_synthetic_bundle(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -1002,11 +1002,11 @@ class TestScriptFields:
         mountpoints = {m["mountpoint"] for m in fields["real_mounts"]}
         assert mountpoints == {"/", "/data"}
 
-    def test_vm_health_schema_aged_snapshot_field_exists(self) -> None:
+    def test_vm_schema_aged_snapshot_field_exists(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm_health.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert "aged_snapshot_count" in s.fields
         spec = s.fields["aged_snapshot_count"]

@@ -1,4 +1,4 @@
-name: esxi_health
+name: esxi
 display_name: "VMware ESXi Infrastructure Health"
 platform:
   name: vmware
