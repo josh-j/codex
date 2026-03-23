@@ -391,23 +391,40 @@ def all_cmd(
     runtime_registry = PlatformRegistry([PlatformEntry.model_validate(p) for p in platforms])
     all_platform_data: dict[str, dict[str, Any]] = {}
 
+    _loaded_platform_cache: dict[str, dict[str, Any] | None] = {}
+    _changed_dirs: set[str] = set()
+
     for p in platforms:
-        p_dir = p_root / p["input_dir"]
+        p_input = p["input_dir"]
+        p_dir = p_root / p_input
         if not p_dir.is_dir():
             continue
-        click.echo(f"--- Processing Platform: {p['input_dir']} ---")
-        p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
-        if not p_data or not p_data["hosts"]:
-            click.echo(f"No data for {p['input_dir']}, skipping.")
+
+        # Load data and write state once per input_dir
+        if p_input not in _loaded_platform_cache:
+            click.echo(f"--- Processing Platform: {p_input} ---")
+            p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
+            if not p_data or not p_data["hosts"]:
+                click.echo(f"No data for {p_input}, skipping.")
+                _loaded_platform_cache[p_input] = None
+                continue
+            _loaded_platform_cache[p_input] = p_data
+            all_platform_data[p_input] = p_data
+            for hostname in p_data["hosts"]:
+                global_inventory_index[hostname] = p["report_dir"]
+            state_path = str(p_dir / p["state_file"])
+            if not force and hosts_unchanged(p_data, state_path):
+                click.echo(f"  {p_input} unchanged, skipping.")
+            else:
+                write_output(p_data, state_path)
+                _changed_dirs.add(p_input)
+        else:
+            p_data = _loaded_platform_cache[p_input]
+            if p_data is None:
+                continue
+
+        if p_input not in _changed_dirs:
             continue
-        all_platform_data[p["input_dir"]] = p_data
-        for hostname in p_data["hosts"]:
-            global_inventory_index[hostname] = p["report_dir"]
-        state_path = str(p_dir / p["state_file"])
-        if not force and hosts_unchanged(p_data, state_path):
-            click.echo(f"  {p['input_dir']} unchanged, skipping.")
-            continue
-        write_output(p_data, state_path)
         if p.get("render", True):
             output_dir = r_root / "platform" / p["report_dir"]
             output_dir.mkdir(parents=True, exist_ok=True)
