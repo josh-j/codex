@@ -2,6 +2,11 @@
 # internal.vmware.vm : tasks/collect.yaml
 # Collects VM workload data: datacenters, VMs, snapshots.
 
+- name: VM Collect | Save caller role path
+  ansible.builtin.set_fact:
+    _caller_role_path: "{{ role_path }}"
+  changed_when: false
+
 - name: VM Collect | Initialize Collection State
   block:
     - name: VM Collect | Bootstrap shared collection state
@@ -30,5 +35,5 @@
         name: internal.vmware.common
         tasks_from: finalize_collection
       vars:
-        vmware_collection_assemble_task: "{{ role_path }}/tasks/collect/assemble.yaml"
-        vmware_collection_export_task: "{{ role_path }}/tasks/collect/export.yaml"
+        vmware_collection_assemble_task: "{{ _caller_role_path }}/tasks/collect/assemble.yaml"
+        vmware_collection_export_task: "{{ _caller_role_path }}/tasks/collect/export.yaml"
