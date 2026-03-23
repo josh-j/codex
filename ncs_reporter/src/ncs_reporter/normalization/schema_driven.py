@@ -523,49 +523,30 @@ def _coerce(value: Any, type_name: str, fallback: Any) -> Any:
         return fallback
 
 
+def _matches_filter_rules(item: dict[str, Any], rules: dict[str, list[str]]) -> bool:
+    """Check if a dict item matches any filter rule (field → pattern list)."""
+    for field_name, patterns in rules.items():
+        val = str(item.get(field_name) or "")
+        for pat in patterns:
+            if pat.startswith("^"):
+                if _re.search(pat, val):
+                    return True
+            else:
+                if pat.lower() == val.lower():
+                    return True
+    return False
+
+
 def _apply_list_filter(items: list[Any], filter_spec: Any) -> list[Any]:
     """Apply list_filter (exclude/include) to a list of dicts."""
     result: list[Any] = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        excluded = False
-        # Exclude: if any rule matches, item is excluded
-        for field_name, patterns in filter_spec.exclude.items():
-            val = str(item.get(field_name) or "")
-            for pat in patterns:
-                if pat.startswith("^"):
-                    # Regex pattern
-                    if _re.search(pat, val):
-                        excluded = True
-                        break
-                else:
-                    # Substring / exact match (case-insensitive)
-                    if pat.lower() == val.lower():
-                        excluded = True
-                        break
-            if excluded:
-                break
-        if excluded:
+        if _matches_filter_rules(item, filter_spec.exclude):
             continue
-        # Include: if include rules exist, at least one must match
-        if filter_spec.include:
-            included = False
-            for field_name, patterns in filter_spec.include.items():
-                val = str(item.get(field_name) or "")
-                for pat in patterns:
-                    if pat.startswith("^"):
-                        if _re.search(pat, val):
-                            included = True
-                            break
-                    else:
-                        if pat.lower() == val.lower():
-                            included = True
-                            break
-                if included:
-                    break
-            if not included:
-                continue
+        if filter_spec.include and not _matches_filter_rules(item, filter_spec.include):
+            continue
         result.append(item)
     return result
 
