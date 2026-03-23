@@ -1,54 +1,18 @@
 """STIG reporting view-model builders."""
 
-import json
 import logging
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from .._cklb import load_cklb_lookup
 from ..platform_registry import PlatformRegistry, default_registry
 from ..primitives import canonical_stig_status as _canonical_stig_status
 from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# CKLB loading helper (used by fleet view to resolve severity per rule)
-# ---------------------------------------------------------------------------
-
 _fleet_cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
-
-
-def _load_cklb_for_fleet(cklb_path: Path) -> dict[str, dict[str, Any]]:
-    """Load a CKLB file and return a rule_id → rule dict lookup.
-
-    Results are cached for the lifetime of the process so repeated calls
-    for the same path (e.g. multiple audit types on the same host) don't
-    re-parse the JSON.
-    """
-    key = str(cklb_path)
-    if key in _fleet_cklb_cache:
-        return _fleet_cklb_cache[key]
-    try:
-        payload = json.loads(cklb_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        logger.debug("Fleet CKLB load failed for %s: %s", cklb_path, exc)
-        _fleet_cklb_cache[key] = {}
-        return {}
-    out: dict[str, dict[str, Any]] = {}
-    for stig in payload.get("stigs", []) if isinstance(payload, dict) else []:
-        if not isinstance(stig, dict):
-            continue
-        for rule in stig.get("rules", []) if isinstance(stig.get("rules"), list) else []:
-            if not isinstance(rule, dict):
-                continue
-            for k in ("rule_id", "rule_version", "group_id"):
-                val = str(rule.get(k) or "").strip()
-                if val and val not in out:
-                    out[val] = rule
-    _fleet_cklb_cache[key] = out
-    return out
 
 
 def _resolve_fleet_cklb(
@@ -73,14 +37,14 @@ def _resolve_fleet_cklb(
 
     cklb_path = Path(cklb_dir) / f"{hostname}_{target_type}.cklb"
     if cklb_path.is_file():
-        return _load_cklb_for_fleet(cklb_path)
+        return load_cklb_lookup(cklb_path, cache=_fleet_cklb_cache)
 
     # Fall back to skeleton
     skeleton_file = reg.stig_skeleton_for_target(target_type)
     if skeleton_file:
         sk_path = Path(__file__).parent.parent / "cklb_skeletons" / skeleton_file
         if sk_path.is_file():
-            return _load_cklb_for_fleet(sk_path)
+            return load_cklb_lookup(sk_path)
 
     return None
 
