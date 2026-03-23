@@ -3,27 +3,27 @@
 
 - name: "ESXi | Resolve public interface"
   ansible.builtin.set_fact:
-    _ncs_requested_action: "{{ ncs_action | default('collect') }}"
-    _ncs_requested_profile: "{{ ncs_profile | default('none') }}"
-    _ncs_requested_operation: "{{ ncs_operation | default('none') }}"
+    esxi_ncs_requested_action: "{{ ncs_action | default('collect') }}"
+    esxi_ncs_requested_profile: "{{ ncs_profile | default('none') }}"
+    esxi_ncs_requested_operation: "{{ ncs_operation | default('none') }}"
   changed_when: false
 
 - name: "ESXi | Validate action"
   ansible.builtin.assert:
     that:
-      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
-      - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
-      - (_ncs_requested_operation == 'none') or (_ncs_requested_operation in ['password_status', 'rotate_password'])
-      - not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')
-      - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
-      - (_ncs_requested_operation != 'rotate_password') or (_ncs_requested_action == 'remediate')
-      - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
+      - esxi_ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
+      - (esxi_ncs_requested_profile == 'none') or (esxi_ncs_requested_profile == 'stig')
+      - (esxi_ncs_requested_operation == 'none') or (esxi_ncs_requested_operation in ['password_status', 'rotate_password'])
+      - not (esxi_ncs_requested_profile != 'none' and esxi_ncs_requested_operation != 'none')
+      - (esxi_ncs_requested_profile != 'stig') or (esxi_ncs_requested_action in ['audit', 'remediate', 'verify'])
+      - (esxi_ncs_requested_operation != 'rotate_password') or (esxi_ncs_requested_action == 'remediate')
+      - (esxi_ncs_requested_operation != 'password_status') or (esxi_ncs_requested_action in ['audit', 'verify'])
     fail_msg: >-
       Unsupported ESXi role interface:
-      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
+      action={{ esxi_ncs_requested_action }}, profile={{ esxi_ncs_requested_profile }}, operation={{ esxi_ncs_requested_operation }}.
   changed_when: false
 
-- name: "ESXi | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }} / {{ _ncs_requested_operation }}"
+- name: "ESXi | Dispatch"
   module_defaults:
     group/community.vmware.vmware:
       hostname: "{{ _vcenter_hostname }}"
@@ -47,10 +47,10 @@
         file: >-
           {{
             role_path ~ '/tasks/collect.yaml'
-            if _ncs_requested_action == 'collect'
+            if esxi_ncs_requested_action == 'collect'
             else role_path ~ '/tasks/password_status.yaml'
-            if _ncs_requested_operation == 'password_status'
+            if esxi_ncs_requested_operation == 'password_status'
             else role_path ~ '/tasks/rotate_password.yaml'
-            if _ncs_requested_operation == 'rotate_password'
+            if esxi_ncs_requested_operation == 'rotate_password'
             else role_path ~ '/tasks/stig.yaml'
           }}
