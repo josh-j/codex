@@ -18,7 +18,7 @@ from ncs_reporter.models.report_schema import (
     TableWidget,
 )
 from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
-from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entry_for_dir, status_badge_meta
+from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entries_for_dir, fleet_entry_for_dir, status_badge_meta
 
 
 def _format_value(fmt: str | None, value: Any) -> str:
@@ -479,10 +479,10 @@ def build_generic_node_view(
             p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
 
         for plt_dir in p_dirs:
-            label, schema_name = fleet_entry_for_dir(plt_dir)
-            fleets.append(
-                {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
-            )
+            for label, schema_name in fleet_entries_for_dir(plt_dir):
+                fleets.append(
+                    {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                )
 
         # Add STIG fleet (only if it will be generated)
         if has_stig_fleet:
@@ -603,10 +603,10 @@ def build_generic_fleet_view(
             if generated_fleet_dirs is not None:
                 p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
             for plt_dir in p_dirs:
-                label, schema_name = fleet_entry_for_dir(plt_dir)
-                fleets.append(
-                    {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
-                )
+                for label, schema_name in fleet_entries_for_dir(plt_dir):
+                    fleets.append(
+                        {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                    )
 
             # Add STIG fleet (only if it will be generated)
             if has_stig_fleet:

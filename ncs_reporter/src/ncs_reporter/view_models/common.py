@@ -180,6 +180,29 @@ def fleet_entry_for_dir(plt_dir: str) -> tuple[str, str]:
     return (leaf.capitalize(), leaf)
 
 
+def fleet_entries_for_dir(plt_dir: str) -> list[tuple[str, str]]:
+    """Return all (display_name, schema_name) pairs for a platform directory.
+
+    When multiple schemas share the same report_dir (e.g. vcenter, esxi, vm
+    all under vmware/vcenter), this returns one entry per schema so fleet nav
+    trees can link to all fleet reports.
+    """
+    from ..schema_loader import discover_schemas
+
+    reg = default_registry()
+    for entry in reg.entries:
+        if entry.report_dir == plt_dir and len(entry.schema_names) > 1:
+            all_schemas = discover_schemas()
+            results = []
+            for name in entry.schema_names:
+                schema = all_schemas.get(name)
+                label = schema.display_name if schema else name.replace("_", " ").title()
+                results.append((label, name))
+            return results
+    # Fallback: single entry
+    return [fleet_entry_for_dir(plt_dir)]
+
+
 def collect_active_alerts(
     alerts_list: list[Any],
     hostname: str,

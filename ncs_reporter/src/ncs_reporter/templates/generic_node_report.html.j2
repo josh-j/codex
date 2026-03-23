@@ -137,6 +137,14 @@
     </div>
     {% endif %}
 
+    {% if nav.get('sibling_reports') and nav.sibling_reports | length > 1 %}
+    <div class="schema-tabs">
+        {% for sr in nav.sibling_reports %}
+        <a href="{{ sr.url }}" class="schema-tab{{ ' active' if sr.active else '' }}">{{ sr.label }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="page-header">
         <div>
             <h1>{{ meta.get('display_name', 'Report') }} &mdash; <code>{{ meta.get('host', 'host') }}</code></h1>

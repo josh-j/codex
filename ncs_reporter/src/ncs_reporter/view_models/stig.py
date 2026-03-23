@@ -391,17 +391,26 @@ def build_stig_host_view(
                 if e.report_dir == plt_dir:
                     matched_entry = e
                     break
-            if matched_entry:
-                label = matched_entry.display_name or matched_entry.platform.capitalize()
-                schema_name = (matched_entry.schema_names[0] if matched_entry.schema_names
-                               else matched_entry.schema_name or matched_entry.platform)
+            if matched_entry and len(matched_entry.schema_names) > 1:
+                from ..schema_loader import discover_schemas
+                all_schemas = discover_schemas()
+                for sn in matched_entry.schema_names:
+                    s = all_schemas.get(sn)
+                    label = s.display_name if s else sn.replace("_", " ").title()
+                    fleets.append(
+                        {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{sn}_fleet_report.html"}
+                    )
             else:
-                label = plt_dir.split("/")[-1].capitalize()
-                schema_name = plt_dir.split("/")[-1]
-
-            fleets.append(
-                {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
-            )
+                if matched_entry:
+                    label = matched_entry.display_name or matched_entry.platform.capitalize()
+                    schema_name = (matched_entry.schema_names[0] if matched_entry.schema_names
+                                   else matched_entry.schema_name or matched_entry.platform)
+                else:
+                    label = plt_dir.split("/")[-1].capitalize()
+                    schema_name = plt_dir.split("/")[-1]
+                fleets.append(
+                    {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                )
 
         fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
         nav_with_tree["tree_fleets"] = fleets
@@ -606,11 +615,17 @@ def build_stig_fleet_view(
             continue
         if by_platform.get(p_name, {}).get("hosts", 0) > 0:
             fleet_link = reg.platform_fleet_link(p_name)
-            if not fleet_link:
-                schema_name = (reg.schema_names_for_platform(p_name) or [p_name])[0]
-                fleet_link = f"platform/{report_dir}/{schema_name}_fleet_report.html"
-            display = reg.platform_display_name(p_name)
-            tree_fleets.append({"name": display, "report": fleet_link})
+            if fleet_link:
+                display = reg.platform_display_name(p_name)
+                tree_fleets.append({"name": display, "report": fleet_link})
+            else:
+                schema_names = reg.schema_names_for_platform(p_name) or [p_name]
+                from ..schema_loader import discover_schemas
+                all_schemas = discover_schemas()
+                for sn in schema_names:
+                    s = all_schemas.get(sn)
+                    label = s.display_name if s else sn.replace("_", " ").title()
+                    tree_fleets.append({"name": label, "report": f"platform/{report_dir}/{sn}_fleet_report.html"})
 
     # Add STIG fleet
     tree_fleets.append({"name": "STIG", "report": "stig_fleet_report.html"})
