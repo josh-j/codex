@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from pathlib import Path
 from typing import Any
 
+from ._cklb import load_cklb_lookup
 from ._report_context import get_jinja_env, vm_kwargs, write_report
 from ._config import default_paths
 from .pathing import rel_href, render_template
@@ -19,43 +19,6 @@ from .view_models.stig import build_stig_fleet_view, build_stig_host_view
 logger = logging.getLogger("ncs_reporter")
 
 
-# ---------------------------------------------------------------------------
-# CKLB rule lookup (shared by build and render passes)
-# ---------------------------------------------------------------------------
-
-def _load_cklb_rule_lookup(
-    cklb_path: Path,
-    cache: dict[str, dict[str, dict[str, Any]]],
-) -> dict[str, dict[str, Any]]:
-    """Parse a CKLB file into a rule_id → rule dict. Results are cached by path."""
-    key = str(cklb_path)
-    if key in cache:
-        return cache[key]
-    if not cklb_path.is_file():
-        cache[key] = {}
-        return {}
-    try:
-        payload = json.loads(cklb_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        logger.warning("Failed to parse CKLB %s: %s", cklb_path, exc)
-        cache[key] = {}
-        return {}
-
-    out: dict[str, dict[str, Any]] = {}
-    for stig in payload.get("stigs", []) if isinstance(payload, dict) else []:
-        if not isinstance(stig, dict):
-            continue
-        for rule in stig.get("rules", []) if isinstance(stig.get("rules"), list) else []:
-            if not isinstance(rule, dict):
-                continue
-            for id_key in ("rule_id", "rule_version", "group_id"):
-                val = str(rule.get(id_key) or "").strip()
-                if val and val not in out:
-                    out[val] = rule
-    cache[key] = out
-    return out
-
-
 def _resolve_cklb_lookup(
     hostname: str,
     target_type: str,
@@ -65,14 +28,14 @@ def _resolve_cklb_lookup(
 ) -> dict[str, dict[str, Any]]:
     """Resolve CKLB lookup for a host/target, falling back to the skeleton file."""
     if cklb_dir and target_type:
-        lookup = _load_cklb_rule_lookup(cklb_dir / f"{hostname}_{target_type}.cklb", cache)
+        lookup = load_cklb_lookup(cklb_dir / f"{hostname}_{target_type}.cklb", cache)
         if lookup:
             return lookup
     if target_type:
         skeleton_file = registry.stig_skeleton_for_target(target_type)
         if skeleton_file:
             sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
-            return _load_cklb_rule_lookup(sk_path, cache)
+            return load_cklb_lookup(sk_path, cache)
     return {}
 
 
