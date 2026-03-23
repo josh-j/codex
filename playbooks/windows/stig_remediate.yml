@@ -14,7 +14,6 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: stig
-        windows_stig_enable_audit: true
-        windows_stig_enable_hardening: true
+        ncs_action: remediate
+        ncs_profile: stig
       when: master_enable_windows_stig | bool

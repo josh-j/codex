@@ -85,7 +85,7 @@ fields:
     type: list
 
   # =========================================================================
-  # Health fields (from windows_action: health)
+  # Health fields (from ncs_action: audit, ncs_profile: health)
   # =========================================================================
 
   health_os_info:
@@ -174,7 +174,7 @@ fields:
     fallback: []
 
   # =========================================================================
-  # Vulnerability scan fields (from windows_action: vuln_scan)
+  # Vulnerability scan fields (from ncs_action: audit, ncs_operation: vuln_scan)
   # =========================================================================
 
   vuln_total_findings:
@@ -195,7 +195,7 @@ fields:
     fallback: []
 
   # =========================================================================
-  # KB status fields (from windows_action: kb_install)
+  # KB status fields (from ncs_action: remediate, ncs_operation: kb_install)
   # =========================================================================
 
   kb_detection:

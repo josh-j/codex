@@ -23,25 +23,25 @@ Read-only VMware fleet audit:
     - role: internal.vmware.vcenter_collect
     - role: internal.vmware.esxi
       vars:
-        esxi_action: collect
+        ncs_action: collect
     - role: internal.vmware.vm
       vars:
-        vm_action: collect
+        ncs_action: collect
 ```
 
 Targeted STIG entrypoints:
 
 - `internal.vmware.vcsa` for VCSA STIG audit/remediation
-- `internal.vmware.esxi` with `esxi_action: stig`
-- `internal.vmware.vm` with `vm_action: stig`
+- `internal.vmware.esxi` with `ncs_action: audit|remediate|verify`, `ncs_profile: stig`
+- `internal.vmware.vm` with `ncs_action: audit|remediate|verify`, `ncs_profile: stig`
 
-## Supported Actions
+## Supported Interface
 
 - `internal.vmware.vcenter_collect`: `collect`
-- `internal.vmware.esxi`: `collect`, `stig`
-- `internal.vmware.vm`: `collect`, `snapshot`, `stig`
+- `internal.vmware.esxi`: `ncs_action: collect`; STIG via `ncs_profile: stig`; maintenance via `ncs_operation: rotate_password|password_status`
+- `internal.vmware.vm`: `ncs_action: collect`; STIG via `ncs_profile: stig`; snapshot via `ncs_operation: snapshot`
 
-Unsupported action values now fail early with an explicit assertion instead of a task-file lookup error.
+Unsupported interface combinations fail early with an explicit assertion instead of a task-file lookup error.
 
 ## Data Contracts
 

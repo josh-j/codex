@@ -1,5 +1,46 @@
 ---
 # internal.windows.windows : tasks/main.yaml
 
-- name: "Windows | Dispatch: {{ windows_action | default('audit') }}"
-  ansible.builtin.include_tasks: "{{ windows_action | default('audit') }}.yaml"
+- name: "Windows | Resolve public interface"
+  ansible.builtin.set_fact:
+    _ncs_requested_action: "{{ ncs_action | default('audit') }}"
+    _ncs_requested_profile: "{{ ncs_profile | default('none') }}"
+    _ncs_requested_operation: "{{ ncs_operation | default('none') }}"
+  changed_when: false
+
+- name: "Windows | Validate public interface"
+  ansible.builtin.assert:
+    that:
+      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
+      - (_ncs_requested_profile == 'none') or (_ncs_requested_profile in ['stig', 'health'])
+      - (_ncs_requested_operation == 'none') or (_ncs_requested_operation in ['ad_search', 'cleanup', 'kb_install', 'openssh', 'patch', 'registry_fix', 'remote_ops', 'scheduled_task', 'service', 'uninstall_software', 'update_software', 'vuln_scan', 'windows_update', 'winrm_enable'])
+      - not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')
+      - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
+      - (_ncs_requested_profile != 'health') or (_ncs_requested_action in ['audit', 'collect', 'verify'])
+      - (_ncs_requested_operation not in ['ad_search', 'vuln_scan']) or (_ncs_requested_action in ['audit', 'verify'])
+      - (_ncs_requested_operation not in ['cleanup', 'kb_install', 'openssh', 'patch', 'registry_fix', 'remote_ops', 'scheduled_task', 'service', 'uninstall_software', 'update_software', 'windows_update', 'winrm_enable']) or (_ncs_requested_action in ['remediate', 'verify'])
+    fail_msg: >-
+      Unsupported windows role interface:
+      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
+  changed_when: false
+
+- name: "Windows | Enable patch mode for audit task"
+  ansible.builtin.set_fact:
+    windows_audit_force_update: "{{ _ncs_requested_action == 'remediate' and _ncs_requested_operation == 'patch' }}"
+  when: _ncs_requested_operation == 'patch'
+  changed_when: false
+
+- name: "Windows | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }} / {{ _ncs_requested_operation }}"
+  ansible.builtin.include_tasks:
+    file: >-
+      {{
+        'stig.yaml'
+        if _ncs_requested_profile == 'stig'
+        else 'health.yaml'
+        if _ncs_requested_profile == 'health'
+        else 'audit.yaml'
+        if _ncs_requested_operation == 'patch'
+        else _ncs_requested_operation ~ '.yaml'
+        if _ncs_requested_operation != 'none'
+        else 'audit.yaml'
+      }}

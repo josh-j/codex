@@ -9,5 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: audit
-        windows_audit_force_update: true
+        ncs_action: remediate
+        ncs_operation: patch

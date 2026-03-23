@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: ad_search
+        ncs_action: audit
+        ncs_operation: ad_search

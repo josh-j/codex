@@ -11,4 +11,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: health
+        ncs_action: audit
+        ncs_profile: health

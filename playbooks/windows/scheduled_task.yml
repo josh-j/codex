@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: scheduled_task
+        ncs_action: remediate
+        ncs_operation: scheduled_task

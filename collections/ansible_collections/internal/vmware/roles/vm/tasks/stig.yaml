@@ -17,6 +17,11 @@
     vm_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(vm_stig_enable_hardening) | default(false) }}"
   changed_when: false
 
+- name: "VM STIG | Phase 0 | Resolve canonical action"
+  ansible.builtin.set_fact:
+    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+  changed_when: false
+
 - name: "VM STIG | Phase 0 | Validate target VMs"
   ansible.builtin.assert:
     that: vm_stig_target_vms | default([]) | length > 0
@@ -25,8 +30,9 @@
 - name: "VM STIG | Phase 0 | Determine run mode"
   ansible.builtin.set_fact:
     _stig_audit_only: >-
-      {{ (vm_stig_enable_audit | default(true) | bool)
-         and not (vm_stig_enable_hardening | default(false) | bool) }}
+      {{ _ncs_stig_action in ['audit', 'verify'] }}
+    vm_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+    vm_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
   changed_when: false
 
 - name: "VM STIG | Phase 0 | Register target context for ncs_collector"
@@ -47,7 +53,7 @@
 # =============================================================================
 - name: "VM STIG | Phase 1 | Evaluate and/or remediate"
   when:
-    - vm_stig_enable_audit | default(true) | bool or vm_stig_enable_hardening | default(false) | bool
+    - _ncs_stig_action in ['audit', 'remediate']
   block:
     - name: "VM STIG | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks: check.yaml
@@ -85,13 +91,11 @@
     _stig_active_phase: "audit"
   changed_when: false
   when:
-    - not (_stig_audit_only | bool)
-    - vm_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
 
 - name: "VM STIG | Phase 2 | Post-remediation audit"
   when:
-    - not (_stig_audit_only | bool)
-    - vm_stig_enable_audit | default(true) | bool
+    - _ncs_stig_action == 'verify'
   block:
     - name: "VM STIG | Phase 2a | Verify remediation"
       ansible.builtin.include_tasks: check_verify.yaml

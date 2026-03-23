@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: kb_install
+        ncs_action: remediate
+        ncs_operation: kb_install

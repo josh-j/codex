@@ -1,9 +1,6 @@
 ---
 # collections/ansible_collections/internal/windows/roles/windows/defaults/main.yaml
 
-# --- Actions ---
-windows_action: audit
-
 # --- Performance/Safety ---
 windows_audit_startup_delay: 5
 windows_audit_skip_startup_delay: true
@@ -34,7 +31,7 @@ windows_audit_excluded_apps:
   - "Intel(R)_Chipset Device Software_*"
 
 # =============================================================================
-# Health Check Settings (windows_action: health)
+# Health Check Settings (ncs_action: audit, ncs_profile: health)
 # =============================================================================
 windows_health_check_os: true
 windows_health_check_disk: true
@@ -61,33 +58,33 @@ windows_health_critical_services:
   - Tanium Client
 
 # =============================================================================
-# Vulnerability Scan Settings (windows_action: vuln_scan)
+# Vulnerability Scan Settings (ncs_action: audit, ncs_operation: vuln_scan)
 # =============================================================================
 windows_vuln_scan_file: ""
 windows_vuln_scan_format: "csv"
 
 # =============================================================================
-# Registry Fix Settings (windows_action: registry_fix)
+# Registry Fix Settings (ncs_action: remediate, ncs_operation: registry_fix)
 # =============================================================================
 windows_registry_fix_ids: []
 windows_registry_fix_apply: false
 
 # =============================================================================
-# KB Install Settings (windows_action: kb_install)
+# KB Install Settings (ncs_action: remediate, ncs_operation: kb_install)
 # =============================================================================
 windows_kb_list: ""
 windows_kb_install: false
 windows_kb_source_path: ""
 
 # =============================================================================
-# Software Update Settings (windows_action: update_software)
+# Software Update Settings (ncs_action: remediate, ncs_operation: update_software)
 # =============================================================================
 windows_update_software_targets:
   - chrome
 windows_update_software_force: false
 
 # =============================================================================
-# Software Uninstall Settings (windows_action: uninstall_software)
+# Software Uninstall Settings (ncs_action: remediate, ncs_operation: uninstall_software)
 # =============================================================================
 windows_uninstall_names: []
 windows_uninstall_appx: false
@@ -96,14 +93,14 @@ windows_uninstall_winget_remove: false
 windows_uninstall_winget_names: []
 
 # =============================================================================
-# Cleanup Settings (windows_action: cleanup)
+# Cleanup Settings (ncs_action: remediate, ncs_operation: cleanup)
 # =============================================================================
 windows_cleanup_temp: true
 windows_cleanup_profiles: false
 windows_cleanup_profile_days: 30
 
 # =============================================================================
-# Windows Update Settings (windows_action: windows_update)
+# Windows Update Settings (ncs_action: remediate, ncs_operation: windows_update)
 # =============================================================================
 windows_update_categories:
   - "SecurityUpdates"
@@ -113,32 +110,32 @@ windows_update_allow_reboot: false
 windows_update_timeout_minutes: 60
 
 # =============================================================================
-# Service Management Settings (windows_action: service)
+# Service Management Settings (ncs_action: remediate, ncs_operation: service)
 # =============================================================================
 windows_service_action: list
 windows_service_name: "*"
 
 # =============================================================================
-# Scheduled Task Settings (windows_action: scheduled_task)
+# Scheduled Task Settings (ncs_action: remediate, ncs_operation: scheduled_task)
 # =============================================================================
 windows_task_action: list
 windows_task_name: ""
 windows_task_path: "\\"
 
 # =============================================================================
-# WinRM Enable Settings (windows_action: winrm_enable)
+# WinRM Enable Settings (ncs_action: remediate, ncs_operation: winrm_enable)
 # =============================================================================
 windows_winrm_enable_force: false
 
 # =============================================================================
-# Remote Operations Settings (windows_action: remote_ops)
+# Remote Operations Settings (ncs_action: remediate, ncs_operation: remote_ops)
 # =============================================================================
 windows_remote_op: uptime
 windows_remote_message: ""
 windows_remote_reboot_delay: 0
 
 # =============================================================================
-# AD Search Settings (windows_action: ad_search)
+# AD Search Settings (ncs_action: audit, ncs_operation: ad_search)
 # =============================================================================
 windows_ad_search_type: computer
 windows_ad_search_term: ""
@@ -146,7 +143,7 @@ windows_ad_search_properties: []
 windows_ad_bitlocker_recovery: false
 
 # =============================================================================
-# OpenSSH Settings (windows_action: openssh)
+# OpenSSH Settings (ncs_action: remediate, ncs_operation: openssh)
 # =============================================================================
 windows_openssh_default_shell: "powershell"
 windows_openssh_manage_config: true

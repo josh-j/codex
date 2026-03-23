@@ -9,4 +9,4 @@
   roles:
     - role: internal.vmware.esxi
       vars:
-        esxi_action: collect
+        ncs_action: collect

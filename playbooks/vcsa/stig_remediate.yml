@@ -15,7 +15,8 @@
   roles:
     - role: internal.vmware.vcsa
       vars:
-        vcsa_stig_enable_hardening: true
+        ncs_action: remediate
+        ncs_profile: stig
 
 - name: "Phase 2b: VCSA STIG Post-Remediation Audit"
   hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcenters')) }}"
@@ -30,4 +31,5 @@
   roles:
     - role: internal.vmware.vcsa
       vars:
-        vcsa_stig_enable_hardening: false
+        ncs_action: verify
+        ncs_profile: stig

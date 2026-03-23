@@ -19,7 +19,7 @@ Exported by `internal.vmware.vcenter_collect`.
 
 ### `vmware_raw_esxi`
 
-Exported by `internal.vmware.esxi` with `esxi_action: collect`.
+Exported by `internal.vmware.esxi` with `ncs_action: collect`.
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
@@ -32,7 +32,7 @@ Exported by `internal.vmware.esxi` with `esxi_action: collect`.
 
 ### `vmware_raw_vm`
 
-Exported by `internal.vmware.vm` with `vm_action: collect`.
+Exported by `internal.vmware.vm` with `ncs_action: collect`.
 
 | Key | Type | Description |
 | :--- | :--- | :--- |

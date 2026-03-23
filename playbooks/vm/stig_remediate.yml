@@ -17,8 +17,9 @@
     - name: Create safety snapshots
       ansible.builtin.include_role:
         name: internal.vmware.vm
-        tasks_from: snapshot
       vars:
+        ncs_action: remediate
+        ncs_operation: snapshot
         vm_snapshot_targets: "{{ vm_stig_target_vms | default([]) }}"
         vm_snapshot_name: "Ansible_Pre_STIG_Hardening_{{ now(utc=true, fmt='%Y%m%d_%H%M%S') }}"
         vm_snapshot_desc: "Safety snapshot before STIG remediation"
@@ -31,7 +32,6 @@
   tags: ["vmware", "stig", "remediate", "vm"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    vm_stig_enable_hardening: true    # MUTATING — applies changes
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
@@ -41,6 +41,9 @@
     - name: "Execute VM STIG Hardening"
       ansible.builtin.include_role:
         name: internal.vmware.vm
+      vars:
+        ncs_action: remediate
+        ncs_profile: stig
       when: vm_stig_target_vms | default([]) | length > 0
 
 - name: "Phase 2f | Post-Remediation VM STIG Audit"
@@ -50,7 +53,6 @@
   tags: ["vmware", "stig", "audit", "vm"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    vm_stig_enable_hardening: false   # READ-ONLY
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
@@ -60,4 +62,7 @@
     - name: "Execute Post-Remediation VM STIG Audit"
       ansible.builtin.include_role:
         name: internal.vmware.vm
+      vars:
+        ncs_action: verify
+        ncs_profile: stig
       when: vm_stig_target_vms | default([]) | length > 0

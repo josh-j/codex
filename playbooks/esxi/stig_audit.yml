@@ -16,4 +16,5 @@
   roles:
     - role: internal.vmware.esxi
       vars:
-        esxi_stig_enable_hardening: false
+        ncs_action: audit
+        ncs_profile: stig

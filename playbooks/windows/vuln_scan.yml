@@ -9,4 +9,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: vuln_scan
+        ncs_action: audit
+        ncs_operation: vuln_scan

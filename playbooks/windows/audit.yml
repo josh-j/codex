@@ -14,5 +14,5 @@
   roles:
     - role: internal.windows.windows
       vars:
-        windows_action: audit
+        ncs_action: audit
         # Default thresholds are defined in roles/windows/defaults/main.yaml
