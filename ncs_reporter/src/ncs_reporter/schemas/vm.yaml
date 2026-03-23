@@ -1,4 +1,4 @@
-name: vm_health
+name: vm
 display_name: "VMware VM Workload Health"
 platform:
   name: vmware
