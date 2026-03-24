@@ -642,8 +642,15 @@ def build_platform_entries_from_schemas(
         input_dir = spec.input_dir or schema.platform or schema.name
 
         if input_dir in seen_input_dirs:
-            # Merge into existing primary entry
-            seen_input_dirs[input_dir]["schema_names"].append(schema.name)
+            # Merge into existing primary entry: carry over schema name and
+            # additive metadata so the registry has full coverage.
+            primary_entry = seen_input_dirs[input_dir]
+            primary_entry["schema_names"].append(schema.name)
+            # Merge legacy key aliases so normalization finds all raw keys.
+            primary_entry["legacy_raw_keys"].update(spec.legacy_raw_keys)
+            # Merge skeleton maps and rule prefixes (additive lookups).
+            primary_entry["stig_skeleton_map"].update(spec.stig_skeleton_map)
+            primary_entry["stig_rule_prefixes"].update(spec.stig_rule_prefixes)
             continue
 
         # Primary entry
