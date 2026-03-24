@@ -198,7 +198,7 @@ def build_site_dashboard_view(
                 if infra_field in infra:
                     platform_data[infra_field] = infra[infra_field]
 
-        platforms_dict[p_name] = platform_data
+        platforms_dict[audit_key] = platform_data
 
         if to_int(asset_count) > 0:
             site_entries_with_assets.append({"display_name": display, "fleet_link": fleet_link})
