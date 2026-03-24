@@ -419,9 +419,18 @@ class CallbackModule(CallbackBase):
         except Exception:
             inv_host = "unknown"
 
-        # Resolve target host/type from task vars first, then tracked maps.
-        host = task_vars.get("stig_target_host") or self._target_host_map.get(inv_host, inv_host)
-        target_type = str(task_vars.get("stig_target_type") or self._target_type_map.get(inv_host, "") or "").lower()
+        # Resolve target host/type from structured result first, then task vars, then tracked maps.
+        host = (
+            structured.get("target_host")
+            or task_vars.get("stig_target_host")
+            or self._target_host_map.get(inv_host, inv_host)
+        )
+        target_type = str(
+            structured.get("target_type")
+            or task_vars.get("stig_target_type")
+            or self._target_type_map.get(inv_host, "")
+            or ""
+        ).lower()
 
         if not target_type:
             self._debug_stig_event(
@@ -901,7 +910,13 @@ class CallbackModule(CallbackBase):
 
     def _persist_stig_task_data(self):
         if not self._stig_rules:
+            self._display.v("[ncs_collector] No STIG rules recorded; nothing to persist.")
             return
+
+        self._display.display(
+            f"[ncs_collector] Persisting STIG data for {len(self._stig_rules)} target(s)...",
+            color="cyan",
+        )
 
         for bucket_key, rules in self._stig_rules.items():
             host, target_type_from_key = bucket_key
@@ -962,6 +977,7 @@ class CallbackModule(CallbackBase):
                 status_label = {
                     "pass": "Compliant",
                     "failed": "Non-Compliant",
+                    "not_reviewed": "Not Reviewed",
                     "fixed": "Remediated to Compliant",
                     "not_applicable": "Not Applicable",
                     "na": "Not Reviewed",
