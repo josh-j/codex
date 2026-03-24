@@ -2,31 +2,31 @@
 # internal.vmware.stig : esxi/stig_v7r4/main.yaml
 # Per-host V7R4 STIG dispatcher. Included via stig.yaml per ESXi host.
 
-- import_tasks: stig_v7r4/00_prelude.yaml
+- ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/00_prelude.yaml"
 
 - name: "ESXi STIG | Rules with guaranteed post-flight"
   block:
     - name: "Include 10_config_manager.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/10_config_manager.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/10_config_manager.yaml"
     - name: "Include 20_advanced_settings.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/20_advanced_settings.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/20_advanced_settings.yaml"
     - name: "Include 30_other_modules.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/30_other_modules.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/30_other_modules.yaml"
     - name: "Include 40_vswitch_security.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/40_vswitch_security.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/40_vswitch_security.yaml"
     - name: "Include 50_network_audit.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/50_network_audit.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/50_network_audit.yaml"
     - name: "Include 60_firmware_audit.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/60_firmware_audit.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/60_firmware_audit.yaml"
     - name: "Include 61_remaining_audit_only_rules.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/61_remaining_audit_only_rules.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/61_remaining_audit_only_rules.yaml"
     - name: "Include 70_ssh_config.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/70_ssh_config.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/70_ssh_config.yaml"
     - name: "Include 80_explicit_remediation.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/80_explicit_remediation.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/80_explicit_remediation.yaml"
     - name: "Include 81_service_manager.yaml"
-      ansible.builtin.include_tasks: stig_v7r4/81_service_manager.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/81_service_manager.yaml"
   always:
     - name: "ESXi STIG | Post-flight re-lock"
-      ansible.builtin.include_tasks: stig_v7r4/90_post_stig.yaml
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/90_post_stig.yaml"
       when: esxi_stig_pre_unlock | default(true) | bool

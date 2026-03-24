@@ -43,8 +43,8 @@
 # Pre-flight: unlock → bulk gather
 # =========================================================================
 - name: "ESXi STIG | Pre-flight unlock"
-  ansible.builtin.include_tasks: stig_v7r4/pre_stig.yaml
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/pre_stig.yaml"
   when: esxi_stig_pre_unlock | default(true) | bool
 
 - name: "ESXi STIG | Bulk PowerCLI gather"
-  ansible.builtin.include_tasks: stig_v7r4/pwsh_bulk_gather.yaml
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/pwsh_bulk_gather.yaml"
