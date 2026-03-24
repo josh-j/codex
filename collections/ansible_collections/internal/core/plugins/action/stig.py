@@ -790,6 +790,16 @@ class ActionModule(ActionBase):
             "status": status,
             "reason": reason,
             "host": task_vars.get("inventory_hostname"),
+            "target_host": (
+                task_vars.get("stig_target_host")
+                or task_vars.get("_ncs_stig_target_host")
+                or task_vars.get("inventory_hostname")
+            ),
+            "target_type": str(
+                task_vars.get("stig_target_type")
+                or task_vars.get("_ncs_stig_target_type")
+                or ""
+            ).lower(),
             "gate": gate or {},
             "probe": probe,
             "remediation": remediation,
