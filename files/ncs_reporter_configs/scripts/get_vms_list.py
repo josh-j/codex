@@ -1,48 +1,8 @@
+import sys
 import json
 import re
-import sys
-from datetime import datetime
+
 from typing import Any
-
-
-def _parse_backup_time(raw_backup: str) -> str:
-    """Parse EndTime or StartTime from Dell PowerProtect backup attribute.
-
-    Raw format:
-        "Backup Server=xxx, Policy=xxx, Stage=xxx,
-         StartTime=2026-03-08T16:00:13Z, EndTime=2026-03-08T16:31:40Z"
-
-    Returns "YYYY-MM-DD HH:MM UTC" or empty string.
-    """
-    if not raw_backup:
-        return ""
-    for time_key in ("EndTime", "StartTime"):
-        match = re.search(rf"{time_key}=(\d{{4}}-\d{{2}}-\d{{2}}T\d{{2}}:\d{{2}}:\d{{2}}Z?)", raw_backup)
-        if match:
-            raw_ts = match.group(1)
-            try:
-                dt = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
-                return dt.strftime("%Y-%m-%d %H:%M UTC")
-            except (ValueError, TypeError):
-                return raw_ts
-    return ""
-
-
-def _format_tags_display(tags: list[dict[str, Any]]) -> str:
-    """Format all VM tags as 'Category: Name' comma-separated string."""
-    if not isinstance(tags, list):
-        return ""
-    parts = []
-    for tag in tags:
-        if not isinstance(tag, dict):
-            continue
-        cat = str(tag.get("category_name", "")).strip()
-        name = str(tag.get("name", "")).strip()
-        if cat and name:
-            parts.append(f"{cat}: {name}")
-        elif name:
-            parts.append(name)
-    return ", ".join(parts)
 
 
 def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = None) -> list[dict[str, Any]]:
@@ -56,23 +16,28 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
 
     exclude_re = None
     if exclude_patterns:
+        # If it's a string (e.g. from YAML formatting), try to parse it as a list
         if isinstance(exclude_patterns, str):
             try:
+                # If it looks like a Python list representation, parse it
                 if exclude_patterns.startswith("[") and exclude_patterns.endswith("]"):
                     import ast
 
                     exclude_patterns = ast.literal_eval(exclude_patterns)
                 else:
+                    # Single pattern string
                     exclude_patterns = [exclude_patterns]
             except Exception:
                 exclude_patterns = [exclude_patterns]
 
         if isinstance(exclude_patterns, list):
+            # Join patterns into a single OR regex for performance
             try:
                 pattern_str = "|".join(f"({p})" for p in exclude_patterns if p)
                 if pattern_str:
                     exclude_re = re.compile(pattern_str, re.IGNORECASE)
             except re.error:
+                # Fallback if patterns are mangled
                 exclude_re = None
 
     normalized_vms = []
@@ -106,23 +71,14 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
             or ""
         )
 
-        # Robust extraction for Last Backup (raw string)
-        last_backup_raw = (
+        # Robust extraction for Last Backup
+        last_backup = (
             attributes.get("Last Dell PowerProtect Backup")
             or attributes.get("Last Backup")
             or attributes.get("LastBackup")
             or attributes.get("backup_date")
             or ""
         )
-
-        # Parse backup timestamp from raw Dell PowerProtect string
-        backup_last_time = _parse_backup_time(last_backup_raw)
-
-        # Backup schedule tag name
-        backup_tag = backup_tag_obj.get("name", "")
-
-        # All tags formatted for display
-        tags_display = _format_tags_display(tags)
 
         vm_normalized = {
             "guest_name": guest_name,
@@ -135,10 +91,8 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
             "datacenter": item.get("datacenter", "N/A"),
             "ip_address": item.get("ip_address", "N/A"),
             "tags": tags,
-            "tags_display": tags_display,
-            "backup_tag": backup_tag,
-            "backup_last_time": backup_last_time,
-            "backup_info": last_backup_raw,
+            "backup_info": last_backup,
+            "backup_schedule": backup_tag_obj.get("name", "None"),
             "owner_name": attributes.get("Owner Name", attributes.get("OwnerName", "")),
             "owner_email": owner_email,
             "owner_tag": owner_tag_obj.get("name", ""),
@@ -152,6 +106,7 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
 
 if __name__ == "__main__":
     try:
+        # Schema engine passes: {"fields": {...}, "args": {...}} via stdin
         input_data = json.load(sys.stdin)
         fields = input_data.get("fields", {})
         args = input_data.get("args", {})
@@ -162,5 +117,5 @@ if __name__ == "__main__":
         result = get_vms_list(vms_info, exclude_patterns=exclude_patterns)
         print(json.dumps(result))
     except Exception as e:
-        sys.stderr.write(f"Error: {e!s}\n")
+        sys.stderr.write(f"Error: {str(e)}\n")
         sys.exit(2)
