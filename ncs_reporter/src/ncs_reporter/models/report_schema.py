@@ -482,7 +482,7 @@ class SubEntry(BaseModel):
 class PlatformSpec(BaseModel):
     """Platform routing metadata embedded in a schema YAML."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = ""  # platform name (e.g. "linux", "vmware", "windows")
     input_dir: str = ""
@@ -496,7 +496,10 @@ class PlatformSpec(BaseModel):
     stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports
     site_category: str | None = None
-    sub_entries: list[SubEntry] = Field(default_factory=list)
+    sub_entries: list[SubEntry] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("sub_entries", "children"),
+    )
     # Registry-driven extensions (see PlatformEntry for docs)
     legacy_raw_keys: dict[str, str] = Field(default_factory=dict)
     legacy_audit_key: str | None = None

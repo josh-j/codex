@@ -15,7 +15,7 @@ import yaml
 if TYPE_CHECKING:
     from ncs_reporter.models.report_schema import ReportSchema
 
-from ncs_reporter.models.platforms_config import PlatformEntry, PlatformsConfig
+from ncs_reporter.models.platforms_config import PlatformEntry, PlatformNode, PlatformsConfig
 
 
 class PlatformRegistry:
@@ -32,6 +32,12 @@ class PlatformRegistry:
             for t in e.target_types:
                 self._tt_lookup.setdefault(t.lower(), e)
 
+        # Build platform hierarchy tree
+        self._roots: list[PlatformNode] = self._build_tree()
+        self._node_by_id: dict[str, PlatformNode] = {
+            n.id: n for root in self._roots for n in root.walk()
+        }
+
     # -- basic accessors -----------------------------------------------------
 
     @property
@@ -40,6 +46,46 @@ class PlatformRegistry:
 
     def by_platform(self, name: str) -> list[PlatformEntry]:
         return [e for e in self._entries if e.platform == name]
+
+    # -- tree accessors -------------------------------------------------------
+
+    def _build_tree(self) -> list[PlatformNode]:
+        """Build a platform hierarchy tree from the flat entry list.
+
+        Groups entries by platform name. Renderable entries (render=True)
+        become root nodes; non-renderable entries become their children.
+        """
+        by_platform: dict[str, list[PlatformEntry]] = {}
+        for e in self._entries:
+            by_platform.setdefault(e.platform, []).append(e)
+
+        roots: list[PlatformNode] = []
+        for entries in by_platform.values():
+            primary = next((e for e in entries if e.render), entries[0])
+            root_node = PlatformNode(entry=primary)
+            for e in entries:
+                if e is not primary:
+                    child = PlatformNode(entry=e, parent=root_node)
+                    root_node.children.append(child)
+            roots.append(root_node)
+        return roots
+
+    @property
+    def roots(self) -> list[PlatformNode]:
+        """Top-level platform nodes."""
+        return list(self._roots)
+
+    def node_for_id(self, node_id: str) -> PlatformNode | None:
+        """Find a tree node by its id (schema_name or platform)."""
+        return self._node_by_id.get(node_id)
+
+    def node_for_report_dir(self, report_dir: str) -> PlatformNode | None:
+        """Find the tree node whose entry matches a report_dir path."""
+        for root in self._roots:
+            for node in root.walk():
+                if node.entry.report_dir == report_dir:
+                    return node
+        return None
 
     # -- platform / target type sets -----------------------------------------
 

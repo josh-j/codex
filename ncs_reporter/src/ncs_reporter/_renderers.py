@@ -14,6 +14,7 @@ from .pathing import rel_href, render_template
 from .platform_registry import PlatformRegistry, default_registry
 from .schema_loader import discover_schemas
 from .view_models.generic import build_generic_fleet_view, build_generic_node_view, merge_stig_into_node_view
+from .view_models.nav_builder import NavBuilder
 from .view_models.stig import StigNavContext, build_stig_fleet_view, build_stig_host_view, build_stig_nav, collect_stig_entries
 
 logger = logging.getLogger("ncs_reporter")
@@ -50,6 +51,14 @@ def build_stig_host_views(
     cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
 
     stig_entries, all_stig_reports = collect_stig_entries(hosts_data, stamp, reg)
+
+    nav_builder = NavBuilder(
+        reg,
+        hosts_data=global_inventory_index,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=True,
+        has_site_report=has_site_report,
+    )
 
     result: dict[str, list[dict[str, Any]]] = {}
 
@@ -91,6 +100,7 @@ def build_stig_host_views(
                 history=[],
                 stig_host_peers=stig_host_peers,
                 stig_siblings=stig_siblings,
+                nav_builder=nav_builder,
             ),
             **kw,
         )
@@ -177,6 +187,15 @@ def render_platform(
     node_tpl = env.get_template(TEMPLATE_NODE)
     fleet_tpl = env.get_template(TEMPLATE_FLEET)
 
+    reg = default_registry()
+    nav_builder = NavBuilder(
+        reg,
+        hosts_data=global_inventory_index,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=has_stig_fleet,
+        has_site_report=has_site_report,
+    )
+
     # Render each schema independently
     for schema_idx, schema in enumerate(matched_schemas):
         is_primary = schema_idx == 0
@@ -228,6 +247,7 @@ def render_platform(
                 generated_fleet_dirs=generated_fleet_dirs,
                 has_stig_fleet=has_stig_fleet,
                 history=history,
+                nav_builder=nav_builder,
                 **kw,
             )
 
@@ -248,6 +268,7 @@ def render_platform(
             hosts_data=global_inventory_index,
             generated_fleet_dirs=generated_fleet_dirs,
             has_stig_fleet=has_stig_fleet,
+            nav_builder=nav_builder,
             **kw,
         )
         content = fleet_tpl.render(generic_fleet_view=fleet_view, **common_vars)
@@ -282,6 +303,14 @@ def render_stig(
     host_tpl = env.get_template(TEMPLATE_STIG_HOST)
     all_hosts_data: dict[str, Any] = {}
     cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
+
+    stig_nav_builder = NavBuilder(
+        reg,
+        hosts_data=global_inventory_index,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=True,
+        has_site_report=has_site_report,
+    )
 
     stig_entries, all_stig_reports = collect_stig_entries(hosts_data, stamp, reg)
 
@@ -329,6 +358,7 @@ def render_stig(
                 history=history,
                 stig_host_peers=stig_host_peers,
                 stig_siblings=stig_siblings,
+                nav_builder=stig_nav_builder,
             ),
             **kw,
         )
@@ -368,6 +398,7 @@ def render_stig(
         nav=stig_fleet_nav,
         generated_fleet_dirs=generated_fleet_dirs,
         cklb_dir=cklb_dir,
+        nav_builder=stig_nav_builder,
         **kw,
     )
     fleet_tpl = env.get_template(_TEMPLATE_STIG_FLEET)

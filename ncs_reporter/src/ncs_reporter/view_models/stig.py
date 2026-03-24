@@ -6,7 +6,10 @@ import dataclasses
 import logging
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .nav_builder import NavBuilder
 
 from .._cklb import load_cklb_lookup
 from ..pathing import rel_href, render_template
@@ -27,6 +30,7 @@ class StigNavContext:
     history: list[dict[str, str]] | None = None
     stig_host_peers: list[dict[str, str]] | None = None
     stig_siblings: list[dict[str, str]] | None = None
+    nav_builder: NavBuilder | None = None
 
 
 @dataclasses.dataclass
@@ -39,8 +43,6 @@ class FleetAccumulator:
     by_platform: dict[str, dict[str, int]] = dataclasses.field(default_factory=dict)
     platform_hosts: dict[str, set[str]] = dataclasses.field(default_factory=dict)
 
-
-_fleet_cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
 
 _SEV_ORDER: dict[str, int] = {"critical": 0, "high": 0, "warning": 1, "medium": 1, "low": 2, "info": 2}
 _STATUS_ORDER: dict[str, int] = {"open": 0, "na": 1, "pass": 2}
@@ -163,6 +165,7 @@ def _resolve_fleet_cklb(
     hostname: str,
     payload: dict[str, Any],
     registry: PlatformRegistry | None = None,
+    cache: dict[str, dict[str, dict[str, Any]]] | None = None,
 ) -> dict[str, dict[str, Any]] | None:
     """Try to load a CKLB lookup for a host/target_type pair.
 
@@ -180,7 +183,7 @@ def _resolve_fleet_cklb(
 
     cklb_path = Path(cklb_dir) / f"{hostname}_{target_type}.cklb"
     if cklb_path.is_file():
-        return load_cklb_lookup(cklb_path, cache=_fleet_cklb_cache)
+        return load_cklb_lookup(cklb_path, cache=cache)
 
     # Fall back to skeleton
     skeleton_file = reg.stig_skeleton_for_target(target_type)
@@ -447,6 +450,17 @@ def _build_stig_host_nav(
     registry: PlatformRegistry,
 ) -> dict[str, Any]:
     """Build the nav-tree dict for a STIG host report."""
+    if ctx.nav_builder is not None:
+        return ctx.nav_builder.build_for_stig_host(
+            hostname,
+            base_nav=ctx.nav,
+            history=ctx.history,
+            stig_host_peers=ctx.stig_host_peers,
+            stig_siblings=ctx.stig_siblings,
+            host_bundle=ctx.host_bundle,
+            audit_type=str(audit_type or ""),
+        )
+
     nav_with_tree: dict[str, Any] = {**ctx.nav} if ctx.nav else {}
     if ctx.history:
         nav_with_tree["history"] = ctx.history
@@ -509,7 +523,8 @@ def _build_stig_host_nav(
                     {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
                 )
 
-        fleets.append({"name": "STIG", "report": f"{back_to_root}{_FSF}"})
+        from ..models.platforms_config import NAV_LABEL_STIG
+        fleets.append({"name": NAV_LABEL_STIG, "report": f"{back_to_root}{_FSF}"})
         nav_with_tree["tree_fleets"] = fleets
 
     return nav_with_tree
@@ -670,8 +685,12 @@ def _build_fleet_nav(
     *,
     generated_fleet_dirs: set[str] | None,
     registry: PlatformRegistry,
+    nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     """Build the nav-tree dict for the STIG fleet report."""
+    if nav_builder is not None:
+        return nav_builder.build_for_stig_fleet(by_platform, base_nav=nav)
+
     from ncs_reporter.models.platforms_config import (
         FILENAME_STIG_FLEET as _FSF,
         fleet_link_url,
@@ -698,7 +717,8 @@ def _build_fleet_nav(
                     label = s.display_name if s else sn.replace("_", " ").title()
                     tree_fleets.append({"name": label, "report": fleet_link_url(report_dir, sn)})
 
-    tree_fleets.append({"name": "STIG", "report": _FSF})
+    from ncs_reporter.models.platforms_config import NAV_LABEL_STIG
+    tree_fleets.append({"name": NAV_LABEL_STIG, "report": _FSF})
     nav_with_tree["tree_fleets"] = tree_fleets
     return nav_with_tree
 
@@ -713,6 +733,7 @@ def build_stig_fleet_view(
     generated_fleet_dirs: set[str] | None = None,
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
+    nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     reg = registry or default_registry()
     _init_keys = {*reg.all_platform_names(), "unknown"}
@@ -720,6 +741,7 @@ def build_stig_fleet_view(
         by_platform={k: {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0} for k in _init_keys},
         platform_hosts={k: set() for k in _init_keys},
     )
+    cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for audit_type, payload in dict(bundle or {}).items():
@@ -729,7 +751,7 @@ def build_stig_fleet_view(
                 continue
 
             cklb_rule_lookup = _resolve_fleet_cklb(
-                cklb_dir, hostname, payload, registry=reg
+                cklb_dir, hostname, payload, registry=reg, cache=cklb_cache,
             )
 
             host_view = build_stig_host_view(
@@ -792,6 +814,7 @@ def build_stig_fleet_view(
         nav, acc.by_platform,
         generated_fleet_dirs=generated_fleet_dirs,
         registry=reg,
+        nav_builder=nav_builder,
     )
 
     return {

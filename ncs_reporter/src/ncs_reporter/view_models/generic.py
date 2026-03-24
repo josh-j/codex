@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .nav_builder import NavBuilder
 
 from ncs_reporter.models.report_schema import (
     AlertPanelWidget,
@@ -14,11 +17,12 @@ from ncs_reporter.models.report_schema import (
     MarkdownWidget,
     ProgressBarWidget,
     ReportSchema,
+    ReportWidget,
     StatCardsWidget,
     TableWidget,
 )
 from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
-from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entries_for_dir, status_badge_meta
+from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, status_badge_meta
 
 
 def _format_value(fmt: str | None, value: Any) -> str:
@@ -102,7 +106,7 @@ _COMPACT_WIDGET_TYPES = (KeyValueWidget, StatCardsWidget, ProgressBarWidget, Lis
 _TABLE_HALF_WIDTH_MAX_COLS = 4
 
 
-def _auto_layout(widget: Any) -> dict[str, Any]:
+def _auto_layout(widget: ReportWidget) -> dict[str, Any]:
     """Return layout dict, auto-sizing compact widgets to half when no explicit width was set."""
     layout = widget.layout.model_dump() if hasattr(widget, "layout") else {"width": "full"}
     if widget.layout.model_fields_set.intersection({"width"}):
@@ -114,7 +118,7 @@ def _auto_layout(widget: Any) -> dict[str, Any]:
     return layout
 
 
-def _render_key_value(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_key_value(widget: KeyValueWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a KeyValueWidget."""
     rows = []
     for kv in widget.fields:
@@ -129,7 +133,7 @@ def _render_key_value(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) 
     }
 
 
-def _render_table(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_table(widget: TableWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a TableWidget."""
     raw_rows = fields.get(widget.rows_field, [])
     if not isinstance(raw_rows, list):
@@ -155,7 +159,7 @@ def _render_table(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> d
     }
 
 
-def _render_progress_bar(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a ProgressBarWidget."""
     value = fields.get(widget.field, 0.0)
     try:
@@ -182,7 +186,7 @@ def _render_progress_bar(widget: Any, fields: dict[str, Any], ctx: dict[str, Any
     }
 
 
-def _render_markdown(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_markdown(widget: MarkdownWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a MarkdownWidget."""
     return {
         "id": widget.id,
@@ -193,7 +197,7 @@ def _render_markdown(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -
     }
 
 
-def _render_alert_panel(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_alert_panel(widget: AlertPanelWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render an AlertPanelWidget."""
     return {
         "id": widget.id,
@@ -204,7 +208,7 @@ def _render_alert_panel(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]
     }
 
 
-def _render_stat_cards(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a StatCardsWidget."""
     cards_rendered = []
     for card in widget.cards:
@@ -229,7 +233,7 @@ def _render_stat_cards(widget: Any, fields: dict[str, Any], ctx: dict[str, Any])
     }
 
 
-def _render_bar_chart(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_bar_chart(widget: BarChartWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a BarChartWidget."""
     raw_rows = fields.get(widget.rows_field, [])
     if not isinstance(raw_rows, list):
@@ -255,7 +259,7 @@ def _render_bar_chart(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) 
     }
 
 
-def _render_list(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_list(widget: ListWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a ListWidget."""
     raw_items = fields.get(widget.items_field, [])
     if not isinstance(raw_items, list):
@@ -277,7 +281,7 @@ def _render_list(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> di
     }
 
 
-def _render_grouped_table(widget: Any, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+def _render_grouped_table(widget: GroupedTableWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a GroupedTableWidget."""
     raw_rows = fields.get(widget.rows_field, [])
     if not isinstance(raw_rows, list):
@@ -307,9 +311,10 @@ def _render_grouped_table(widget: Any, fields: dict[str, Any], ctx: dict[str, An
     }
 
 
+_WidgetHandler = Callable[[Any, dict[str, Any], dict[str, Any]], dict[str, Any]]
+
 # Dispatch dictionary mapping widget classes to their render handlers.
-# Each handler has the signature: (widget, fields, ctx) -> dict[str, Any]
-_WIDGET_DISPATCH: dict[type, Any] = {
+_WIDGET_DISPATCH: dict[type, _WidgetHandler] = {
     KeyValueWidget: _render_key_value,
     TableWidget: _render_table,
     ProgressBarWidget: _render_progress_bar,
@@ -323,7 +328,7 @@ _WIDGET_DISPATCH: dict[type, Any] = {
 
 
 def _render_widget(
-    widget: Any,
+    widget: ReportWidget,
     fields: dict[str, Any],
     alerts: list[dict[str, Any]],
     hosts_data: dict[str, Any] | None = None,
@@ -470,6 +475,7 @@ def build_generic_node_view(
     generated_fleet_dirs: set[str] | None = None,
     has_stig_fleet: bool = False,
     history: list[dict[str, str]] | None = None,
+    nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single host report."""
     normalized = normalize_from_schema(schema, bundle)
@@ -505,44 +511,13 @@ def build_generic_node_view(
         is not None
     ]
 
-    # Build nav tree information if possible
-    nav_with_tree = {**nav} if nav else {}
-    if history:
-        nav_with_tree["history"] = history
-
-    if hosts_data and hostname in hosts_data:
-        from ncs_reporter.models.platforms_config import (
-            FILENAME_HEALTH_REPORT as _FHR,
-            FILENAME_STIG_FLEET as _FSF,
-            fleet_link_url,
-        )
-        current_plt_dir = hosts_data[hostname]
-        depth = len(current_plt_dir.split("/")) + 1
-        back_to_root = "../" * (depth + 1)
-
-        siblings = []
-        for h, plt_dir in hosts_data.items():
-            if plt_dir == current_plt_dir:
-                siblings.append({"name": h, "report": f"../{h}/{_FHR}" if h != hostname else "#"})
-        siblings.sort(key=lambda x: x["name"])
-        nav_with_tree["tree_siblings"] = siblings
-
-        # fleets
-        fleets = []
-        p_dirs = sorted(list(set(hosts_data.values())))
-        if generated_fleet_dirs is not None:
-            p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
-
-        for plt_dir in p_dirs:
-            for label, schema_name in fleet_entries_for_dir(plt_dir):
-                fleets.append(
-                    {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
-                )
-
-        # Add STIG fleet (only if it will be generated)
-        if has_stig_fleet:
-            fleets.append({"name": "STIG", "report": f"{back_to_root}{_FSF}"})
-        nav_with_tree["tree_fleets"] = fleets
+    # Build nav tree
+    if nav_builder is not None:
+        nav_with_tree = nav_builder.build_for_node(hostname, base_nav=nav, history=history)
+    else:
+        nav_with_tree = {**nav} if nav else {}
+        if history:
+            nav_with_tree["history"] = history
 
     return {
         "meta": {
@@ -573,6 +548,7 @@ def build_generic_fleet_view(
     hosts_data: dict[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
     has_stig_fleet: bool = False,
+    nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a fleet-level report."""
     schema_key = f"schema_{schema.name}"
@@ -581,8 +557,6 @@ def build_generic_fleet_view(
 
     from ncs_reporter.models.platforms_config import (
         FILENAME_HEALTH_REPORT as _FHR,
-        FILENAME_STIG_FLEET as _FSF,
-        fleet_link_url,
     )
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
@@ -650,29 +624,12 @@ def build_generic_fleet_view(
     alert_groups = [_host_groups[h] for h in _host_order]
     totals = _count_alerts(queued_alerts)
 
-    # Build fleets list for breadcrumb tree if site index is available
-    nav_with_tree = {**nav} if nav else {}
-    if hosts_data:
-        # fleets
-        current_plt_dir = hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if aggregated_hosts else None
-        if current_plt_dir:
-            depth = len(current_plt_dir.split("/"))
-            back_to_root = "../" * (depth + 1)
-
-            fleets = []
-            p_dirs = sorted(list(set(hosts_data.values())))
-            if generated_fleet_dirs is not None:
-                p_dirs = [d for d in p_dirs if d in generated_fleet_dirs]
-            for plt_dir in p_dirs:
-                for label, schema_name in fleet_entries_for_dir(plt_dir):
-                    fleets.append(
-                        {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
-                    )
-
-            # Add STIG fleet (only if it will be generated)
-            if has_stig_fleet:
-                fleets.append({"name": "STIG", "report": f"{back_to_root}{_FSF}"})
-            nav_with_tree["tree_fleets"] = fleets
+    # Build fleets list for breadcrumb tree
+    if nav_builder is not None:
+        current_plt_dir = hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if hosts_data and aggregated_hosts else None
+        nav_with_tree = nav_builder.build_for_fleet(current_plt_dir or "", base_nav=nav) if current_plt_dir else ({**nav} if nav else {})
+    else:
+        nav_with_tree = {**nav} if nav else {}
 
     return {
         "meta": {

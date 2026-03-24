@@ -34,7 +34,7 @@ platform:
     VC: vcsa
     PH: photon
   site_category: VMware
-  sub_entries:
+  children:
     - input_dir: vmware/vcenter/vcsa
       report_dir: vmware/vcenter/vcsa
       state_file: vcsa_fleet_state.yaml

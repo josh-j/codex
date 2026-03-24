@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+from collections.abc import Iterator
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -15,6 +17,7 @@ FILENAME_HEALTH_REPORT = "health_report.html"
 FILENAME_SITE_HEALTH = "site_health_report.html"
 FILENAME_STIG_FLEET = "stig_fleet_report.html"
 FILENAME_FLEET_SUFFIX = "_fleet_report.html"
+NAV_LABEL_STIG = "STIG"
 CKLB_SKELETONS_DIR = "cklb_skeletons"
 
 # Jinja2 template names
@@ -194,6 +197,63 @@ class PlatformEntry(BaseModel):
                 values["fleet_link"] = fleet_link_url(report_dir, schema)
 
         return values
+
+
+@dataclasses.dataclass
+class PlatformNode:
+    """Runtime tree node wrapping a PlatformEntry with explicit parent/child links.
+
+    Leaf nodes are platforms with no children (linux, windows).
+    Branch nodes are parents with children (vmware → vcsa, esxi, vm).
+    """
+
+    entry: PlatformEntry
+    parent: PlatformNode | None = None
+    children: list[PlatformNode] = dataclasses.field(default_factory=list)
+
+    @property
+    def id(self) -> str:
+        """Unique identifier: schema_name for primary entries, platform for others."""
+        return self.entry.schema_name or self.entry.platform
+
+    @property
+    def display_name(self) -> str:
+        # PlatformEntry._apply_defaults always populates display_name.
+        return self.entry.display_name  # type: ignore[return-value]
+
+    @property
+    def is_root(self) -> bool:
+        return self.parent is None
+
+    @property
+    def is_leaf(self) -> bool:
+        return len(self.children) == 0
+
+    @property
+    def depth(self) -> int:
+        return 0 if self.parent is None else self.parent.depth + 1
+
+    def ancestors(self) -> list[PlatformNode]:
+        """Walk up to root, returning [root, ..., parent] (excludes self)."""
+        result: list[PlatformNode] = []
+        node = self.parent
+        while node is not None:
+            result.append(node)
+            node = node.parent
+        result.reverse()
+        return result
+
+    def siblings(self) -> list[PlatformNode]:
+        """Other children of the same parent (excludes self)."""
+        if self.parent is None:
+            return []
+        return [c for c in self.parent.children if c is not self]
+
+    def walk(self) -> Iterator[PlatformNode]:
+        """Pre-order traversal of this subtree."""
+        yield self
+        for child in self.children:
+            yield from child.walk()
 
 
 class PlatformsConfig(BaseModel):

@@ -79,7 +79,6 @@ def build_site_dashboard_view(
 ) -> dict[str, Any]:
     from ncs_reporter.models.platforms_config import (
         FILENAME_HEALTH_REPORT as _FHR,
-        FILENAME_STIG_FLEET as _FSF,
         PLATFORM_DIR_PREFIX as _PDP,
         fleet_link_url,
     )
@@ -172,7 +171,7 @@ def build_site_dashboard_view(
 
     # Build platforms dict and nav tree dynamically from registry
     platforms_dict: dict[str, dict[str, Any]] = {}
-    tree_fleets: list[dict[str, str]] = []
+    site_entries_with_assets: list[dict[str, Any]] = []
 
     for entry in site_entries:
         p_name = entry.platform
@@ -202,16 +201,20 @@ def build_site_dashboard_view(
         platforms_dict[p_name] = platform_data
 
         if to_int(asset_count) > 0:
-            tree_fleets.append({"name": display, "report": fleet_link})
+            site_entries_with_assets.append({"display_name": display, "fleet_link": fleet_link})
 
-    # Add STIG fleet to navigation only if STIG data exists
-    if stig_fleet.get("rows"):
-        tree_fleets.append({"name": "STIG", "report": _FSF})
+    # Build nav using NavBuilder
+    from .nav_builder import NavBuilder
+    nav_builder = NavBuilder(reg, has_stig_fleet=bool(stig_fleet.get("rows")))
+    site_nav = nav_builder.build_for_site(
+        site_entries_with_assets,
+        has_stig_rows=bool(stig_fleet.get("rows")),
+    )
 
     return {
         "meta": build_meta(report_stamp, report_date, report_id),
         "totals": totals,
-        "nav": {"tree_fleets": tree_fleets},
+        "nav": site_nav,
         "alerts": sorted(all_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))),
         "alert_groups": alert_groups,
         "infra": infra,
