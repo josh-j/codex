@@ -95,6 +95,7 @@ _STATUS_PRIORITY: dict[str, int] = {
     "pass": 2,
     "not_applicable": 3,
     "na": 4,
+    "not_reviewed": 5,
 }
 
 
@@ -388,6 +389,7 @@ class CallbackModule(CallbackBase):
             "not_applicable": "not_applicable",
             "na": "na",
             "skipped": "na",
+            "not_reviewed": "not_reviewed",
             "error": "failed",
         }
         return mapping.get(normalized, "failed")

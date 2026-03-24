@@ -107,6 +107,7 @@ class ActionModule(ActionBase):
                 **{
                     result_key: self._build_stig_result(
                         task_vars=task_vars,
+                        stig_id=stig_id,
                         phase=phase,
                         status="not_reviewed",
                         reason="Control disabled by _stig_manage=false",
