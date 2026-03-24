@@ -884,6 +884,7 @@ class CallbackModule(CallbackBase):
             envelope: dict[str, Any] = {
                 "metadata": {
                     "host": host,
+                    "audit_type": f"raw_{artifact_name}",
                     "raw_type": artifact_name,
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "engine": "ncs_collector_callback",
@@ -891,6 +892,11 @@ class CallbackModule(CallbackBase):
                 "data": payload,
             }
             self._write_yaml(raw_path, envelope)
+        else:
+            self._display.warning(
+                f"[ncs_collector] No payload for '{artifact_name}' on host '{host}' — raw file skipped. "
+                f"Check that the assemble task defined the collection variable."
+            )
 
         if config:
             config_path = os.path.join(host_dir, "config.yaml")
