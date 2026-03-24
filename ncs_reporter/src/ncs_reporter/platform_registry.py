@@ -205,9 +205,9 @@ class PlatformRegistry:
     def link_base_for_target(self, target_type: str) -> str:
         """Return the report_dir path prefix for a given STIG target type."""
         from ncs_reporter.models.platforms_config import PLATFORM_DIR_PREFIX
-        for e in self._entries:
-            if target_type in (t.lower() for t in e.target_types):
-                return f"{PLATFORM_DIR_PREFIX}/{e.report_dir}"
+        e = self._tt_lookup.get(target_type.lower())
+        if e:
+            return f"{PLATFORM_DIR_PREFIX}/{e.report_dir}"
         return f"{PLATFORM_DIR_PREFIX}/{target_type}"
 
     def platform_to_report_dir(self, platform: str) -> str | None:

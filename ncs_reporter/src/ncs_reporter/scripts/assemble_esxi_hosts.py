@@ -90,6 +90,17 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
                 "free": ds.get("free", ""),
             })
 
+    # CPU utilization: quickStats.overallCpuUsage / (numCpuCores * cpuMhz)
+    cpu_cores = _safe_int(facts.get("ansible_processor_cores", 0))
+    cpu_threads = _safe_int(facts.get("ansible_processor_vcpus", 0))
+    # vmware_host_facts does not expose CPU usage MHz directly;
+    # cpu_used_pct will be 0 unless enriched by additional collection.
+    cpu_used_pct = _safe_float(facts.get("ansible_cpu_used_pct", 0.0))
+
+    # VM count: not directly available from vmware_host_facts;
+    # will be 0 unless enriched by additional per-host collection.
+    vm_count = _safe_int(facts.get("ansible_vm_count", 0))
+
     return {
         "name": hostname,
         "version": facts.get("ansible_distribution_version", ""),
@@ -99,12 +110,20 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
         "mem_mb_used": mem_used,
         "mem_used_pct": mem_pct,
         "cpu_model": cpu_model,
+        "cpu_cores": cpu_cores,
+        "cpu_threads": cpu_threads,
+        "cpu_used_pct": cpu_used_pct,
+        "vm_count": vm_count,
         "uptime_seconds": uptime,
         "os_type": facts.get("ansible_os_type", ""),
         "interfaces": facts.get("ansible_interfaces", []),
         "datastores": datastores,
-        "overall_status": facts.get("ansible_host_connection_state", "unknown"),
+        "overall_status": facts.get("ansible_overall_status", "unknown"),
         "connection_state": facts.get("ansible_host_connection_state", "unknown"),
+        "lockdown_mode": facts.get("ansible_lockdown_mode", "unknown"),
+        "hardware_alerts": [],
+        "nics": [],
+        "vmknics": [],
     }
 
 
