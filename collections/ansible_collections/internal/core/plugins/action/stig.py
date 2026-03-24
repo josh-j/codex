@@ -193,11 +193,10 @@ class ActionModule(ActionBase):
 
         wrapped_args = copy.deepcopy(raw_args)
 
-        # Merge _stig_module_defaults into wrapped args for non-shell modules.
-        # This propagates play-level module_defaults (e.g. vCenter credentials)
-        # through to wrapped modules like community.vmware.* without leaking
-        # them into shell/command modules where they'd cause validation errors.
-        if module_defaults and apply_module not in self._SHELL_MODULES:
+        # Merge _stig_module_defaults into wrapped args only for modules that
+        # accept connection params (VMware modules).  Avoids leaking hostname/
+        # password/username into built-in modules like lineinfile or template.
+        if module_defaults and self._wants_module_defaults(apply_module):
             wrapped_args = {**module_defaults, **wrapped_args}
 
         probe = None
@@ -538,6 +537,18 @@ class ActionModule(ActionBase):
         "command", "ansible.builtin.command", "ansible.legacy.command",
         "pwsh", "internal.core.pwsh", "__pwsh_internal__",
     })
+
+    # Module namespace prefixes that accept connection params (hostname, username, …).
+    _MODULE_DEFAULT_PREFIXES = (
+        "community.vmware.",
+        "vmware.vmware.",
+        "community.vmware_rest.",
+    )
+
+    @classmethod
+    def _wants_module_defaults(cls, module_name: str) -> bool:
+        """Return True if *module_name* is a VMware module that accepts connection params."""
+        return any(module_name.startswith(p) for p in cls._MODULE_DEFAULT_PREFIXES)
 
     def _run_module(
         self,
