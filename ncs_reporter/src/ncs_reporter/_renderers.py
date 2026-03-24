@@ -5,7 +5,10 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .models.report_schema import ReportSchema
 
 from ._cklb import resolve_cklb_lookup
 from ._report_context import get_jinja_env, vm_kwargs, write_report
@@ -414,28 +417,28 @@ def render_stig(
 
 def _split_hosts_data(
     hosts_data: dict[str, Any],
-    schema: Any,
+    schema: "ReportSchema",
 ) -> dict[str, dict[str, Any]]:
     """Expand hosts_data using a schema's split_field.
 
     When a schema defines ``split_field`` (e.g. ``"esxi_hosts"``), each
-    bundle in *hosts_data* is first normalized to compute script fields,
-    then the resulting list at ``fields[split_field]`` is iterated.
-    Each item becomes a synthetic host entry keyed by the item's
-    ``split_name_key`` field (default ``"name"``).
+    bundle in *hosts_data* has its fields extracted (including script
+    fields), then the resulting list at ``fields[split_field]`` is
+    iterated.  Each item becomes a synthetic host entry keyed by the
+    item's ``split_name_key`` field (default ``"name"``).
 
-    Bundles without the split data are passed through unchanged.
+    Only runs field extraction (no alerts, rollups, or widgets) to
+    minimize overhead.
     """
-    from .normalization.schema_driven import normalize_from_schema
+    from .normalization.schema_driven import extract_fields
 
     result: dict[str, dict[str, Any]] = {}
     name_key = schema.split_name_key or "name"
     split_key = schema.split_field
 
     for _parent_host, bundle in hosts_data.items():
-        # Normalize to compute script fields (e.g. assemble_esxi_hosts)
-        normalized = normalize_from_schema(schema, bundle)
-        items = normalized.get("fields", {}).get(split_key)
+        fields, _ = extract_fields(schema, bundle)
+        items = fields.get(split_key)
         if not isinstance(items, list):
             result[_parent_host] = bundle
             continue
@@ -445,11 +448,7 @@ def _split_hosts_data(
             child_name = str(item.get(name_key, "")).strip()
             if not child_name:
                 continue
-            # Synthetic bundle: the split item IS the bundle for this host.
-            # Include a _parent key so context fields can reach the parent.
-            child_bundle = dict(item)
-            child_bundle["_parent"] = bundle
-            result[child_name] = child_bundle
+            result[child_name] = dict(item)
 
     return result
 

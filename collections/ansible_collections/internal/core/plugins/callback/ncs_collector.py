@@ -99,15 +99,30 @@ _STATUS_PRIORITY: dict[str, int] = {
 
 
 def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
-    cur = os.path.realpath(start_dir)
-    for _ in range(max_up + 1):
-        marker = os.path.join(cur, "collections", "ansible_collections")
-        if os.path.isdir(marker):
-            return cur
-        parent = os.path.dirname(cur)
-        if parent == cur:
-            break
-        cur = parent
+    """Walk up from *start_dir* looking for a repo root marker.
+
+    Checks both the real path (symlinks resolved) and the logical path
+    (symlinks preserved) to handle setups where ``internal/`` is
+    symlinked into ``collections/ansible_collections/``.
+    """
+    candidates = [os.path.realpath(start_dir)]
+    logical = os.path.abspath(start_dir)
+    if logical != candidates[0]:
+        candidates.append(logical)
+
+    for cur in candidates:
+        for _ in range(max_up + 1):
+            for marker in (
+                os.path.join(cur, "collections", "ansible_collections"),
+                os.path.join(cur, "files", "ncs_reporter_configs"),
+            ):
+                if os.path.isdir(marker):
+                    return cur
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+
     return os.path.realpath(start_dir)
 
 
