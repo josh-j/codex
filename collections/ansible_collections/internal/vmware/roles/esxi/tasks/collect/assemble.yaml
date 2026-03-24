@@ -19,7 +19,7 @@
         host_facts: "{{ _raw_host_facts.results | default([]) }}"
         host_nics: "{{ _raw_host_nics.results | default([]) }}"
         host_services: "{{ _raw_host_services.results | default([]) }}"
-      config: "{{ vcenter.config | default({}) }}"
+      config: "{{ (vcenter | default({})).config | default({}) }}"
       collection_status: "{{ 'FAILED' if esxi_collect_failed | default(false) | bool else 'SUCCESS' }}"
       collection_error: "{{ esxi_connectivity_error | default('') }}"
   changed_when: false
