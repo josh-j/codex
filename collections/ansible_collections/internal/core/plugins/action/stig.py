@@ -791,10 +791,10 @@ class ActionModule(ActionBase):
             "reason": reason,
             "host": task_vars.get("inventory_hostname"),
             "target_host": self._resolve_var(
-                task_vars, "stig_target_host", "_ncs_stig_target_host", "inventory_hostname",
+                task_vars, "_ncs_stig_target_host", "stig_target_host", "inventory_hostname",
             ),
             "target_type": str(self._resolve_var(
-                task_vars, "stig_target_type", "_ncs_stig_target_type",
+                task_vars, "_ncs_stig_target_type", "stig_target_type",
             ) or "").lower(),
             "gate": gate or {},
             "probe": probe,
@@ -861,6 +861,10 @@ class ActionModule(ActionBase):
             if self._templar.is_possibly_template(val):
                 with self._templar.set_temporary_context(available_variables=task_vars):
                     val = self._templar.template(val)
+            # Skip values that are still raw Jinja2 (e.g. AnsibleUnsafeText
+            # from include_tasks apply: vars: that bypassed is_possibly_template).
+            if isinstance(val, str) and "{{" in val and "}}" in val:
+                continue
             if val:
                 return val
         return None
