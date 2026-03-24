@@ -602,8 +602,6 @@ def _render_stig_and_cklb(
     generated_fleet_dirs: set[str],
     runtime_registry: PlatformRegistry,
     config_dir: str | None,
-    *,
-    has_site_report: bool = True,
 ) -> None:
     """Generate CKLB artifacts and render STIG fleet reports."""
     # CKLB export
@@ -633,7 +631,7 @@ def _render_stig_and_cklb(
             cklb_dir=r_root / "cklb",
             generated_fleet_dirs=generated_fleet_dirs,
             registry=runtime_registry,
-            has_site_report=has_site_report,
+            has_site_report=True,
         )
         click.echo("STIG fleet reports and CKLB artifacts generated.")
 
@@ -685,8 +683,6 @@ def all_cmd(
     click.echo("--- Aggregating Global State ---")
     all_hosts_state = p_root / "all_hosts_state.yaml"
     global_data = _merge_platform_data(all_platform_data)
-    has_platform_data = bool(global_data["hosts"])
-
     # Step 1b′: Merge STIG artifacts from report_dir paths.
     # ncs_collector writes STIG results to platform/{report_dir}/ which may
     # differ from the input_dir used by platform aggregation above.
@@ -719,7 +715,7 @@ def all_cmd(
         generated_fleet_dirs=generated_fleet_dirs,
         global_inventory_index=global_inventory_index,
         registry=runtime_registry,
-        has_site_report=has_platform_data,
+        has_site_report=True,
     )
     if stig_host_views:
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
@@ -727,21 +723,17 @@ def all_cmd(
     # Step 2: Parallel platform rendering
     _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views)
 
-    # Step 3: Site dashboard + search index (skip if no collection data)
-    if has_platform_data:
-        _render_site_and_search(
-            r_root, global_data, global_changed, effective_groups_file,
-            common_vars, global_inventory_index, platforms_by_report_dir,
-        )
-    else:
-        click.echo("--- Skipping Site Dashboard (no collection data) ---")
+    # Step 3: Site dashboard + search index
+    _render_site_and_search(
+        r_root, global_data, global_changed, effective_groups_file,
+        common_vars, global_inventory_index, platforms_by_report_dir,
+    )
 
     # Step 4 & 5: CKLB export + STIG fleet rendering
     _render_stig_and_cklb(
         r_root, global_hosts, global_changed, all_hosts_state,
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
-        has_site_report=has_platform_data,
     )
 
 
