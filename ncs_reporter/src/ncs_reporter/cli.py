@@ -693,6 +693,10 @@ def all_cmd(
             if hostname not in global_data["hosts"]:
                 global_data["hosts"][hostname] = {}
             deep_merge(global_data["hosts"][hostname], stig_bundle)
+            # Normalize so full_audit/alerts/summary are populated from raw data.
+            global_data["hosts"][hostname] = normalize_host_bundle(
+                hostname, global_data["hosts"][hostname]
+            )
         global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
 
     if not global_data["hosts"]:
