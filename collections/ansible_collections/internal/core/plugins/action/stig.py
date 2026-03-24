@@ -790,16 +790,12 @@ class ActionModule(ActionBase):
             "status": status,
             "reason": reason,
             "host": task_vars.get("inventory_hostname"),
-            "target_host": (
-                task_vars.get("stig_target_host")
-                or task_vars.get("_ncs_stig_target_host")
-                or task_vars.get("inventory_hostname")
+            "target_host": self._resolve_var(
+                task_vars, "stig_target_host", "_ncs_stig_target_host", "inventory_hostname",
             ),
-            "target_type": str(
-                task_vars.get("stig_target_type")
-                or task_vars.get("_ncs_stig_target_type")
-                or ""
-            ).lower(),
+            "target_type": str(self._resolve_var(
+                task_vars, "stig_target_type", "_ncs_stig_target_type",
+            ) or "").lower(),
             "gate": gate or {},
             "probe": probe,
             "remediation": remediation,
@@ -855,6 +851,19 @@ class ActionModule(ActionBase):
             "internal.core.stig requires either '_stig_apply' or exactly one "
             "nested module key (e.g. 'ansible.builtin.lineinfile: {...}')."
         )
+
+    def _resolve_var(self, task_vars: dict[str, Any], *keys: str) -> Any:
+        """Return the first non-empty value for *keys*, templating Jinja2 strings."""
+        for key in keys:
+            val = task_vars.get(key)
+            if val is None:
+                continue
+            if self._templar.is_possibly_template(val):
+                with self._templar.set_temporary_context(available_variables=task_vars):
+                    val = self._templar.template(val)
+            if val:
+                return val
+        return None
 
     @staticmethod
     def _to_bool(value: Any) -> bool:

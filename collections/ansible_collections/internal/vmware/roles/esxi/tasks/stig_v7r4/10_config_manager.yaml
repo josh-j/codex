@@ -254,3 +254,7 @@
       _stig_use_check_mode_probe: false
       _stig_skip_post_validate: true
       esxi_hostname: "{{ _current_esxi_host }}"
+      hostname: "{{ _vcenter_hostname }}"
+      username: "{{ vmware_username }}"
+      password: "{{ vmware_password }}"
+      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
