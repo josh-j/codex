@@ -180,6 +180,7 @@ def render_platform(
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
     from .models.platforms_config import (
+        FILENAME_FLEET_SUFFIX,
         PLATFORM_DIR_PREFIX,
         TEMPLATE_NODE,
         TEMPLATE_FLEET,
@@ -215,9 +216,15 @@ def render_platform(
         )
 
         node_nav: dict[str, str] = {"fleet_label": f"{schema.display_name} Fleet"}
-        fleet_nav: dict[str, str] = {}
+        fleet_nav: dict[str, Any] = {}
 
         for hostname, bundle in hosts_data.items():
+            # For non-primary schemas, skip hosts that lack detection keys
+            if not is_primary:
+                det = schema.detection
+                if det.keys_any and not any(k in bundle for k in det.keys_any):
+                    continue
+
             host_dir = output_path / hostname
             host_dir.mkdir(exist_ok=True)
             node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}"
@@ -225,9 +232,12 @@ def render_platform(
             if has_site_report:
                 node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
 
-            # Build links to sibling schema reports for this host
+            # Build sibling tabs filtered by data availability
             sibling_reports = []
             for sib in matched_schemas:
+                sib_det = sib.detection
+                if sib_det.keys_any and not any(k in bundle for k in sib_det.keys_any):
+                    continue
                 sib_stem = "health_report" if sib is matched_schemas[0] else f"{sib.name}_report"
                 sibling_reports.append({
                     "label": sib.display_name or sib.name,
@@ -260,6 +270,17 @@ def render_platform(
 
         if has_site_report:
             fleet_nav["site_report"] = rel_href(f"{PLATFORM_DIR_PREFIX}/{report_dir}", site_report_abs)
+
+        # Schema tabs at fleet level (switch between vcenter/esxi/vm fleet views)
+        if len(matched_schemas) > 1:
+            fleet_nav["sibling_reports"] = [
+                {
+                    "label": sib.display_name or sib.name,
+                    "url": f"{sib.name}{FILENAME_FLEET_SUFFIX}",
+                    "active": sib is schema,
+                }
+                for sib in matched_schemas
+            ]
 
         fleet_view = build_generic_fleet_view(
             schema,
