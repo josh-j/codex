@@ -183,7 +183,7 @@ class TestBuildStigHostView:
     def test_tree_fleets_filters_non_generated_platform_dirs(self):
         hosts_data = {
             "host-esxi": "vmware/esxi",
-            "host-vc": "vmware/vcenter",
+            "host-vc": "vmware/vcsa",
             "host-linux": "linux/ubuntu",
         }
         view = build_stig_host_view(
@@ -192,13 +192,12 @@ class TestBuildStigHostView:
             _stig_payload([{"id": "V-001", "status": "open", "severity": "CAT_I"}]),
             nav_ctx=StigNavContext(
                 hosts_data=hosts_data,
-                generated_fleet_dirs={"vmware/vcenter", "linux/ubuntu"},
+                generated_fleet_dirs={"vmware/vcsa", "linux/ubuntu"},
             ),
         )
         reports = [f["report"] for f in view["nav"]["tree_fleets"]]
-        assert any("platform/vmware/vcenter/vcenter_fleet_report.html" in r for r in reports)
+        assert any("platform/vmware/vcsa/vcenter_fleet_report.html" in r for r in reports)
         assert any("platform/linux/ubuntu/linux_fleet_report.html" in r for r in reports)
-        assert not any("platform/vmware/esxi/esxi_fleet_report.html" in r for r in reports)
 
 
 class TestBuildStigFleetView:

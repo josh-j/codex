@@ -628,7 +628,7 @@ def build_platform_entries_from_schemas(
     they always serve as the primary.
     """
     entries: list[dict[str, Any]] = []
-    seen_input_dirs: dict[str, dict[str, Any]] = {}
+    seen_entries: dict[tuple[str, str], dict[str, Any]] = {}
 
     # Process schemas with sub_entries first so they become the primary entry
     # for their input_dir (they carry the richest metadata).
@@ -640,15 +640,15 @@ def build_platform_entries_from_schemas(
 
         platform_name = spec.name or schema.platform or schema.name
         input_dir = spec.input_dir or schema.platform or schema.name
+        report_dir = spec.report_dir or schema.platform or schema.name
 
-        if input_dir in seen_input_dirs:
-            # Merge into existing primary entry: carry over schema name and
-            # additive metadata so the registry has full coverage.
-            primary_entry = seen_input_dirs[input_dir]
+        # Merge schemas that share both input_dir AND report_dir.
+        # Schemas with different report_dirs become independent entries.
+        merge_key = (input_dir, report_dir)
+        if merge_key in seen_entries:
+            primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
-            # Merge legacy key aliases so normalization finds all raw keys.
             primary_entry["legacy_raw_keys"].update(spec.legacy_raw_keys)
-            # Merge skeleton maps and rule prefixes (additive lookups).
             primary_entry["stig_skeleton_map"].update(spec.stig_skeleton_map)
             primary_entry["stig_rule_prefixes"].update(spec.stig_rule_prefixes)
             continue
@@ -677,7 +677,7 @@ def build_platform_entries_from_schemas(
             "stig_target_var": spec.stig_target_var,
         }
         entries.append(primary)
-        seen_input_dirs[input_dir] = primary
+        seen_entries[merge_key] = primary
 
         # Sub-entries (non-renderable)
         for sub in spec.sub_entries:

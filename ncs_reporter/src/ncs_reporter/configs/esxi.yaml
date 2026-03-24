@@ -3,12 +3,15 @@ display_name: "VMware ESXi Infrastructure Health"
 platform:
   name: vmware
   input_dir: vmware/vcenter
-  report_dir: vmware/vcenter
-  display_name: VMware
+  report_dir: vmware/esxi
+  display_name: "VMware ESXi"
   asset_label: vCenters
   inventory_groups: [vcenters]
+  target_types: [esxi]
   legacy_raw_keys:
     vmware_raw_esxi: raw_esxi
+  stig_skeleton_map:
+    esxi: cklb_skeleton_vsphere7_esxi_V1R4.json
 
 detection:
   keys_any: [vmware_raw_esxi]

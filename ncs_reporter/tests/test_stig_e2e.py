@@ -20,7 +20,7 @@ class TestStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "esxi" / "esxi-01"
+        self.host_dir = self.platform_root / "vmware" / "vcenter" / "esxi-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 
@@ -185,7 +185,7 @@ class TestVmStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vm" / "vc-01"
+        self.host_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 
@@ -355,8 +355,8 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
-        host_report = self.reports_root / "platform" / "vmware" / "vcenter" / "vcsa" / host / f"{host}_stig_vcsa.html"
-        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcenter/vcsa")
+        host_report = self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa" / host / f"{host}_stig_vcsa.html"
+        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcsa/vcsa")
 
     def test_photon_stig_report_renders_under_linux_photon(self):
         host = "photon-01.local"

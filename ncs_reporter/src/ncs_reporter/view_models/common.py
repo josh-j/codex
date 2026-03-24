@@ -191,19 +191,7 @@ def fleet_entry_for_dir(plt_dir: str) -> tuple[str, str]:
 
 
 def fleet_entries_for_dir(plt_dir: str) -> list[tuple[str, str]]:
-    """Return ``(display_name, schema_name)`` for a platform directory.
-
-    Multi-schema platforms (e.g. vmware with vcenter/esxi/vm sharing one
-    report_dir) return a single entry using the platform display name and
-    the primary schema.  Schema switching happens via sibling tabs on the
-    fleet report itself, not via separate nav links.
-    """
-    reg = default_registry()
-    for entry in reg.entries:
-        if entry.report_dir == plt_dir and len(entry.schema_names) > 1:
-            label = entry.display_name or entry.platform.capitalize()
-            return [(label, entry.schema_names[0])]
-    # Fallback: single entry
+    """Return ``[(display_name, schema_name)]`` for a platform directory."""
     return [fleet_entry_for_dir(plt_dir)]
 
 

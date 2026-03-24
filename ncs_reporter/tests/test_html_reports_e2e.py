@@ -164,7 +164,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
 
         # Check Platform Reports
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcenter" / "vcenter_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcenter_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
 
         # Check Node Reports
@@ -172,7 +172,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
             (self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html").exists()
+            (self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html").exists()
         )
         self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").exists())
 
@@ -185,7 +185,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         )
 
         vmware_report = (
-            self.reports_root / "platform" / "vmware" / "vcenter" / "vc-01" / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html"
         ).read_text()
         self.assertTrue(
             "WARNING" in vmware_report or "yellow" in vmware_report, "VMware node report should reflect health warning"
@@ -207,7 +207,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         status) in the Security Compliance section.
         """
         # Add ESXi STIG data alongside the vmware platform data already set up in setUp
-        esxi_dir = self.platform_root / "vmware" / "esxi" / "esxi-01"
+        esxi_dir = self.platform_root / "vmware" / "vcenter" / "esxi-01"
         esxi_dir.mkdir(parents=True, exist_ok=True)
         stig_raw = {
             "metadata": {
