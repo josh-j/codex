@@ -152,7 +152,7 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
             continue
         if filename in ("platforms.yaml", "platforms.yml"):
             continue
-        if "_fields" in filename or filename.startswith("."):
+        if any(x in filename for x in ("_fields", "_alerts", "_widgets")) or filename.startswith("."):
             continue
 
         filepath = os.path.join(schema_dir, filename)
@@ -160,6 +160,9 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
             with open(filepath, encoding="utf-8") as f:
                 schema = yaml.safe_load(f) or {}
         except Exception:
+            continue
+
+        if not isinstance(schema, dict):
             continue
 
         platform_block = schema.get("platform")
