@@ -60,17 +60,18 @@ def unique_preserve_order(values: list[str]) -> tuple[str, ...]:
 
 def resolve_config_dir(
     config_dir: str | None,
-    extra_schema_dir: tuple[str, ...],
+    extra_config_dir: tuple[str, ...],
     platforms_config: str | None,
     config_yaml: dict[str, Any],
 ) -> tuple[tuple[str, ...], str | None]:
-    """Resolve schema dirs + platforms config from a single config directory.
+    """Resolve config dirs + platforms config from a single config directory.
 
     Supported layouts:
-      1. <config_dir>/platforms.yaml + <config_dir>/*.yaml schemas
-      2. <config_dir>/schemas/platforms.yaml + <config_dir>/schemas/*.yaml schemas
+      1. <config_dir>/platforms.yaml + <config_dir>/*.yaml configs
+      2. <config_dir>/configs/platforms.yaml + <config_dir>/configs/*.yaml configs
+      3. <config_dir>/schemas/platforms.yaml (deprecated, backward compat)
     """
-    resolved_schema_dirs = list(extra_schema_dir)
+    resolved_schema_dirs = list(extra_config_dir)
     resolved_platforms = platforms_config
 
     if not config_dir:
@@ -78,7 +79,7 @@ def resolve_config_dir(
 
     root = Path(config_dir)
 
-    cfg_extra = config_yaml.get("extra_schema_dirs")
+    cfg_extra = config_yaml.get("extra_config_dirs") or config_yaml.get("extra_schema_dirs")
     if isinstance(cfg_extra, list):
         for entry in cfg_extra:
             if isinstance(entry, str) and entry.strip():
@@ -89,12 +90,12 @@ def resolve_config_dir(
         if isinstance(cfg_platforms, str) and cfg_platforms.strip():
             resolved_platforms = resolve_path_from_config_root(config_dir, cfg_platforms.strip())
 
-    for cand in [root / "schemas", root]:
+    for cand in [root / "configs", root / "schemas", root]:
         if cand.is_dir():
             resolved_schema_dirs.append(str(cand))
 
     if resolved_platforms is None:
-        for cand in [root / "platforms.yaml", root / "schemas" / "platforms.yaml"]:
+        for cand in [root / "platforms.yaml", root / "configs" / "platforms.yaml", root / "schemas" / "platforms.yaml"]:
             if cand.is_file():
                 resolved_platforms = str(cand)
                 break
@@ -112,7 +113,7 @@ def _format_validation_error(path: Path, exc: pydantic.ValidationError) -> str:
 
 def load_platforms(
     explicit_path: str | None,
-    extra_schema_dirs: tuple[str, ...] = (),
+    extra_config_dirs: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     """Locate and load a platforms config YAML.
 
@@ -145,7 +146,7 @@ def load_platforms(
     # Fall back to schema-embedded platform metadata
     from .schema_loader import build_platform_entries_from_schemas, discover_schemas
 
-    schemas = discover_schemas(extra_dirs=extra_schema_dirs)
+    schemas = discover_schemas(extra_dirs=extra_config_dirs)
     schema_entries = build_platform_entries_from_schemas(schemas)
     if schema_entries:
         entries = [PlatformEntry.model_validate(e) for e in schema_entries]

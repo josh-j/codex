@@ -18,7 +18,7 @@ from ncs_reporter.models.report_schema import (
     TableWidget,
 )
 from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
-from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entries_for_dir, fleet_entry_for_dir, status_badge_meta
+from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, fleet_entries_for_dir, status_badge_meta
 
 
 def _format_value(fmt: str | None, value: Any) -> str:
@@ -87,7 +87,8 @@ def _render_table_cell(
             if target_platform:
                 depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
                 back_to_root = "../" * (depth + 1)
-                link = f"{back_to_root}platform/{target_platform}/{link_val}/health_report.html"
+                from ncs_reporter.models.platforms_config import FILENAME_HEALTH_REPORT, PLATFORM_DIR_PREFIX
+                link = f"{back_to_root}{PLATFORM_DIR_PREFIX}/{target_platform}/{link_val}/{FILENAME_HEALTH_REPORT}"
 
     rendered_value = _format_value(col.format, value) if col.format else value
 
@@ -510,6 +511,11 @@ def build_generic_node_view(
         nav_with_tree["history"] = history
 
     if hosts_data and hostname in hosts_data:
+        from ncs_reporter.models.platforms_config import (
+            FILENAME_HEALTH_REPORT as _FHR,
+            FILENAME_STIG_FLEET as _FSF,
+            fleet_link_url,
+        )
         current_plt_dir = hosts_data[hostname]
         depth = len(current_plt_dir.split("/")) + 1
         back_to_root = "../" * (depth + 1)
@@ -517,7 +523,7 @@ def build_generic_node_view(
         siblings = []
         for h, plt_dir in hosts_data.items():
             if plt_dir == current_plt_dir:
-                siblings.append({"name": h, "report": f"../{h}/health_report.html" if h != hostname else "#"})
+                siblings.append({"name": h, "report": f"../{h}/{_FHR}" if h != hostname else "#"})
         siblings.sort(key=lambda x: x["name"])
         nav_with_tree["tree_siblings"] = siblings
 
@@ -530,12 +536,12 @@ def build_generic_node_view(
         for plt_dir in p_dirs:
             for label, schema_name in fleet_entries_for_dir(plt_dir):
                 fleets.append(
-                    {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                    {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
                 )
 
         # Add STIG fleet (only if it will be generated)
         if has_stig_fleet:
-            fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
+            fleets.append({"name": "STIG", "report": f"{back_to_root}{_FSF}"})
         nav_with_tree["tree_fleets"] = fleets
 
     return {
@@ -573,6 +579,12 @@ def build_generic_fleet_view(
     host_rows: list[dict[str, Any]] = []
     fleet_alerts: list[dict[str, Any]] = []
 
+    from ncs_reporter.models.platforms_config import (
+        FILENAME_HEALTH_REPORT as _FHR,
+        FILENAME_STIG_FLEET as _FSF,
+        fleet_link_url,
+    )
+
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         # Use pre-normalized data if present, otherwise normalize on the fly
         node_data = bundle.get(schema_key)
@@ -590,7 +602,7 @@ def build_generic_fleet_view(
 
         row = {
             "hostname": hostname,
-            "node_report": f"{hostname}/health_report.html",
+            "node_report": f"{hostname}/{_FHR}",
             "health": health,
             "health_badge": status_badge_meta(health),
             "critical_count": counts["critical"],
@@ -620,7 +632,7 @@ def build_generic_fleet_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": f"{host}/health_report.html",
+                "node_report": f"{host}/{_FHR}",
                 "platform": schema.display_name,
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
@@ -654,12 +666,12 @@ def build_generic_fleet_view(
             for plt_dir in p_dirs:
                 for label, schema_name in fleet_entries_for_dir(plt_dir):
                     fleets.append(
-                        {"name": label, "report": f"{back_to_root}platform/{plt_dir}/{schema_name}_fleet_report.html"}
+                        {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
                     )
 
             # Add STIG fleet (only if it will be generated)
             if has_stig_fleet:
-                fleets.append({"name": "STIG", "report": f"{back_to_root}stig_fleet_report.html"})
+                fleets.append({"name": "STIG", "report": f"{back_to_root}{_FSF}"})
             nav_with_tree["tree_fleets"] = fleets
 
     return {

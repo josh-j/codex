@@ -20,19 +20,16 @@ from ..pathing import render_template
 def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | None:
     """Return the first matching schema audit from a host bundle.
 
-    Checks ``schema_<name>`` keys in preference order, then legacy key aliases.
+    Checks ``schema_<name>`` keys in preference order, then legacy key aliases
+    from the platform registry.
     """
-    # Maps platform keys to legacy schema audit key names still in use by older bundles
-    _legacy: dict[str, str] = {
-        "linux": "linux_system",
-        "vcenter": "vmware_vcenter",
-        "windows": "windows_audit",
-    }
+    from ..platform_registry import default_registry
+    reg = default_registry()
     for name in names:
         audit = bundle.get(f"schema_{name}")
         if audit:
             return dict(audit)
-        legacy = _legacy.get(name)
+        legacy = reg.legacy_audit_key_for(name)
         if legacy:
             audit = bundle.get(legacy)
             if audit:
@@ -80,20 +77,17 @@ def build_site_dashboard_view(
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
 ) -> dict[str, Any]:
+    from ncs_reporter.models.platforms_config import (
+        FILENAME_HEALTH_REPORT as _FHR,
+        FILENAME_STIG_FLEET as _FSF,
+        PLATFORM_DIR_PREFIX as _PDP,
+        fleet_link_url,
+    )
     reg = registry or default_registry()
     groups = dict(inventory_groups or {})
     all_alerts: list[dict[str, Any]] = []
     compute_nodes: list[dict[str, Any]] = []
-    infra: dict[str, int] = {
-        "vcenter_count": 0,
-        "datacenter_count": 0,
-        "cluster_count": 0,
-        "esxi_host_count": 0,
-        "vm_count": 0,
-        "datastore_count": 0,
-        "snapshot_count": 0,
-        "active_alarm_count": 0,
-    }
+    infra: dict[str, int] = {}
     stig_fleet = build_stig_fleet_view(
         aggregated_hosts,
         report_stamp=report_stamp,
@@ -123,11 +117,11 @@ def build_site_dashboard_view(
             alerts_list = safe_list(audit.get("alerts"))
             status = _status_from_health(audit.get("health"))
 
-            # VMware-specific: compute nodes and infra totals
-            if audit_key == "vcenter":
-                vm_counts = _count_alerts(alerts_list)
-                if vm_counts["total"] or audit.get("health"):
-                    fleet_link = entry.fleet_link or f"platform/{entry.report_dir}/{audit_key}_fleet_report.html"
+            # Compute nodes and infra totals (driven by platform config)
+            if entry.site_compute_node:
+                cn_counts = _count_alerts(alerts_list)
+                if cn_counts["total"] or audit.get("health"):
+                    fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
                     compute_nodes.append(
                         {
                             "host": hostname,
@@ -137,14 +131,8 @@ def build_site_dashboard_view(
                         }
                     )
                 _f = audit.get("fields") or {}
-                infra["vcenter_count"] += 1
-                infra["datacenter_count"] += int(_f.get("datacenter_count") or 0)
-                infra["cluster_count"] += int(_f.get("cluster_count") or 0)
-                infra["esxi_host_count"] += int(_f.get("esxi_host_count") or 0)
-                infra["vm_count"] += int(_f.get("vm_count") or 0)
-                infra["datastore_count"] += int(_f.get("datastore_count") or 0)
-                infra["snapshot_count"] += int(_f.get("snapshot_count") or 0)
-                infra["active_alarm_count"] += int(_f.get("alarm_count") or 0)
+                for infra_field in entry.site_infra_fields:
+                    infra[infra_field] = infra.get(infra_field, 0) + int(_f.get(infra_field) or 0)
 
             all_alerts.extend(
                 extract_platform_alerts(alerts_list, hostname, audit_type_key, category, platform_label=display)
@@ -170,7 +158,7 @@ def build_site_dashboard_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": f"platform/{host_report_dirs[host]}/{host}/health_report.html" if host in host_report_dirs else "",
+                "node_report": f"{_PDP}/{host_report_dirs[host]}/{host}/{_FHR}" if host in host_report_dirs else "",
                 "platform": alert.get("platform", ""),
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
@@ -191,7 +179,7 @@ def build_site_dashboard_view(
         audit_key = entry.site_audit_key or p_name
         display = entry.display_name or p_name.capitalize()
         asset_label = entry.asset_label
-        fleet_link = entry.fleet_link or f"platform/{entry.report_dir}/{audit_key}_fleet_report.html"
+        fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
         asset_count = to_int(reg.count_inventory_assets(entry, groups))
         audit_type_key = f"schema_{audit_key}"
         p_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == audit_type_key])
@@ -205,9 +193,11 @@ def build_site_dashboard_view(
             "status": {"raw": p_status},
             "links": {"fleet_dashboard": fleet_link},
         }
-        # VMware-specific: alarm_count
-        if audit_key == "vcenter":
-            platform_data["alarm_count"] = infra["active_alarm_count"]
+        # Infra-specific fields (driven by platform config)
+        if entry.site_infra_fields:
+            for infra_field in entry.site_infra_fields:
+                if infra_field in infra:
+                    platform_data[infra_field] = infra[infra_field]
 
         platforms_dict[p_name] = platform_data
 
@@ -216,7 +206,7 @@ def build_site_dashboard_view(
 
     # Add STIG fleet to navigation only if STIG data exists
     if stig_fleet.get("rows"):
-        tree_fleets.append({"name": "STIG", "report": "stig_fleet_report.html"})
+        tree_fleets.append({"name": "STIG", "report": _FSF})
 
     return {
         "meta": build_meta(report_stamp, report_date, report_id),

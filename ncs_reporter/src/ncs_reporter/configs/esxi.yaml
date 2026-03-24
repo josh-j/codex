@@ -7,6 +7,8 @@ platform:
   display_name: VMware
   asset_label: vCenters
   inventory_groups: [vcenters]
+  legacy_raw_keys:
+    vmware_raw_esxi: raw_esxi
 
 detection:
   keys_any: [vmware_raw_esxi]

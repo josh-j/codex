@@ -1,6 +1,7 @@
 """Tests for STIG view-model builders."""
 
 from ncs_reporter.view_models.stig import (
+    StigNavContext,
     _canonical_stig_status,
     _infer_stig_platform,
     _infer_stig_target_type,
@@ -189,8 +190,10 @@ class TestBuildStigHostView:
             "host-esxi",
             "stig_esxi",
             _stig_payload([{"id": "V-001", "status": "open", "severity": "CAT_I"}]),
-            hosts_data=hosts_data,
-            generated_fleet_dirs={"vmware/vcenter", "linux/ubuntu"},
+            nav_ctx=StigNavContext(
+                hosts_data=hosts_data,
+                generated_fleet_dirs={"vmware/vcenter", "linux/ubuntu"},
+            ),
         )
         reports = [f["report"] for f in view["nav"]["tree_fleets"]]
         assert any("platform/vmware/vcenter/vcenter_fleet_report.html" in r for r in reports)

@@ -98,20 +98,21 @@ def health_rollup(alerts: list[Any]) -> str:
     """
     Returns overall health status based on the highest severity in a list of alerts.
     """
+    from .constants import HEALTH_CRITICAL, HEALTH_HEALTHY, HEALTH_WARNING, SEVERITY_CRITICAL, SEVERITY_INFO, SEVERITY_WARNING
     alerts = safe_list(alerts)
     if not alerts:
-        return "HEALTHY"
+        return HEALTH_HEALTHY
 
     severities = set()
     for a in alerts:
         if isinstance(a, dict):
-            severities.add(canonical_severity(a.get("severity", "INFO")))
+            severities.add(canonical_severity(a.get("severity", SEVERITY_INFO)))
 
-    if "CRITICAL" in severities:
-        return "CRITICAL"
-    if "WARNING" in severities:
-        return "WARNING"
-    return "HEALTHY"
+    if SEVERITY_CRITICAL in severities:
+        return HEALTH_CRITICAL
+    if SEVERITY_WARNING in severities:
+        return HEALTH_WARNING
+    return HEALTH_HEALTHY
 
 
 def summarize_alerts(alerts: list[Any]) -> dict[str, Any]:
@@ -127,14 +128,15 @@ def summarize_alerts(alerts: list[Any]) -> dict[str, Any]:
         "by_category": {},
     }
 
+    from .constants import SEVERITY_CRITICAL, SEVERITY_INFO, SEVERITY_WARNING
     for alert in alerts:
         if not isinstance(alert, dict):
             continue
 
-        severity = canonical_severity(alert.get("severity", "INFO"))
-        if severity == "CRITICAL":
+        severity = canonical_severity(alert.get("severity", SEVERITY_INFO))
+        if severity == SEVERITY_CRITICAL:
             summary["critical_count"] += 1
-        elif severity == "WARNING":
+        elif severity == SEVERITY_WARNING:
             summary["warning_count"] += 1
         else:
             summary["info_count"] += 1

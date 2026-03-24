@@ -69,6 +69,7 @@ def resolve_cklb_lookup(
     if target_type:
         skeleton_file = registry.stig_skeleton_for_target(target_type)
         if skeleton_file:
-            sk_path = Path(__file__).parent / "cklb_skeletons" / skeleton_file
+            from .models.platforms_config import CKLB_SKELETONS_DIR
+            sk_path = Path(__file__).parent / CKLB_SKELETONS_DIR / skeleton_file
             return load_cklb_lookup(sk_path, cache)
     return {}

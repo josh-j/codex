@@ -79,7 +79,7 @@ def main() -> None:
         "total_cpu_used_pct": round((total_cpu_used / total_cpu_cap) * 100, 1) if total_cpu_cap > 0 else 0.0,
         "total_mem_used_pct": round((total_mem_used / total_mem_cap) * 100, 1) if total_mem_cap > 0 else 0.0,
     }
-    print(json.dumps(metrics.get(metric, 0)))
+    print(json.dumps(metrics if metric == "_all" else metrics.get(metric, 0)))
 
 
 if __name__ == "__main__":

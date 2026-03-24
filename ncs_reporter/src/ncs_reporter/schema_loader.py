@@ -14,11 +14,12 @@ from ncs_reporter.models.report_schema import PlatformSpec, ReportSchema
 
 logger = logging.getLogger(__name__)
 
-# Built-in schemas directory (ships with the package)
-_BUILTIN_SCHEMAS_DIR = Path(__file__).parent / "schemas"
+# Built-in configs directory (ships with the package)
+_BUILTIN_CONFIGS_DIR = Path(__file__).parent / "configs"
 
-# User-level config directory
-_USER_SCHEMAS_DIR = Path.home() / ".config" / "ncs_reporter" / "schemas"
+# User-level config directories (prefer configs/, fall back to schemas/)
+_USER_CONFIGS_DIR = Path.home() / ".config" / "ncs_reporter" / "configs"
+_USER_SCHEMAS_DIR_LEGACY = Path.home() / ".config" / "ncs_reporter" / "schemas"
 
 
 def _resolve_refs(node: Any, root_path: Path) -> Any:
@@ -62,23 +63,35 @@ def _resolve_refs(node: Any, root_path: Path) -> Any:
 
 
 def _resolve_includes(data: dict[str, Any], root_path: Path) -> dict[str, Any]:
-    """Resolve $include directives in dict-valued sections (fields, alerts, etc.).
+    """Resolve $include directives in fields, alerts, and widgets sections.
 
-    ``$include`` merges the contents of an external YAML file into the current dict.
-    Keys defined in the including file override keys from the included file.
+    For dict sections (fields): included keys go first, local keys override.
+    For list sections (alerts, widgets): included items come first, then local
+    items from ``$local`` are merged by ``id`` (replace) or appended (new id).
 
-    Example::
+    Examples::
 
         fields:
           $include: "linux_base_fields.yaml"
-          # local overrides here
           hostname:
             path: "different.path"
+
+        alerts:
+          $include: "linux_base_alerts.yaml"
+          $local:
+            - id: memory_critical      # replaces the included item with same id
+              severity: CRITICAL
+              condition: { op: gte, field: memory_used_pct, threshold: 95 }
+              message: "Custom threshold"
+            - id: platform_specific    # new id → appended
+              ...
     """
     if not isinstance(data, dict):
         return data
 
     result = dict(data)
+
+    # Dict sections (fields): merge by key, local overrides win
     for section_key in ("fields",):
         section = result.get(section_key)
         if not isinstance(section, dict):
@@ -93,9 +106,44 @@ def _resolve_includes(data: dict[str, Any], root_path: Path) -> dict[str, Any]:
             included = yaml.safe_load(f)
         if not isinstance(included, dict):
             raise ValueError(f"$include file must be a YAML mapping: {target_file}")
-        # Included fields go first, local overrides win
         merged = dict(included)
         merged.update(section)
+        result[section_key] = merged
+
+    # List sections (alerts, widgets): merge by id
+    for section_key in ("alerts", "widgets"):
+        section = result.get(section_key)
+        if not isinstance(section, dict) or "$include" not in section:
+            continue
+        include_path = section["$include"]
+        target_file = root_path.parent / include_path
+        if not target_file.exists():
+            raise ValueError(f"$include file not found: {target_file}")
+        with open(target_file, encoding="utf-8") as f:
+            included = yaml.safe_load(f)
+        if not isinstance(included, list):
+            raise ValueError(f"$include file for '{section_key}' must be a YAML list: {target_file}")
+
+        local_items = section.get("$local", [])
+        if not isinstance(local_items, list):
+            local_items = []
+
+        # Start with included list, then merge local items by id
+        merged = list(included)
+        for local_item in local_items:
+            if not isinstance(local_item, dict) or "id" not in local_item:
+                merged.append(local_item)
+                continue
+            # Find matching id in included items and replace
+            replaced = False
+            for i, inc_item in enumerate(merged):
+                if isinstance(inc_item, dict) and inc_item.get("id") == local_item["id"]:
+                    merged[i] = local_item
+                    replaced = True
+                    break
+            if not replaced:
+                merged.append(local_item)
+
         result[section_key] = merged
 
     return result
@@ -107,7 +155,7 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         if not isinstance(data, dict):
-            logger.warning("Skipping %s: not a YAML mapping", path)
+            logger.debug("Skipping %s: not a YAML mapping (likely a fragment)", path)
             return None
 
         # Skip fragment files (used via $include) — they lack required schema keys.
@@ -117,6 +165,7 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
 
         data = _resolve_refs(data, path)
         data = _resolve_includes(data, path)
+        data = _expand_compact_syntax(data)
 
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
@@ -170,22 +219,26 @@ def _scan_dir(directory: Path, result: dict[str, ReportSchema]) -> None:
 @lru_cache(maxsize=1)
 def discover_schemas(extra_dirs: tuple[str, ...] = ()) -> dict[str, ReportSchema]:
     """
-    Scan all schema directories and return a name→ReportSchema mapping.
+    Scan all config directories and return a name→ReportSchema mapping.
 
     Search order (first-wins on name collision):
       1. extra_dirs (callers / tests can inject custom paths)
-      2. ./schemas/  (CWD-relative, useful during development)
-      3. ~/.config/ncs_reporter/schemas/
-      4. Built-in package schemas/
+      2. ./configs/  (CWD-relative, preferred)
+      3. ./schemas/  (CWD-relative, deprecated fallback)
+      4. ~/.config/ncs_reporter/configs/
+      5. ~/.config/ncs_reporter/schemas/  (deprecated fallback)
+      6. Built-in package configs/
     """
     result: dict[str, ReportSchema] = {}
 
     for d in extra_dirs:
         _scan_dir(Path(d), result)
 
+    _scan_dir(Path("configs"), result)
     _scan_dir(Path("schemas"), result)
-    _scan_dir(_USER_SCHEMAS_DIR, result)
-    _scan_dir(_BUILTIN_SCHEMAS_DIR, result)
+    _scan_dir(_USER_CONFIGS_DIR, result)
+    _scan_dir(_USER_SCHEMAS_DIR_LEGACY, result)
+    _scan_dir(_BUILTIN_CONFIGS_DIR, result)
 
     return result
 
@@ -219,13 +272,282 @@ def resolve_template_path(schema: ReportSchema, template_name: str) -> Path | No
     return candidate if candidate.exists() else None
 
 
+def _build_yaml_line_map(path: Path) -> dict[str, int]:
+    """Build a mapping from dot-paths to YAML line numbers."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            root = yaml.compose(f)
+    except Exception:
+        return {}
+
+    line_map: dict[str, int] = {}
+
+    def _walk(node: Any, prefix: str) -> None:
+        if isinstance(node, yaml.MappingNode):
+            for key_node, val_node in node.value:
+                key = key_node.value if isinstance(key_node, yaml.ScalarNode) else str(key_node)
+                dot_path = f"{prefix}.{key}" if prefix else key
+                line_map[dot_path] = key_node.start_mark.line + 1
+                _walk(val_node, dot_path)
+        elif isinstance(node, yaml.SequenceNode):
+            for i, item in enumerate(node.value):
+                dot_path = f"{prefix}.{i}"
+                line_map[dot_path] = item.start_mark.line + 1
+                _walk(item, dot_path)
+
+    if root:
+        _walk(root, "")
+    return line_map
+
+
+def _did_you_mean(invalid: str, allowed: list[str]) -> str:
+    """Suggest the closest match from allowed values."""
+    import difflib
+    matches = difflib.get_close_matches(invalid, allowed, n=1, cutoff=0.5)
+    return f" (did you mean '{matches[0]}'?)" if matches else ""
+
+
+# ---------------------------------------------------------------------------
+# Compact syntax expansion
+# ---------------------------------------------------------------------------
+
+from ncs_reporter.normalization._fields import _TYPE_COERCERS
+
+_KNOWN_FIELD_TYPES = frozenset({
+    *_TYPE_COERCERS.keys(),
+})
+
+_THRESHOLD_OPS = frozenset({"gt", "lt", "gte", "lte", "eq", "ne"})
+_STRING_OPS = frozenset({"eq_str", "ne_str"})
+_EXISTS_OPS = frozenset({"exists", "not_exists"})
+_WIDGET_TYPE_KEYS = frozenset({"alert_panel", "key_value", "table"})
+
+
+def _expand_compact_field(value: str) -> dict[str, Any]:
+    """Expand 'path | type = fallback' into a FieldSpec dict."""
+    result: dict[str, Any] = {}
+
+    # Split on ' = ' for fallback (rightmost)
+    if " = " in value:
+        before_eq, fallback_str = value.rsplit(" = ", 1)
+        result["fallback"] = yaml.safe_load(fallback_str)
+    else:
+        before_eq = value
+
+    # Split on ' | ' for type (rightmost, only if it's a known type)
+    if " | " in before_eq:
+        before_pipe, maybe_type = before_eq.rsplit(" | ", 1)
+        if maybe_type.strip() in _KNOWN_FIELD_TYPES:
+            result["type"] = maybe_type.strip()
+            result["path"] = before_pipe.strip()
+        else:
+            result["path"] = before_eq.strip()
+    else:
+        result["path"] = before_eq.strip()
+
+    return result
+
+
+def _expand_compact_alert(value: str) -> dict[str, Any]:
+    """Expand 'id | SEVERITY Category | field op value | message' into an AlertRule dict."""
+    parts = [p.strip() for p in value.split(" | ")]
+    if len(parts) < 4:
+        raise ValueError(f"Compact alert needs at least 4 '|'-separated segments: {value!r}")
+
+    alert_id = parts[0]
+
+    # Parse "SEVERITY Category text"
+    sev_cat = parts[1]
+    sev_token, *cat_tokens = sev_cat.split(None, 1)
+    severity = sev_token.upper()
+    category = cat_tokens[0] if cat_tokens else "General"
+
+    # Parse condition: "field op [threshold/value]"
+    cond_tokens = parts[2].split()
+    field = cond_tokens[0]
+    op = cond_tokens[1] if len(cond_tokens) > 1 else "exists"
+
+    condition: dict[str, Any] = {"op": op, "field": field}
+    if op in _THRESHOLD_OPS and len(cond_tokens) > 2:
+        try:
+            condition["threshold"] = float(cond_tokens[2])
+        except ValueError:
+            condition["threshold"] = cond_tokens[2]
+    elif op in _STRING_OPS and len(cond_tokens) > 2:
+        condition["value"] = " ".join(cond_tokens[2:]).strip("'\"")
+
+    message = parts[3]
+
+    result: dict[str, Any] = {
+        "id": alert_id,
+        "category": category,
+        "severity": severity,
+        "condition": condition,
+        "message": message,
+    }
+
+    # Optional 5th segment: extras (details=f1;f2 affected=f suppress=id1;id2)
+    if len(parts) >= 5:
+        for token in parts[4].split():
+            if "=" not in token:
+                continue
+            k, v = token.split("=", 1)
+            if k == "details":
+                result["detail_fields"] = [x.strip() for x in v.split(";")]
+            elif k == "affected":
+                result["affected_items_field"] = v.strip()
+            elif k == "suppress":
+                result["suppress_if"] = [x.strip() for x in v.split(";")]
+
+    return result
+
+
+def _slugify(title: str) -> str:
+    """Convert a title to a snake_case id."""
+    import re as _re
+    return _re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
+
+
+def _expand_compact_column(value: str) -> dict[str, Any]:
+    """Expand 'Label: field_name [badge]' into a column/field dict."""
+    badge = False
+    if value.endswith(" [badge]"):
+        badge = True
+        value = value[:-8]
+    if ":" not in value:
+        return {"label": value, "field": value}
+    label, field = value.split(":", 1)
+    result: dict[str, Any] = {"label": label.strip(), "field": field.strip()}
+    if badge:
+        result["badge"] = True
+    return result
+
+
+def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
+    """Expand compact widget dict (e.g., {table: "Title", rows: field, columns: [...]})."""
+    for wtype in _WIDGET_TYPE_KEYS:
+        if wtype not in item:
+            continue
+        title = item.pop(wtype)
+        widget_id = item.pop("id", _slugify(title))
+        result: dict[str, Any] = {"id": widget_id, "title": title, "type": wtype}
+
+        if wtype == "table":
+            result["rows_field"] = item.pop("rows", item.pop("rows_field", None))
+            result["columns"] = _expand_column_list(item.pop("columns", []))
+        elif wtype == "key_value":
+            result["fields"] = _expand_column_list(item.pop("fields", []))
+
+        # Pass through remaining keys (layout, visible_if, etc.)
+        result.update(item)
+        return result
+
+    # Not a compact widget — but still expand compact column strings inside it
+    return _expand_columns_in_widget(item)
+
+
+def _expand_column_list(items: list[Any]) -> list[Any]:
+    """Expand compact column/field strings in a list, leaving dicts unchanged."""
+    return [_expand_compact_column(c) if isinstance(c, str) else c for c in items]
+
+
+def _expand_columns_in_widget(item: dict[str, Any]) -> dict[str, Any]:
+    """Expand compact column strings in a full-format widget dict."""
+    for key in ("columns", "fields"):
+        if key in item and isinstance(item[key], list):
+            item[key] = _expand_column_list(item[key])
+    return item
+
+
+def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
+    """Expand compact YAML shorthand into full Pydantic-compatible dicts.
+
+    Runs after YAML parsing and $ref/$include resolution, before model validation.
+    """
+    # 1. Expand compact fields
+    fields = data.get("fields")
+    if isinstance(fields, dict):
+        for key, val in list(fields.items()):
+            if isinstance(val, str) and (" | " in val or " = " in val):
+                fields[key] = _expand_compact_field(val)
+
+    # 2. Expand compact alerts
+    alerts = data.get("alerts")
+    if isinstance(alerts, list):
+        data["alerts"] = [
+            _expand_compact_alert(item) if isinstance(item, str) else item
+            for item in alerts
+        ]
+
+    # 3. Expand compact widgets
+    widgets = data.get("widgets")
+    if isinstance(widgets, list):
+        data["widgets"] = [
+            _expand_compact_widget(item) if isinstance(item, dict) else item
+            for item in widgets
+        ]
+
+    # 4. Expand script_bundles into individual field entries
+    bundles = data.pop("script_bundles", None)
+    if isinstance(bundles, list):
+        if fields is None:
+            fields = {}
+            data["fields"] = fields
+        for bundle in bundles:
+            if not isinstance(bundle, dict):
+                continue
+            script = bundle.get("script")
+            base_args = dict(bundle.get("script_args", {}))
+            timeout = bundle.get("script_timeout", 30)
+            unpack = bundle.get("unpack", {})
+            for field_name, spec in unpack.items():
+                if isinstance(spec, dict):
+                    key = spec.get("key", field_name)
+                    field_type = spec.get("type", "str")
+                else:
+                    key = str(spec)
+                    field_type = "str"
+                entry: dict[str, Any] = {
+                    "script": script,
+                    "script_args": {**base_args, "metric": "_all", "_extract_key": key},
+                    "type": field_type,
+                    "script_timeout": timeout,
+                }
+                fields[field_name] = entry
+
+    # 5. Expand compact fleet_columns
+    fleet_columns = data.get("fleet_columns")
+    if isinstance(fleet_columns, list):
+        data["fleet_columns"] = _expand_column_list(fleet_columns)
+
+    return data
+
+
 def format_schema_validation_error(path: Path, exc: pydantic.ValidationError) -> str:
-    """Format a Pydantic validation error with schema file path and field-level context."""
-    lines = [f"Invalid schema {path}:"]
+    """Format a Pydantic validation error with line numbers and suggestions."""
+    line_map = _build_yaml_line_map(path)
+    output = [f"Invalid config {path}:"]
+
     for err in exc.errors():
         loc = ".".join(str(part) for part in err["loc"])
-        lines.append(f"  {loc}: {err['msg']}")
-    return "\n".join(lines)
+        line = line_map.get(loc)
+        prefix = f"  line {line}: " if line else "  "
+        msg = err["msg"]
+
+        # Add "did you mean?" for literal/enum errors
+        hint = ""
+        ctx = err.get("ctx", {})
+        if err["type"] == "literal_error" and "expected" in ctx:
+            invalid_val = err.get("input", "")
+            if isinstance(invalid_val, str) and isinstance(ctx["expected"], str):
+                # Parse allowed values from Pydantic's "expected 'a', 'b' or 'c'" format
+                import re as _re
+                allowed = _re.findall(r"'([^']+)'", ctx["expected"])
+                hint = _did_you_mean(invalid_val, allowed)
+
+        output.append(f"{prefix}{loc}: {msg}{hint}")
+
+    return "\n".join(output)
 
 
 def load_schema_from_file(path: Path) -> ReportSchema:
@@ -238,6 +560,7 @@ def load_schema_from_file(path: Path) -> ReportSchema:
 
         data = _resolve_refs(data, path)
         data = _resolve_includes(data, path)
+        data = _expand_compact_syntax(data)
 
         schema = ReportSchema.model_validate(data)
         object.__setattr__(schema, "_source_path", str(path))
@@ -339,6 +662,12 @@ def build_platform_entries_from_schemas(
             "stig_skeleton_map": dict(spec.stig_skeleton_map),
             "stig_rule_prefixes": dict(spec.stig_rule_prefixes),
             "site_category": spec.site_category,
+            "legacy_raw_keys": dict(spec.legacy_raw_keys),
+            "legacy_audit_key": spec.legacy_audit_key,
+            "site_infra_fields": list(spec.site_infra_fields),
+            "site_compute_node": spec.site_compute_node,
+            "stig_playbook": spec.stig_playbook,
+            "stig_target_var": spec.stig_target_var,
         }
         entries.append(primary)
         seen_input_dirs[input_dir] = primary
@@ -353,6 +682,8 @@ def build_platform_entries_from_schemas(
                 "render": False,
                 "target_types": list(sub.target_types),
                 "stig_skeleton_map": dict(sub.stig_skeleton_map),
+                "stig_playbook": sub.stig_playbook or spec.stig_playbook,
+                "stig_target_var": sub.stig_target_var or spec.stig_target_var,
             }
             entries.append(sub_entry)
 

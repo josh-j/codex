@@ -2,6 +2,9 @@
 
 from typing import Any
 
+from ..constants import (
+    HEALTH_OK, HEALTH_UNKNOWN, SEVERITY_CRITICAL, SEVERITY_WARNING,
+)
 from ..platform_registry import default_registry
 from ..primitives import (
     canonical_severity as canonical_severity,
@@ -24,18 +27,23 @@ def _status_from_health(value: Any) -> str:
             v = value.get(key)
             if v is not None:
                 return _status_from_health(v)
-        return "UNKNOWN"
+        return HEALTH_UNKNOWN
 
-    text = str(value or "UNKNOWN").strip()
+    from ..constants import (
+        CRITICAL_STATUS_ALIASES, HEALTH_CRITICAL, HEALTH_OK, HEALTH_UNKNOWN,
+        HEALTH_WARNING, OK_STATUS_ALIASES, UNKNOWN_STATUS_ALIASES,
+        WARNING_STATUS_ALIASES,
+    )
+    text = str(value or HEALTH_UNKNOWN).strip()
     low = text.lower()
-    if low in ("green", "healthy", "ok", "success", "pass", "passed"):
-        return "OK"
-    if low in ("yellow", "warning", "degraded"):
-        return "WARNING"
-    if low in ("red", "critical", "failed", "error"):
-        return "CRITICAL"
-    if low in ("gray", "unknown"):
-        return "UNKNOWN"
+    if low in OK_STATUS_ALIASES:
+        return HEALTH_OK
+    if low in WARNING_STATUS_ALIASES:
+        return HEALTH_WARNING
+    if low in CRITICAL_STATUS_ALIASES:
+        return HEALTH_CRITICAL
+    if low in UNKNOWN_STATUS_ALIASES:
+        return HEALTH_UNKNOWN
     return text.upper()
 
 
@@ -56,14 +64,15 @@ def _optional_float(value: Any) -> float | None:
 
 
 def _count_alerts(alerts: Any) -> dict[str, int]:
+    from ..constants import SEVERITY_CRITICAL, SEVERITY_WARNING
     counts = {"critical": 0, "warning": 0, "total": 0}
     for alert in safe_list(alerts):
         if not isinstance(alert, dict):
             continue
         sev = canonical_severity(alert.get("severity"))
-        if sev == "CRITICAL":
+        if sev == SEVERITY_CRITICAL:
             counts["critical"] += 1
-        elif sev == "WARNING":
+        elif sev == SEVERITY_WARNING:
             counts["warning"] += 1
     counts["total"] = counts["critical"] + counts["warning"]
     return counts
@@ -93,17 +102,18 @@ def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, st
       - css_class: one of status-ok/status-warn/status-fail
       - label: display text (OK, WARNING, or CRITICAL)
     """
-    raw = str(status or "UNKNOWN").strip().upper()
+    from ..constants import (
+        BADGE_FAIL_VALUES, BADGE_OK_VALUES, HEALTH_UNKNOWN,
+        SEVERITY_CRITICAL, SEVERITY_WARNING, HEALTH_OK,
+    )
+    raw = str(status or HEALTH_UNKNOWN).strip().upper()
 
-    ok_values = {"OK", "HEALTHY", "GREEN", "PASS", "RUNNING", "SUCCESS"}
-    fail_values = {"CRITICAL", "RED", "FAILED", "FAIL", "STOPPED", "ERROR"}
+    if raw in BADGE_OK_VALUES:
+        return {"css_class": "status-ok", "label": raw if preserve_label else HEALTH_OK}
+    if raw in BADGE_FAIL_VALUES:
+        return {"css_class": "status-fail", "label": raw if preserve_label else SEVERITY_CRITICAL}
 
-    if raw in ok_values:
-        return {"css_class": "status-ok", "label": raw if preserve_label else "OK"}
-    if raw in fail_values:
-        return {"css_class": "status-fail", "label": raw if preserve_label else "CRITICAL"}
-
-    return {"css_class": "status-warn", "label": raw if preserve_label and raw != "UNKNOWN" else "WARNING"}
+    return {"css_class": "status-warn", "label": raw if preserve_label and raw != HEALTH_UNKNOWN else SEVERITY_WARNING}
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +148,7 @@ def extract_platform_alerts(
         if not isinstance(alert, dict):
             continue
         sev = canonical_severity(alert.get("severity"))
-        if sev in ("CRITICAL", "WARNING"):
+        if sev in (SEVERITY_CRITICAL, SEVERITY_WARNING):
             result.append(
                 {
                     "severity": sev,
@@ -154,13 +164,13 @@ def extract_platform_alerts(
 
 def aggregate_platform_status(all_alerts: list[dict[str, Any]], audit_type: str) -> str:
     """Derive OK/WARNING/CRITICAL from a list of site-dashboard alerts for a given audit_type."""
-    has_critical = any(a["audit_type"] == audit_type and a["severity"] == "CRITICAL" for a in all_alerts)
-    has_warning = any(a["audit_type"] == audit_type and a["severity"] == "WARNING" for a in all_alerts)
+    has_critical = any(a["audit_type"] == audit_type and a["severity"] == SEVERITY_CRITICAL for a in all_alerts)
+    has_warning = any(a["audit_type"] == audit_type and a["severity"] == SEVERITY_WARNING for a in all_alerts)
     if has_critical:
-        return "CRITICAL"
+        return SEVERITY_CRITICAL
     if has_warning:
-        return "WARNING"
-    return "OK"
+        return SEVERITY_WARNING
+    return HEALTH_OK
 
 
 def fleet_entry_for_dir(plt_dir: str) -> tuple[str, str]:
@@ -215,7 +225,7 @@ def collect_active_alerts(
         if not isinstance(alert, dict):
             continue
         sev = canonical_severity(alert.get("severity"))
-        if sev not in ("CRITICAL", "WARNING"):
+        if sev not in (SEVERITY_CRITICAL, SEVERITY_WARNING):
             continue
         result.append(
             {

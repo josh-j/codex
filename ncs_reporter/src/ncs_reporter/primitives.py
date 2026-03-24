@@ -41,14 +41,18 @@ def normalize_detail(detail: Any) -> dict[str, Any]:
 
 
 def canonical_severity(value: Any) -> str:
+    from .constants import (
+        CRITICAL_ALIASES, INFO_ALIASES, SEVERITY_CRITICAL, SEVERITY_INFO,
+        SEVERITY_WARNING, WARNING_ALIASES,
+    )
     sev = str(value or "INFO").upper().replace(" ", "_")
-    if sev in ("CRITICAL", "CAT_I", "HIGH", "SEVERE", "FAILED"):
-        return "CRITICAL"
-    if sev in ("WARNING", "WARN", "CAT_II", "MEDIUM", "MODERATE"):
-        return "WARNING"
-    if sev in ("CAT_III", "LOW"):
-        return "INFO"
-    return "INFO"
+    if sev in CRITICAL_ALIASES:
+        return SEVERITY_CRITICAL
+    if sev in WARNING_ALIASES:
+        return SEVERITY_WARNING
+    if sev in INFO_ALIASES:
+        return SEVERITY_INFO
+    return SEVERITY_INFO
 
 
 def threshold_severity(value: Any, critical_pct: Any, warning_pct: Any) -> tuple[str | None, float | None]:
@@ -60,10 +64,11 @@ def threshold_severity(value: Any, critical_pct: Any, warning_pct: Any) -> tuple
     crit_f = to_float(critical_pct, 0.0)
     warn_f = to_float(warning_pct, 0.0)
 
+    from .constants import SEVERITY_CRITICAL, SEVERITY_WARNING
     if value_f > crit_f:
-        return "CRITICAL", crit_f
+        return SEVERITY_CRITICAL, crit_f
     if value_f > warn_f:
-        return "WARNING", warn_f
+        return SEVERITY_WARNING, warn_f
     return None, None
 
 
@@ -182,16 +187,20 @@ BYTES_PER_MB: float = 1024.0**2
 
 def canonical_stig_status(value: Any) -> str:
     """Unified STIG status canonicalization (superset of all platform mappings)."""
+    from .constants import (
+        STIG_NA_ALIASES, STIG_NOT_REVIEWED_ALIASES, STIG_OPEN_ALIASES,
+        STIG_PASS_ALIASES, STIG_STATUS_NA, STIG_STATUS_NOT_REVIEWED,
+        STIG_STATUS_OPEN, STIG_STATUS_PASS,
+    )
     text = str(value or "").strip().lower()
-    if text in ("failed", "fail", "open", "finding", "non-compliant", "non_compliant"):
-        return "open"
-    if text in ("pass", "passed", "compliant", "success", "fixed", "remediated",
-                "closed", "notafinding", "not_a_finding"):
-        return "pass"
-    if text in ("na", "n/a", "not_applicable", "not applicable", "not_applicable"):
-        return "na"
-    if text in ("not_reviewed", "not reviewed", "unreviewed"):
-        return "not_reviewed"
+    if text in STIG_OPEN_ALIASES:
+        return STIG_STATUS_OPEN
+    if text in STIG_PASS_ALIASES:
+        return STIG_STATUS_PASS
+    if text in STIG_NA_ALIASES:
+        return STIG_STATUS_NA
+    if text in STIG_NOT_REVIEWED_ALIASES:
+        return STIG_STATUS_NOT_REVIEWED
     if text in ("error", "unknown"):
         return text
     return text or ""
