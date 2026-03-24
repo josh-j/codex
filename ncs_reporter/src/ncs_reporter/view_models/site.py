@@ -45,6 +45,7 @@ def build_site_dashboard_view(
     report_id: str | None = None,
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
+    generated_fleet_dirs: set[str] | None = None,
 ) -> dict[str, Any]:
     from ncs_reporter.models.platforms_config import (
         FILENAME_HEALTH_REPORT as _FHR,
@@ -169,12 +170,18 @@ def build_site_dashboard_view(
 
         platforms_dict[audit_key] = platform_data
 
-        if to_int(asset_count) > 0:
+        if to_int(asset_count) > 0 and (
+            generated_fleet_dirs is None or entry.report_dir in generated_fleet_dirs
+        ):
             site_entries_with_assets.append({"display_name": display, "fleet_link": fleet_link})
 
     # Build nav using NavBuilder
     from .nav_builder import NavBuilder
-    nav_builder = NavBuilder(reg, has_stig_fleet=bool(stig_fleet.get("rows")))
+    nav_builder = NavBuilder(
+        reg,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=bool(stig_fleet.get("rows")),
+    )
     site_nav = nav_builder.build_for_site(
         site_entries_with_assets,
         has_stig_rows=bool(stig_fleet.get("rows")),

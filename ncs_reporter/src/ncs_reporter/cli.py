@@ -550,6 +550,7 @@ def _render_site_and_search(
     common_vars: dict[str, Any],
     global_inventory_index: dict[str, str],
     platforms_by_report_dir: dict[str, dict[str, Any]],
+    generated_fleet_dirs: set[str] | None = None,
 ) -> None:
     """Render the site dashboard and generate the search index."""
     # Site dashboard
@@ -559,7 +560,11 @@ def _render_site_and_search(
         from .models.platforms_config import FILENAME_SITE_HEALTH as _FILENAME_SITE_HEALTH, TEMPLATE_SITE as _TEMPLATE_SITE
         click.echo("--- Processing Global Site Dashboard ---")
         groups_data = _load_groups(effective_groups_file)
-        site_view = build_site_dashboard_view(global_data, inventory_groups=groups_data, **vm_kwargs(common_vars))
+        site_view = build_site_dashboard_view(
+            global_data, inventory_groups=groups_data,
+            generated_fleet_dirs=generated_fleet_dirs,
+            **vm_kwargs(common_vars),
+        )
         env = get_jinja_env()
         content = env.get_template(_TEMPLATE_SITE).render(site_dashboard_view=site_view, **common_vars)
         (r_root / _FILENAME_SITE_HEALTH).write_text(content)
@@ -693,7 +698,9 @@ def all_cmd(
             if hostname not in global_data["hosts"]:
                 global_data["hosts"][hostname] = {}
             deep_merge(global_data["hosts"][hostname], stig_bundle)
-            # Normalize so full_audit/alerts/summary are populated from raw data.
+        # Normalize only hosts that received STIG data (avoids re-normalizing
+        # hosts already processed by _aggregate_platforms).
+        for hostname in stig_artifacts:
             global_data["hosts"][hostname] = normalize_host_bundle(
                 hostname, global_data["hosts"][hostname]
             )
@@ -731,6 +738,7 @@ def all_cmd(
     _render_site_and_search(
         r_root, global_data, global_changed, effective_groups_file,
         common_vars, global_inventory_index, platforms_by_report_dir,
+        generated_fleet_dirs,
     )
 
     # Step 4 & 5: CKLB export + STIG fleet rendering

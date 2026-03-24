@@ -465,73 +465,25 @@ def _build_stig_host_nav(
             audit_type=str(audit_type or ""),
         )
 
-    nav_with_tree: dict[str, Any] = {**ctx.nav} if ctx.nav else {}
-    if ctx.history:
-        nav_with_tree["history"] = ctx.history
-
-    # Sibling STIG audits for the same host
-    if ctx.stig_siblings is not None:
-        nav_with_tree["tree_siblings"] = ctx.stig_siblings
-    else:
-        siblings: list[dict[str, str]] = []
-        if ctx.host_bundle:
-            for k in ctx.host_bundle.keys():
-                if k.lower().startswith("stig_") and k != audit_type:
-                    p = ctx.host_bundle[k]
-                    t_type = _infer_stig_target_type(k, p)
-                    siblings.append({"name": f"{t_type.upper()} STIG", "report": f"{hostname}_stig_{t_type}.html"})
-        siblings.sort(key=lambda x: x["name"])
-        nav_with_tree["tree_siblings"] = siblings
-
-    if ctx.stig_host_peers:
-        nav_with_tree["tree_host_peers"] = ctx.stig_host_peers
-
-    # Global fleets dropdown
-    if ctx.hosts_data:
-        from ncs_reporter.models.platforms_config import (
-            FILENAME_STIG_FLEET as _FSF,
-            fleet_link_url,
-        )
-        current_plt_dir = ctx.hosts_data.get(hostname)
-        depth = len(current_plt_dir.split("/")) + 1 if current_plt_dir else 3
-        back_to_root = "../" * (depth + 1)
-
-        fleets: list[dict[str, str]] = []
-        p_dirs = sorted(list(set(ctx.hosts_data.values())))
-        if ctx.generated_fleet_dirs is not None:
-            p_dirs = [d for d in p_dirs if d in ctx.generated_fleet_dirs]
-        for plt_dir in p_dirs:
-            matched_entry = None
-            for e in registry.entries:
-                if e.report_dir == plt_dir:
-                    matched_entry = e
-                    break
-            if matched_entry and len(matched_entry.schema_names) > 1:
-                from ..schema_loader import discover_schemas
-                all_schemas = discover_schemas()
-                for sn in matched_entry.schema_names:
-                    s = all_schemas.get(sn)
-                    label = s.display_name if s else sn.replace("_", " ").title()
-                    fleets.append(
-                        {"name": label, "report": fleet_link_url(plt_dir, sn, back_to_root)}
-                    )
-            else:
-                if matched_entry:
-                    label = matched_entry.display_name or matched_entry.platform.capitalize()
-                    schema_name = (matched_entry.schema_names[0] if matched_entry.schema_names
-                                   else matched_entry.schema_name or matched_entry.platform)
-                else:
-                    label = plt_dir.split("/")[-1].capitalize()
-                    schema_name = plt_dir.split("/")[-1]
-                fleets.append(
-                    {"name": label, "report": fleet_link_url(plt_dir, schema_name, back_to_root)}
-                )
-
-        from ..models.platforms_config import NAV_LABEL_STIG
-        fleets.append({"name": NAV_LABEL_STIG, "report": f"{back_to_root}{_FSF}"})
-        nav_with_tree["tree_fleets"] = fleets
-
-    return nav_with_tree
+    # Fallback: create a NavBuilder on the fly from context params so the
+    # same logic is used regardless of whether the caller passed one.
+    from .nav_builder import NavBuilder
+    fallback_builder = NavBuilder(
+        registry,
+        hosts_data=ctx.hosts_data,
+        generated_fleet_dirs=ctx.generated_fleet_dirs,
+        has_stig_fleet=True,
+        has_site_report=bool(ctx.nav and ctx.nav.get("site_report")),
+    )
+    return fallback_builder.build_for_stig_host(
+        hostname,
+        base_nav=ctx.nav,
+        history=ctx.history,
+        stig_host_peers=ctx.stig_host_peers,
+        stig_siblings=ctx.stig_siblings,
+        host_bundle=ctx.host_bundle,
+        audit_type=str(audit_type or ""),
+    )
 
 
 def build_stig_host_view(
@@ -695,36 +647,14 @@ def _build_fleet_nav(
     if nav_builder is not None:
         return nav_builder.build_for_stig_fleet(by_platform, base_nav=nav)
 
-    from ncs_reporter.models.platforms_config import (
-        FILENAME_STIG_FLEET as _FSF,
-        fleet_link_url,
+    # Fallback: create a NavBuilder on the fly so the same logic is used.
+    from .nav_builder import NavBuilder
+    fallback_builder = NavBuilder(
+        registry,
+        generated_fleet_dirs=generated_fleet_dirs,
+        has_stig_fleet=True,
     )
-    nav_with_tree: dict[str, Any] = {**nav} if nav else {}
-    tree_fleets: list[dict[str, str]] = []
-    for p_name in registry.all_platform_names():
-        report_dir = registry.platform_to_report_dir(p_name)
-        if report_dir is None:
-            continue
-        if generated_fleet_dirs is not None and report_dir not in generated_fleet_dirs:
-            continue
-        if by_platform.get(p_name, {}).get("hosts", 0) > 0:
-            fleet_link = registry.platform_fleet_link(p_name)
-            if fleet_link:
-                display = registry.platform_display_name(p_name)
-                tree_fleets.append({"name": display, "report": fleet_link})
-            else:
-                schema_names = registry.schema_names_for_platform(p_name) or [p_name]
-                from ..schema_loader import discover_schemas
-                all_schemas = discover_schemas()
-                for sn in schema_names:
-                    s = all_schemas.get(sn)
-                    label = s.display_name if s else sn.replace("_", " ").title()
-                    tree_fleets.append({"name": label, "report": fleet_link_url(report_dir, sn)})
-
-    from ncs_reporter.models.platforms_config import NAV_LABEL_STIG
-    tree_fleets.append({"name": NAV_LABEL_STIG, "report": _FSF})
-    nav_with_tree["tree_fleets"] = tree_fleets
-    return nav_with_tree
+    return fallback_builder.build_for_stig_fleet(by_platform, base_nav=nav)
 
 
 def build_stig_fleet_view(
