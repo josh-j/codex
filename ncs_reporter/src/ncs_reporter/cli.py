@@ -30,7 +30,7 @@ from ._report_context import (
 )
 from ._renderers import build_stig_host_views, render_platform, render_stig
 from ._schema_utils import annotated_template, schema_from_bundle, schema_template
-from .aggregation import hosts_unchanged, load_all_reports, normalize_host_bundle, write_output
+from .aggregation import deep_merge, hosts_unchanged, load_all_reports, normalize_host_bundle, read_report, write_output
 from .cklb_export import generate_cklb
 from .models.platforms_config import PlatformEntry
 from .models.report_schema import ReportSchema
@@ -322,6 +322,48 @@ def _merge_platform_data(platform_data: dict[str, dict[str, Any]]) -> dict[str, 
     return merged
 
 
+def _load_stig_artifacts(
+    platforms: list[dict[str, Any]],
+    p_root: Path,
+) -> dict[str, dict[str, Any]]:
+    """Scan platform ``report_dir`` paths for STIG artifacts.
+
+    The ncs_collector writes STIG results to ``platform/{report_dir}/{host}/
+    raw_stig_{target_type}.yaml``, which may differ from the ``input_dir``
+    used by :func:`_aggregate_platforms`.  This function loads those files
+    so STIG-only runs (no collection data) still produce reports.
+
+    Returns a hosts dict (``{hostname: {audit_type: payload, ...}}``).
+    """
+    stig_hosts: dict[str, dict[str, Any]] = {}
+    seen_dirs: set[str] = set()
+
+    for p in platforms:
+        report_dir = p.get("report_dir", "")
+        if not report_dir or report_dir in seen_dirs:
+            continue
+        seen_dirs.add(report_dir)
+
+        stig_dir = p_root / report_dir
+        if not stig_dir.is_dir():
+            continue
+
+        for host_entry in sorted(stig_dir.iterdir()):
+            if not host_entry.is_dir():
+                continue
+            hostname = host_entry.name
+            for yaml_file in sorted(host_entry.glob("raw_stig_*.yaml")):
+                try:
+                    _raw, report, audit_type = read_report(str(yaml_file))
+                    if report is None or audit_type is None:
+                        continue
+                    stig_hosts.setdefault(hostname, {})[audit_type] = report
+                except Exception:
+                    continue
+
+    return stig_hosts
+
+
 # ---------------------------------------------------------------------------
 # all – helper functions
 # ---------------------------------------------------------------------------
@@ -560,6 +602,8 @@ def _render_stig_and_cklb(
     generated_fleet_dirs: set[str],
     runtime_registry: PlatformRegistry,
     config_dir: str | None,
+    *,
+    has_site_report: bool = True,
 ) -> None:
     """Generate CKLB artifacts and render STIG fleet reports."""
     # CKLB export
@@ -589,7 +633,7 @@ def _render_stig_and_cklb(
             cklb_dir=r_root / "cklb",
             generated_fleet_dirs=generated_fleet_dirs,
             registry=runtime_registry,
-            has_site_report=True,
+            has_site_report=has_site_report,
         )
         click.echo("STIG fleet reports and CKLB artifacts generated.")
 
@@ -641,8 +685,22 @@ def all_cmd(
     click.echo("--- Aggregating Global State ---")
     all_hosts_state = p_root / "all_hosts_state.yaml"
     global_data = _merge_platform_data(all_platform_data)
+    has_platform_data = bool(global_data["hosts"])
+
+    # Step 1b′: Merge STIG artifacts from report_dir paths.
+    # ncs_collector writes STIG results to platform/{report_dir}/ which may
+    # differ from the input_dir used by platform aggregation above.
+    stig_artifacts = _load_stig_artifacts(platforms, p_root)
+    if stig_artifacts:
+        click.echo(f"  Loaded STIG artifacts for {len(stig_artifacts)} host(s).")
+        for hostname, stig_bundle in stig_artifacts.items():
+            if hostname not in global_data["hosts"]:
+                global_data["hosts"][hostname] = {}
+            deep_merge(global_data["hosts"][hostname], stig_bundle)
+        global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
+
     if not global_data["hosts"]:
-        click.echo("No global data found; skipping site dashboard and STIG rendering.")
+        click.echo("No platform data or STIG artifacts found; nothing to render.")
         return
 
     global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
@@ -661,7 +719,7 @@ def all_cmd(
         generated_fleet_dirs=generated_fleet_dirs,
         global_inventory_index=global_inventory_index,
         registry=runtime_registry,
-        has_site_report=True,
+        has_site_report=has_platform_data,
     )
     if stig_host_views:
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
@@ -669,17 +727,21 @@ def all_cmd(
     # Step 2: Parallel platform rendering
     _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views)
 
-    # Step 3: Site dashboard + search index
-    _render_site_and_search(
-        r_root, global_data, global_changed, effective_groups_file,
-        common_vars, global_inventory_index, platforms_by_report_dir,
-    )
+    # Step 3: Site dashboard + search index (skip if no collection data)
+    if has_platform_data:
+        _render_site_and_search(
+            r_root, global_data, global_changed, effective_groups_file,
+            common_vars, global_inventory_index, platforms_by_report_dir,
+        )
+    else:
+        click.echo("--- Skipping Site Dashboard (no collection data) ---")
 
     # Step 4 & 5: CKLB export + STIG fleet rendering
     _render_stig_and_cklb(
         r_root, global_hosts, global_changed, all_hosts_state,
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
+        has_site_report=has_platform_data,
     )
 
 
