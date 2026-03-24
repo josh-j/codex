@@ -9,6 +9,13 @@ platform:
   display_name: VMware
   asset_label: vCenters
   inventory_groups: [vcenters]
+  site_compute_node: true
+  site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
+  legacy_raw_keys:
+    vmware_raw_vcenter: raw_vcenter
+  legacy_audit_key: vmware_vcenter
+  stig_playbook: "playbooks/vcsa/stig_remediate.yml"
+  stig_target_var: "vcsa_stig_target_hosts"
   stig_skeleton_map:
     vcsa: cklb_skeleton_vsphere7_vcsa_V1R3.json
     vcenter: cklb_skeleton_vsphere7_vcsa_V1R3.json
@@ -44,14 +51,14 @@ platform:
       report_dir: vmware/vm
       state_file: vm_fleet_state.yaml
       target_types: [vm]
+      stig_playbook: "playbooks/vm/stig_remediate.yml"
+      stig_target_var: "vm_stig_target_vms"
       stig_skeleton_map:
         vm: cklb_skeleton_vsphere7_vms_V1R4.json
 
-# Detects the key emitted by the internal.vmware.vcsa role via set_stats.
 detection:
   keys_any: [vmware_raw_vcenter]
 
-# Paths starting with '.' are relative to path_prefix.
 path_prefix: "vmware_raw_vcenter.data"
 
 fleet_columns:
