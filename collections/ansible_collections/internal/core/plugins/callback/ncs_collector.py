@@ -88,7 +88,8 @@ FILE_MODE_INHERIT_MASK = 0o666
 #   fixed           (1) — remediated (changed in real mode)
 #   pass            (2) — compliant, no change needed
 #   not_applicable  (3) — control does not apply to this host
-#   na              (4) — not reviewed / not assessed (task skipped)
+#   na              (4) — gate skipped (prerequisite not met)
+#   not_reviewed    (5) — control disabled via _stig_manage=false
 _STATUS_PRIORITY: dict[str, int] = {
     "failed": 0,
     "fixed": 1,
@@ -96,6 +97,20 @@ _STATUS_PRIORITY: dict[str, int] = {
     "not_applicable": 3,
     "na": 4,
     "not_reviewed": 5,
+}
+
+# Wrapper status → collector status.
+_STATUS_MAP: dict[str, str] = {
+    "pass": "pass",
+    "fixed": "fixed",
+    "fix": "fixed",
+    "fail": "failed",
+    "failed": "failed",
+    "not_applicable": "not_applicable",
+    "na": "na",
+    "skipped": "na",
+    "not_reviewed": "not_reviewed",
+    "error": "failed",
 }
 
 
@@ -376,23 +391,10 @@ class CallbackModule(CallbackBase):
         Map wrapper statuses into collector statuses.
 
         Supported wrapper statuses:
-          pass, fail, fixed, not_applicable, na, skipped, error
+          pass, fail, fixed, not_applicable, na, skipped, not_reviewed, error
         """
         normalized = str(status or "").strip().lower()
-
-        mapping = {
-            "pass": "pass",
-            "fixed": "fixed",
-            "fix": "fixed",
-            "fail": "failed",
-            "failed": "failed",
-            "not_applicable": "not_applicable",
-            "na": "na",
-            "skipped": "na",
-            "not_reviewed": "not_reviewed",
-            "error": "failed",
-        }
-        return mapping.get(normalized, "failed")
+        return _STATUS_MAP.get(normalized, "failed")
 
     def _record_structured_stig_result(
         self,

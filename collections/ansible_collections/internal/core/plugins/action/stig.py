@@ -96,9 +96,9 @@ class ActionModule(ActionBase):
                 var_name = f"{manage_prefix}stigrule_{stig_id}_manage"
                 raw_val = task_vars.get(var_name, True)
                 # Template Jinja2 expressions loaded via include_vars.
-                if isinstance(raw_val, str) and "{{" in raw_val:
-                    self._templar.available_variables = task_vars
-                    raw_val = self._templar.template(raw_val)
+                if self._templar.is_possibly_template(raw_val):
+                    with self._templar.set_temporary_context(available_variables=task_vars):
+                        raw_val = self._templar.template(raw_val)
                 manage = self._to_bool(raw_val)
             else:
                 manage = True
