@@ -1,4 +1,4 @@
-"""Schema scaffolding utilities for the `schema init` command."""
+"""Platform config scaffolding utilities for the `platform init` command."""
 
 from __future__ import annotations
 
@@ -53,6 +53,182 @@ widgets:
     fields:
       - {{ label: "Hostname", field: hostname }}
       - {{ label: "Example Metric", field: example_metric }}
+"""
+
+
+def annotated_template(name: str) -> str:
+    """Generate a verbose config template with examples of every feature."""
+    return f"""name: {name}
+# title: "Human-Readable Display Name"  # optional, auto-derived from name
+
+detection:
+  keys_any: [{name}_raw_data]       # match if ANY key exists in raw bundle
+  # keys_all: [key1, key2]          # match if ALL keys exist
+
+# Reduces path repetition — paths starting with '.' become relative.
+# path_prefix: "{name}_raw_data.data"
+
+fields:
+  # --- Path-based field (extract from raw data) ---
+  hostname:
+    path: "{name}_raw_data.data.hostname"   # aliases: 'from'
+    fallback: "unknown"                     # aliases: 'default'
+
+  # --- Short-form path (string expands to path-only spec) ---
+  # os_name: "{name}_raw_data.data.os"
+
+  # --- Computed field (expression with {{field}} references) ---
+  example_pct:
+    compute: "({{example_used}} / {{example_total}}) * 100"  # aliases: 'expr'
+    type: float
+
+  # --- Script field (runs a Python script) ---
+  # complex_data:
+  #   script: "my_script.py"         # aliases: 'run'
+  #   script_args:                   # aliases: 'args'
+  #     source: "raw_data"
+  #   type: list
+  #   script_timeout: 30             # aliases: 'timeout'
+
+  # --- List processing ---
+  # filtered_items:
+  #   path: ".items"
+  #   type: list
+  #   list_filter:
+  #     exclude:
+  #       status: [inactive, disabled]
+  #       name: ["^test_"]           # regex patterns start with ^
+  #     include:
+  #       type: [server]
+  #   list_map:
+  #     usage_pct: "({{used}} / {{total}}) * 100"
+  #
+  # item_count:
+  #   path: ".items"
+  #   count_where:
+  #     status: active
+
+  example_used:
+    path: "{name}_raw_data.data.used"
+    type: float
+  example_total:
+    path: "{name}_raw_data.data.total"
+    type: float
+
+alerts:
+  # --- Threshold alert ---
+  - id: example_high
+    category: "Capacity"
+    severity: WARNING                # CRITICAL, WARNING, INFO
+    condition:
+      op: gt                         # gt, lt, gte, lte, eq, ne
+      field: example_pct
+      threshold: 80.0
+    message: "Usage is high: {{example_pct:.1f}}%"
+    # detail_fields: [example_used, example_total]
+    # affected_items_field: filtered_items
+    # suppress_if: [other_alert_id]
+
+  # --- Other condition types (uncomment to use) ---
+  # - id: range_alert
+  #   severity: WARNING
+  #   condition:
+  #     op: range
+  #     field: example_pct
+  #     min: 75.0
+  #     max: 90.0
+  #
+  # - id: missing_data
+  #   severity: CRITICAL
+  #   condition:
+  #     op: not_exists
+  #     field: hostname
+  #
+  # - id: date_alert
+  #   severity: WARNING
+  #   condition:
+  #     op: age_gt                   # age_gt, age_lt, age_gte, age_lte
+  #     field: last_update
+  #     days: 30
+
+widgets:
+  # --- Alert panel (always recommended) ---
+  - id: alerts
+    title: "Active Alerts"
+    type: alert_panel
+
+  # --- Key-value pairs ---
+  - id: overview
+    title: "Overview"
+    type: key_value
+    fields:
+      - {{ label: "Hostname", field: hostname }}
+      - {{ label: "Usage", field: example_pct, format: "{{value:.1f}}%" }}
+
+  # --- Table ---
+  # - id: items_table
+  #   title: "Items"
+  #   type: table
+  #   rows: filtered_items           # alias for rows_field
+  #   columns:
+  #     - {{ label: "Name", field: name }}
+  #     - {{ label: "Status", field: status, badge: true }}
+
+  # --- Progress bar ---
+  # - id: usage_bar
+  #   title: "Usage"
+  #   type: progress_bar
+  #   field: example_pct
+  #   thresholds: {{ 75: yellow, 90: red }}
+
+  # --- Stat cards ---
+  # - id: kpis
+  #   title: "Key Metrics"
+  #   type: stat_cards
+  #   cards:
+  #     - {{ field: item_count, label: "Total Items" }}
+  #     - {{ field: example_pct, label: "Usage %", format: "{{value:.0f}}" }}
+
+  # --- Bar chart ---
+  # - id: chart
+  #   title: "By Category"
+  #   type: bar_chart
+  #   rows: filtered_items
+  #   label_field: name
+  #   value_field: usage_pct
+  #   max: 100
+
+  # --- Grouped table ---
+  # - id: by_status
+  #   title: "By Status"
+  #   type: grouped_table
+  #   rows: filtered_items
+  #   group_by: status
+  #   columns:
+  #     - {{ label: "Name", field: name }}
+
+  # --- Markdown ---
+  # - id: notes
+  #   title: "Notes"
+  #   type: markdown
+  #   content: "Report generated from **{{name}}** data."
+
+  # --- List ---
+  # - id: names
+  #   title: "Names"
+  #   type: list
+  #   items_field: filtered_items
+  #   display_field: name
+
+# Fleet table columns (shown in fleet overview):
+# fleet_columns:
+#   - {{ field: hostname, label: "Host" }}
+#   - {{ field: example_pct, label: "Usage %", format: "{{value:.0f}}%" }}
+
+# Tip: run 'ncs-reporter platform info widgets' for all widget types.
+# Tip: run 'ncs-reporter platform info conditions' for all condition operators.
+# Tip: run 'ncs-reporter platform info transforms' for pipe transforms.
+# Tip: run 'ncs-reporter platform info aliases' for YAML shorthand aliases.
 """
 
 

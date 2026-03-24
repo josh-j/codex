@@ -7,6 +7,11 @@ platform:
   display_name: VMware
   asset_label: vCenters
   inventory_groups: [vcenters]
+  target_types: [vm]
+  legacy_raw_keys:
+    vmware_raw_vm: raw_vm
+  stig_playbook: "playbooks/vm/stig_remediate.yml"
+  stig_target_var: "vm_stig_target_vms"
 
 detection:
   keys_any: [vmware_raw_vm]

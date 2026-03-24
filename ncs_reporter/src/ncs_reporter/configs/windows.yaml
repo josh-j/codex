@@ -1,0 +1,223 @@
+name: windows
+platform:
+  name: windows
+  input_dir: windows
+  report_dir: windows
+  target_types: [windows]
+  inventory_groups: [windows_servers, windows]
+  legacy_raw_keys:
+    windows_raw_audit: raw_audit
+  legacy_audit_key: windows_audit
+  stig_rule_prefixes:
+    WN: windows
+    MS: windows
+
+# Detects the key emitted by the internal.windows role via ncs_collector callback.
+detection:
+  keys_any: [windows_raw_audit]
+
+# Paths starting with '.' are relative to path_prefix.
+path_prefix: "windows_raw_audit.data"
+
+fleet_columns:
+  - "Collected At: collected_at"
+  - "CCM Status: ccm_service_state"
+  - "Reboot: health_reboot_pending"
+  - "Disk Alert: health_disk_alert"
+  - "Critical: _critical_count"
+  - "Warning: _warning_count"
+
+# ---------------------------------------------------------------------------
+# Fields
+# ---------------------------------------------------------------------------
+
+fields:
+  # --- Collection timestamp ---
+  collected_at: "windows_raw_audit.metadata.timestamp"
+
+  # --- CCMExec service ---
+  ccm_service_state: ".ccm_service.state = unknown"
+
+  # --- ConfigMgr applications (PowerShell JSON) ---
+  raw_configmgr_apps: ".configmgr_apps | dict"
+
+  configmgr_apps:
+    script: "unwrap_ps_json.py"
+    script_args: { source_field: "raw_configmgr_apps", key: "AllApps" }
+    type: list
+
+  apps_to_update:
+    script: "unwrap_ps_json.py"
+    script_args: { source_field: "raw_configmgr_apps", key: "AppsToUpdate" }
+    type: list
+
+  # --- Installed applications (PowerShell JSON) ---
+  raw_installed_apps: ".installed_apps | list"
+
+  installed_apps:
+    script: "unwrap_ps_json.py"
+    script_args: { source_field: "raw_installed_apps" }
+    type: list
+
+  # --- Windows Update results ---
+  update_results: ".update_results | list"
+
+  # --- Health fields ---
+  health_os_info: ".health.os_info | dict = {}"
+  health_hostname: ".health.os_info.hostname = ''"
+  health_os_name: ".health.os_info.os_name = ''"
+  health_uptime_hours: ".health.os_info.uptime_hours = 0"
+  health_disk: ".health.disk | list"
+
+  health_disk_alert:
+    script: "eval_expr.py"
+    script_args:
+      expr: "any(d.get('UsedPct',0) > 80 for d in (record.get('health_disk') or []))"
+      true_value: "WARNING"
+      false_value: "OK"
+    fallback: "N/A"
+
+  health_memory_cpu: ".health.memory_cpu | dict = {}"
+  health_memory_used_pct: ".health.memory_cpu.memory_used_pct = 0"
+  health_cpu_load_pct: ".health.memory_cpu.cpu_load_pct = 0"
+  health_services: ".health.services | list"
+  health_network: ".health.network | list"
+  health_reboot_pending: ".health.reboot_pending.reboot_pending = false"
+  health_reboot_reasons: ".health.reboot_pending.reasons | list"
+  health_event_logs: ".health.event_logs | dict = {}"
+  health_event_count: ".health.event_logs.event_count = 0"
+  health_events: ".health.event_logs.events | list"
+  health_secure_channel: ".health.secure_channel.secure_channel = N/A"
+  health_software_versions: ".health.software_versions | list"
+
+  # --- Vulnerability scan fields ---
+  vuln_total_findings: ".vuln_scan.results.total_findings = 0"
+  vuln_remediated: ".vuln_scan.results.remediated = 0"
+  vuln_open: ".vuln_scan.results.open = 0"
+  vuln_findings: ".vuln_scan.results.findings | list"
+
+  # --- KB status fields ---
+  kb_detection: ".kb_install.detection | list"
+  kb_install_results: ".kb_install.install_results | list"
+
+# ---------------------------------------------------------------------------
+# Alerts
+# ---------------------------------------------------------------------------
+
+alerts:
+  - "ccmexec_not_running | WARNING Services | ccm_service_state ne_str running | ConfigMgr client service (CCMExec) is not running (state: {ccm_service_state}) | details=ccm_service_state"
+
+  # filter_count condition — stays as full format
+  - id: failed_updates
+    category: "Patching"
+    severity: WARNING
+    condition:
+      op: filter_count
+      field: update_results
+      filter_field: failed
+      filter_value: true
+      threshold: 0
+    message: "One or more ConfigMgr application updates failed"
+    affected_items_field: update_results
+
+  - "apps_pending_update | WARNING Patching | apps_to_update exists | ConfigMgr applications have pending updates | affected=apps_to_update"
+  - "reboot_pending | WARNING Health | health_reboot_pending eq 1 | System has a pending reboot ({health_reboot_reasons}) | details=health_reboot_pending;health_reboot_reasons"
+  - "disk_space_warning | WARNING Health | health_disk_alert eq_str WARNING | One or more disks exceed 80% usage | details=health_disk"
+  - "memory_high | WARNING Health | health_memory_used_pct gt 85 | Memory usage is high ({health_memory_used_pct}%) | details=health_memory_used_pct"
+  - "secure_channel_failed | CRITICAL Health | health_secure_channel eq_str FAILED | Domain secure channel test FAILED | details=health_secure_channel"
+  - "critical_events | WARNING Health | health_event_count gt 0 | {health_event_count} critical/error events in recent logs | details=health_event_count"
+  - "open_vulnerabilities | WARNING Security | vuln_open gt 0 | {vuln_open} open vulnerability findings | details=vuln_open;vuln_total_findings;vuln_remediated"
+
+# ---------------------------------------------------------------------------
+# Widgets
+# ---------------------------------------------------------------------------
+
+widgets:
+  - alert_panel: "Active Alerts"
+
+  - key_value: "System Information"
+    fields:
+      - "Hostname: health_hostname"
+      - "OS: health_os_name"
+      - "Uptime (hours): health_uptime_hours"
+      - "CCMExec State: ccm_service_state"
+      - "Reboot Pending: health_reboot_pending"
+      - "Secure Channel: health_secure_channel"
+
+  - table: "Disk Usage"
+    rows: health_disk
+    columns:
+      - "Drive: DeviceID"
+      - "Size (GB): SizeGB"
+      - "Free (GB): FreeGB"
+      - "Used %: UsedPct [badge]"
+
+  - key_value: "Memory & CPU"
+    fields:
+      - "Memory Used %: health_memory_used_pct"
+      - "CPU Load %: health_cpu_load_pct"
+
+  - table: "Critical Services"
+    rows: health_services
+    columns:
+      - "Service: display_name"
+      - "Status: status [badge]"
+      - "Start Type: start_type"
+
+  - table: "Recent Critical/Error Events"
+    rows: health_events
+    columns:
+      - "Time: time"
+      - "Log: log"
+      - "Level: level [badge]"
+      - "Source: source"
+      - "ID: id"
+      - "Message: message"
+
+  - key_value: "Vulnerability Summary"
+    fields:
+      - "Total Findings: vuln_total_findings"
+      - "Remediated: vuln_remediated"
+      - "Open: vuln_open"
+
+  - table: "Vulnerability Findings"
+    rows: vuln_findings
+    columns:
+      - "Plugin ID: plugin_id"
+      - "Severity: severity [badge]"
+      - "Title: title"
+      - "Remediated: remediated [badge]"
+
+  - table: "ConfigMgr Applications"
+    rows: configmgr_apps
+    columns:
+      - "Name: Name"
+      - "Version: Version"
+
+  - table: "Applications Pending Update"
+    rows: apps_to_update
+    columns:
+      - "Name: Name"
+      - "Current Version: CurrentVersion"
+      - "Target Version: TargetVersion"
+
+  - table: "Update Results"
+    rows: update_results
+    columns:
+      - "Application: application"
+      - "Status: status [badge]"
+      - "Failed: failed [badge]"
+
+  - table: "KB Detection Status"
+    rows: kb_detection
+    columns:
+      - "KB: kb"
+      - "Installed: installed [badge]"
+      - "Detection Method: method"
+
+  - table: "Installed Software"
+    rows: health_software_versions
+    columns:
+      - "Name: name"
+      - "Version: version"
+      - "Publisher: publisher"

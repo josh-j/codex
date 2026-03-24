@@ -92,6 +92,12 @@ class FieldSpec(BaseModel):
     # Count list items matching field=value conditions. Overrides the resolved
     # value with the integer count. Useful for aggregation without scripts.
     count_where: dict[str, Any] | None = None
+    # True if ANY list item matches all field=value conditions.
+    any_where: dict[str, Any] | None = None
+    # True if ALL list items match all field=value conditions.
+    all_where: dict[str, Any] | None = None
+    # Sum a numeric field across all list items (after list_filter if set).
+    sum_field: str | None = None
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
@@ -100,6 +106,10 @@ class FieldSpec(BaseModel):
             raise ValueError("FieldSpec requires one of: 'path', 'compute', or 'script'")
         if sources > 1:
             raise ValueError("FieldSpec: 'path', 'compute', and 'script' are mutually exclusive")
+        # At most one aggregation mode
+        agg_count = sum(x is not None for x in [self.count_where, self.any_where, self.all_where, self.sum_field])
+        if agg_count > 1:
+            raise ValueError("FieldSpec: 'count_where', 'any_where', 'all_where', and 'sum_field' are mutually exclusive")
         # Auto-derive fallback from type when not explicitly set
         if self.fallback is _SENTINEL_UNSET:
             self.fallback = _TYPE_DEFAULT_FALLBACKS.get(self.type)
@@ -465,6 +475,8 @@ class SubEntry(BaseModel):
     state_file: str = ""
     target_types: list[str] = Field(default_factory=list)
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
+    stig_playbook: str = ""
+    stig_target_var: str = ""
 
 
 class PlatformSpec(BaseModel):
@@ -485,6 +497,13 @@ class PlatformSpec(BaseModel):
     render: bool = True  # False = STIG/routing only, no fleet/site reports
     site_category: str | None = None
     sub_entries: list[SubEntry] = Field(default_factory=list)
+    # Registry-driven extensions (see PlatformEntry for docs)
+    legacy_raw_keys: dict[str, str] = Field(default_factory=dict)
+    legacy_audit_key: str | None = None
+    site_infra_fields: list[str] = Field(default_factory=list)
+    site_compute_node: bool = False
+    stig_playbook: str = ""
+    stig_target_var: str = ""
 
     @field_validator("sub_entries", mode="before")
     @classmethod
@@ -563,65 +582,73 @@ class ReportSchema(BaseModel):
     @model_validator(mode="after")
     def _cross_check_references(self) -> "ReportSchema":
         """Ensure all field references in alerts, widgets, and fleet columns exist in fields."""
+        import difflib
+
         declared = set(self.fields.keys())
+
+        def _hint(name: str) -> str:
+            matches = difflib.get_close_matches(name, list(declared), n=1, cutoff=0.6)
+            return f" (did you mean '{matches[0]}'?)" if matches else ""
+
         errors: list[str] = []
 
         for rule in self.alerts:
             cond = rule.condition
             if hasattr(cond, "field") and not cond.field.startswith("_") and cond.field not in declared:
-                errors.append(f"alert '{rule.id}': condition references undeclared field '{cond.field}'")
+                errors.append(f"alert '{rule.id}': condition references undeclared field '{cond.field}'{_hint(cond.field)}")
             for f in rule.detail_fields:
                 if not f.startswith("_") and f not in declared:
-                    errors.append(f"alert '{rule.id}': detail_fields references undeclared field '{f}'")
+                    errors.append(f"alert '{rule.id}': detail_fields references undeclared field '{f}'{_hint(f)}")
             if (
                 rule.affected_items_field
                 and not rule.affected_items_field.startswith("_")
                 and rule.affected_items_field not in declared
             ):
                 errors.append(
-                    f"alert '{rule.id}': affected_items_field references undeclared field '{rule.affected_items_field}'"
+                    f"alert '{rule.id}': affected_items_field references undeclared field "
+                    f"'{rule.affected_items_field}'{_hint(rule.affected_items_field)}"
                 )
 
         for widget in self.widgets:
             if isinstance(widget, KeyValueWidget):
                 for kv in widget.fields:
                     if not kv.field.startswith("_") and kv.field not in declared:
-                        errors.append(f"widget '{widget.id}': key_value references undeclared field '{kv.field}'")
+                        errors.append(f"widget '{widget.id}': key_value references undeclared field '{kv.field}'{_hint(kv.field)}")
             elif isinstance(widget, TableWidget):
                 if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
-                    errors.append(f"widget '{widget.id}': rows_field references undeclared field '{widget.rows_field}'")
+                    errors.append(f"widget '{widget.id}': rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}")
             elif isinstance(widget, ProgressBarWidget):
                 if not widget.field.startswith("_") and widget.field not in declared:
-                    errors.append(f"widget '{widget.id}': progress_bar references undeclared field '{widget.field}'")
+                    errors.append(f"widget '{widget.id}': progress_bar references undeclared field '{widget.field}'{_hint(widget.field)}")
                 if widget.label and not widget.label.startswith("_") and widget.label not in declared:
                     errors.append(
-                        f"widget '{widget.id}': progress_bar label references undeclared field '{widget.label}'"
+                        f"widget '{widget.id}': progress_bar label references undeclared field '{widget.label}'{_hint(widget.label)}"
                     )
             elif isinstance(widget, StatCardsWidget):
                 for card in widget.cards:
                     if not card.field.startswith("_") and card.field not in declared:
                         errors.append(
-                            f"widget '{widget.id}': stat_cards references undeclared field '{card.field}'"
+                            f"widget '{widget.id}': stat_cards references undeclared field '{card.field}'{_hint(card.field)}"
                         )
             elif isinstance(widget, BarChartWidget):
                 if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
                     errors.append(
-                        f"widget '{widget.id}': bar_chart rows_field references undeclared field '{widget.rows_field}'"
+                        f"widget '{widget.id}': bar_chart rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}"
                     )
             elif isinstance(widget, ListWidget):
                 if not widget.items_field.startswith("_") and widget.items_field not in declared:
                     errors.append(
-                        f"widget '{widget.id}': list references undeclared field '{widget.items_field}'"
+                        f"widget '{widget.id}': list references undeclared field '{widget.items_field}'{_hint(widget.items_field)}"
                     )
             elif isinstance(widget, GroupedTableWidget):
                 if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
                     errors.append(
-                        f"widget '{widget.id}': grouped_table rows_field references undeclared field '{widget.rows_field}'"
+                        f"widget '{widget.id}': grouped_table rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}"
                     )
 
         for col in self.fleet_columns:
             if not col.field.startswith("_") and col.field not in declared:
-                errors.append(f"fleet_column: references undeclared field '{col.field}'")
+                errors.append(f"fleet_column: references undeclared field '{col.field}'{_hint(col.field)}")
 
         if errors:
             raise ValueError("Schema cross-reference errors:\n" + "\n".join(f"  - {e}" for e in errors))

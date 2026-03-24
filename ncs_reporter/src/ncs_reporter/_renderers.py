@@ -7,14 +7,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-from ._cklb import load_cklb_lookup, resolve_cklb_lookup
+from ._cklb import resolve_cklb_lookup
 from ._report_context import get_jinja_env, vm_kwargs, write_report
 from ._config import default_paths
 from .pathing import rel_href, render_template
 from .platform_registry import PlatformRegistry, default_registry
 from .schema_loader import discover_schemas
 from .view_models.generic import build_generic_fleet_view, build_generic_node_view, merge_stig_into_node_view
-from .view_models.stig import build_stig_fleet_view, build_stig_host_view, build_stig_nav, collect_stig_entries
+from .view_models.stig import StigNavContext, build_stig_fleet_view, build_stig_host_view, build_stig_nav, collect_stig_entries
 
 logger = logging.getLogger("ncs_reporter")
 
@@ -82,22 +82,25 @@ def build_stig_host_views(
             hostname,
             se["audit_type"],
             se["payload"],
-            nav=host_nav,
-            host_bundle=se["bundle"],
-            hosts_data=global_inventory_index,
             cklb_rule_lookup=cklb_lookup,
-            generated_fleet_dirs=generated_fleet_dirs,
-            history=[],
-            stig_host_peers=stig_host_peers,
-            stig_siblings=stig_siblings,
+            nav_ctx=StigNavContext(
+                nav=host_nav,
+                host_bundle=se["bundle"],
+                hosts_data=global_inventory_index,
+                generated_fleet_dirs=generated_fleet_dirs,
+                history=[],
+                stig_host_peers=stig_host_peers,
+                stig_siblings=stig_siblings,
+            ),
             **kw,
         )
 
         # Annotate with a relative URL from the node report dir to this STIG report.
         # Node reports live at platform/{report_dir}/{hostname}/health_report.html
         if global_inventory_index and hostname in global_inventory_index:
+            from .models.platforms_config import PLATFORM_DIR_PREFIX
             node_plt_dir = global_inventory_index[hostname]
-            node_rel_dir = f"platform/{node_plt_dir}/{hostname}"
+            node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{node_plt_dir}/{hostname}"
             host_report_filename = Path(se["host_report_abs"]).name
             stig_abs = f"{host_rel_dir}/{host_report_filename}"
             host_view["_report_url"] = rel_href(node_rel_dir, stig_abs)
@@ -121,7 +124,7 @@ def render_platform(
     generated_fleet_dirs: set[str] | None = None,
     report_dir: str | None = None,
     platform_paths: dict[str, str] | None = None,
-    extra_schema_dirs: tuple[str, ...] = (),
+    extra_config_dirs: tuple[str, ...] = (),
     schema_names_override: list[str] | None = None,
     has_site_report: bool = False,
     has_stig_fleet: bool = False,
@@ -143,7 +146,7 @@ def render_platform(
         if schema_names_override is not None
         else default_registry().schema_names_for_platform(platform)
     )
-    all_schemas = discover_schemas(extra_dirs=extra_schema_dirs)
+    all_schemas = discover_schemas(extra_dirs=extra_config_dirs)
 
     # Resolve all matching schemas (not just the first)
     matched_schemas = []
@@ -166,8 +169,13 @@ def render_platform(
     env = get_jinja_env()
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
-    node_tpl = env.get_template("generic_node_report.html.j2")
-    fleet_tpl = env.get_template("generic_fleet_report.html.j2")
+    from .models.platforms_config import (
+        PLATFORM_DIR_PREFIX,
+        TEMPLATE_NODE,
+        TEMPLATE_FLEET,
+    )
+    node_tpl = env.get_template(TEMPLATE_NODE)
+    fleet_tpl = env.get_template(TEMPLATE_FLEET)
 
     # Render each schema independently
     for schema_idx, schema in enumerate(matched_schemas):
@@ -193,7 +201,7 @@ def render_platform(
         for hostname, bundle in hosts_data.items():
             host_dir = output_path / hostname
             host_dir.mkdir(exist_ok=True)
-            node_rel_dir = f"platform/{report_dir}/{hostname}"
+            node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}"
             node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
             if has_site_report:
                 node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
@@ -231,7 +239,7 @@ def render_platform(
             write_report(host_dir, f"{node_file_stem}.html", content, stamp)
 
         if has_site_report:
-            fleet_nav["site_report"] = rel_href(f"platform/{report_dir}", site_report_abs)
+            fleet_nav["site_report"] = rel_href(f"{PLATFORM_DIR_PREFIX}/{report_dir}", site_report_abs)
 
         fleet_view = build_generic_fleet_view(
             schema,
@@ -270,7 +278,8 @@ def render_stig(
     env = get_jinja_env()
     stamp = common_vars["report_stamp"]
     kw = vm_kwargs(common_vars)
-    host_tpl = env.get_template("stig_host_report.html.j2")
+    from .models.platforms_config import TEMPLATE_STIG_HOST, TEMPLATE_STIG_FLEET as _TEMPLATE_STIG_FLEET
+    host_tpl = env.get_template(TEMPLATE_STIG_HOST)
     all_hosts_data: dict[str, Any] = {}
     cklb_cache: dict[str, dict[str, dict[str, Any]]] = {}
 
@@ -311,14 +320,16 @@ def render_stig(
             hostname,
             se["audit_type"],
             se["payload"],
-            nav=host_nav,
-            host_bundle=se["bundle"],
-            hosts_data=global_inventory_index,
             cklb_rule_lookup=cklb_lookup,
-            generated_fleet_dirs=generated_fleet_dirs,
-            history=history,
-            stig_host_peers=stig_host_peers,
-            stig_siblings=stig_siblings,
+            nav_ctx=StigNavContext(
+                nav=host_nav,
+                host_bundle=se["bundle"],
+                hosts_data=global_inventory_index,
+                generated_fleet_dirs=generated_fleet_dirs,
+                history=history,
+                stig_host_peers=stig_host_peers,
+                stig_siblings=stig_siblings,
+            ),
             **kw,
         )
 
@@ -359,7 +370,7 @@ def render_stig(
         cklb_dir=cklb_dir,
         **kw,
     )
-    fleet_tpl = env.get_template("stig_fleet_report.html.j2")
+    fleet_tpl = env.get_template(_TEMPLATE_STIG_FLEET)
     content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
     write_report(output_path, Path(stig_fleet_abs).name, content, stamp)
 

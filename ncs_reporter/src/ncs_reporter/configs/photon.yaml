@@ -1,0 +1,36 @@
+name: photon
+display_name: "Photon OS"
+platform:
+  name: linux
+  input_dir: linux/photon
+  report_dir: linux/photon
+  state_file: photon_fleet_state.yaml
+  render: false
+  target_types: [photon]
+  stig_playbook: "playbooks/photon_stig_remediate.yml"
+  stig_target_var: "photon_target_hosts"
+  stig_skeleton_map:
+    photon: cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
+
+# Detects the key emitted by the internal.linux role via ncs_collector callback.
+detection:
+  keys_any: [raw_discovery]
+
+# Paths starting with '.' are relative to path_prefix.
+path_prefix: "raw_discovery.data"
+
+fleet_columns:
+  - { label: "Distribution", field: distribution, width: "120px" }
+  - { label: "Uptime (d)", field: uptime_days, width: "80px" }
+  - { label: "Critical", field: _critical_count, width: "70px" }
+  - { label: "Warning", field: _warning_count, width: "70px" }
+
+fields:
+  $include: "linux_base_fields.yaml"
+  collected_at: "raw_discovery.metadata.timestamp"
+
+alerts:
+  $include: "linux_base_alerts.yaml"
+
+widgets:
+  $include: "linux_base_widgets.yaml"

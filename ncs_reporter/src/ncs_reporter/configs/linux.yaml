@@ -1,0 +1,40 @@
+name: linux
+platform:
+  name: linux
+  input_dir: linux/ubuntu
+  report_dir: linux/ubuntu
+  target_types: [linux, ubuntu]
+  inventory_groups: [ubuntu_servers]
+  legacy_raw_keys:
+    ubuntu_raw_discovery: raw_discovery
+  legacy_audit_key: linux_system
+  stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
+  stig_target_var: "ubuntu_target_hosts"
+  stig_rule_prefixes:
+    UBTU: ubuntu
+    GEN: ubuntu
+  site_category: System
+
+# Detects the key emitted by the internal.linux role via ncs_collector callback.
+detection:
+  keys_any: [ubuntu_raw_discovery]
+
+# Paths starting with '.' are relative to path_prefix.
+# Absolute paths (no leading dot) are unchanged.
+path_prefix: "ubuntu_raw_discovery.data"
+
+fleet_columns:
+  - { label: "Distribution", field: distribution, width: "120px" }
+  - { label: "Uptime (d)", field: uptime_days, width: "80px" }
+  - { label: "Critical", field: _critical_count, width: "70px" }
+  - { label: "Warning", field: _warning_count, width: "70px" }
+
+fields:
+  $include: "linux_base_fields.yaml"
+  collected_at: "ubuntu_raw_discovery.metadata.timestamp"
+
+alerts:
+  $include: "linux_base_alerts.yaml"
+
+widgets:
+  $include: "linux_base_widgets.yaml"

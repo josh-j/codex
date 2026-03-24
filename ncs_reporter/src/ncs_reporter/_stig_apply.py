@@ -189,17 +189,17 @@ def get_failing_rules(
 
 
 def resolve_generic_apply_plan(target_type: str) -> tuple[str, str | None]:
-    """Return (playbook_path, target_var_name)."""
+    """Return (playbook_path, target_var_name) from platform registry.
+
+    Falls back to convention-based paths if no explicit mapping is configured.
+    """
+    from .platform_registry import default_registry
+    result = default_registry().stig_apply_plan(target_type)
+    if result is not None:
+        return result
+    # Convention fallback: playbooks/<target>_stig_remediate.yml
     t = target_type.lower()
-    if t == "vm":
-        return ("playbooks/vm/stig_remediate.yml", "vm_stig_target_vms")
-    if t in {"vcsa", "vcenter"}:
-        return ("playbooks/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts")
-    if t == "photon":
-        return ("playbooks/photon_stig_remediate.yml", "photon_target_hosts")
-    if t in {"ubuntu", "linux"}:
-        return ("playbooks/ubuntu_stig_remediate.yml", "ubuntu_target_hosts")
-    raise ValueError(f"Unsupported target type for generic apply: {target_type}")
+    return (f"playbooks/{t}_stig_remediate.yml", f"{t}_target_hosts")
 
 
 def build_generic_apply_args(

@@ -708,7 +708,7 @@ class TestVcenterSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcsa.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vcenter"
         assert s.platform == "vmware"
@@ -725,7 +725,7 @@ class TestVcenterSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vcsa.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -774,7 +774,7 @@ class TestEsxiHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "esxi"
         assert s.platform == "vmware"
@@ -788,7 +788,7 @@ class TestEsxiHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "esxi.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -825,7 +825,7 @@ class TestVmHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
@@ -839,7 +839,7 @@ class TestVmHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -873,7 +873,7 @@ class TestPhotonSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import detect_schemas_for_bundle, load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "photon.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "photon.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "photon"
         assert s.platform == "linux"
@@ -1006,7 +1006,7 @@ class TestScriptFields:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "schemas" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert "aged_snapshot_count" in s.fields
         spec = s.fields["aged_snapshot_count"]

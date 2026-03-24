@@ -23,6 +23,14 @@ class PlatformRegistry:
 
     def __init__(self, entries: list[PlatformEntry]) -> None:
         self._entries = list(entries)
+        # Pre-build target-type lookup: lowered target_type → PlatformEntry
+        self._tt_lookup: dict[str, PlatformEntry] = {}
+        self._all_target_types: frozenset[str] = frozenset(
+            t for e in self._entries for t in e.target_types
+        )
+        for e in self._entries:
+            for t in e.target_types:
+                self._tt_lookup.setdefault(t.lower(), e)
 
     # -- basic accessors -----------------------------------------------------
 
@@ -44,8 +52,8 @@ class PlatformRegistry:
                 out.append(e.platform)
         return out
 
-    def all_target_types(self) -> set[str]:
-        return {t for e in self._entries for t in e.target_types}
+    def all_target_types(self) -> frozenset[str]:
+        return self._all_target_types
 
     # -- schema name lookup --------------------------------------------------
 
@@ -59,8 +67,9 @@ class PlatformRegistry:
 
     def host_exclude_set(self) -> set[str]:
         """Build the set of directory/file names to skip when walking host dirs."""
+        from ncs_reporter.models.platforms_config import PLATFORM_DIR_PREFIX
         structural = {
-            "platform",
+            PLATFORM_DIR_PREFIX,
             "all_hosts_state.yaml",
         }
         for e in self._entries:
@@ -111,19 +120,12 @@ class PlatformRegistry:
         return ""
 
     def infer_platform_from_target_type(self, target_type: str) -> str:
-        tt = target_type.lower()
-        for e in self._entries:
-            if tt in (t.lower() for t in e.target_types):
-                return e.platform
-        return "unknown"
+        e = self._tt_lookup.get(target_type.lower())
+        return e.platform if e else "unknown"
 
     def entry_for_target_type(self, target_type: str) -> PlatformEntry | None:
         """Return the platform entry that owns a given target_type."""
-        tt = target_type.lower()
-        for e in self._entries:
-            if tt in (t.lower() for t in e.target_types):
-                return e
-        return None
+        return self._tt_lookup.get(target_type.lower())
 
     # -- site dashboard helpers -----------------------------------------------
 
@@ -154,10 +156,11 @@ class PlatformRegistry:
 
     def link_base_for_target(self, target_type: str) -> str:
         """Return the report_dir path prefix for a given STIG target type."""
+        from ncs_reporter.models.platforms_config import PLATFORM_DIR_PREFIX
         for e in self._entries:
             if target_type in (t.lower() for t in e.target_types):
-                return f"platform/{e.report_dir}"
-        return f"platform/{target_type}"
+                return f"{PLATFORM_DIR_PREFIX}/{e.report_dir}"
+        return f"{PLATFORM_DIR_PREFIX}/{target_type}"
 
     def platform_to_report_dir(self, platform: str) -> str | None:
         """Return the primary report_dir for a platform (first renderable entry)."""
@@ -170,6 +173,38 @@ class PlatformRegistry:
         return None
 
     # -- all stig skeleton map (merged) --------------------------------------
+
+    def legacy_raw_key_map(self) -> dict[str, str]:
+        """Merged canonical_key → legacy_key across all entries."""
+        merged: dict[str, str] = {}
+        for e in self._entries:
+            merged.update(e.legacy_raw_keys)
+        return merged
+
+    def legacy_audit_key_for(self, schema_name: str) -> str | None:
+        """Return the legacy audit key alias for a schema name, or None."""
+        for e in self._entries:
+            if schema_name in e.schema_names and e.legacy_audit_key:
+                return e.legacy_audit_key
+        return None
+
+    def stig_apply_plan(self, target_type: str) -> tuple[str, str] | None:
+        """Return (playbook, target_var) for a STIG target type, or None.
+
+        Also searches schema-embedded platform specs for configs whose target_types
+        were merged into a shared primary entry.
+        """
+        t = target_type.lower()
+        for e in self._entries:
+            if t in [tt.lower() for tt in e.target_types] and e.stig_playbook:
+                return (e.stig_playbook, e.stig_target_var)
+        # Fall back to schema-level platform specs (covers merged schemas like vm.yaml)
+        from .schema_loader import discover_schemas
+        for schema in discover_schemas().values():
+            spec = schema.platform_spec
+            if spec and spec.stig_playbook and t in [tt.lower() for tt in spec.target_types]:
+                return (spec.stig_playbook, spec.stig_target_var)
+        return None
 
     def all_stig_skeleton_map(self) -> dict[str, str]:
         merged: dict[str, str] = {}
