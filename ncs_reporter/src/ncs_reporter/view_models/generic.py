@@ -473,7 +473,7 @@ def build_generic_node_view(
     nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
-    has_stig_fleet: bool = False,
+
     history: list[dict[str, str]] | None = None,
     nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
@@ -547,7 +547,7 @@ def build_generic_fleet_view(
     nav: Mapping[str, Any] | None = None,
     hosts_data: dict[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
-    has_stig_fleet: bool = False,
+
     nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a fleet-level report."""

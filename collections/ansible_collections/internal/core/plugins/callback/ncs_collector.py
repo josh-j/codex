@@ -168,9 +168,9 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
 
         platforms.append(platform_block)
 
-        # Also extract sub_entries — each inherits parent paths/schema_name
-        # but carries its own target_types, report_dir, etc.
-        for sub in platform_block.get("sub_entries", []):
+        # Also extract children (or legacy sub_entries) — each inherits
+        # parent paths/schema_name but carries its own target_types, etc.
+        for sub in platform_block.get("children", platform_block.get("sub_entries", [])):
             if not isinstance(sub, dict):
                 continue
             if "target_types" not in sub or not sub["target_types"]:

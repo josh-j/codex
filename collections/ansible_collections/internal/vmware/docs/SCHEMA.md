@@ -26,9 +26,18 @@ Exported by `internal.vmware.esxi` with `ncs_action: collect`.
 | `datacenters_info` | object | Raw datacenter inventory payload. |
 | `clusters_info` | object | Raw cluster inventory payload. |
 | `datastores_info` | object | Normalized datastore list envelope. |
+| `hosts_info` | object | Per-ESXi-host health data (facts, NICs, services). |
 | `config` | object | Site/config context passed downstream to reporting. |
 | `collection_status` | string | `SUCCESS` or `FAILED`. |
 | `collection_error` | string | Failure message when collection fails. |
+
+#### `hosts_info` Structure
+
+| Key | Type | Description |
+| :--- | :--- | :--- |
+| `host_facts` | list | Per-host results from `community.vmware.vmware_host_facts`. |
+| `host_nics` | list | Per-host results from `community.vmware.vmware_host_vmnic_info`. |
+| `host_services` | list | Per-host results from `community.vmware.vmware_host_service_info`. |
 
 ### `vmware_raw_vm`
 

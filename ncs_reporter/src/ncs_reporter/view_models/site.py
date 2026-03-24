@@ -14,7 +14,6 @@ from .common import (
     to_int,
 )
 from .stig import build_stig_fleet_view
-from ..pathing import render_template
 
 
 def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | None:
@@ -23,7 +22,6 @@ def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | N
     Checks ``schema_<name>`` keys in preference order, then legacy key aliases
     from the platform registry.
     """
-    from ..platform_registry import default_registry
     reg = default_registry()
     for name in names:
         audit = bundle.get(f"schema_{name}")
@@ -36,35 +34,6 @@ def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | N
                 return dict(audit)
     return None
 
-
-def _build_platform_links(
-    platforms_config: list[dict[str, Any]] | None,
-    report_stamp: str | None,
-) -> dict[str, str]:
-    """Build a mapping of platform name → fleet report relative path from config.
-
-    Returns e.g. {"linux": "platform/linux/ubuntu/linux_fleet_report.html", ...}
-    """
-    links: dict[str, str] = {}
-    for p in platforms_config or []:
-        paths = p.get("paths") or {}
-        tpl = paths.get("report_fleet", "")
-        report_dir = p.get("report_dir", "")
-        if not tpl or not report_dir:
-            continue
-        link = render_template(
-            tpl,
-            report_dir=report_dir,
-            schema_name=p.get("schema_name") or p.get("platform") or "",
-            hostname="",
-            target_type="",
-            report_stamp=report_stamp or "",
-        )
-        # Only store the first (most specific) entry per platform key
-        platform_key = p.get("platform", "")
-        if platform_key and platform_key not in links:
-            links[platform_key] = link
-    return links
 
 
 def build_site_dashboard_view(

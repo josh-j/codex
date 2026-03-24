@@ -53,18 +53,7 @@ def _safe_pct(used: Any, total: Any) -> float:
     return float(round((used_f / total_f) * 100.0, 1))
 
 
-def _optional_float(value: Any) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-
 def _count_alerts(alerts: Any) -> dict[str, int]:
-    from ..constants import SEVERITY_CRITICAL, SEVERITY_WARNING
     counts = {"critical": 0, "warning": 0, "total": 0}
     for alert in safe_list(alerts):
         if not isinstance(alert, dict):
@@ -195,28 +184,3 @@ def fleet_entries_for_dir(plt_dir: str) -> list[tuple[str, str]]:
     return [fleet_entry_for_dir(plt_dir)]
 
 
-def collect_active_alerts(
-    alerts_list: list[Any],
-    hostname: str,
-    audit_type: str,
-    category_default: str,
-) -> list[dict[str, Any]]:
-    """Build active_alerts entries for fleet views (includes raw dict)."""
-    result: list[dict[str, Any]] = []
-    for alert in safe_list(alerts_list):
-        if not isinstance(alert, dict):
-            continue
-        sev = canonical_severity(alert.get("severity"))
-        if sev not in (SEVERITY_CRITICAL, SEVERITY_WARNING):
-            continue
-        result.append(
-            {
-                "host": hostname,
-                "severity": sev,
-                "category": alert.get("category", category_default),
-                "audit_type": audit_type,
-                "message": alert.get("message", ""),
-                "raw": dict(alert),
-            }
-        )
-    return result
