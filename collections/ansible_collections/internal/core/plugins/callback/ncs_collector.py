@@ -114,6 +114,16 @@ _STATUS_MAP: dict[str, str] = {
 }
 
 
+def _resolved_or_empty(val: Any) -> str:
+    """Return *val* as a string, or ``""`` if it contains unresolved Jinja2."""
+    if not val:
+        return ""
+    s = str(val)
+    if "{{" in s and "}}" in s:
+        return ""
+    return s
+
+
 def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
     """Walk up from *start_dir* looking for a repo root marker.
 
@@ -420,14 +430,15 @@ class CallbackModule(CallbackBase):
             inv_host = "unknown"
 
         # Resolve target host/type from structured result first, then task vars, then tracked maps.
+        # Guard against raw Jinja2 from AnsibleUnsafeText (include_tasks apply: vars:).
         host = (
-            structured.get("target_host")
-            or task_vars.get("stig_target_host")
+            _resolved_or_empty(structured.get("target_host"))
+            or _resolved_or_empty(task_vars.get("stig_target_host"))
             or self._target_host_map.get(inv_host, inv_host)
         )
         target_type = str(
-            structured.get("target_type")
-            or task_vars.get("stig_target_type")
+            _resolved_or_empty(structured.get("target_type"))
+            or _resolved_or_empty(task_vars.get("stig_target_type"))
             or self._target_type_map.get(inv_host, "")
             or ""
         ).lower()
@@ -634,7 +645,7 @@ class CallbackModule(CallbackBase):
             return
 
         # Resolve target host.
-        host = task_vars.get("stig_target_host")
+        host = _resolved_or_empty(task_vars.get("stig_target_host"))
         if not host:
             try:
                 inv_host = result._host.get_name()
