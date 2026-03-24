@@ -542,6 +542,11 @@ class ReportSchema(BaseModel):
     widgets: list[ReportWidget] = Field(default_factory=list)
     fleet_columns: list[FleetColumn] = Field(default_factory=list)
     template_override: str | None = None
+    # When set, the raw bundle is split into multiple synthetic host entries
+    # by iterating the list at this path. Each item becomes its own host
+    # using the item's "name" field as the hostname.
+    split_field: str | None = None
+    split_name_key: str = "name"
 
     # Track where this schema was loaded from (set post-load, not from YAML)
     _source_path: str | None = None

@@ -61,6 +61,7 @@ def collect_stig_entries(
     """
     stig_entries: list[dict[str, Any]] = []
     all_stig_reports: dict[str, list[dict[str, str]]] = {}
+    _path_cache: dict[int, dict[str, str]] = {}
 
     for hostname, bundle in hosts_data.items():
         if not isinstance(bundle, dict):
@@ -81,7 +82,10 @@ def collect_stig_entries(
                 continue
 
             report_dir = entry.report_dir
-            path_templates = entry.paths.model_dump()
+            eid = id(entry)
+            if eid not in _path_cache:
+                _path_cache[eid] = entry.paths.model_dump()
+            path_templates = _path_cache[eid]
             host_report_abs = render_template(
                 path_templates["report_stig_host"],
                 report_dir=report_dir,

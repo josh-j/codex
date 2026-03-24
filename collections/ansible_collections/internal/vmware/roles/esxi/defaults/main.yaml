@@ -15,6 +15,7 @@ esxi_stig_enable_ssh_checks: true
 esxi_collect_datacenters: true
 esxi_collect_compute: true
 esxi_collect_storage: true
+esxi_collect_per_host: true
 
 # =============================================================================
 # Thresholds (Used by ncs-reporter for ESXi health)

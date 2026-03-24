@@ -778,12 +778,13 @@ class TestEsxiHealthSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "esxi"
         assert s.platform == "vmware"
+        assert s.split_field == "esxi_hosts"
         ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
-        assert "computed_filter" in ops
-        assert "cluster_count" in s.fields
-        assert "datastore_count" in s.fields
+        assert "eq_str" in ops  # host_disconnected
+        assert "connection_state" in s.fields
+        assert "cpu_used_pct" in s.fields
 
-    def test_esxi_schema_fires_on_synthetic_bundle(self) -> None:
+    def test_esxi_schema_fires_on_per_host_bundle(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
@@ -791,33 +792,26 @@ class TestEsxiHealthSchema:
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
+        # Simulate a per-host bundle (after split_field expansion)
         bundle = {
-            "vmware_raw_esxi": {
-                "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
-                "data": {
-                    "datacenters_info": {"datacenter_info": [{"name": "DC1"}]},
-                    "clusters_info": {"results": []},
-                    "datastores_info": {
-                        "datastores": [
-                            {
-                                "name": "ds-prod",
-                                "type": "VMFS",
-                                "capacity": 1000,
-                                "freeSpace": 80,
-                                "accessible": True,
-                                "maintenanceMode": "normal",
-                                "provisioned": 500,
-                            },
-                        ]
-                    },
-                },
-            }
+            "connection_state": "disconnected",
+            "overall_status": "red",
+            "cluster": "prod-cluster",
+            "datacenter": "dc01",
+            "cpu_used_pct": 42.0,
+            "mem_used_pct": 78.0,
+            "mem_mb_total": 131072,
+            "mem_mb_used": 102236,
+            "vm_count": 18,
+            "uptime_seconds": 4071600,
+            "ssh_enabled": True,
+            "shell_enabled": False,
         }
 
         result = normalize_from_schema(s, bundle)
         fired = {a["id"] for a in result["alerts"]}
-        # ds-prod is at 8% free — critical space fires
-        assert "datastore_critical_space" in fired
+        assert "host_disconnected" in fired
+        assert "ssh_enabled" in fired
 
 
 class TestVmHealthSchema:

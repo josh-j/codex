@@ -22,7 +22,7 @@ class PlatformRegistry:
     """Read-only accessor over a list of ``PlatformEntry`` objects."""
 
     def __init__(self, entries: list[PlatformEntry]) -> None:
-        self._entries = list(entries)
+        self._entries = tuple(entries)
         # Pre-build target-type lookup: lowered target_type → PlatformEntry
         self._tt_lookup: dict[str, PlatformEntry] = {}
         self._all_target_types: frozenset[str] = frozenset(
@@ -32,17 +32,29 @@ class PlatformRegistry:
             for t in e.target_types:
                 self._tt_lookup.setdefault(t.lower(), e)
 
+        # Pre-compute platform names (insertion-ordered, deduplicated)
+        seen: set[str] = set()
+        names: list[str] = []
+        for e in self._entries:
+            if e.platform not in seen:
+                seen.add(e.platform)
+                names.append(e.platform)
+        self._platform_names: tuple[str, ...] = tuple(names)
+
         # Build platform hierarchy tree
-        self._roots: list[PlatformNode] = self._build_tree()
+        self._roots: tuple[PlatformNode, ...] = tuple(self._build_tree())
         self._node_by_id: dict[str, PlatformNode] = {
             n.id: n for root in self._roots for n in root.walk()
+        }
+        self._node_by_report_dir: dict[str, PlatformNode] = {
+            n.entry.report_dir: n for root in self._roots for n in root.walk()
         }
 
     # -- basic accessors -----------------------------------------------------
 
     @property
-    def entries(self) -> list[PlatformEntry]:
-        return list(self._entries)
+    def entries(self) -> tuple[PlatformEntry, ...]:
+        return self._entries
 
     def by_platform(self, name: str) -> list[PlatformEntry]:
         return [e for e in self._entries if e.platform == name]
@@ -71,9 +83,9 @@ class PlatformRegistry:
         return roots
 
     @property
-    def roots(self) -> list[PlatformNode]:
+    def roots(self) -> tuple[PlatformNode, ...]:
         """Top-level platform nodes."""
-        return list(self._roots)
+        return self._roots
 
     def node_for_id(self, node_id: str) -> PlatformNode | None:
         """Find a tree node by its id (schema_name or platform)."""
@@ -81,22 +93,12 @@ class PlatformRegistry:
 
     def node_for_report_dir(self, report_dir: str) -> PlatformNode | None:
         """Find the tree node whose entry matches a report_dir path."""
-        for root in self._roots:
-            for node in root.walk():
-                if node.entry.report_dir == report_dir:
-                    return node
-        return None
+        return self._node_by_report_dir.get(report_dir)
 
     # -- platform / target type sets -----------------------------------------
 
-    def all_platform_names(self) -> list[str]:
-        seen: set[str] = set()
-        out: list[str] = []
-        for e in self._entries:
-            if e.platform not in seen:
-                seen.add(e.platform)
-                out.append(e.platform)
-        return out
+    def all_platform_names(self) -> tuple[str, ...]:
+        return self._platform_names
 
     def all_target_types(self) -> frozenset[str]:
         return self._all_target_types

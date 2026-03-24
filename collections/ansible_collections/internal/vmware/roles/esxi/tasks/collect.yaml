@@ -18,6 +18,9 @@
           _raw_datacenters: {}
           _raw_clusters: {}
           _raw_datastores: {}
+          _raw_host_facts: {}
+          _raw_host_nics: {}
+          _raw_host_services: {}
 
     - name: ESXi Collect | Simulated State
       ansible.builtin.include_tasks: collect/simulated.yaml
@@ -28,6 +31,13 @@
       ansible.builtin.include_tasks: collect/inventory.yaml
       tags: [collect, inventory]
       when: not (simulation_mode | default(false) | bool)
+
+    - name: ESXi Collect | Per-Host Health
+      ansible.builtin.include_tasks: collect/per_host_health.yaml
+      tags: [collect, per_host]
+      when:
+        - not (simulation_mode | default(false) | bool)
+        - esxi_collect_per_host | default(true) | bool
 
   always:
     - name: Finalize ESXi collection state

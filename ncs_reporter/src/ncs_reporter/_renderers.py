@@ -217,7 +217,13 @@ def render_platform(
         node_nav: dict[str, str] = {"fleet_label": f"{schema.display_name} Fleet"}
         fleet_nav: dict[str, Any] = {}
 
-        for hostname, bundle in hosts_data.items():
+        # When split_field is set, expand each vCenter bundle into
+        # multiple synthetic per-host entries (e.g. ESXi hosts).
+        effective_hosts = hosts_data
+        if schema.split_field:
+            effective_hosts = _split_hosts_data(hosts_data, schema)
+
+        for hostname, bundle in effective_hosts.items():
             # For non-primary schemas in a multi-schema render, skip hosts
             # that lack detection keys (e.g. skip ESXi-only hosts in the
             # VM schema render).
@@ -242,7 +248,6 @@ def render_platform(
                 nav=node_nav,
                 hosts_data=global_inventory_index,
                 generated_fleet_dirs=generated_fleet_dirs,
-                has_stig_fleet=has_stig_fleet,
                 history=history,
                 nav_builder=nav_builder,
                 **kw,
@@ -260,11 +265,10 @@ def render_platform(
 
         fleet_view = build_generic_fleet_view(
             schema,
-            hosts_data,
+            effective_hosts,
             nav=fleet_nav,
             hosts_data=global_inventory_index,
             generated_fleet_dirs=generated_fleet_dirs,
-            has_stig_fleet=has_stig_fleet,
             nav_builder=nav_builder,
             **kw,
         )
@@ -406,6 +410,49 @@ def render_stig(
 # ---------------------------------------------------------------------------
 # Shared utilities
 # ---------------------------------------------------------------------------
+
+
+def _split_hosts_data(
+    hosts_data: dict[str, Any],
+    schema: Any,
+) -> dict[str, dict[str, Any]]:
+    """Expand hosts_data using a schema's split_field.
+
+    When a schema defines ``split_field`` (e.g. ``"esxi_hosts"``), each
+    bundle in *hosts_data* is first normalized to compute script fields,
+    then the resulting list at ``fields[split_field]`` is iterated.
+    Each item becomes a synthetic host entry keyed by the item's
+    ``split_name_key`` field (default ``"name"``).
+
+    Bundles without the split data are passed through unchanged.
+    """
+    from .normalization.schema_driven import normalize_from_schema
+
+    result: dict[str, dict[str, Any]] = {}
+    name_key = schema.split_name_key or "name"
+    split_key = schema.split_field
+
+    for _parent_host, bundle in hosts_data.items():
+        # Normalize to compute script fields (e.g. assemble_esxi_hosts)
+        normalized = normalize_from_schema(schema, bundle)
+        items = normalized.get("fields", {}).get(split_key)
+        if not isinstance(items, list):
+            result[_parent_host] = bundle
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            child_name = str(item.get(name_key, "")).strip()
+            if not child_name:
+                continue
+            # Synthetic bundle: the split item IS the bundle for this host.
+            # Include a _parent key so context fields can reach the parent.
+            child_bundle = dict(item)
+            child_bundle["_parent"] = bundle
+            result[child_name] = child_bundle
+
+    return result
+
 
 def _build_history(host_dir: Path, file_stem: str) -> list[dict[str, str]]:
     """Scan host_dir for stamped report files and return sorted history entries."""
