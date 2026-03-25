@@ -400,26 +400,12 @@ class NavBuilder:
         nav["search_root"] = self._search_root(nav)
         tree_fleets: list[dict[str, str]] = []
 
-        for p_name in self._reg.all_platform_names():
-            report_dir = self._reg.platform_to_report_dir(p_name)
-            if report_dir is None:
-                continue
-            if self._generated_fleet_dirs is not None and report_dir not in self._generated_fleet_dirs:
-                continue
-            if by_platform.get(p_name, {}).get("hosts", 0) <= 0:
-                continue
-            fleet_link = self._reg.platform_fleet_link(p_name)
-            if fleet_link:
+        for plt_dir in self._platform_dirs:
+            for label, schema_name in fleet_entries_for_dir(plt_dir):
                 tree_fleets.append({
-                    "name": self._reg.platform_display_name(p_name),
-                    "report": fleet_link,
+                    "name": label,
+                    "report": fleet_link_url(plt_dir, schema_name),
                 })
-            else:
-                for label, schema_name in fleet_entries_for_dir(report_dir):
-                    tree_fleets.append({
-                        "name": label,
-                        "report": fleet_link_url(report_dir, schema_name),
-                    })
 
         tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
         nav["tree_fleets"] = tree_fleets
