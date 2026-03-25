@@ -38,7 +38,7 @@
         {% else %}
         {{ meta.get('display_name', 'Fleet') }} — Fleet Report
         {% endif %}
-        <div class="nav-search" data-root="{{ nav.site_report | replace('site_health_report.html', '') if nav.get('site_report') else './' }}">
+        <div class="nav-search" data-root="{{ nav.get('search_root', './') }}">
             <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
             <div class="search-results nav-dropdown"></div>
         </div>

@@ -1,2 +1,0 @@
-[console_scripts]
-ncs-reporter = ncs_reporter.cli:main

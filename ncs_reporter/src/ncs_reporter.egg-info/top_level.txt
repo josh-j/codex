@@ -1,2 +1,0 @@
-ncs_path_contract
-ncs_reporter

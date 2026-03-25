@@ -11,6 +11,10 @@ from click.testing import CliRunner
 from ncs_reporter.cli import main
 
 
+def _has_attr(html: str, attr: str, value: str) -> bool:
+    return f'{attr}="{value}"' in html or f"{attr}={value}" in html
+
+
 class TestStigE2E(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
@@ -163,6 +167,10 @@ class TestStigE2E(unittest.TestCase):
         self.assertTrue(fleet_report.exists(), "STIG fleet report should exist")
         fleet_content = fleet_report.read_text()
         self.assertIn("esxi-01", fleet_content)
+        self.assertTrue(_has_attr(fleet_content, "href", "site_health_report.html"))
+        self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/vcsa/vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html"))
+        self.assertTrue(_has_attr(fleet_content, "data-root", "./"))
 
         # Host report: reports_root/platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html
         host_report = self.reports_root / "platform" / "vmware" / "esxi" / "esxi-01" / "esxi-01_stig_esxi.html"
@@ -170,6 +178,9 @@ class TestStigE2E(unittest.TestCase):
         self.assertTrue(host_report.exists(), "STIG host report should exist")
         host_content = host_report.read_text()
         self.assertIn("esxi-01", host_content)
+        self.assertTrue(_has_attr(host_content, "href", "../../../../site_health_report.html"))
+        self.assertTrue(_has_attr(host_content, "href", "../../../../stig_fleet_report.html"))
+        self.assertTrue(_has_attr(host_content, "data-root", "../../../../"))
         self.assertTrue(
             "open" in host_content or "not_a_finding" in host_content,
             "Host STIG report should contain status indicators",
