@@ -1,5 +1,5 @@
 name: vm
-display_name: "VMware VM Workload Health"
+display_name: "VMware VM"
 platform:
   name: vmware
   input_dir: vmware/vm
