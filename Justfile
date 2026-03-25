@@ -174,6 +174,14 @@ audit-vmware target="vcenters":
 audit-vmware-site site:
     {{ ansible_playbook }} playbooks/vmware/audit.yml -l {{ site }}_vcenters
 
+# Run ESXi health audit (all sites or limited)
+audit-esxi target="vcenters":
+    {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ target }} -v
+
+# Run ESXi health audit for a single site
+audit-esxi-site site:
+    {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ site }}_vcenters
+
 # Run Ubuntu audit
 audit-ubuntu target="ubuntu_servers":
     {{ ansible_playbook }} playbooks/ubuntu/audit.yml -l {{ target }}
