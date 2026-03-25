@@ -11,6 +11,10 @@ from click.testing import CliRunner
 from ncs_reporter.cli import main
 
 
+def _has_attr(html: str, attr: str, value: str) -> bool:
+    return f'{attr}="{value}"' in html or f"{attr}={value}" in html
+
+
 class TestHtmlReportsE2E(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
@@ -161,6 +165,10 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertIn("linux-01", content)
         self.assertIn("vc-01", content)
         self.assertIn("win-01", content)
+        self.assertTrue(_has_attr(content, "href", "platform/linux/ubuntu/linux_fleet_report.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/vmware/vcsa/vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/windows/windows_fleet_report.html"))
+        self.assertTrue(_has_attr(content, "data-root", "./"))
 
         # Check Platform Reports
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
@@ -180,6 +188,10 @@ class TestHtmlReportsE2E(unittest.TestCase):
         linux_report = (
             self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
         ).read_text()
+        self.assertTrue(_has_attr(linux_report, "href", "../../../../site_health_report.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../linux_fleet_report.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../../../../platform/vmware/vcsa/vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(linux_report, "data-root", "../../../../"))
         self.assertTrue(
             "CRITICAL" in linux_report or "/" in linux_report, "Linux node report should reflect critical disk alert"
         )
@@ -187,11 +199,19 @@ class TestHtmlReportsE2E(unittest.TestCase):
         vmware_report = (
             self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html"
         ).read_text()
+        self.assertTrue(_has_attr(vmware_report, "href", "../../../../site_health_report.html"))
+        self.assertTrue(_has_attr(vmware_report, "href", "../vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(vmware_report, "href", "../../../../platform/vmware/vcsa/vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(vmware_report, "data-root", "../../../../"))
         self.assertTrue(
             "WARNING" in vmware_report or "yellow" in vmware_report, "VMware node report should reflect health warning"
         )
 
         windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").read_text()
+        self.assertTrue(_has_attr(windows_report, "href", "../../../site_health_report.html"))
+        self.assertTrue(_has_attr(windows_report, "href", "../windows_fleet_report.html"))
+        self.assertTrue(_has_attr(windows_report, "href", "../../../platform/vmware/vcsa/vcenter_fleet_report.html"))
+        self.assertTrue(_has_attr(windows_report, "data-root", "../../../"))
         self.assertTrue(
             "failed" in windows_report.lower() or "1" in windows_report,
             "Windows node report should reflect update failure count",

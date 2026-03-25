@@ -9,6 +9,7 @@ so templates require zero changes.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import PurePosixPath
 from typing import Any
 
 from ..models.platforms_config import (
@@ -59,6 +60,22 @@ class NavBuilder:
 
     # -- shared building blocks -----------------------------------------------
 
+    def _search_root(self, nav: Mapping[str, Any] | None) -> str:
+        """Resolve the root path used by static global search/navigation JS."""
+        if nav:
+            explicit = str(nav.get("search_root") or "").strip()
+            if explicit:
+                return explicit
+
+            site_report = str(nav.get("site_report") or "").strip()
+            if site_report:
+                parent = PurePosixPath(site_report).parent
+                if str(parent) in ("", "."):
+                    return "./"
+                return f"{parent.as_posix()}/"
+
+        return "./"
+
     def _back_to_root(self, from_dir: str, *, is_node: bool = False) -> str:
         """Compute the ``../`` prefix to reach the report root from *from_dir*.
 
@@ -107,6 +124,7 @@ class NavBuilder:
     ) -> dict[str, Any]:
         """Complete nav dict for a node (host) health report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
+        nav["search_root"] = self._search_root(nav)
         if history:
             nav["history"] = history
         if hostname in self._hosts_data:
@@ -123,6 +141,7 @@ class NavBuilder:
     ) -> dict[str, Any]:
         """Complete nav dict for a fleet report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
+        nav["search_root"] = self._search_root(nav)
         nav["tree_fleets"] = self.build_tree_fleets(from_dir)
         return nav
 
@@ -139,6 +158,7 @@ class NavBuilder:
     ) -> dict[str, Any]:
         """Complete nav dict for a STIG host report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
+        nav["search_root"] = self._search_root(nav)
         if history:
             nav["history"] = history
 
@@ -177,6 +197,7 @@ class NavBuilder:
     ) -> dict[str, Any]:
         """Complete nav dict for the STIG fleet report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
+        nav["search_root"] = self._search_root(nav)
         tree_fleets: list[dict[str, str]] = []
 
         for p_name in self._reg.all_platform_names():
@@ -223,4 +244,4 @@ class NavBuilder:
             })
         if has_stig_rows:
             tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
-        return {"tree_fleets": tree_fleets}
+        return {"tree_fleets": tree_fleets, "search_root": "./"}
