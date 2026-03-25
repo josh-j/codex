@@ -49,10 +49,14 @@ class NavBuilder:
         self._has_stig_fleet = has_stig_fleet
         self._has_site_report = has_site_report
 
-        # Pre-compute immutable indices
-        p_dirs = sorted(set(self._hosts_data.values()))
+        # Pre-compute immutable indices.
+        # Use generated_fleet_dirs as the authoritative list of platforms
+        # that have rendered reports (handles cases where hosts appear in
+        # multiple platform dirs, e.g. a vCenter hostname in vcsa, esxi, vm).
         if self._generated_fleet_dirs is not None:
-            p_dirs = [d for d in p_dirs if d in self._generated_fleet_dirs]
+            p_dirs = sorted(self._generated_fleet_dirs)
+        else:
+            p_dirs = sorted(set(self._hosts_data.values()))
         self._platform_dirs: list[str] = p_dirs
 
         # Sibling index: report_dir → sorted list of hostnames
