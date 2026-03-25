@@ -168,11 +168,12 @@ def build_site_dashboard_view(
                 if infra_field in infra:
                     platform_data[infra_field] = infra[infra_field]
 
-        platforms_dict[audit_key] = platform_data
+        # Only include platforms that have generated reports
+        has_reports = generated_fleet_dirs is None or entry.report_dir in generated_fleet_dirs
+        if has_reports:
+            platforms_dict[audit_key] = platform_data
 
-        if to_int(asset_count) > 0 and (
-            generated_fleet_dirs is None or entry.report_dir in generated_fleet_dirs
-        ):
+        if to_int(asset_count) > 0 and has_reports:
             site_entries_with_assets.append({"display_name": display, "fleet_link": fleet_link})
 
     # Build nav using NavBuilder
