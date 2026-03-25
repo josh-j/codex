@@ -346,6 +346,16 @@ stig-audit-vm-site site:
         -l {{ site }}_vcenters \
         -f 14
 
+# --- VCSA Health ---
+
+# Run VCSA health audit (all sites or limited)
+audit-vcsa target="vcenters":
+    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ target }} -v
+
+# Run VCSA health audit for a single site
+audit-vcsa-site site:
+    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ site }}_vcenters
+
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 
 # Audit all VCSA components
