@@ -1,5 +1,11 @@
 ---
 # internal.vmware.esxi : collect/export.yaml
+#
+# Emits ESXi collection data via set_stats.  The per_host_split config
+# tells the ncs_collector callback to extract individual ESXi host
+# entries from hosts_info.host_facts and persist each under its own
+# directory (vmware/esxi/{esxi_hostname}/) instead of the vCenter
+# inventory hostname.
 
 - name: "ESXi | Emit collection telemetry"
   ansible.builtin.set_stats:
@@ -9,6 +15,9 @@
         report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
         name: "esxi"
         payload: "{{ vmware_raw_esxi }}"
+        per_host_split:
+          list_path: "hosts_info.host_facts"
+          name_key: "item"
         config:
           vmware_cpu_critical_pct: "{{ vmware_cpu_critical_pct | default(90) }}"
           vmware_memory_critical_pct: "{{ vmware_memory_critical_pct | default(90) }}"

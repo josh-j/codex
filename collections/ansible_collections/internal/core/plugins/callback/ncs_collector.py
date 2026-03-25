@@ -869,7 +869,106 @@ class CallbackModule(CallbackBase):
     # ------------------------------------------------------------------
 
     def _persist_host_data(self, host: str, collect_data: dict[str, Any]):
-        """Write collection payload and config to disk."""
+        """Write collection payload and config to disk.
+
+        When ``per_host_split`` is present in *collect_data*, the payload is
+        split into per-host entries and each is persisted under its own
+        directory.  This is used for ESXi collection where data is gathered
+        via vCenter but should be stored per-ESXi-host.
+
+        ``per_host_split`` is a dict with:
+        - ``list_path``: dot-separated path into the payload to a list or
+          dict-of-lists whose inner results contain per-host entries.
+        - ``name_key``: key within each entry that holds the hostname
+          (e.g. ``"item"`` for Ansible loop results).
+        """
+        split_cfg = collect_data.get("per_host_split")
+        if isinstance(split_cfg, dict):
+            self._persist_host_data_split(host, collect_data, split_cfg)
+            return
+
+        self._persist_single_host(host, collect_data)
+
+    def _persist_host_data_split(
+        self,
+        ansible_host: str,
+        collect_data: dict[str, Any],
+        split_cfg: dict[str, str],
+    ):
+        """Split payload into per-host entries and persist each separately."""
+        payload = collect_data.get("payload")
+        if not isinstance(payload, dict):
+            self._display.warning(
+                f"[ncs_collector] per_host_split requires a dict payload for '{ansible_host}'"
+            )
+            self._persist_single_host(ansible_host, collect_data)
+            return
+
+        list_path = str(split_cfg.get("list_path", "")).strip()
+        name_key = str(split_cfg.get("name_key", "item")).strip()
+        if not list_path:
+            self._display.warning(
+                f"[ncs_collector] per_host_split missing list_path for '{ansible_host}'"
+            )
+            self._persist_single_host(ansible_host, collect_data)
+            return
+
+        # Navigate into the payload to find the list
+        obj: Any = payload
+        for part in list_path.split("."):
+            if isinstance(obj, dict):
+                obj = obj.get(part, {})
+            else:
+                obj = {}
+                break
+
+        # Extract list items (handle Ansible register format with .results)
+        items: list[dict[str, Any]] = []
+        if isinstance(obj, dict) and "results" in obj:
+            items = obj.get("results", [])
+        elif isinstance(obj, list):
+            items = obj
+        elif isinstance(obj, dict):
+            items = list(obj.values()) if obj else []
+
+        if not items:
+            self._display.warning(
+                f"[ncs_collector] per_host_split found no items at '{list_path}' for '{ansible_host}'"
+            )
+            self._persist_single_host(ansible_host, collect_data)
+            return
+
+        # Persist each host entry
+        persisted = 0
+        for entry in items:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("failed") or entry.get("skipped"):
+                continue
+            entry_host = str(entry.get(name_key, "")).strip()
+            if not entry_host:
+                continue
+
+            # Build a per-host collect_data with the full payload
+            # (the reporter's split_field handles the actual field extraction)
+            per_host_data = dict(collect_data)
+            per_host_data.pop("per_host_split", None)
+            self._persist_single_host(entry_host, per_host_data)
+            persisted += 1
+
+        if persisted == 0:
+            self._display.warning(
+                f"[ncs_collector] per_host_split yielded no valid hosts for '{ansible_host}'"
+            )
+            self._persist_single_host(ansible_host, collect_data)
+        else:
+            self._display.display(
+                f"[ncs_collector] Split '{ansible_host}' into {persisted} per-host entries",
+                color="cyan",
+            )
+
+    def _persist_single_host(self, host: str, collect_data: dict[str, Any]):
+        """Write collection payload and config to disk for a single host."""
         platform_dir = collect_data.get("platform_dir", collect_data.get("platform", "unknown"))
         payload = collect_data.get("payload")
         config = collect_data.get("config")
