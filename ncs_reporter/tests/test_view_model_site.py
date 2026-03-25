@@ -117,8 +117,8 @@ class TestBuildSiteDashboardView:
         assert len(view["compute"]["nodes"]) == 1
         assert view["compute"]["nodes"][0]["host"] == "vc1"
 
-    def test_no_groups_defaults_to_zero(self):
+    def test_no_groups_counts_from_actual_hosts(self):
         hosts = {"hosts": {"h1": _linux_bundle()}}
         view = build_site_dashboard_view(hosts)
-        assert view["platforms"]["linux"]["asset_count"] == 0
+        assert view["platforms"]["linux"]["asset_count"] == 1
         assert view["platforms"]["vcenter"]["asset_count"] == 0
