@@ -1,0 +1,40 @@
+{#- Generic breadcrumb bar macro.
+
+    Renders a list of typed crumb dicts produced by NavBuilder.
+    Crumb types: link, label, dropdown, search.
+-#}
+{% macro breadcrumb_bar(crumbs) %}
+{% if crumbs %}
+<div class="breadcrumb">
+    {% for crumb in crumbs %}
+    {#- separator between visible crumbs (skip before first and before search) -#}
+    {% if not loop.first and crumb.type != 'search' %}<span class="sep">&rsaquo;</span>{% endif %}
+
+    {% if crumb.type == 'link' %}
+    <a href="{{ crumb.href }}" title="Go to {{ crumb.text }}">{% if crumb.get('icon') == 'home' %}<span class="site-home">&#x2302;</span>{% endif %}{{ crumb.text }}</a>
+
+    {%- elif crumb.type == 'label' %}
+    {% if crumb.get('icon') == 'home' %}<span class="site-home">&#x2302;</span>{% endif %}<strong>{{ crumb.text }}</strong>
+
+    {%- elif crumb.type == 'dropdown' %}
+    <div class="nav-tree">
+        {% if crumb.get('href') %}<a href="{{ crumb.href }}" class="tree-label">{{ crumb.text }}</a>{% else %}<span class="tree-label">{{ crumb.text }}</span>{% endif %}
+        <span class="tree-trigger">&#9660;</span>
+        <div class="nav-dropdown{{ ' nav-dropdown-scroll' if crumb.get('scrollable') else '' }}">
+            <div class="dropdown-group">{{ crumb.group_label }}</div>
+            {% for item in crumb.get('items', []) %}
+            <a href="{{ item.href }}"{% if item.active or item.css_class %} class="{{ 'active' if item.active else '' }} {{ item.css_class or '' }}"{% endif %}>{{ item.text }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    {%- elif crumb.type == 'search' %}
+    <div class="nav-search" data-root="{{ crumb.search_root }}">
+        <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
+        <div class="search-results nav-dropdown"></div>
+    </div>
+    {%- endif %}
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

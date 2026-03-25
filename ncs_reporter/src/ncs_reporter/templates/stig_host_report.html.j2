@@ -17,80 +17,8 @@
 <body>
 <div class="page-wrap">
 
-    {# Breadcrumb navigation #}
-    {% if nav.get('site_report') or nav.get('fleet_report') %}
-    <div class="breadcrumb">
-        {% if nav.get('site_report') %}
-        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
-        {% endif %}
-        
-        {% if nav.get('tree_fleets') %}
-        <div class="nav-tree">
-            <a href="{{ nav.fleet_report or '#' }}" class="tree-label">STIG Fleet</a>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown">
-                <div class="dropdown-group">Fleets</div>
-                {% for f in nav.tree_fleets %}
-                <a href="{{ f.report }}" class="{{ 'active' if f.name == 'STIG' else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
-                    {{ f.name }} Fleet
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        <span class="sep">&rsaquo;</span>
-        {% elif nav.get('fleet_report') %}
-        <a href="{{ nav.fleet_report }}">{{ nav.get('fleet_label', 'STIG Fleet Dashboard') }}</a><span class="sep">&rsaquo;</span>
-        {% endif %}
-
-        {% if nav.get('tree_host_peers') %}
-        <div class="nav-tree">
-            <span class="tree-label">{{ target.get('host', 'host') }}</span>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown nav-dropdown-scroll">
-                <div class="dropdown-group">Hosts</div>
-                {% for p in nav.tree_host_peers %}
-                <a href="{{ p.report }}" class="{{ 'active' if p.name == target.get('host') else '' }}">{{ p.name }}</a>
-                {% endfor %}
-            </div>
-        </div>
-        {% else %}
-        <span>{{ target.get('host', 'host') }}</span>
-        {% endif %}
-
-        {% if nav.get('tree_siblings') %}
-        <span class="sep">&rsaquo;</span>
-        <div class="nav-tree">
-            <span class="tree-label">{{ target.get('target_type', 'unknown') | upper }} STIG</span>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown">
-                <div class="dropdown-group">STIG Audits</div>
-                <a href="#" class="active">{{ target.get('target_type', 'unknown') | upper }} STIG</a>
-                {% for s in nav.tree_siblings %}
-                <a href="{{ s.report }}">{{ s.name }}</a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if nav.history %}
-        <span class="sep">&rsaquo;</span>
-        <div class="nav-tree">
-            <span class="tree-label">History</span>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown nav-dropdown-scroll">
-                <div class="dropdown-group">Report Versions</div>
-                {% for h in nav.history %}
-                <a href="{{ h.url }}">{{ h.name }}</a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-        <div class="nav-search" data-root="{{ nav.get('search_root', './') }}">
-            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
-            <div class="search-results nav-dropdown"></div>
-        </div>
-    </div>
-    {% endif %}
+    {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
     <div class="page-header">
         <div>

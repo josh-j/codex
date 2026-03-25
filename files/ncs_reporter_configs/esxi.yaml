@@ -34,7 +34,7 @@ fleet_columns:
 
 fields:
   # Raw data references for the assembly script
-  hosts_info: ".hosts_info"
+  hosts_info: ".hosts_info | dict"
   clusters_info_results: ".clusters_info.results | list"
 
   # Assembly script: merges raw host_facts, host_nics, host_services

@@ -452,18 +452,20 @@ def _build_stig_host_nav(
     *,
     ctx: StigNavContext,
     registry: PlatformRegistry,
+    target_type: str = "",
 ) -> dict[str, Any]:
     """Build the nav-tree dict for a STIG host report."""
+    common_kw: dict[str, Any] = dict(
+        base_nav=ctx.nav,
+        history=ctx.history,
+        stig_host_peers=ctx.stig_host_peers,
+        stig_siblings=ctx.stig_siblings,
+        host_bundle=ctx.host_bundle,
+        audit_type=str(audit_type or ""),
+        target_type=target_type,
+    )
     if ctx.nav_builder is not None:
-        return ctx.nav_builder.build_for_stig_host(
-            hostname,
-            base_nav=ctx.nav,
-            history=ctx.history,
-            stig_host_peers=ctx.stig_host_peers,
-            stig_siblings=ctx.stig_siblings,
-            host_bundle=ctx.host_bundle,
-            audit_type=str(audit_type or ""),
-        )
+        return ctx.nav_builder.build_for_stig_host(hostname, **common_kw)
 
     # Fallback: create a NavBuilder on the fly from context params so the
     # same logic is used regardless of whether the caller passed one.
@@ -475,15 +477,7 @@ def _build_stig_host_nav(
         has_stig_fleet=True,
         has_site_report=bool(ctx.nav and ctx.nav.get("site_report")),
     )
-    return fallback_builder.build_for_stig_host(
-        hostname,
-        base_nav=ctx.nav,
-        history=ctx.history,
-        stig_host_peers=ctx.stig_host_peers,
-        stig_siblings=ctx.stig_siblings,
-        host_bundle=ctx.host_bundle,
-        audit_type=str(audit_type or ""),
-    )
+    return fallback_builder.build_for_stig_host(hostname, **common_kw)
 
 
 def build_stig_host_view(
@@ -525,6 +519,7 @@ def build_stig_host_view(
         hostname, audit_type,
         ctx=nav_ctx,
         registry=reg,
+        target_type=target_type,
     )
 
     return {
@@ -642,10 +637,11 @@ def _build_fleet_nav(
     generated_fleet_dirs: set[str] | None,
     registry: PlatformRegistry,
     nav_builder: NavBuilder | None = None,
+    host_links: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Build the nav-tree dict for the STIG fleet report."""
     if nav_builder is not None:
-        return nav_builder.build_for_stig_fleet(by_platform, base_nav=nav)
+        return nav_builder.build_for_stig_fleet(by_platform, base_nav=nav, host_links=host_links)
 
     # Fallback: create a NavBuilder on the fly so the same logic is used.
     from .nav_builder import NavBuilder
@@ -654,7 +650,7 @@ def _build_fleet_nav(
         generated_fleet_dirs=generated_fleet_dirs,
         has_stig_fleet=True,
     )
-    return fallback_builder.build_for_stig_fleet(by_platform, base_nav=nav)
+    return fallback_builder.build_for_stig_fleet(by_platform, base_nav=nav, host_links=host_links)
 
 
 def build_stig_fleet_view(
@@ -744,11 +740,16 @@ def build_stig_fleet_view(
     )
     acc.rows.sort(key=lambda x: (str(x["platform"]), str(x["host"])))
 
+    _host_links = [
+        {"name": row.get("host", ""), "href": row.get("links", {}).get("node_report_latest", "#")}
+        for row in acc.rows
+    ]
     nav_with_tree = _build_fleet_nav(
         nav, acc.by_platform,
         generated_fleet_dirs=generated_fleet_dirs,
         registry=reg,
         nav_builder=nav_builder,
+        host_links=_host_links,
     )
 
     return {

@@ -109,6 +109,45 @@ class TestHtmlReportsE2E(unittest.TestCase):
         with open(self.vmware_dir / "raw_vcenter.yaml", "w") as f:
             yaml.dump(vmware_data, f)
 
+        # 2b. ESXi per-host health data (collected via vCenter, stored alongside raw_vcenter)
+        esxi_data = {
+            "metadata": {"host": "vc-01", "audit_type": "raw_esxi", "raw_type": "esxi",
+                         "timestamp": "2026-02-26T23:00:00Z"},
+            "data": {
+                "hosts_info": {
+                    "host_facts": {"results": [{
+                        "item": "esxi-01.local",
+                        "ansible_facts": {
+                            "ansible_distribution_version": "7.0.3",
+                            "ansible_distribution_build": "12345",
+                            "ansible_memtotal_mb": 65536,
+                            "ansible_memfree_mb": 32768,
+                            "ansible_uptime": 86400,
+                            "ansible_overall_status": "green",
+                            "ansible_host_connection_state": "connected",
+                            "ansible_in_maintenance_mode": False,
+                            "ansible_lockdown_mode": "disabled",
+                            "ansible_datastore": [{"name": "ds1", "total": "1TB", "free": "500GB"}],
+                        },
+                    }]},
+                    "host_nics": {"results": []},
+                    "host_services": {"results": []},
+                },
+                "clusters_info": {
+                    "results": [{
+                        "item": "DC1",
+                        "clusters": {"Cluster-A": {"hosts": [{"name": "esxi-01.local"}]}},
+                    }],
+                },
+                "datastores_info": {"datastores": []},
+                "config": {},
+                "collection_status": "SUCCESS",
+                "collection_error": "",
+            },
+        }
+        with open(self.vmware_dir / "raw_esxi.yaml", "w") as f:
+            yaml.dump(esxi_data, f)
+
         # 3. Windows Data
         self.windows_dir = self.platform_root / "windows" / "win-01"
         self.windows_dir.mkdir(parents=True)
@@ -173,6 +212,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         # Check Platform Reports
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcenter_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "esxi" / "esxi_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
 
         # Check Node Reports
@@ -181,6 +221,11 @@ class TestHtmlReportsE2E(unittest.TestCase):
         )
         self.assertTrue(
             (self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html").exists()
+        )
+        # ESXi hosts are split from vCenter bundle into per-host reports
+        self.assertTrue(
+            (self.reports_root / "platform" / "vmware" / "esxi" / "esxi-01.local" / "health_report.html").exists(),
+            "ESXi per-host report should be created via split_field expansion",
         )
         self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").exists())
 
