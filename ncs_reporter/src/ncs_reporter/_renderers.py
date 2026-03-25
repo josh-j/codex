@@ -226,6 +226,7 @@ def render_platform(
         if schema.split_field:
             effective_hosts = _split_hosts_data(hosts_data, schema)
 
+        rendered_host_count = 0
         for hostname, bundle in effective_hosts.items():
             # For non-primary schemas in a multi-schema render, skip hosts
             # that lack detection keys (e.g. skip ESXi-only hosts in the
@@ -235,6 +236,7 @@ def render_platform(
                 if det.keys_any and not any(k in bundle for k in det.keys_any):
                     continue
 
+            rendered_host_count += 1
             host_dir = output_path / hostname
             host_dir.mkdir(exist_ok=True)
             node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}"
@@ -262,6 +264,10 @@ def render_platform(
 
             content = node_tpl.render(generic_node_view=node_view, **common_vars)
             write_report(host_dir, f"{node_file_stem}.html", content, stamp)
+
+        # Skip fleet report when no hosts matched this schema's detection keys.
+        if rendered_host_count == 0:
+            continue
 
         if has_site_report:
             fleet_nav["site_report"] = rel_href(f"{PLATFORM_DIR_PREFIX}/{report_dir}", site_report_abs)

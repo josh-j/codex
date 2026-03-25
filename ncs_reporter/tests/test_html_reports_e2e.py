@@ -109,7 +109,9 @@ class TestHtmlReportsE2E(unittest.TestCase):
         with open(self.vmware_dir / "raw_vcenter.yaml", "w") as f:
             yaml.dump(vmware_data, f)
 
-        # 2b. ESXi per-host health data (collected via vCenter, stored alongside raw_vcenter)
+        # 2b. ESXi per-host health data (separate input_dir: vmware/esxi)
+        self.esxi_dir = self.platform_root / "vmware" / "esxi" / "vc-01"
+        self.esxi_dir.mkdir(parents=True)
         esxi_data = {
             "metadata": {"host": "vc-01", "audit_type": "raw_esxi", "raw_type": "esxi",
                          "timestamp": "2026-02-26T23:00:00Z"},
@@ -145,7 +147,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "collection_error": "",
             },
         }
-        with open(self.vmware_dir / "raw_esxi.yaml", "w") as f:
+        with open(self.esxi_dir / "raw_esxi.yaml", "w") as f:
             yaml.dump(esxi_data, f)
 
         # 3. Windows Data

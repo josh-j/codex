@@ -2,7 +2,7 @@ name: esxi
 display_name: "VMware ESXi"
 platform:
   name: vmware
-  input_dir: vmware/vcenter
+  input_dir: vmware/esxi
   report_dir: vmware/esxi
   display_name: "VMware ESXi"
   asset_label: ESXi Hosts

@@ -425,6 +425,38 @@ def _augment_platforms_from_schemas(
         })
 
 
+def _bundle_matches_schemas(
+    bundle: dict[str, Any],
+    schema_names: list[str],
+    all_schemas: dict[str, Any],
+) -> bool:
+    """Return True if *bundle* matches the detection keys of any listed schema."""
+    for sn in schema_names:
+        schema = all_schemas.get(sn)
+        if not schema:
+            return True  # unknown schema — assume match
+        det = schema.detection
+        if not det.keys_any and not det.keys_all:
+            return True  # no filter = match all
+        if det.keys_any and any(k in bundle for k in det.keys_any):
+            return True
+        if det.keys_all and all(k in bundle for k in det.keys_all):
+            return True
+    return False
+
+
+def _any_host_matches_schemas(
+    hosts: dict[str, dict[str, Any]],
+    schema_names: list[str],
+    all_schemas: dict[str, Any],
+) -> bool:
+    """Return True if any host bundle matches the detection keys of listed schemas."""
+    for bundle in hosts.values():
+        if _bundle_matches_schemas(bundle, schema_names, all_schemas):
+            return True
+    return False
+
+
 def _aggregate_platforms(
     platforms: list[dict[str, Any]],
     p_root: Path,
@@ -452,6 +484,19 @@ def _aggregate_platforms(
     _loaded_platform_cache: dict[str, dict[str, Any] | None] = {}
     _changed_dirs: set[str] = set()
 
+    # Identify input_dirs shared by multiple platform entries.  When an
+    # input_dir is shared (e.g. vmware/vcenter used by esxi, vcsa, vm),
+    # we filter render tasks by schema detection keys so that only entries
+    # with matching data get rendered.
+    from collections import Counter as _Counter
+    _input_dir_counts = _Counter(p["input_dir"] for p in platforms)
+    _shared_input_dirs = {d for d, c in _input_dir_counts.items() if c > 1}
+
+    _cached_schemas: dict[str, Any] | None = None
+    if _shared_input_dirs:
+        from .schema_loader import discover_schemas as _discover_schemas
+        _cached_schemas = _discover_schemas(extra_dirs)
+
     for p in platforms:
         p_input = p["input_dir"]
         p_dir = p_root / p_input
@@ -469,7 +514,8 @@ def _aggregate_platforms(
             _loaded_platform_cache[p_input] = p_data
             all_platform_data[p_input] = p_data
             for hostname in p_data["hosts"]:
-                global_inventory_index[hostname] = p["report_dir"]
+                if hostname not in global_inventory_index:
+                    global_inventory_index[hostname] = p["report_dir"]
             state_path = str(p_dir / p["state_file"])
             if not force and hosts_unchanged(p_data, state_path):
                 click.echo(f"  {p_input} unchanged, skipping.")
@@ -483,6 +529,17 @@ def _aggregate_platforms(
 
         if p_input not in _changed_dirs:
             continue
+
+        # When multiple entries share the same input_dir, skip this entry
+        # if no host bundles match its schema detection keys.
+        if p_input in _shared_input_dirs and _cached_schemas is not None:
+            schema_names = p.get("schema_names", [])
+            if schema_names and not _any_host_matches_schemas(
+                p_data["hosts"], schema_names, _cached_schemas,
+            ):
+                click.echo(f"  Skipping {p['report_dir']}: no data matches schemas {schema_names}")
+                continue
+
         if p.get("render", True):
             from .models.platforms_config import PLATFORM_DIR_PREFIX as _PDP
             output_dir = r_root / _PDP / p["report_dir"]

@@ -2,7 +2,7 @@ name: vm
 display_name: "VMware VM Workload Health"
 platform:
   name: vmware
-  input_dir: vmware/vcenter
+  input_dir: vmware/vm
   report_dir: vmware/vm
   display_name: "VMware VM"
   asset_label: vCenters

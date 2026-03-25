@@ -168,7 +168,7 @@ class TestStigE2E(unittest.TestCase):
         fleet_content = fleet_report.read_text()
         self.assertIn("esxi-01", fleet_content)
         self.assertTrue(_has_attr(fleet_content, "href", "site_health_report.html"))
-        self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/vcsa/vcenter_fleet_report.html"))
+        # vcsa fleet link only appears when vcsa health data exists
         self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html"))
         self.assertTrue(_has_attr(fleet_content, "data-root", "./"))
 
