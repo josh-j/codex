@@ -69,6 +69,7 @@ def build_site_dashboard_view(
     site_entries = reg.site_dashboard_entries()
 
     host_report_dirs: dict[str, str] = {}
+    hosts_per_audit_key: dict[str, int] = {}
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for entry in site_entries:
             audit_key = entry.site_audit_key
@@ -77,6 +78,7 @@ def build_site_dashboard_view(
             audit = _get_schema_audit(bundle, audit_key)
             if not audit:
                 continue
+            hosts_per_audit_key[audit_key] = hosts_per_audit_key.get(audit_key, 0) + 1
             if hostname not in host_report_dirs:
                 host_report_dirs[hostname] = entry.report_dir
 
@@ -149,7 +151,7 @@ def build_site_dashboard_view(
         display = entry.display_name or p_name.capitalize()
         asset_label = entry.asset_label
         fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
-        asset_count = to_int(reg.count_inventory_assets(entry, groups))
+        asset_count = hosts_per_audit_key.get(audit_key, 0)
         audit_type_key = f"schema_{audit_key}"
         p_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == audit_type_key])
         p_status = aggregate_platform_status(all_alerts, audit_type_key)

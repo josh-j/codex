@@ -7,6 +7,16 @@
       appliance_health_info: "{{ _raw_appliance_health | default({}) }}"
       appliance_backup_info: "{{ _raw_appliance_backup | default({}) }}"
       alarms_info: "{{ _raw_alarms | default({}) }}"
+      datacenters_info: "{{ _raw_datacenters | default({}) }}"
+      clusters_info: "{{ _raw_clusters | default({}) }}"
+      datastores_info:
+        datastores: >-
+          {{
+            _raw_datastores.results | default([])
+            | selectattr('datastores', 'defined')
+            | map(attribute='datastores')
+            | flatten | list
+          }}
       config: "{{ vcenter.config | default({}) }}"
       collection_status: "{{ 'FAILED' if vcsa_collect_failed | default(vcenter_collect_failed | default(false)) | bool else 'SUCCESS' }}"
       collection_error: "{{ vcsa_connectivity_error | default(vcenter_connectivity_error | default('')) }}"

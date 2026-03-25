@@ -22,11 +22,21 @@
           _raw_appliance_health: {}
           _raw_appliance_backup: {}
           _raw_alarms: {}
+          _raw_datacenters: {}
+          _raw_clusters: {}
+          _raw_datastores: {}
 
     - name: Collect | Simulated vCenter State
       ansible.builtin.include_tasks: collect/simulated.yaml
       tags: [collect, simulation]
       when: simulation_mode | default(false) | bool
+
+    - name: Collect | vCenter Infrastructure Inventory
+      ansible.builtin.include_tasks: collect/inventory.yaml
+      tags: [collect, inventory]
+      when:
+        - not (simulation_mode | default(false) | bool)
+        - vcsa_collect_inventory | default(true) | bool
 
     - name: Collect | vCenter Appliance State
       ansible.builtin.include_tasks: collect/appliance.yaml

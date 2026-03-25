@@ -72,6 +72,23 @@ fields:
   backup_schedules: ".appliance_backup_info.schedules | list"
   backup_schedule_count: ".appliance_backup_info.schedules | len_if_list | int"
 
+  # --- Infrastructure Inventory ---
+  datacenter_count: ".datacenters_info.datacenter_info | len_if_list | int"
+  clusters_info_results: ".clusters_info.results | list"
+  cluster_count:
+    script: "count_clusters_and_hosts.py"
+    script_args: { metric: "cluster_count" }
+    type: int
+  esxi_host_count:
+    script: "count_clusters_and_hosts.py"
+    script_args: { metric: "esxi_host_count" }
+    type: int
+  datastore_count: ".datastores_info.datastores | len_if_list | int"
+  datastores: ".datastores_info.datastores | list"
+  vcenter_count:
+    compute: "1"
+    type: int
+
   # --- Alarms ---
   active_alarms: ".alarms_info.alarms | list"
   active_critical_alarm_count:
@@ -129,10 +146,14 @@ widgets:
       - "Description: description"
 
   - id: inventory_kpis
-    title: "Appliance KPIs"
+    title: "Infrastructure & Appliance KPIs"
     type: stat_cards
     layout: { width: "full" }
     cards:
+      - { field: datacenter_count, label: "Datacenters" }
+      - { field: cluster_count, label: "Clusters" }
+      - { field: esxi_host_count, label: "ESXi Hosts" }
+      - { field: datastore_count, label: "Datastores" }
       - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
       - { field: backup_schedule_count, label: "Backup Schedules" }
 
@@ -149,6 +170,14 @@ widgets:
       - "Uptime (days): appliance_uptime_days"
       - "SSH Enabled: ssh_enabled [badge]"
       - "NTP Mode: ntp_mode"
+
+  - table: "Datastores"
+    visible_if: { op: gt, field: datastore_count, threshold: 0 }
+    rows: datastores
+    columns:
+      - "Name: name"
+      - "Capacity: capacity"
+      - "Free Space: freeSpace"
 
   - table: "Backup Schedules"
     visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }
