@@ -83,8 +83,14 @@ fields:
     script: "count_clusters_and_hosts.py"
     script_args: { metric: "esxi_host_count" }
     type: int
+  clusters:
+    script: "get_clusters_list.py"
+    type: list
+  datastores_raw: ".datastores_info.datastores | list"
   datastore_count: ".datastores_info.datastores | len_if_list | int"
-  datastores: ".datastores_info.datastores | list"
+  datastores:
+    script: "normalize_datastores.py"
+    type: list
   vcenter_count:
     compute: "1"
     type: int
@@ -171,13 +177,26 @@ widgets:
       - "SSH Enabled: ssh_enabled [badge]"
       - "NTP Mode: ntp_mode"
 
+  - table: "Clusters"
+    visible_if: { op: gt, field: cluster_count, threshold: 0 }
+    rows: clusters
+    columns:
+      - "Cluster: name"
+      - "Datacenter: datacenter"
+      - "Hosts: host_count"
+      - "HA: ha_enabled [badge]"
+      - "DRS: drs_enabled [badge]"
+      - "CPU %: cpu_usage_pct"
+      - "Mem %: mem_usage_pct"
+
   - table: "Datastores"
     visible_if: { op: gt, field: datastore_count, threshold: 0 }
     rows: datastores
     columns:
       - "Name: name"
-      - "Capacity: capacity"
-      - "Free Space: freeSpace"
+      - "Capacity (GB): capacity_gb"
+      - "Free (GB): free_gb"
+      - "Used %: used_pct"
 
   - table: "Backup Schedules"
     visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }
