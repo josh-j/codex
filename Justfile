@@ -182,6 +182,14 @@ audit-esxi target="vcenters":
 audit-esxi-site site:
     {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ site }}_vcenters
 
+# Run VM workload audit (all sites or limited)
+audit-vm target="vcenters":
+    {{ ansible_playbook }} playbooks/vm/audit.yml -l {{ target }} -v
+
+# Run VM workload audit for a single site
+audit-vm-site site:
+    {{ ansible_playbook }} playbooks/vm/audit.yml -l {{ site }}_vcenters
+
 # Run Ubuntu audit
 audit-ubuntu target="ubuntu_servers":
     {{ ansible_playbook }} playbooks/ubuntu/audit.yml -l {{ target }}
