@@ -1,6 +1,10 @@
 ---
 # internal.vmware.vcsa : collect/inventory.yaml
-# Queries datacenters, clusters, and datastores from vCenter for the VCSA report.
+# Queries infrastructure inventory from vCenter for the VCSA report:
+# datacenters, clusters, datastores, resource pools, distributed switches,
+# licenses, extensions, content libraries, and tags.
+
+# --- Core Infrastructure ---
 
 - name: Inventory | Query Datacenters
   community.vmware.vmware_datacenter_info:
@@ -46,3 +50,87 @@
   when:
     - vcsa_collect_storage | default(true) | bool
     - _vcenter_datacenters | default([]) | length > 0
+
+# --- Resource Pools ---
+
+- name: Inventory | Query Resource Pools
+  community.vmware.vmware_resource_pool_info:
+  register: _raw_resource_pools
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_resource_pools | default(true) | bool
+
+# --- Networking (Distributed Switches) ---
+
+- name: Inventory | Query Distributed Switches
+  community.vmware.vmware_dvswitch_info:
+  register: _raw_dvswitches
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_networking | default(true) | bool
+
+- name: Inventory | Query Distributed Portgroups
+  community.vmware.vmware_dvs_portgroup_info:
+  register: _raw_dvs_portgroups
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_networking | default(true) | bool
+
+# --- Licensing ---
+
+- name: Inventory | Query Licenses
+  community.vmware.vmware_license_info:
+  register: _raw_licenses
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_licenses | default(true) | bool
+
+# --- Extensions ---
+
+- name: Inventory | Query vCenter Extensions
+  community.vmware.vcenter_extension_info:
+  register: _raw_extensions
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_extensions | default(true) | bool
+
+# --- Content Libraries ---
+
+- name: Inventory | Query Content Libraries
+  community.vmware.vmware_content_library_info:
+  register: _raw_content_libraries
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_content_libraries | default(true) | bool
+
+# --- Tags ---
+
+- name: Inventory | Query Tag Categories
+  community.vmware.vmware_category_info:
+  register: _raw_tag_categories
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_tags | default(true) | bool
+
+- name: Inventory | Query Tags
+  community.vmware.vmware_tag_info:
+  register: _raw_tags
+  delegate_to: localhost
+  no_log: true
+  failed_when: false
+  changed_when: false
+  when: vcsa_collect_tags | default(true) | bool

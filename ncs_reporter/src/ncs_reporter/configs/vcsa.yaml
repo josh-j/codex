@@ -95,6 +95,34 @@ fields:
     compute: "1"
     type: int
 
+  # --- Resource Pools ---
+  resource_pools: ".resource_pools_info.resource_pool_info | list"
+  resource_pool_count: ".resource_pools_info.resource_pool_info | len_if_list | int"
+
+  # --- Networking ---
+  dvswitches: ".dvswitches_info.distributed_virtual_switches | list"
+  dvswitch_count: ".dvswitches_info.distributed_virtual_switches | len_if_list | int"
+  dvs_portgroups: ".dvs_portgroups_info.dvs_portgroup_info | list"
+  dvs_portgroup_count: ".dvs_portgroups_info.dvs_portgroup_info | len_if_list | int"
+
+  # --- Licensing ---
+  licenses: ".licenses_info.licenses | list"
+  license_count: ".licenses_info.licenses | len_if_list | int"
+
+  # --- Extensions ---
+  extensions: ".extensions_info.ext_facts | list"
+  extension_count: ".extensions_info.ext_facts | len_if_list | int"
+
+  # --- Content Libraries ---
+  content_libraries: ".content_libraries_info.content_libs | list"
+  content_library_count: ".content_libraries_info.content_libs | len_if_list | int"
+
+  # --- Tags ---
+  tag_categories: ".tag_categories_info.tag_category_info | list"
+  tag_category_count: ".tag_categories_info.tag_category_info | len_if_list | int"
+  tags: ".tags_info.tag_info | list"
+  tag_count: ".tags_info.tag_info | len_if_list | int"
+
   # --- Alarms ---
   active_alarms: ".alarms_info.alarms | list"
   active_critical_alarm_count:
@@ -152,7 +180,7 @@ widgets:
       - "Description: description"
 
   - id: inventory_kpis
-    title: "Infrastructure & Appliance KPIs"
+    title: "Infrastructure KPIs"
     type: stat_cards
     layout: { width: "full" }
     cards:
@@ -160,8 +188,10 @@ widgets:
       - { field: cluster_count, label: "Clusters" }
       - { field: esxi_host_count, label: "ESXi Hosts" }
       - { field: datastore_count, label: "Datastores" }
+      - { field: dvswitch_count, label: "DVSwitches" }
+      - { field: resource_pool_count, label: "Resource Pools" }
+      - { field: license_count, label: "Licenses" }
       - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
-      - { field: backup_schedule_count, label: "Backup Schedules" }
 
   - key_value: "Appliance Overview"
     layout: { width: "half" }
@@ -176,6 +206,10 @@ widgets:
       - "Uptime (days): appliance_uptime_days"
       - "SSH Enabled: ssh_enabled [badge]"
       - "NTP Mode: ntp_mode"
+      - "Backup Schedules: backup_schedule_count"
+      - "Extensions: extension_count"
+      - "Content Libraries: content_library_count"
+      - "Tag Categories: tag_category_count"
 
   - table: "Clusters"
     visible_if: { op: gt, field: cluster_count, threshold: 0 }
@@ -197,6 +231,62 @@ widgets:
       - "Capacity (GB): capacity_gb"
       - "Free (GB): free_gb"
       - "Used %: used_pct"
+
+  - table: "Resource Pools"
+    visible_if: { op: gt, field: resource_pool_count, threshold: 0 }
+    rows: resource_pools
+    columns:
+      - "Name: name"
+      - "CPU Reservation: runtime_cpu_reservation_used"
+      - "CPU Limit: runtime_cpu_overall_usage"
+      - "Memory Reservation: runtime_memory_reservation_used"
+      - "Memory Limit: runtime_memory_overall_usage"
+
+  - table: "Distributed Switches"
+    visible_if: { op: gt, field: dvswitch_count, threshold: 0 }
+    rows: dvswitches
+    columns:
+      - "Name: name"
+      - "Ports: num_ports"
+      - "Uplinks: num_uplinks"
+      - "MTU: mtu"
+
+  - table: "Distributed Portgroups"
+    visible_if: { op: gt, field: dvs_portgroup_count, threshold: 0 }
+    rows: dvs_portgroups
+    columns:
+      - "Name: portgroup_name"
+      - "Switch: dvswitch_name"
+      - "VLAN: vlan_id"
+      - "Ports: num_ports"
+      - "Type: port_binding"
+
+  - table: "Licenses"
+    visible_if: { op: gt, field: license_count, threshold: 0 }
+    rows: licenses
+    columns:
+      - "Name: name"
+      - "Edition: edition"
+      - "Total: total"
+      - "Used: used"
+      - "Expiration: expiration_date"
+
+  - table: "Extensions"
+    visible_if: { op: gt, field: extension_count, threshold: 0 }
+    rows: extensions
+    columns:
+      - "Label: ext_label"
+      - "Company: ext_company"
+      - "Version: ext_version"
+      - "Last Heartbeat: ext_last_heartbeat_time"
+
+  - table: "Content Libraries"
+    visible_if: { op: gt, field: content_library_count, threshold: 0 }
+    rows: content_libraries
+    columns:
+      - "Name: lib_name"
+      - "Type: lib_type"
+      - "Description: lib_description"
 
   - table: "Backup Schedules"
     visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }

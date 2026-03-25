@@ -13,6 +13,17 @@ Exported by `internal.vmware.vcsa` with `ncs_action: collect`.
 | `appliance_health_info` | object | Raw result from appliance health collection. |
 | `appliance_backup_info` | object | Raw result from appliance backup schedule collection. |
 | `alarms_info` | object | Raw result from `vmware_triggered_alarms_info`. |
+| `datacenters_info` | object | Raw result from `vmware_datacenter_info`. |
+| `clusters_info` | object | Raw result from `cluster_info` (loop over datacenters). |
+| `datastores_info` | object | Flattened datastore list from `vmware_datastore_info`. |
+| `resource_pools_info` | object | Raw result from `vmware_resource_pool_info`. |
+| `dvswitches_info` | object | Raw result from `vmware_dvswitch_info`. |
+| `dvs_portgroups_info` | object | Raw result from `vmware_dvs_portgroup_info`. |
+| `licenses_info` | object | Raw result from `vmware_license_info`. |
+| `extensions_info` | object | Raw result from `vcenter_extension_info`. |
+| `content_libraries_info` | object | Raw result from `vmware_content_library_info`. |
+| `tag_categories_info` | object | Raw result from `vmware_category_info`. |
+| `tags_info` | object | Raw result from `vmware_tag_info`. |
 | `config` | object | Site/config context passed downstream to reporting. |
 | `collection_status` | string | `SUCCESS` or `FAILED`. |
 | `collection_error` | string | Failure message for preflight or collection failures. |

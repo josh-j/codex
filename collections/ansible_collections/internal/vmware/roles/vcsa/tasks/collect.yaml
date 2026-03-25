@@ -25,6 +25,14 @@
           _raw_datacenters: {}
           _raw_clusters: {}
           _raw_datastores: {}
+          _raw_resource_pools: {}
+          _raw_dvswitches: {}
+          _raw_dvs_portgroups: {}
+          _raw_licenses: {}
+          _raw_extensions: {}
+          _raw_content_libraries: {}
+          _raw_tag_categories: {}
+          _raw_tags: {}
 
     - name: Collect | Simulated vCenter State
       ansible.builtin.include_tasks: collect/simulated.yaml

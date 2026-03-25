@@ -17,6 +17,14 @@
             | map(attribute='datastores')
             | flatten | list
           }}
+      resource_pools_info: "{{ _raw_resource_pools | default({}) }}"
+      dvswitches_info: "{{ _raw_dvswitches | default({}) }}"
+      dvs_portgroups_info: "{{ _raw_dvs_portgroups | default({}) }}"
+      licenses_info: "{{ _raw_licenses | default({}) }}"
+      extensions_info: "{{ _raw_extensions | default({}) }}"
+      content_libraries_info: "{{ _raw_content_libraries | default({}) }}"
+      tag_categories_info: "{{ _raw_tag_categories | default({}) }}"
+      tags_info: "{{ _raw_tags | default({}) }}"
       config: "{{ vcenter.config | default({}) }}"
       collection_status: "{{ 'FAILED' if vcsa_collect_failed | default(vcenter_collect_failed | default(false)) | bool else 'SUCCESS' }}"
       collection_error: "{{ vcsa_connectivity_error | default(vcenter_connectivity_error | default('')) }}"
