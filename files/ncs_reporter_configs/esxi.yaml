@@ -26,24 +26,16 @@ split_field: esxi_hosts
 split_name_key: name
 
 fleet_columns:
-  - { label: "Cluster", field: cluster }
-  - { label: "Status", field: overall_status }
-  - { label: "CPU %", field: cpu_used_pct }
-  - { label: "Mem %", field: mem_used_pct }
-  - { label: "VMs", field: vm_count }
-
-# ---------------------------------------------------------------------------
-# Fields
-# ---------------------------------------------------------------------------
+  - "Cluster: cluster"
+  - "Status: overall_status"
+  - "CPU %: cpu_used_pct"
+  - "Mem %: mem_used_pct"
+  - "VMs: vm_count"
 
 fields:
   # Raw data references for the assembly script
-  hosts_info:
-    path: ".hosts_info"
-
-  clusters_info_results:
-    path: ".clusters_info.results"
-    type: list
+  hosts_info: ".hosts_info"
+  clusters_info_results: ".clusters_info.results | list"
 
   # Assembly script: merges raw host_facts, host_nics, host_services
   # into a flat list of per-host records for split_field expansion.
@@ -52,213 +44,57 @@ fields:
     type: list
 
   # Per-host fields (resolved from the split item after expansion)
-  cluster:
-    path: "cluster"
-    fallback: ""
-
-  datacenter:
-    path: "datacenter"
-    fallback: ""
-
-  connection_state:
-    path: "connection_state"
-    fallback: "unknown"
-
-  overall_status:
-    path: "overall_status"
-    fallback: "unknown"
-
-  cpu_used_pct:
-    path: "cpu_used_pct"
-    type: float
-
-  mem_used_pct:
-    path: "mem_used_pct"
-    type: float
-
-  mem_mb_total:
-    path: "mem_mb_total"
-    type: float
-
-  mem_mb_used:
-    path: "mem_mb_used"
-    type: float
-
-  vm_count:
-    path: "vm_count"
-    type: int
-
-  uptime_seconds:
-    path: "uptime_seconds"
-    type: float
-
+  cluster: "cluster = ''"
+  datacenter: "datacenter = ''"
+  connection_state: "connection_state = unknown"
+  overall_status: "overall_status = unknown"
+  cpu_used_pct: "cpu_used_pct | float"
+  mem_used_pct: "mem_used_pct | float"
+  mem_mb_total: "mem_mb_total | float"
+  mem_mb_used: "mem_mb_used | float"
+  vm_count: "vm_count | int"
+  uptime_seconds: "uptime_seconds | float"
   uptime_days:
     compute: "{uptime_seconds} / 86400"
     type: float
-
-  version:
-    path: "version"
-    fallback: ""
-
-  build:
-    path: "build"
-    fallback: ""
-
-  in_maintenance_mode:
-    path: "in_maintenance_mode"
-    type: bool
-
-  lockdown_mode:
-    path: "lockdown_mode"
-    fallback: "unknown"
-
-  ssh_enabled:
-    path: "ssh_enabled"
-    type: bool
-
-  shell_enabled:
-    path: "shell_enabled"
-    type: bool
-
-  ntp_running:
-    path: "ntp_running"
-    type: bool
-
-  datastores:
-    path: "datastores"
-    type: list
-
-  nics:
-    path: "nics"
-    type: list
-
-  vmknics:
-    path: "vmknics"
-    type: list
-
-  hardware_alerts:
-    path: "hardware_alerts"
-    type: list
-
-# ---------------------------------------------------------------------------
-# Alerts
-# ---------------------------------------------------------------------------
+  version: "version = ''"
+  build: "build = ''"
+  in_maintenance_mode: "in_maintenance_mode | bool"
+  lockdown_mode: "lockdown_mode = unknown"
+  ssh_enabled: "ssh_enabled | bool"
+  shell_enabled: "shell_enabled | bool"
+  ntp_running: "ntp_running | bool"
+  datastores: "datastores | list"
+  nics: "nics | list"
+  vmknics: "vmknics | list"
+  hardware_alerts: "hardware_alerts | list"
 
 alerts:
-  - id: host_disconnected
-    category: "Host Connectivity"
-    severity: CRITICAL
-    condition:
-      op: eq_str
-      field: connection_state
-      value: "disconnected"
-    message: "ESXi host is disconnected from vCenter"
-
-  - id: host_not_responding
-    category: "Host Connectivity"
-    severity: CRITICAL
-    condition:
-      op: eq_str
-      field: connection_state
-      value: "notResponding"
-    message: "ESXi host is not responding"
-
-  - id: host_in_maintenance
-    category: "Host Status"
-    severity: WARNING
-    condition:
-      op: eq
-      field: in_maintenance_mode
-      threshold: 1.0
-    message: "ESXi host is in maintenance mode"
-
-  - id: mem_critical
-    category: "Host Resources"
-    severity: CRITICAL
-    condition:
-      op: gte
-      field: mem_used_pct
-      threshold: 95.0
-    message: "Memory utilization critically high at {mem_used_pct:.0f}%"
-
-  - id: mem_warning
-    category: "Host Resources"
-    severity: WARNING
-    suppress_if: mem_critical
-    condition:
-      op: gte
-      field: mem_used_pct
-      threshold: 85.0
-    message: "Memory utilization elevated at {mem_used_pct:.0f}%"
-
-  - id: cpu_critical
-    category: "Host Resources"
-    severity: CRITICAL
-    condition:
-      op: gte
-      field: cpu_used_pct
-      threshold: 95.0
-    message: "CPU utilization critically high at {cpu_used_pct:.0f}%"
-
-  - id: cpu_warning
-    category: "Host Resources"
-    severity: WARNING
-    suppress_if: cpu_critical
-    condition:
-      op: gte
-      field: cpu_used_pct
-      threshold: 85.0
-    message: "CPU utilization elevated at {cpu_used_pct:.0f}%"
-
-  - id: ssh_enabled
-    category: "Security"
-    severity: WARNING
-    condition:
-      op: eq
-      field: ssh_enabled
-      threshold: 1.0
-    message: "SSH is enabled on this ESXi host"
-
-  - id: shell_enabled
-    category: "Security"
-    severity: WARNING
-    condition:
-      op: eq
-      field: shell_enabled
-      threshold: 1.0
-    message: "ESXi Shell is enabled on this host"
-
-  - id: uptime_excessive
-    category: "Host Lifecycle"
-    severity: WARNING
-    condition:
-      op: gte
-      field: uptime_days
-      threshold: 90.0
-    message: "ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
-
-# ---------------------------------------------------------------------------
-# Widgets
-# ---------------------------------------------------------------------------
+  - "host_disconnected | CRITICAL Host Connectivity | connection_state eq_str disconnected | ESXi host is disconnected from vCenter"
+  - "host_not_responding | CRITICAL Host Connectivity | connection_state eq_str notResponding | ESXi host is not responding"
+  - "host_in_maintenance | WARNING Host Status | in_maintenance_mode eq 1.0 | ESXi host is in maintenance mode"
+  - "mem_critical | CRITICAL Host Resources | mem_used_pct gte 95.0 | Memory utilization critically high at {mem_used_pct:.0f}%"
+  - "mem_warning | WARNING Host Resources | mem_used_pct gte 85.0 | Memory utilization elevated at {mem_used_pct:.0f}% | suppress=mem_critical"
+  - "cpu_critical | CRITICAL Host Resources | cpu_used_pct gte 95.0 | CPU utilization critically high at {cpu_used_pct:.0f}%"
+  - "cpu_warning | WARNING Host Resources | cpu_used_pct gte 85.0 | CPU utilization elevated at {cpu_used_pct:.0f}% | suppress=cpu_critical"
+  - "ssh_enabled | WARNING Security | ssh_enabled eq 1.0 | SSH is enabled on this ESXi host"
+  - "shell_enabled | WARNING Security | shell_enabled eq 1.0 | ESXi Shell is enabled on this host"
+  - "uptime_excessive | WARNING Host Lifecycle | uptime_days gte 90.0 | ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
 
 widgets:
-  - id: alerts
-    title: "Active Alerts"
-    type: alert_panel
+  - alert_panel: "Active Alerts"
 
-  - id: host_overview
-    title: "Host Overview"
-    type: key_value
+  - key_value: "Host Overview"
     layout: { width: "half" }
     fields:
-      - { label: "Connection State", field: connection_state, badge: true }
-      - { label: "Overall Status", field: overall_status, badge: true }
-      - { label: "Cluster", field: cluster }
-      - { label: "Datacenter", field: datacenter }
-      - { label: "Version", field: version }
-      - { label: "Build", field: build }
-      - { label: "Maintenance Mode", field: in_maintenance_mode, badge: true }
-      - { label: "Lockdown Mode", field: lockdown_mode }
+      - "Connection State: connection_state [badge]"
+      - "Overall Status: overall_status [badge]"
+      - "Cluster: cluster"
+      - "Datacenter: datacenter"
+      - "Version: version"
+      - "Build: build"
+      - "Maintenance Mode: in_maintenance_mode [badge]"
+      - "Lockdown Mode: lockdown_mode"
 
   - id: resource_kpis
     title: "Resource Utilization"
@@ -270,31 +106,25 @@ widgets:
       - { field: vm_count, label: "VMs" }
       - { field: uptime_days, label: "Uptime (days)", format: "{value:.0f}" }
 
-  - id: security_overview
-    title: "Security & Services"
-    type: key_value
+  - key_value: "Security & Services"
     layout: { width: "half" }
     fields:
-      - { label: "SSH Enabled", field: ssh_enabled, badge: true }
-      - { label: "Shell Enabled", field: shell_enabled, badge: true }
-      - { label: "NTP Running", field: ntp_running, badge: true }
+      - "SSH Enabled: ssh_enabled [badge]"
+      - "Shell Enabled: shell_enabled [badge]"
+      - "NTP Running: ntp_running [badge]"
 
-  - id: datastores_tbl
-    title: "Datastores"
-    type: table
-    rows_field: datastores
+  - table: "Datastores"
+    rows: datastores
     columns:
-      - { label: "Name", field: name }
-      - { label: "Total", field: total }
-      - { label: "Free", field: free }
+      - "Name: name"
+      - "Total: total"
+      - "Free: free"
 
-  - id: nics_tbl
-    title: "Physical NICs"
-    type: table
-    rows_field: nics
+  - table: "Physical NICs"
+    rows: nics
     columns:
-      - { label: "Device", field: device }
-      - { label: "Status", field: link_status, badge: true }
-      - { label: "Speed (Mbps)", field: speed_mbps }
-      - { label: "Driver", field: driver }
-      - { label: "Switch", field: switch }
+      - "Device: device"
+      - "Status: link_status [badge]"
+      - "Speed (Mbps): speed_mbps"
+      - "Driver: driver"
+      - "Switch: switch"

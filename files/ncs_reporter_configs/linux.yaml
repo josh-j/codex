@@ -24,10 +24,10 @@ detection:
 path_prefix: "ubuntu_raw_discovery.data"
 
 fleet_columns:
-  - { label: "Distribution", field: distribution, width: "120px" }
-  - { label: "Uptime (d)", field: uptime_days, width: "80px" }
-  - { label: "Critical", field: _critical_count, width: "70px" }
-  - { label: "Warning", field: _warning_count, width: "70px" }
+  - "Distribution: distribution"
+  - "Uptime (d): uptime_days"
+  - "Critical: _critical_count"
+  - "Warning: _warning_count"
 
 fields:
   $include: "linux_base_fields.yaml"

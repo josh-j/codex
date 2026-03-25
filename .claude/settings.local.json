@@ -1,6 +1,16 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Agent(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "NotebookEdit(*)",
       "Bash(python3:*)",
       "Bash(head:*)",
       "Bash(ls:*)",
@@ -79,7 +89,20 @@
       "Bash(cd /home/sio/codex/collections/ansible_collections/internal/linux/roles/ubuntu/tasks && echo \"=== Rule count in new 30a-d files ===\" && grep -c 'name:.*stigrule_' stig_2404/30{a,b,c,d}_*.yaml && echo \"--- Total ---\" && grep -ch 'name:.*stigrule_' stig_2404/30{a,b,c,d}_*.yaml | paste -sd+ | bc)",
       "Bash(for f:*)",
       "Bash(echo \"=== Checking for remaining orphans ===\" && for var in stig_2404_stigrule_270676_grub_cmdline_linux_line stig_2404_stigrule_270691_banner_line stig_2404_stigrule_270708_X11Forwarding_line stig_2404_stigrule_270712_ctrl_alt_del_target_disable_enabled stig_2404_stigrule_270718__etc_modprobe_d_DISASTIG_conf_blacklist_usb_storage_line stig_2404_stigrule_270736__etc_sssd_sssd_conf_line stig_2404_stigrule_270741_UsePAM_line stig_2404_stigrule_270749_dmesg_restrict_conf_line stig_2404_stigrule_270753__etc_sysctl_conf_line stig_2404_stigrule_270772_randomize_va_space_conf_line stig_2404_stigrule_270832__etc_audit_rules_d_audit_rules_e2_line stig_2404_stigrule_270681_rsyslog_authpriv_line; do grep -q \"$var\" tasks/stig_2404/default.yaml 2>/dev/null && echo \"STILL PRESENT: $var\"; done && echo \"=== Checking that referenced vars still exist ===\" && for var in stig_2404_stigrule_270743_ClientAliveInterval_line stig_2404_stigrule_270772_randomize_va_space_value stig_2404_stigrule_270681_rsyslog_auth_line stig_2404_stigrule_270681_rsyslog_daemon_line stig_2404_stigrule_270818_space_left_line stig_2404_stigrule_270819_action_mail_acct_line; do grep -q \"$var\" tasks/stig_2404/default.yaml 2>/dev/null && echo \"OK: $var\" || echo \"MISSING: $var\"; done)",
-      "Bash(echo \"=== Checking that referenced vars still exist ===\" && for var in stig_2404_stigrule_270743_ClientAliveInterval_line stig_2404_stigrule_270772_randomize_va_space_value stig_2404_stigrule_270681_rsyslog_auth_line stig_2404_stigrule_270681_rsyslog_daemon_line stig_2404_stigrule_270818_space_left_line stig_2404_stigrule_270819_action_mail_acct_line; do grep -q \"$var\" tasks/stig_2404/default.yaml && echo \"OK: $var\" || echo \"MISSING: $var\"; done)"
+      "Bash(echo \"=== Checking that referenced vars still exist ===\" && for var in stig_2404_stigrule_270743_ClientAliveInterval_line stig_2404_stigrule_270772_randomize_va_space_value stig_2404_stigrule_270681_rsyslog_auth_line stig_2404_stigrule_270681_rsyslog_daemon_line stig_2404_stigrule_270818_space_left_line stig_2404_stigrule_270819_action_mail_acct_line; do grep -q \"$var\" tasks/stig_2404/default.yaml && echo \"OK: $var\" || echo \"MISSING: $var\"; done)",
+      "Bash(xargs -I {} ls -la {})",
+      "Bash(xargs -I {} find {} -name *.yaml)",
+      "Bash(done)",
+      "Bash(2)",
+      "Bash(md5sum /home/sio/codex/collections/ansible_collections/internal/vmware/roles/vcsa_*/tasks/stig_v1r4/xml_evaluator.yaml)",
+      "Bash(md5sum /home/sio/codex/collections/ansible_collections/internal/vmware/roles/vcsa_*/templates/catalina.properties)",
+      "Bash(VCSA=/home/sio/codex/collections/ansible_collections/internal/vmware/roles/vcsa/tasks/stig_v1r4)",
+      "Bash(sed -i 's|src: catalina.properties|src: eam_catalina.properties|' $VCSA/eam.yaml)",
+      "Bash(sed -i 's|src: catalina.properties|src: lookup_catalina.properties|' $VCSA/lookup.yaml)",
+      "Bash(sed -i 's|src: catalina.properties|src: perfcharts_catalina.properties|' $VCSA/perfcharts.yaml)",
+      "Bash(sed -i 's|src: log4j.properties|src: perfcharts_log4j.properties|' $VCSA/perfcharts.yaml)",
+      "Bash(sed -i 's|src: catalina.properties|src: sts_catalina.properties|' $VCSA/sts.yaml)",
+      "Bash(sed -i 's|src: catalina.properties|src: ui_catalina.properties|' $VCSA/ui.yaml)"
     ]
   }
 }
