@@ -8,8 +8,8 @@
     _all_esxi_hosts: >-
       {{
         _raw_clusters.results | default([])
-        | selectattr('clusters_info', 'defined')
-        | map(attribute='clusters_info')
+        | selectattr('clusters', 'defined')
+        | map(attribute='clusters')
         | map('dict2items') | flatten
         | map(attribute='value')
         | selectattr('hosts', 'defined')
