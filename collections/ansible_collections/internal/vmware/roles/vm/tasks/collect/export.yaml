@@ -5,7 +5,7 @@
   ansible.builtin.set_stats:
     data:
       ncs_collect_vm:
-        platform_dir: "vmware/vcenter"
+        platform_dir: "vmware/vm"
         report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
         name: "vm"
         payload: "{{ vmware_raw_vm }}"
