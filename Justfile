@@ -354,7 +354,7 @@ audit-vcsa target="vcsa":
 
 # Run VCSA health audit for a single site
 audit-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ site }}_vcsa
+    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l vcsa-{{ site }}
 
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 
@@ -364,7 +364,7 @@ stig-audit-vcsa target="vcsa":
 
 # Audit VCSA for a single site
 stig-audit-vcsa-site site:
-    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ site }}_vcsa
+    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l vcsa-{{ site }}
 
 # Audit specific VCSA roles only (for incremental testing)
 # Example: just stig-audit-vcsa-roles sdhm vami eam postgresql
@@ -373,7 +373,7 @@ stig-audit-vcsa-roles site +components:
     set -euo pipefail
     roles=$(echo "{{ components }}" | tr ' ' '\n' | sed 's/^vcsa_//' | sed 's/^/internal.vmware.vcsa_/' | jq -R . | jq -s '{"vcsa_stig_roles": .}')
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml \
-        -l {{ site }}_vcsa \
+        -l vcsa-{{ site }} \
         -e "$roles"
 
 # Audit VCSA with custom inventory
