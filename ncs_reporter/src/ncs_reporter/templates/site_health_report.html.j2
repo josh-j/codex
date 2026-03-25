@@ -26,29 +26,8 @@
 <body>
 <div class="page-wrap">
 
-    {# Breadcrumb navigation tree #}
-    <div class="breadcrumb">
-        <span class="site-home">&#x2302;</span><strong>Site Dashboard</strong>
-        {% if site.get('nav', {}).get('tree_fleets') %}
-        <span class="sep">&rsaquo;</span>
-        <div class="nav-tree">
-            <span class="tree-label">Select Fleet</span>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown">
-                <div class="dropdown-group">Fleets</div>
-                {% for f in site.nav.tree_fleets %}
-                <a href="{{ f.report }}" class="{{ 'stig-link' if f.name == 'STIG' else '' }}">
-                    {{ f.name }} Fleet
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-        <div class="nav-search" data-root="./">
-            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
-            <div class="search-results nav-dropdown"></div>
-        </div>
-    </div>
+    {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {{ breadcrumb_bar(site.get('nav', {}).get('breadcrumbs', [])) }}
 
     <div class="page-header">
         <div>

@@ -17,33 +17,8 @@
 <body>
 <div class="page-wrap">
 
-    {# Breadcrumb navigation tree #}
-    {% if nav.get('site_report') %}
-    <div class="breadcrumb">
-        <a href="{{ nav.site_report }}" title="Go to Site Dashboard"><span class="site-home">&#x2302;</span>Site Dashboard</a><span class="sep">&rsaquo;</span>
-        
-        {% if nav.get('tree_fleets') %}
-        <div class="nav-tree">
-            <span class="tree-label">{{ (view.get('meta', {}).get('display_name') or 'Fleet') | replace(' Fleet', '') }} Fleet</span>
-            <span class="tree-trigger">&#9660;</span>
-            <div class="nav-dropdown">
-                <div class="dropdown-group">Fleets</div>
-                {% for f in nav.tree_fleets %}
-                <a href="{{ f.report }}" class="{{ 'active' if f.name in (meta.get('display_name') or '') else '' }} {{ 'stig-link' if f.name == 'STIG' else '' }}">
-                    {{ f.name }} Fleet
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% else %}
-        {{ meta.get('display_name', 'Fleet') }} — Fleet Report
-        {% endif %}
-        <div class="nav-search" data-root="{{ nav.get('search_root', './') }}">
-            <input type="text" placeholder="Search hosts..." aria-label="Search hosts">
-            <div class="search-results nav-dropdown"></div>
-        </div>
-    </div>
-    {% endif %}
+    {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
     <div class="page-header">
         <div>

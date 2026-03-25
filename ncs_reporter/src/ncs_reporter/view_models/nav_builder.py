@@ -4,6 +4,11 @@ Replaces the ad-hoc nav construction scattered across generic.py, stig.py,
 and site.py with a single source of truth.  Output dicts match the existing
 template contracts exactly (tree_fleets, tree_siblings, tree_host_peers, etc.)
 so templates require zero changes.
+
+Each ``build_for_*`` method also produces a ``breadcrumbs`` list – a generic,
+ordered sequence of typed crumb dicts consumed by the shared
+``_breadcrumb_bar.html.j2`` macro.  This keeps *all* breadcrumb logic in
+Python so the templates have zero presentation logic for the nav bar.
 """
 
 from __future__ import annotations
@@ -113,6 +118,72 @@ class NavBuilder:
             for h in peers
         ]
 
+    # -- breadcrumb helpers ---------------------------------------------------
+
+    @staticmethod
+    def _fleet_dropdown_items(
+        tree_fleets: list[dict[str, str]],
+        active_fleet_name: str,
+    ) -> list[dict[str, Any]]:
+        """Convert a tree_fleets list into generic dropdown items."""
+        return [
+            {
+                "text": f"{f['name']} Fleet",
+                "href": f["report"],
+                "active": f["name"] == active_fleet_name,
+                "css_class": "stig-link" if f["name"] == NAV_LABEL_STIG else "",
+            }
+            for f in tree_fleets
+        ]
+
+    @staticmethod
+    def _site_link_crumb(nav: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Return a site-dashboard link crumb, or *None* if unavailable."""
+        site_report = str(nav.get("site_report") or "").strip()
+        if not site_report:
+            return None
+        return {"type": "link", "text": "Site Dashboard", "href": site_report, "icon": "home"}
+
+    @staticmethod
+    def _search_crumb(search_root: str) -> dict[str, Any]:
+        return {"type": "search", "search_root": search_root}
+
+    @staticmethod
+    def _history_crumb(history: list[dict[str, str]]) -> dict[str, Any] | None:
+        if not history:
+            return None
+        return {
+            "type": "dropdown",
+            "text": "History",
+            "group_label": "Report Versions",
+            "scrollable": True,
+            "items": [{"text": h["name"], "href": h["url"], "active": False, "css_class": ""} for h in history],
+        }
+
+    @staticmethod
+    def _host_dropdown_crumb(
+        current_name: str,
+        peers: list[dict[str, str]],
+        group_label: str = "Hosts",
+    ) -> dict[str, Any] | None:
+        if not peers:
+            return None
+        return {
+            "type": "dropdown",
+            "text": current_name,
+            "group_label": group_label,
+            "scrollable": True,
+            "items": [
+                {
+                    "text": p["name"],
+                    "href": p["report"],
+                    "active": p["name"] == current_name or p["report"] == "#",
+                    "css_class": "",
+                }
+                for p in peers
+            ],
+        }
+
     # -- composite builders (one per report type) -----------------------------
 
     def build_for_node(
@@ -131,6 +202,45 @@ class NavBuilder:
             current_dir = self._hosts_data[hostname]
             nav["tree_siblings"] = self.build_tree_siblings(hostname)
             nav["tree_fleets"] = self.build_tree_fleets(current_dir, is_node=True)
+
+        # --- breadcrumbs -----------------------------------------------------
+        crumbs: list[dict[str, Any]] = []
+        site_crumb = self._site_link_crumb(nav)
+        if site_crumb:
+            crumbs.append(site_crumb)
+
+        tree_fleets = nav.get("tree_fleets", [])
+        if tree_fleets:
+            fleet_label = str(nav.get("fleet_label") or "Fleet").replace(" Fleet", "")
+            crumbs.append({
+                "type": "dropdown",
+                "text": f"{fleet_label} Fleet",
+                "href": nav.get("fleet_report") or "#",
+                "group_label": "Fleets",
+                "scrollable": False,
+                "items": self._fleet_dropdown_items(tree_fleets, nav.get("fleet_label", "")),
+            })
+        elif nav.get("fleet_report"):
+            crumbs.append({
+                "type": "link",
+                "text": nav.get("fleet_label", "Fleet Report"),
+                "href": nav["fleet_report"],
+            })
+
+        host_crumb = self._host_dropdown_crumb(hostname, nav.get("tree_siblings", []))
+        if host_crumb:
+            crumbs.append(host_crumb)
+        else:
+            crumbs.append({"type": "label", "text": hostname})
+
+        hist_crumb = self._history_crumb(history or [])
+        if hist_crumb:
+            crumbs.append(hist_crumb)
+
+        crumbs.append(self._search_crumb(nav["search_root"]))
+        if crumbs:
+            nav["breadcrumbs"] = crumbs
+
         return nav
 
     def build_for_fleet(
@@ -138,11 +248,33 @@ class NavBuilder:
         from_dir: str,
         *,
         base_nav: Mapping[str, Any] | None = None,
+        display_name: str = "",
     ) -> dict[str, Any]:
         """Complete nav dict for a fleet report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
         nav["search_root"] = self._search_root(nav)
         nav["tree_fleets"] = self.build_tree_fleets(from_dir)
+
+        # --- breadcrumbs -----------------------------------------------------
+        site_crumb = self._site_link_crumb(nav)
+        if site_crumb:
+            crumbs: list[dict[str, Any]] = [site_crumb]
+            tree_fleets = nav["tree_fleets"]
+            label = (display_name or "Fleet").replace(" Fleet", "")
+            if tree_fleets:
+                crumbs.append({
+                    "type": "dropdown",
+                    "text": f"{label} Fleet",
+                    "group_label": "Fleets",
+                    "scrollable": False,
+                    "items": self._fleet_dropdown_items(tree_fleets, display_name),
+                })
+            else:
+                crumbs.append({"type": "label", "text": f"{label} Fleet"})
+
+            crumbs.append(self._search_crumb(nav["search_root"]))
+            nav["breadcrumbs"] = crumbs
+
         return nav
 
     def build_for_stig_host(
@@ -155,6 +287,7 @@ class NavBuilder:
         stig_siblings: list[dict[str, str]] | None = None,
         host_bundle: dict[str, Any] | None = None,
         audit_type: str = "",
+        target_type: str = "",
     ) -> dict[str, Any]:
         """Complete nav dict for a STIG host report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
@@ -187,6 +320,68 @@ class NavBuilder:
             current_dir = self._hosts_data.get(hostname, "")
             nav["tree_fleets"] = self.build_tree_fleets(current_dir, is_node=True)
 
+        # --- breadcrumbs -----------------------------------------------------
+        crumbs: list[dict[str, Any]] = []
+        site_crumb = self._site_link_crumb(nav)
+        if site_crumb:
+            crumbs.append(site_crumb)
+
+        tree_fleets = nav.get("tree_fleets", [])
+        if tree_fleets:
+            crumbs.append({
+                "type": "dropdown",
+                "text": "STIG Fleet",
+                "href": nav.get("fleet_report") or "#",
+                "group_label": "Fleets",
+                "scrollable": False,
+                "items": self._fleet_dropdown_items(tree_fleets, NAV_LABEL_STIG),
+            })
+        elif nav.get("fleet_report"):
+            crumbs.append({
+                "type": "link",
+                "text": nav.get("fleet_label", "STIG Fleet Dashboard"),
+                "href": nav["fleet_report"],
+            })
+
+        # Host peers dropdown
+        peers_crumb = self._host_dropdown_crumb(
+            hostname, nav.get("tree_host_peers", []),
+        )
+        if peers_crumb:
+            crumbs.append(peers_crumb)
+        else:
+            crumbs.append({"type": "label", "text": hostname})
+
+        # STIG audit type siblings dropdown
+        t_type_label = f"{target_type.upper()} STIG" if target_type else "STIG"
+        stig_sibs = nav.get("tree_siblings", [])
+        if stig_sibs or target_type:
+            stig_items: list[dict[str, Any]] = [
+                {"text": t_type_label, "href": "#", "active": True, "css_class": ""},
+            ]
+            for s in stig_sibs:
+                stig_items.append({
+                    "text": s["name"],
+                    "href": s["report"],
+                    "active": False,
+                    "css_class": "",
+                })
+            crumbs.append({
+                "type": "dropdown",
+                "text": t_type_label,
+                "group_label": "STIG Audits",
+                "scrollable": False,
+                "items": stig_items,
+            })
+
+        hist_crumb = self._history_crumb(history or [])
+        if hist_crumb:
+            crumbs.append(hist_crumb)
+
+        crumbs.append(self._search_crumb(nav["search_root"]))
+        if crumbs:
+            nav["breadcrumbs"] = crumbs
+
         return nav
 
     def build_for_stig_fleet(
@@ -194,6 +389,7 @@ class NavBuilder:
         by_platform: dict[str, dict[str, int]],
         *,
         base_nav: Mapping[str, Any] | None = None,
+        host_links: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """Complete nav dict for the STIG fleet report."""
         nav: dict[str, Any] = {**base_nav} if base_nav else {}
@@ -223,6 +419,38 @@ class NavBuilder:
 
         tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
         nav["tree_fleets"] = tree_fleets
+
+        # --- breadcrumbs -----------------------------------------------------
+        site_crumb = self._site_link_crumb(nav)
+        if site_crumb:
+            crumbs: list[dict[str, Any]] = [site_crumb]
+
+            if tree_fleets:
+                crumbs.append({
+                    "type": "dropdown",
+                    "text": "STIG Fleet",
+                    "group_label": "Fleets",
+                    "scrollable": False,
+                    "items": self._fleet_dropdown_items(tree_fleets, NAV_LABEL_STIG),
+                })
+            else:
+                crumbs.append({"type": "label", "text": "STIG Fleet Compliance Overview"})
+
+            if host_links:
+                crumbs.append({
+                    "type": "dropdown",
+                    "text": "Hosts",
+                    "group_label": "STIG Hosts",
+                    "scrollable": True,
+                    "items": [
+                        {"text": h["name"], "href": h["href"], "active": False, "css_class": ""}
+                        for h in host_links
+                    ],
+                })
+
+            crumbs.append(self._search_crumb(nav["search_root"]))
+            nav["breadcrumbs"] = crumbs
+
         return nav
 
     def build_for_site(
@@ -244,4 +472,19 @@ class NavBuilder:
             })
         if has_stig_rows:
             tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
-        return {"tree_fleets": tree_fleets, "search_root": "./"}
+
+        # --- breadcrumbs -----------------------------------------------------
+        crumbs: list[dict[str, Any]] = [
+            {"type": "label", "text": "Site Dashboard", "icon": "home"},
+        ]
+        if tree_fleets:
+            crumbs.append({
+                "type": "dropdown",
+                "text": "Select Fleet",
+                "group_label": "Fleets",
+                "scrollable": False,
+                "items": self._fleet_dropdown_items(tree_fleets, ""),
+            })
+        crumbs.append(self._search_crumb("./"))
+
+        return {"tree_fleets": tree_fleets, "search_root": "./", "breadcrumbs": crumbs}

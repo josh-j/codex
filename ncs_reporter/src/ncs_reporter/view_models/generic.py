@@ -627,7 +627,7 @@ def build_generic_fleet_view(
     # Build fleets list for breadcrumb tree
     if nav_builder is not None:
         current_plt_dir = hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if hosts_data and aggregated_hosts else None
-        nav_with_tree = nav_builder.build_for_fleet(current_plt_dir or "", base_nav=nav) if current_plt_dir else ({**nav} if nav else {})
+        nav_with_tree = nav_builder.build_for_fleet(current_plt_dir or "", base_nav=nav, display_name=schema.display_name) if current_plt_dir else ({**nav} if nav else {})
     else:
         nav_with_tree = {**nav} if nav else {}
 
