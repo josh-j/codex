@@ -6,7 +6,7 @@ platform:
   report_dir: vmware/vcsa
   target_types: [vcenter, vami, eam, lookup_svc, perfcharts, vcsa_photon_os, postgresql, rhttpproxy, sts, ui]
   state_file: vmware_fleet_state.yaml
-  display_name: VMware
+  display_name: "VMware VCSA"
   asset_label: vCenters
   inventory_groups: [vcenters]
   site_compute_node: true
