@@ -48,151 +48,50 @@ detection:
 path_prefix: "vmware_raw_vcenter.data"
 
 fleet_columns:
-  - { label: "Version", field: appliance_version, width: "120px" }
-
-# ---------------------------------------------------------------------------
-# Fields
-# ---------------------------------------------------------------------------
+  - "Version: appliance_version"
 
 fields:
   # --- Appliance ---
-
-  appliance_version:
-    path: ".appliance_health_info.appliance.summary.version"
-    fallback: "unknown"
-
-  appliance_build:
-    path: ".appliance_health_info.appliance.summary.build_number"
-    fallback: "unknown"
-
-  appliance_health_overall:
-    path: ".appliance_health_info.appliance.summary.health.overall"
-    fallback: "gray"
-
-  appliance_health_cpu:
-    path: ".appliance_health_info.appliance.summary.health.cpu"
-    fallback: "gray"
-
-  appliance_health_memory:
-    path: ".appliance_health_info.appliance.summary.health.memory"
-    fallback: "gray"
-
-  appliance_health_database:
-    path: ".appliance_health_info.appliance.summary.health.database"
-    fallback: "gray"
-
-  appliance_health_storage:
-    path: ".appliance_health_info.appliance.summary.health.storage"
-    fallback: "gray"
-
-  appliance_uptime_seconds:
-    path: ".appliance_health_info.appliance.summary.uptime"
-    type: float
-
+  appliance_version: ".appliance_health_info.appliance.summary.version = unknown"
+  appliance_build: ".appliance_health_info.appliance.summary.build_number = unknown"
+  appliance_health_overall: ".appliance_health_info.appliance.summary.health.overall = gray"
+  appliance_health_cpu: ".appliance_health_info.appliance.summary.health.cpu = gray"
+  appliance_health_memory: ".appliance_health_info.appliance.summary.health.memory = gray"
+  appliance_health_database: ".appliance_health_info.appliance.summary.health.database = gray"
+  appliance_health_storage: ".appliance_health_info.appliance.summary.health.storage = gray"
+  appliance_uptime_seconds: ".appliance_health_info.appliance.summary.uptime | float"
   appliance_uptime_days:
     compute: "{appliance_uptime_seconds} / 86400"
     type: float
-
-  ssh_enabled:
-    path: ".appliance_health_info.appliance.access.ssh"
-    type: bool
-
-  shell_enabled:
-    path: ".appliance_health_info.appliance.access.shell.enabled"
-    type: bool
-
-  ntp_mode:
-    path: ".appliance_health_info.appliance.time.time_sync.mode"
-    fallback: "unknown"
-
-  ntp_servers:
-    path: ".appliance_health_info.appliance.time.time_sync.servers"
-    type: list
+  ssh_enabled: ".appliance_health_info.appliance.access.ssh | bool"
+  shell_enabled: ".appliance_health_info.appliance.access.shell.enabled | bool"
+  ntp_mode: ".appliance_health_info.appliance.time.time_sync.mode = unknown"
+  ntp_servers: ".appliance_health_info.appliance.time.time_sync.servers | list"
 
   # --- Backup ---
-
-  backup_schedules:
-    path: ".appliance_backup_info.schedules"
-    type: list
-
-  backup_schedule_count:
-    path: ".appliance_backup_info.schedules | len_if_list"
-    type: int
+  backup_schedules: ".appliance_backup_info.schedules | list"
+  backup_schedule_count: ".appliance_backup_info.schedules | len_if_list | int"
 
   # --- Alarms ---
-
-  active_alarms:
-    path: ".alarms_info.alarms"
-    type: list
-
+  active_alarms: ".alarms_info.alarms | list"
   active_critical_alarm_count:
     path: ".alarms_info.alarms"
     type: int
     count_where:
       severity: "critical"
-
   active_warning_alarm_count:
     path: ".alarms_info.alarms"
     type: int
     count_where:
       severity: "warning"
-
-  alarm_count:
-    path: ".alarms_info.alarms | len_if_list"
-    type: int
-
-# ---------------------------------------------------------------------------
-# Alerts
-# ---------------------------------------------------------------------------
+  alarm_count: ".alarms_info.alarms | len_if_list | int"
 
 alerts:
-  - id: appliance_health_red
-    category: "Appliance Health"
-    severity: CRITICAL
-    condition:
-      op: eq_str
-      field: appliance_health_overall
-      value: "red"
-    message: "VCSA component failure: overall health is RED"
-
-  - id: appliance_health_yellow
-    category: "Appliance Health"
-    severity: WARNING
-    suppress_if: appliance_health_red
-    condition:
-      op: eq_str
-      field: appliance_health_overall
-      value: "yellow"
-    message: "VCSA degraded: overall health is YELLOW"
-
-  - id: appliance_health_gray
-    category: "Data Quality"
-    severity: WARNING
-    suppress_if: [appliance_health_red, appliance_health_yellow]
-    condition:
-      op: eq_str
-      field: appliance_health_overall
-      value: "gray"
-    message: "VCSA health unknown: overall health is GRAY — check permissions and API availability"
-
-  - id: ssh_enabled
-    category: "Security"
-    severity: WARNING
-    condition:
-      op: eq
-      field: ssh_enabled
-      threshold: 1.0
-    message: "Hardening violation: SSH is enabled on VCSA"
-
-  - id: shell_enabled
-    category: "Security"
-    severity: WARNING
-    condition:
-      op: eq
-      field: shell_enabled
-      threshold: 1.0
-    message: "Hardening violation: interactive shell is enabled on VCSA"
-
+  - "appliance_health_red | CRITICAL Appliance Health | appliance_health_overall eq_str red | VCSA component failure: overall health is RED"
+  - "appliance_health_yellow | WARNING Appliance Health | appliance_health_overall eq_str yellow | VCSA degraded: overall health is YELLOW | suppress=appliance_health_red"
+  - "appliance_health_gray | WARNING Data Quality | appliance_health_overall eq_str gray | VCSA health unknown: overall health is GRAY — check permissions and API availability | suppress=appliance_health_red;appliance_health_yellow"
+  - "ssh_enabled | WARNING Security | ssh_enabled eq 1.0 | Hardening violation: SSH is enabled on VCSA"
+  - "shell_enabled | WARNING Security | shell_enabled eq 1.0 | Hardening violation: interactive shell is enabled on VCSA"
   - id: ntp_disabled
     category: "Time Synchronization"
     severity: WARNING
@@ -201,35 +100,9 @@ alerts:
       field: ntp_mode
       values: ["NTP", "HOST"]
     message: "Time sync misconfigured: NTP mode is '{ntp_mode}' — clock drift may affect logs and certificates"
-
-  - id: appliance_uptime_excessive
-    category: "Appliance Lifecycle"
-    severity: WARNING
-    condition:
-      op: gte
-      field: appliance_uptime_days
-      threshold: 90.0
-    message: "VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
-
-  - id: appliance_uptime_recent_reboot
-    category: "Appliance Lifecycle"
-    severity: INFO
-    suppress_if: appliance_uptime_excessive
-    condition:
-      op: lt
-      field: appliance_uptime_days
-      threshold: 1.0
-    message: "VCSA was rebooted less than 24 hours ago — verify this was planned"
-
-  - id: no_backup_schedule
-    category: "Data Protection"
-    severity: CRITICAL
-    condition:
-      op: lte
-      field: backup_schedule_count
-      threshold: 0
-    message: "DR risk: no file-based backup schedule configured on VCSA"
-
+  - "appliance_uptime_excessive | WARNING Appliance Lifecycle | appliance_uptime_days gte 90.0 | VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
+  - "appliance_uptime_recent_reboot | INFO Appliance Lifecycle | appliance_uptime_days lt 1.0 | VCSA was rebooted less than 24 hours ago — verify this was planned | suppress=appliance_uptime_excessive"
+  - "no_backup_schedule | CRITICAL Data Protection | backup_schedule_count lte 0 | DR risk: no file-based backup schedule configured on VCSA"
   - id: backup_schedule_disabled
     category: "Data Protection"
     severity: CRITICAL
@@ -240,47 +113,20 @@ alerts:
       filter_value: false
       threshold: 0
     message: "DR risk: a configured backup schedule is DISABLED on VCSA"
-
-  - id: active_critical_alarms
-    category: "vCenter Alarms"
-    severity: CRITICAL
-    condition:
-      op: gt
-      field: active_critical_alarm_count
-      threshold: 0
-    message: "Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered)"
-    affected_items_field: active_alarms
-
-  - id: active_warning_alarms
-    category: "vCenter Alarms"
-    severity: WARNING
-    suppress_if: active_critical_alarms
-    condition:
-      op: gt
-      field: active_warning_alarm_count
-      threshold: 0
-    message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
-    affected_items_field: active_alarms
-
-# ---------------------------------------------------------------------------
-# Widgets
-# ---------------------------------------------------------------------------
+  - "active_critical_alarms | CRITICAL vCenter Alarms | active_critical_alarm_count gt 0 | Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered) | affected=active_alarms"
+  - "active_warning_alarms | WARNING vCenter Alarms | active_warning_alarm_count gt 0 | Active WARNING alarms detected in vCenter ({alarm_count} total triggered) | affected=active_alarms suppress=active_critical_alarms"
 
 widgets:
-  - id: alerts
-    title: "Active Alerts"
-    type: alert_panel
+  - alert_panel: "Active Alerts"
 
-  - id: active_alarms
-    title: "Active vCenter Alarms"
-    type: table
-    rows_field: active_alarms
+  - table: "Active vCenter Alarms"
+    rows: active_alarms
     columns:
-      - { label: "Alarm", field: alarm_name }
-      - { label: "Entity", field: entity }
-      - { label: "Severity", field: severity, badge: true }
-      - { label: "Time", field: time }
-      - { label: "Description", field: description }
+      - "Alarm: alarm_name"
+      - "Entity: entity"
+      - "Severity: severity [badge]"
+      - "Time: time"
+      - "Description: description"
 
   - id: inventory_kpis
     title: "Appliance KPIs"
@@ -290,34 +136,30 @@ widgets:
       - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
       - { field: backup_schedule_count, label: "Backup Schedules" }
 
-  - id: appliance_overview
-    title: "Appliance Overview"
-    type: key_value
+  - key_value: "Appliance Overview"
     layout: { width: "half" }
     fields:
-      - { label: "Version", field: appliance_version }
-      - { label: "Build", field: appliance_build }
-      - { label: "Health Overall", field: appliance_health_overall, badge: true }
-      - { label: "Health CPU", field: appliance_health_cpu, badge: true }
-      - { label: "Health Memory", field: appliance_health_memory, badge: true }
-      - { label: "Health DB", field: appliance_health_database, badge: true }
-      - { label: "Health Storage", field: appliance_health_storage, badge: true }
-      - { label: "Uptime (days)", field: appliance_uptime_days }
-      - { label: "SSH Enabled", field: ssh_enabled, badge: true }
-      - { label: "NTP Mode", field: ntp_mode }
+      - "Version: appliance_version"
+      - "Build: appliance_build"
+      - "Health Overall: appliance_health_overall [badge]"
+      - "Health CPU: appliance_health_cpu [badge]"
+      - "Health Memory: appliance_health_memory [badge]"
+      - "Health DB: appliance_health_database [badge]"
+      - "Health Storage: appliance_health_storage [badge]"
+      - "Uptime (days): appliance_uptime_days"
+      - "SSH Enabled: ssh_enabled [badge]"
+      - "NTP Mode: ntp_mode"
 
-  - id: backup_schedules_tbl
-    title: "Backup Schedules"
-    type: table
+  - table: "Backup Schedules"
     visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }
-    rows_field: backup_schedules
+    rows: backup_schedules
     columns:
-      - { label: "Name", field: name }
+      - "Name: name"
       - label: "Enabled"
         field: enabled
         badge: true
         style_rules:
           - condition: { op: eq, field: enabled, threshold: 0.0 }
             css_class: "sv-critical"
-      - { label: "Location", field: location }
-      - { label: "Retain Count", field: retain_count }
+      - "Location: location"
+      - "Retain Count: retain_count"

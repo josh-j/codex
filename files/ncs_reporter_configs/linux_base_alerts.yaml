@@ -1,14 +1,8 @@
 # Shared Linux alerts — included by linux.yaml, photon.yaml, etc.
 
-- id: memory_critical
-  category: "Capacity"
-  severity: CRITICAL
-  condition:
-    op: gte
-    field: memory_used_pct
-    threshold: 98.0
-  message: "Memory saturation: {memory_used_pct:.1f}% used"
+- "memory_critical | CRITICAL Capacity | memory_used_pct gte 98.0 | Memory saturation: {memory_used_pct:.1f}% used"
 
+# range condition — stays as full format
 - id: memory_warning
   category: "Capacity"
   severity: WARNING
@@ -20,6 +14,7 @@
     max: 98.0
   message: "Memory pressure: {memory_used_pct:.1f}% used"
 
+# computed_filter condition — stays as full format
 - id: disk_critical
   category: "Capacity"
   severity: CRITICAL
@@ -29,7 +24,7 @@
     expression: "{used_pct}"
     cmp: gte
     threshold: 95.0
-  message: "One or more filesystems critically full (≥95%)"
+  message: "One or more filesystems critically full (>=95%)"
   affected_items_field: disks
 
 - id: disk_warning
@@ -43,51 +38,11 @@
     cmp: range
     min: 80.0
     max: 95.0
-  message: "One or more filesystems reaching capacity (≥80%)"
+  message: "One or more filesystems reaching capacity (>=80%)"
   affected_items_field: disks
 
-- id: services_failed
-  category: "Availability"
-  severity: CRITICAL
-  condition:
-    op: gt
-    field: failed_services_count
-    threshold: 0
-  message: "{failed_services_count} systemd service(s) failed"
-
-- id: reboot_pending
-  category: "Patching"
-  severity: WARNING
-  condition:
-    op: eq
-    field: reboot_pending
-    threshold: 1.0
-  message: "System requires a reboot to apply kernel or security updates"
-
-- id: pending_updates
-  category: "Patching"
-  severity: WARNING
-  condition:
-    op: gt
-    field: pending_updates_count
-    threshold: 0
-  message: "{pending_updates_count} package update(s) pending"
-
-- id: uptime_violation
-  category: "Maintenance"
-  severity: WARNING
-  condition:
-    op: gt
-    field: uptime_days
-    threshold: 180.0
-  message: "Uptime policy violation: server has not rebooted in over 6 months ({uptime_days:.0f} days)"
-
-- id: world_writable_files
-  category: "Security"
-  severity: WARNING
-  condition:
-    op: gt
-    field: world_writable_count
-    threshold: 0
-  message: "{world_writable_count} world-writable file(s) detected"
-  affected_items_field: world_writable_files
+- "services_failed | CRITICAL Availability | failed_services_count gt 0 | {failed_services_count} systemd service(s) failed"
+- "reboot_pending | WARNING Patching | reboot_pending eq 1.0 | System requires a reboot to apply kernel or security updates"
+- "pending_updates | WARNING Patching | pending_updates_count gt 0 | {pending_updates_count} package update(s) pending"
+- "uptime_violation | WARNING Maintenance | uptime_days gt 180.0 | Uptime policy violation: server has not rebooted in over 6 months ({uptime_days:.0f} days)"
+- "world_writable_files | WARNING Security | world_writable_count gt 0 | {world_writable_count} world-writable file(s) detected | affected=world_writable_files"

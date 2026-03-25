@@ -21,26 +21,18 @@ detection:
 path_prefix: "vmware_raw_vm.data"
 
 fleet_columns:
-  - { label: "VMs", field: vm_count, width: "80px" }
-  - { label: "Snapshots", field: snapshot_count, width: "80px" }
-  - { label: "Powered Off", field: powered_off_vm_count, width: "80px" }
+  - "VMs: vm_count"
+  - "Snapshots: snapshot_count"
+  - "Powered Off: powered_off_vm_count"
 
 # ---------------------------------------------------------------------------
 # Fields
 # ---------------------------------------------------------------------------
 
 fields:
-  datacenters:
-    path: ".datacenters_info.datacenter_info"
-    type: list
-
-  vms_info_raw:
-    path: ".vms_info"
-    type: dict
-
-  infra_patterns:
-    path: ".config.infrastructure_vm_patterns"
-    type: list
+  datacenters: ".datacenters_info.datacenter_info | list"
+  vms_info_raw: ".vms_info | dict"
+  infra_patterns: ".config.infrastructure_vm_patterns | list"
 
   virtual_machines:
     script: "get_vms_list.py"
@@ -48,13 +40,8 @@ fields:
       exclude_patterns: "{infra_patterns}"
     type: list
 
-  vm_count:
-    path: ".vms_info.virtual_machines | len_if_list"
-    type: int
-
-  snapshots_raw:
-    path: ".snapshots_info.snapshots"
-    type: list
+  vm_count: ".vms_info.virtual_machines | len_if_list | int"
+  snapshots_raw: ".snapshots_info.snapshots | list"
 
   snapshots:
     script: "normalize_snapshots.py"
@@ -63,10 +50,7 @@ fields:
       age_days: 7
     type: list
 
-  snapshot_count:
-    path: ".snapshots_info.snapshots | len_if_list"
-    type: int
-
+  snapshot_count: ".snapshots_info.snapshots | len_if_list | int"
   collected_at: "vmware_raw_vm.metadata.timestamp"
 
   aged_snapshot_count:
@@ -91,14 +75,7 @@ fields:
 # ---------------------------------------------------------------------------
 
 alerts:
-  - id: powered_off_vms
-    category: "Workload Inventory"
-    severity: INFO
-    condition:
-      op: gt
-      field: powered_off_vm_count
-      threshold: 0
-    message: "{powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
+  - "powered_off_vms | INFO Workload Inventory | powered_off_vm_count gt 0 | {powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
     category: "Workload Compliance"
@@ -126,32 +103,16 @@ alerts:
     message: "Powered-on VMs detected with VMware Tools not installed"
     affected_items_field: virtual_machines
 
-  - id: snapshots_present
-    category: "Snapshots"
-    severity: INFO
-    condition:
-      op: gt
-      field: recent_snapshot_count
-      threshold: 0
-    message: "VM snapshots present: {snapshot_count} snapshot(s) found"
+  - "snapshots_present | INFO Snapshots | recent_snapshot_count gt 0 | VM snapshots present: {snapshot_count} snapshot(s) found"
 
-  - id: aged_snapshots
-    category: "Snapshots"
-    severity: WARNING
-    condition:
-      op: gt
-      field: aged_snapshot_count
-      threshold: 0
-    message: "{aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
+  - "aged_snapshots | WARNING Snapshots | aged_snapshot_count gt 0 | {aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
 
 # ---------------------------------------------------------------------------
 # Widgets
 # ---------------------------------------------------------------------------
 
 widgets:
-  - id: alerts
-    title: "Active Alerts"
-    type: alert_panel
+  - alert_panel: "Active Alerts"
 
   - id: vm_kpis
     title: "VM KPIs"
@@ -165,7 +126,7 @@ widgets:
   - id: virtual_machines
     title: "Virtual Machines"
     type: grouped_table
-    rows_field: virtual_machines
+    rows: virtual_machines
     group_by: cluster
     columns:
       - { label: "Name", field: guest_name, link_field: guest_name }
@@ -175,23 +136,21 @@ widgets:
         style_rules:
           - condition: { op: eq_str, field: power_state, value: "poweredOff" }
             css_class: "subtle-text"
-      - { label: "Tools Status", field: tools_status, badge: true }
-      - { label: "Cluster", field: cluster }
-      - { label: "IP Address", field: ip_address }
-      - { label: "Memory (MB)", field: "allocated.memory" }
-      - { label: "vCPU", field: "allocated.cpu" }
-      - { label: "Owner Email", field: owner_email }
-      - { label: "Last Backup", field: backup_info }
+      - "Tools Status: tools_status [badge]"
+      - "Cluster: cluster"
+      - "IP Address: ip_address"
+      - "Memory (MB): allocated.memory"
+      - "vCPU: allocated.cpu"
+      - "Owner Email: owner_email"
+      - "Last Backup: backup_info"
 
-  - id: snapshots
-    title: "Snapshots"
-    type: table
+  - table: "Snapshots"
     visible_if: { op: gt, field: snapshot_count, threshold: 0 }
-    rows_field: snapshots
+    rows: snapshots
     columns:
-      - { label: "VM", field: vm_name }
-      - { label: "Owner Email", field: owner_email }
-      - { label: "Snapshot", field: name }
-      - { label: "Created", field: creation_time }
-      - { label: "State", field: state }
-      - { label: "Days Old", field: days_old }
+      - "VM: vm_name"
+      - "Owner Email: owner_email"
+      - "Snapshot: name"
+      - "Created: creation_time"
+      - "State: state"
+      - "Days Old: days_old"
