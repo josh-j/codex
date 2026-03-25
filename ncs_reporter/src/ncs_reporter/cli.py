@@ -565,6 +565,8 @@ def _render_platforms(
     global_inventory_index: dict[str, str],
     generated_fleet_dirs: set[str],
     stig_host_views: dict[str, Any],
+    *,
+    has_stig_fleet: bool = False,
 ) -> None:
     """Render platform reports in parallel using a thread pool."""
     if not render_tasks:
@@ -584,7 +586,7 @@ def _render_platforms(
                 extra_config_dirs=t.get("extra_config_dirs", ()),
                 schema_names_override=t.get("schema_names_override"),
                 has_site_report=True,
-                has_stig_fleet=True,
+                has_stig_fleet=has_stig_fleet,
                 stig_widgets_by_host=stig_host_views,
             ): t["platform"]
             for t in render_tasks
@@ -785,11 +787,12 @@ def all_cmd(
         registry=runtime_registry,
         has_site_report=True,
     )
+    has_stig_fleet = bool(stig_host_views)
     if stig_host_views:
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
 
     # Step 2: Parallel platform rendering
-    _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views)
+    _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views, has_stig_fleet=has_stig_fleet)
 
     # Step 3: Site dashboard + search index
     _render_site_and_search(
