@@ -435,12 +435,12 @@ stig-harden-vm vcenter vm_name:
 # --- VCSA Hardening ---
 
 # Harden VCSA (MUTATING)
-stig-remediate-vcsa target="vcenters":
+stig-remediate-vcsa target="vcsa":
     {{ vcsa_playbook }} playbooks/vcsa/stig_remediate.yml -l {{ target }}
 
 # Harden VCSA for a single site (MUTATING)
 stig-remediate-vcsa-site site:
-    {{ vcsa_playbook }} playbooks/vcsa/stig_remediate.yml -l {{ site }}_vcenters
+    {{ vcsa_playbook }} playbooks/vcsa/stig_remediate.yml -l vcsa-{{ site }}
 
 # --- Photon Hardening ---
 
