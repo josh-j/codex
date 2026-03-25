@@ -1,7 +1,7 @@
 ---
 # playbooks/vcsa/stig_audit.yml
 - name: "Phase 2a: VCSA STIG Audit"
-  hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcenters')) }}"
+  hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcsa')) }}"
   gather_facts: false
   tags: ["vmware", "stig", "audit", "vcsa"]
   vars:

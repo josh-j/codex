@@ -349,22 +349,22 @@ stig-audit-vm-site site:
 # --- VCSA Health ---
 
 # Run VCSA health audit (all sites or limited)
-audit-vcsa target="vcenters":
+audit-vcsa target="vcsa":
     {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ target }} -v
 
 # Run VCSA health audit for a single site
 audit-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ site }}_vcsa
 
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 
 # Audit all VCSA components
-stig-audit-vcsa target="vcenters":
+stig-audit-vcsa target="vcsa":
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ target }}
 
 # Audit VCSA for a single site
 stig-audit-vcsa-site site:
-    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ site }}_vcenters
+    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ site }}_vcsa
 
 # Audit specific VCSA roles only (for incremental testing)
 # Example: just stig-audit-vcsa-roles sdhm vami eam postgresql
@@ -373,7 +373,7 @@ stig-audit-vcsa-roles site +components:
     set -euo pipefail
     roles=$(echo "{{ components }}" | tr ' ' '\n' | sed 's/^vcsa_//' | sed 's/^/internal.vmware.vcsa_/' | jq -R . | jq -s '{"vcsa_stig_roles": .}')
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml \
-        -l {{ site }}_vcenters \
+        -l {{ site }}_vcsa \
         -e "$roles"
 
 # Audit VCSA with custom inventory
@@ -469,7 +469,7 @@ rotate-password-esxi vcenter +hosts:
         -e '{"esxi_stig_target_hosts": {{ hosts }}}'
 
 # Rotate the root password on VCSA appliances
-rotate-password-vcsa target="vcenters":
+rotate-password-vcsa target="vcsa":
     {{ vcsa_playbook }} playbooks/vcsa/rotate_password.yml -l {{ target }}
 
 # Rotate a local user password on Photon OS servers
@@ -489,7 +489,7 @@ password-status-esxi vcenter +hosts:
         -e '{"esxi_stig_target_hosts": {{ hosts }}}'
 
 # Show password aging and account status on VCSA appliances
-password-status-vcsa target="vcenters":
+password-status-vcsa target="vcsa":
     {{ vcsa_playbook }} playbooks/vcsa/password_status.yml -l {{ target }}
 
 # Show password aging and account status on Photon OS servers
