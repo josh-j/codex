@@ -61,12 +61,11 @@ class TestStigE2E(unittest.TestCase):
         groups_path = self.platform_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
-        return groups_path
 
     def test_stig_audit_and_remediation_lifecycle(self):
         # 1. Simulate Audit Phase (Finding exists)
         self._write_raw_data(status="failed")
-        groups_path = self._write_groups()
+        self._write_groups()
 
         result = self.runner.invoke(
             main,
@@ -76,8 +75,6 @@ class TestStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260226",
             ],
@@ -116,8 +113,6 @@ class TestStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260226",
             ],
@@ -143,7 +138,7 @@ class TestStigE2E(unittest.TestCase):
     def test_stig_html_report_content(self):
         """Verify STIG HTML reports are generated with expected content."""
         self._write_raw_data(status="failed")
-        groups_path = self._write_groups()
+        self._write_groups()
 
         result = self.runner.invoke(
             main,
@@ -153,8 +148,6 @@ class TestStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260226",
             ],
@@ -231,12 +224,11 @@ class TestVmStigE2E(unittest.TestCase):
         groups_path = self.platform_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
-        return groups_path
 
     def test_vm_stig_audit_and_remediation_lifecycle(self):
         # 1. Simulate Audit Phase (Finding exists)
         self._write_raw_data(status="failed")
-        groups_path = self._write_groups()
+        self._write_groups()
 
         result = self.runner.invoke(
             main,
@@ -246,8 +238,6 @@ class TestVmStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260226",
             ],
@@ -284,8 +274,6 @@ class TestVmStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260226",
             ],
@@ -358,8 +346,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260302",
             ],
@@ -407,8 +393,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(groups_path),
                 "--report-stamp",
                 "20260302",
             ],

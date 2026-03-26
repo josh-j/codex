@@ -47,8 +47,7 @@ class TestBuildSiteDashboardView:
                 "win-01": _windows_bundle(),
             }
         }
-        groups = {"ubuntu_servers": ["linux-01"], "vcenters": ["vc-01"], "windows_servers": ["win-01"]}
-        view = build_site_dashboard_view(hosts, inventory_groups=groups, ctx=ReportContext(report_stamp="20260226"))
+        view = build_site_dashboard_view(hosts, ctx=ReportContext(report_stamp="20260226"))
 
         assert view["meta"]["report_stamp"] == "20260226"
         assert view["platforms"]["linux"]["asset_count"] == 1

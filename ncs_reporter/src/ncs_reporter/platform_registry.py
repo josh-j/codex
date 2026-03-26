@@ -23,14 +23,16 @@ class PlatformRegistry:
 
     def __init__(self, entries: list[PlatformEntry]) -> None:
         self._entries = tuple(entries)
-        # Pre-build target-type lookup: lowered target_type → PlatformEntry
+        # Derive target-type lookup from stig_skeleton_map keys + stig_rule_prefixes values.
+        # Skeleton map entries take precedence (they're the authoritative owner).
         self._tt_lookup: dict[str, PlatformEntry] = {}
-        self._all_target_types: frozenset[str] = frozenset(
-            t for e in self._entries for t in e.target_types
-        )
         for e in self._entries:
-            for t in e.target_types:
-                self._tt_lookup.setdefault(t.lower(), e)
+            for tt in e.stig_rule_prefixes.values():
+                self._tt_lookup.setdefault(tt.lower(), e)
+        for e in self._entries:
+            for tt in e.stig_skeleton_map:
+                self._tt_lookup[tt.lower()] = e  # overwrite prefix-based entries
+        self._all_target_types: frozenset[str] = frozenset(self._tt_lookup)
 
         # Pre-compute platform names (insertion-ordered, deduplicated)
         seen: set[str] = set()
@@ -181,13 +183,6 @@ class PlatformRegistry:
         """Return entries that contribute to the site dashboard (have site_audit_key)."""
         return [e for e in self._entries if e.site_audit_key]
 
-    def count_inventory_assets(self, entry: PlatformEntry, groups: dict[str, Any]) -> int:
-        for group_name in entry.inventory_groups:
-            members = groups.get(group_name)
-            if members:
-                return len(list(members))
-        return 0
-
     # -- STIG fleet nav / link helpers ----------------------------------------
 
     def platform_fleet_link(self, platform: str) -> str | None:
@@ -223,21 +218,10 @@ class PlatformRegistry:
     # -- STIG apply plan -------------------------------------------------------
 
     def stig_apply_plan(self, target_type: str) -> tuple[str, str] | None:
-        """Return (playbook, target_var) for a STIG target type, or None.
-
-        Also searches schema-embedded platform specs for configs whose target_types
-        were merged into a shared primary entry.
-        """
-        t = target_type.lower()
-        for e in self._entries:
-            if t in [tt.lower() for tt in e.target_types] and e.stig_playbook:
-                return (e.stig_playbook, e.stig_target_var)
-        # Fall back to schema-level platform specs (covers merged schemas like vm.yaml)
-        from .schema_loader import discover_schemas
-        for schema in discover_schemas().values():
-            spec = schema.platform_spec
-            if spec and spec.stig_playbook and t in [tt.lower() for tt in spec.target_types]:
-                return (spec.stig_playbook, spec.stig_target_var)
+        """Return (playbook, target_var) for a STIG target type, or None."""
+        e = self._tt_lookup.get(target_type.lower())
+        if e and e.stig_playbook:
+            return (e.stig_playbook, e.stig_target_var)
         return None
 
     def all_stig_skeleton_map(self) -> dict[str, str]:

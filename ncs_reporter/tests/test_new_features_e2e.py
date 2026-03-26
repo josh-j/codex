@@ -74,8 +74,6 @@ class TestNewFeaturesE2E(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(self.platform_root / "inventory_groups.json"),
                 "--extra-config-dir",
                 str(self.schema_dir),
             ],

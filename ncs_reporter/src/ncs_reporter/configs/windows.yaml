@@ -3,8 +3,6 @@ platform:
   name: windows
   input_dir: windows
   report_dir: windows
-  target_types: [windows]
-  inventory_groups: [windows_servers, windows]
   stig_rule_prefixes:
     WN: windows
     MS: windows

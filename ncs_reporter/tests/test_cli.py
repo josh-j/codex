@@ -321,32 +321,6 @@ class SiteCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, msg=result.output)
             self.assertTrue(os.path.exists(os.path.join(output_dir, "site_health_report.html")))
 
-    def test_site_with_groups_file(self):
-        runner = CliRunner()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            all_data = {"hosts": {"host1": _linux_host_bundle()}}
-            input_path = os.path.join(tmpdir, "state.yaml")
-            with open(input_path, "w") as f:
-                yaml.dump(all_data, f)
-
-            groups_path = os.path.join(tmpdir, "groups.yaml")
-            with open(groups_path, "w") as f:
-                yaml.dump({"linux": {"hosts": ["host1"]}}, f)
-
-            output_dir = os.path.join(tmpdir, "reports")
-            result = runner.invoke(
-                main,
-                [
-                    "site",
-                    "-i",
-                    input_path,
-                    "-g",
-                    groups_path,
-                    "-o",
-                    output_dir,
-                ],
-            )
-            self.assertEqual(result.exit_code, 0, msg=result.output)
 
 
 # ---------------------------------------------------------------------------
@@ -513,7 +487,6 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                         "report_dir": "linux/ubuntu",
                         "platform": "linux",
                         "render": True,
-                        "target_types": ["linux", "ubuntu"],
                         "paths": _default_paths(),
                     }
                 ]
@@ -594,8 +567,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
                                         "render": True,
-                                "target_types": ["linux", "ubuntu"],
-                                "paths": _default_paths(),
+                                        "paths": _default_paths(),
                             }
                         ]
                     },
@@ -642,8 +614,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
                                         "render": True,
-                                "target_types": ["linux", "ubuntu"],
-                                "paths": _default_paths(),
+                                        "paths": _default_paths(),
                             }
                         ]
                     },

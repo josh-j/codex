@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -66,11 +65,9 @@ def validate_config(platforms_config: str | None) -> None:
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
-    target_types = sorted({t for e in entries for t in e.get("target_types", [])})
     seen: set[str] = set()
     renderable = [p for e in entries if e.get("render", True) for p in [e["platform"]] if p not in seen and not seen.add(p)]  # type: ignore[func-returns-value]
-    click.echo(f"Valid! {len(entries)} platform entries, {len(target_types)} target types.")
-    click.echo(f"  Target types: {', '.join(target_types)}")
+    click.echo(f"Valid! {len(entries)} platform entries.")
     click.echo(f"  Renderable platforms: {', '.join(renderable)}")
 
 
@@ -126,20 +123,18 @@ _register_platform_commands()
 
 @main.command()
 @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
-@click.option("--groups", "-g", "groups_file", type=click.Path(exists=True))
 @click.option("--output-dir", "-o", required=True, type=click.Path())
 @click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
-def site(input_file: str, groups_file: str | None, output_dir: str, report_stamp: str | None) -> None:
+def site(input_file: str, output_dir: str, report_stamp: str | None) -> None:
     """Generate Global Site Health dashboard."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     data = load_yaml(input_file)
     common_vars = generate_timestamps(report_stamp)
-    groups_data = _load_groups(groups_file)
 
     from .models.platforms_config import FILENAME_SITE_HEALTH, TEMPLATE_SITE
     click.echo("Rendering Global Site Health dashboard...")
-    site_view = build_site_dashboard_view(data, inventory_groups=groups_data, ctx=report_context(common_vars))
+    site_view = build_site_dashboard_view(data, ctx=report_context(common_vars))
     env = get_jinja_env()
     content = env.get_template(TEMPLATE_SITE).render(site_dashboard_view=site_view, **common_vars)
     (output_path / FILENAME_SITE_HEALTH).write_text(content)
@@ -282,13 +277,6 @@ main.add_command(stig_apply, "stig-apply")
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
-
-
-def _load_groups(groups_file: str | None) -> dict[str, Any]:
-    if not groups_file:
-        return {}
-    with open(groups_file) as f:
-        return json.load(f) if str(groups_file).endswith(".json") else yaml.safe_load(f)
 
 
 if __name__ == "__main__":
