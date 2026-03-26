@@ -1,8 +1,6 @@
 name: windows
 platform:
-  name: windows
-  input_dir: windows
-  report_dir: windows
+  path: windows
   stig_rule_prefixes:
     WN: windows
     MS: windows

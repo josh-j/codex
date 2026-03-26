@@ -1,8 +1,6 @@
 name: linux
 platform:
-  name: linux
-  input_dir: linux/ubuntu
-  report_dir: linux/ubuntu
+  path: linux/ubuntu
   stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
   stig_target_var: "ubuntu_target_hosts"
   stig_rule_prefixes:

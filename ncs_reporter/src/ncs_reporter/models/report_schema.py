@@ -348,9 +348,9 @@ class PlatformSpec(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    name: str = ""  # platform name (e.g. "linux", "vmware", "windows")
-    input_dir: str = ""
-    report_dir: str = ""
+    name: str = ""  # platform group name (e.g. "linux", "vmware", "windows")
+    input_dir: str = Field(default="", validation_alias=AliasChoices("input_dir", "path"))
+    report_dir: str = ""  # defaults to input_dir if not set
     stig_checklist_map: dict[str, str] = Field(default_factory=dict)
     stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports
@@ -362,6 +362,18 @@ class PlatformSpec(BaseModel):
     site_compute_node: bool = False
     stig_playbook: str = ""
     stig_target_var: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_defaults(cls, values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+        input_dir = values.get("input_dir") or values.get("path") or ""
+        if not values.get("report_dir"):
+            values["report_dir"] = input_dir
+        if not values.get("name") and input_dir:
+            values["name"] = input_dir.split("/")[0]
+        return values
 
     @field_validator("sub_entries", mode="before")
     @classmethod
@@ -412,12 +424,21 @@ class ReportSchema(BaseModel):
         if not isinstance(values, dict):
             return values
 
-        # Handle platform field: can be str or dict (PlatformSpec)
+        # Handle platform field: can be str path or dict (PlatformSpec)
         raw_platform = values.get("platform")
-        if isinstance(raw_platform, dict):
+        if isinstance(raw_platform, str) and ("/" in raw_platform or raw_platform):
+            # String path form: "vmware/esxi" or "windows"
+            values["platform_spec"] = {
+                "input_dir": raw_platform,
+                "report_dir": raw_platform,
+                "name": raw_platform.split("/")[0],
+            }
+            values["platform"] = raw_platform.split("/")[0]
+        elif isinstance(raw_platform, dict):
             # Dict form: extract platform name for the str field, store spec separately
             values["platform_spec"] = raw_platform
-            values["platform"] = raw_platform.get("name", values.get("name", ""))
+            input_dir = raw_platform.get("input_dir") or raw_platform.get("path") or ""
+            values["platform"] = raw_platform.get("name") or input_dir.split("/")[0] or values.get("name", "")
         elif not raw_platform:
             # Auto-derive platform from name when not explicitly set
             values["platform"] = values.get("name", "")

@@ -1,9 +1,7 @@
 name: photon
 display_name: "Photon OS"
 platform:
-  name: linux
-  input_dir: linux/photon
-  report_dir: linux/photon
+  path: linux/photon
   render: false
   stig_playbook: "playbooks/photon_stig_remediate.yml"
   stig_target_var: "photon_target_hosts"

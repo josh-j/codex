@@ -1,9 +1,7 @@
 name: vm
 display_name: "VMware VM"
 platform:
-  name: vmware
-  input_dir: vmware/vm
-  report_dir: vmware/vm
+  path: vmware/vm
   stig_playbook: "playbooks/vm/stig_remediate.yml"
   stig_target_var: "vm_stig_target_vms"
   stig_checklist_map:
