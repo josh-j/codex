@@ -937,6 +937,38 @@
       "title": "StatCardsWidget",
       "type": "object"
     },
+    "StigConfig": {
+      "additionalProperties": false,
+      "description": "STIG compliance configuration nested under config.stig in YAML.",
+      "properties": {
+        "playbook": {
+          "default": "",
+          "title": "Playbook",
+          "type": "string"
+        },
+        "target_var": {
+          "default": "",
+          "title": "Target Var",
+          "type": "string"
+        },
+        "checklist_map": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Checklist Map",
+          "type": "object"
+        },
+        "rule_prefixes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Rule Prefixes",
+          "type": "object"
+        }
+      },
+      "title": "StigConfig",
+      "type": "object"
+    },
     "StyleRule": {
       "additionalProperties": false,
       "properties": {
@@ -1274,29 +1306,8 @@
       "title": "Split Name Key",
       "type": "string"
     },
-    "stig_checklist_map": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "title": "Stig Checklist Map",
-      "type": "object"
-    },
-    "stig_rule_prefixes": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "title": "Stig Rule Prefixes",
-      "type": "object"
-    },
-    "stig_playbook": {
-      "default": "",
-      "title": "Stig Playbook",
-      "type": "string"
-    },
-    "stig_target_var": {
-      "default": "",
-      "title": "Stig Target Var",
-      "type": "string"
+    "stig": {
+      "$ref": "#/$defs/StigConfig"
     }
   },
   "title": "NCS Reporter Schema Config",

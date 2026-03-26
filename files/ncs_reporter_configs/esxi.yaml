@@ -1,7 +1,9 @@
-display_name: "VMware ESXi"
-platform: vmware/esxi
-stig_checklist_map:
-  esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
+config:
+  display_name: "VMware ESXi"
+  platform: vmware/esxi
+  stig:
+    checklist_map:
+      esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
 
 
 # Split the per-vCenter bundle into per-ESXi-host entries.

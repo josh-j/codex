@@ -400,6 +400,17 @@ class FleetColumn(BaseModel):
     width: str | None = None
 
 
+class StigConfig(BaseModel):
+    """STIG compliance configuration nested under config.stig in YAML."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    playbook: str = ""
+    target_var: str = ""
+    checklist_map: dict[str, str] = Field(default_factory=dict)
+    rule_prefixes: dict[str, str] = Field(default_factory=dict)
+
+
 class ReportSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -414,16 +425,9 @@ class ReportSchema(BaseModel):
     widgets: list[ReportWidget] = Field(default_factory=list)
     fleet_columns: list[FleetColumn] = Field(default_factory=list)
     template_override: str | None = None
-    # When set, the raw bundle is split into multiple synthetic host entries
-    # by iterating the list at this path. Each item becomes its own host
-    # using the item's "name" field as the hostname.
     split_field: str | None = None
     split_name_key: str = "name"
-    # STIG compliance fields
-    stig_checklist_map: dict[str, str] = Field(default_factory=dict)
-    stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
-    stig_playbook: str = ""
-    stig_target_var: str = ""
+    stig: StigConfig = Field(default_factory=StigConfig)
 
     # Track where this schema was loaded from (set post-load, not from YAML)
     _source_path: str | None = None
@@ -433,6 +437,13 @@ class ReportSchema(BaseModel):
     def _apply_defaults(cls, values: Any) -> Any:
         if not isinstance(values, dict):
             return values
+
+        # Hoist config: block fields to top level
+        config = values.pop("config", None)
+        if isinstance(config, dict):
+            for key, val in config.items():
+                if key not in values:
+                    values[key] = val
 
         # Handle platform field: can be str path or dict (PlatformSpec)
         raw_platform = values.get("platform")

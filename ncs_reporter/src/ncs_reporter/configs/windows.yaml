@@ -1,7 +1,9 @@
-platform: windows
-stig_rule_prefixes:
-  WN: windows
-  MS: windows
+config:
+  platform: windows
+  stig:
+    rule_prefixes:
+      WN: windows
+      MS: windows
 
 
 fleet_columns:
