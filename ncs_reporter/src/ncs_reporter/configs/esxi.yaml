@@ -12,73 +12,11 @@ config:
     'VMs': "{{ vm_count }}"
 
 vars:
-  # Per-host fields (pre-assembled by collector)
-  cluster:
-    path: "raw_esxi.data.cluster"
-    fallback: ''
-  datacenter:
-    path: "raw_esxi.data.datacenter"
-    fallback: ''
-  connection_state:
-    path: "raw_esxi.data.connection_state"
-    fallback: "unknown"
-  overall_status:
-    path: "raw_esxi.data.overall_status"
-    fallback: "unknown"
-  cpu_used_pct:
-    path: "raw_esxi.data.cpu_used_pct"
-    type: float
-  mem_used_pct:
-    path: "raw_esxi.data.mem_used_pct"
-    type: float
-  mem_mb_total:
-    path: "raw_esxi.data.mem_mb_total"
-    type: float
-  mem_mb_used:
-    path: "raw_esxi.data.mem_mb_used"
-    type: float
-  vm_count:
-    path: "raw_esxi.data.vm_count"
-    type: int
-  uptime_seconds:
-    path: "raw_esxi.data.uptime_seconds"
-    type: float
+  # All raw_esxi.data.* fields are auto-imported from the collector payload.
+  # Only computed/derived vars need explicit declaration.
   uptime_days:
     compute: "uptime_seconds / 86400"
     type: float
-  version:
-    path: "raw_esxi.data.version"
-    fallback: ''
-  build:
-    path: "raw_esxi.data.build"
-    fallback: ''
-  in_maintenance_mode:
-    path: "raw_esxi.data.in_maintenance_mode"
-    type: bool
-  lockdown_mode:
-    path: "raw_esxi.data.lockdown_mode"
-    fallback: "unknown"
-  ssh_enabled:
-    path: "raw_esxi.data.ssh_enabled"
-    type: bool
-  shell_enabled:
-    path: "raw_esxi.data.shell_enabled"
-    type: bool
-  ntp_running:
-    path: "raw_esxi.data.ntp_running"
-    type: bool
-  datastores:
-    path: "raw_esxi.data.datastores"
-    type: list
-  nics:
-    path: "raw_esxi.data.nics"
-    type: list
-  vmknics:
-    path: "raw_esxi.data.vmknics"
-    type: list
-  hardware_alerts:
-    path: "raw_esxi.data.hardware_alerts"
-    type: list
 
 alerts:
   - id: host_disconnected

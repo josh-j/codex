@@ -650,8 +650,8 @@ class TestEsxiHealthSchema:
         assert s.platform == "vmware"
         when_exprs = {a.when for a in s.alerts}
         assert any("disconnected" in w for w in when_exprs)  # host_disconnected
-        assert "connection_state" in s.fields
-        assert "cpu_used_pct" in s.fields
+        # connection_state and cpu_used_pct are auto-imported from raw data, not declared
+        assert "uptime_days" in s.fields  # computed field IS declared
 
     def test_esxi_schema_fires_on_per_host_bundle(self) -> None:
         from pathlib import Path

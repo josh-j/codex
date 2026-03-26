@@ -43,6 +43,13 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     """
     result: dict[str, Any] = {}
 
+    # Pass 0: auto-import all keys from path_prefix data dict as vars.
+    # Declared fields override these in subsequent passes.
+    if schema.path_prefix:
+        prefix_data = resolve_field(schema.path_prefix, raw)
+        if isinstance(prefix_data, dict):
+            result.update(prefix_data)
+
     # Set of field names whose paths are known-broken (populated at schema load
     # time by schema_loader._attach_broken_paths).  Empty if no example file.
     _broken_paths: frozenset[str] = getattr(schema, "_broken_paths", frozenset())
@@ -51,7 +58,7 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     path_resolved = 0
     path_broken = 0
 
-    # Pass 1: path-based fields
+    # Pass 1: path-based fields (override auto-imported vars)
     for name, spec in schema.fields.items():
         if spec.path is not None:
             path_total += 1

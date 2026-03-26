@@ -528,6 +528,12 @@ class ReportSchema(BaseModel):
     def _cross_check_references(self) -> "ReportSchema":
         """Ensure all field references in alerts, widgets, and fleet columns exist in fields."""
         self._derive_widget_ids()
+
+        # Skip cross-reference check when path_prefix is set — vars are
+        # auto-imported from the raw data at runtime, not all declared.
+        if self.path_prefix:
+            return self
+
         import difflib
 
         declared = set(self.fields.keys())
