@@ -6,7 +6,7 @@ from ncs_reporter.view_models.site import build_site_dashboard_view
 
 def _linux_bundle(health="OK", alerts=None):
     return {
-        "linux_system": {
+        "schema_linux": {
             "health": health,
             "alerts": alerts or [],
             "summary": {"critical_count": 0, "warning_count": 0},
@@ -16,7 +16,7 @@ def _linux_bundle(health="OK", alerts=None):
 
 def _vmware_bundle(health="green", alerts=None):
     return {
-        "vmware_vcenter": {
+        "schema_vcenter": {
             "health": health,
             "alerts": alerts or [],
             "discovery": {
@@ -30,7 +30,7 @@ def _vmware_bundle(health="green", alerts=None):
 
 def _windows_bundle(health="OK", alerts=None):
     return {
-        "windows_audit": {
+        "schema_windows": {
             "health": health,
             "alerts": alerts or [],
             "summary": {},

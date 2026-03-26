@@ -4,16 +4,13 @@ platform:
   name: vmware
   input_dir: vmware/vm
   report_dir: vmware/vm
-  display_name: "VMware VM"
   asset_label: vCenters
   inventory_groups: [vcenters]
   target_types: [vm]
-  legacy_raw_keys:
-    vmware_raw_vm: raw_vm
   stig_playbook: "playbooks/vm/stig_remediate.yml"
   stig_target_var: "vm_stig_target_vms"
   stig_skeleton_map:
-    vm: cklb_skeleton_vsphere7_vms_V1R4.json
+    vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 
 detection:
   keys_any: [vmware_raw_vm]

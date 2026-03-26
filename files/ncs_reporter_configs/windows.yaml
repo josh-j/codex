@@ -5,9 +5,6 @@ platform:
   report_dir: windows
   target_types: [windows]
   inventory_groups: [windows_servers, windows]
-  legacy_raw_keys:
-    windows_raw_audit: raw_audit
-  legacy_audit_key: windows_audit
   stig_rule_prefixes:
     WN: windows
     MS: windows

@@ -5,15 +5,11 @@ platform:
   report_dir: linux/ubuntu
   target_types: [linux, ubuntu]
   inventory_groups: [ubuntu_servers]
-  legacy_raw_keys:
-    ubuntu_raw_discovery: raw_discovery
-  legacy_audit_key: linux_system
   stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
   stig_target_var: "ubuntu_target_hosts"
   stig_rule_prefixes:
     UBTU: ubuntu
     GEN: ubuntu
-  site_category: System
 
 # Detects the key emitted by the internal.linux role via ncs_collector callback.
 detection:

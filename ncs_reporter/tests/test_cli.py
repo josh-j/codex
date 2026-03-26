@@ -512,7 +512,6 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                         "input_dir": "linux/ubuntu",
                         "report_dir": "linux/ubuntu",
                         "platform": "linux",
-                        "state_file": "linux_fleet_state.yaml",
                         "render": True,
                         "target_types": ["linux", "ubuntu"],
                         "paths": _default_paths(),
@@ -594,8 +593,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "input_dir": "linux/ubuntu",
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
-                                "state_file": "linux_fleet_state.yaml",
-                                "render": True,
+                                        "render": True,
                                 "target_types": ["linux", "ubuntu"],
                                 "paths": _default_paths(),
                             }
@@ -643,8 +641,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "input_dir": "linux/ubuntu",
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
-                                "state_file": "linux_fleet_state.yaml",
-                                "render": True,
+                                        "render": True,
                                 "target_types": ["linux", "ubuntu"],
                                 "paths": _default_paths(),
                             }
