@@ -199,77 +199,77 @@ alerts:
     category: "Appliance Health"
     severity: CRITICAL
     when: appliance_health_overall == 'red'
-    message: "VCSA component failure: overall health is RED"
+    msg: "VCSA component failure: overall health is RED"
 
   - id: appliance_health_yellow
     category: "Appliance Health"
     severity: WARNING
     suppress_if: appliance_health_red
     when: appliance_health_overall == 'yellow'
-    message: "VCSA degraded: overall health is YELLOW"
+    msg: "VCSA degraded: overall health is YELLOW"
 
   - id: appliance_health_gray
     category: "Data Quality"
     severity: WARNING
     suppress_if: [appliance_health_red, appliance_health_yellow]
     when: appliance_health_overall == 'gray'
-    message: "VCSA health unknown: overall health is GRAY — check permissions and API availability"
+    msg: "VCSA health unknown: overall health is GRAY — check permissions and API availability"
 
   - id: ssh_enabled
     category: "Security"
     severity: WARNING
     when: ssh_enabled == 1.0
-    message: "Hardening violation: SSH is enabled on VCSA"
+    msg: "Hardening violation: SSH is enabled on VCSA"
 
   - id: shell_enabled
     category: "Security"
     severity: WARNING
     when: shell_enabled == 1.0
-    message: "Hardening violation: interactive shell is enabled on VCSA"
+    msg: "Hardening violation: interactive shell is enabled on VCSA"
 
   - id: ntp_disabled
     category: "Time Synchronization"
     severity: WARNING
     when: ntp_mode not in ['NTP', 'HOST']
-    message: "Time sync misconfigured: NTP mode is '{{ ntp_mode }}' — clock drift may affect logs and certificates"
+    msg: "Time sync misconfigured: NTP mode is '{{ ntp_mode }}' — clock drift may affect logs and certificates"
 
   - id: appliance_uptime_excessive
     category: "Appliance Lifecycle"
     severity: WARNING
     when: appliance_uptime_days >= 90.0
-    message: "VCSA has not been rebooted in {{ appliance_uptime_days | round(0) }} days — may be missing patches"
+    msg: "VCSA has not been rebooted in {{ appliance_uptime_days | round(0) }} days — may be missing patches"
 
   - id: appliance_uptime_recent_reboot
     category: "Appliance Lifecycle"
     severity: INFO
     suppress_if: appliance_uptime_excessive
     when: appliance_uptime_days < 1.0
-    message: "VCSA was rebooted less than 24 hours ago — verify this was planned"
+    msg: "VCSA was rebooted less than 24 hours ago — verify this was planned"
 
   - id: no_backup_schedule
     category: "Data Protection"
     severity: CRITICAL
     when: backup_schedule_count <= 0
-    message: "DR risk: no file-based backup schedule configured on VCSA"
+    msg: "DR risk: no file-based backup schedule configured on VCSA"
 
   - id: backup_schedule_disabled
     category: "Data Protection"
     severity: CRITICAL
     when: backup_schedules | selectattr('enabled', 'eq', false) | list | length > 0
-    message: "DR risk: a configured backup schedule is DISABLED on VCSA"
+    msg: "DR risk: a configured backup schedule is DISABLED on VCSA"
 
   - id: active_critical_alarms
     category: "vCenter Alarms"
     severity: CRITICAL
     when: active_critical_alarm_count > 0
-    message: "Active CRITICAL alarms detected in vCenter ({{ alarm_count }} total triggered)"
+    msg: "Active CRITICAL alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
   - id: active_warning_alarms
     category: "vCenter Alarms"
     severity: WARNING
     suppress_if: active_critical_alarms
     when: active_warning_alarm_count > 0
-    message: "Active WARNING alarms detected in vCenter ({{ alarm_count }} total triggered)"
+    msg: "Active WARNING alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
 widgets:
   - title: "Active Alerts"

@@ -44,14 +44,14 @@ def _simple_schema() -> ReportSchema:
                 category="Network Health",
                 severity="WARNING",
                 when="error_rate_pct > 5.0",
-                message="High error rate: {{ error_rate_pct }}%",
+                msg="High error rate: {{ error_rate_pct }}%",
             ),
             AlertRule(
                 id="interfaces_down",
                 category="Connectivity",
                 severity="CRITICAL",
                 when="interface_list | selectattr('status', 'eq', 'down') | list | length > 0",
-                message="Interface(s) down detected",
+                msg="Interface(s) down detected",
             ),
         ],
     )
@@ -539,7 +539,7 @@ class TestComputeFields:
                     category="Compute",
                     severity="CRITICAL",
                     when="cpu_pct > 90.0",
-                    message="CPU usage is {cpu_pct:.1f}%",
+                    msg="CPU usage is {cpu_pct:.1f}%",
                 )
             ],
         )
@@ -787,7 +787,7 @@ class TestScriptFields:
                     category="Snapshots",
                     severity="WARNING",
                     when="aged_count > 0",
-                    message="{{ aged_count }} aged snapshot(s)",
+                    msg="{{ aged_count }} aged snapshot(s)",
                 )
             ],
         )
@@ -909,7 +909,7 @@ class TestDateThresholdCondition:
                     category="Time",
                     severity="WARNING",
                     when=when_expr,
-                    message="date alert fired",
+                    msg="date alert fired",
                 )
             ],
         )

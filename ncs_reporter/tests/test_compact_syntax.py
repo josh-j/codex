@@ -196,9 +196,9 @@ class TestExpandCompactSyntax:
             "fields": {"f": "x.f"},
             "alerts": [
                 {"id": "a1", "severity": "WARNING", "category": "Cat",
-                 "when": "f > 10", "message": "msg"},
+                 "when": "f > 10", "msg": "msg"},
                 {"id": "a2", "severity": "CRITICAL", "category": "Cat",
-                 "when": "f is defined", "message": "m"},
+                 "when": "f is defined", "msg": "m"},
             ],
         }
         result = _expand_compact_syntax(data)
@@ -343,8 +343,8 @@ class TestIncludeAlerts:
                 "alerts": {
                     "$include": "base_alerts.yaml",
                     "$local": [
-                        {"id": "alert_a", "severity": "CRITICAL", "category": "Test", "when": "x > 0", "message": "overridden"},
-                        {"id": "alert_c", "severity": "INFO", "category": "Test", "when": "z > 0", "message": "appended"},
+                        {"id": "alert_a", "severity": "CRITICAL", "category": "Test", "when": "x > 0", "msg": "overridden"},
+                        {"id": "alert_c", "severity": "INFO", "category": "Test", "when": "z > 0", "msg": "appended"},
                     ],
                 },
             }
@@ -371,7 +371,7 @@ class TestRoundTrip:
             },
             "alerts": [
                 {"id": "uptime_high", "category": "Health", "severity": "WARNING",
-                 "when": "uptime > 86400", "message": "Uptime over 24h"},
+                 "when": "uptime > 86400", "msg": "Uptime over 24h"},
             ],
             "widgets": [
                 {"alert_panel": "Alerts"},

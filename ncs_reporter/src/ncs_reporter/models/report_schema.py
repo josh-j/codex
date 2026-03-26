@@ -138,7 +138,7 @@ class AlertRule(BaseModel):
     severity: Literal["CRITICAL", "WARNING", "INFO"] = "WARNING"
     when: str  # Jinja2 expression evaluated against extracted fields
     action: str | None = None  # Optional command to run when alert fires
-    message: str
+    msg: str = Field(validation_alias=AliasChoices("msg", "message"))
     suppress_if: str | list[str] | None = None
 
 
