@@ -4,21 +4,21 @@ config:
   stig:
     platform_to_checklist:
       esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
-
+  extra_fleet_widget_columns:
+    - label: "Cluster"
+      field: cluster
+    - label: "Status"
+      field: overall_status
+    - label: "CPU %"
+      field: cpu_used_pct
+    - label: "Mem %"
+      field: mem_used_pct
+    - label: "VMs"
+      field: vm_count
 
 # Split the per-vCenter bundle into per-ESXi-host entries.
-# The esxi_hosts field is computed by assemble_esxi_hosts.py, which
-# merges host_facts, host_nics, and host_services into a flat list.
-# Each item becomes its own node report keyed by the host's name.
 split_field: esxi_hosts
 split_name_key: name
-
-fleet_columns:
-  - "Cluster: cluster"
-  - "Status: overall_status"
-  - "CPU %: cpu_used_pct"
-  - "Mem %: mem_used_pct"
-  - "VMs: vm_count"
 
 fields:
   # Raw data references for the assembly script

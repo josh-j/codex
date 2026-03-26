@@ -34,10 +34,9 @@ config:
       ESXI: esxi
       VC: vcsa
       PH: photon
-
-
-fleet_columns:
-  - "Version: appliance_version"
+  extra_fleet_widget_columns:
+    - label: "Version"
+      field: appliance_version
 
 fields:
   # --- Appliance ---

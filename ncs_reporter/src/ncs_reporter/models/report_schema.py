@@ -431,7 +431,10 @@ class ReportSchema(BaseModel):
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
     alerts: list[AlertRule] = Field(default_factory=list)
     widgets: list[ReportWidget] = Field(default_factory=list)
-    fleet_columns: list[FleetColumn] = Field(default_factory=list)
+    fleet_columns: list[FleetColumn] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("fleet_columns", "extra_fleet_widget_columns"),
+    )
     template_override: str | None = None
     split_field: str | None = None
     split_name_key: str = "name"
