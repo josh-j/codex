@@ -417,9 +417,14 @@ def build_generic_node_view(
 
     # siblings in the same platform (as indexed in hosts_data)
     current_plt_dir = nc.hosts_data.get(hostname) if nc.hosts_data else None
+    # Auto-inject alert panel as first widget if not declared
+    effective_widgets: list[ReportWidget] = list(schema.widgets)
+    if not any(isinstance(w, AlertPanelWidget) for w in effective_widgets):
+        effective_widgets.insert(0, AlertPanelWidget(id="active_alerts", title="Active Alerts", type="alert_panel"))
+
     widgets_rendered = [
         rendered
-        for w in schema.widgets
+        for w in effective_widgets
         if (
             rendered := _render_widget(
                 w,

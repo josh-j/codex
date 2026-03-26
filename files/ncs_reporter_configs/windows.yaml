@@ -187,8 +187,6 @@ alerts:
 # ---------------------------------------------------------------------------
 
 widgets:
-  - title: "Active Alerts"
-    type: alert_panel
 
   - title: "System Information"
     type: key_value

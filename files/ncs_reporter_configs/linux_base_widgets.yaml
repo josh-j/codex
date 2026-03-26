@@ -1,7 +1,5 @@
 # Shared Linux widgets — included by linux.yaml, photon.yaml, etc.
 
-- title: "Active Alerts"
-  type: alert_panel
 
 - id: headline_kpis
   title: "Key Metrics"
