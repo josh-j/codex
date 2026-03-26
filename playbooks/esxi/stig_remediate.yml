@@ -3,7 +3,7 @@
 # Automated security hardening remediation for VMware ESXi hosts.
 
 - name: "Phase 2c | ESXi STIG Hardening (per vCenter)"
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "remediate", "esxi"]
@@ -26,7 +26,7 @@
       when: esxi_stig_target_hosts | default([]) | length > 0
 
 - name: "Phase 2e | Post-Remediation ESXi STIG Audit"
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "audit", "esxi"]

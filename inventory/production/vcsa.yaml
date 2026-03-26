@@ -1,0 +1,11 @@
+---
+all:
+  children:
+    vcsa:
+      hosts:
+        vcsa-aedw: {}
+        vcsa-ashe: {}
+        vcsa-gfpy: {}
+        vcsa-mqna: {}
+        vcsa-sdhm: {}
+        vcsa-tyfq: {}

@@ -3,7 +3,7 @@
 # Read-only audit focused on VM inventory and snapshot state.
 
 - name: Phase 2c | VMware VM Workload Audit
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   roles:

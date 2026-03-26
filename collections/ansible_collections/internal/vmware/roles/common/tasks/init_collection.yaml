@@ -8,6 +8,7 @@
     gather_subset:
       - min
   delegate_to: localhost
+  become: false
   changed_when: false
 
 - name: Set shared controller timestamps

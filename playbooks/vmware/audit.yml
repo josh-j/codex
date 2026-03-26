@@ -8,7 +8,7 @@
 # dashboards, providing a high-level view of the virtualization layer.
 
 - name: Phase 2 | VMware Health & Compliance Audit
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   strategy: linear
