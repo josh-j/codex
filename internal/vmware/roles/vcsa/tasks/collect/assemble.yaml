@@ -1,32 +1,113 @@
 ---
 # internal.vmware.vcsa : tasks/collect/assemble.yaml
+# Assembles raw vCenter collection data into a flat structure for ncs_reporter.
 
-- name: Assemble raw vCenter context
+- name: Flatten datastores from per-datacenter results
+  ansible.builtin.set_fact:
+    _flat_datastores: >-
+      {{ _raw_datastores.results | default([])
+         | selectattr('datastores', 'defined')
+         | map(attribute='datastores')
+         | flatten | list }}
+  changed_when: false
+
+- name: Flatten clusters and compute counts
+  ansible.builtin.set_fact:
+    _flat_clusters: >-
+      {% set clusters = [] %}
+      {% for dc in (_raw_clusters.results | default([])) %}
+        {% if dc.clusters is defined and dc.clusters is mapping %}
+          {% for cname, cdata in dc.clusters.items() %}
+            {% set hosts = cdata.hosts | default([]) %}
+            {% set res = cdata.resource_summary | default({}) %}
+            {% set cpu_cap = (res.cpuCapacityMHz | default(1)) | float %}
+            {% set mem_cap = (res.memCapacityMB | default(1)) | float %}
+            {% set _ = clusters.append({
+              "name": cname,
+              "datacenter": dc.item | default(""),
+              "host_count": hosts | length,
+              "ha_enabled": cdata.ha_enabled | default(false),
+              "drs_enabled": cdata.drs_enabled | default(false),
+              "cpu_usage_pct": (((res.cpuUsedMHz | default(0)) | float / cpu_cap) * 100) | round(1) if cpu_cap > 0 else 0,
+              "mem_usage_pct": (((res.memUsedMB | default(0)) | float / mem_cap) * 100) | round(1) if mem_cap > 0 else 0,
+            }) %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      {{ clusters }}
+    _cluster_count: >-
+      {% set count = [] %}
+      {% for dc in (_raw_clusters.results | default([])) %}
+        {% if dc.clusters is defined and dc.clusters is mapping %}
+          {% set _ = count.extend(dc.clusters.keys() | list) %}
+        {% endif %}
+      {% endfor %}
+      {{ count | length }}
+    _esxi_host_count: >-
+      {% set count = [0] %}
+      {% for dc in (_raw_clusters.results | default([])) %}
+        {% if dc.clusters is defined and dc.clusters is mapping %}
+          {% for cdata in dc.clusters.values() %}
+            {% if cdata.hosts is defined %}
+              {% set _ = count.append(cdata.hosts | length) %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      {{ count | sum }}
+  changed_when: false
+
+- name: Assemble flat vCenter payload
   ansible.builtin.set_fact:
     vmware_raw_vcenter:
-      appliance_health_info: "{{ _raw_appliance_health | default({}) }}"
-      appliance_backup_info: "{{ _raw_appliance_backup | default({}) }}"
-      alarms_info: "{{ _raw_alarms | default({}) }}"
-      datacenters_info: "{{ _raw_datacenters | default({}) }}"
-      clusters_info: "{{ _raw_clusters | default({}) }}"
-      datastores_info:
-        datastores: >-
-          {{
-            _raw_datastores.results | default([])
-            | selectattr('datastores', 'defined')
-            | map(attribute='datastores')
-            | flatten | list
-          }}
-      resource_pools_info: "{{ _raw_resource_pools | default({}) }}"
-      dvswitches_info: "{{ _raw_dvswitches | default({}) }}"
-      dvs_portgroups_info: "{{ _raw_dvs_portgroups | default({}) }}"
-      licenses_info: "{{ _raw_licenses | default({}) }}"
-      extensions_info: "{{ _raw_extensions | default({}) }}"
-      content_libraries_info: "{{ _raw_content_libraries | default({}) }}"
-      tag_categories_info: "{{ _raw_tag_categories | default({}) }}"
-      tags_info: "{{ _raw_tags | default({}) }}"
+      # Appliance health
+      appliance_version: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.version | default('unknown') }}"
+      appliance_build: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.build_number | default('unknown') }}"
+      appliance_health_overall: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.overall | default('gray') }}"
+      appliance_health_cpu: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.cpu | default('gray') }}"
+      appliance_health_memory: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.memory | default('gray') }}"
+      appliance_health_database: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.database | default('gray') }}"
+      appliance_health_storage: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.storage | default('gray') }}"
+      appliance_uptime_seconds: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.uptime | default(0) | float }}"
+      ssh_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.ssh | default(false) | bool }}"
+      shell_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.shell.enabled | default(false) | bool }}"
+      ntp_mode: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.mode | default('unknown') }}"
+      ntp_servers: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.servers | default([]) }}"
+
+      # Backup
+      backup_schedules: "{{ (_raw_appliance_backup | default({})).schedules | default([]) }}"
+      backup_schedule_count: "{{ ((_raw_appliance_backup | default({})).schedules | default([])) | length }}"
+
+      # Infrastructure counts
+      vcenter_count: 1
+      datacenter_count: "{{ ((_raw_datacenters | default({})).datacenter_info | default([])) | length }}"
+      cluster_count: "{{ _cluster_count | int }}"
+      esxi_host_count: "{{ _esxi_host_count | int }}"
+      datastore_count: "{{ _flat_datastores | length }}"
+      resource_pool_count: "{{ ((_raw_resource_pools | default({})).resource_pool_info | default([])) | length }}"
+      dvswitch_count: "{{ ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) | length }}"
+      dvs_portgroup_count: "{{ ((_raw_dvs_portgroups | default({})).dvs_portgroup_info | default([])) | length }}"
+      license_count: "{{ ((_raw_licenses | default({})).licenses | default([])) | length }}"
+      extension_count: "{{ ((_raw_extensions | default({})).ext_facts | default([])) | length }}"
+      content_library_count: "{{ ((_raw_content_libraries | default({})).content_libs | default([])) | length }}"
+      tag_category_count: "{{ ((_raw_tag_categories | default({})).tag_category_info | default([])) | length }}"
+      tag_count: "{{ ((_raw_tags | default({})).tag_info | default([])) | length }}"
+      alarm_count: "{{ ((_raw_alarms | default({})).alarms | default([])) | length }}"
+
+      # Lists (for table widgets)
+      clusters: "{{ _flat_clusters }}"
+      datastores: "{{ _flat_datastores }}"
+      resource_pools: "{{ (_raw_resource_pools | default({})).resource_pool_info | default([]) }}"
+      dvswitches: "{{ (_raw_dvswitches | default({})).distributed_virtual_switches | default([]) }}"
+      dvs_portgroups: "{{ (_raw_dvs_portgroups | default({})).dvs_portgroup_info | default([]) }}"
+      licenses: "{{ (_raw_licenses | default({})).licenses | default([]) }}"
+      extensions: "{{ (_raw_extensions | default({})).ext_facts | default([]) }}"
+      content_libraries: "{{ (_raw_content_libraries | default({})).content_libs | default([]) }}"
+      tag_categories: "{{ (_raw_tag_categories | default({})).tag_category_info | default([]) }}"
+      tags: "{{ (_raw_tags | default({})).tag_info | default([]) }}"
+      active_alarms: "{{ (_raw_alarms | default({})).alarms | default([]) }}"
+
+      # Config
       config: "{{ vcenter.config | default({}) }}"
-      collection_status: "{{ 'FAILED' if vcsa_collect_failed | default(vcenter_collect_failed | default(false)) | bool else 'SUCCESS' }}"
-      collection_error: "{{ vcsa_connectivity_error | default(vcenter_connectivity_error | default('')) }}"
   changed_when: false
   no_log: true
