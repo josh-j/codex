@@ -52,7 +52,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
             yaml.dump(linux_data, f)
 
         # 2. VMware Data (Trigger a health warning)
-        self.vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
+        self.vmware_dir = self.platform_root / "vmware" / "vcsa" / "vc-01"
         self.vmware_dir.mkdir(parents=True)
         vmware_data = {
             "metadata": {"host": "vc-01", "timestamp": "2026-02-26T23:00:00Z"},
@@ -106,7 +106,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "alarms_info": {"alarms": []},
             },
         }
-        with open(self.vmware_dir / "raw_vcenter.yaml", "w") as f:
+        with open(self.vmware_dir / "raw_vcsa.yaml", "w") as f:
             yaml.dump(vmware_data, f)
 
         # 2b. ESXi per-host health data (separate input_dir: vmware/esxi)
@@ -272,7 +272,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         status) in the Security Compliance section.
         """
         # Add ESXi STIG data alongside the vmware platform data already set up in setUp
-        esxi_dir = self.platform_root / "vmware" / "vcenter" / "esxi-01"
+        esxi_dir = self.platform_root / "vmware" / "vcsa" / "esxi-01"
         esxi_dir.mkdir(parents=True, exist_ok=True)
         stig_raw = {
             "metadata": {

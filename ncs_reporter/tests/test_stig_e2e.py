@@ -24,7 +24,7 @@ class TestStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vcenter" / "esxi-01"
+        self.host_dir = self.platform_root / "vmware" / "vcsa" / "esxi-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 
@@ -189,7 +189,7 @@ class TestVmStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
+        self.host_dir = self.platform_root / "vmware" / "vcsa" / "vc-01"
         self.host_dir.mkdir(parents=True)
         self.reports_root.mkdir(parents=True)
 
@@ -310,7 +310,7 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
 
     def test_vcsa_stig_report_renders_under_vmware_vcenter_vcsa(self):
         host = "vcsa-01.local"
-        host_dir = self.platform_root / "vmware" / "vcenter" / "vcsa" / host
+        host_dir = self.platform_root / "vmware" / "vcsa" / "vcsa" / host
         host_dir.mkdir(parents=True)
 
         raw_data = {

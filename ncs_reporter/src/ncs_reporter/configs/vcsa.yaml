@@ -1,15 +1,11 @@
 config:
   display_name: "VMware VCSA"
-  detection:
-    keys_any: [raw_vcenter]
-  path_prefix: "raw_vcenter.data"
   platform:
     path: vmware/vcsa
-    input_dir: vmware/vcenter
     site_compute_node: true
     site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
     children:
-      - input_dir: vmware/vcenter/vcsa
+      - input_dir: vmware/vcsa/vcsa
         report_dir: vmware/vcsa/vcsa
         stig_platform_to_checklist:
           vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json

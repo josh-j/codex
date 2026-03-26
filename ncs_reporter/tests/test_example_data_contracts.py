@@ -17,7 +17,7 @@ from fixtures.example_data import make_linux_bundle, make_vcenter_bundle, make_w
 @pytest.mark.parametrize("unhealthy", [True, False])
 def test_vcenter_bundle_has_all_assemble_keys(unhealthy: bool) -> None:
     bundle = make_vcenter_bundle("test-vc", unhealthy=unhealthy)
-    data = bundle["raw_vcenter"]["data"]
+    data = bundle["raw_vcsa"]["data"]
     missing = VCENTER_DATA_KEYS - set(data.keys())
     assert not missing, f"vcenter example bundle missing keys from assemble.yaml: {missing}"
 
