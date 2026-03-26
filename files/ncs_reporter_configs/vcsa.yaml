@@ -5,42 +5,35 @@ platform:
   input_dir: vmware/vcenter
   report_dir: vmware/vcsa
   target_types: [vcenter, vami, eam, lookup_svc, perfcharts, vcsa_photon_os, postgresql, rhttpproxy, sts, ui]
-  state_file: vmware_fleet_state.yaml
-  display_name: "VMware VCSA"
   asset_label: vCenters
   inventory_groups: [vcenters]
   site_compute_node: true
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
-  legacy_raw_keys:
-    vmware_raw_vcenter: raw_vcenter
-  legacy_audit_key: vmware_vcenter
   stig_playbook: "playbooks/vcsa/stig_remediate.yml"
   stig_target_var: "vcsa_stig_target_hosts"
   stig_skeleton_map:
-    vcsa: cklb_skeleton_vsphere7_vcsa_V1R3.json
-    vcenter: cklb_skeleton_vsphere7_vcsa_V1R3.json
-    vami: cklb_skeleton_vsphere7_vami_V1R2.json
-    eam: cklb_skeleton_vsphere7_vca_eam_V1R2.json
-    lookup_svc: cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json
-    perfcharts: cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json
-    vcsa_photon_os: cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
-    postgresql: cklb_skeleton_vsphere7_vca_postgresql_V1R2.json
-    rhttpproxy: cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
-    sts: cklb_skeleton_vsphere7_vca_sts_V1R2.json
-    ui: cklb_skeleton_vsphere7_vca_ui_V1R2.json
+    vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+    vcenter: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+    vami: cklb_skeletons/cklb_skeleton_vsphere7_vami_V1R2.json
+    eam: cklb_skeletons/cklb_skeleton_vsphere7_vca_eam_V1R2.json
+    lookup_svc: cklb_skeletons/cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json
+    perfcharts: cklb_skeletons/cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json
+    vcsa_photon_os: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
+    postgresql: cklb_skeletons/cklb_skeleton_vsphere7_vca_postgresql_V1R2.json
+    rhttpproxy: cklb_skeletons/cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
+    sts: cklb_skeletons/cklb_skeleton_vsphere7_vca_sts_V1R2.json
+    ui: cklb_skeletons/cklb_skeleton_vsphere7_vca_ui_V1R2.json
   stig_rule_prefixes:
     VMCH: vm
     ESXI: esxi
     VC: vcsa
     PH: photon
-  site_category: VMware
   children:
     - input_dir: vmware/vcenter/vcsa
       report_dir: vmware/vcsa/vcsa
-      state_file: vcsa_fleet_state.yaml
       target_types: [vcsa]
       stig_skeleton_map:
-        vcsa: cklb_skeleton_vsphere7_vcsa_V1R3.json
+        vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
 
 detection:
   keys_any: [vmware_raw_vcenter]

@@ -726,23 +726,6 @@
           "title": "Target Types",
           "type": "array"
         },
-        "state_file": {
-          "default": "",
-          "title": "State File",
-          "type": "string"
-        },
-        "display_name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Display Name"
-        },
         "asset_label": {
           "default": "Nodes",
           "title": "Asset Label",
@@ -774,43 +757,12 @@
           "title": "Render",
           "type": "boolean"
         },
-        "site_category": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Site Category"
-        },
         "sub_entries": {
           "items": {
             "$ref": "#/$defs/SubEntry"
           },
           "title": "Sub Entries",
           "type": "array"
-        },
-        "legacy_raw_keys": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "Legacy Raw Keys",
-          "type": "object"
-        },
-        "legacy_audit_key": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Legacy Audit Key"
         },
         "site_infra_fields": {
           "items": {
@@ -1057,11 +1009,6 @@
         },
         "report_dir": {
           "title": "Report Dir",
-          "type": "string"
-        },
-        "state_file": {
-          "default": "",
-          "title": "State File",
           "type": "string"
         },
         "target_types": {

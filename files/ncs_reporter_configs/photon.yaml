@@ -4,13 +4,12 @@ platform:
   name: linux
   input_dir: linux/photon
   report_dir: linux/photon
-  state_file: photon_fleet_state.yaml
   render: false
   target_types: [photon]
   stig_playbook: "playbooks/photon_stig_remediate.yml"
   stig_target_var: "photon_target_hosts"
   stig_skeleton_map:
-    photon: cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
+    photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
 
 # Detects the key emitted by the internal.linux role via ncs_collector callback.
 detection:

@@ -220,21 +220,7 @@ class PlatformRegistry:
                 return e.report_dir
         return None
 
-    # -- all stig skeleton map (merged) --------------------------------------
-
-    def legacy_raw_key_map(self) -> dict[str, str]:
-        """Merged canonical_key → legacy_key across all entries."""
-        merged: dict[str, str] = {}
-        for e in self._entries:
-            merged.update(e.legacy_raw_keys)
-        return merged
-
-    def legacy_audit_key_for(self, schema_name: str) -> str | None:
-        """Return the legacy audit key alias for a schema name, or None."""
-        for e in self._entries:
-            if schema_name in e.schema_names and e.legacy_audit_key:
-                return e.legacy_audit_key
-        return None
+    # -- STIG apply plan -------------------------------------------------------
 
     def stig_apply_plan(self, target_type: str) -> tuple[str, str] | None:
         """Return (playbook, target_var) for a STIG target type, or None.

@@ -20,21 +20,11 @@ from .stig import build_stig_fleet_view
 
 
 def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | None:
-    """Return the first matching schema audit from a host bundle.
-
-    Checks ``schema_<name>`` keys in preference order, then legacy key aliases
-    from the platform registry.
-    """
-    reg = default_registry()
+    """Return the first matching schema audit from a host bundle."""
     for name in names:
         audit = bundle.get(f"schema_{name}")
         if audit:
             return dict(audit)
-        legacy = reg.legacy_audit_key_for(name)
-        if legacy:
-            audit = bundle.get(legacy)
-            if audit:
-                return dict(audit)
     return None
 
 
@@ -82,7 +72,7 @@ def build_site_dashboard_view(
                 host_report_dirs[hostname] = entry.report_dir
 
             display = entry.display_name or entry.platform.capitalize()
-            category = entry.site_category or display
+            category = display
             audit_type_key = f"schema_{audit_key}"
             alerts_list = safe_list(audit.get("alerts"))
             status = _status_from_health(audit.get("health"))

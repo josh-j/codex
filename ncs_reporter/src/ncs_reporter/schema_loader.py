@@ -580,7 +580,6 @@ def build_platform_entries_from_schemas(
         if merge_key in seen_entries:
             primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
-            primary_entry["legacy_raw_keys"].update(spec.legacy_raw_keys)
             primary_entry["stig_skeleton_map"].update(spec.stig_skeleton_map)
             primary_entry["stig_rule_prefixes"].update(spec.stig_rule_prefixes)
             continue
@@ -590,19 +589,15 @@ def build_platform_entries_from_schemas(
             "input_dir": input_dir,
             "report_dir": spec.report_dir or schema.platform or schema.name,
             "platform": platform_name,
-            "state_file": spec.state_file,
             "render": spec.render,
             "schema_name": schema.name,
             "target_types": list(spec.target_types),
-            "display_name": schema.display_name or spec.display_name,
+            "display_name": schema.display_name,
             "asset_label": spec.asset_label,
             "inventory_groups": list(spec.inventory_groups),
             "schema_names": [schema.name],
             "stig_skeleton_map": dict(spec.stig_skeleton_map),
             "stig_rule_prefixes": dict(spec.stig_rule_prefixes),
-            "site_category": spec.site_category,
-            "legacy_raw_keys": dict(spec.legacy_raw_keys),
-            "legacy_audit_key": spec.legacy_audit_key,
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
             "stig_playbook": spec.stig_playbook,
@@ -617,7 +612,6 @@ def build_platform_entries_from_schemas(
                 "input_dir": sub.input_dir,
                 "report_dir": sub.report_dir,
                 "platform": platform_name,
-                "state_file": sub.state_file,
                 "render": False,
                 "target_types": list(sub.target_types),
                 "stig_skeleton_map": dict(sub.stig_skeleton_map),

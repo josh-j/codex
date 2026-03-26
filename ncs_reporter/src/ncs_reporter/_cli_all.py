@@ -155,7 +155,6 @@ def _augment_platforms_from_schemas(
             "input_dir": _schema.platform,
             "report_dir": _schema.platform,
             "platform": _schema.platform,
-            "state_file": f"{_schema.platform}_fleet_state.yaml",
             "render": True,
             "schema_name": _schema.name,
             "schema_names": [_schema.name],
@@ -254,7 +253,7 @@ def _aggregate_platforms(
             for hostname in p_data["hosts"]:
                 if hostname not in global_inventory_index:
                     global_inventory_index[hostname] = p["report_dir"]
-            state_path = str(p_dir / p["state_file"])
+            state_path = str(p_dir / f"{p['platform']}_fleet_state.yaml")
             if not force and hosts_unchanged(p_data, state_path):
                 click.echo(f"  {p_input} unchanged, skipping.")
             else:

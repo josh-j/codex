@@ -196,12 +196,6 @@ def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, An
     """
     output = dict(bundle)
 
-    # Normalize legacy key aliases so schema detection always finds canonical keys.
-    from .platform_registry import default_registry
-    for canonical_key, legacy_key in default_registry().legacy_raw_key_map().items():
-        if legacy_key in bundle and canonical_key not in bundle:
-            output[canonical_key] = bundle[legacy_key]
-
     # STIG normalization (kept in Python — orthogonal to schema system)
     stig_keys = [k for k in bundle.keys() if str(k).lower().startswith("stig")]
     for k in stig_keys:

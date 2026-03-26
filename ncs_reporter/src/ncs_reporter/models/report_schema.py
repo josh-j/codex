@@ -338,7 +338,6 @@ class SubEntry(BaseModel):
 
     input_dir: str
     report_dir: str
-    state_file: str = ""
     target_types: list[str] = Field(default_factory=list)
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
     stig_playbook: str = ""
@@ -354,21 +353,15 @@ class PlatformSpec(BaseModel):
     input_dir: str = ""
     report_dir: str = ""
     target_types: list[str] = Field(default_factory=list)
-    state_file: str = ""
-    display_name: str | None = None
     asset_label: str = "Nodes"
     inventory_groups: list[str] = Field(default_factory=list)
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
     stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports
-    site_category: str | None = None
     sub_entries: list[SubEntry] = Field(
         default_factory=list,
         validation_alias=AliasChoices("sub_entries", "children"),
     )
-    # Registry-driven extensions (see PlatformEntry for docs)
-    legacy_raw_keys: dict[str, str] = Field(default_factory=dict)
-    legacy_audit_key: str | None = None
     site_infra_fields: list[str] = Field(default_factory=list)
     site_compute_node: bool = False
     stig_playbook: str = ""
