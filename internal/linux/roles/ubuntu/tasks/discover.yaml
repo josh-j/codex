@@ -87,10 +87,29 @@
         - /etc/ssh/sshd_config
       check_mode: false
 
-    - name: Assemble raw discovery context
+    - name: Assemble flat discovery payload
       ansible.builtin.set_fact:
         ubuntu_raw_discovery:
-          ansible_facts: "{{ ansible_facts }}"
+          # System identity (flattened from ansible_facts)
+          hostname: "{{ ansible_facts.hostname | default('unknown') }}"
+          ip_address: "{{ ansible_facts.default_ipv4.address | default('N/A') }}"
+          kernel: "{{ ansible_facts.kernel | default('unknown') }}"
+          os_family: "{{ ansible_facts.os_family | default('unknown') }}"
+          distribution: "{{ ansible_facts.distribution | default('unknown') }}"
+          distribution_version: "{{ ansible_facts.distribution_version | default('unknown') }}"
+          uptime_seconds: "{{ ansible_facts.uptime_seconds | default(0) | float }}"
+          load_avg_15m: "{{ ansible_facts.loadavg['15m'] | default(0) | float }}"
+          # Memory
+          memory_total_mb: "{{ ansible_facts.memtotal_mb | default(1) | float }}"
+          memory_free_mb: "{{ ansible_facts.memfree_mb | default(0) | float }}"
+          swap_total_mb: "{{ ansible_facts.swaptotal_mb | default(0) | float }}"
+          swap_free_mb: "{{ ansible_facts.swapfree_mb | default(0) | float }}"
+          # Security
+          getent_passwd: "{{ ansible_facts.getent_passwd | default({}) }}"
+          epoch_seconds: "{{ ansible_facts.date_time.epoch | default(0) | float }}"
+          # Raw mounts (for disk filtering in reporter)
+          mounts: "{{ ansible_facts.mounts | default([]) }}"
+          # Command output (kept nested for reporter pipe transforms)
           failed_services: "{{ _failed_services_raw }}"
           shadow_raw: "{{ _shadow_raw }}"
           sshd_raw: "{{ _sshd_raw }}"

@@ -1,22 +1,29 @@
 ---
 # internal.vmware.vm : collect/assemble.yaml
-# Assembles raw VM workload data into vmware_raw_vm.
+# Assembles raw VM workload data into a flat payload for ncs_reporter.
 
-- name: Assemble raw VM workload context
+- name: Assemble flat VM workload payload
   ansible.builtin.set_fact:
     vmware_raw_vm:
-      datacenters_info: "{{ _raw_datacenters | default({}) }}"
-      vms_info: "{{ _raw_vms | default({}) }}"
-      snapshots_info:
-        snapshots: >-
-          {{
-            _raw_snapshots.results | default([])
-            | selectattr('vmware_all_snapshots_info', 'defined')
-            | map(attribute='vmware_all_snapshots_info')
-            | flatten | list
-          }}
+      datacenters: "{{ (_raw_datacenters | default({})).datacenter_info | default([]) }}"
+      vms_info_raw: "{{ _raw_vms | default({}) }}"
+      virtual_machines: "{{ (_raw_vms | default({})).virtual_machines | default([]) }}"
+      vm_count: "{{ ((_raw_vms | default({})).virtual_machines | default([])) | length }}"
+      snapshots_raw: >-
+        {{
+          _raw_snapshots.results | default([])
+          | selectattr('vmware_all_snapshots_info', 'defined')
+          | map(attribute='vmware_all_snapshots_info')
+          | flatten | list
+        }}
+      snapshot_count: >-
+        {{
+          _raw_snapshots.results | default([])
+          | selectattr('vmware_all_snapshots_info', 'defined')
+          | map(attribute='vmware_all_snapshots_info')
+          | flatten | list | length
+        }}
+      infra_patterns: "{{ (vcenter | default({})).config.infrastructure_vm_patterns | default([]) }}"
       config: "{{ vcenter.config | default({}) }}"
-      collection_status: "{{ 'FAILED' if vm_collect_failed | default(false) | bool else 'SUCCESS' }}"
-      collection_error: "{{ vm_connectivity_error | default('') }}"
   changed_when: false
   no_log: true

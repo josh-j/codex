@@ -17,27 +17,14 @@ config:
 # ---------------------------------------------------------------------------
 
 vars:
-  datacenters:
-    path: ".datacenters_info.datacenter_info"
-    type: list
-  vms_info_raw:
-    path: ".vms_info"
-    type: dict
-  infra_patterns:
-    path: ".config.infrastructure_vm_patterns"
-    type: list
+  # All raw_vm.data.* fields are auto-imported from the collector payload.
+  # Only scripts, computes, and metadata need explicit declaration.
+  collected_at: "raw_vm.metadata.timestamp"
 
   virtual_machines:
     script: "get_vms_list.py"
     script_args:
       exclude_patterns: "{{ infra_patterns }}"
-    type: list
-
-  vm_count:
-    path: ".vms_info.virtual_machines | len_if_list"
-    type: int
-  snapshots_raw:
-    path: ".snapshots_info.snapshots"
     type: list
 
   snapshots:
@@ -48,10 +35,7 @@ vars:
     type: list
 
   snapshot_count:
-    path: ".snapshots_info.snapshots | len_if_list"
-    type: int
     thresholds: { 1: yellow, 10: red }
-  collected_at: "raw_vm.metadata.timestamp"
 
   aged_snapshot_count:
     script: "normalize_snapshots.py"
@@ -64,7 +48,7 @@ vars:
     compute: "{{ snapshot_count - aged_snapshot_count }}"
 
   powered_off_vm_count:
-    path: ".vms_info.virtual_machines"
+    path: ".virtual_machines"
     type: int
     count_where:
       power_state: "poweredOff"
