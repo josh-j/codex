@@ -1,7 +1,10 @@
 """Site dashboard reporting view-model builders."""
 
+from __future__ import annotations
+
 from typing import Any
 
+from .._report_context import ReportContext
 from ..platform_registry import PlatformRegistry, default_registry
 from .common import (
     _count_alerts,
@@ -40,9 +43,7 @@ def build_site_dashboard_view(
     aggregated_hosts: dict[str, Any],
     inventory_groups: dict[str, Any] | None = None,
     *,
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
+    ctx: ReportContext | None = None,
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
     generated_fleet_dirs: set[str] | None = None,
@@ -59,9 +60,7 @@ def build_site_dashboard_view(
     infra: dict[str, int] = {}
     stig_fleet = build_stig_fleet_view(
         aggregated_hosts,
-        report_stamp=report_stamp,
-        report_date=report_date,
-        report_id=report_id,
+        ctx=ctx,
         registry=reg,
         cklb_dir=cklb_dir,
     )
@@ -191,7 +190,7 @@ def build_site_dashboard_view(
     )
 
     return {
-        "meta": build_meta(report_stamp, report_date, report_id),
+        "meta": build_meta(ctx),
         "totals": totals,
         "nav": site_nav,
         "alerts": sorted(all_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))),

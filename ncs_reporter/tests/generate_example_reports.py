@@ -56,7 +56,7 @@ from fixtures.example_data import (
     make_stig_ubuntu_bundle,
     make_stig_windows_bundle,
 )
-from ncs_reporter._report_context import generate_timestamps, get_jinja_env, vm_kwargs
+from ncs_reporter._report_context import generate_timestamps, get_jinja_env, report_context
 from ncs_reporter.aggregation import deep_merge, load_all_reports, normalize_host_bundle
 from ncs_reporter.cli import _default_paths, _render_platform, _render_stig
 from ncs_reporter.view_models.site import build_site_dashboard_view
@@ -299,7 +299,7 @@ def main() -> None:
     # 3. Site dashboard
     # ------------------------------------------------------------------
     env = get_jinja_env()
-    kw = vm_kwargs(common_vars)
+    rc = report_context(common_vars)
     site_view = build_site_dashboard_view(
         {"metadata": {}, "hosts": all_hosts},
         inventory_groups={
@@ -315,7 +315,7 @@ def main() -> None:
             ],
             "windows_servers": ["win-srv-01"],
         },
-        **kw,
+        ctx=rc,
     )
     tpl = env.get_template("site_health_report.html.j2")
     content = tpl.render(site_dashboard_view=site_view, **common_vars)

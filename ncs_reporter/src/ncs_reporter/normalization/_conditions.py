@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from ncs_reporter.models.report_schema import (
     ComputedFilterCondition,
@@ -117,6 +120,7 @@ def _eval_computed_filter(condition: Any, fields: dict[str, Any]) -> bool:
                 if condition.min <= val < condition.max:
                     return True
             except Exception:
+                logger.debug("computed_filter range expression failed on item: %s", item, exc_info=True)
                 continue
         return False
 
@@ -131,6 +135,7 @@ def _eval_computed_filter(condition: Any, fields: dict[str, Any]) -> bool:
             if comparator(val, condition.threshold):
                 return True
         except Exception:
+            logger.debug("computed_filter expression failed on item: %s", item, exc_info=True)
             continue
     return False
 
@@ -196,6 +201,7 @@ def _filter_affected_items(condition: Any, items: list[Any]) -> list[Any]:
             try:
                 val = _safe_eval_expr(condition.expression, item)
             except Exception:
+                logger.debug("filter_affected_items expression failed on item: %s", item, exc_info=True)
                 continue
             if condition.cmp == "range":
                 if condition.min is not None and condition.max is not None and condition.min <= val < condition.max:

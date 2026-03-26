@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .nav_builder import NavBuilder
 
 from .._cklb import load_cklb_lookup
+from .._report_context import ReportContext
 from ..pathing import rel_href, render_template
 from ..platform_registry import PlatformRegistry, default_registry
 from ..primitives import canonical_stig_status as _canonical_stig_status
@@ -287,6 +288,14 @@ def _build_finding_detail(
     return detail, cklb_rule
 
 
+def _first_truthy(*values: Any, default: Any = "") -> Any:
+    """Return the first truthy value, or *default*."""
+    for v in values:
+        if v:
+            return v
+    return default
+
+
 def _resolve_finding_fields(
     item: dict[str, Any],
     detail: dict[str, Any],
@@ -298,33 +307,32 @@ def _resolve_finding_fields(
     raw_status = item.get("status", detail.get("status", "open"))
     status = _canonical_stig_status(raw_status)
 
-    raw_severity = (
-        cklb_rule.get("severity")
-        or item.get("severity")
-        or detail.get("original_severity")
-        or detail.get("severity")
-        or "medium"
+    raw_severity = _first_truthy(
+        cklb_rule.get("severity"),
+        item.get("severity"),
+        detail.get("original_severity"),
+        detail.get("severity"),
+        default="medium",
     )
     severity = canonical_severity(raw_severity)
 
-    rule_id = str(
-        detail.get("rule_id")
-        or detail.get("vuln_id")
-        or item.get("rule_id")
-        or item.get("vuln_id")
-        or item.get("id")
-        or ""
-    )
+    rule_id = str(_first_truthy(
+        detail.get("rule_id"),
+        detail.get("vuln_id"),
+        item.get("rule_id"),
+        item.get("vuln_id"),
+        item.get("id"),
+    ))
 
-    title = str(
-        cklb_rule.get("rule_title")
-        or item.get("title")
-        or detail.get("title")
-        or (str(item.get("message") or "")).replace("STIG Violation: ", "")
-        or rule_id
-        or "Unknown Rule"
-    )
-    message = str(item.get("message") or detail.get("description") or cklb_rule.get("discussion") or title)
+    title = str(_first_truthy(
+        cklb_rule.get("rule_title"),
+        item.get("title"),
+        detail.get("title"),
+        (str(item.get("message") or "")).replace("STIG Violation: ", ""),
+        rule_id,
+        default="Unknown Rule",
+    ))
+    message = str(_first_truthy(item.get("message"), detail.get("description"), cklb_rule.get("discussion"), default=title))
 
     return {
         "rule_id": rule_id,
@@ -393,20 +401,13 @@ def _collect_source_findings(
     seen_rule_ids: set[str] = set()
 
     full_audit = stig_payload.get("full_audit")
-    if isinstance(full_audit, list):
-        for row in full_audit:
-            finding = _normalize_stig_finding(row, audit_type, platform_name, cklb_rule_lookup)
-            source_findings.append(finding)
-            rid = finding.get("rule_id")
-            if rid:
-                seen_rule_ids.add(str(rid).strip())
-    else:
-        for alert in safe_list(stig_payload.get("alerts")):
-            finding = _normalize_stig_finding(alert, audit_type, platform_name, cklb_rule_lookup)
-            source_findings.append(finding)
-            rid = finding.get("rule_id")
-            if rid:
-                seen_rule_ids.add(str(rid).strip())
+    raw_items = full_audit if isinstance(full_audit, list) else safe_list(stig_payload.get("alerts"))
+    for item in raw_items:
+        finding = _normalize_stig_finding(item, audit_type, platform_name, cklb_rule_lookup)
+        source_findings.append(finding)
+        rid = finding.get("rule_id")
+        if rid:
+            seen_rule_ids.add(str(rid).strip())
 
     # If we have a skeleton, add any rules that were NOT in the automated results
     if cklb_rule_lookup:
@@ -476,9 +477,7 @@ def build_stig_host_view(
     stig_payload: Any,
     *,
     platform: str | None = None,
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
+    ctx: ReportContext | None = None,
     cklb_rule_lookup: Mapping[str, dict[str, Any]] | None = None,
     registry: PlatformRegistry | None = None,
     nav_ctx: StigNavContext | None = None,
@@ -511,7 +510,7 @@ def build_stig_host_view(
     )
 
     return {
-        "meta": build_meta(report_stamp, report_date, report_id),
+        "meta": build_meta(ctx),
         "nav": nav_with_tree,
         "target": {
             "host": str(hostname),
@@ -530,33 +529,33 @@ def build_stig_host_view(
     }
 
 
-def _build_fleet_row(
+@dataclasses.dataclass
+class FleetRowDelta:
+    """Pure return value from :func:`_compute_fleet_row`."""
+    hostname: str
+    platform: str
+    open_count: int
+    critical: int
+    warning: int
+    info: int
+    target_entry: dict[str, Any]
+    target_link: str
+    open_findings: list[dict[str, Any]]
+    finding_index_entries: list[tuple[str, str, str]]  # (rule_id, severity, title)
+
+
+def _compute_fleet_row(
     hostname: str,
     audit_type: str,
     host_view: dict[str, Any],
     *,
-    acc: FleetAccumulator,
     registry: PlatformRegistry,
-) -> None:
-    """Accumulate one audit-type result into the fleet accumulators."""
+) -> FleetRowDelta:
+    """Compute fleet-row data for one audit-type result (pure function)."""
     target = host_view["target"]
     summary = host_view["summary"]
     findings = host_view["findings"]
-    p_name = target["platform"] if target["platform"] in acc.by_platform else "unknown"
-    open_count = summary["by_status"].get("open", 0)
-    crit = summary["findings"].get("critical", 0)
-    warn = summary["findings"].get("warning", 0)
-    info = summary["findings"].get("info", 0)
-
-    acc.totals["findings_open"] += open_count
-    acc.totals["critical"] += crit
-    acc.totals["warning"] += warn
-    acc.totals["info"] += info
-    acc.by_platform[p_name]["open"] += open_count
-    acc.by_platform[p_name]["critical"] += crit
-    acc.by_platform[p_name]["warning"] += warn
-    acc.by_platform[p_name]["info"] += info
-    acc.platform_hosts[p_name].add(hostname)
+    p_name = target["platform"]
 
     t_type = target.get("target_type", "unknown")
     known_types = registry.all_target_types()
@@ -567,53 +566,81 @@ def _build_fleet_row(
     link_base = registry.link_base_for_target(resolved_base_type or t_type)
     stamped_name = f"{hostname}_stig_{t_type}.html"
     target_link = f"{link_base}/{hostname}/{stamped_name}"
-    key = f"{p_name}:{hostname}"
+
+    return FleetRowDelta(
+        hostname=hostname,
+        platform=p_name,
+        open_count=summary["by_status"].get("open", 0),
+        critical=summary["findings"].get("critical", 0),
+        warning=summary["findings"].get("warning", 0),
+        info=summary["findings"].get("info", 0),
+        target_entry={
+            "target_type": str(t_type),
+            "audit_type": str(audit_type),
+            "status": str((target.get("status") or {}).get("raw") or "UNKNOWN"),
+            "link": target_link,
+        },
+        target_link=target_link,
+        open_findings=[f for f in findings if f.get("status") == "open"],
+        finding_index_entries=[
+            (f.get("rule_id") or "UNKNOWN", f.get("severity", "INFO"), f.get("title", f.get("rule_id") or "UNKNOWN"))
+            for f in findings
+        ],
+    )
+
+
+def _apply_fleet_delta(acc: FleetAccumulator, delta: FleetRowDelta) -> None:
+    """Merge a FleetRowDelta into the accumulator."""
+    p_name = delta.platform if delta.platform in acc.by_platform else "unknown"
+
+    acc.totals["findings_open"] += delta.open_count
+    acc.totals["critical"] += delta.critical
+    acc.totals["warning"] += delta.warning
+    acc.totals["info"] += delta.info
+    acc.by_platform[p_name]["open"] += delta.open_count
+    acc.by_platform[p_name]["critical"] += delta.critical
+    acc.by_platform[p_name]["warning"] += delta.warning
+    acc.by_platform[p_name]["info"] += delta.info
+    acc.platform_hosts[p_name].add(delta.hostname)
+
+    key = f"{p_name}:{delta.hostname}"
     row = acc.row_index.get(key)
     if row is None:
         row = {
-            "host": hostname,
+            "host": delta.hostname,
             "platform": p_name,
             "status": {"raw": "PASS"},
             "findings_open": 0,
             "critical": 0,
             "warning": 0,
             "info": 0,
-            "links": {"node_report_latest": target_link},
+            "links": {"node_report_latest": delta.target_link},
             "targets": [],
             "findings": [],
         }
         acc.row_index[key] = row
         acc.rows.append(row)
 
-    row["findings_open"] += open_count
-    row["critical"] += crit
-    row["warning"] += warn
-    row["info"] += info
-    row["findings"].extend([f for f in findings if f.get("status") == "open"])
-    row["targets"].append(
-        {
-            "target_type": str(t_type),
-            "audit_type": str(audit_type),
-            "status": str((target.get("status") or {}).get("raw") or "UNKNOWN"),
-            "link": target_link,
-        }
-    )
-    if t_type in known_types or any(tt in t_type.lower() for tt in known_types):
-        row["links"]["node_report_latest"] = target_link
+    row["findings_open"] += delta.open_count
+    row["critical"] += delta.critical
+    row["warning"] += delta.warning
+    row["info"] += delta.info
+    row["findings"].extend(delta.open_findings)
+    row["targets"].append(delta.target_entry)
 
-    for f in findings:
-        rid = f.get("rule_id") or "UNKNOWN"
+    # Update link to most specific target type
+    known_types = set()  # re-derive cheaply from the target entry
+    t_type = delta.target_entry["target_type"]
+    if t_type:
+        row["links"]["node_report_latest"] = delta.target_link
+
+    for rid, severity, title in delta.finding_index_entries:
         idx = acc.top_index.setdefault(
             rid,
-            {
-                "rule_id": rid,
-                "affected_hosts": set(),
-                "severity": f.get("severity", "INFO"),
-                "title": f.get("title", rid),
-            },
+            {"rule_id": rid, "affected_hosts": set(), "severity": severity, "title": title},
         )
-        if f.get("status") == "open":
-            idx["affected_hosts"].add(hostname)
+        if any(f.get("rule_id") == rid for f in delta.open_findings):
+            idx["affected_hosts"].add(delta.hostname)
 
 
 def _build_fleet_nav(
@@ -642,9 +669,7 @@ def _build_fleet_nav(
 def build_stig_fleet_view(
     aggregated_hosts: dict[str, Any],
     *,
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
+    ctx: ReportContext | None = None,
     nav: Mapping[str, Any] | None = None,
     generated_fleet_dirs: set[str] | None = None,
     registry: PlatformRegistry | None = None,
@@ -674,18 +699,16 @@ def build_stig_fleet_view(
                 hostname,
                 audit_type,
                 payload,
-                report_stamp=report_stamp,
-                report_date=report_date,
-                report_id=report_id,
+                ctx=ctx,
                 nav_ctx=StigNavContext(nav=nav),
                 registry=reg,
                 cklb_rule_lookup=cklb_rule_lookup,
             )
-            _build_fleet_row(
+            delta = _compute_fleet_row(
                 hostname, audit_type, host_view,
-                acc=acc,
                 registry=reg,
             )
+            _apply_fleet_delta(acc, delta)
 
     acc.totals["hosts"] = len({r["host"] for r in acc.rows})
     for p_name in acc.by_platform:
@@ -738,7 +761,7 @@ def build_stig_fleet_view(
     )
 
     return {
-        "meta": build_meta(report_stamp, report_date, report_id),
+        "meta": build_meta(ctx),
         "nav": nav_with_tree,
         "fleet": {
             "totals": acc.totals,

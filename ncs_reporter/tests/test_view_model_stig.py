@@ -1,5 +1,6 @@
 """Tests for STIG view-model builders."""
 
+from ncs_reporter._report_context import ReportContext
 from ncs_reporter.view_models.stig import (
     StigNavContext,
     _canonical_stig_status,
@@ -119,7 +120,7 @@ class TestBuildStigHostView:
             {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
             {"id": "V-002", "status": "pass", "severity": "CAT_II", "title": "Rule 2"},
         ]
-        view = build_stig_host_view("host1", "stig_esxi", _stig_payload(findings), report_stamp="20260226")
+        view = build_stig_host_view("host1", "stig_esxi", _stig_payload(findings), ctx=ReportContext(report_stamp="20260226"))
         assert view["target"]["host"] == "host1"
         assert view["target"]["platform"] == "vmware"
         assert view["target"]["target_type"] == "esxi"
@@ -219,7 +220,7 @@ class TestBuildStigFleetView:
                 )
             },
         }
-        view = build_stig_fleet_view(hosts, report_stamp="20260226")
+        view = build_stig_fleet_view(hosts, ctx=ReportContext(report_stamp="20260226"))
         assert view["fleet"]["totals"]["hosts"] == 2
         assert len(view["rows"]) == 2
         # V-001 open on both hosts

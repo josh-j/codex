@@ -1,6 +1,14 @@
 """Shared helpers for template-facing reporting view-model builders."""
 
-from typing import Any
+from __future__ import annotations
+
+import dataclasses
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .nav_builder import NavBuilder
+    from .._report_context import ReportContext
 
 from ..constants import (
     HEALTH_OK, HEALTH_UNKNOWN, SEVERITY_CRITICAL, SEVERITY_WARNING,
@@ -14,6 +22,16 @@ from ..primitives import (
 )  # noqa: F401 (to_int re-exported)
 
 _DEFAULT_SKIP_KEYS = default_registry().skip_keys_set()
+
+
+@dataclasses.dataclass
+class GenericNavContext:
+    """Bundles nav-related parameters for generic view-model builders."""
+    nav: Mapping[str, Any] | None = None
+    hosts_data: dict[str, Any] | None = None
+    generated_fleet_dirs: set[str] | None = None
+    history: list[dict[str, str]] | None = None
+    nav_builder: NavBuilder | None = None
 
 
 def _status_from_health(value: Any) -> str:
@@ -105,16 +123,15 @@ def status_badge_meta(status: Any, preserve_label: bool = False) -> dict[str, st
 # ---------------------------------------------------------------------------
 
 
-def build_meta(
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
-) -> dict[str, str | None]:
+def build_meta(ctx: ReportContext | None = None) -> dict[str, str | None]:
     """Standard meta block shared across all view-model builders."""
+    if ctx is None:
+        from .._report_context import ReportContext
+        ctx = ReportContext()
     return {
-        "report_stamp": report_stamp,
-        "report_date": report_date,
-        "report_id": report_id,
+        "report_stamp": ctx.report_stamp,
+        "report_date": ctx.report_date,
+        "report_id": ctx.report_id,
     }
 
 

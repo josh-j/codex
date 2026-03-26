@@ -336,6 +336,7 @@ def _apply_list_map(items: list[Any], map_spec: dict[str, str]) -> list[Any]:
             try:
                 enriched[field_name] = round(_safe_eval_expr(expression, enriched), 2)
             except Exception:
+                logger.debug("list_map expression '%s' failed for field '%s': %s", expression, field_name, item, exc_info=True)
                 enriched[field_name] = 0.0
         result.append(enriched)
     return result
