@@ -58,6 +58,11 @@ def _build_jinja_env() -> NativeEnvironment:
     return env
 
 
+@functools.lru_cache(maxsize=256)
+def _compile_when(expression: str) -> Any:
+    return _build_jinja_env().from_string("{{ " + expression + " }}")
+
+
 # ---------------------------------------------------------------------------
 # Arithmetic expression evaluation (compute fields, list_map)
 # ---------------------------------------------------------------------------
@@ -113,15 +118,18 @@ def _build_arithmetic_env() -> NativeEnvironment:
     return env
 
 
+@functools.lru_cache(maxsize=256)
+def _compile_expr(expression: str) -> Any:
+    return _build_arithmetic_env().from_string("{{ " + expression + " }}")
+
+
 def eval_expression(expression: str, context: dict[str, Any]) -> float:
     """Evaluate a Jinja2 arithmetic expression, returning a float.
 
     Missing variables default to 0.  Division by zero returns 0.0.
     """
-    env = _build_arithmetic_env()
     try:
-        tmpl = env.from_string("{{ " + expression + " }}")
-        result = tmpl.render(**context)
+        result = _compile_expr(expression).render(**context)
     except ZeroDivisionError:
         return 0.0
     except Exception:
@@ -144,10 +152,8 @@ def evaluate_when(expression: str, fields: dict[str, Any]) -> bool:
 
     Returns ``False`` for undefined variables, render errors, or falsy results.
     """
-    env = _build_jinja_env()
     try:
-        tmpl = env.from_string("{{ " + expression + " }}")
-        result = tmpl.render(**fields)
+        result = _compile_when(expression).render(**fields)
     except Exception:
         logger.debug("when expression failed: %r", expression, exc_info=True)
         return False

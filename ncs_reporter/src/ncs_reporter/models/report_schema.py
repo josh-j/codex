@@ -427,28 +427,21 @@ class ReportSchema(BaseModel):
 
         # Handle platform field: can be str path or dict (PlatformSpec)
         raw_platform = values.get("platform")
-        if isinstance(raw_platform, str) and ("/" in raw_platform or raw_platform):
+        if isinstance(raw_platform, str) and raw_platform:
             # String path form: "vmware/esxi" or "windows"
-            path_parts = raw_platform.rsplit("/", 1)
-            values["platform_spec"] = {
-                "input_dir": raw_platform,
-                "report_dir": raw_platform,
-                "name": path_parts[0] if len(path_parts) > 1 else raw_platform,
-            }
-            values["platform"] = path_parts[0] if len(path_parts) > 1 else raw_platform
-            # Derive name from last path segment if not explicitly set
+            platform_group = raw_platform.split("/")[0]
+            schema_name = raw_platform.rsplit("/", 1)[-1]
+            values["platform_spec"] = {"input_dir": raw_platform, "report_dir": raw_platform, "name": platform_group}
+            values["platform"] = platform_group
             if not values.get("name"):
-                values["name"] = path_parts[-1]
+                values["name"] = schema_name
         elif isinstance(raw_platform, dict):
-            # Dict form: extract platform name for the str field, store spec separately
             values["platform_spec"] = raw_platform
             input_dir = raw_platform.get("input_dir") or raw_platform.get("path") or ""
             values["platform"] = raw_platform.get("name") or input_dir.split("/")[0] or values.get("name", "")
-            # Derive name from last path segment if not explicitly set
             if not values.get("name") and input_dir:
                 values["name"] = input_dir.rsplit("/", 1)[-1]
         elif not raw_platform:
-            # Auto-derive platform from name when not explicitly set
             values["platform"] = values.get("name", "")
 
         # Auto-derive display_name from name
