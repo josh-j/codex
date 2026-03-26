@@ -4,9 +4,9 @@ stig_checklist_map:
   esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
 
 detection:
-  keys_any: [vmware_raw_esxi]
+  keys_any: [raw_esxi]
 
-path_prefix: "vmware_raw_esxi.data"
+path_prefix: "raw_esxi.data"
 
 # Split the per-vCenter bundle into per-ESXi-host entries.
 # The esxi_hosts field is computed by assemble_esxi_hosts.py, which

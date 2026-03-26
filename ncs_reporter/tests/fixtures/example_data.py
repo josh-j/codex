@@ -117,7 +117,7 @@ def _make_vm(
 
 
 def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety: bool = False) -> dict:
-    """Build a realistic ubuntu_raw_discovery bundle.
+    """Build a realistic raw_discovery bundle.
 
     unhealthy=True triggers: memory_critical, services_failed, disk_critical,
     disk_warning, reboot_pending, pending_updates, world_writable_files.
@@ -241,7 +241,7 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
     # ansible.builtin.command shape: {stdout_lines, rc, ...}
     # ansible.builtin.stat shape: {stat: {exists, path, ...}}
     return {
-        "ubuntu_raw_discovery": {
+        "raw_discovery": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "discovery",
@@ -346,7 +346,7 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
 
 
 def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
-    """Build a realistic vmware_raw_vcenter bundle.
+    """Build a realistic raw_vcenter bundle.
 
     Structural templates come from actual module RETURN samples:
     - appliance_health_info: vmware.vmware.appliance_info
@@ -646,7 +646,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     _appl["time"]["time_sync"]["servers"] = ["time.google.com"]
 
     return {
-        "vmware_raw_vcenter": {
+        "raw_vcenter": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "vcenter",
@@ -903,7 +903,7 @@ def _make_site_cluster(
 
 
 def make_vcenter_site_bundle(cfg: dict) -> dict:
-    """Build a realistic multi-site vmware_raw_vcenter bundle from a site config dict.
+    """Build a realistic multi-site raw_vcenter bundle from a site config dict.
 
     cfg keys:
       hostname      str  — vCenter FQDN used as bundle key
@@ -971,7 +971,7 @@ def make_vcenter_site_bundle(cfg: dict) -> dict:
 
     alarms = cfg.get("alarms", [])
     return {
-        "vmware_raw_vcenter": {
+        "raw_vcenter": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "vcenter",
@@ -1694,7 +1694,7 @@ ALL_VCENTER_SITES = [SITE_US_EAST, SITE_US_WEST, SITE_EU_DE, SITE_EU_UK, SITE_AP
 
 
 def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
-    """Build a realistic windows_raw_audit bundle.
+    """Build a realistic raw_audit bundle.
 
     ccm_service is built from ansible.windows.win_service RETURN sample keys,
     then overridden for the scenario.  win_service returns lowercase state
@@ -1803,7 +1803,7 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     )
 
     return {
-        "windows_raw_audit": {
+        "raw_audit": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "audit",
@@ -1857,7 +1857,7 @@ def make_stig_esxi_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         {"id": "V-256388", "status": "na", "severity": "high", "title": "ESXi another N/A check."},
     ]
     return {
-        "vmware_raw_stig_esxi": {
+        "stig_esxi": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "stig_esxi",
@@ -1889,7 +1889,7 @@ def make_stig_vm_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         {"id": "V-256404", "status": "pass", "severity": "low", "title": "VM must limit logging."},
     ]
     return {
-        "vmware_raw_stig_vm": {
+        "stig_vm": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "stig_vm",
@@ -1934,7 +1934,7 @@ def make_stig_ubuntu_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         {"id": "UBTU-22-010007", "status": "pass", "severity": "high", "title": "Ubuntu final check."},
     ]
     return {
-        "ubuntu_raw_stig_ubuntu": {
+        "stig_ubuntu": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "stig_ubuntu",
@@ -1974,7 +1974,7 @@ def make_stig_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
         {"id": "WN22-00-000007", "status": "pass", "severity": "high", "title": "Windows final check."},
     ]
     return {
-        "windows_raw_stig_windows": {
+        "stig_windows": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "stig_windows",
