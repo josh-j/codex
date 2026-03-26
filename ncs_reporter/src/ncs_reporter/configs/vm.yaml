@@ -77,31 +77,31 @@ alerts:
   - id: powered_off_vms
     category: "Workload Inventory"
     severity: INFO
-    when: "powered_off_vm_count > 0"
+    when: powered_off_vm_count > 0
     message: "{{ powered_off_vm_count }} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
     category: "Workload Compliance"
     severity: WARNING
-    when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0"
+    when: virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0
     message: "Powered-on VMs detected with VMware Tools not running"
 
   - id: vm_tools_not_installed
     category: "Workload Compliance"
     severity: WARNING
-    when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0"
+    when: virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0
     message: "Powered-on VMs detected with VMware Tools not installed"
 
   - id: snapshots_present
     category: "Snapshots"
     severity: INFO
-    when: "recent_snapshot_count > 0"
+    when: recent_snapshot_count > 0
     message: "VM snapshots present: {{ snapshot_count }} snapshot(s) found"
 
   - id: aged_snapshots
     category: "Snapshots"
     severity: WARNING
-    when: "aged_snapshot_count > 0"
+    when: aged_snapshot_count > 0
     message: "{{ aged_snapshot_count }} snapshot(s) older than 7 days — review for removal"
 
 # ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ widgets:
         field: "{{ power_state }}"
         badge: true
         style_rules:
-          - when: "power_state == 'poweredOff'"
+          - when: power_state == 'poweredOff'
             css_class: "subtle-text"
       - label: "Tools Status"
         field: "{{ tools_status }}"
@@ -151,7 +151,7 @@ widgets:
 
   - title: "Snapshots"
     type: table
-    visible_if: "snapshot_count > 0"
+    visible_if: snapshot_count > 0
     rows: "{{ snapshots }}"
     columns:
       - label: "VM"
