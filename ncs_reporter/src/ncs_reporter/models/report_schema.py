@@ -485,6 +485,17 @@ class ReportSchema(BaseModel):
         # Auto-derive display_name from name
         if not values.get("display_name") and not values.get("title"):
             values["display_name"] = name.replace("_", " ").title() if name else ""
+        # Normalize extra_fleet_widget_columns dict form → list form
+        import re as _re
+        for key in ("extra_fleet_widget_columns", "fleet_columns"):
+            fc = values.get(key)
+            if isinstance(fc, dict):
+                values[key] = [
+                    {"label": label, "field": _re.sub(r"\{\{\s*(\w+)\s*\}\}", r"\1", expr).strip()}
+                    for label, expr in fc.items()
+                ]
+                break
+
         # Normalize vars → fields (accept both keys)
         if "vars" in values and "fields" not in values:
             values["fields"] = values.pop("vars")

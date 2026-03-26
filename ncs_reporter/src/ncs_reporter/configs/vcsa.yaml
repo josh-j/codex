@@ -31,8 +31,7 @@ config:
       VC: vcsa
       PH: photon
   extra_fleet_widget_columns:
-    - label: "Version"
-      field: appliance_version
+    Version: "{{ appliance_version }}"
 
 vars:
   # --- Appliance ---
