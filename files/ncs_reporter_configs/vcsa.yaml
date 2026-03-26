@@ -4,7 +4,6 @@ platform:
   name: vmware
   input_dir: vmware/vcenter
   report_dir: vmware/vcsa
-  asset_label: vCenters
   site_compute_node: true
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
   stig_playbook: "playbooks/vcsa/stig_remediate.yml"

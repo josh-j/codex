@@ -106,7 +106,7 @@
                 {% for p_key, p in platforms.items() %}
                 <tr class="row-interactive">
                     <td><a href="{{ p.get('links', {}).get('fleet_dashboard', '#') }}" class="link-strong">{{ p.get('display_name', p_key) }}</a></td>
-                    <td>{{ p.get('asset_count', 0) }} {{ p.get('asset_label', 'Nodes') }}</td>
+                    <td>{{ p.get('asset_count', 0) }} Hosts</td>
                     <td>{{ p.get('alert_count', 0) }}</td>
                     <td>{% if p.get('alarm_count') is not none %}{{ p.get('alarm_count', 0) }}{% else %}<span class="dash-muted">&mdash;</span>{% endif %}</td>
                     <td>
@@ -133,7 +133,7 @@
             <tbody>
                 {% for p_key, p in platforms.items() %}
                 {% if p_key != 'vmware' %}
-                <tr><td class="kv-label-wide subtle-text">{{ p.get('display_name', p_key | capitalize) }} {{ p.get('asset_label', 'Nodes') }}</td><td><strong>{{ p.get('asset_count', 0) }}</strong></td></tr>
+                <tr><td class="kv-label-wide subtle-text">{{ p.get('display_name', p_key | capitalize) }} Hosts</td><td><strong>{{ p.get('asset_count', 0) }}</strong></td></tr>
                 {% endif %}
                 {% endfor %}
                 {% if infra.get('vcenter_count', 0) > 0 %}

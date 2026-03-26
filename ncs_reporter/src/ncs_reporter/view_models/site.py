@@ -136,7 +136,6 @@ def build_site_dashboard_view(
         p_name = entry.platform
         audit_key = entry.site_audit_key or p_name
         display = entry.display_name or p_name.capitalize()
-        asset_label = entry.asset_label
         fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
         asset_count = hosts_per_audit_key.get(audit_key, 0)
         audit_type_key = f"schema_{audit_key}"
@@ -146,7 +145,6 @@ def build_site_dashboard_view(
         platform_data: dict[str, Any] = {
             "display_name": display,
             "asset_count": asset_count,
-            "asset_label": asset_label,
             "alert_count": p_counts["total"],
             "status": {"raw": p_status},
             "links": {"fleet_dashboard": fleet_link},

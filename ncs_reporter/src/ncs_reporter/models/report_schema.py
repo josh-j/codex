@@ -351,7 +351,6 @@ class PlatformSpec(BaseModel):
     name: str = ""  # platform name (e.g. "linux", "vmware", "windows")
     input_dir: str = ""
     report_dir: str = ""
-    asset_label: str = "Nodes"
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
     stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports
