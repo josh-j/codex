@@ -5,7 +5,7 @@ config:
     ansible_playbook:
       path: "playbooks/vm/stig_remediate.yml"
       target_var: "vm_stig_target_vms"
-    checklist_map:
+    platform_to_checklist:
       vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 
 

@@ -11,13 +11,13 @@ config:
     children:
       - input_dir: vmware/vcenter/vcsa
         report_dir: vmware/vcsa/vcsa
-        stig_checklist_map:
+        stig_platform_to_checklist:
           vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
   stig:
     ansible_playbook:
       path: "playbooks/vcsa/stig_remediate.yml"
       target_var: "vcsa_stig_target_hosts"
-    checklist_map:
+    platform_to_checklist:
       vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
       vcenter: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
       vami: cklb_skeletons/cklb_skeleton_vsphere7_vami_V1R2.json

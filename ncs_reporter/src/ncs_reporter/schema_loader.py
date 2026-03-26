@@ -581,7 +581,7 @@ def build_platform_entries_from_schemas(
         if merge_key in seen_entries:
             primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
-            primary_entry["stig_checklist_map"].update(schema.stig.checklist_map)
+            primary_entry["stig_platform_to_checklist"].update(schema.stig.platform_to_checklist)
             primary_entry["stig_rule_prefixes"].update(schema.stig.rule_prefixes)
             continue
 
@@ -594,7 +594,7 @@ def build_platform_entries_from_schemas(
             "schema_name": schema.name,
             "display_name": schema.display_name,
             "schema_names": [schema.name],
-            "stig_checklist_map": dict(schema.stig.checklist_map),
+            "stig_platform_to_checklist": dict(schema.stig.platform_to_checklist),
             "stig_rule_prefixes": dict(schema.stig.rule_prefixes),
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
@@ -611,7 +611,7 @@ def build_platform_entries_from_schemas(
                 "report_dir": sub.report_dir,
                 "platform": platform_name,
                 "render": False,
-                "stig_checklist_map": dict(sub.stig_checklist_map),
+                "stig_platform_to_checklist": dict(sub.stig_platform_to_checklist),
                 "stig_playbook": sub.stig_playbook or schema.stig.ansible_playbook.path,
                 "stig_target_var": sub.stig_target_var or schema.stig.ansible_playbook.target_var,
             }
