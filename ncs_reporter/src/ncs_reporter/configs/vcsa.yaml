@@ -14,8 +14,8 @@ config:
         stig_checklist_map:
           vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
   stig:
-    ansible:
-      playbook: "playbooks/vcsa/stig_remediate.yml"
+    ansible_playbook:
+      path: "playbooks/vcsa/stig_remediate.yml"
       target_var: "vcsa_stig_target_hosts"
     checklist_map:
       vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json

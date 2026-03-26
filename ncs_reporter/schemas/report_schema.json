@@ -128,6 +128,24 @@
       "title": "AlertRule",
       "type": "object"
     },
+    "AnsiblePlaybookConfig": {
+      "additionalProperties": false,
+      "description": "ansible-playbook invocation config for STIG remediation.",
+      "properties": {
+        "path": {
+          "default": "",
+          "title": "Path",
+          "type": "string"
+        },
+        "target_var": {
+          "default": "",
+          "title": "Target Var",
+          "type": "string"
+        }
+      },
+      "title": "AnsiblePlaybookConfig",
+      "type": "object"
+    },
     "BarChartWidget": {
       "additionalProperties": false,
       "properties": {
@@ -937,30 +955,12 @@
       "title": "StatCardsWidget",
       "type": "object"
     },
-    "StigAnsibleConfig": {
-      "additionalProperties": false,
-      "description": "Ansible invocation config for STIG remediation.",
-      "properties": {
-        "playbook": {
-          "default": "",
-          "title": "Playbook",
-          "type": "string"
-        },
-        "target_var": {
-          "default": "",
-          "title": "Target Var",
-          "type": "string"
-        }
-      },
-      "title": "StigAnsibleConfig",
-      "type": "object"
-    },
     "StigConfig": {
       "additionalProperties": false,
       "description": "STIG compliance configuration nested under config.stig in YAML.",
       "properties": {
-        "ansible": {
-          "$ref": "#/$defs/StigAnsibleConfig"
+        "ansible_playbook": {
+          "$ref": "#/$defs/AnsiblePlaybookConfig"
         },
         "checklist_map": {
           "additionalProperties": {
