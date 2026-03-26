@@ -962,11 +962,11 @@
         "ansible_playbook": {
           "$ref": "#/$defs/AnsiblePlaybookConfig"
         },
-        "checklist_map": {
+        "platform_to_checklist": {
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Checklist Map",
+          "title": "Platform To Checklist",
           "type": "object"
         },
         "rule_prefixes": {
@@ -1011,11 +1011,11 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "stig_checklist_map": {
+        "stig_platform_to_checklist": {
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Stig Checklist Map",
+          "title": "Stig Platform To Checklist",
           "type": "object"
         },
         "stig_playbook": {

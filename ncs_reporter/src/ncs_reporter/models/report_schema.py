@@ -338,7 +338,7 @@ class SubEntry(BaseModel):
 
     input_dir: str
     report_dir: str
-    stig_checklist_map: dict[str, str] = Field(default_factory=dict)
+    stig_platform_to_checklist: dict[str, str] = Field(default_factory=dict)
     stig_playbook: str = ""
     stig_target_var: str = ""
 
@@ -415,7 +415,7 @@ class StigConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ansible_playbook: AnsiblePlaybookConfig = Field(default_factory=AnsiblePlaybookConfig)
-    checklist_map: dict[str, str] = Field(default_factory=dict)
+    platform_to_checklist: dict[str, str] = Field(default_factory=dict)
     rule_prefixes: dict[str, str] = Field(default_factory=dict)
 
 
