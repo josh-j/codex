@@ -26,6 +26,26 @@ from ncs_reporter.view_models.common import GenericNavContext, _count_alerts, _i
 _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
 
 
+def _resolve_field_ref(field_ref: str, context: dict[str, Any]) -> Any:
+    """Resolve a field reference — Jinja2 expression ({{ var }}) or bare field name."""
+    if "{{" in field_ref:
+        from ncs_reporter.normalization._when import _build_jinja_env
+        try:
+            return _build_jinja_env().from_string(field_ref).render(**context)
+        except Exception:
+            return ""
+    # Bare field name — support dot-notation for nested access
+    if "." in field_ref:
+        obj: Any = context
+        for part in field_ref.split("."):
+            if isinstance(obj, dict):
+                obj = obj.get(part)
+            else:
+                return ""
+        return obj
+    return context.get(field_ref, "")
+
+
 def _format_value(fmt: str | None, value: Any) -> str:
     """Apply a format string to a value, returning str(value) on failure or no format."""
     if not fmt:
@@ -60,17 +80,7 @@ def _render_table_cell(
     generated_fleet_dirs: set[str] | None = None,
 ) -> dict[str, Any]:
     """Render a single table cell from a TableColumn and row item."""
-    if "." in col.field:
-        parts = col.field.split(".")
-        value: Any = item
-        for p in parts:
-            if isinstance(value, dict):
-                value = value.get(p, "")
-            else:
-                value = ""
-                break
-    else:
-        value = item.get(col.field, "")
+    value: Any = _resolve_field_ref(col.field, item)
     link = None
     cell_class = ""
 
@@ -133,7 +143,7 @@ def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
 def _render_key_value(widget: KeyValueWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a KeyValueWidget."""
     rows = [
-        {"label": kv.label, "value": _format_value(kv.format, fields.get(kv.field, "")), "badge": kv.badge}
+        {"label": kv.label, "value": _format_value(kv.format, _resolve_field_ref(kv.field, fields)), "badge": kv.badge}
         for kv in widget.fields
     ]
     return _widget_base(widget, rows=rows)
@@ -159,7 +169,7 @@ def _render_table(widget: TableWidget, fields: dict[str, Any], ctx: dict[str, An
 
 def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a ProgressBarWidget."""
-    value = fields.get(widget.field, 0.0)
+    value = _resolve_field_ref(widget.field, fields)
     try:
         pct = max(0, min(100, float(value)))
     except (ValueError, TypeError):
@@ -496,7 +506,7 @@ def build_generic_fleet_view(
         }
         # Add quick access for schema-driven columns
         for col in schema.fleet_columns:
-            row[f"col_{col.field}"] = fields.get(col.field, "")
+            row[f"col_{col.field}"] = _resolve_field_ref(col.field, fields)
 
         host_rows.append(row)
 

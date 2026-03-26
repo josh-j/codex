@@ -117,52 +117,52 @@ widgets:
     type: stat_cards
     layout: { width: "full" }
     cards:
-      - { field: vm_count, label: "VMs" }
-      - { field: snapshot_count, label: "Snapshots", thresholds: { 1: yellow, 10: red } }
-      - { field: powered_off_vm_count, label: "Powered Off", thresholds: { 1: yellow, 5: red } }
+      - { field: "{{ vm_count }}", label: "VMs" }
+      - { field: "{{ snapshot_count }}", label: "Snapshots", thresholds: { 1: yellow, 10: red } }
+      - { field: "{{ powered_off_vm_count }}", label: "Powered Off", thresholds: { 1: yellow, 5: red } }
 
   - title: "Virtual Machines"
     type: grouped_table
-    rows: virtual_machines
-    group_by: cluster
+    rows: "{{ virtual_machines }}"
+    group_by: "{{ cluster }}"
     columns:
-      - { label: "Name", field: guest_name, link_field: guest_name }
+      - { label: "Name", field: "{{ guest_name }}", link_field: "{{ guest_name }}" }
       - label: "Power State"
-        field: power_state
+        field: "{{ power_state }}"
         badge: true
         style_rules:
           - when: "power_state == 'poweredOff'"
             css_class: "subtle-text"
       - label: "Tools Status"
-        field: tools_status
+        field: "{{ tools_status }}"
         badge: true
       - label: "Cluster"
-        field: cluster
+        field: "{{ cluster }}"
       - label: "IP Address"
-        field: ip_address
+        field: "{{ ip_address }}"
       - label: "Memory (MB)"
-        field: allocated.memory
+        field: "{{ allocated.memory }}"
       - label: "vCPU"
-        field: allocated.cpu
+        field: "{{ allocated.cpu }}"
       - label: "Owner Email"
-        field: owner_email
+        field: "{{ owner_email }}"
       - label: "Last Backup"
-        field: backup_info
+        field: "{{ backup_info }}"
 
   - title: "Snapshots"
     type: table
     visible_if: "snapshot_count > 0"
-    rows: snapshots
+    rows: "{{ snapshots }}"
     columns:
       - label: "VM"
-        field: vm_name
+        field: "{{ vm_name }}"
       - label: "Owner Email"
-        field: owner_email
+        field: "{{ owner_email }}"
       - label: "Snapshot"
-        field: name
+        field: "{{ name }}"
       - label: "Created"
-        field: creation_time
+        field: "{{ creation_time }}"
       - label: "State"
-        field: state
+        field: "{{ state }}"
       - label: "Days Old"
-        field: days_old
+        field: "{{ days_old }}"

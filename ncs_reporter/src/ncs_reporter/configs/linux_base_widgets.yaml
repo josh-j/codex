@@ -7,60 +7,60 @@
   title: "Key Metrics"
   type: stat_cards
   cards:
-    - { field: uptime_days, label: "Uptime (d)", format: "{{ value | round(0) }}" }
-    - { field: memory_used_pct, label: "Mem Used %", format: "{{ value | round(1) }}%", thresholds: { 85: yellow, 98: red } }
-    - { field: failed_services_count, label: "Failed Svcs", thresholds: { 1: red } }
-    - { field: pending_updates_count, label: "Pending Updates", thresholds: { 1: yellow } }
+    - { field: "{{ uptime_days }}", label: "Uptime (d)", format: "{{ value | round(0) }}" }
+    - { field: "{{ memory_used_pct }}", label: "Mem Used %", format: "{{ value | round(1) }}%", thresholds: { 85: yellow, 98: red } }
+    - { field: "{{ failed_services_count }}", label: "Failed Svcs", thresholds: { 1: red } }
+    - { field: "{{ pending_updates_count }}", label: "Pending Updates", thresholds: { 1: yellow } }
 
 - title: "System Overview"
   type: key_value
   fields:
     - label: "Hostname"
-      field: hostname
+      field: "{{ hostname }}"
     - label: "IP Address"
-      field: ip_address
+      field: "{{ ip_address }}"
     - label: "Distribution"
-      field: distribution
+      field: "{{ distribution }}"
     - label: "Version"
-      field: distribution_version
+      field: "{{ distribution_version }}"
     - label: "Kernel"
-      field: kernel
-    - { label: "Uptime (days)", field: uptime_days, format: "{{ value | round(1) }}" }
-    - { label: "Load Avg (15m)", field: load_avg_15m, format: "{value:.2f}" }
+      field: "{{ kernel }}"
+    - { label: "Uptime (days)", field: "{{ uptime_days }}", format: "{{ value | round(1) }}" }
+    - { label: "Load Avg (15m)", field: "{{ load_avg_15m }}", format: "{value:.2f}" }
 
 - title: "Memory"
   type: key_value
   fields:
-    - { label: "Total (MB)", field: memory_total_mb, format: "{{ value | round(1) }}" }
-    - { label: "Free (MB)", field: memory_free_mb, format: "{{ value | round(1) }}" }
-    - { label: "Used %", field: memory_used_pct, format: "{{ value | round(1) }}" }
-    - { label: "Swap Total (MB)", field: swap_total_mb, format: "{{ value | round(1) }}" }
-    - { label: "Swap Used %", field: swap_used_pct, format: "{{ value | round(1) }}" }
+    - { label: "Total (MB)", field: "{{ memory_total_mb }}", format: "{{ value | round(1) }}" }
+    - { label: "Free (MB)", field: "{{ memory_free_mb }}", format: "{{ value | round(1) }}" }
+    - { label: "Used %", field: "{{ memory_used_pct }}", format: "{{ value | round(1) }}" }
+    - { label: "Swap Total (MB)", field: "{{ swap_total_mb }}", format: "{{ value | round(1) }}" }
+    - { label: "Swap Used %", field: "{{ swap_used_pct }}", format: "{{ value | round(1) }}" }
 
 - title: "Patching & Services"
   type: key_value
   fields:
     - label: "Failed Services"
-      field: failed_services_count
+      field: "{{ failed_services_count }}"
     - label: "Pending Updates"
-      field: pending_updates_count
+      field: "{{ pending_updates_count }}"
     - label: "Reboot Required"
-      field: reboot_pending
+      field: "{{ reboot_pending }}"
 
 - title: "Filesystems"
   type: table
-  rows: disks
+  rows: "{{ disks }}"
   columns:
     - label: "Mount"
-      field: mount
+      field: "{{ mount }}"
     - label: "Device"
-      field: device
+      field: "{{ device }}"
     - label: "FS Type"
-      field: fstype
+      field: "{{ fstype }}"
     - label: "Total (GB)"
-      field: total_gb
+      field: "{{ total_gb }}"
     - label: "Free (GB)"
-      field: free_gb
+      field: "{{ free_gb }}"
     - label: "Used %"
-      field: used_pct
+      field: "{{ used_pct }}"
       badge: true
