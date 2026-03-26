@@ -50,6 +50,7 @@ vars:
   snapshot_count:
     path: ".snapshots_info.snapshots | len_if_list"
     type: int
+    thresholds: { 1: yellow, 10: red }
   collected_at: "raw_vm.metadata.timestamp"
 
   aged_snapshot_count:
@@ -67,6 +68,7 @@ vars:
     type: int
     count_where:
       power_state: "poweredOff"
+    thresholds: { 1: yellow, 5: red }
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -113,9 +115,9 @@ widgets:
     title: "VM KPIs"
     type: stat_cards
     cards:
-      - { field: "{{ vm_count }}", label: "VMs" }
-      - { field: "{{ snapshot_count }}", label: "Snapshots", thresholds: { 1: yellow, 10: red } }
-      - { field: "{{ powered_off_vm_count }}", label: "Powered Off", thresholds: { 1: yellow, 5: red } }
+      'VMs': "{{ vm_count }}"
+      'Snapshots': "{{ snapshot_count }}"
+      'Powered Off': "{{ powered_off_vm_count }}"
 
   - title: "Virtual Machines"
     type: grouped_table

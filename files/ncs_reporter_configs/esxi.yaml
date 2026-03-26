@@ -13,9 +13,13 @@ config:
 
 vars:
   # All raw_esxi.data.* fields are auto-imported from the collector payload.
-  # Only computed/derived vars need explicit declaration.
+  # Only computed/derived vars and metadata need explicit declaration.
   uptime_days:
     compute: "{{ uptime_seconds / 86400 }}"
+  cpu_used_pct:
+    thresholds: { 80: yellow, 90: red }
+  mem_used_pct:
+    thresholds: { 80: yellow, 90: red }
 
 alerts:
   - id: host_disconnected
@@ -100,10 +104,10 @@ widgets:
     type: stat_cards
     layout: { width: "half" }
     cards:
-      - { field: "{{ cpu_used_pct }}", label: "CPU %", format: "{{ value | round(0) }}%", thresholds: { 80: yellow, 90: red } }
-      - { field: "{{ mem_used_pct }}", label: "Mem %", format: "{{ value | round(0) }}%", thresholds: { 80: yellow, 90: red } }
-      - { field: "{{ vm_count }}", label: "VMs" }
-      - { field: "{{ uptime_days }}", label: "Uptime (days)", format: "{{ value | round(0) }}" }
+      'CPU %': "{{ cpu_used_pct | round(0) }}%"
+      'Mem %': "{{ mem_used_pct | round(0) }}%"
+      'VMs': "{{ vm_count }}"
+      'Uptime (days)': "{{ uptime_days | round(0) }}"
 
   - title: "Security & Services"
     type: key_value

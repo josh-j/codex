@@ -48,6 +48,7 @@ memory_free_mb:
 
 memory_used_pct:
   compute: "{{ (memory_total_mb - memory_free_mb) / memory_total_mb * 100 }}"
+  thresholds: { 85: yellow, 98: red }
 
 swap_total_mb:
   path: ".ansible_facts.swaptotal_mb"
@@ -67,12 +68,14 @@ failed_services:
 failed_services_count:
   path: ".failed_services.stdout_lines | len_if_list"
   type: int
+  thresholds: { 1: red }
 
 # --- Updates & reboot ---
 
 pending_updates_count:
   path: ".apt_simulate.stdout_lines | join_lines | regex_extract('(\\d+) upgraded,')"
   type: int
+  thresholds: { 1: yellow }
 reboot_pending:
   path: ".reboot_stat.stat.exists"
   type: bool

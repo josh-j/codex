@@ -4,11 +4,12 @@
 - id: headline_kpis
   title: "Key Metrics"
   type: stat_cards
+  # Thresholds for these vars are declared in linux_base_fields.yaml
   cards:
-    - { field: "{{ uptime_days }}", label: "Uptime (d)", format: "{{ value | round(0) }}" }
-    - { field: "{{ memory_used_pct }}", label: "Mem Used %", format: "{{ value | round(1) }}%", thresholds: { 85: yellow, 98: red } }
-    - { field: "{{ failed_services_count }}", label: "Failed Svcs", thresholds: { 1: red } }
-    - { field: "{{ pending_updates_count }}", label: "Pending Updates", thresholds: { 1: yellow } }
+    'Uptime (d)': "{{ uptime_days | round(0) }}"
+    'Mem Used %': "{{ memory_used_pct | round(1) }}%"
+    'Failed Svcs': "{{ failed_services_count }}"
+    'Pending Updates': "{{ pending_updates_count }}"
 
 - title: "System Overview"
   type: key_value

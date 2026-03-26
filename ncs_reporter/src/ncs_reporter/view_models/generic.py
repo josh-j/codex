@@ -198,18 +198,29 @@ def _render_alert_panel(widget: AlertPanelWidget, fields: dict[str, Any], ctx: d
 
 def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a StatCardsWidget."""
+    import re as _re
+    field_specs = ctx.get("field_specs", {})
     cards_rendered = []
     for card in widget.cards:
-        value = fields.get(card.field, 0)
-        display = _format_value(card.format, value)
+        resolved = _resolve_field_ref(card.field, fields)
+        display = _format_value(card.format, resolved) if card.format else str(resolved)
+
+        # Look up thresholds: per-card first, then from var's FieldSpec
+        thresholds = card.thresholds
+        if not thresholds:
+            var_match = _re.search(r"\{\{\s*(\w+)", str(card.field))
+            if var_match:
+                spec = field_specs.get(var_match.group(1))
+                if spec and hasattr(spec, "thresholds"):
+                    thresholds = spec.thresholds
 
         resolved_color: str = card.color
-        if resolved_color == "auto":
+        if resolved_color == "auto" and thresholds:
             try:
-                num_val = float(value)
+                num_val = float(resolved)
             except (ValueError, TypeError):
                 num_val = 0.0
-            resolved_color = _resolve_threshold_color(num_val, card.thresholds)
+            resolved_color = _resolve_threshold_color(num_val, thresholds)
 
         cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
     return _widget_base(widget, cards=cards_rendered)
@@ -275,6 +286,7 @@ def _render_widget(
     hosts_data: dict[str, Any] | None = None,
     current_platform_dir: str | None = None,
     generated_fleet_dirs: set[str] | None = None,
+    field_specs: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Render a single schema widget into a template-ready dict. Returns None if hidden by visible_if."""
     # visible_if guard
@@ -287,6 +299,7 @@ def _render_widget(
         "hosts_data": hosts_data,
         "current_platform_dir": current_platform_dir,
         "generated_fleet_dirs": generated_fleet_dirs,
+        "field_specs": field_specs or {},
     }
 
     handler = _WIDGET_DISPATCH.get(type(widget))
@@ -433,6 +446,7 @@ def build_generic_node_view(
                 hosts_data=nc.hosts_data,
                 current_platform_dir=current_plt_dir,
                 generated_fleet_dirs=nc.generated_fleet_dirs,
+                field_specs=schema.fields,
             )
         )
         is not None

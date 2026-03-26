@@ -403,6 +403,24 @@ def _expand_columns_in_widget(item: dict[str, Any]) -> dict[str, Any]:
             item[key] = _expand_dict_columns(val)
         elif isinstance(val, list):
             item[key] = _expand_column_list(val)
+
+    # Expand dict-form stat_cards: {'Label': '{{ expr }}'} + widget-level thresholds
+    cards = item.get("cards")
+    if isinstance(cards, dict):
+        widget_thresholds = item.pop("thresholds", {}) or {}
+        expanded_cards: list[dict[str, Any]] = []
+        for label, value_expr in cards.items():
+            card: dict[str, Any] = {"label": label, "field": value_expr}
+            # Extract var name from Jinja2 expression for threshold matching
+            import re as _re
+            var_match = _re.search(r"\{\{\s*(\w+)", str(value_expr))
+            if var_match:
+                var_name = var_match.group(1)
+                if var_name in widget_thresholds:
+                    card["thresholds"] = widget_thresholds[var_name]
+            expanded_cards.append(card)
+        item["cards"] = expanded_cards
+
     return item
 
 
