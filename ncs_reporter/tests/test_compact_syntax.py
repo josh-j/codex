@@ -322,7 +322,7 @@ class TestIncludeAlerts:
 
         path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "photon.yaml"
         schema = load_schema_from_file(path)
-        assert len(schema.widgets) == 6
+        assert len(schema.widgets) == 5  # alert_panel is auto-injected, not declared
 
     def test_include_with_local_override(self):
         """$local items with matching id replace included items."""
@@ -398,4 +398,4 @@ class TestRoundTrip:
         assert schema.name == "windows"
         assert len(schema.fields) == 29
         assert len(schema.alerts) == 9
-        assert len(schema.widgets) == 13
+        assert len(schema.widgets) == 12  # alert_panel is auto-injected

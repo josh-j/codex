@@ -81,8 +81,6 @@ alerts:
     msg: "ESXi host has not been rebooted in {{ uptime_days | round(0) }} days — may be missing patches"
 
 widgets:
-  - title: "Active Alerts"
-    type: alert_panel
 
   - title: "Host Overview"
     type: key_value

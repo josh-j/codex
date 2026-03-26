@@ -272,8 +272,6 @@ alerts:
     msg: "Active WARNING alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
 widgets:
-  - title: "Active Alerts"
-    type: alert_panel
 
   - title: "Active vCenter Alarms"
     type: table
