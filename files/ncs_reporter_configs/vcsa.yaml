@@ -180,16 +180,6 @@ vars:
   active_alarms:
     path: ".alarms_info.alarms"
     type: list
-  active_critical_alarm_count:
-    path: ".alarms_info.alarms"
-    type: int
-    count_where:
-      severity: "critical"
-  active_warning_alarm_count:
-    path: ".alarms_info.alarms"
-    type: int
-    count_where:
-      severity: "warning"
   alarm_count:
     path: ".alarms_info.alarms | len_if_list"
     type: int
@@ -262,14 +252,14 @@ alerts:
   - id: active_critical_alarms
     category: "vCenter Alarms"
     severity: CRITICAL
-    when: active_critical_alarm_count > 0
+    when: active_alarms | selectattr('severity', 'eq', 'critical') | list | length > 0
     msg: "Active CRITICAL alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
   - id: active_warning_alarms
     category: "vCenter Alarms"
     severity: WARNING
     suppress_if: active_critical_alarms
-    when: active_warning_alarm_count > 0
+    when: active_alarms | selectattr('severity', 'eq', 'warning') | list | length > 0
     msg: "Active WARNING alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
 widgets:
