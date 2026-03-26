@@ -60,7 +60,7 @@ vars:
     path: ".appliance_health_info.appliance.summary.uptime"
     type: float
   appliance_uptime_days:
-    compute: appliance_uptime_seconds / 86400
+    compute: "{{ appliance_uptime_seconds / 86400 }}"
   ssh_enabled:
     path: ".appliance_health_info.appliance.access.ssh"
     type: bool
@@ -114,7 +114,7 @@ vars:
       free_gb: "freeSpace / 1073741824"
       used_pct: "(capacity - freeSpace) / capacity * 100"
   vcenter_count:
-    compute: 1
+    compute: "{{ 1 }}"
 
   # --- Resource Pools ---
   resource_pools:
