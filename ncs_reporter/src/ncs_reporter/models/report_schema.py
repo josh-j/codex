@@ -156,6 +156,13 @@ class WidgetLayout(BaseModel):
     width: Literal["full", "half", "third", "quarter"] = "full"
     row: int | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_string(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return {"width": v}
+        return v
+
 
 class KeyValueField(BaseModel):
     model_config = ConfigDict(extra="forbid")
