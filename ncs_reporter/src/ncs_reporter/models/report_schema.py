@@ -6,6 +6,10 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
+# Re-export for backwards compatibility with tests that import from here
+# (the actual evaluation now lives in normalization/_when.py)
+__all__ = ["AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "StyleRule"]
+
 
 # ---------------------------------------------------------------------------
 # Field specification
@@ -117,145 +121,6 @@ class FieldSpec(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Alert conditions (discriminated union on `op`)
-# ---------------------------------------------------------------------------
-
-
-class ThresholdCondition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["gt", "lt", "gte", "lte", "eq", "ne"]
-    field: str
-    threshold: float
-
-
-class RangeCondition(BaseModel):
-    """Fires when field is between min and max (min <= val < max)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["range"]
-    field: str
-    min: float
-    max: float
-
-
-class ExistsCondition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["exists", "not_exists"]
-    field: str
-
-
-class FilterCountCondition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["filter_count"]
-    field: str
-    filter_field: str
-    filter_value: Any
-    threshold: float = 0
-
-
-class StringCondition(BaseModel):
-    """String equality / inequality. Case-sensitive."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["eq_str", "ne_str"]
-    field: str
-    value: str
-
-
-class StringInCondition(BaseModel):
-    """Membership test against a list of string values."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["in_str", "not_in_str"]
-    field: str
-    values: list[str]
-
-
-class FilterSpec(BaseModel):
-    """Single equality filter used inside MultiFilterCondition."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    filter_field: str
-    filter_value: Any
-
-
-class MultiFilterCondition(BaseModel):
-    """Fires when the count of list items matching ALL filters exceeds threshold."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["filter_multi"]
-    field: str
-    filters: list[FilterSpec]
-    threshold: float = 0
-
-
-class ComputedFilterCondition(BaseModel):
-    """
-    Fires when any item in a list satisfies an arithmetic expression threshold.
-
-    expression uses {field_name} references into each list item, e.g.:
-      "{freeSpace} / {capacity} * 100"
-    Supported operators: +  -  *  /  (numeric literals and {refs} only).
-    Division by zero yields 0.0.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["computed_filter"]
-    field: str
-    expression: str
-    cmp: Literal["gt", "lt", "gte", "lte", "eq", "ne", "range"]
-    threshold: float | None = None
-    min: float | None = None
-    max: float | None = None
-
-
-class DateThresholdCondition(BaseModel):
-    """
-    Fires when an ISO-8601 timestamp field is older/younger than a day threshold.
-
-    op:
-      age_gt  — field timestamp is MORE than `days` days old  (older than threshold)
-      age_lt  — field timestamp is LESS than `days` days old  (younger than threshold)
-      age_gte / age_lte — inclusive variants
-
-    reference_field: optional field name containing the reference ISO timestamp.
-      Defaults to datetime.now(UTC) when absent or unparseable.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["age_gt", "age_lt", "age_gte", "age_lte"]
-    field: str
-    days: float
-    reference_field: str | None = None
-
-
-AlertCondition = Annotated[
-    Union[
-        ThresholdCondition,
-        RangeCondition,
-        ExistsCondition,
-        FilterCountCondition,
-        StringCondition,
-        StringInCondition,
-        MultiFilterCondition,
-        ComputedFilterCondition,
-        DateThresholdCondition,
-    ],
-    Field(discriminator="op"),
-]
-
-
-# ---------------------------------------------------------------------------
 # Alert rule
 # ---------------------------------------------------------------------------
 
@@ -266,7 +131,8 @@ class AlertRule(BaseModel):
     id: str
     category: str
     severity: Literal["CRITICAL", "WARNING", "INFO"] = "WARNING"
-    condition: AlertCondition
+    when: str  # Jinja2 expression evaluated against extracted fields
+    action: str | None = None  # Optional command to run when alert fires
     message: str
     detail_fields: list[str] = Field(default_factory=list)
     affected_items_field: str | None = None
@@ -301,13 +167,13 @@ class KeyValueWidget(BaseModel):
     title: str
     type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     fields: list[KeyValueField]
 
 
 class StyleRule(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    condition: AlertCondition
+    when: str  # Jinja2 expression evaluated per table row
     css_class: str
 
 
@@ -329,7 +195,7 @@ class TableWidget(BaseModel):
     title: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     columns: list[TableColumn]
 
@@ -341,7 +207,7 @@ class AlertPanelWidget(BaseModel):
     title: str
     type: Literal["alert_panel"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
 
 
 class ProgressBarWidget(BaseModel):
@@ -351,7 +217,7 @@ class ProgressBarWidget(BaseModel):
     title: str
     type: Literal["progress_bar"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     field: str  # Field containing a 0-100 percentage
     label: str | None = None  # Optional secondary field for text label
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
@@ -365,7 +231,7 @@ class MarkdownWidget(BaseModel):
     title: str
     type: Literal["markdown"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     content: str
 
 
@@ -386,7 +252,7 @@ class StatCardsWidget(BaseModel):
     title: str
     type: Literal["stat_cards"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     cards: list[StatCardSpec]
 
 
@@ -397,7 +263,7 @@ class BarChartWidget(BaseModel):
     title: str
     type: Literal["bar_chart"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     label_field: str
     value_field: str
@@ -412,7 +278,7 @@ class ListWidget(BaseModel):
     title: str
     type: Literal["list"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     items_field: str
     display_field: str | None = None
     style: Literal["bullet", "numbered", "comma"] = "bullet"
@@ -426,7 +292,7 @@ class GroupedTableWidget(BaseModel):
     title: str
     type: Literal["grouped_table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: AlertCondition | None = None
+    visible_if: str | None = None  # Jinja2 expression
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     group_by: str
     columns: list[TableColumn]
@@ -605,9 +471,6 @@ class ReportSchema(BaseModel):
                 errors.append(f"{context} references undeclared field '{field_name}'{_hint(field_name)}")
 
         for rule in self.alerts:
-            cond = rule.condition
-            if hasattr(cond, "field"):
-                _check(cond.field, f"alert '{rule.id}': condition")
             for f in rule.detail_fields:
                 _check(f, f"alert '{rule.id}': detail_fields")
             _check(rule.affected_items_field or "", f"alert '{rule.id}': affected_items_field")

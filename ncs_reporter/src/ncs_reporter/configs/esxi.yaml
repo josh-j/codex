@@ -70,16 +70,67 @@ fields:
   hardware_alerts: "hardware_alerts | list"
 
 alerts:
-  - "host_disconnected | CRITICAL Host Connectivity | connection_state eq_str disconnected | ESXi host is disconnected from vCenter"
-  - "host_not_responding | CRITICAL Host Connectivity | connection_state eq_str notResponding | ESXi host is not responding"
-  - "host_in_maintenance | WARNING Host Status | in_maintenance_mode eq 1.0 | ESXi host is in maintenance mode"
-  - "mem_critical | CRITICAL Host Resources | mem_used_pct gte 95.0 | Memory utilization critically high at {mem_used_pct:.0f}%"
-  - "mem_warning | WARNING Host Resources | mem_used_pct gte 85.0 | Memory utilization elevated at {mem_used_pct:.0f}% | suppress=mem_critical"
-  - "cpu_critical | CRITICAL Host Resources | cpu_used_pct gte 95.0 | CPU utilization critically high at {cpu_used_pct:.0f}%"
-  - "cpu_warning | WARNING Host Resources | cpu_used_pct gte 85.0 | CPU utilization elevated at {cpu_used_pct:.0f}% | suppress=cpu_critical"
-  - "ssh_enabled | WARNING Security | ssh_enabled eq 1.0 | SSH is enabled on this ESXi host"
-  - "shell_enabled | WARNING Security | shell_enabled eq 1.0 | ESXi Shell is enabled on this host"
-  - "uptime_excessive | WARNING Host Lifecycle | uptime_days gte 90.0 | ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
+  - id: host_disconnected
+    category: "Host Connectivity"
+    severity: CRITICAL
+    when: "connection_state == 'disconnected'"
+    message: "ESXi host is disconnected from vCenter"
+
+  - id: host_not_responding
+    category: "Host Connectivity"
+    severity: CRITICAL
+    when: "connection_state == 'notResponding'"
+    message: "ESXi host is not responding"
+
+  - id: host_in_maintenance
+    category: "Host Status"
+    severity: WARNING
+    when: "in_maintenance_mode == 1.0"
+    message: "ESXi host is in maintenance mode"
+
+  - id: mem_critical
+    category: "Host Resources"
+    severity: CRITICAL
+    when: "mem_used_pct >= 95.0"
+    message: "Memory utilization critically high at {mem_used_pct:.0f}%"
+
+  - id: mem_warning
+    category: "Host Resources"
+    severity: WARNING
+    suppress_if: mem_critical
+    when: "mem_used_pct >= 85.0"
+    message: "Memory utilization elevated at {mem_used_pct:.0f}%"
+
+  - id: cpu_critical
+    category: "Host Resources"
+    severity: CRITICAL
+    when: "cpu_used_pct >= 95.0"
+    message: "CPU utilization critically high at {cpu_used_pct:.0f}%"
+
+  - id: cpu_warning
+    category: "Host Resources"
+    severity: WARNING
+    suppress_if: cpu_critical
+    when: "cpu_used_pct >= 85.0"
+    message: "CPU utilization elevated at {cpu_used_pct:.0f}%"
+
+  - id: ssh_enabled
+    category: "Security"
+    severity: WARNING
+    when: "ssh_enabled == 1.0"
+    message: "SSH is enabled on this ESXi host"
+
+  - id: shell_enabled
+    category: "Security"
+    severity: WARNING
+    when: "shell_enabled == 1.0"
+    message: "ESXi Shell is enabled on this host"
+
+  - id: uptime_excessive
+    category: "Host Lifecycle"
+    severity: WARNING
+    when: "uptime_days >= 90.0"
+    message: "ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
 
 widgets:
   - alert_panel: "Active Alerts"

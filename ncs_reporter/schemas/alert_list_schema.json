@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NCS Reporter Alert List",
+  "description": "A list of alert rules, included via $include in main config files.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/AlertRule"
+  },
+  "$defs": {
+    "AlertRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "severity": {
+          "default": "WARNING",
+          "enum": [
+            "CRITICAL",
+            "WARNING",
+            "INFO"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "when": {
+          "title": "When",
+          "type": "string"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "detail_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Detail Fields",
+          "type": "array"
+        },
+        "affected_items_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Items Field"
+        },
+        "suppress_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suppress If"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "when",
+        "message"
+      ],
+      "title": "AlertRule",
+      "type": "object"
+    }
+  }
+}

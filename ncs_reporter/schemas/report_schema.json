@@ -1,0 +1,1388 @@
+{
+  "$defs": {
+    "AlertPanelWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "alert_panel",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type"
+      ],
+      "title": "AlertPanelWidget",
+      "type": "object"
+    },
+    "AlertRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "severity": {
+          "default": "WARNING",
+          "enum": [
+            "CRITICAL",
+            "WARNING",
+            "INFO"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "when": {
+          "title": "When",
+          "type": "string"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "detail_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Detail Fields",
+          "type": "array"
+        },
+        "affected_items_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Items Field"
+        },
+        "suppress_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suppress If"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "when",
+        "message"
+      ],
+      "title": "AlertRule",
+      "type": "object"
+    },
+    "BarChartWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "bar_chart",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "rows_field": {
+          "title": "Rows Field",
+          "type": "string"
+        },
+        "label_field": {
+          "title": "Label Field",
+          "type": "string"
+        },
+        "value_field": {
+          "title": "Value Field",
+          "type": "string"
+        },
+        "max": {
+          "default": 100,
+          "title": "Max",
+          "type": "number"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thresholds"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "rows_field",
+        "label_field",
+        "value_field"
+      ],
+      "title": "BarChartWidget",
+      "type": "object"
+    },
+    "DetectionSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "keys_any": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys Any",
+          "type": "array"
+        },
+        "keys_all": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys All",
+          "type": "array"
+        }
+      },
+      "title": "DetectionSpec",
+      "type": "object"
+    },
+    "FieldSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "compute": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compute"
+        },
+        "script": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Script"
+        },
+        "script_args": {
+          "additionalProperties": true,
+          "title": "Script Args",
+          "type": "object"
+        },
+        "script_timeout": {
+          "default": 30,
+          "title": "Script Timeout",
+          "type": "integer"
+        },
+        "type": {
+          "default": "str",
+          "enum": [
+            "str",
+            "int",
+            "float",
+            "bool",
+            "list",
+            "dict",
+            "bytes",
+            "percentage",
+            "datetime",
+            "duration_seconds"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "fallback": {
+          "title": "Fallback"
+        },
+        "sentinel": {
+          "default": null,
+          "title": "Sentinel"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "list_filter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ListFilterSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "list_map": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "List Map",
+          "type": "object"
+        },
+        "count_where": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count Where"
+        },
+        "any_where": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Any Where"
+        },
+        "all_where": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "All Where"
+        },
+        "sum_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sum Field"
+        }
+      },
+      "title": "FieldSpec",
+      "type": "object"
+    },
+    "FleetColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        }
+      },
+      "required": [
+        "label",
+        "field"
+      ],
+      "title": "FleetColumn",
+      "type": "object"
+    },
+    "GroupedTableWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "grouped_table",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "rows_field": {
+          "title": "Rows Field",
+          "type": "string"
+        },
+        "group_by": {
+          "title": "Group By",
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
+          "title": "Columns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "rows_field",
+        "group_by",
+        "columns"
+      ],
+      "title": "GroupedTableWidget",
+      "type": "object"
+    },
+    "KeyValueField": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "badge": {
+          "default": false,
+          "title": "Badge",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label",
+        "field"
+      ],
+      "title": "KeyValueField",
+      "type": "object"
+    },
+    "KeyValueWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "key_value",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/KeyValueField"
+          },
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "fields"
+      ],
+      "title": "KeyValueWidget",
+      "type": "object"
+    },
+    "ListFilterSpec": {
+      "additionalProperties": false,
+      "description": "Declarative list filtering: exclude items by field value or pattern.",
+      "properties": {
+        "exclude": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Exclude",
+          "type": "object"
+        },
+        "include": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Include",
+          "type": "object"
+        }
+      },
+      "title": "ListFilterSpec",
+      "type": "object"
+    },
+    "ListWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "list",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "items_field": {
+          "title": "Items Field",
+          "type": "string"
+        },
+        "display_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Field"
+        },
+        "style": {
+          "default": "bullet",
+          "enum": [
+            "bullet",
+            "numbered",
+            "comma"
+          ],
+          "title": "Style",
+          "type": "string"
+        },
+        "empty_text": {
+          "default": "None",
+          "title": "Empty Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "items_field"
+      ],
+      "title": "ListWidget",
+      "type": "object"
+    },
+    "MarkdownWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "markdown",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "content"
+      ],
+      "title": "MarkdownWidget",
+      "type": "object"
+    },
+    "PlatformSpec": {
+      "additionalProperties": false,
+      "description": "Platform routing metadata embedded in a schema YAML.",
+      "properties": {
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "input_dir": {
+          "default": "",
+          "title": "Input Dir",
+          "type": "string"
+        },
+        "report_dir": {
+          "default": "",
+          "title": "Report Dir",
+          "type": "string"
+        },
+        "target_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Types",
+          "type": "array"
+        },
+        "state_file": {
+          "default": "",
+          "title": "State File",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "asset_label": {
+          "default": "Nodes",
+          "title": "Asset Label",
+          "type": "string"
+        },
+        "inventory_groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Inventory Groups",
+          "type": "array"
+        },
+        "stig_skeleton_map": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Stig Skeleton Map",
+          "type": "object"
+        },
+        "stig_rule_prefixes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Stig Rule Prefixes",
+          "type": "object"
+        },
+        "render": {
+          "default": true,
+          "title": "Render",
+          "type": "boolean"
+        },
+        "site_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Category"
+        },
+        "sub_entries": {
+          "items": {
+            "$ref": "#/$defs/SubEntry"
+          },
+          "title": "Sub Entries",
+          "type": "array"
+        },
+        "legacy_raw_keys": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Legacy Raw Keys",
+          "type": "object"
+        },
+        "legacy_audit_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Legacy Audit Key"
+        },
+        "site_infra_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Site Infra Fields",
+          "type": "array"
+        },
+        "site_compute_node": {
+          "default": false,
+          "title": "Site Compute Node",
+          "type": "boolean"
+        },
+        "stig_playbook": {
+          "default": "",
+          "title": "Stig Playbook",
+          "type": "string"
+        },
+        "stig_target_var": {
+          "default": "",
+          "title": "Stig Target Var",
+          "type": "string"
+        }
+      },
+      "title": "PlatformSpec",
+      "type": "object"
+    },
+    "ProgressBarWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "progress_bar",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "color": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "green",
+            "yellow",
+            "red",
+            "blue"
+          ],
+          "title": "Color",
+          "type": "string"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thresholds"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "field"
+      ],
+      "title": "ProgressBarWidget",
+      "type": "object"
+    },
+    "StatCardSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "color": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "green",
+            "yellow",
+            "red",
+            "blue"
+          ],
+          "title": "Color",
+          "type": "string"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thresholds"
+        }
+      },
+      "required": [
+        "field",
+        "label"
+      ],
+      "title": "StatCardSpec",
+      "type": "object"
+    },
+    "StatCardsWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "stat_cards",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/StatCardSpec"
+          },
+          "title": "Cards",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "cards"
+      ],
+      "title": "StatCardsWidget",
+      "type": "object"
+    },
+    "StyleRule": {
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "title": "When",
+          "type": "string"
+        },
+        "css_class": {
+          "title": "Css Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "when",
+        "css_class"
+      ],
+      "title": "StyleRule",
+      "type": "object"
+    },
+    "SubEntry": {
+      "additionalProperties": false,
+      "description": "A STIG-only sub-entry under a parent platform (e.g. vcsa, esxi, vm under vmware).",
+      "properties": {
+        "input_dir": {
+          "title": "Input Dir",
+          "type": "string"
+        },
+        "report_dir": {
+          "title": "Report Dir",
+          "type": "string"
+        },
+        "state_file": {
+          "default": "",
+          "title": "State File",
+          "type": "string"
+        },
+        "target_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Types",
+          "type": "array"
+        },
+        "stig_skeleton_map": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Stig Skeleton Map",
+          "type": "object"
+        },
+        "stig_playbook": {
+          "default": "",
+          "title": "Stig Playbook",
+          "type": "string"
+        },
+        "stig_target_var": {
+          "default": "",
+          "title": "Stig Target Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "input_dir",
+        "report_dir"
+      ],
+      "title": "SubEntry",
+      "type": "object"
+    },
+    "TableColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "badge": {
+          "default": false,
+          "title": "Badge",
+          "type": "boolean"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "link_field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Link Field"
+        },
+        "style_rules": {
+          "items": {
+            "$ref": "#/$defs/StyleRule"
+          },
+          "title": "Style Rules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "field"
+      ],
+      "title": "TableColumn",
+      "type": "object"
+    },
+    "TableWidget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "table",
+          "title": "Type",
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/WidgetLayout"
+        },
+        "visible_if": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible If"
+        },
+        "rows_field": {
+          "title": "Rows Field",
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
+          "title": "Columns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "rows_field",
+        "columns"
+      ],
+      "title": "TableWidget",
+      "type": "object"
+    },
+    "WidgetLayout": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "default": "full",
+          "enum": [
+            "full",
+            "half",
+            "third",
+            "quarter"
+          ],
+          "title": "Width",
+          "type": "string"
+        },
+        "row": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row"
+        }
+      },
+      "title": "WidgetLayout",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "platform": {
+      "default": "",
+      "title": "Platform",
+      "type": "string"
+    },
+    "platform_spec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlatformSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "display_name": {
+      "default": "",
+      "title": "Display Name",
+      "type": "string"
+    },
+    "path_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Path Prefix"
+    },
+    "detection": {
+      "$ref": "#/$defs/DetectionSpec"
+    },
+    "fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FieldSpec"
+      },
+      "title": "Fields",
+      "type": "object"
+    },
+    "alerts": {
+      "items": {
+        "$ref": "#/$defs/AlertRule"
+      },
+      "title": "Alerts",
+      "type": "array"
+    },
+    "widgets": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "alert_panel": "#/$defs/AlertPanelWidget",
+            "bar_chart": "#/$defs/BarChartWidget",
+            "grouped_table": "#/$defs/GroupedTableWidget",
+            "key_value": "#/$defs/KeyValueWidget",
+            "list": "#/$defs/ListWidget",
+            "markdown": "#/$defs/MarkdownWidget",
+            "progress_bar": "#/$defs/ProgressBarWidget",
+            "stat_cards": "#/$defs/StatCardsWidget",
+            "table": "#/$defs/TableWidget"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/KeyValueWidget"
+          },
+          {
+            "$ref": "#/$defs/TableWidget"
+          },
+          {
+            "$ref": "#/$defs/AlertPanelWidget"
+          },
+          {
+            "$ref": "#/$defs/ProgressBarWidget"
+          },
+          {
+            "$ref": "#/$defs/MarkdownWidget"
+          },
+          {
+            "$ref": "#/$defs/StatCardsWidget"
+          },
+          {
+            "$ref": "#/$defs/BarChartWidget"
+          },
+          {
+            "$ref": "#/$defs/ListWidget"
+          },
+          {
+            "$ref": "#/$defs/GroupedTableWidget"
+          }
+        ]
+      },
+      "title": "Widgets",
+      "type": "array"
+    },
+    "fleet_columns": {
+      "items": {
+        "$ref": "#/$defs/FleetColumn"
+      },
+      "title": "Fleet Columns",
+      "type": "array"
+    },
+    "template_override": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Template Override"
+    },
+    "split_field": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Split Field"
+    },
+    "split_name_key": {
+      "default": "name",
+      "title": "Split Name Key",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "detection"
+  ],
+  "title": "NCS Reporter Schema Config",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "YAML-driven report schema for ncs_reporter."
+}

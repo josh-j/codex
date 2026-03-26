@@ -12,7 +12,7 @@ from typing import Any
 
 from ncs_reporter.primitives import safe_list
 
-from ._conditions import _parse_iso
+from ._when import _parse_iso
 from ._transforms import _PARAM_TRANSFORMS, _TRANSFORMS, _safe_eval_expr
 
 logger = logging.getLogger(__name__)

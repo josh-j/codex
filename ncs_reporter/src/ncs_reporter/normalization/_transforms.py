@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import operator as _op
 import re as _re
 from collections.abc import Callable
@@ -150,6 +151,23 @@ def _parse_kv(value: Any, separator: str = " ", comment: str = "#") -> dict[str,
             val = parts[1].split(comment, 1)[0].strip()
             result[parts[0]] = val
     return result
+
+
+@_register_param_transform("unwrap_ps")
+def _unwrap_ps(value: Any, key: str | None = None) -> Any:
+    """Unwrap Ansible win_powershell envelope and optionally extract a sub-key.
+
+    win_powershell stores output as ``{"output": ["<json string>"], ...}``.
+    If *value* is already a plain dict/list (not wrapped), it passes through.
+    """
+    if isinstance(value, dict) and "output" in value:
+        try:
+            value = json.loads(value["output"][0])
+        except (IndexError, json.JSONDecodeError, TypeError, KeyError):
+            pass  # keep original on parse failure
+    if key and isinstance(value, dict):
+        return value.get(key, [])
+    return value if value is not None else {}
 
 
 @_register_param_transform("round")

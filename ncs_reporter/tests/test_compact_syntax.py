@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from ncs_reporter.schema_loader import (
-    _expand_compact_alert,
     _expand_compact_column,
     _expand_compact_field,
     _expand_compact_syntax,
@@ -59,71 +58,6 @@ class TestCompactField:
     def test_float_with_fallback(self):
         result = _expand_compact_field(".memory_pct | float = 0.0")
         assert result == {"path": ".memory_pct", "type": "float", "fallback": 0.0}
-
-
-# ---------------------------------------------------------------------------
-# Compact alert expansion
-# ---------------------------------------------------------------------------
-
-
-class TestCompactAlert:
-    def test_threshold_alert(self):
-        result = _expand_compact_alert(
-            "memory_high | WARNING Health | health_memory_used_pct gt 85 | Memory is high"
-        )
-        assert result == {
-            "id": "memory_high",
-            "category": "Health",
-            "severity": "WARNING",
-            "condition": {"op": "gt", "field": "health_memory_used_pct", "threshold": 85.0},
-            "message": "Memory is high",
-        }
-
-    def test_exists_alert(self):
-        result = _expand_compact_alert(
-            "data_missing | CRITICAL Infra | hostname not_exists | No hostname data"
-        )
-        assert result == {
-            "id": "data_missing",
-            "category": "Infra",
-            "severity": "CRITICAL",
-            "condition": {"op": "not_exists", "field": "hostname"},
-            "message": "No hostname data",
-        }
-
-    def test_string_alert(self):
-        result = _expand_compact_alert(
-            "channel_failed | CRITICAL Health | secure_channel eq_str FAILED | Secure channel FAILED"
-        )
-        assert result == {
-            "id": "channel_failed",
-            "category": "Health",
-            "severity": "CRITICAL",
-            "condition": {"op": "eq_str", "field": "secure_channel", "value": "FAILED"},
-            "message": "Secure channel FAILED",
-        }
-
-    def test_with_details(self):
-        result = _expand_compact_alert(
-            "mem | WARNING Health | mem_pct gt 90 | Memory high | details=mem_pct;mem_total"
-        )
-        assert result["detail_fields"] == ["mem_pct", "mem_total"]
-
-    def test_with_affected(self):
-        result = _expand_compact_alert(
-            "updates | WARNING Patching | pending exists | Updates pending | affected=pending_list"
-        )
-        assert result["affected_items_field"] == "pending_list"
-
-    def test_with_suppress(self):
-        result = _expand_compact_alert(
-            "warn | WARNING Health | x gt 50 | Warning | suppress=critical_x"
-        )
-        assert result["suppress_if"] == ["critical_x"]
-
-    def test_too_few_segments_raises(self):
-        with pytest.raises(ValueError, match="at least 4"):
-            _expand_compact_alert("only | two | segments")
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +177,28 @@ class TestExpandCompactSyntax:
         assert result["fields"]["fallback"] == {"path": ".state", "fallback": "unknown"}
         assert result["fields"]["full"] == {"path": ".x", "type": "int"}
 
-    def test_mixed_alerts(self):
+    def test_compact_alert_string_rejected(self):
         data = {
             "name": "test",
             "detection": {"keys_any": ["x"]},
             "fields": {"f": "x.f"},
             "alerts": [
                 "a1 | WARNING Cat | f gt 10 | msg",
+            ],
+        }
+        with pytest.raises(ValueError, match="no longer supported"):
+            _expand_compact_syntax(data)
+
+    def test_dict_alerts_pass_through(self):
+        data = {
+            "name": "test",
+            "detection": {"keys_any": ["x"]},
+            "fields": {"f": "x.f"},
+            "alerts": [
+                {"id": "a1", "severity": "WARNING", "category": "Cat",
+                 "when": "f > 10", "message": "msg"},
                 {"id": "a2", "severity": "CRITICAL", "category": "Cat",
-                 "condition": {"op": "exists", "field": "f"}, "message": "m"},
+                 "when": "f is defined", "message": "m"},
             ],
         }
         result = _expand_compact_syntax(data)
@@ -387,8 +334,8 @@ class TestIncludeAlerts:
             # Write included alerts file
             inc_path = os.path.join(tmpdir, "base_alerts.yaml")
             with open(inc_path, "w") as f:
-                f.write("- id: alert_a\n  severity: WARNING\n  message: original\n")
-                f.write("- id: alert_b\n  severity: INFO\n  message: keep\n")
+                f.write("- id: alert_a\n  severity: WARNING\n  category: Test\n  when: \"x > 0\"\n  message: original\n")
+                f.write("- id: alert_b\n  severity: INFO\n  category: Test\n  when: \"y > 0\"\n  message: keep\n")
 
             # Write main config data
             config_path = Path(tmpdir) / "config.yaml"
@@ -396,8 +343,8 @@ class TestIncludeAlerts:
                 "alerts": {
                     "$include": "base_alerts.yaml",
                     "$local": [
-                        {"id": "alert_a", "severity": "CRITICAL", "message": "overridden"},
-                        {"id": "alert_c", "severity": "INFO", "message": "appended"},
+                        {"id": "alert_a", "severity": "CRITICAL", "category": "Test", "when": "x > 0", "message": "overridden"},
+                        {"id": "alert_c", "severity": "INFO", "category": "Test", "when": "z > 0", "message": "appended"},
                     ],
                 },
             }
@@ -411,7 +358,7 @@ class TestIncludeAlerts:
 
 
 class TestRoundTrip:
-    def test_compact_config_validates(self):
+    def test_config_with_when_validates(self):
         from ncs_reporter.models.report_schema import ReportSchema
 
         data = {
@@ -423,7 +370,8 @@ class TestRoundTrip:
                 "services": ".services | list",
             },
             "alerts": [
-                "uptime_high | WARNING Health | uptime gt 86400 | Uptime over 24h",
+                {"id": "uptime_high", "category": "Health", "severity": "WARNING",
+                 "when": "uptime > 86400", "message": "Uptime over 24h"},
             ],
             "widgets": [
                 {"alert_panel": "Alerts"},
@@ -438,6 +386,7 @@ class TestRoundTrip:
         assert schema.name == "roundtrip_test"
         assert len(schema.fields) == 3
         assert len(schema.alerts) == 1
+        assert schema.alerts[0].when == "uptime > 86400"
         assert len(schema.widgets) == 2
 
     def test_builtin_windows_loads(self):
@@ -447,6 +396,6 @@ class TestRoundTrip:
         path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "windows.yaml"
         schema = load_schema_from_file(path)
         assert schema.name == "windows"
-        assert len(schema.fields) == 32
+        assert len(schema.fields) == 29
         assert len(schema.alerts) == 9
         assert len(schema.widgets) == 13

@@ -10,7 +10,7 @@ from ncs_reporter.alerts import compute_audit_rollups
 from ncs_reporter.models.report_schema import ReportSchema
 from ncs_reporter.primitives import canonical_severity, safe_list
 
-from ._conditions import evaluate_condition, _filter_affected_items, _parse_iso  # noqa: F401
+from ._when import evaluate_when, _parse_iso  # noqa: F401
 from ._fields import (
     _BUILTIN_SCRIPTS_DIR,  # noqa: F401
     _SCRIPT_ERROR_SENTINEL,
@@ -132,7 +132,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
     fired_ids: set[str] = set()
 
     for rule in schema.alerts:
-        if not evaluate_condition(rule.condition, fields):
+        if not evaluate_when(rule.when, fields):
             continue
 
         # Check suppress_if: skip this alert if any referenced alert already fired
@@ -153,15 +153,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
 
         affected_items: list[Any] = []
         if rule.affected_items_field:
-            raw_items = safe_list(fields.get(rule.affected_items_field, []))
-            # When the affected_items_field is the same list the condition
-            # filters, narrow down to only the items that actually triggered
-            # the alert instead of showing the entire list.
-            cond_field = getattr(rule.condition, "field", None)
-            if cond_field and cond_field == rule.affected_items_field:
-                affected_items = _filter_affected_items(rule.condition, raw_items)
-            else:
-                affected_items = raw_items
+            affected_items = safe_list(fields.get(rule.affected_items_field, []))
 
         alerts.append(
             {
@@ -171,6 +163,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 "message": message,
                 "detail": detail,
                 "affected_items": affected_items,
+                "action": rule.action,
                 "condition": True,
             }
         )

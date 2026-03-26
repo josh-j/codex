@@ -89,8 +89,12 @@ fields:
   datastores_raw: ".datastores_info.datastores | list"
   datastore_count: ".datastores_info.datastores | len_if_list | int"
   datastores:
-    script: "normalize_datastores.py"
+    path: ".datastores_info.datastores"
     type: list
+    list_map:
+      capacity_gb: "{capacity} / 1073741824"
+      free_gb: "{freeSpace} / 1073741824"
+      used_pct: "({capacity} - {freeSpace}) / {capacity} * 100"
   vcenter_count:
     compute: "1"
     type: int
@@ -138,34 +142,83 @@ fields:
   alarm_count: ".alarms_info.alarms | len_if_list | int"
 
 alerts:
-  - "appliance_health_red | CRITICAL Appliance Health | appliance_health_overall eq_str red | VCSA component failure: overall health is RED"
-  - "appliance_health_yellow | WARNING Appliance Health | appliance_health_overall eq_str yellow | VCSA degraded: overall health is YELLOW | suppress=appliance_health_red"
-  - "appliance_health_gray | WARNING Data Quality | appliance_health_overall eq_str gray | VCSA health unknown: overall health is GRAY — check permissions and API availability | suppress=appliance_health_red;appliance_health_yellow"
-  - "ssh_enabled | WARNING Security | ssh_enabled eq 1.0 | Hardening violation: SSH is enabled on VCSA"
-  - "shell_enabled | WARNING Security | shell_enabled eq 1.0 | Hardening violation: interactive shell is enabled on VCSA"
+  - id: appliance_health_red
+    category: "Appliance Health"
+    severity: CRITICAL
+    when: "appliance_health_overall == 'red'"
+    message: "VCSA component failure: overall health is RED"
+
+  - id: appliance_health_yellow
+    category: "Appliance Health"
+    severity: WARNING
+    suppress_if: appliance_health_red
+    when: "appliance_health_overall == 'yellow'"
+    message: "VCSA degraded: overall health is YELLOW"
+
+  - id: appliance_health_gray
+    category: "Data Quality"
+    severity: WARNING
+    suppress_if: [appliance_health_red, appliance_health_yellow]
+    when: "appliance_health_overall == 'gray'"
+    message: "VCSA health unknown: overall health is GRAY — check permissions and API availability"
+
+  - id: ssh_enabled
+    category: "Security"
+    severity: WARNING
+    when: "ssh_enabled == 1.0"
+    message: "Hardening violation: SSH is enabled on VCSA"
+
+  - id: shell_enabled
+    category: "Security"
+    severity: WARNING
+    when: "shell_enabled == 1.0"
+    message: "Hardening violation: interactive shell is enabled on VCSA"
+
   - id: ntp_disabled
     category: "Time Synchronization"
     severity: WARNING
-    condition:
-      op: not_in_str
-      field: ntp_mode
-      values: ["NTP", "HOST"]
+    when: "ntp_mode not in ['NTP', 'HOST']"
     message: "Time sync misconfigured: NTP mode is '{ntp_mode}' — clock drift may affect logs and certificates"
-  - "appliance_uptime_excessive | WARNING Appliance Lifecycle | appliance_uptime_days gte 90.0 | VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
-  - "appliance_uptime_recent_reboot | INFO Appliance Lifecycle | appliance_uptime_days lt 1.0 | VCSA was rebooted less than 24 hours ago — verify this was planned | suppress=appliance_uptime_excessive"
-  - "no_backup_schedule | CRITICAL Data Protection | backup_schedule_count lte 0 | DR risk: no file-based backup schedule configured on VCSA"
+
+  - id: appliance_uptime_excessive
+    category: "Appliance Lifecycle"
+    severity: WARNING
+    when: "appliance_uptime_days >= 90.0"
+    message: "VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
+
+  - id: appliance_uptime_recent_reboot
+    category: "Appliance Lifecycle"
+    severity: INFO
+    suppress_if: appliance_uptime_excessive
+    when: "appliance_uptime_days < 1.0"
+    message: "VCSA was rebooted less than 24 hours ago — verify this was planned"
+
+  - id: no_backup_schedule
+    category: "Data Protection"
+    severity: CRITICAL
+    when: "backup_schedule_count <= 0"
+    message: "DR risk: no file-based backup schedule configured on VCSA"
+
   - id: backup_schedule_disabled
     category: "Data Protection"
     severity: CRITICAL
-    condition:
-      op: filter_count
-      field: backup_schedules
-      filter_field: enabled
-      filter_value: false
-      threshold: 0
+    when: "backup_schedules | selectattr('enabled', 'eq', false) | list | length > 0"
     message: "DR risk: a configured backup schedule is DISABLED on VCSA"
-  - "active_critical_alarms | CRITICAL vCenter Alarms | active_critical_alarm_count gt 0 | Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered) | affected=active_alarms"
-  - "active_warning_alarms | WARNING vCenter Alarms | active_warning_alarm_count gt 0 | Active WARNING alarms detected in vCenter ({alarm_count} total triggered) | affected=active_alarms suppress=active_critical_alarms"
+
+  - id: active_critical_alarms
+    category: "vCenter Alarms"
+    severity: CRITICAL
+    when: "active_critical_alarm_count > 0"
+    message: "Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered)"
+    affected_items_field: active_alarms
+
+  - id: active_warning_alarms
+    category: "vCenter Alarms"
+    severity: WARNING
+    suppress_if: active_critical_alarms
+    when: "active_warning_alarm_count > 0"
+    message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
+    affected_items_field: active_alarms
 
 widgets:
   - alert_panel: "Active Alerts"
@@ -212,7 +265,7 @@ widgets:
       - "Tag Categories: tag_category_count"
 
   - table: "Clusters"
-    visible_if: { op: gt, field: cluster_count, threshold: 0 }
+    visible_if: "cluster_count > 0"
     rows: clusters
     columns:
       - "Cluster: name"
@@ -224,7 +277,7 @@ widgets:
       - "Mem %: mem_usage_pct"
 
   - table: "Datastores"
-    visible_if: { op: gt, field: datastore_count, threshold: 0 }
+    visible_if: "datastore_count > 0"
     rows: datastores
     columns:
       - "Name: name"
@@ -233,7 +286,7 @@ widgets:
       - "Used %: used_pct"
 
   - table: "Resource Pools"
-    visible_if: { op: gt, field: resource_pool_count, threshold: 0 }
+    visible_if: "resource_pool_count > 0"
     rows: resource_pools
     columns:
       - "Name: name"
@@ -243,7 +296,7 @@ widgets:
       - "Memory Limit: runtime_memory_overall_usage"
 
   - table: "Distributed Switches"
-    visible_if: { op: gt, field: dvswitch_count, threshold: 0 }
+    visible_if: "dvswitch_count > 0"
     rows: dvswitches
     columns:
       - "Name: name"
@@ -252,7 +305,7 @@ widgets:
       - "MTU: mtu"
 
   - table: "Distributed Portgroups"
-    visible_if: { op: gt, field: dvs_portgroup_count, threshold: 0 }
+    visible_if: "dvs_portgroup_count > 0"
     rows: dvs_portgroups
     columns:
       - "Name: portgroup_name"
@@ -262,7 +315,7 @@ widgets:
       - "Type: port_binding"
 
   - table: "Licenses"
-    visible_if: { op: gt, field: license_count, threshold: 0 }
+    visible_if: "license_count > 0"
     rows: licenses
     columns:
       - "Name: name"
@@ -272,7 +325,7 @@ widgets:
       - "Expiration: expiration_date"
 
   - table: "Extensions"
-    visible_if: { op: gt, field: extension_count, threshold: 0 }
+    visible_if: "extension_count > 0"
     rows: extensions
     columns:
       - "Label: ext_label"
@@ -281,7 +334,7 @@ widgets:
       - "Last Heartbeat: ext_last_heartbeat_time"
 
   - table: "Content Libraries"
-    visible_if: { op: gt, field: content_library_count, threshold: 0 }
+    visible_if: "content_library_count > 0"
     rows: content_libraries
     columns:
       - "Name: lib_name"
@@ -289,7 +342,7 @@ widgets:
       - "Description: lib_description"
 
   - table: "Backup Schedules"
-    visible_if: { op: gt, field: backup_schedule_count, threshold: 0 }
+    visible_if: "backup_schedule_count > 0"
     rows: backup_schedules
     columns:
       - "Name: name"
@@ -297,7 +350,7 @@ widgets:
         field: enabled
         badge: true
         style_rules:
-          - condition: { op: eq, field: enabled, threshold: 0.0 }
+          - when: "enabled == 0.0"
             css_class: "sv-critical"
       - "Location: location"
       - "Retain Count: retain_count"
