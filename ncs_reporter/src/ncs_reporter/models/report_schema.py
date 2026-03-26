@@ -180,7 +180,7 @@ class KeyValueWidget(BaseModel):
     title: str
     type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     fields: list[KeyValueField]
 
 
@@ -208,7 +208,7 @@ class TableWidget(BaseModel):
     title: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     columns: list[TableColumn]
 
@@ -220,7 +220,7 @@ class AlertPanelWidget(BaseModel):
     title: str
     type: Literal["alert_panel"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
 
 
 class ProgressBarWidget(BaseModel):
@@ -230,7 +230,7 @@ class ProgressBarWidget(BaseModel):
     title: str
     type: Literal["progress_bar"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     field: str  # Field containing a 0-100 percentage
     label: str | None = None  # Optional secondary field for text label
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
@@ -244,7 +244,7 @@ class MarkdownWidget(BaseModel):
     title: str
     type: Literal["markdown"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     content: str
 
 
@@ -265,7 +265,7 @@ class StatCardsWidget(BaseModel):
     title: str
     type: Literal["stat_cards"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     cards: list[StatCardSpec]
 
 
@@ -276,7 +276,7 @@ class BarChartWidget(BaseModel):
     title: str
     type: Literal["bar_chart"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     label_field: str
     value_field: str
@@ -291,7 +291,7 @@ class ListWidget(BaseModel):
     title: str
     type: Literal["list"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     items_field: str
     display_field: str | None = None
     style: Literal["bullet", "numbered", "comma"] = "bullet"
@@ -305,7 +305,7 @@ class GroupedTableWidget(BaseModel):
     title: str
     type: Literal["grouped_table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    visible_if: str | None = None  # Jinja2 expression
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
     rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
     group_by: str
     columns: list[TableColumn]
