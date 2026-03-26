@@ -179,13 +179,13 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_platform_fleet_reports_created(self):
         self._run_all()
-        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcenter_fleet_report.html").exists())
 
     def test_stamped_fleet_reports_created(self):
         self._run_all()
         self.assertTrue(
-            (self.reports_root / "platform" / "linux" / "ubuntu" / f"linux_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "linux" / "ubuntu" / f"ubuntu_fleet_report_{STAMP}.html").exists()
         )
         self.assertTrue(
             (self.reports_root / "platform" / "vmware" / "vcsa" / f"vcenter_fleet_report_{STAMP}.html").exists()

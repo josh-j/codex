@@ -1,4 +1,3 @@
-name: linux
 platform: linux/ubuntu
 stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
 stig_target_var: "ubuntu_target_hosts"

@@ -108,10 +108,13 @@ class PlatformRegistry:
     # -- schema name lookup --------------------------------------------------
 
     def schema_names_for_platform(self, platform: str) -> list[str]:
+        names: list[str] = []
         for e in self._entries:
-            if e.platform == platform and e.schema_names:
-                return list(e.schema_names)
-        return [platform]
+            if e.platform == platform and e.render:
+                for n in e.schema_names:
+                    if n not in names:
+                        names.append(n)
+        return names or [platform]
 
     # -- aggregation helpers -------------------------------------------------
 

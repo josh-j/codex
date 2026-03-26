@@ -204,13 +204,13 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertIn("linux-01", content)
         self.assertIn("vc-01", content)
         self.assertIn("win-01", content)
-        self.assertTrue(_has_attr(content, "href", "platform/linux/ubuntu/linux_fleet_report.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/linux/ubuntu/ubuntu_fleet_report.html"))
         self.assertTrue(_has_attr(content, "href", "platform/vmware/vcsa/vcenter_fleet_report.html"))
         self.assertTrue(_has_attr(content, "href", "platform/windows/windows_fleet_report.html"))
         self.assertTrue(_has_attr(content, "data-root", "./"))
 
         # Check Platform Reports
-        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "linux_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcenter_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "vmware" / "esxi" / "esxi_fleet_report.html").exists())
         self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
@@ -234,7 +234,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
             self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
         ).read_text()
         self.assertTrue(_has_attr(linux_report, "href", "../../../../site_health_report.html"))
-        self.assertTrue(_has_attr(linux_report, "href", "../linux_fleet_report.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../ubuntu_fleet_report.html"))
         self.assertTrue(_has_attr(linux_report, "href", "../../../../platform/vmware/vcsa/vcenter_fleet_report.html"))
         self.assertTrue(_has_attr(linux_report, "data-root", "../../../../"))
         self.assertTrue(

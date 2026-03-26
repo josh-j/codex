@@ -159,8 +159,8 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
             return None
 
         # Skip fragment files (used via $include) — they lack required schema keys.
-        if "name" not in data or "detection" not in data:
-            logger.debug("Skipping %s: missing 'name'/'detection' (likely a fragment)", path)
+        if ("name" not in data and "platform" not in data) or "detection" not in data:
+            logger.debug("Skipping %s: missing 'name'/'platform'/'detection' (likely a fragment)", path)
             return None
 
         data = _resolve_refs(data, path)

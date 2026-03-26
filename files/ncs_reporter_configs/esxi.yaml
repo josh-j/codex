@@ -1,4 +1,3 @@
-name: esxi
 display_name: "VMware ESXi"
 platform: vmware/esxi
 stig_checklist_map:

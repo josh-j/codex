@@ -394,7 +394,7 @@ class FleetColumn(BaseModel):
 class ReportSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str
+    name: str = ""  # derived from platform path if not set
     platform: str = ""
     platform_spec: PlatformSpec | None = Field(default=None, exclude=True)
     display_name: str = Field(default="", validation_alias=AliasChoices("display_name", "title"))
@@ -429,17 +429,24 @@ class ReportSchema(BaseModel):
         raw_platform = values.get("platform")
         if isinstance(raw_platform, str) and ("/" in raw_platform or raw_platform):
             # String path form: "vmware/esxi" or "windows"
+            path_parts = raw_platform.rsplit("/", 1)
             values["platform_spec"] = {
                 "input_dir": raw_platform,
                 "report_dir": raw_platform,
-                "name": raw_platform.split("/")[0],
+                "name": path_parts[0] if len(path_parts) > 1 else raw_platform,
             }
-            values["platform"] = raw_platform.split("/")[0]
+            values["platform"] = path_parts[0] if len(path_parts) > 1 else raw_platform
+            # Derive name from last path segment if not explicitly set
+            if not values.get("name"):
+                values["name"] = path_parts[-1]
         elif isinstance(raw_platform, dict):
             # Dict form: extract platform name for the str field, store spec separately
             values["platform_spec"] = raw_platform
             input_dir = raw_platform.get("input_dir") or raw_platform.get("path") or ""
             values["platform"] = raw_platform.get("name") or input_dir.split("/")[0] or values.get("name", "")
+            # Derive name from last path segment if not explicitly set
+            if not values.get("name") and input_dir:
+                values["name"] = input_dir.rsplit("/", 1)[-1]
         elif not raw_platform:
             # Auto-derive platform from name when not explicitly set
             values["platform"] = values.get("name", "")

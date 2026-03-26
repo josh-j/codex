@@ -6,7 +6,7 @@ from ncs_reporter.view_models.site import build_site_dashboard_view
 
 def _linux_bundle(health="OK", alerts=None):
     return {
-        "schema_linux": {
+        "schema_ubuntu": {
             "health": health,
             "alerts": alerts or [],
             "summary": {"critical_count": 0, "warning_count": 0},
@@ -50,7 +50,7 @@ class TestBuildSiteDashboardView:
         view = build_site_dashboard_view(hosts, ctx=ReportContext(report_stamp="20260226"))
 
         assert view["meta"]["report_stamp"] == "20260226"
-        assert view["platforms"]["linux"]["asset_count"] == 1
+        assert view["platforms"]["ubuntu"]["asset_count"] == 1
         assert view["platforms"]["vcenter"]["asset_count"] == 1
         assert view["platforms"]["windows"]["asset_count"] == 1
         assert view["totals"]["total"] == 0  # no alerts
@@ -59,7 +59,7 @@ class TestBuildSiteDashboardView:
         alerts = [{"severity": "CRITICAL", "category": "disk", "message": "Disk full"}]
         hosts = {"hosts": {"h1": _linux_bundle(health="CRITICAL", alerts=alerts)}}
         view = build_site_dashboard_view(hosts)
-        assert view["platforms"]["linux"]["status"]["raw"] == "CRITICAL"
+        assert view["platforms"]["ubuntu"]["status"]["raw"] == "CRITICAL"
         assert view["totals"]["critical"] >= 1
         assert len(view["alerts"]) >= 1
 
@@ -120,5 +120,5 @@ class TestBuildSiteDashboardView:
     def test_no_groups_counts_from_actual_hosts(self):
         hosts = {"hosts": {"h1": _linux_bundle()}}
         view = build_site_dashboard_view(hosts)
-        assert view["platforms"]["linux"]["asset_count"] == 1
+        assert view["platforms"]["ubuntu"]["asset_count"] == 1
         assert view["platforms"]["vcenter"]["asset_count"] == 0

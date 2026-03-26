@@ -1135,6 +1135,7 @@
   "additionalProperties": false,
   "properties": {
     "name": {
+      "default": "",
       "title": "Name",
       "type": "string"
     },
@@ -1299,7 +1300,6 @@
     }
   },
   "required": [
-    "name",
     "detection"
   ],
   "title": "NCS Reporter Schema Config",

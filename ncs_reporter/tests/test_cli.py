@@ -237,8 +237,8 @@ class LinuxCommandTests(unittest.TestCase):
             self.assertIn("Done", result.output)
 
             # Fleet report should exist
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "linux_fleet_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "linux_fleet_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report.html")))
             # Host report
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report.html")))
@@ -486,6 +486,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                         "input_dir": "linux/ubuntu",
                         "report_dir": "linux/ubuntu",
                         "platform": "linux",
+                        "schema_names": ["ubuntu"],
                         "render": True,
                         "paths": _default_paths(),
                     }
@@ -510,7 +511,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             # Fleet report for linux should be generated
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
     def test_platforms_config_invalid_yaml_fails_fast(self):
@@ -566,8 +567,9 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "input_dir": "linux/ubuntu",
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
-                                        "render": True,
-                                        "paths": _default_paths(),
+                                "schema_names": ["ubuntu"],
+                                "render": True,
+                                "paths": _default_paths(),
                             }
                         ]
                     },
@@ -589,7 +591,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
     def test_config_yaml_in_config_dir_is_applied(self):
@@ -613,8 +615,9 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                                 "input_dir": "linux/ubuntu",
                                 "report_dir": "linux/ubuntu",
                                 "platform": "linux",
-                                        "render": True,
-                                        "paths": _default_paths(),
+                                "schema_names": ["ubuntu"],
+                                "render": True,
+                                "paths": _default_paths(),
                             }
                         ]
                     },
@@ -636,7 +639,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "linux_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
 
