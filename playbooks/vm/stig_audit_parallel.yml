@@ -2,7 +2,7 @@
 # playbooks/vm/stig_audit_parallel.yml
 
 - name: "Phase 2b-pre | Discover VMs and build target list"
-  hosts: "{{ (site | default('undefined')) ~ '_vcenters' }}"
+  hosts: "vcsa-{{ site | default('undefined') }}"
   connection: local
   gather_facts: false
   strategy: linear

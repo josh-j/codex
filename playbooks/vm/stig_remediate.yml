@@ -3,7 +3,7 @@
 # Automated security hardening remediation for VMware virtual machines.
 
 - name: "Phase 2b | Pre-Hardening VM Discovery & Snapshots"
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "remediate", "snapshot"]
@@ -26,7 +26,7 @@
       when: vm_stig_target_vms | default([]) | length > 0
 
 - name: "Phase 2d | VM STIG Hardening (per vCenter)"
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "remediate", "vm"]
@@ -47,7 +47,7 @@
       when: vm_stig_target_vms | default([]) | length > 0
 
 - name: "Phase 2f | Post-Remediation VM STIG Audit"
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "audit", "vm"]

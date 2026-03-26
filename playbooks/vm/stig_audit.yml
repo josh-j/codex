@@ -1,7 +1,7 @@
 ---
 # playbooks/vm/stig_audit.yml
 - name: "Phase 2b | VM STIG Audit (per vCenter)"
-  hosts: "{{ vm_stig_target_hosts | default('vcenters') }}"
+  hosts: "{{ vm_stig_target_hosts | default('vcsa') }}"
   connection: local
   gather_facts: false
   tags: ["vmware", "stig", "audit", "vm"]

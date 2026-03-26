@@ -9,7 +9,7 @@
 #   ansible-playbook playbooks/vm/stig_remediate_parallel.yml -e 'site=tyfq' -e '{"vm_stig_target_vms": ["vm-web01"]}' -f 10
 
 - name: "Phase 2b-pre | Discover VMs and build target list"
-  hosts: "{{ (site | default('undefined')) ~ '_vcenters' }}"
+  hosts: "vcsa-{{ site | default('undefined') }}"
   connection: local
   gather_facts: false
   strategy: linear

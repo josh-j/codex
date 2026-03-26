@@ -3,7 +3,7 @@
 # Read-only audit focused on ESXi host and datastore inventory/health data.
 
 - name: Phase 2b | ESXi Infrastructure Audit
-  hosts: vcenters
+  hosts: vcsa
   connection: local
   gather_facts: false
   roles:

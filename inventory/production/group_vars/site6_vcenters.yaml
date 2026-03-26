@@ -1,9 +1,0 @@
----
-# Site 6 vCenter overrides.
-# Values here apply only to hosts in the site6_vcenters group.
-
-# esxi_stig_syslog_host: syslog.site6.yourdomain.mil
-# esxi_stig_ntp_servers:
-#   - 10.6.0.53
-#   - 10.6.0.54
-# esxi_stig_ad_domain: site6.yourdomain.mil

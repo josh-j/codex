@@ -70,12 +70,12 @@ setup-vcsa-venv:
     echo "✓ VCSA venv ready"
     .venv-vcsa/bin/ansible --version | head -1
 
-# Install Ansible collections from requirements.yml (main venv)
+# Install Ansible collections (main venv)
 setup-collections:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Installing collections for main venv..."
-    ansible-galaxy collection install -r requirements.yml
+    ansible-galaxy collection install ansible.posix community.vmware community.general --force
     echo "✓ Main collections installed"
     # Verify internal collections are symlinked into vcsa path
     if [ -d "collections_vcsa/ansible_collections" ]; then
@@ -167,28 +167,28 @@ site-windows:
     {{ ansible_playbook }} playbooks/site_windows_only.yml
 
 # Run VMware health audit (all sites or limited)
-audit-vmware target="vcenters":
+audit-vmware target="vcsa":
     {{ ansible_playbook }} playbooks/vmware/audit.yml -l {{ target }} -v
 
 # Run VMware health audit for a single site
 audit-vmware-site site:
-    {{ ansible_playbook }} playbooks/vmware/audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/vmware/audit.yml -l vcsa-{{ site }}
 
 # Run ESXi health audit (all sites or limited)
-audit-esxi target="vcenters":
+audit-esxi target="vcsa":
     {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ target }} -v
 
 # Run ESXi health audit for a single site
 audit-esxi-site site:
-    {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/esxi/audit.yml -l vcsa-{{ site }}
 
 # Run VM workload audit (all sites or limited)
-audit-vm target="vcenters":
+audit-vm target="vcsa":
     {{ ansible_playbook }} playbooks/vm/audit.yml -l {{ target }} -v
 
 # Run VM workload audit for a single site
 audit-vm-site site:
-    {{ ansible_playbook }} playbooks/vm/audit.yml -l {{ site }}_vcenters
+    {{ ansible_playbook }} playbooks/vm/audit.yml -l vcsa-{{ site }}
 
 # Run Ubuntu audit
 audit-ubuntu target="ubuntu_servers":
@@ -319,7 +319,7 @@ stig-audit-esxi-site site:
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
-        -l {{ site }}_vcenters -e "@$tmpfile" -f 14
+        -l vcsa-{{ site }} -e "@$tmpfile" -f 14
 
 # Audit all ESXi hosts at a site with custom inventory
 stig-audit-esxi-site-inv site inv:
@@ -330,7 +330,7 @@ stig-audit-esxi-site-inv site inv:
     {{ ansible_inventory }} -i {{ inv }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_audit.yml \
-        -l {{ site }}_vcenters -e "@$tmpfile" -f 10
+        -l vcsa-{{ site }} -e "@$tmpfile" -f 10
 
 # --- VM STIG ---
 
@@ -343,7 +343,7 @@ stig-audit-vm vcenter vm_name:
 # Audit all VMs at a site (auto-discovers from vCenter)
 stig-audit-vm-site site:
     {{ ansible_playbook }} playbooks/vm/stig_audit.yml \
-        -l {{ site }}_vcenters \
+        -l vcsa-{{ site }} \
         -f 14
 
 # --- VCSA Health ---
@@ -411,7 +411,7 @@ stig-harden-esxi-site site:
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/esxi/stig_remediate.yml \
-        -l {{ site }}_vcenters -e "@$tmpfile"
+        -l vcsa-{{ site }} -e "@$tmpfile"
 
 # Harden all ESXi hosts at a site with custom inventory
 stig-harden-esxi-site-inv site inv:
@@ -422,7 +422,7 @@ stig-harden-esxi-site-inv site inv:
     {{ ansible_inventory }} -i {{ inv }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_remediate.yml \
-        -l {{ site }}_vcenters -e "@$tmpfile"
+        -l vcsa-{{ site }} -e "@$tmpfile"
 
 # --- VM Hardening ---
 

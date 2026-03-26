@@ -1,7 +1,7 @@
 ---
 all:
   children:
-    vcenters:
+    vcsa:
       hosts:
         esxi_standalone:
           ansible_host: 127.0.0.1

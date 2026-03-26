@@ -1,0 +1,4 @@
+---
+# Defaults for all vCenter/VCSA hosts.
+# Per-host vmware_hostname/username/password are set in host_vars or vault.
+vmware_validate_certs: false
