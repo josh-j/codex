@@ -279,211 +279,211 @@ widgets:
 
   - title: "Active vCenter Alarms"
     type: table
-    rows: active_alarms
+    rows: "{{ active_alarms }}"
     columns:
       - label: "Alarm"
-        field: alarm_name
+        field: "{{ alarm_name }}"
       - label: "Entity"
-        field: entity
+        field: "{{ entity }}"
       - label: "Severity"
-        field: severity
+        field: "{{ severity }}"
         badge: true
       - label: "Time"
-        field: time
+        field: "{{ time }}"
       - label: "Description"
-        field: description
+        field: "{{ description }}"
 
   - id: inventory_kpis
     title: "Infrastructure KPIs"
     type: stat_cards
     layout: { width: "full" }
     cards:
-      - { field: datacenter_count, label: "Datacenters" }
-      - { field: cluster_count, label: "Clusters" }
-      - { field: esxi_host_count, label: "ESXi Hosts" }
-      - { field: datastore_count, label: "Datastores" }
-      - { field: dvswitch_count, label: "DVSwitches" }
-      - { field: resource_pool_count, label: "Resource Pools" }
-      - { field: license_count, label: "Licenses" }
-      - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
+      - { field: "{{ datacenter_count }}", label: "Datacenters" }
+      - { field: "{{ cluster_count }}", label: "Clusters" }
+      - { field: "{{ esxi_host_count }}", label: "ESXi Hosts" }
+      - { field: "{{ datastore_count }}", label: "Datastores" }
+      - { field: "{{ dvswitch_count }}", label: "DVSwitches" }
+      - { field: "{{ resource_pool_count }}", label: "Resource Pools" }
+      - { field: "{{ license_count }}", label: "Licenses" }
+      - { field: "{{ alarm_count }}", label: "Alarms", thresholds: { 1: yellow, 5: red } }
 
   - title: "Appliance Overview"
     type: key_value
     layout: { width: "half" }
     fields:
       - label: "Version"
-        field: appliance_version
+        field: "{{ appliance_version }}"
       - label: "Build"
-        field: appliance_build
+        field: "{{ appliance_build }}"
       - label: "Health Overall"
-        field: appliance_health_overall
+        field: "{{ appliance_health_overall }}"
         badge: true
       - label: "Health CPU"
-        field: appliance_health_cpu
+        field: "{{ appliance_health_cpu }}"
         badge: true
       - label: "Health Memory"
-        field: appliance_health_memory
+        field: "{{ appliance_health_memory }}"
         badge: true
       - label: "Health DB"
-        field: appliance_health_database
+        field: "{{ appliance_health_database }}"
         badge: true
       - label: "Health Storage"
-        field: appliance_health_storage
+        field: "{{ appliance_health_storage }}"
         badge: true
       - label: "Uptime (days)"
-        field: appliance_uptime_days
+        field: "{{ appliance_uptime_days }}"
       - label: "SSH Enabled"
-        field: ssh_enabled
+        field: "{{ ssh_enabled }}"
         badge: true
       - label: "NTP Mode"
-        field: ntp_mode
+        field: "{{ ntp_mode }}"
       - label: "Backup Schedules"
-        field: backup_schedule_count
+        field: "{{ backup_schedule_count }}"
       - label: "Extensions"
-        field: extension_count
+        field: "{{ extension_count }}"
       - label: "Content Libraries"
-        field: content_library_count
+        field: "{{ content_library_count }}"
       - label: "Tag Categories"
-        field: tag_category_count
+        field: "{{ tag_category_count }}"
 
   - title: "Clusters"
     type: table
     visible_if: "cluster_count > 0"
-    rows: clusters
+    rows: "{{ clusters }}"
     columns:
       - label: "Cluster"
-        field: name
+        field: "{{ name }}"
       - label: "Datacenter"
-        field: datacenter
+        field: "{{ datacenter }}"
       - label: "Hosts"
-        field: host_count
+        field: "{{ host_count }}"
       - label: "HA"
-        field: ha_enabled
+        field: "{{ ha_enabled }}"
         badge: true
       - label: "DRS"
-        field: drs_enabled
+        field: "{{ drs_enabled }}"
         badge: true
       - label: "CPU %"
-        field: cpu_usage_pct
+        field: "{{ cpu_usage_pct }}"
       - label: "Mem %"
-        field: mem_usage_pct
+        field: "{{ mem_usage_pct }}"
 
   - title: "Datastores"
     type: table
     visible_if: "datastore_count > 0"
-    rows: datastores
+    rows: "{{ datastores }}"
     columns:
       - label: "Name"
-        field: name
+        field: "{{ name }}"
       - label: "Capacity (GB)"
-        field: capacity_gb
+        field: "{{ capacity_gb }}"
       - label: "Free (GB)"
-        field: free_gb
+        field: "{{ free_gb }}"
       - label: "Used %"
-        field: used_pct
+        field: "{{ used_pct }}"
 
   - title: "Resource Pools"
     type: table
     visible_if: "resource_pool_count > 0"
-    rows: resource_pools
+    rows: "{{ resource_pools }}"
     columns:
       - label: "Name"
-        field: name
+        field: "{{ name }}"
       - label: "CPU Reservation"
-        field: runtime_cpu_reservation_used
+        field: "{{ runtime_cpu_reservation_used }}"
       - label: "CPU Limit"
-        field: runtime_cpu_overall_usage
+        field: "{{ runtime_cpu_overall_usage }}"
       - label: "Memory Reservation"
-        field: runtime_memory_reservation_used
+        field: "{{ runtime_memory_reservation_used }}"
       - label: "Memory Limit"
-        field: runtime_memory_overall_usage
+        field: "{{ runtime_memory_overall_usage }}"
 
   - title: "Distributed Switches"
     type: table
     visible_if: "dvswitch_count > 0"
-    rows: dvswitches
+    rows: "{{ dvswitches }}"
     columns:
       - label: "Name"
-        field: name
+        field: "{{ name }}"
       - label: "Ports"
-        field: num_ports
+        field: "{{ num_ports }}"
       - label: "Uplinks"
-        field: num_uplinks
+        field: "{{ num_uplinks }}"
       - label: "MTU"
-        field: mtu
+        field: "{{ mtu }}"
 
   - title: "Distributed Portgroups"
     type: table
     visible_if: "dvs_portgroup_count > 0"
-    rows: dvs_portgroups
+    rows: "{{ dvs_portgroups }}"
     columns:
       - label: "Name"
-        field: portgroup_name
+        field: "{{ portgroup_name }}"
       - label: "Switch"
-        field: dvswitch_name
+        field: "{{ dvswitch_name }}"
       - label: "VLAN"
-        field: vlan_id
+        field: "{{ vlan_id }}"
       - label: "Ports"
-        field: num_ports
+        field: "{{ num_ports }}"
       - label: "Type"
-        field: port_binding
+        field: "{{ port_binding }}"
 
   - title: "Licenses"
     type: table
     visible_if: "license_count > 0"
-    rows: licenses
+    rows: "{{ licenses }}"
     columns:
       - label: "Name"
-        field: name
+        field: "{{ name }}"
       - label: "Edition"
-        field: edition
+        field: "{{ edition }}"
       - label: "Total"
-        field: total
+        field: "{{ total }}"
       - label: "Used"
-        field: used
+        field: "{{ used }}"
       - label: "Expiration"
-        field: expiration_date
+        field: "{{ expiration_date }}"
 
   - title: "Extensions"
     type: table
     visible_if: "extension_count > 0"
-    rows: extensions
+    rows: "{{ extensions }}"
     columns:
       - label: "Label"
-        field: ext_label
+        field: "{{ ext_label }}"
       - label: "Company"
-        field: ext_company
+        field: "{{ ext_company }}"
       - label: "Version"
-        field: ext_version
+        field: "{{ ext_version }}"
       - label: "Last Heartbeat"
-        field: ext_last_heartbeat_time
+        field: "{{ ext_last_heartbeat_time }}"
 
   - title: "Content Libraries"
     type: table
     visible_if: "content_library_count > 0"
-    rows: content_libraries
+    rows: "{{ content_libraries }}"
     columns:
       - label: "Name"
-        field: lib_name
+        field: "{{ lib_name }}"
       - label: "Type"
-        field: lib_type
+        field: "{{ lib_type }}"
       - label: "Description"
-        field: lib_description
+        field: "{{ lib_description }}"
 
   - title: "Backup Schedules"
     type: table
     visible_if: "backup_schedule_count > 0"
-    rows: backup_schedules
+    rows: "{{ backup_schedules }}"
     columns:
       - label: "Name"
-        field: name
+        field: "{{ name }}"
       - label: "Enabled"
-        field: enabled
+        field: "{{ enabled }}"
         badge: true
         style_rules:
           - when: "enabled == 0.0"
             css_class: "sv-critical"
       - label: "Location"
-        field: location
+        field: "{{ location }}"
       - label: "Retain Count"
-        field: retain_count
+        field: "{{ retain_count }}"
