@@ -10,10 +10,10 @@ config:
     platform_to_checklist:
       photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
   extra_fleet_widget_columns:
-    Distribution: "{{ distribution }}"
-    Uptime (d): "{{ uptime_days }}"
-    Critical: "{{ _critical_count }}"
-    Warning: "{{ _warning_count }}"
+    'Distribution': "{{ distribution }}"
+    'Uptime (d)': "{{ uptime_days }}"
+    'Critical': "{{ _critical_count }}"
+    'Warning': "{{ _warning_count }}"
 
 vars:
   $include: "linux_base_fields.yaml"
