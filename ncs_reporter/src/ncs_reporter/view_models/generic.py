@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from .nav_builder import NavBuilder
-
+from ncs_reporter._report_context import ReportContext
 from ncs_reporter.models.report_schema import (
     AlertPanelWidget,
     BarChartWidget,
@@ -22,7 +20,9 @@ from ncs_reporter.models.report_schema import (
     TableWidget,
 )
 from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
-from ncs_reporter.view_models.common import _count_alerts, _iter_hosts, status_badge_meta
+from ncs_reporter.view_models.common import GenericNavContext, _count_alerts, _iter_hosts, status_badge_meta
+
+_SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
 
 
 def _format_value(fmt: str | None, value: Any) -> str:
@@ -118,45 +118,42 @@ def _auto_layout(widget: ReportWidget) -> dict[str, Any]:
     return layout
 
 
+def _widget_base(widget: ReportWidget, **extra: Any) -> dict[str, Any]:
+    """Build the base dict common to all widget renderings."""
+    return {"id": widget.id, "title": widget.title, "type": widget.type, "layout": _auto_layout(widget), **extra}
+
+
+def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
+    """Return field value as a list, or empty list if not a list."""
+    val = fields.get(key, [])
+    return val if isinstance(val, list) else []
+
+
 def _render_key_value(widget: KeyValueWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a KeyValueWidget."""
-    rows = []
-    for kv in widget.fields:
-        value = fields.get(kv.field, "")
-        rows.append({"label": kv.label, "value": _format_value(kv.format, value), "badge": kv.badge})
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "key_value",
-        "layout": _auto_layout(widget),
-        "rows": rows,
-    }
+    rows = [
+        {"label": kv.label, "value": _format_value(kv.format, fields.get(kv.field, "")), "badge": kv.badge}
+        for kv in widget.fields
+    ]
+    return _widget_base(widget, rows=rows)
+
+
+def _render_row_cells(columns: list[Any], item: dict[str, Any], ctx: dict[str, Any]) -> list[dict[str, Any]]:
+    """Render all cells for a single table row."""
+    hosts_data = ctx.get("hosts_data")
+    platform_dir = ctx.get("current_platform_dir")
+    fleet_dirs = ctx.get("generated_fleet_dirs")
+    return [_render_table_cell(col, item, hosts_data, platform_dir, fleet_dirs) for col in columns]
 
 
 def _render_table(widget: TableWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a TableWidget."""
-    raw_rows = fields.get(widget.rows_field, [])
-    if not isinstance(raw_rows, list):
-        raw_rows = []
     table_rows = []
-    for item in raw_rows:
+    for item in _safe_rows(fields, widget.rows_field):
         if not isinstance(item, dict):
             item = {"value": item}
-        rendered_cells = [
-            _render_table_cell(
-                col, item, ctx.get("hosts_data"), ctx.get("current_platform_dir"), ctx.get("generated_fleet_dirs")
-            )
-            for col in widget.columns
-        ]
-        table_rows.append(rendered_cells)
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "table",
-        "layout": _auto_layout(widget),
-        "columns": [c.model_dump() for c in widget.columns],
-        "rows": table_rows,
-    }
+        table_rows.append(_render_row_cells(widget.columns, item, ctx))
+    return _widget_base(widget, columns=[c.model_dump() for c in widget.columns], rows=table_rows)
 
 
 def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
@@ -175,37 +172,17 @@ def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx:
     if color == "auto":
         color = _resolve_threshold_color(pct, widget.thresholds)
 
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "progress_bar",
-        "layout": _auto_layout(widget),
-        "percent": pct,
-        "label": label_text,
-        "color": color,
-    }
+    return _widget_base(widget, percent=pct, label=label_text, color=color)
 
 
 def _render_markdown(widget: MarkdownWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a MarkdownWidget."""
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "markdown",
-        "layout": _auto_layout(widget),
-        "content": widget.content,
-    }
+    return _widget_base(widget, content=widget.content)
 
 
 def _render_alert_panel(widget: AlertPanelWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render an AlertPanelWidget."""
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "alert_panel",
-        "layout": _auto_layout(widget),
-        "alerts": ctx.get("alerts", []),
-    }
+    return _widget_base(widget, alerts=ctx.get("alerts", []))
 
 
 def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
@@ -224,22 +201,13 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
             resolved_color = _resolve_threshold_color(num_val, card.thresholds)
 
         cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "stat_cards",
-        "layout": _auto_layout(widget),
-        "cards": cards_rendered,
-    }
+    return _widget_base(widget, cards=cards_rendered)
 
 
 def _render_bar_chart(widget: BarChartWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a BarChartWidget."""
-    raw_rows = fields.get(widget.rows_field, [])
-    if not isinstance(raw_rows, list):
-        raw_rows = []
     bars = []
-    for item in raw_rows:
+    for item in _safe_rows(fields, widget.rows_field):
         if not isinstance(item, dict):
             continue
         label = str(item.get(widget.label_field, ""))
@@ -250,65 +218,27 @@ def _render_bar_chart(widget: BarChartWidget, fields: dict[str, Any], ctx: dict[
         width_pct = min(100.0, max(0.0, val / widget.max * 100)) if widget.max else 0.0
         color = _resolve_threshold_color(val, widget.thresholds)
         bars.append({"label": label, "value": val, "width_pct": width_pct, "color": color})
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "bar_chart",
-        "layout": _auto_layout(widget),
-        "bars": bars,
-    }
+    return _widget_base(widget, bars=bars)
 
 
 def _render_list(widget: ListWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a ListWidget."""
-    raw_items = fields.get(widget.items_field, [])
-    if not isinstance(raw_items, list):
-        raw_items = []
-    display_items = []
-    for item in raw_items:
-        if widget.display_field and isinstance(item, dict):
-            display_items.append(str(item.get(widget.display_field, "")))
-        else:
-            display_items.append(str(item))
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "list",
-        "layout": _auto_layout(widget),
-        "items": display_items,
-        "style": widget.style,
-        "empty_text": widget.empty_text,
-    }
+    display_items = [
+        str(item.get(widget.display_field, "")) if widget.display_field and isinstance(item, dict) else str(item)
+        for item in _safe_rows(fields, widget.items_field)
+    ]
+    return _widget_base(widget, items=display_items, style=widget.style, empty_text=widget.empty_text)
 
 
 def _render_grouped_table(widget: GroupedTableWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a GroupedTableWidget."""
-    raw_rows = fields.get(widget.rows_field, [])
-    if not isinstance(raw_rows, list):
-        raw_rows = []
-    # Group by the group_by field, preserving insertion order
     groups: dict[str, list[list[dict[str, Any]]]] = {}
-    for item in raw_rows:
+    for item in _safe_rows(fields, widget.rows_field):
         if not isinstance(item, dict):
             item = {"value": item}
         group_key = str(item.get(widget.group_by, ""))
-        if group_key not in groups:
-            groups[group_key] = []
-        rendered_cells = [
-            _render_table_cell(
-                col, item, ctx.get("hosts_data"), ctx.get("current_platform_dir"), ctx.get("generated_fleet_dirs")
-            )
-            for col in widget.columns
-        ]
-        groups[group_key].append(rendered_cells)
-    return {
-        "id": widget.id,
-        "title": widget.title,
-        "type": "grouped_table",
-        "layout": _auto_layout(widget),
-        "columns": [c.model_dump() for c in widget.columns],
-        "groups": groups,
-    }
+        groups.setdefault(group_key, []).append(_render_row_cells(widget.columns, item, ctx))
+    return _widget_base(widget, columns=[c.model_dump() for c in widget.columns], groups=groups)
 
 
 _WidgetHandler = Callable[[Any, dict[str, Any], dict[str, Any]], dict[str, Any]]
@@ -353,18 +283,7 @@ def _render_widget(
         return handler(widget, fields, ctx)
 
     # Fallback for unknown widget types
-    layout_val = {"width": "full"}
-    if hasattr(widget, "layout"):
-        lo = getattr(widget, "layout")
-        if hasattr(lo, "model_dump"):
-            layout_val = lo.model_dump()
-
-    return {
-        "id": getattr(widget, "id", ""),
-        "title": getattr(widget, "title", ""),
-        "type": "unknown",
-        "layout": layout_val,
-    }
+    return {"id": widget.id, "title": widget.title, "type": "unknown", "layout": _auto_layout(widget)}
 
 
 # ---------------------------------------------------------------------------
@@ -467,23 +386,15 @@ def build_generic_node_view(
     schema: ReportSchema,
     hostname: str,
     bundle: dict[str, Any],
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
-    nav: Mapping[str, Any] | None = None,
-    hosts_data: dict[str, Any] | None = None,
-    generated_fleet_dirs: set[str] | None = None,
-
-    history: list[dict[str, str]] | None = None,
-    nav_builder: NavBuilder | None = None,
+    *,
+    ctx: ReportContext | None = None,
+    nav_ctx: GenericNavContext | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single host report."""
+    nc = nav_ctx or GenericNavContext()
     normalized = normalize_from_schema(schema, bundle)
     fields = normalized["fields"]
     alerts = normalized["alerts"]
-    # Sort alerts by severity (CRITICAL first)
-    _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
-
     alerts.sort(key=lambda a: (
         _SEVERITY_ORDER.get(a.get("severity", "INFO"), 3),
         a.get("category", ""),
@@ -494,7 +405,7 @@ def build_generic_node_view(
     summary = normalized["summary"]
 
     # siblings in the same platform (as indexed in hosts_data)
-    current_plt_dir = hosts_data.get(hostname) if hosts_data else None
+    current_plt_dir = nc.hosts_data.get(hostname) if nc.hosts_data else None
     widgets_rendered = [
         rendered
         for w in schema.widgets
@@ -503,30 +414,31 @@ def build_generic_node_view(
                 w,
                 fields,
                 alerts,
-                hosts_data=hosts_data,
+                hosts_data=nc.hosts_data,
                 current_platform_dir=current_plt_dir,
-                generated_fleet_dirs=generated_fleet_dirs,
+                generated_fleet_dirs=nc.generated_fleet_dirs,
             )
         )
         is not None
     ]
 
     # Build nav tree
-    if nav_builder is not None:
-        nav_with_tree = nav_builder.build_for_node(hostname, base_nav=nav, history=history)
+    if nc.nav_builder is not None:
+        nav_with_tree = nc.nav_builder.build_for_node(hostname, base_nav=nc.nav, history=nc.history)
     else:
-        nav_with_tree = {**nav} if nav else {}
-        if history:
-            nav_with_tree["history"] = history
+        nav_with_tree = {**nc.nav} if nc.nav else {}
+        if nc.history:
+            nav_with_tree["history"] = nc.history
 
+    rc = ctx or ReportContext()
     return {
         "meta": {
             "host": hostname,
             "display_name": schema.display_name,
             "platform": schema.platform,
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
+            "report_stamp": rc.report_stamp,
+            "report_date": rc.report_date,
+            "report_id": rc.report_id,
         },
         "nav": nav_with_tree,
         "health": health,
@@ -541,16 +453,12 @@ def build_generic_node_view(
 def build_generic_fleet_view(
     schema: ReportSchema,
     aggregated_hosts: dict[str, Any],
-    report_stamp: str | None = None,
-    report_date: str | None = None,
-    report_id: str | None = None,
-    nav: Mapping[str, Any] | None = None,
-    hosts_data: dict[str, Any] | None = None,
-    generated_fleet_dirs: set[str] | None = None,
-
-    nav_builder: NavBuilder | None = None,
+    *,
+    ctx: ReportContext | None = None,
+    nav_ctx: GenericNavContext | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a fleet-level report."""
+    nc = nav_ctx or GenericNavContext()
     schema_key = f"schema_{schema.name}"
     host_rows: list[dict[str, Any]] = []
     fleet_alerts: list[dict[str, Any]] = []
@@ -625,20 +533,21 @@ def build_generic_fleet_view(
     totals = _count_alerts(queued_alerts)
 
     # Build fleets list for breadcrumb tree
-    if nav_builder is not None:
-        current_plt_dir = hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if hosts_data and aggregated_hosts else None
-        nav_with_tree = nav_builder.build_for_fleet(current_plt_dir or "", base_nav=nav, display_name=schema.display_name) if current_plt_dir else ({**nav} if nav else {})
+    if nc.nav_builder is not None:
+        current_plt_dir = nc.hosts_data.get(next(iter(aggregated_hosts.keys()), "")) if nc.hosts_data and aggregated_hosts else None
+        nav_with_tree = nc.nav_builder.build_for_fleet(current_plt_dir or "", base_nav=nc.nav, display_name=schema.display_name) if current_plt_dir else ({**nc.nav} if nc.nav else {})
     else:
-        nav_with_tree = {**nav} if nav else {}
+        nav_with_tree = {**nc.nav} if nc.nav else {}
 
+    rc = ctx or ReportContext()
     return {
         "meta": {
             "display_name": schema.display_name,
             "platform": schema.platform,
             "total_hosts": len(host_rows),
-            "report_stamp": report_stamp,
-            "report_date": report_date,
-            "report_id": report_id,
+            "report_stamp": rc.report_stamp,
+            "report_date": rc.report_date,
+            "report_id": rc.report_id,
         },
         "nav": nav_with_tree,
         "fleet_columns": [c.model_dump() for c in schema.fleet_columns],

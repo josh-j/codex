@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import logging
 import os
@@ -17,7 +18,12 @@ from .minify import minify_css, minify_html_doc, minify_js
 
 logger = logging.getLogger(__name__)
 
-_VIEW_MODEL_KEYS = {"report_stamp", "report_date", "report_id"}
+@dataclasses.dataclass(frozen=True)
+class ReportContext:
+    """Immutable bundle of timestamp metadata passed to all view-model builders."""
+    report_stamp: str | None = None
+    report_date: str | None = None
+    report_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +96,15 @@ def generate_timestamps(report_stamp: str | None = None) -> dict[str, Any]:
     }
 
 
-def vm_kwargs(common_vars: dict[str, Any]) -> dict[str, Any]:
-    """Extract only the keys accepted by view-model builder functions."""
-    return {k: v for k, v in common_vars.items() if k in _VIEW_MODEL_KEYS}
+def report_context(common_vars: dict[str, Any]) -> ReportContext:
+    """Build a ReportContext from *common_vars*."""
+    return ReportContext(
+        report_stamp=common_vars.get("report_stamp"),
+        report_date=common_vars.get("report_date"),
+        report_id=common_vars.get("report_id"),
+    )
+
+
 
 
 # ---------------------------------------------------------------------------
