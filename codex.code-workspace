@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"yaml.schemas": {
+			"./ncs_reporter/schemas/report_schema.json": [
+				"ncs_reporter/src/ncs_reporter/configs/*.yaml",
+				"files/ncs_reporter_configs/*.yaml",
+				"!**/*_base_alerts.yaml",
+				"!**/*_base_fields.yaml",
+				"!**/*_base_widgets.yaml"
+			],
+			"./ncs_reporter/schemas/alert_list_schema.json": [
+				"**/*_base_alerts.yaml"
+			]
+		}
+	}
+}

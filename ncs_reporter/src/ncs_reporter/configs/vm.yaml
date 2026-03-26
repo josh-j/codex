@@ -75,37 +75,37 @@ fields:
 # ---------------------------------------------------------------------------
 
 alerts:
-  - "powered_off_vms | INFO Workload Inventory | powered_off_vm_count gt 0 | {powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
+  - id: powered_off_vms
+    category: "Workload Inventory"
+    severity: INFO
+    when: "powered_off_vm_count > 0"
+    message: "{powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
     category: "Workload Compliance"
     severity: WARNING
-    condition:
-      op: filter_multi
-      field: virtual_machines
-      filters:
-        - { filter_field: power_state, filter_value: "poweredOn" }
-        - { filter_field: tools_status, filter_value: "toolsNotRunning" }
-      threshold: 0
+    when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0"
     message: "Powered-on VMs detected with VMware Tools not running"
     affected_items_field: virtual_machines
 
   - id: vm_tools_not_installed
     category: "Workload Compliance"
     severity: WARNING
-    condition:
-      op: filter_multi
-      field: virtual_machines
-      filters:
-        - { filter_field: power_state, filter_value: "poweredOn" }
-        - { filter_field: tools_status, filter_value: "toolsNotInstalled" }
-      threshold: 0
+    when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0"
     message: "Powered-on VMs detected with VMware Tools not installed"
     affected_items_field: virtual_machines
 
-  - "snapshots_present | INFO Snapshots | recent_snapshot_count gt 0 | VM snapshots present: {snapshot_count} snapshot(s) found"
+  - id: snapshots_present
+    category: "Snapshots"
+    severity: INFO
+    when: "recent_snapshot_count > 0"
+    message: "VM snapshots present: {snapshot_count} snapshot(s) found"
 
-  - "aged_snapshots | WARNING Snapshots | aged_snapshot_count gt 0 | {aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
+  - id: aged_snapshots
+    category: "Snapshots"
+    severity: WARNING
+    when: "aged_snapshot_count > 0"
+    message: "{aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
 
 # ---------------------------------------------------------------------------
 # Widgets
@@ -134,7 +134,7 @@ widgets:
         field: power_state
         badge: true
         style_rules:
-          - condition: { op: eq_str, field: power_state, value: "poweredOff" }
+          - when: "power_state == 'poweredOff'"
             css_class: "subtle-text"
       - "Tools Status: tools_status [badge]"
       - "Cluster: cluster"
@@ -145,7 +145,7 @@ widgets:
       - "Last Backup: backup_info"
 
   - table: "Snapshots"
-    visible_if: { op: gt, field: snapshot_count, threshold: 0 }
+    visible_if: "snapshot_count > 0"
     rows: snapshots
     columns:
       - "VM: vm_name"

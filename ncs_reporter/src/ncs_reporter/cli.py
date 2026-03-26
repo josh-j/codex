@@ -210,6 +210,66 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
 
 
 # ---------------------------------------------------------------------------
+# fire-on-alerts
+# ---------------------------------------------------------------------------
+
+
+@main.command("fire-on-alerts")
+@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, default=False, help="Print actions without executing.")
+def fire_on_alerts(input_file: str, dry_run: bool) -> None:
+    """Evaluate alerts against a raw bundle and execute actions for fired alerts."""
+    import subprocess
+
+    with open(input_file) as f:
+        bundle = yaml.safe_load(f)
+
+    from .schema_loader import detect_schemas_for_bundle
+    matched = detect_schemas_for_bundle(bundle)
+    if not matched:
+        click.echo("No matching schema detected for bundle.", err=True)
+        raise SystemExit(1)
+
+    from .normalization.schema_driven import build_schema_alerts, extract_fields
+
+    failures = 0
+    for schema in matched:
+        click.echo(f"Schema: {schema.name}")
+        fields, _coverage = extract_fields(schema, bundle)
+        alerts = build_schema_alerts(schema, fields)
+
+        if not alerts:
+            click.echo("  No alerts fired.")
+            continue
+
+        for alert in alerts:
+            sev = alert["severity"]
+            msg = alert["message"]
+            action = alert.get("action")
+            click.echo(f"  [{sev}] {alert['id']}: {msg}")
+
+            if not action:
+                continue
+
+            try:
+                rendered_action = action.format(**fields)
+            except (KeyError, ValueError):
+                rendered_action = action
+
+            if dry_run:
+                click.echo(f"    DRY-RUN: {rendered_action}")
+            else:
+                click.echo(f"    EXEC: {rendered_action}")
+                result = subprocess.run(rendered_action, shell=True)  # noqa: S602
+                if result.returncode != 0:
+                    click.echo(f"    FAILED (exit code {result.returncode})", err=True)
+                    failures += 1
+
+    if failures:
+        raise SystemExit(1)
+
+
+# ---------------------------------------------------------------------------
 # Register extracted command modules
 # ---------------------------------------------------------------------------
 

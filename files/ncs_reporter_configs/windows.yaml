@@ -23,7 +23,6 @@ fleet_columns:
   - "Collected At: collected_at"
   - "CCM Status: ccm_service_state"
   - "Reboot: health_reboot_pending"
-  - "Disk Alert: health_disk_alert"
   - "Critical: _critical_count"
   - "Warning: _warning_count"
 
@@ -39,25 +38,11 @@ fields:
   ccm_service_state: ".ccm_service.state = unknown"
 
   # --- ConfigMgr applications (PowerShell JSON) ---
-  raw_configmgr_apps: ".configmgr_apps | dict"
-
-  configmgr_apps:
-    script: "unwrap_ps_json.py"
-    script_args: { source_field: "raw_configmgr_apps", key: "AllApps" }
-    type: list
-
-  apps_to_update:
-    script: "unwrap_ps_json.py"
-    script_args: { source_field: "raw_configmgr_apps", key: "AppsToUpdate" }
-    type: list
+  configmgr_apps: ".configmgr_apps | unwrap_ps(AllApps) | list"
+  apps_to_update: ".configmgr_apps | unwrap_ps(AppsToUpdate) | list"
 
   # --- Installed applications (PowerShell JSON) ---
-  raw_installed_apps: ".installed_apps | list"
-
-  installed_apps:
-    script: "unwrap_ps_json.py"
-    script_args: { source_field: "raw_installed_apps" }
-    type: list
+  installed_apps: ".installed_apps | unwrap_ps | list"
 
   # --- Windows Update results ---
   update_results: ".update_results | list"
@@ -69,13 +54,7 @@ fields:
   health_uptime_hours: ".health.os_info.uptime_hours = 0"
   health_disk: ".health.disk | list"
 
-  health_disk_alert:
-    script: "eval_expr.py"
-    script_args:
-      expr: "any(d.get('UsedPct',0) > 80 for d in (record.get('health_disk') or []))"
-      true_value: "WARNING"
-      false_value: "OK"
-    fallback: "N/A"
+  # health_disk_alert removed — disk threshold check moved to computed_filter alert
 
   health_memory_cpu: ".health.memory_cpu | dict = {}"
   health_memory_used_pct: ".health.memory_cpu.memory_used_pct = 0"
@@ -105,28 +84,68 @@ fields:
 # ---------------------------------------------------------------------------
 
 alerts:
-  - "ccmexec_not_running | WARNING Services | ccm_service_state ne_str running | ConfigMgr client service (CCMExec) is not running (state: {ccm_service_state}) | details=ccm_service_state"
+  - id: ccmexec_not_running
+    category: "Services"
+    severity: WARNING
+    when: "ccm_service_state != 'running'"
+    message: "ConfigMgr client service (CCMExec) is not running (state: {ccm_service_state})"
+    detail_fields: [ccm_service_state]
 
-  # filter_count condition — stays as full format
   - id: failed_updates
     category: "Patching"
     severity: WARNING
-    condition:
-      op: filter_count
-      field: update_results
-      filter_field: failed
-      filter_value: true
-      threshold: 0
+    when: "update_results | selectattr('failed', 'eq', true) | list | length > 0"
     message: "One or more ConfigMgr application updates failed"
     affected_items_field: update_results
 
-  - "apps_pending_update | WARNING Patching | apps_to_update exists | ConfigMgr applications have pending updates | affected=apps_to_update"
-  - "reboot_pending | WARNING Health | health_reboot_pending eq 1 | System has a pending reboot ({health_reboot_reasons}) | details=health_reboot_pending;health_reboot_reasons"
-  - "disk_space_warning | WARNING Health | health_disk_alert eq_str WARNING | One or more disks exceed 80% usage | details=health_disk"
-  - "memory_high | WARNING Health | health_memory_used_pct gt 85 | Memory usage is high ({health_memory_used_pct}%) | details=health_memory_used_pct"
-  - "secure_channel_failed | CRITICAL Health | health_secure_channel eq_str FAILED | Domain secure channel test FAILED | details=health_secure_channel"
-  - "critical_events | WARNING Health | health_event_count gt 0 | {health_event_count} critical/error events in recent logs | details=health_event_count"
-  - "open_vulnerabilities | WARNING Security | vuln_open gt 0 | {vuln_open} open vulnerability findings | details=vuln_open;vuln_total_findings;vuln_remediated"
+  - id: apps_pending_update
+    category: "Patching"
+    severity: WARNING
+    when: "apps_to_update is defined and apps_to_update | length > 0"
+    message: "ConfigMgr applications have pending updates"
+    affected_items_field: apps_to_update
+
+  - id: reboot_pending
+    category: "Health"
+    severity: WARNING
+    when: "health_reboot_pending == 1"
+    message: "System has a pending reboot ({health_reboot_reasons})"
+    detail_fields: [health_reboot_pending, health_reboot_reasons]
+
+  - id: disk_space_warning
+    category: "Health"
+    severity: WARNING
+    when: "health_disk | selectattr('UsedPct', 'gt', 80.0) | list | length > 0"
+    message: "One or more disks exceed 80% usage"
+    affected_items_field: health_disk
+
+  - id: memory_high
+    category: "Health"
+    severity: WARNING
+    when: "health_memory_used_pct > 85"
+    message: "Memory usage is high ({health_memory_used_pct}%)"
+    detail_fields: [health_memory_used_pct]
+
+  - id: secure_channel_failed
+    category: "Health"
+    severity: CRITICAL
+    when: "health_secure_channel == 'FAILED'"
+    message: "Domain secure channel test FAILED"
+    detail_fields: [health_secure_channel]
+
+  - id: critical_events
+    category: "Health"
+    severity: WARNING
+    when: "health_event_count > 0"
+    message: "{health_event_count} critical/error events in recent logs"
+    detail_fields: [health_event_count]
+
+  - id: open_vulnerabilities
+    category: "Security"
+    severity: WARNING
+    when: "vuln_open > 0"
+    message: "{vuln_open} open vulnerability findings"
+    detail_fields: [vuln_open, vuln_total_findings, vuln_remediated]
 
 # ---------------------------------------------------------------------------
 # Widgets

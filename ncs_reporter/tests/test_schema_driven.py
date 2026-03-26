@@ -6,23 +6,14 @@ import pytest
 
 from ncs_reporter.models.report_schema import (
     AlertRule,
-    ComputedFilterCondition,
-    DateThresholdCondition,
     DetectionSpec,
-    ExistsCondition,
     FieldSpec,
-    FilterCountCondition,
-    FilterSpec,
-    MultiFilterCondition,
     ReportSchema,
-    StringCondition,
-    StringInCondition,
-    ThresholdCondition,
 )
+from ncs_reporter.normalization._when import evaluate_when
 from ncs_reporter.normalization.schema_driven import (
     _safe_eval_expr,
     build_schema_alerts,
-    evaluate_condition,
     extract_fields,
     normalize_from_schema,
     resolve_field,
@@ -53,20 +44,14 @@ def _simple_schema() -> ReportSchema:
                 id="high_error_rate",
                 category="Network Health",
                 severity="WARNING",
-                condition=ThresholdCondition(op="gt", field="error_rate_pct", threshold=5.0),
+                when="error_rate_pct > 5.0",
                 message="High error rate: {error_rate_pct}%",
             ),
             AlertRule(
                 id="interfaces_down",
                 category="Connectivity",
                 severity="CRITICAL",
-                condition=FilterCountCondition(
-                    op="filter_count",
-                    field="interface_list",
-                    filter_field="status",
-                    filter_value="down",
-                    threshold=0,
-                ),
+                when="interface_list | selectattr('status', 'eq', 'down') | list | length > 0",
                 message="Interface(s) down detected",
                 affected_items_field="interface_list",
             ),
@@ -146,64 +131,47 @@ class TestFieldExtraction:
 
 class TestConditionEvaluation:
     def test_threshold_gt_fires(self) -> None:
-        cond = ThresholdCondition(op="gt", field="cpu_pct", threshold=90.0)
-        assert evaluate_condition(cond, {"cpu_pct": 95.0}) is True
+        assert evaluate_when("cpu_pct > 90.0", {"cpu_pct": 95.0}) is True
 
     def test_threshold_gt_no_fire(self) -> None:
-        cond = ThresholdCondition(op="gt", field="cpu_pct", threshold=90.0)
-        assert evaluate_condition(cond, {"cpu_pct": 85.0}) is False
+        assert evaluate_when("cpu_pct > 90.0", {"cpu_pct": 85.0}) is False
 
     def test_threshold_lte(self) -> None:
-        cond = ThresholdCondition(op="lte", field="available_gb", threshold=5.0)
-        assert evaluate_condition(cond, {"available_gb": 3.0}) is True
-        assert evaluate_condition(cond, {"available_gb": 10.0}) is False
+        assert evaluate_when("available_gb <= 5.0", {"available_gb": 3.0}) is True
+        assert evaluate_when("available_gb <= 5.0", {"available_gb": 10.0}) is False
 
     def test_threshold_eq(self) -> None:
-        cond = ThresholdCondition(op="eq", field="code", threshold=0.0)
-        assert evaluate_condition(cond, {"code": 0}) is True
-        assert evaluate_condition(cond, {"code": 1}) is False
+        assert evaluate_when("code == 0", {"code": 0}) is True
+        assert evaluate_when("code == 0", {"code": 1}) is False
 
     def test_threshold_missing_field_no_fire(self) -> None:
-        cond = ThresholdCondition(op="gt", field="missing", threshold=0.0)
-        assert evaluate_condition(cond, {}) is False
+        assert evaluate_when("missing > 0.0", {}) is False
 
     def test_exists_condition_true(self) -> None:
-        cond = ExistsCondition(op="exists", field="error_msg")
-        assert evaluate_condition(cond, {"error_msg": "oops"}) is True
+        assert evaluate_when("error_msg is defined and error_msg", {"error_msg": "oops"}) is True
 
     def test_exists_condition_false_on_none(self) -> None:
-        cond = ExistsCondition(op="exists", field="error_msg")
-        assert evaluate_condition(cond, {"error_msg": None}) is False
+        assert evaluate_when("error_msg is defined and error_msg", {"error_msg": None}) is False
 
     def test_not_exists_condition(self) -> None:
-        cond = ExistsCondition(op="not_exists", field="error_msg")
-        assert evaluate_condition(cond, {}) is True
-        assert evaluate_condition(cond, {"error_msg": "present"}) is False
+        assert evaluate_when("error_msg is not defined", {}) is True
+        assert evaluate_when("error_msg is not defined", {"error_msg": "present"}) is False
 
     def test_filter_count_fires(self) -> None:
-        cond = FilterCountCondition(
-            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0
-        )
         ifaces = [{"name": "eth0", "status": "down"}, {"name": "eth1", "status": "up"}]
-        assert evaluate_condition(cond, {"ifaces": ifaces}) is True
+        assert evaluate_when("ifaces | selectattr('status', 'eq', 'down') | list | length > 0", {"ifaces": ifaces}) is True
 
     def test_filter_count_no_fire(self) -> None:
-        cond = FilterCountCondition(
-            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=0
-        )
         ifaces = [{"name": "eth0", "status": "up"}]
-        assert evaluate_condition(cond, {"ifaces": ifaces}) is False
+        assert evaluate_when("ifaces | selectattr('status', 'eq', 'down') | list | length > 0", {"ifaces": ifaces}) is False
 
     def test_filter_count_threshold_respected(self) -> None:
-        cond = FilterCountCondition(
-            op="filter_count", field="ifaces", filter_field="status", filter_value="down", threshold=2
-        )
         ifaces = [
             {"name": "eth0", "status": "down"},
             {"name": "eth1", "status": "down"},
             {"name": "eth2", "status": "down"},
         ]
-        assert evaluate_condition(cond, {"ifaces": ifaces}) is True
+        assert evaluate_when("ifaces | selectattr('status', 'eq', 'down') | list | length > 2", {"ifaces": ifaces}) is True
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +315,7 @@ class TestSchemaModelValidation:
         with pytest.raises(Exception):
             FieldSpec(path="x", type="str", fallback=None, unknown_key="oops")  # type: ignore[call-arg]
 
-    def test_cross_ref_validation_catches_bad_alert_field(self) -> None:
+    def test_cross_ref_validation_catches_bad_detail_field(self) -> None:
         with pytest.raises(ValueError, match="undeclared field"):
             ReportSchema(
                 name="bad",
@@ -360,8 +328,9 @@ class TestSchemaModelValidation:
                         id="bad_alert",
                         category="Test",
                         severity="WARNING",
-                        condition=ThresholdCondition(op="gt", field="nonexistent_field", threshold=0),
+                        when="true",
                         message="oops",
+                        detail_fields=["nonexistent_field"],
                     )
                 ],
             )
@@ -469,41 +438,32 @@ class TestSafeEvalExpr:
 
 class TestStringConditions:
     def test_eq_str_match(self) -> None:
-        cond = StringCondition(op="eq_str", field="status", value="red")
-        assert evaluate_condition(cond, {"status": "red"}) is True
+        assert evaluate_when("status == 'red'", {"status": "red"}) is True
 
     def test_eq_str_no_match(self) -> None:
-        cond = StringCondition(op="eq_str", field="status", value="red")
-        assert evaluate_condition(cond, {"status": "green"}) is False
+        assert evaluate_when("status == 'red'", {"status": "green"}) is False
 
     def test_eq_str_case_sensitive(self) -> None:
-        cond = StringCondition(op="eq_str", field="status", value="red")
-        assert evaluate_condition(cond, {"status": "RED"}) is False
+        assert evaluate_when("status == 'red'", {"status": "RED"}) is False
 
     def test_ne_str_match(self) -> None:
-        cond = StringCondition(op="ne_str", field="status", value="green")
-        assert evaluate_condition(cond, {"status": "red"}) is True
+        assert evaluate_when("status != 'green'", {"status": "red"}) is True
 
     def test_ne_str_no_match(self) -> None:
-        cond = StringCondition(op="ne_str", field="status", value="green")
-        assert evaluate_condition(cond, {"status": "green"}) is False
+        assert evaluate_when("status != 'green'", {"status": "green"}) is False
 
     def test_eq_str_missing_field(self) -> None:
-        cond = StringCondition(op="eq_str", field="status", value="red")
-        assert evaluate_condition(cond, {}) is False
+        assert evaluate_when("status == 'red'", {}) is False
 
     def test_in_str_match(self) -> None:
-        cond = StringInCondition(op="in_str", field="health", values=["red", "yellow"])
-        assert evaluate_condition(cond, {"health": "yellow"}) is True
+        assert evaluate_when("health in ['red', 'yellow']", {"health": "yellow"}) is True
 
     def test_in_str_no_match(self) -> None:
-        cond = StringInCondition(op="in_str", field="health", values=["red", "yellow"])
-        assert evaluate_condition(cond, {"health": "green"}) is False
+        assert evaluate_when("health in ['red', 'yellow']", {"health": "green"}) is False
 
     def test_not_in_str(self) -> None:
-        cond = StringInCondition(op="not_in_str", field="health", values=["red", "yellow"])
-        assert evaluate_condition(cond, {"health": "green"}) is True
-        assert evaluate_condition(cond, {"health": "red"}) is False
+        assert evaluate_when("health not in ['red', 'yellow']", {"health": "green"}) is True
+        assert evaluate_when("health not in ['red', 'yellow']", {"health": "red"}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -520,49 +480,20 @@ class TestMultiFilterCondition:
         ]
 
     def test_fires_when_all_filters_match(self) -> None:
-        cond = MultiFilterCondition(
-            op="filter_multi",
-            field="vms",
-            filters=[
-                FilterSpec(filter_field="power_state", filter_value="poweredOn"),
-                FilterSpec(filter_field="tools_status", filter_value="toolsNotRunning"),
-            ],
-            threshold=0,
-        )
-        # vm-a matches both filters
-        assert evaluate_condition(cond, {"vms": self._make_vms()}) is True
+        expr = "vms | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0"
+        assert evaluate_when(expr, {"vms": self._make_vms()}) is True
 
     def test_no_fire_when_partial_match_only(self) -> None:
-        cond = MultiFilterCondition(
-            op="filter_multi",
-            field="vms",
-            filters=[
-                FilterSpec(filter_field="power_state", filter_value="poweredOn"),
-                FilterSpec(filter_field="tools_status", filter_value="toolsNotInstalled"),
-            ],
-            threshold=0,
-        )
-        # No VM is both poweredOn AND toolsNotInstalled
-        assert evaluate_condition(cond, {"vms": self._make_vms()}) is False
+        expr = "vms | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0"
+        assert evaluate_when(expr, {"vms": self._make_vms()}) is False
 
     def test_threshold_respected(self) -> None:
-        cond = MultiFilterCondition(
-            op="filter_multi",
-            field="vms",
-            filters=[FilterSpec(filter_field="power_state", filter_value="poweredOn")],
-            threshold=1,  # require more than 1 match
-        )
-        # Two VMs are poweredOn, so count=2 > 1
-        assert evaluate_condition(cond, {"vms": self._make_vms()}) is True
+        expr = "vms | selectattr('power_state', 'eq', 'poweredOn') | list | length > 1"
+        assert evaluate_when(expr, {"vms": self._make_vms()}) is True
 
     def test_empty_list_no_fire(self) -> None:
-        cond = MultiFilterCondition(
-            op="filter_multi",
-            field="vms",
-            filters=[FilterSpec(filter_field="power_state", filter_value="poweredOn")],
-            threshold=0,
-        )
-        assert evaluate_condition(cond, {"vms": []}) is False
+        expr = "vms | selectattr('power_state', 'eq', 'poweredOn') | list | length > 0"
+        assert evaluate_when(expr, {"vms": []}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -571,77 +502,40 @@ class TestMultiFilterCondition:
 
 
 class TestComputedFilterCondition:
+    """Tests for computed filter equivalents using selectattr with pre-computed fields.
+
+    Note: The old computed_filter evaluated arithmetic expressions per list item.
+    With Jinja2 `when` expressions, such filtering requires pre-computing the
+    derived field via list_map in the schema's FieldSpec. These tests verify
+    the selectattr approach on pre-computed values.
+    """
+
     def _make_datastores(self) -> list[dict]:
         return [
-            {"name": "ds1", "capacity": 1000, "freeSpace": 50},  # 5% free — critical
-            {"name": "ds2", "capacity": 1000, "freeSpace": 120},  # 12% free — warning only
-            {"name": "ds3", "capacity": 1000, "freeSpace": 500},  # 50% free — ok
+            {"name": "ds1", "free_pct": 5.0},   # critical
+            {"name": "ds2", "free_pct": 12.0},   # warning only
+            {"name": "ds3", "free_pct": 50.0},   # ok
         ]
 
     def test_fires_when_any_item_crosses_threshold(self) -> None:
-        cond = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=10.0,
-        )
-        assert evaluate_condition(cond, {"datastores": self._make_datastores()}) is True
+        expr = "datastores | selectattr('free_pct', 'le', 10.0) | list | length > 0"
+        assert evaluate_when(expr, {"datastores": self._make_datastores()}) is True
 
     def test_no_fire_when_all_clear(self) -> None:
-        cond = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=10.0,
-        )
-        # All datastores have ≥ 50% free
-        all_ok = [{"name": f"ds{i}", "capacity": 1000, "freeSpace": 500} for i in range(3)]
-        assert evaluate_condition(cond, {"datastores": all_ok}) is False
+        expr = "datastores | selectattr('free_pct', 'le', 10.0) | list | length > 0"
+        all_ok = [{"name": f"ds{i}", "free_pct": 50.0} for i in range(3)]
+        assert evaluate_when(expr, {"datastores": all_ok}) is False
 
     def test_warning_threshold_fires_but_critical_does_not(self) -> None:
-        crit = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=10.0,
-        )
-        warn = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=15.0,
-        )
-        # ds2 is at 12% — warn fires, crit does not
-        only_warning = [{"name": "ds2", "capacity": 1000, "freeSpace": 120}]
-        assert evaluate_condition(crit, {"datastores": only_warning}) is False
-        assert evaluate_condition(warn, {"datastores": only_warning}) is True
-
-    def test_division_by_zero_skips_item(self) -> None:
-        cond = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=10.0,
-        )
-        bad = [{"name": "ds0", "capacity": 0, "freeSpace": 0}]
-        # 0 / 0 → 0.0 ≤ 10.0 would actually fire; expression yields 0.0
-        result = evaluate_condition(cond, {"datastores": bad})
-        assert isinstance(result, bool)  # just verify it doesn't raise
+        crit_expr = "datastores | selectattr('free_pct', 'le', 10.0) | list | length > 0"
+        warn_expr = "datastores | selectattr('free_pct', 'le', 15.0) | list | length > 0"
+        only_warning = [{"name": "ds2", "free_pct": 12.0}]
+        assert evaluate_when(crit_expr, {"datastores": only_warning}) is False
+        assert evaluate_when(warn_expr, {"datastores": only_warning}) is True
 
     def test_empty_list_no_fire(self) -> None:
-        cond = ComputedFilterCondition(
-            op="computed_filter",
-            field="datastores",
-            expression="{freeSpace} / {capacity} * 100",
-            cmp="lte",
-            threshold=10.0,
-        )
-        assert evaluate_condition(cond, {"datastores": []}) is False
+        expr = "datastores | selectattr('free_pct', 'le', 10.0) | list | length > 0"
+        assert evaluate_when(expr, {"datastores": []}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -668,7 +562,7 @@ class TestComputeFields:
                     id="high_cpu",
                     category="Compute",
                     severity="CRITICAL",
-                    condition=ThresholdCondition(op="gt", field="cpu_pct", threshold=90.0),
+                    when="cpu_pct > 90.0",
                     message="CPU usage is {cpu_pct:.1f}%",
                 )
             ],
@@ -712,10 +606,10 @@ class TestVcenterSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "vcenter"
         assert s.platform == "vmware"
-        # Verify condition types present in VCSA schema
-        ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
-        assert "eq_str" in ops
-        assert "filter_count" in ops
+        # Verify when expressions are present
+        when_exprs = {a.when for a in s.alerts}
+        assert any("==" in w for w in when_exprs)  # string comparisons
+        assert any("selectattr" in w for w in when_exprs)  # filter expressions
         # Verify compute field
         assert "appliance_uptime_days" in s.fields
         assert s.fields["appliance_uptime_days"].compute is not None
@@ -779,8 +673,8 @@ class TestEsxiHealthSchema:
         assert s.name == "esxi"
         assert s.platform == "vmware"
         assert s.split_field == "esxi_hosts"
-        ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
-        assert "eq_str" in ops  # host_disconnected
+        when_exprs = {a.when for a in s.alerts}
+        assert any("disconnected" in w for w in when_exprs)  # host_disconnected
         assert "connection_state" in s.fields
         assert "cpu_used_pct" in s.fields
 
@@ -823,8 +717,8 @@ class TestVmHealthSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
-        ops = {a.condition.op for a in s.alerts}  # type: ignore[union-attr]
-        assert "filter_multi" in ops
+        when_exprs = {a.when for a in s.alerts}
+        assert any("selectattr" in w for w in when_exprs)  # filter_multi equivalent
         assert "vm_count" in s.fields
         assert "snapshot_count" in s.fields
 
@@ -912,7 +806,7 @@ class TestScriptFields:
                     id="aged",
                     category="Snapshots",
                     severity="WARNING",
-                    condition=ThresholdCondition(op="gt", field="aged_count", threshold=0),
+                    when="aged_count > 0",
                     message="{aged_count} aged snapshot(s)",
                     detail_fields=["aged_count"],
                 )
@@ -967,7 +861,7 @@ class TestScriptFields:
         assert fields["aged_count"] == -1  # sentinel (int field, script not found = broken)
 
     def test_filter_mounts_script(self) -> None:
-        from ncs_reporter.models.report_schema import DetectionSpec, FieldSpec, ReportSchema
+        from ncs_reporter.models.report_schema import DetectionSpec, FieldSpec, ListFilterSpec, ReportSchema
 
         schema = ReportSchema(
             name="mounts_test",
@@ -977,8 +871,9 @@ class TestScriptFields:
             fields={
                 "mounts": FieldSpec(path="raw_mounts", type="list", fallback=[]),
                 "real_mounts": FieldSpec(
-                    script="filter_mounts.py",
+                    path="raw_mounts",
                     type="list",
+                    list_filter=ListFilterSpec(exclude={"fstype": ["tmpfs", "squashfs"]}),
                     fallback=[],
                 ),
             },
@@ -1015,11 +910,11 @@ class TestScriptFields:
 
 
 class TestDateThresholdCondition:
-    """Tests for native ISO timestamp age comparison conditions."""
+    """Tests for age_days Jinja2 filter used in when expressions."""
 
     REF = "2026-02-27T12:00:00Z"  # fixed reference timestamp
 
-    def _schema(self, op: str, days: float, reference_field: str | None = None) -> ReportSchema:
+    def _schema(self, when_expr: str) -> ReportSchema:
         return ReportSchema(
             name="date_test",
             platform="test",
@@ -1034,73 +929,59 @@ class TestDateThresholdCondition:
                     id="date_alert",
                     category="Time",
                     severity="WARNING",
-                    condition=DateThresholdCondition(
-                        op=op,  # type: ignore[arg-type]
-                        field="last_run",
-                        days=days,
-                        reference_field=reference_field,
-                    ),
+                    when=when_expr,
                     message="date alert fired",
                 )
             ],
         )
 
-    def _eval(self, op: str, days: float, field_ts: str, ref_ts: str | None = None) -> bool:
-        fields = {
-            "last_run": field_ts,
-            "ref_time": ref_ts or self.REF,
-        }
-        cond = DateThresholdCondition(
-            op=op,  # type: ignore[arg-type]
-            field="last_run",
-            days=days,
-            reference_field="ref_time" if ref_ts is not None else None,
-        )
-        return evaluate_condition(cond, fields)
-
     def test_age_gt_fires_when_older(self) -> None:
         # 10 days before REF — should fire age_gt 7
-        assert self._eval("age_gt", 7.0, "2026-02-17T12:00:00Z", self.REF) is True
+        fields = {"last_run": "2026-02-17T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) > 7.0", fields) is True
 
     def test_age_gt_silent_when_younger(self) -> None:
         # 3 days before REF — should NOT fire age_gt 7
-        assert self._eval("age_gt", 7.0, "2026-02-24T12:00:00Z", self.REF) is False
+        fields = {"last_run": "2026-02-24T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) > 7.0", fields) is False
 
     def test_age_lt_fires_when_younger(self) -> None:
         # 1 day before REF — fires age_lt 3
-        assert self._eval("age_lt", 3.0, "2026-02-26T12:00:00Z", self.REF) is True
+        fields = {"last_run": "2026-02-26T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) < 3.0", fields) is True
 
     def test_age_lt_silent_when_older(self) -> None:
         # 10 days before REF — does NOT fire age_lt 3
-        assert self._eval("age_lt", 3.0, "2026-02-17T12:00:00Z", self.REF) is False
+        fields = {"last_run": "2026-02-17T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) < 3.0", fields) is False
 
     def test_age_gte_fires_at_exact_boundary(self) -> None:
         # Exactly 7.0 days before REF
-        assert self._eval("age_gte", 7.0, "2026-02-20T12:00:00Z", self.REF) is True
+        fields = {"last_run": "2026-02-20T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) >= 7.0", fields) is True
 
     def test_age_lte_fires_at_exact_boundary(self) -> None:
-        assert self._eval("age_lte", 7.0, "2026-02-20T12:00:00Z", self.REF) is True
+        fields = {"last_run": "2026-02-20T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) <= 7.0", fields) is True
 
     def test_age_gt_silent_at_exact_boundary(self) -> None:
         # Strictly greater-than: exact boundary should NOT fire
-        assert self._eval("age_gt", 7.0, "2026-02-20T12:00:00Z", self.REF) is False
+        fields = {"last_run": "2026-02-20T12:00:00Z", "ref_time": self.REF}
+        assert evaluate_when("last_run | age_days(ref_time) > 7.0", fields) is False
 
     def test_missing_field_returns_false(self) -> None:
-        cond = DateThresholdCondition(op="age_gt", field="missing", days=1.0)
-        assert evaluate_condition(cond, {}) is False
+        assert evaluate_when("missing | age_days > 1.0", {}) is False
 
     def test_unparseable_timestamp_returns_false(self) -> None:
-        cond = DateThresholdCondition(op="age_gt", field="last_run", days=1.0)
-        assert evaluate_condition(cond, {"last_run": "not-a-date"}) is False
+        # age_days returns 0.0 for unparseable — 0.0 > 1.0 is False
+        assert evaluate_when("last_run | age_days > 1.0", {"last_run": "not-a-date"}) is False
 
     def test_reference_field_used_over_now(self) -> None:
-        # Use reference_field so the test is deterministic regardless of when it runs
         fields = {"last_run": "2026-01-01T00:00:00Z", "ref_time": self.REF}
-        cond = DateThresholdCondition(op="age_gt", field="last_run", days=7.0, reference_field="ref_time")
-        assert evaluate_condition(cond, fields) is True
+        assert evaluate_when("last_run | age_days(ref_time) > 7.0", fields) is True
 
     def test_normalize_from_schema_date_alert(self) -> None:
-        schema = self._schema("age_gt", 7.0, reference_field="ref_time")
+        schema = self._schema("last_run | age_days(ref_time) > 7.0")
         raw = {"last_run": "2026-01-01T00:00:00Z", "ref_time": self.REF}
         result = normalize_from_schema(schema, raw)
         assert any(a["id"] == "date_alert" for a in result["alerts"])
@@ -1261,7 +1142,7 @@ class TestWidgetRendering:
         assert r["content"] == "**bold**"
 
     def test_conditional_table_styling(self) -> None:
-        from ncs_reporter.models.report_schema import TableWidget, TableColumn, StyleRule, ThresholdCondition
+        from ncs_reporter.models.report_schema import TableWidget, TableColumn, StyleRule
         from ncs_reporter.view_models.generic import _render_widget
 
         w = TableWidget(
@@ -1274,7 +1155,7 @@ class TestWidgetRendering:
                     label="Status",
                     field="status",
                     style_rules=[
-                        StyleRule(condition=ThresholdCondition(op="gt", field="status", threshold=90), css_class="red")
+                        StyleRule(when="status > 90", css_class="red")
                     ],
                 )
             ],

@@ -142,6 +142,10 @@ jinja-lint:
 ansible-lint:
     ANSIBLE_COLLECTIONS_PATH=$(pwd)/collections ansible-lint --exclude .venv
 
+# Regenerate JSON Schema for YAML editor autocomplete
+schema:
+    cd ncs_reporter && {{ python }} generate_schema.py
+
 # =============================================================================
 # Fleet Audits (non-STIG health/compliance collection)
 # =============================================================================

@@ -19,7 +19,8 @@ from ncs_reporter.models.report_schema import (
     StatCardsWidget,
     TableWidget,
 )
-from ncs_reporter.normalization.schema_driven import evaluate_condition, normalize_from_schema
+from ncs_reporter.normalization._when import evaluate_when
+from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.view_models.common import GenericNavContext, _count_alerts, _iter_hosts, status_badge_meta
 
 _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
@@ -78,7 +79,7 @@ def _render_table_cell(
         if isinstance(item, dict):
             temp_ctx.update(item)
         for rule in col.style_rules:
-            if evaluate_condition(rule.condition, temp_ctx):
+            if evaluate_when(rule.when, temp_ctx):
                 cell_class = rule.css_class
                 break
 
@@ -268,7 +269,7 @@ def _render_widget(
     """Render a single schema widget into a template-ready dict. Returns None if hidden by visible_if."""
     # visible_if guard
     if hasattr(widget, "visible_if") and widget.visible_if is not None:
-        if not evaluate_condition(widget.visible_if, fields):
+        if not evaluate_when(widget.visible_if, fields):
             return None
 
     ctx: dict[str, Any] = {

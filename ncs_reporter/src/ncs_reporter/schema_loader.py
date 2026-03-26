@@ -302,9 +302,6 @@ _KNOWN_FIELD_TYPES = frozenset({
     *_TYPE_COERCERS.keys(),
 })
 
-_THRESHOLD_OPS = frozenset({"gt", "lt", "gte", "lte", "eq", "ne"})
-_STRING_OPS = frozenset({"eq_str", "ne_str"})
-_EXISTS_OPS = frozenset({"exists", "not_exists"})
 _WIDGET_TYPE_KEYS = frozenset({"alert_panel", "key_value", "table"})
 
 
@@ -333,58 +330,6 @@ def _expand_compact_field(value: str) -> dict[str, Any]:
     return result
 
 
-def _expand_compact_alert(value: str) -> dict[str, Any]:
-    """Expand 'id | SEVERITY Category | field op value | message' into an AlertRule dict."""
-    parts = [p.strip() for p in value.split(" | ")]
-    if len(parts) < 4:
-        raise ValueError(f"Compact alert needs at least 4 '|'-separated segments: {value!r}")
-
-    alert_id = parts[0]
-
-    # Parse "SEVERITY Category text"
-    sev_cat = parts[1]
-    sev_token, *cat_tokens = sev_cat.split(None, 1)
-    severity = sev_token.upper()
-    category = cat_tokens[0] if cat_tokens else "General"
-
-    # Parse condition: "field op [threshold/value]"
-    cond_tokens = parts[2].split()
-    field = cond_tokens[0]
-    op = cond_tokens[1] if len(cond_tokens) > 1 else "exists"
-
-    condition: dict[str, Any] = {"op": op, "field": field}
-    if op in _THRESHOLD_OPS and len(cond_tokens) > 2:
-        try:
-            condition["threshold"] = float(cond_tokens[2])
-        except ValueError:
-            condition["threshold"] = cond_tokens[2]
-    elif op in _STRING_OPS and len(cond_tokens) > 2:
-        condition["value"] = " ".join(cond_tokens[2:]).strip("'\"")
-
-    message = parts[3]
-
-    result: dict[str, Any] = {
-        "id": alert_id,
-        "category": category,
-        "severity": severity,
-        "condition": condition,
-        "message": message,
-    }
-
-    # Optional 5th segment: extras (details=f1;f2 affected=f suppress=id1;id2)
-    if len(parts) >= 5:
-        for token in parts[4].split():
-            if "=" not in token:
-                continue
-            k, v = token.split("=", 1)
-            if k == "details":
-                result["detail_fields"] = [x.strip() for x in v.split(";")]
-            elif k == "affected":
-                result["affected_items_field"] = v.strip()
-            elif k == "suppress":
-                result["suppress_if"] = [x.strip() for x in v.split(";")]
-
-    return result
 
 
 def _slugify(title: str) -> str:
@@ -456,13 +401,15 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
             if isinstance(val, str) and (" | " in val or " = " in val):
                 fields[key] = _expand_compact_field(val)
 
-    # 2. Expand compact alerts
+    # 2. Alerts must be dicts with a 'when' key (compact string syntax removed)
     alerts = data.get("alerts")
     if isinstance(alerts, list):
-        data["alerts"] = [
-            _expand_compact_alert(item) if isinstance(item, str) else item
-            for item in alerts
-        ]
+        for item in alerts:
+            if isinstance(item, str):
+                raise ValueError(
+                    f"Compact alert string syntax is no longer supported. "
+                    f"Convert to dict with 'when' key: {item!r}"
+                )
 
     # 3. Expand compact widgets
     widgets = data.get("widgets")
