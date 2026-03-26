@@ -5,16 +5,11 @@ config:
       WN: windows
       MS: windows
   extra_fleet_widget_columns:
-    - label: "Collected At"
-      field: collected_at
-    - label: "CCM Status"
-      field: ccm_service_state
-    - label: "Reboot"
-      field: health_reboot_pending
-    - label: "Critical"
-      field: _critical_count
-    - label: "Warning"
-      field: _warning_count
+    Collected At: "{{ collected_at }}"
+    CCM Status: "{{ ccm_service_state }}"
+    Reboot: "{{ health_reboot_pending }}"
+    Critical: "{{ _critical_count }}"
+    Warning: "{{ _warning_count }}"
 
 # ---------------------------------------------------------------------------
 # Fields

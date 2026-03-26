@@ -8,12 +8,9 @@ config:
     platform_to_checklist:
       vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
   extra_fleet_widget_columns:
-    - label: "VMs"
-      field: vm_count
-    - label: "Snapshots"
-      field: snapshot_count
-    - label: "Powered Off"
-      field: powered_off_vm_count
+    VMs: "{{ vm_count }}"
+    Snapshots: "{{ snapshot_count }}"
+    Powered Off: "{{ powered_off_vm_count }}"
 
 # ---------------------------------------------------------------------------
 # Fields
