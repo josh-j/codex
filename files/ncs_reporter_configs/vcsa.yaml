@@ -277,22 +277,15 @@ widgets:
     type: table
     rows: "{{ active_alarms }}"
     columns:
-      - label: "Alarm"
-        field: "{{ alarm_name }}"
-      - label: "Entity"
-        field: "{{ entity }}"
-      - label: "Severity"
-        field: "{{ severity }}"
-        badge: true
-      - label: "Time"
-        field: "{{ time }}"
-      - label: "Description"
-        field: "{{ description }}"
+      'Alarm': "{{ alarm_name }}"
+      'Entity': "{{ entity }}"
+      'Severity [badge]': "{{ severity }}"
+      'Time': "{{ time }}"
+      'Description': "{{ description }}"
 
   - id: inventory_kpis
     title: "Infrastructure KPIs"
     type: stat_cards
-    layout: { width: "full" }
     cards:
       - { field: "{{ datacenter_count }}", label: "Datacenters" }
       - { field: "{{ cluster_count }}", label: "Clusters" }
@@ -307,164 +300,105 @@ widgets:
     type: key_value
     layout: { width: "half" }
     fields:
-      - label: "Version"
-        field: "{{ appliance_version }}"
-      - label: "Build"
-        field: "{{ appliance_build }}"
-      - label: "Health Overall"
-        field: "{{ appliance_health_overall }}"
-        badge: true
-      - label: "Health CPU"
-        field: "{{ appliance_health_cpu }}"
-        badge: true
-      - label: "Health Memory"
-        field: "{{ appliance_health_memory }}"
-        badge: true
-      - label: "Health DB"
-        field: "{{ appliance_health_database }}"
-        badge: true
-      - label: "Health Storage"
-        field: "{{ appliance_health_storage }}"
-        badge: true
-      - label: "Uptime (days)"
-        field: "{{ appliance_uptime_days }}"
-      - label: "SSH Enabled"
-        field: "{{ ssh_enabled }}"
-        badge: true
-      - label: "NTP Mode"
-        field: "{{ ntp_mode }}"
-      - label: "Backup Schedules"
-        field: "{{ backup_schedule_count }}"
-      - label: "Extensions"
-        field: "{{ extension_count }}"
-      - label: "Content Libraries"
-        field: "{{ content_library_count }}"
-      - label: "Tag Categories"
-        field: "{{ tag_category_count }}"
+      'Version': "{{ appliance_version }}"
+      'Build': "{{ appliance_build }}"
+      'Health Overall [badge]': "{{ appliance_health_overall }}"
+      'Health CPU [badge]': "{{ appliance_health_cpu }}"
+      'Health Memory [badge]': "{{ appliance_health_memory }}"
+      'Health DB [badge]': "{{ appliance_health_database }}"
+      'Health Storage [badge]': "{{ appliance_health_storage }}"
+      'Uptime (days)': "{{ appliance_uptime_days }}"
+      'SSH Enabled [badge]': "{{ ssh_enabled }}"
+      'NTP Mode': "{{ ntp_mode }}"
+      'Backup Schedules': "{{ backup_schedule_count }}"
+      'Extensions': "{{ extension_count }}"
+      'Content Libraries': "{{ content_library_count }}"
+      'Tag Categories': "{{ tag_category_count }}"
 
   - title: "Clusters"
     type: table
     visible_if: cluster_count > 0
     rows: "{{ clusters }}"
     columns:
-      - label: "Cluster"
-        field: "{{ name }}"
-      - label: "Datacenter"
-        field: "{{ datacenter }}"
-      - label: "Hosts"
-        field: "{{ host_count }}"
-      - label: "HA"
-        field: "{{ ha_enabled }}"
-        badge: true
-      - label: "DRS"
-        field: "{{ drs_enabled }}"
-        badge: true
-      - label: "CPU %"
-        field: "{{ cpu_usage_pct }}"
-      - label: "Mem %"
-        field: "{{ mem_usage_pct }}"
+      'Cluster': "{{ name }}"
+      'Datacenter': "{{ datacenter }}"
+      'Hosts': "{{ host_count }}"
+      'HA [badge]': "{{ ha_enabled }}"
+      'DRS [badge]': "{{ drs_enabled }}"
+      'CPU %': "{{ cpu_usage_pct }}"
+      'Mem %': "{{ mem_usage_pct }}"
 
   - title: "Datastores"
     type: table
     visible_if: datastore_count > 0
     rows: "{{ datastores }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Capacity (GB)"
-        field: "{{ capacity_gb }}"
-      - label: "Free (GB)"
-        field: "{{ free_gb }}"
-      - label: "Used %"
-        field: "{{ used_pct }}"
+      'Name': "{{ name }}"
+      'Capacity (GB)': "{{ capacity_gb }}"
+      'Free (GB)': "{{ free_gb }}"
+      'Used %': "{{ used_pct }}"
 
   - title: "Resource Pools"
     type: table
     visible_if: resource_pool_count > 0
     rows: "{{ resource_pools }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "CPU Reservation"
-        field: "{{ runtime_cpu_reservation_used }}"
-      - label: "CPU Limit"
-        field: "{{ runtime_cpu_overall_usage }}"
-      - label: "Memory Reservation"
-        field: "{{ runtime_memory_reservation_used }}"
-      - label: "Memory Limit"
-        field: "{{ runtime_memory_overall_usage }}"
+      'Name': "{{ name }}"
+      'CPU Reservation': "{{ runtime_cpu_reservation_used }}"
+      'CPU Limit': "{{ runtime_cpu_overall_usage }}"
+      'Memory Reservation': "{{ runtime_memory_reservation_used }}"
+      'Memory Limit': "{{ runtime_memory_overall_usage }}"
 
   - title: "Distributed Switches"
     type: table
     visible_if: dvswitch_count > 0
     rows: "{{ dvswitches }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Ports"
-        field: "{{ num_ports }}"
-      - label: "Uplinks"
-        field: "{{ num_uplinks }}"
-      - label: "MTU"
-        field: "{{ mtu }}"
+      'Name': "{{ name }}"
+      'Ports': "{{ num_ports }}"
+      'Uplinks': "{{ num_uplinks }}"
+      'MTU': "{{ mtu }}"
 
   - title: "Distributed Portgroups"
     type: table
     visible_if: dvs_portgroup_count > 0
     rows: "{{ dvs_portgroups }}"
     columns:
-      - label: "Name"
-        field: "{{ portgroup_name }}"
-      - label: "Switch"
-        field: "{{ dvswitch_name }}"
-      - label: "VLAN"
-        field: "{{ vlan_id }}"
-      - label: "Ports"
-        field: "{{ num_ports }}"
-      - label: "Type"
-        field: "{{ port_binding }}"
+      'Name': "{{ portgroup_name }}"
+      'Switch': "{{ dvswitch_name }}"
+      'VLAN': "{{ vlan_id }}"
+      'Ports': "{{ num_ports }}"
+      'Type': "{{ port_binding }}"
 
   - title: "Licenses"
     type: table
     visible_if: license_count > 0
     rows: "{{ licenses }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Edition"
-        field: "{{ edition }}"
-      - label: "Total"
-        field: "{{ total }}"
-      - label: "Used"
-        field: "{{ used }}"
-      - label: "Expiration"
-        field: "{{ expiration_date }}"
+      'Name': "{{ name }}"
+      'Edition': "{{ edition }}"
+      'Total': "{{ total }}"
+      'Used': "{{ used }}"
+      'Expiration': "{{ expiration_date }}"
 
   - title: "Extensions"
     type: table
     visible_if: extension_count > 0
     rows: "{{ extensions }}"
     columns:
-      - label: "Label"
-        field: "{{ ext_label }}"
-      - label: "Company"
-        field: "{{ ext_company }}"
-      - label: "Version"
-        field: "{{ ext_version }}"
-      - label: "Last Heartbeat"
-        field: "{{ ext_last_heartbeat_time }}"
+      'Label': "{{ ext_label }}"
+      'Company': "{{ ext_company }}"
+      'Version': "{{ ext_version }}"
+      'Last Heartbeat': "{{ ext_last_heartbeat_time }}"
 
   - title: "Content Libraries"
     type: table
     visible_if: content_library_count > 0
     rows: "{{ content_libraries }}"
     columns:
-      - label: "Name"
-        field: "{{ lib_name }}"
-      - label: "Type"
-        field: "{{ lib_type }}"
-      - label: "Description"
-        field: "{{ lib_description }}"
+      'Name': "{{ lib_name }}"
+      'Type': "{{ lib_type }}"
+      'Description': "{{ lib_description }}"
 
   - title: "Backup Schedules"
     type: table
