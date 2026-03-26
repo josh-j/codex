@@ -191,148 +191,98 @@ widgets:
   - title: "System Information"
     type: key_value
     fields:
-      - label: "Hostname"
-        field: "{{ health_hostname }}"
-      - label: "OS"
-        field: "{{ health_os_name }}"
-      - label: "Uptime (hours)"
-        field: "{{ health_uptime_hours }}"
-      - label: "CCMExec State"
-        field: "{{ ccm_service_state }}"
-      - label: "Reboot Pending"
-        field: "{{ health_reboot_pending }}"
-      - label: "Secure Channel"
-        field: "{{ health_secure_channel }}"
+      'Hostname': "{{ health_hostname }}"
+      'OS': "{{ health_os_name }}"
+      'Uptime (hours)': "{{ health_uptime_hours }}"
+      'CCMExec State': "{{ ccm_service_state }}"
+      'Reboot Pending': "{{ health_reboot_pending }}"
+      'Secure Channel': "{{ health_secure_channel }}"
 
   - title: "Disk Usage"
     type: table
     rows: "{{ health_disk }}"
     columns:
-      - label: "Drive"
-        field: "{{ DeviceID }}"
-      - label: "Size (GB)"
-        field: "{{ SizeGB }}"
-      - label: "Free (GB)"
-        field: "{{ FreeGB }}"
-      - label: "Used %"
-        field: "{{ UsedPct }}"
-        badge: true
+      'Drive': "{{ DeviceID }}"
+      'Size (GB)': "{{ SizeGB }}"
+      'Free (GB)': "{{ FreeGB }}"
+      'Used % [badge]': "{{ UsedPct }}"
 
   - title: "Memory & CPU"
     type: key_value
     fields:
-      - label: "Memory Used %"
-        field: "{{ health_memory_used_pct }}"
-      - label: "CPU Load %"
-        field: "{{ health_cpu_load_pct }}"
+      'Memory Used %': "{{ health_memory_used_pct }}"
+      'CPU Load %': "{{ health_cpu_load_pct }}"
 
   - title: "Critical Services"
     type: table
     rows: "{{ health_services }}"
     columns:
-      - label: "Service"
-        field: "{{ display_name }}"
-      - label: "Status"
-        field: "{{ status }}"
-        badge: true
-      - label: "Start Type"
-        field: "{{ start_type }}"
+      'Service': "{{ display_name }}"
+      'Status [badge]': "{{ status }}"
+      'Start Type': "{{ start_type }}"
 
   - title: "Recent Critical/Error Events"
     type: table
     rows: "{{ health_events }}"
     columns:
-      - label: "Time"
-        field: "{{ time }}"
-      - label: "Log"
-        field: "{{ log }}"
-      - label: "Level"
-        field: "{{ level }}"
-        badge: true
-      - label: "Source"
-        field: "{{ source }}"
-      - label: "ID"
-        field: "{{ id }}"
-      - label: "Message"
-        field: "{{ message }}"
+      'Time': "{{ time }}"
+      'Log': "{{ log }}"
+      'Level [badge]': "{{ level }}"
+      'Source': "{{ source }}"
+      'ID': "{{ id }}"
+      'Message': "{{ message }}"
 
   - title: "Vulnerability Summary"
     type: key_value
     fields:
-      - label: "Total Findings"
-        field: "{{ vuln_total_findings }}"
-      - label: "Remediated"
-        field: "{{ vuln_remediated }}"
-      - label: "Open"
-        field: "{{ vuln_open }}"
+      'Total Findings': "{{ vuln_total_findings }}"
+      'Remediated': "{{ vuln_remediated }}"
+      'Open': "{{ vuln_open }}"
 
   - title: "Vulnerability Findings"
     type: table
     rows: "{{ vuln_findings }}"
     columns:
-      - label: "Plugin ID"
-        field: "{{ plugin_id }}"
-      - label: "Severity"
-        field: "{{ severity }}"
-        badge: true
-      - label: "Title"
-        field: "{{ title }}"
-      - label: "Remediated"
-        field: "{{ remediated }}"
-        badge: true
+      'Plugin ID': "{{ plugin_id }}"
+      'Severity [badge]': "{{ severity }}"
+      'Title': "{{ title }}"
+      'Remediated [badge]': "{{ remediated }}"
 
   - title: "ConfigMgr Applications"
     type: table
     rows: "{{ configmgr_apps }}"
     columns:
-      - label: "Name"
-        field: "{{ Name }}"
-      - label: "Version"
-        field: "{{ Version }}"
+      'Name': "{{ Name }}"
+      'Version': "{{ Version }}"
 
   - title: "Applications Pending Update"
     type: table
     rows: "{{ apps_to_update }}"
     columns:
-      - label: "Name"
-        field: "{{ Name }}"
-      - label: "Current Version"
-        field: "{{ CurrentVersion }}"
-      - label: "Target Version"
-        field: "{{ TargetVersion }}"
+      'Name': "{{ Name }}"
+      'Current Version': "{{ CurrentVersion }}"
+      'Target Version': "{{ TargetVersion }}"
 
   - title: "Update Results"
     type: table
     rows: "{{ update_results }}"
     columns:
-      - label: "Application"
-        field: "{{ application }}"
-      - label: "Status"
-        field: "{{ status }}"
-        badge: true
-      - label: "Failed"
-        field: "{{ failed }}"
-        badge: true
+      'Application': "{{ application }}"
+      'Status [badge]': "{{ status }}"
+      'Failed [badge]': "{{ failed }}"
 
   - title: "KB Detection Status"
     type: table
     rows: "{{ kb_detection }}"
     columns:
-      - label: "KB"
-        field: "{{ kb }}"
-      - label: "Installed"
-        field: "{{ installed }}"
-        badge: true
-      - label: "Detection Method"
-        field: "{{ method }}"
+      'KB': "{{ kb }}"
+      'Installed [badge]': "{{ installed }}"
+      'Detection Method': "{{ method }}"
 
   - title: "Installed Software"
     type: table
     rows: "{{ health_software_versions }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Version"
-        field: "{{ version }}"
-      - label: "Publisher"
-        field: "{{ publisher }}"
+      'Name': "{{ name }}"
+      'Version': "{{ version }}"
+      'Publisher': "{{ publisher }}"

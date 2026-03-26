@@ -38,27 +38,17 @@
 - title: "Patching & Services"
   type: key_value
   fields:
-    - label: "Failed Services"
-      field: "{{ failed_services_count }}"
-    - label: "Pending Updates"
-      field: "{{ pending_updates_count }}"
-    - label: "Reboot Required"
-      field: "{{ reboot_pending }}"
+    'Failed Services': "{{ failed_services_count }}"
+    'Pending Updates': "{{ pending_updates_count }}"
+    'Reboot Required': "{{ reboot_pending }}"
 
 - title: "Filesystems"
   type: table
   rows: "{{ disks }}"
   columns:
-    - label: "Mount"
-      field: "{{ mount }}"
-    - label: "Device"
-      field: "{{ device }}"
-    - label: "FS Type"
-      field: "{{ fstype }}"
-    - label: "Total (GB)"
-      field: "{{ total_gb }}"
-    - label: "Free (GB)"
-      field: "{{ free_gb }}"
-    - label: "Used %"
-      field: "{{ used_pct }}"
-      badge: true
+    'Mount': "{{ mount }}"
+    'Device': "{{ device }}"
+    'FS Type': "{{ fstype }}"
+    'Total (GB)': "{{ total_gb }}"
+    'Free (GB)': "{{ free_gb }}"
+    'Used % [badge]': "{{ used_pct }}"

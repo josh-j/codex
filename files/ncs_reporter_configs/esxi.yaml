@@ -86,33 +86,22 @@ widgets:
     type: key_value
     layout: { width: "half" }
     fields:
-      - label: "Connection State"
-        field: "{{ connection_state }}"
-        badge: true
-      - label: "Overall Status"
-        field: "{{ overall_status }}"
-        badge: true
-      - label: "Cluster"
-        field: "{{ cluster }}"
-      - label: "Datacenter"
-        field: "{{ datacenter }}"
-      - label: "Version"
-        field: "{{ version }}"
-      - label: "Build"
-        field: "{{ build }}"
-      - label: "Maintenance Mode"
-        field: "{{ in_maintenance_mode }}"
-        badge: true
-      - label: "Lockdown Mode"
-        field: "{{ lockdown_mode }}"
+      'Connection State [badge]': "{{ connection_state }}"
+      'Overall Status [badge]': "{{ overall_status }}"
+      'Cluster': "{{ cluster }}"
+      'Datacenter': "{{ datacenter }}"
+      'Version': "{{ version }}"
+      'Build': "{{ build }}"
+      'Maintenance Mode [badge]': "{{ in_maintenance_mode }}"
+      'Lockdown Mode': "{{ lockdown_mode }}"
 
   - id: resource_kpis
     title: "Resource Utilization"
     type: stat_cards
     layout: { width: "half" }
     cards:
-      - { field: "{{ cpu_used_pct }}", label: "CPU %", format: "{{ value | round(0) }}%", color: auto, thresholds: { 80: yellow, 90: red } }
-      - { field: "{{ mem_used_pct }}", label: "Mem %", format: "{{ value | round(0) }}%", color: auto, thresholds: { 80: yellow, 90: red } }
+      - { field: "{{ cpu_used_pct }}", label: "CPU %", format: "{{ value | round(0) }}%", thresholds: { 80: yellow, 90: red } }
+      - { field: "{{ mem_used_pct }}", label: "Mem %", format: "{{ value | round(0) }}%", thresholds: { 80: yellow, 90: red } }
       - { field: "{{ vm_count }}", label: "VMs" }
       - { field: "{{ uptime_days }}", label: "Uptime (days)", format: "{{ value | round(0) }}" }
 
@@ -120,39 +109,24 @@ widgets:
     type: key_value
     layout: { width: "half" }
     fields:
-      - label: "SSH Enabled"
-        field: "{{ ssh_enabled }}"
-        badge: true
-      - label: "Shell Enabled"
-        field: "{{ shell_enabled }}"
-        badge: true
-      - label: "NTP Running"
-        field: "{{ ntp_running }}"
-        badge: true
+      'SSH Enabled [badge]': "{{ ssh_enabled }}"
+      'Shell Enabled [badge]': "{{ shell_enabled }}"
+      'NTP Running [badge]': "{{ ntp_running }}"
 
   - title: "Datastores"
     type: table
     rows: "{{ datastores }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Total"
-        field: "{{ total }}"
-      - label: "Free"
-        field: "{{ free }}"
+      'Name': "{{ name }}"
+      'Total': "{{ total }}"
+      'Free': "{{ free }}"
 
   - title: "Physical NICs"
     type: table
     rows: "{{ nics }}"
     columns:
-      - label: "Device"
-        field: "{{ device }}"
-      - label: "Status"
-        field: "{{ link_status }}"
-        badge: true
-      - label: "Speed (Mbps)"
-        field: "{{ speed_mbps }}"
-      - label: "Driver"
-        field: "{{ driver }}"
-      - label: "Switch"
-        field: "{{ switch }}"
+      'Device': "{{ device }}"
+      'Status [badge]': "{{ link_status }}"
+      'Speed (Mbps)': "{{ speed_mbps }}"
+      'Driver': "{{ driver }}"
+      'Switch': "{{ switch }}"

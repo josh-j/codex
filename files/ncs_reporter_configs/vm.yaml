@@ -112,7 +112,6 @@ widgets:
   - id: vm_kpis
     title: "VM KPIs"
     type: stat_cards
-    layout: { width: "full" }
     cards:
       - { field: "{{ vm_count }}", label: "VMs" }
       - { field: "{{ snapshot_count }}", label: "Snapshots", thresholds: { 1: yellow, 10: red } }
@@ -151,15 +150,9 @@ widgets:
     visible_if: snapshot_count > 0
     rows: "{{ snapshots }}"
     columns:
-      - label: "VM"
-        field: "{{ vm_name }}"
-      - label: "Owner Email"
-        field: "{{ owner_email }}"
-      - label: "Snapshot"
-        field: "{{ name }}"
-      - label: "Created"
-        field: "{{ creation_time }}"
-      - label: "State"
-        field: "{{ state }}"
-      - label: "Days Old"
-        field: "{{ days_old }}"
+      'VM': "{{ vm_name }}"
+      'Owner Email': "{{ owner_email }}"
+      'Snapshot': "{{ name }}"
+      'Created': "{{ creation_time }}"
+      'State': "{{ state }}"
+      'Days Old': "{{ days_old }}"

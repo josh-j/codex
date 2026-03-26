@@ -382,11 +382,27 @@ def _expand_column_list(items: list[Any]) -> list[Any]:
     return [_expand_compact_column(c) if isinstance(c, str) else c for c in items]
 
 
+def _expand_dict_columns(mapping: dict[str, str]) -> list[dict[str, Any]]:
+    """Expand dict-form columns/fields: {'Label [badge]': '{{ var }}'} → list of dicts."""
+    result: list[dict[str, Any]] = []
+    for label, field_ref in mapping.items():
+        badge = "[badge]" in label
+        clean_label = label.replace(" [badge]", "").replace("[badge]", "")
+        entry: dict[str, Any] = {"label": clean_label, "field": field_ref}
+        if badge:
+            entry["badge"] = True
+        result.append(entry)
+    return result
+
+
 def _expand_columns_in_widget(item: dict[str, Any]) -> dict[str, Any]:
-    """Expand compact column strings in a full-format widget dict."""
+    """Expand compact column strings and dict-form columns in a widget dict."""
     for key in ("columns", "fields"):
-        if key in item and isinstance(item[key], list):
-            item[key] = _expand_column_list(item[key])
+        val = item.get(key)
+        if isinstance(val, dict):
+            item[key] = _expand_dict_columns(val)
+        elif isinstance(val, list):
+            item[key] = _expand_column_list(val)
     return item
 
 
