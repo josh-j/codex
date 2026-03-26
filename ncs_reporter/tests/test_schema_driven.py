@@ -699,8 +699,8 @@ class TestVmHealthSchema:
         assert s.platform == "vmware"
         when_exprs = {a.when for a in s.alerts}
         assert any("selectattr" in w for w in when_exprs)  # filter_multi equivalent
-        assert "vm_count" in s.fields
-        assert "snapshot_count" in s.fields
+        assert "virtual_machines" in s.fields  # script-based field stays declared
+        assert "snapshot_count" in s.fields  # threshold metadata stays declared
 
     def test_vm_schema_fires_on_synthetic_bundle(self) -> None:
         from pathlib import Path
@@ -714,8 +714,8 @@ class TestVmHealthSchema:
             "raw_vm": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
                 "data": {
-                    "datacenters_info": {"datacenter_info": [{"name": "DC1"}]},
-                    "vms_info": {
+                    "datacenters": [{"name": "DC1"}],
+                    "vms_info_raw": {
                         "virtual_machines": [
                             {
                                 "guest_name": "vm1",
@@ -725,7 +725,18 @@ class TestVmHealthSchema:
                             },
                         ]
                     },
-                    "snapshots_info": {"snapshots": []},
+                    "virtual_machines": [
+                        {
+                            "guest_name": "vm1",
+                            "power_state": "poweredOn",
+                            "tools_status": "toolsNotRunning",
+                            "cluster": "cluster1",
+                        },
+                    ],
+                    "vm_count": 1,
+                    "snapshots_raw": [],
+                    "snapshot_count": 0,
+                    "infra_patterns": [],
                 },
             }
         }
