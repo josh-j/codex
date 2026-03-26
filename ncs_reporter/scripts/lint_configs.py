@@ -4,6 +4,7 @@
 Checks:
   - when: and visible_if: values should be unquoted (Ansible convention)
   - compute: values must use "{{ expression }}" (Jinja2 delimiters)
+  - widget type: values must use hyphens, not underscores
 """
 
 from __future__ import annotations
@@ -19,6 +20,9 @@ UNQUOTED_EXPR = re.compile(r"^(\s+)(when|visible_if):\s*\"(.+)\"\s*$")
 
 # Matches compute values that are NOT "{{ }}" wrapped
 COMPUTE_LINE = re.compile(r"^(\s+)compute:\s*(.+)\s*$")
+
+# Matches widget type values with underscores
+UNDERSCORE_TYPE = re.compile(r"^(\s+)type:\s*(\w+_\w+)\s*$")
 
 
 def lint_file(path: Path) -> list[str]:
@@ -37,6 +41,11 @@ def lint_file(path: Path) -> list[str]:
             value = m.group(2).strip()
             if not (value.startswith('"{{') and value.endswith('}}"')):
                 errors.append(f'{path.name}:{i}: compute: should use Jinja2 delimiters — "{{{{ expression }}}}"')
+
+        # Check type: must use hyphens not underscores
+        m = UNDERSCORE_TYPE.match(line)
+        if m:
+            errors.append(f"{path.name}:{i}: type: use hyphens — {m.group(2)} → {m.group(2).replace('_', '-')}")
 
     return errors
 

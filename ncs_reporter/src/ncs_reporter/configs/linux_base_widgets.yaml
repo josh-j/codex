@@ -1,9 +1,9 @@
 # Shared Linux widgets — included by linux.yaml, photon.yaml, etc.
 
 
-- id: headline_kpis
+- type: stat-cards
+  id: headline_kpis
   title: "Key Metrics"
-  type: stat_cards
   # Thresholds for these vars are declared in linux_base_fields.yaml
   cards:
     'Uptime (d)': "{{ uptime_days | round(0) }}"
@@ -11,8 +11,8 @@
     'Failed Svcs': "{{ failed_services_count }}"
     'Pending Updates': "{{ pending_updates_count }}"
 
-- title: "System Overview"
-  type: key_value
+- type: key-value
+  title: "System Overview"
   fields:
     - label: "Hostname"
       field: "{{ hostname }}"
@@ -27,8 +27,8 @@
     - { label: "Uptime (days)", field: "{{ uptime_days }}", format: "{{ value | round(1) }}" }
     - { label: "Load Avg (15m)", field: "{{ load_avg_15m }}", format: "{value:.2f}" }
 
-- title: "Memory"
-  type: key_value
+- type: key-value
+  title: "Memory"
   fields:
     - { label: "Total (MB)", field: "{{ memory_total_mb }}", format: "{{ value | round(1) }}" }
     - { label: "Free (MB)", field: "{{ memory_free_mb }}", format: "{{ value | round(1) }}" }
@@ -36,15 +36,15 @@
     - { label: "Swap Total (MB)", field: "{{ swap_total_mb }}", format: "{{ value | round(1) }}" }
     - { label: "Swap Used %", field: "{{ swap_used_pct }}", format: "{{ value | round(1) }}" }
 
-- title: "Patching & Services"
-  type: key_value
+- type: key-value
+  title: "Patching & Services"
   fields:
     'Failed Services': "{{ failed_services_count }}"
     'Pending Updates': "{{ pending_updates_count }}"
     'Reboot Required': "{{ reboot_pending }}"
 
-- title: "Filesystems"
-  type: table
+- type: table
+  title: "Filesystems"
   rows: "{{ disks }}"
   columns:
     'Mount': "{{ mount }}"

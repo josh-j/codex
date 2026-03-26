@@ -274,8 +274,8 @@ alerts:
 
 widgets:
 
-  - title: "Active vCenter Alarms"
-    type: table
+  - type: table
+    title: "Active vCenter Alarms"
     rows: "{{ active_alarms }}"
     columns:
       'Alarm': "{{ alarm_name }}"
@@ -284,9 +284,9 @@ widgets:
       'Time': "{{ time }}"
       'Description': "{{ description }}"
 
-  - id: inventory_kpis
+  - type: stat-cards
+    id: inventory_kpis
     title: "Infrastructure KPIs"
-    type: stat_cards
     cards:
       'Datacenters': "{{ datacenter_count }}"
       'Clusters': "{{ cluster_count }}"
@@ -297,8 +297,8 @@ widgets:
       'Licenses': "{{ license_count }}"
       'Alarms': "{{ alarm_count }}"
 
-  - title: "Appliance Overview"
-    type: key_value
+  - type: key-value
+    title: "Appliance Overview"
     layout: half
     fields:
       'Version': "{{ appliance_version }}"
@@ -316,8 +316,8 @@ widgets:
       'Content Libraries': "{{ content_library_count }}"
       'Tag Categories': "{{ tag_category_count }}"
 
-  - title: "Clusters"
-    type: table
+  - type: table
+    title: "Clusters"
     visible_if: cluster_count > 0
     rows: "{{ clusters }}"
     columns:
@@ -329,8 +329,8 @@ widgets:
       'CPU %': "{{ cpu_usage_pct }}"
       'Mem %': "{{ mem_usage_pct }}"
 
-  - title: "Datastores"
-    type: table
+  - type: table
+    title: "Datastores"
     visible_if: datastore_count > 0
     rows: "{{ datastores }}"
     columns:
@@ -339,8 +339,8 @@ widgets:
       'Free (GB)': "{{ free_gb }}"
       'Used %': "{{ used_pct }}"
 
-  - title: "Resource Pools"
-    type: table
+  - type: table
+    title: "Resource Pools"
     visible_if: resource_pool_count > 0
     rows: "{{ resource_pools }}"
     columns:
@@ -350,8 +350,8 @@ widgets:
       'Memory Reservation': "{{ runtime_memory_reservation_used }}"
       'Memory Limit': "{{ runtime_memory_overall_usage }}"
 
-  - title: "Distributed Switches"
-    type: table
+  - type: table
+    title: "Distributed Switches"
     visible_if: dvswitch_count > 0
     rows: "{{ dvswitches }}"
     columns:
@@ -360,8 +360,8 @@ widgets:
       'Uplinks': "{{ num_uplinks }}"
       'MTU': "{{ mtu }}"
 
-  - title: "Distributed Portgroups"
-    type: table
+  - type: table
+    title: "Distributed Portgroups"
     visible_if: dvs_portgroup_count > 0
     rows: "{{ dvs_portgroups }}"
     columns:
@@ -371,8 +371,8 @@ widgets:
       'Ports': "{{ num_ports }}"
       'Type': "{{ port_binding }}"
 
-  - title: "Licenses"
-    type: table
+  - type: table
+    title: "Licenses"
     visible_if: license_count > 0
     rows: "{{ licenses }}"
     columns:
@@ -382,8 +382,8 @@ widgets:
       'Used': "{{ used }}"
       'Expiration': "{{ expiration_date }}"
 
-  - title: "Extensions"
-    type: table
+  - type: table
+    title: "Extensions"
     visible_if: extension_count > 0
     rows: "{{ extensions }}"
     columns:
@@ -392,8 +392,8 @@ widgets:
       'Version': "{{ ext_version }}"
       'Last Heartbeat': "{{ ext_last_heartbeat_time }}"
 
-  - title: "Content Libraries"
-    type: table
+  - type: table
+    title: "Content Libraries"
     visible_if: content_library_count > 0
     rows: "{{ content_libraries }}"
     columns:
@@ -401,8 +401,8 @@ widgets:
       'Type': "{{ lib_type }}"
       'Description': "{{ lib_description }}"
 
-  - title: "Backup Schedules"
-    type: table
+  - type: table
+    title: "Backup Schedules"
     visible_if: backup_schedule_count > 0
     rows: "{{ backup_schedules }}"
     columns:

@@ -501,6 +501,14 @@ class ReportSchema(BaseModel):
         # Auto-derive display_name from name
         if not values.get("display_name") and not values.get("title"):
             values["display_name"] = name.replace("_", " ").title() if name else ""
+
+        # Normalize hyphenated widget types to underscored (key-value → key_value)
+        widgets = values.get("widgets")
+        if isinstance(widgets, list):
+            for w in widgets:
+                if isinstance(w, dict) and isinstance(w.get("type"), str):
+                    w["type"] = w["type"].replace("-", "_")
+
         # Normalize extra_fleet_widget_columns dict form → list form
         import re as _re
         for key in ("extra_fleet_widget_columns", "fleet_columns"):

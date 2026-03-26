@@ -111,16 +111,16 @@ alerts:
 
 widgets:
 
-  - id: vm_kpis
+  - type: stat-cards
+    id: vm_kpis
     title: "VM KPIs"
-    type: stat_cards
     cards:
       'VMs': "{{ vm_count }}"
       'Snapshots': "{{ snapshot_count }}"
       'Powered Off': "{{ powered_off_vm_count }}"
 
-  - title: "Virtual Machines"
-    type: grouped_table
+  - type: grouped-table
+    title: "Virtual Machines"
     rows: "{{ virtual_machines }}"
     group_by: "{{ cluster }}"
     columns:
@@ -147,8 +147,8 @@ widgets:
       - label: "Last Backup"
         field: "{{ backup_info }}"
 
-  - title: "Snapshots"
-    type: table
+  - type: table
+    title: "Snapshots"
     visible_if: snapshot_count > 0
     rows: "{{ snapshots }}"
     columns:
