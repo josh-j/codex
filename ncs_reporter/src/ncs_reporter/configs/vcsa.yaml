@@ -40,29 +40,61 @@ config:
 
 fields:
   # --- Appliance ---
-  appliance_version: ".appliance_health_info.appliance.summary.version = unknown"
-  appliance_build: ".appliance_health_info.appliance.summary.build_number = unknown"
-  appliance_health_overall: ".appliance_health_info.appliance.summary.health.overall = gray"
-  appliance_health_cpu: ".appliance_health_info.appliance.summary.health.cpu = gray"
-  appliance_health_memory: ".appliance_health_info.appliance.summary.health.memory = gray"
-  appliance_health_database: ".appliance_health_info.appliance.summary.health.database = gray"
-  appliance_health_storage: ".appliance_health_info.appliance.summary.health.storage = gray"
-  appliance_uptime_seconds: ".appliance_health_info.appliance.summary.uptime | float"
+  appliance_version:
+    path: ".appliance_health_info.appliance.summary.version"
+    fallback: "unknown"
+  appliance_build:
+    path: ".appliance_health_info.appliance.summary.build_number"
+    fallback: "unknown"
+  appliance_health_overall:
+    path: ".appliance_health_info.appliance.summary.health.overall"
+    fallback: "gray"
+  appliance_health_cpu:
+    path: ".appliance_health_info.appliance.summary.health.cpu"
+    fallback: "gray"
+  appliance_health_memory:
+    path: ".appliance_health_info.appliance.summary.health.memory"
+    fallback: "gray"
+  appliance_health_database:
+    path: ".appliance_health_info.appliance.summary.health.database"
+    fallback: "gray"
+  appliance_health_storage:
+    path: ".appliance_health_info.appliance.summary.health.storage"
+    fallback: "gray"
+  appliance_uptime_seconds:
+    path: ".appliance_health_info.appliance.summary.uptime"
+    type: float
   appliance_uptime_days:
     compute: "appliance_uptime_seconds / 86400"
     type: float
-  ssh_enabled: ".appliance_health_info.appliance.access.ssh | bool"
-  shell_enabled: ".appliance_health_info.appliance.access.shell.enabled | bool"
-  ntp_mode: ".appliance_health_info.appliance.time.time_sync.mode = unknown"
-  ntp_servers: ".appliance_health_info.appliance.time.time_sync.servers | list"
+  ssh_enabled:
+    path: ".appliance_health_info.appliance.access.ssh"
+    type: bool
+  shell_enabled:
+    path: ".appliance_health_info.appliance.access.shell.enabled"
+    type: bool
+  ntp_mode:
+    path: ".appliance_health_info.appliance.time.time_sync.mode"
+    fallback: "unknown"
+  ntp_servers:
+    path: ".appliance_health_info.appliance.time.time_sync.servers"
+    type: list
 
   # --- Backup ---
-  backup_schedules: ".appliance_backup_info.schedules | list"
-  backup_schedule_count: ".appliance_backup_info.schedules | len_if_list | int"
+  backup_schedules:
+    path: ".appliance_backup_info.schedules"
+    type: list
+  backup_schedule_count:
+    path: ".appliance_backup_info.schedules | len_if_list"
+    type: int
 
   # --- Infrastructure Inventory ---
-  datacenter_count: ".datacenters_info.datacenter_info | len_if_list | int"
-  clusters_info_results: ".clusters_info.results | list"
+  datacenter_count:
+    path: ".datacenters_info.datacenter_info | len_if_list"
+    type: int
+  clusters_info_results:
+    path: ".clusters_info.results"
+    type: list
   cluster_count:
     script: "count_clusters_and_hosts.py"
     script_args: { metric: "cluster_count" }
@@ -74,8 +106,12 @@ fields:
   clusters:
     script: "get_clusters_list.py"
     type: list
-  datastores_raw: ".datastores_info.datastores | list"
-  datastore_count: ".datastores_info.datastores | len_if_list | int"
+  datastores_raw:
+    path: ".datastores_info.datastores"
+    type: list
+  datastore_count:
+    path: ".datastores_info.datastores | len_if_list"
+    type: int
   datastores:
     path: ".datastores_info.datastores"
     type: list
@@ -88,35 +124,69 @@ fields:
     type: int
 
   # --- Resource Pools ---
-  resource_pools: ".resource_pools_info.resource_pool_info | list"
-  resource_pool_count: ".resource_pools_info.resource_pool_info | len_if_list | int"
+  resource_pools:
+    path: ".resource_pools_info.resource_pool_info"
+    type: list
+  resource_pool_count:
+    path: ".resource_pools_info.resource_pool_info | len_if_list"
+    type: int
 
   # --- Networking ---
-  dvswitches: ".dvswitches_info.distributed_virtual_switches | list"
-  dvswitch_count: ".dvswitches_info.distributed_virtual_switches | len_if_list | int"
-  dvs_portgroups: ".dvs_portgroups_info.dvs_portgroup_info | list"
-  dvs_portgroup_count: ".dvs_portgroups_info.dvs_portgroup_info | len_if_list | int"
+  dvswitches:
+    path: ".dvswitches_info.distributed_virtual_switches"
+    type: list
+  dvswitch_count:
+    path: ".dvswitches_info.distributed_virtual_switches | len_if_list"
+    type: int
+  dvs_portgroups:
+    path: ".dvs_portgroups_info.dvs_portgroup_info"
+    type: list
+  dvs_portgroup_count:
+    path: ".dvs_portgroups_info.dvs_portgroup_info | len_if_list"
+    type: int
 
   # --- Licensing ---
-  licenses: ".licenses_info.licenses | list"
-  license_count: ".licenses_info.licenses | len_if_list | int"
+  licenses:
+    path: ".licenses_info.licenses"
+    type: list
+  license_count:
+    path: ".licenses_info.licenses | len_if_list"
+    type: int
 
   # --- Extensions ---
-  extensions: ".extensions_info.ext_facts | list"
-  extension_count: ".extensions_info.ext_facts | len_if_list | int"
+  extensions:
+    path: ".extensions_info.ext_facts"
+    type: list
+  extension_count:
+    path: ".extensions_info.ext_facts | len_if_list"
+    type: int
 
   # --- Content Libraries ---
-  content_libraries: ".content_libraries_info.content_libs | list"
-  content_library_count: ".content_libraries_info.content_libs | len_if_list | int"
+  content_libraries:
+    path: ".content_libraries_info.content_libs"
+    type: list
+  content_library_count:
+    path: ".content_libraries_info.content_libs | len_if_list"
+    type: int
 
   # --- Tags ---
-  tag_categories: ".tag_categories_info.tag_category_info | list"
-  tag_category_count: ".tag_categories_info.tag_category_info | len_if_list | int"
-  tags: ".tags_info.tag_info | list"
-  tag_count: ".tags_info.tag_info | len_if_list | int"
+  tag_categories:
+    path: ".tag_categories_info.tag_category_info"
+    type: list
+  tag_category_count:
+    path: ".tag_categories_info.tag_category_info | len_if_list"
+    type: int
+  tags:
+    path: ".tags_info.tag_info"
+    type: list
+  tag_count:
+    path: ".tags_info.tag_info | len_if_list"
+    type: int
 
   # --- Alarms ---
-  active_alarms: ".alarms_info.alarms | list"
+  active_alarms:
+    path: ".alarms_info.alarms"
+    type: list
   active_critical_alarm_count:
     path: ".alarms_info.alarms"
     type: int
@@ -127,7 +197,9 @@ fields:
     type: int
     count_where:
       severity: "warning"
-  alarm_count: ".alarms_info.alarms | len_if_list | int"
+  alarm_count:
+    path: ".alarms_info.alarms | len_if_list"
+    type: int
 
 alerts:
   - id: appliance_health_red
@@ -207,16 +279,24 @@ alerts:
     message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
 
 widgets:
-  - alert_panel: "Active Alerts"
+  - title: "Active Alerts"
+    type: alert_panel
 
-  - table: "Active vCenter Alarms"
+  - title: "Active vCenter Alarms"
+    type: table
     rows: active_alarms
     columns:
-      - "Alarm: alarm_name"
-      - "Entity: entity"
-      - "Severity: severity [badge]"
-      - "Time: time"
-      - "Description: description"
+      - label: "Alarm"
+        field: alarm_name
+      - label: "Entity"
+        field: entity
+      - label: "Severity"
+        field: severity
+        badge: true
+      - label: "Time"
+        field: time
+      - label: "Description"
+        field: description
 
   - id: inventory_kpis
     title: "Infrastructure KPIs"
@@ -232,111 +312,183 @@ widgets:
       - { field: license_count, label: "Licenses" }
       - { field: alarm_count, label: "Alarms", thresholds: { 1: yellow, 5: red } }
 
-  - key_value: "Appliance Overview"
+  - title: "Appliance Overview"
+    type: key_value
     layout: { width: "half" }
     fields:
-      - "Version: appliance_version"
-      - "Build: appliance_build"
-      - "Health Overall: appliance_health_overall [badge]"
-      - "Health CPU: appliance_health_cpu [badge]"
-      - "Health Memory: appliance_health_memory [badge]"
-      - "Health DB: appliance_health_database [badge]"
-      - "Health Storage: appliance_health_storage [badge]"
-      - "Uptime (days): appliance_uptime_days"
-      - "SSH Enabled: ssh_enabled [badge]"
-      - "NTP Mode: ntp_mode"
-      - "Backup Schedules: backup_schedule_count"
-      - "Extensions: extension_count"
-      - "Content Libraries: content_library_count"
-      - "Tag Categories: tag_category_count"
+      - label: "Version"
+        field: appliance_version
+      - label: "Build"
+        field: appliance_build
+      - label: "Health Overall"
+        field: appliance_health_overall
+        badge: true
+      - label: "Health CPU"
+        field: appliance_health_cpu
+        badge: true
+      - label: "Health Memory"
+        field: appliance_health_memory
+        badge: true
+      - label: "Health DB"
+        field: appliance_health_database
+        badge: true
+      - label: "Health Storage"
+        field: appliance_health_storage
+        badge: true
+      - label: "Uptime (days)"
+        field: appliance_uptime_days
+      - label: "SSH Enabled"
+        field: ssh_enabled
+        badge: true
+      - label: "NTP Mode"
+        field: ntp_mode
+      - label: "Backup Schedules"
+        field: backup_schedule_count
+      - label: "Extensions"
+        field: extension_count
+      - label: "Content Libraries"
+        field: content_library_count
+      - label: "Tag Categories"
+        field: tag_category_count
 
-  - table: "Clusters"
+  - title: "Clusters"
+    type: table
     visible_if: "cluster_count > 0"
     rows: clusters
     columns:
-      - "Cluster: name"
-      - "Datacenter: datacenter"
-      - "Hosts: host_count"
-      - "HA: ha_enabled [badge]"
-      - "DRS: drs_enabled [badge]"
-      - "CPU %: cpu_usage_pct"
-      - "Mem %: mem_usage_pct"
+      - label: "Cluster"
+        field: name
+      - label: "Datacenter"
+        field: datacenter
+      - label: "Hosts"
+        field: host_count
+      - label: "HA"
+        field: ha_enabled
+        badge: true
+      - label: "DRS"
+        field: drs_enabled
+        badge: true
+      - label: "CPU %"
+        field: cpu_usage_pct
+      - label: "Mem %"
+        field: mem_usage_pct
 
-  - table: "Datastores"
+  - title: "Datastores"
+    type: table
     visible_if: "datastore_count > 0"
     rows: datastores
     columns:
-      - "Name: name"
-      - "Capacity (GB): capacity_gb"
-      - "Free (GB): free_gb"
-      - "Used %: used_pct"
+      - label: "Name"
+        field: name
+      - label: "Capacity (GB)"
+        field: capacity_gb
+      - label: "Free (GB)"
+        field: free_gb
+      - label: "Used %"
+        field: used_pct
 
-  - table: "Resource Pools"
+  - title: "Resource Pools"
+    type: table
     visible_if: "resource_pool_count > 0"
     rows: resource_pools
     columns:
-      - "Name: name"
-      - "CPU Reservation: runtime_cpu_reservation_used"
-      - "CPU Limit: runtime_cpu_overall_usage"
-      - "Memory Reservation: runtime_memory_reservation_used"
-      - "Memory Limit: runtime_memory_overall_usage"
+      - label: "Name"
+        field: name
+      - label: "CPU Reservation"
+        field: runtime_cpu_reservation_used
+      - label: "CPU Limit"
+        field: runtime_cpu_overall_usage
+      - label: "Memory Reservation"
+        field: runtime_memory_reservation_used
+      - label: "Memory Limit"
+        field: runtime_memory_overall_usage
 
-  - table: "Distributed Switches"
+  - title: "Distributed Switches"
+    type: table
     visible_if: "dvswitch_count > 0"
     rows: dvswitches
     columns:
-      - "Name: name"
-      - "Ports: num_ports"
-      - "Uplinks: num_uplinks"
-      - "MTU: mtu"
+      - label: "Name"
+        field: name
+      - label: "Ports"
+        field: num_ports
+      - label: "Uplinks"
+        field: num_uplinks
+      - label: "MTU"
+        field: mtu
 
-  - table: "Distributed Portgroups"
+  - title: "Distributed Portgroups"
+    type: table
     visible_if: "dvs_portgroup_count > 0"
     rows: dvs_portgroups
     columns:
-      - "Name: portgroup_name"
-      - "Switch: dvswitch_name"
-      - "VLAN: vlan_id"
-      - "Ports: num_ports"
-      - "Type: port_binding"
+      - label: "Name"
+        field: portgroup_name
+      - label: "Switch"
+        field: dvswitch_name
+      - label: "VLAN"
+        field: vlan_id
+      - label: "Ports"
+        field: num_ports
+      - label: "Type"
+        field: port_binding
 
-  - table: "Licenses"
+  - title: "Licenses"
+    type: table
     visible_if: "license_count > 0"
     rows: licenses
     columns:
-      - "Name: name"
-      - "Edition: edition"
-      - "Total: total"
-      - "Used: used"
-      - "Expiration: expiration_date"
+      - label: "Name"
+        field: name
+      - label: "Edition"
+        field: edition
+      - label: "Total"
+        field: total
+      - label: "Used"
+        field: used
+      - label: "Expiration"
+        field: expiration_date
 
-  - table: "Extensions"
+  - title: "Extensions"
+    type: table
     visible_if: "extension_count > 0"
     rows: extensions
     columns:
-      - "Label: ext_label"
-      - "Company: ext_company"
-      - "Version: ext_version"
-      - "Last Heartbeat: ext_last_heartbeat_time"
+      - label: "Label"
+        field: ext_label
+      - label: "Company"
+        field: ext_company
+      - label: "Version"
+        field: ext_version
+      - label: "Last Heartbeat"
+        field: ext_last_heartbeat_time
 
-  - table: "Content Libraries"
+  - title: "Content Libraries"
+    type: table
     visible_if: "content_library_count > 0"
     rows: content_libraries
     columns:
-      - "Name: lib_name"
-      - "Type: lib_type"
-      - "Description: lib_description"
+      - label: "Name"
+        field: lib_name
+      - label: "Type"
+        field: lib_type
+      - label: "Description"
+        field: lib_description
 
-  - table: "Backup Schedules"
+  - title: "Backup Schedules"
+    type: table
     visible_if: "backup_schedule_count > 0"
     rows: backup_schedules
     columns:
-      - "Name: name"
+      - label: "Name"
+        field: name
       - label: "Enabled"
         field: enabled
         badge: true
         style_rules:
           - when: "enabled == 0.0"
             css_class: "sv-critical"
-      - "Location: location"
-      - "Retain Count: retain_count"
+      - label: "Location"
+        field: location
+      - label: "Retain Count"
+        field: retain_count

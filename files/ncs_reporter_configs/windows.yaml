@@ -25,49 +25,108 @@ fields:
   collected_at: "raw_windows.metadata.timestamp"
 
   # --- CCMExec service ---
-  ccm_service_state: ".ccm_service.state = unknown"
+  ccm_service_state:
+    path: ".ccm_service.state"
+    fallback: "unknown"
 
   # --- ConfigMgr applications (PowerShell JSON) ---
-  configmgr_apps: ".configmgr_apps | unwrap_ps(AllApps) | list"
-  apps_to_update: ".configmgr_apps | unwrap_ps(AppsToUpdate) | list"
+  configmgr_apps:
+    path: ".configmgr_apps | unwrap_ps(AllApps)"
+    type: list
+  apps_to_update:
+    path: ".configmgr_apps | unwrap_ps(AppsToUpdate)"
+    type: list
 
   # --- Installed applications (PowerShell JSON) ---
-  installed_apps: ".installed_apps | unwrap_ps | list"
+  installed_apps:
+    path: ".installed_apps | unwrap_ps"
+    type: list
 
   # --- Windows Update results ---
-  update_results: ".update_results | list"
+  update_results:
+    path: ".update_results"
+    type: list
 
   # --- Health fields ---
-  health_os_info: ".health.os_info | dict = {}"
-  health_hostname: ".health.os_info.hostname = ''"
-  health_os_name: ".health.os_info.os_name = ''"
-  health_uptime_hours: ".health.os_info.uptime_hours = 0"
-  health_disk: ".health.disk | list"
+  health_os_info:
+    path: ".health.os_info"
+    type: dict
+    fallback: {}
+  health_hostname:
+    path: ".health.os_info.hostname"
+    fallback: ''
+  health_os_name:
+    path: ".health.os_info.os_name"
+    fallback: ''
+  health_uptime_hours:
+    path: ".health.os_info.uptime_hours"
+    fallback: 0
+  health_disk:
+    path: ".health.disk"
+    type: list
 
   # health_disk_alert removed — disk threshold check moved to computed_filter alert
 
-  health_memory_cpu: ".health.memory_cpu | dict = {}"
-  health_memory_used_pct: ".health.memory_cpu.memory_used_pct = 0"
-  health_cpu_load_pct: ".health.memory_cpu.cpu_load_pct = 0"
-  health_services: ".health.services | list"
-  health_network: ".health.network | list"
-  health_reboot_pending: ".health.reboot_pending.reboot_pending = false"
-  health_reboot_reasons: ".health.reboot_pending.reasons | list"
-  health_event_logs: ".health.event_logs | dict = {}"
-  health_event_count: ".health.event_logs.event_count = 0"
-  health_events: ".health.event_logs.events | list"
-  health_secure_channel: ".health.secure_channel.secure_channel = N/A"
-  health_software_versions: ".health.software_versions | list"
+  health_memory_cpu:
+    path: ".health.memory_cpu"
+    type: dict
+    fallback: {}
+  health_memory_used_pct:
+    path: ".health.memory_cpu.memory_used_pct"
+    fallback: 0
+  health_cpu_load_pct:
+    path: ".health.memory_cpu.cpu_load_pct"
+    fallback: 0
+  health_services:
+    path: ".health.services"
+    type: list
+  health_network:
+    path: ".health.network"
+    type: list
+  health_reboot_pending:
+    path: ".health.reboot_pending.reboot_pending"
+    fallback: false
+  health_reboot_reasons:
+    path: ".health.reboot_pending.reasons"
+    type: list
+  health_event_logs:
+    path: ".health.event_logs"
+    type: dict
+    fallback: {}
+  health_event_count:
+    path: ".health.event_logs.event_count"
+    fallback: 0
+  health_events:
+    path: ".health.event_logs.events"
+    type: list
+  health_secure_channel:
+    path: ".health.secure_channel.secure_channel"
+    fallback: "N/A"
+  health_software_versions:
+    path: ".health.software_versions"
+    type: list
 
   # --- Vulnerability scan fields ---
-  vuln_total_findings: ".vuln_scan.results.total_findings = 0"
-  vuln_remediated: ".vuln_scan.results.remediated = 0"
-  vuln_open: ".vuln_scan.results.open = 0"
-  vuln_findings: ".vuln_scan.results.findings | list"
+  vuln_total_findings:
+    path: ".vuln_scan.results.total_findings"
+    fallback: 0
+  vuln_remediated:
+    path: ".vuln_scan.results.remediated"
+    fallback: 0
+  vuln_open:
+    path: ".vuln_scan.results.open"
+    fallback: 0
+  vuln_findings:
+    path: ".vuln_scan.results.findings"
+    type: list
 
   # --- KB status fields ---
-  kb_detection: ".kb_install.detection | list"
-  kb_install_results: ".kb_install.install_results | list"
+  kb_detection:
+    path: ".kb_install.detection"
+    type: list
+  kb_install_results:
+    path: ".kb_install.install_results"
+    type: list
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -133,91 +192,154 @@ alerts:
 # ---------------------------------------------------------------------------
 
 widgets:
-  - alert_panel: "Active Alerts"
+  - title: "Active Alerts"
+    type: alert_panel
 
-  - key_value: "System Information"
+  - title: "System Information"
+    type: key_value
     fields:
-      - "Hostname: health_hostname"
-      - "OS: health_os_name"
-      - "Uptime (hours): health_uptime_hours"
-      - "CCMExec State: ccm_service_state"
-      - "Reboot Pending: health_reboot_pending"
-      - "Secure Channel: health_secure_channel"
+      - label: "Hostname"
+        field: health_hostname
+      - label: "OS"
+        field: health_os_name
+      - label: "Uptime (hours)"
+        field: health_uptime_hours
+      - label: "CCMExec State"
+        field: ccm_service_state
+      - label: "Reboot Pending"
+        field: health_reboot_pending
+      - label: "Secure Channel"
+        field: health_secure_channel
 
-  - table: "Disk Usage"
+  - title: "Disk Usage"
+    type: table
     rows: health_disk
     columns:
-      - "Drive: DeviceID"
-      - "Size (GB): SizeGB"
-      - "Free (GB): FreeGB"
-      - "Used %: UsedPct [badge]"
+      - label: "Drive"
+        field: DeviceID
+      - label: "Size (GB)"
+        field: SizeGB
+      - label: "Free (GB)"
+        field: FreeGB
+      - label: "Used %"
+        field: UsedPct
+        badge: true
 
-  - key_value: "Memory & CPU"
+  - title: "Memory & CPU"
+    type: key_value
     fields:
-      - "Memory Used %: health_memory_used_pct"
-      - "CPU Load %: health_cpu_load_pct"
+      - label: "Memory Used %"
+        field: health_memory_used_pct
+      - label: "CPU Load %"
+        field: health_cpu_load_pct
 
-  - table: "Critical Services"
+  - title: "Critical Services"
+    type: table
     rows: health_services
     columns:
-      - "Service: display_name"
-      - "Status: status [badge]"
-      - "Start Type: start_type"
+      - label: "Service"
+        field: display_name
+      - label: "Status"
+        field: status
+        badge: true
+      - label: "Start Type"
+        field: start_type
 
-  - table: "Recent Critical/Error Events"
+  - title: "Recent Critical/Error Events"
+    type: table
     rows: health_events
     columns:
-      - "Time: time"
-      - "Log: log"
-      - "Level: level [badge]"
-      - "Source: source"
-      - "ID: id"
-      - "Message: message"
+      - label: "Time"
+        field: time
+      - label: "Log"
+        field: log
+      - label: "Level"
+        field: level
+        badge: true
+      - label: "Source"
+        field: source
+      - label: "ID"
+        field: id
+      - label: "Message"
+        field: message
 
-  - key_value: "Vulnerability Summary"
+  - title: "Vulnerability Summary"
+    type: key_value
     fields:
-      - "Total Findings: vuln_total_findings"
-      - "Remediated: vuln_remediated"
-      - "Open: vuln_open"
+      - label: "Total Findings"
+        field: vuln_total_findings
+      - label: "Remediated"
+        field: vuln_remediated
+      - label: "Open"
+        field: vuln_open
 
-  - table: "Vulnerability Findings"
+  - title: "Vulnerability Findings"
+    type: table
     rows: vuln_findings
     columns:
-      - "Plugin ID: plugin_id"
-      - "Severity: severity [badge]"
-      - "Title: title"
-      - "Remediated: remediated [badge]"
+      - label: "Plugin ID"
+        field: plugin_id
+      - label: "Severity"
+        field: severity
+        badge: true
+      - label: "Title"
+        field: title
+      - label: "Remediated"
+        field: remediated
+        badge: true
 
-  - table: "ConfigMgr Applications"
+  - title: "ConfigMgr Applications"
+    type: table
     rows: configmgr_apps
     columns:
-      - "Name: Name"
-      - "Version: Version"
+      - label: "Name"
+        field: Name
+      - label: "Version"
+        field: Version
 
-  - table: "Applications Pending Update"
+  - title: "Applications Pending Update"
+    type: table
     rows: apps_to_update
     columns:
-      - "Name: Name"
-      - "Current Version: CurrentVersion"
-      - "Target Version: TargetVersion"
+      - label: "Name"
+        field: Name
+      - label: "Current Version"
+        field: CurrentVersion
+      - label: "Target Version"
+        field: TargetVersion
 
-  - table: "Update Results"
+  - title: "Update Results"
+    type: table
     rows: update_results
     columns:
-      - "Application: application"
-      - "Status: status [badge]"
-      - "Failed: failed [badge]"
+      - label: "Application"
+        field: application
+      - label: "Status"
+        field: status
+        badge: true
+      - label: "Failed"
+        field: failed
+        badge: true
 
-  - table: "KB Detection Status"
+  - title: "KB Detection Status"
+    type: table
     rows: kb_detection
     columns:
-      - "KB: kb"
-      - "Installed: installed [badge]"
-      - "Detection Method: method"
+      - label: "KB"
+        field: kb
+      - label: "Installed"
+        field: installed
+        badge: true
+      - label: "Detection Method"
+        field: method
 
-  - table: "Installed Software"
+  - title: "Installed Software"
+    type: table
     rows: health_software_versions
     columns:
-      - "Name: name"
-      - "Version: version"
-      - "Publisher: publisher"
+      - label: "Name"
+        field: name
+      - label: "Version"
+        field: version
+      - label: "Publisher"
+        field: publisher

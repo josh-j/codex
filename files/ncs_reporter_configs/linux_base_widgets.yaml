@@ -1,6 +1,7 @@
 # Shared Linux widgets — included by linux.yaml, photon.yaml, etc.
 
-- alert_panel: "Active Alerts"
+- title: "Active Alerts"
+  type: alert_panel
 
 - id: headline_kpis
   title: "Key Metrics"
@@ -11,17 +12,24 @@
     - { field: failed_services_count, label: "Failed Svcs", thresholds: { 1: red } }
     - { field: pending_updates_count, label: "Pending Updates", thresholds: { 1: yellow } }
 
-- key_value: "System Overview"
+- title: "System Overview"
+  type: key_value
   fields:
-    - "Hostname: hostname"
-    - "IP Address: ip_address"
-    - "Distribution: distribution"
-    - "Version: distribution_version"
-    - "Kernel: kernel"
+    - label: "Hostname"
+      field: hostname
+    - label: "IP Address"
+      field: ip_address
+    - label: "Distribution"
+      field: distribution
+    - label: "Version"
+      field: distribution_version
+    - label: "Kernel"
+      field: kernel
     - { label: "Uptime (days)", field: uptime_days, format: "{value:.1f}" }
     - { label: "Load Avg (15m)", field: load_avg_15m, format: "{value:.2f}" }
 
-- key_value: "Memory"
+- title: "Memory"
+  type: key_value
   fields:
     - { label: "Total (MB)", field: memory_total_mb, format: "{value:.1f}" }
     - { label: "Free (MB)", field: memory_free_mb, format: "{value:.1f}" }
@@ -29,18 +37,30 @@
     - { label: "Swap Total (MB)", field: swap_total_mb, format: "{value:.1f}" }
     - { label: "Swap Used %", field: swap_used_pct, format: "{value:.1f}" }
 
-- key_value: "Patching & Services"
+- title: "Patching & Services"
+  type: key_value
   fields:
-    - "Failed Services: failed_services_count"
-    - "Pending Updates: pending_updates_count"
-    - "Reboot Required: reboot_pending"
+    - label: "Failed Services"
+      field: failed_services_count
+    - label: "Pending Updates"
+      field: pending_updates_count
+    - label: "Reboot Required"
+      field: reboot_pending
 
-- table: "Filesystems"
+- title: "Filesystems"
+  type: table
   rows: disks
   columns:
-    - "Mount: mount"
-    - "Device: device"
-    - "FS Type: fstype"
-    - "Total (GB): total_gb"
-    - "Free (GB): free_gb"
-    - "Used %: used_pct [badge]"
+    - label: "Mount"
+      field: mount
+    - label: "Device"
+      field: device
+    - label: "FS Type"
+      field: fstype
+    - label: "Total (GB)"
+      field: total_gb
+    - label: "Free (GB)"
+      field: free_gb
+    - label: "Used %"
+      field: used_pct
+      badge: true

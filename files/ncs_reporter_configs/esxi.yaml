@@ -22,8 +22,12 @@ split_name_key: name
 
 fields:
   # Raw data references for the assembly script
-  hosts_info: ".hosts_info | dict"
-  clusters_info_results: ".clusters_info.results | list"
+  hosts_info:
+    path: ".hosts_info"
+    type: dict
+  clusters_info_results:
+    path: ".clusters_info.results"
+    type: list
 
   # Assembly script: merges raw host_facts, host_nics, host_services
   # into a flat list of per-host records for split_field expansion.
@@ -32,30 +36,72 @@ fields:
     type: list
 
   # Per-host fields (resolved from the split item after expansion)
-  cluster: "cluster = ''"
-  datacenter: "datacenter = ''"
-  connection_state: "connection_state = unknown"
-  overall_status: "overall_status = unknown"
-  cpu_used_pct: "cpu_used_pct | float"
-  mem_used_pct: "mem_used_pct | float"
-  mem_mb_total: "mem_mb_total | float"
-  mem_mb_used: "mem_mb_used | float"
-  vm_count: "vm_count | int"
-  uptime_seconds: "uptime_seconds | float"
+  cluster:
+    path: "cluster"
+    fallback: ''
+  datacenter:
+    path: "datacenter"
+    fallback: ''
+  connection_state:
+    path: "connection_state"
+    fallback: "unknown"
+  overall_status:
+    path: "overall_status"
+    fallback: "unknown"
+  cpu_used_pct:
+    path: "cpu_used_pct"
+    type: float
+  mem_used_pct:
+    path: "mem_used_pct"
+    type: float
+  mem_mb_total:
+    path: "mem_mb_total"
+    type: float
+  mem_mb_used:
+    path: "mem_mb_used"
+    type: float
+  vm_count:
+    path: "vm_count"
+    type: int
+  uptime_seconds:
+    path: "uptime_seconds"
+    type: float
   uptime_days:
     compute: "uptime_seconds / 86400"
     type: float
-  version: "version = ''"
-  build: "build = ''"
-  in_maintenance_mode: "in_maintenance_mode | bool"
-  lockdown_mode: "lockdown_mode = unknown"
-  ssh_enabled: "ssh_enabled | bool"
-  shell_enabled: "shell_enabled | bool"
-  ntp_running: "ntp_running | bool"
-  datastores: "datastores | list"
-  nics: "nics | list"
-  vmknics: "vmknics | list"
-  hardware_alerts: "hardware_alerts | list"
+  version:
+    path: "version"
+    fallback: ''
+  build:
+    path: "build"
+    fallback: ''
+  in_maintenance_mode:
+    path: "in_maintenance_mode"
+    type: bool
+  lockdown_mode:
+    path: "lockdown_mode"
+    fallback: "unknown"
+  ssh_enabled:
+    path: "ssh_enabled"
+    type: bool
+  shell_enabled:
+    path: "shell_enabled"
+    type: bool
+  ntp_running:
+    path: "ntp_running"
+    type: bool
+  datastores:
+    path: "datastores"
+    type: list
+  nics:
+    path: "nics"
+    type: list
+  vmknics:
+    path: "vmknics"
+    type: list
+  hardware_alerts:
+    path: "hardware_alerts"
+    type: list
 
 alerts:
   - id: host_disconnected
@@ -121,19 +167,32 @@ alerts:
     message: "ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
 
 widgets:
-  - alert_panel: "Active Alerts"
+  - title: "Active Alerts"
+    type: alert_panel
 
-  - key_value: "Host Overview"
+  - title: "Host Overview"
+    type: key_value
     layout: { width: "half" }
     fields:
-      - "Connection State: connection_state [badge]"
-      - "Overall Status: overall_status [badge]"
-      - "Cluster: cluster"
-      - "Datacenter: datacenter"
-      - "Version: version"
-      - "Build: build"
-      - "Maintenance Mode: in_maintenance_mode [badge]"
-      - "Lockdown Mode: lockdown_mode"
+      - label: "Connection State"
+        field: connection_state
+        badge: true
+      - label: "Overall Status"
+        field: overall_status
+        badge: true
+      - label: "Cluster"
+        field: cluster
+      - label: "Datacenter"
+        field: datacenter
+      - label: "Version"
+        field: version
+      - label: "Build"
+        field: build
+      - label: "Maintenance Mode"
+        field: in_maintenance_mode
+        badge: true
+      - label: "Lockdown Mode"
+        field: lockdown_mode
 
   - id: resource_kpis
     title: "Resource Utilization"
@@ -145,25 +204,43 @@ widgets:
       - { field: vm_count, label: "VMs" }
       - { field: uptime_days, label: "Uptime (days)", format: "{value:.0f}" }
 
-  - key_value: "Security & Services"
+  - title: "Security & Services"
+    type: key_value
     layout: { width: "half" }
     fields:
-      - "SSH Enabled: ssh_enabled [badge]"
-      - "Shell Enabled: shell_enabled [badge]"
-      - "NTP Running: ntp_running [badge]"
+      - label: "SSH Enabled"
+        field: ssh_enabled
+        badge: true
+      - label: "Shell Enabled"
+        field: shell_enabled
+        badge: true
+      - label: "NTP Running"
+        field: ntp_running
+        badge: true
 
-  - table: "Datastores"
+  - title: "Datastores"
+    type: table
     rows: datastores
     columns:
-      - "Name: name"
-      - "Total: total"
-      - "Free: free"
+      - label: "Name"
+        field: name
+      - label: "Total"
+        field: total
+      - label: "Free"
+        field: free
 
-  - table: "Physical NICs"
+  - title: "Physical NICs"
+    type: table
     rows: nics
     columns:
-      - "Device: device"
-      - "Status: link_status [badge]"
-      - "Speed (Mbps): speed_mbps"
-      - "Driver: driver"
-      - "Switch: switch"
+      - label: "Device"
+        field: device
+      - label: "Status"
+        field: link_status
+        badge: true
+      - label: "Speed (Mbps)"
+        field: speed_mbps
+      - label: "Driver"
+        field: driver
+      - label: "Switch"
+        field: switch

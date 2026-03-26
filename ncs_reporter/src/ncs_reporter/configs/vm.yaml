@@ -20,9 +20,15 @@ config:
 # ---------------------------------------------------------------------------
 
 fields:
-  datacenters: ".datacenters_info.datacenter_info | list"
-  vms_info_raw: ".vms_info | dict"
-  infra_patterns: ".config.infrastructure_vm_patterns | list"
+  datacenters:
+    path: ".datacenters_info.datacenter_info"
+    type: list
+  vms_info_raw:
+    path: ".vms_info"
+    type: dict
+  infra_patterns:
+    path: ".config.infrastructure_vm_patterns"
+    type: list
 
   virtual_machines:
     script: "get_vms_list.py"
@@ -30,8 +36,12 @@ fields:
       exclude_patterns: "{infra_patterns}"
     type: list
 
-  vm_count: ".vms_info.virtual_machines | len_if_list | int"
-  snapshots_raw: ".snapshots_info.snapshots | list"
+  vm_count:
+    path: ".vms_info.virtual_machines | len_if_list"
+    type: int
+  snapshots_raw:
+    path: ".snapshots_info.snapshots"
+    type: list
 
   snapshots:
     script: "normalize_snapshots.py"
@@ -40,7 +50,9 @@ fields:
       age_days: 7
     type: list
 
-  snapshot_count: ".snapshots_info.snapshots | len_if_list | int"
+  snapshot_count:
+    path: ".snapshots_info.snapshots | len_if_list"
+    type: int
   collected_at: "raw_vm.metadata.timestamp"
 
   aged_snapshot_count:
@@ -100,7 +112,8 @@ alerts:
 # ---------------------------------------------------------------------------
 
 widgets:
-  - alert_panel: "Active Alerts"
+  - title: "Active Alerts"
+    type: alert_panel
 
   - id: vm_kpis
     title: "VM KPIs"
@@ -111,8 +124,7 @@ widgets:
       - { field: snapshot_count, label: "Snapshots", thresholds: { 1: yellow, 10: red } }
       - { field: powered_off_vm_count, label: "Powered Off", thresholds: { 1: yellow, 5: red } }
 
-  - id: virtual_machines
-    title: "Virtual Machines"
+  - title: "Virtual Machines"
     type: grouped_table
     rows: virtual_machines
     group_by: cluster
@@ -124,21 +136,36 @@ widgets:
         style_rules:
           - when: "power_state == 'poweredOff'"
             css_class: "subtle-text"
-      - "Tools Status: tools_status [badge]"
-      - "Cluster: cluster"
-      - "IP Address: ip_address"
-      - "Memory (MB): allocated.memory"
-      - "vCPU: allocated.cpu"
-      - "Owner Email: owner_email"
-      - "Last Backup: backup_info"
+      - label: "Tools Status"
+        field: tools_status
+        badge: true
+      - label: "Cluster"
+        field: cluster
+      - label: "IP Address"
+        field: ip_address
+      - label: "Memory (MB)"
+        field: allocated.memory
+      - label: "vCPU"
+        field: allocated.cpu
+      - label: "Owner Email"
+        field: owner_email
+      - label: "Last Backup"
+        field: backup_info
 
-  - table: "Snapshots"
+  - title: "Snapshots"
+    type: table
     visible_if: "snapshot_count > 0"
     rows: snapshots
     columns:
-      - "VM: vm_name"
-      - "Owner Email: owner_email"
-      - "Snapshot: name"
-      - "Created: creation_time"
-      - "State: state"
-      - "Days Old: days_old"
+      - label: "VM"
+        field: vm_name
+      - label: "Owner Email"
+        field: owner_email
+      - label: "Snapshot"
+        field: name
+      - label: "Created"
+        field: creation_time
+      - label: "State"
+        field: state
+      - label: "Days Old"
+        field: days_old
