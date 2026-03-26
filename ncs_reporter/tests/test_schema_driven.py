@@ -52,7 +52,6 @@ def _simple_schema() -> ReportSchema:
                 severity="CRITICAL",
                 when="interface_list | selectattr('status', 'eq', 'down') | list | length > 0",
                 message="Interface(s) down detected",
-                affected_items_field="interface_list",
             ),
         ],
     )
@@ -313,26 +312,6 @@ class TestSchemaModelValidation:
     def test_extra_fields_forbidden(self) -> None:
         with pytest.raises(Exception):
             FieldSpec(path="x", type="str", fallback=None, unknown_key="oops")  # type: ignore[call-arg]
-
-    def test_cross_ref_validation_catches_bad_detail_field(self) -> None:
-        with pytest.raises(ValueError, match="undeclared field"):
-            ReportSchema(
-                name="bad",
-                platform="test",
-                display_name="Bad",
-                detection=DetectionSpec(keys_any=["x"]),
-                fields={},
-                alerts=[
-                    AlertRule(
-                        id="bad_alert",
-                        category="Test",
-                        severity="WARNING",
-                        when="true",
-                        message="oops",
-                        detail_fields=["nonexistent_field"],
-                    )
-                ],
-            )
 
     def test_valid_schema_parses_ok(self) -> None:
         schema = _simple_schema()
@@ -805,7 +784,6 @@ class TestScriptFields:
                     severity="WARNING",
                     when="aged_count > 0",
                     message="{aged_count} aged snapshot(s)",
-                    detail_fields=["aged_count"],
                 )
             ],
         )

@@ -48,25 +48,6 @@
           "title": "Message",
           "type": "string"
         },
-        "detail_fields": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Detail Fields",
-          "type": "array"
-        },
-        "affected_items_field": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Affected Items Field"
-        },
         "suppress_if": {
           "anyOf": [
             {

@@ -18,7 +18,6 @@
   severity: CRITICAL
   when: "disks | selectattr('used_pct', 'ge', 95.0) | list | length > 0"
   message: "One or more filesystems critically full (>=95%)"
-  affected_items_field: disks
 
 - id: disk_warning
   category: "Capacity"
@@ -26,7 +25,6 @@
   suppress_if: disk_critical
   when: "disks | selectattr('used_pct', 'ge', 80.0) | rejectattr('used_pct', 'ge', 95.0) | list | length > 0"
   message: "One or more filesystems reaching capacity (>=80%)"
-  affected_items_field: disks
 
 - id: services_failed
   category: "Availability"
@@ -57,4 +55,3 @@
   severity: WARNING
   when: "world_writable_count > 0"
   message: "{world_writable_count} world-writable file(s) detected"
-  affected_items_field: world_writable_files

@@ -4,6 +4,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -33,7 +34,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type"
       ],
@@ -80,25 +80,6 @@
         "message": {
           "title": "Message",
           "type": "string"
-        },
-        "detail_fields": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Detail Fields",
-          "type": "array"
-        },
-        "affected_items_field": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Affected Items Field"
         },
         "suppress_if": {
           "anyOf": [
@@ -150,6 +131,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -211,7 +193,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "rows_field",
@@ -435,6 +416,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -479,7 +461,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "rows_field",
@@ -529,6 +510,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -565,7 +547,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "fields"
@@ -605,6 +586,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -665,7 +647,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "items_field"
@@ -677,6 +658,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -710,7 +692,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "content"
@@ -769,6 +750,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -841,7 +823,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "field"
@@ -911,6 +892,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -947,7 +929,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "cards"
@@ -1095,6 +1076,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "default": "",
           "title": "Id",
           "type": "string"
         },
@@ -1135,7 +1117,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "type",
         "rows_field",

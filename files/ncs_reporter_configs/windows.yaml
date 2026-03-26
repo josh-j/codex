@@ -79,63 +79,54 @@ alerts:
     severity: WARNING
     when: "ccm_service_state != 'running'"
     message: "ConfigMgr client service (CCMExec) is not running (state: {ccm_service_state})"
-    detail_fields: [ccm_service_state]
 
   - id: failed_updates
     category: "Patching"
     severity: WARNING
     when: "update_results | selectattr('failed', 'eq', true) | list | length > 0"
     message: "One or more ConfigMgr application updates failed"
-    affected_items_field: update_results
 
   - id: apps_pending_update
     category: "Patching"
     severity: WARNING
     when: "apps_to_update is defined and apps_to_update | length > 0"
     message: "ConfigMgr applications have pending updates"
-    affected_items_field: apps_to_update
 
   - id: reboot_pending
     category: "Health"
     severity: WARNING
     when: "health_reboot_pending == 1"
     message: "System has a pending reboot ({health_reboot_reasons})"
-    detail_fields: [health_reboot_pending, health_reboot_reasons]
 
   - id: disk_space_warning
     category: "Health"
     severity: WARNING
     when: "health_disk | selectattr('UsedPct', 'gt', 80.0) | list | length > 0"
     message: "One or more disks exceed 80% usage"
-    affected_items_field: health_disk
 
   - id: memory_high
     category: "Health"
     severity: WARNING
     when: "health_memory_used_pct > 85"
     message: "Memory usage is high ({health_memory_used_pct}%)"
-    detail_fields: [health_memory_used_pct]
 
   - id: secure_channel_failed
     category: "Health"
     severity: CRITICAL
     when: "health_secure_channel == 'FAILED'"
     message: "Domain secure channel test FAILED"
-    detail_fields: [health_secure_channel]
 
   - id: critical_events
     category: "Health"
     severity: WARNING
     when: "health_event_count > 0"
     message: "{health_event_count} critical/error events in recent logs"
-    detail_fields: [health_event_count]
 
   - id: open_vulnerabilities
     category: "Security"
     severity: WARNING
     when: "vuln_open > 0"
     message: "{vuln_open} open vulnerability findings"
-    detail_fields: [vuln_open, vuln_total_findings, vuln_remediated]
 
 # ---------------------------------------------------------------------------
 # Widgets
