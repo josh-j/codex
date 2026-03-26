@@ -8,7 +8,7 @@ platform:
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
   stig_playbook: "playbooks/vcsa/stig_remediate.yml"
   stig_target_var: "vcsa_stig_target_hosts"
-  stig_skeleton_map:
+  stig_checklist_map:
     vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
     vcenter: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
     vami: cklb_skeletons/cklb_skeleton_vsphere7_vami_V1R2.json
@@ -28,7 +28,7 @@ platform:
   children:
     - input_dir: vmware/vcenter/vcsa
       report_dir: vmware/vcsa/vcsa
-      stig_skeleton_map:
+      stig_checklist_map:
         vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
 
 detection:

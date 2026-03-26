@@ -176,7 +176,7 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None, config_dir:
 
     Skeleton resolution order:
       1. --skeleton-dir (legacy explicit override, bare filename)
-      2. --config-dir + path from stig_skeleton_map (e.g. cklb_skeletons/foo.cklb)
+      2. --config-dir + path from stig_checklist_map (e.g. cklb_skeletons/foo.cklb)
       3. Package builtins in src/ncs_reporter/cklb_skeletons/ (bare filename)
     """
     from ._report_context import load_hosts_data

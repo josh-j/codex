@@ -580,7 +580,7 @@ def build_platform_entries_from_schemas(
         if merge_key in seen_entries:
             primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
-            primary_entry["stig_skeleton_map"].update(spec.stig_skeleton_map)
+            primary_entry["stig_checklist_map"].update(spec.stig_checklist_map)
             primary_entry["stig_rule_prefixes"].update(spec.stig_rule_prefixes)
             continue
 
@@ -593,7 +593,7 @@ def build_platform_entries_from_schemas(
             "schema_name": schema.name,
             "display_name": schema.display_name,
             "schema_names": [schema.name],
-            "stig_skeleton_map": dict(spec.stig_skeleton_map),
+            "stig_checklist_map": dict(spec.stig_checklist_map),
             "stig_rule_prefixes": dict(spec.stig_rule_prefixes),
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
@@ -610,7 +610,7 @@ def build_platform_entries_from_schemas(
                 "report_dir": sub.report_dir,
                 "platform": platform_name,
                 "render": False,
-                "stig_skeleton_map": dict(sub.stig_skeleton_map),
+                "stig_checklist_map": dict(sub.stig_checklist_map),
                 "stig_playbook": sub.stig_playbook or spec.stig_playbook,
                 "stig_target_var": sub.stig_target_var or spec.stig_target_var,
             }

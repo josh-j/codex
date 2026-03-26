@@ -719,11 +719,11 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "stig_skeleton_map": {
+        "stig_checklist_map": {
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Stig Skeleton Map",
+          "title": "Stig Checklist Map",
           "type": "object"
         },
         "stig_rule_prefixes": {
@@ -992,11 +992,11 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "stig_skeleton_map": {
+        "stig_checklist_map": {
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Stig Skeleton Map",
+          "title": "Stig Checklist Map",
           "type": "object"
         },
         "stig_playbook": {
