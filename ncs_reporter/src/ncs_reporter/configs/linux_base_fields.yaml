@@ -30,8 +30,7 @@ uptime_seconds:
   type: float
 
 uptime_days:
-  compute: "uptime_seconds / 86400"
-  type: float
+  compute: uptime_seconds / 86400
 
 load_avg_15m:
   path: ".ansible_facts.loadavg.15m"
@@ -48,8 +47,7 @@ memory_free_mb:
   type: float
 
 memory_used_pct:
-  compute: "(memory_total_mb - memory_free_mb) / memory_total_mb * 100"
-  type: float
+  compute: (memory_total_mb - memory_free_mb) / memory_total_mb * 100
 
 swap_total_mb:
   path: ".ansible_facts.swaptotal_mb"
@@ -59,8 +57,7 @@ swap_free_mb:
   type: float
 
 swap_used_pct:
-  compute: "(swap_total_mb - swap_free_mb) / swap_total_mb * 100"
-  type: float
+  compute: (swap_total_mb - swap_free_mb) / swap_total_mb * 100
 
 # --- Services ---
 

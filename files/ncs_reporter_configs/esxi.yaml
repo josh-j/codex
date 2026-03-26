@@ -15,8 +15,7 @@ vars:
   # All raw_esxi.data.* fields are auto-imported from the collector payload.
   # Only computed/derived vars need explicit declaration.
   uptime_days:
-    compute: "uptime_seconds / 86400"
-    type: float
+    compute: uptime_seconds / 86400
 
 alerts:
   - id: host_disconnected

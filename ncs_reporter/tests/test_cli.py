@@ -56,7 +56,7 @@ def _vmware_host_bundle():
                 }
             },
         },
-        "vcenter": {
+        "vcsa": {
             "alerts": [],
             "vcenter_health": {
                 "health": "green",

@@ -573,8 +573,8 @@ class TestComputeFields:
 # ---------------------------------------------------------------------------
 
 
-class TestVcenterSchema:
-    def test_vcenter_schema_loads_and_validates(self) -> None:
+class TestVcsaSchema:
+    def test_vcsa_schema_loads_and_validates(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
@@ -590,7 +590,7 @@ class TestVcenterSchema:
         assert "appliance_uptime_days" in s.fields
         assert s.fields["appliance_uptime_days"].compute is not None
 
-    def test_vcenter_schema_fires_on_synthetic_bundle(self) -> None:
+    def test_vcsa_schema_fires_on_synthetic_bundle(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
