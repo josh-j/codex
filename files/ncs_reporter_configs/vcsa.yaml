@@ -1,8 +1,7 @@
 name: vcenter
 display_name: "VMware VCSA"
 platform:
-  name: vmware
-  input_dir: vmware/vcenter
+  path: vmware/vcenter
   report_dir: vmware/vcsa
   site_compute_node: true
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]

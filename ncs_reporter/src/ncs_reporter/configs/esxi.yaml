@@ -1,9 +1,7 @@
 name: esxi
 display_name: "VMware ESXi"
 platform:
-  name: vmware
-  input_dir: vmware/esxi
-  report_dir: vmware/esxi
+  path: vmware/esxi
   stig_checklist_map:
     esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
 
