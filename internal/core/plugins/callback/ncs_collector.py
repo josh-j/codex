@@ -972,7 +972,7 @@ class CallbackModule(CallbackBase):
         platform_dir = collect_data.get("platform_dir", collect_data.get("platform", "unknown"))
         payload = collect_data.get("payload")
         config = collect_data.get("config")
-        artifact_name = collect_data.get("name", "raw")
+        artifact_name = str(platform_dir).rsplit("/", 1)[-1]
 
         report_dir = collect_data.get("report_directory") or DEFAULT_REPORT_DIRECTORY
 

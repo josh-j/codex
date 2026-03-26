@@ -7,12 +7,6 @@ stig_target_var: "photon_target_hosts"
 stig_checklist_map:
   photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
 
-# Detects the key emitted by the internal.linux role via ncs_collector callback.
-detection:
-  keys_any: [raw_discovery]
-
-# Paths starting with '.' are relative to path_prefix.
-path_prefix: "raw_discovery.data"
 
 fleet_columns:
   - "Distribution: distribution"
@@ -22,7 +16,7 @@ fleet_columns:
 
 fields:
   $include: "linux_base_fields.yaml"
-  collected_at: "raw_discovery.metadata.timestamp"
+  collected_at: "raw_photon.metadata.timestamp"
 
 alerts:
   $include: "linux_base_alerts.yaml"

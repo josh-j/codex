@@ -601,7 +601,7 @@ class TestVcenterSchema:
 
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
-        assert s.name == "vcenter"
+        assert s.name == "vcsa"
         assert s.platform == "vmware"
         # Verify when expressions are present
         when_exprs = {a.when for a in s.alerts}
@@ -764,7 +764,7 @@ class TestPhotonSchema:
         assert s.platform == "linux"
 
         bundle = {
-            "raw_discovery": {
+            "raw_photon": {
                 "metadata": {"timestamp": "2026-03-02T00:00:00Z"},
                 "data": {"ansible_facts": {"hostname": "photon-01"}},
             }

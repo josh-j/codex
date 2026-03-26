@@ -16,7 +16,7 @@ def _linux_bundle(health="OK", alerts=None):
 
 def _vmware_bundle(health="green", alerts=None):
     return {
-        "schema_vcenter": {
+        "schema_vcsa": {
             "health": health,
             "alerts": alerts or [],
             "discovery": {
@@ -51,7 +51,7 @@ class TestBuildSiteDashboardView:
 
         assert view["meta"]["report_stamp"] == "20260226"
         assert view["platforms"]["ubuntu"]["asset_count"] == 1
-        assert view["platforms"]["vcenter"]["asset_count"] == 1
+        assert view["platforms"]["vcsa"]["asset_count"] == 1
         assert view["platforms"]["windows"]["asset_count"] == 1
         assert view["totals"]["total"] == 0  # no alerts
 
@@ -67,7 +67,7 @@ class TestBuildSiteDashboardView:
         alerts = [{"severity": "WARNING", "category": "health", "message": "Memory degraded"}]
         hosts = {"hosts": {"vc1": _vmware_bundle(health="yellow", alerts=alerts)}}
         view = build_site_dashboard_view(hosts)
-        assert view["platforms"]["vcenter"]["status"]["raw"] == "WARNING"
+        assert view["platforms"]["vcsa"]["status"]["raw"] == "WARNING"
 
     def test_windows_fallback_alert(self):
         # No explicit alerts but health is CRITICAL
@@ -121,4 +121,4 @@ class TestBuildSiteDashboardView:
         hosts = {"hosts": {"h1": _linux_bundle()}}
         view = build_site_dashboard_view(hosts)
         assert view["platforms"]["ubuntu"]["asset_count"] == 1
-        assert view["platforms"]["vcenter"]["asset_count"] == 0
+        assert view["platforms"]["vcsa"]["asset_count"] == 0

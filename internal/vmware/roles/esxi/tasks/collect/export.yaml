@@ -13,7 +13,6 @@
       ncs_collect_esxi:
         platform_dir: "vmware/esxi"
         report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
-        name: "esxi"
         payload: "{{ vmware_raw_esxi }}"
         per_host_split:
           list_path: "hosts_info.host_facts"

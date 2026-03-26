@@ -5,10 +5,6 @@ stig_target_var: "vm_stig_target_vms"
 stig_checklist_map:
   vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 
-detection:
-  keys_any: [raw_vm]
-
-path_prefix: "raw_vm.data"
 
 fleet_columns:
   - "VMs: vm_count"

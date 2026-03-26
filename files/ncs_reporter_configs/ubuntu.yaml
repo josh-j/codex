@@ -5,13 +5,6 @@ stig_rule_prefixes:
   UBTU: ubuntu
   GEN: ubuntu
 
-# Detects the key emitted by the internal.linux role via ncs_collector callback.
-detection:
-  keys_any: [raw_discovery]
-
-# Paths starting with '.' are relative to path_prefix.
-# Absolute paths (no leading dot) are unchanged.
-path_prefix: "raw_discovery.data"
 
 fleet_columns:
   - "Distribution: distribution"
@@ -21,7 +14,7 @@ fleet_columns:
 
 fields:
   $include: "linux_base_fields.yaml"
-  collected_at: "raw_discovery.metadata.timestamp"
+  collected_at: "raw_ubuntu.metadata.timestamp"
 
 alerts:
   $include: "linux_base_alerts.yaml"

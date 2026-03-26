@@ -364,11 +364,20 @@ class PlatformSpec(BaseModel):
     def _derive_defaults(cls, values: Any) -> Any:
         if not isinstance(values, dict):
             return values
-        input_dir = values.get("input_dir") or values.get("path") or ""
+        # Normalize path → input_dir (path is shorthand when input_dir == report_dir)
+        if "path" in values:
+            if not values.get("input_dir"):
+                values["input_dir"] = values["path"]
+            if not values.get("report_dir"):
+                values["report_dir"] = values["path"]
+            del values["path"]
+        input_dir = values.get("input_dir", "")
         if not values.get("report_dir"):
             values["report_dir"] = input_dir
-        if not values.get("name") and input_dir:
-            values["name"] = input_dir.split("/")[0]
+        # Derive platform group name from report_dir (the schema identity path)
+        report_dir = values.get("report_dir", "") or input_dir
+        if not values.get("name") and report_dir:
+            values["name"] = report_dir.split("/")[0]
         return values
 
     @field_validator("sub_entries", mode="before")
@@ -399,7 +408,7 @@ class ReportSchema(BaseModel):
     platform_spec: PlatformSpec | None = Field(default=None, exclude=True)
     display_name: str = Field(default="", validation_alias=AliasChoices("display_name", "title"))
     path_prefix: str | None = None
-    detection: DetectionSpec
+    detection: DetectionSpec = Field(default_factory=DetectionSpec)  # auto-derived from name
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
     alerts: list[AlertRule] = Field(default_factory=list)
     widgets: list[ReportWidget] = Field(default_factory=list)
@@ -437,16 +446,25 @@ class ReportSchema(BaseModel):
                 values["name"] = schema_name
         elif isinstance(raw_platform, dict):
             values["platform_spec"] = raw_platform
-            input_dir = raw_platform.get("input_dir") or raw_platform.get("path") or ""
-            values["platform"] = raw_platform.get("name") or input_dir.split("/")[0] or values.get("name", "")
-            if not values.get("name") and input_dir:
-                values["name"] = input_dir.rsplit("/", 1)[-1]
+            # report_dir is the schema identity path; path is shorthand for both dirs
+            identity_dir = raw_platform.get("report_dir") or raw_platform.get("path") or raw_platform.get("input_dir") or ""
+            values["platform"] = raw_platform.get("name") or identity_dir.split("/")[0] or values.get("name", "")
+            if not values.get("name") and identity_dir:
+                values["name"] = identity_dir.rsplit("/", 1)[-1]
         elif not raw_platform:
             values["platform"] = values.get("name", "")
 
+        # Auto-derive detection from schema name (convention: raw_{name} key in bundle)
+        name = values.get("name", "")
+        if not values.get("detection") and name:
+            values["detection"] = {"keys_any": [f"raw_{name}"]}
+
+        # Auto-derive path_prefix from schema name
+        if not values.get("path_prefix") and name:
+            values["path_prefix"] = f"raw_{name}.data"
+
         # Auto-derive display_name from name
         if not values.get("display_name") and not values.get("title"):
-            name = values.get("name", "")
             values["display_name"] = name.replace("_", " ").title() if name else ""
         # Expand short-form fields: bare string → path-only FieldSpec
         fields = values.get("fields")

@@ -1,7 +1,10 @@
 display_name: "VMware VCSA"
+detection:
+  keys_any: [raw_vcenter]
+path_prefix: "raw_vcenter.data"
 platform:
-  path: vmware/vcenter
-  report_dir: vmware/vcsa
+  path: vmware/vcsa
+  input_dir: vmware/vcenter
   site_compute_node: true
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
   children:
@@ -30,10 +33,6 @@ stig_rule_prefixes:
   VC: vcsa
   PH: photon
 
-detection:
-  keys_any: [raw_vcenter]
-
-path_prefix: "raw_vcenter.data"
 
 fleet_columns:
   - "Version: appliance_version"

@@ -241,7 +241,7 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
     # ansible.builtin.command shape: {stdout_lines, rc, ...}
     # ansible.builtin.stat shape: {stat: {exists, path, ...}}
     return {
-        "raw_discovery": {
+        "raw_ubuntu": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "discovery",
@@ -1803,7 +1803,7 @@ def make_windows_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     )
 
     return {
-        "raw_audit": {
+        "raw_windows": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "audit",
