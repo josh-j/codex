@@ -600,63 +600,40 @@ class ReportSchema(BaseModel):
 
         errors: list[str] = []
 
+        def _check(field_name: str, context: str) -> None:
+            if field_name and not field_name.startswith("_") and field_name not in declared:
+                errors.append(f"{context} references undeclared field '{field_name}'{_hint(field_name)}")
+
         for rule in self.alerts:
             cond = rule.condition
-            if hasattr(cond, "field") and not cond.field.startswith("_") and cond.field not in declared:
-                errors.append(f"alert '{rule.id}': condition references undeclared field '{cond.field}'{_hint(cond.field)}")
+            if hasattr(cond, "field"):
+                _check(cond.field, f"alert '{rule.id}': condition")
             for f in rule.detail_fields:
-                if not f.startswith("_") and f not in declared:
-                    errors.append(f"alert '{rule.id}': detail_fields references undeclared field '{f}'{_hint(f)}")
-            if (
-                rule.affected_items_field
-                and not rule.affected_items_field.startswith("_")
-                and rule.affected_items_field not in declared
-            ):
-                errors.append(
-                    f"alert '{rule.id}': affected_items_field references undeclared field "
-                    f"'{rule.affected_items_field}'{_hint(rule.affected_items_field)}"
-                )
+                _check(f, f"alert '{rule.id}': detail_fields")
+            _check(rule.affected_items_field or "", f"alert '{rule.id}': affected_items_field")
 
         for widget in self.widgets:
+            wctx = f"widget '{widget.id}'"
             if isinstance(widget, KeyValueWidget):
                 for kv in widget.fields:
-                    if not kv.field.startswith("_") and kv.field not in declared:
-                        errors.append(f"widget '{widget.id}': key_value references undeclared field '{kv.field}'{_hint(kv.field)}")
+                    _check(kv.field, f"{wctx}: key_value")
             elif isinstance(widget, TableWidget):
-                if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
-                    errors.append(f"widget '{widget.id}': rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}")
+                _check(widget.rows_field, f"{wctx}: rows_field")
             elif isinstance(widget, ProgressBarWidget):
-                if not widget.field.startswith("_") and widget.field not in declared:
-                    errors.append(f"widget '{widget.id}': progress_bar references undeclared field '{widget.field}'{_hint(widget.field)}")
-                if widget.label and not widget.label.startswith("_") and widget.label not in declared:
-                    errors.append(
-                        f"widget '{widget.id}': progress_bar label references undeclared field '{widget.label}'{_hint(widget.label)}"
-                    )
+                _check(widget.field, f"{wctx}: progress_bar")
+                _check(widget.label or "", f"{wctx}: progress_bar label")
             elif isinstance(widget, StatCardsWidget):
                 for card in widget.cards:
-                    if not card.field.startswith("_") and card.field not in declared:
-                        errors.append(
-                            f"widget '{widget.id}': stat_cards references undeclared field '{card.field}'{_hint(card.field)}"
-                        )
+                    _check(card.field, f"{wctx}: stat_cards")
             elif isinstance(widget, BarChartWidget):
-                if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
-                    errors.append(
-                        f"widget '{widget.id}': bar_chart rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}"
-                    )
+                _check(widget.rows_field, f"{wctx}: bar_chart rows_field")
             elif isinstance(widget, ListWidget):
-                if not widget.items_field.startswith("_") and widget.items_field not in declared:
-                    errors.append(
-                        f"widget '{widget.id}': list references undeclared field '{widget.items_field}'{_hint(widget.items_field)}"
-                    )
+                _check(widget.items_field, f"{wctx}: list")
             elif isinstance(widget, GroupedTableWidget):
-                if not widget.rows_field.startswith("_") and widget.rows_field not in declared:
-                    errors.append(
-                        f"widget '{widget.id}': grouped_table rows_field references undeclared field '{widget.rows_field}'{_hint(widget.rows_field)}"
-                    )
+                _check(widget.rows_field, f"{wctx}: grouped_table rows_field")
 
         for col in self.fleet_columns:
-            if not col.field.startswith("_") and col.field not in declared:
-                errors.append(f"fleet_column: references undeclared field '{col.field}'{_hint(col.field)}")
+            _check(col.field, "fleet_column")
 
         if errors:
             raise ValueError("Schema cross-reference errors:\n" + "\n".join(f"  - {e}" for e in errors))

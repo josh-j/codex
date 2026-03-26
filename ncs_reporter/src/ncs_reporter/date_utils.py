@@ -37,10 +37,3 @@ def parse_iso_epoch(raw: Any) -> int | None:
             return int(dt.replace(tzinfo=timezone.utc).timestamp())
         except ValueError:
             return None
-
-
-def safe_iso_to_epoch(raw: Any, default: int = 0) -> int:
-    epoch = parse_iso_epoch(raw)
-    if epoch is None:
-        return int(default)
-    return int(epoch)

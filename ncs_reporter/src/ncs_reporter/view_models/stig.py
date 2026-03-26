@@ -260,18 +260,8 @@ def _build_finding_detail(
     """Build the detail dict and resolve CKLB rule for a finding."""
     detail = dict(item.get("detail") or {})
     if not detail:
-        for key in (
-            "checktext",
-            "fixtext",
-            "details",
-            "description",
-            "status",
-            "id",
-            "title",
-            "severity",
-        ):
-            if key in item and item.get(key) is not None:
-                detail[key] = item.get(key)
+        _DETAIL_KEYS = ("checktext", "fixtext", "details", "description", "status", "id", "title", "severity")
+        detail = {k: item[k] for k in _DETAIL_KEYS if item.get(k) is not None}
 
     cklb_rule = _pick_cklb_rule(
         cklb_rule_lookup,
@@ -505,12 +495,10 @@ def build_stig_host_view(
     summary = _summarize_stig_findings(source_findings)
     health = _status_from_health(stig_payload.get("health"))
 
-    _status_order = _STATUS_ORDER
-    _sev_order = _SEV_ORDER
     source_findings.sort(
         key=lambda f: (
-            _status_order.get(str(f.get("status") or "").lower(), 3),
-            _sev_order.get(str(f.get("severity") or "").lower(), 3),
+            _STATUS_ORDER.get(str(f.get("status") or "").lower(), 3),
+            _SEV_ORDER.get(str(f.get("severity") or "").lower(), 3),
             str(f.get("rule_id") or ""),
         )
     )
@@ -572,12 +560,10 @@ def _build_fleet_row(
 
     t_type = target.get("target_type", "unknown")
     known_types = registry.all_target_types()
-    resolved_base_type = t_type if t_type in known_types else None
-    if not resolved_base_type:
-        for tt in known_types:
-            if tt.lower() in t_type.lower():
-                resolved_base_type = tt
-                break
+    resolved_base_type = (
+        t_type if t_type in known_types
+        else next((tt for tt in known_types if tt.lower() in t_type.lower()), None)
+    )
     link_base = registry.link_base_for_target(resolved_base_type or t_type)
     stamped_name = f"{hostname}_stig_{t_type}.html"
     target_link = f"{link_base}/{hostname}/{stamped_name}"
@@ -730,11 +716,10 @@ def build_stig_fleet_view(
                 "title": item["title"],
             }
         )
-    _sev_order = _SEV_ORDER
     top_findings.sort(
         key=lambda x: (
             -int(x["affected_hosts"]),
-            _sev_order.get(str(x.get("severity") or "").lower(), 3),
+            _SEV_ORDER.get(str(x.get("severity") or "").lower(), 3),
             str(x["rule_id"]),
         )
     )

@@ -16,11 +16,6 @@ from ..primitives import (
 _DEFAULT_SKIP_KEYS = default_registry().skip_keys_set()
 
 
-def default_report_skip_keys() -> list[str]:
-    """Return canonical structural/state keys that should be skipped in host loops."""
-    return sorted(_DEFAULT_SKIP_KEYS)
-
-
 def _status_from_health(value: Any) -> str:
     if isinstance(value, dict):
         for key in ("overall", "status", "health"):

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ncs_reporter.primitives import canonical_severity, safe_list
+from ncs_reporter.primitives import canonical_severity, normalize_detail, safe_list
 
 # Common truthy values from Jinja / YAML / filters
 _TRUTHY_STRINGS = frozenset(("true", "yes", "y", "1", "on"))
@@ -41,15 +41,6 @@ def is_truthy(value: Any) -> bool:
         return False
 
     return False
-
-
-def normalize_detail(detail: Any) -> dict[str, Any]:
-    """Ensure detail is always a mapping."""
-    if detail is None:
-        return {}
-    if isinstance(detail, dict):
-        return detail
-    return {"value": detail}
 
 
 def build_alerts(checks: list[Any]) -> list[dict[str, Any]]:
@@ -152,17 +143,3 @@ def compute_audit_rollups(alerts: list[Any]) -> dict[str, Any]:
     Composes summarize_alerts + health_rollup into a standard rollup dict.
     """
     return {"summary": summarize_alerts(alerts), "health": health_rollup(alerts)}
-
-
-def append_alerts(existing_alerts: list[Any], new_alerts: Any) -> list[Any]:
-    """
-    Merges new_alerts into existing_alerts.
-    """
-    out = list(existing_alerts or [])
-    if new_alerts is None:
-        return out
-    if isinstance(new_alerts, list):
-        out.extend(new_alerts)
-        return out
-    out.append(new_alerts)
-    return out

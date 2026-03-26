@@ -374,14 +374,7 @@ def render_stig(
         )
 
         content = host_tpl.render(stig_host_view=host_view, **common_vars)
-        dest_name = Path(host_report_abs).name
-        with open(host_dir / dest_name, "w") as f:
-            f.write(content)
-        if stamp:
-            stem = Path(dest_name).stem
-            suffix = Path(dest_name).suffix or ".html"
-            with open(host_dir / f"{stem}_{stamp}{suffix}", "w") as f:
-                f.write(content)
+        write_report(host_dir, Path(host_report_abs).name, content, stamp)
 
         all_hosts_data.setdefault(hostname, {})[se["audit_type"]] = se["payload"]
 
