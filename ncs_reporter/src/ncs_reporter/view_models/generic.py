@@ -288,10 +288,10 @@ def _render_widget(
     generated_fleet_dirs: set[str] | None = None,
     field_specs: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Render a single schema widget into a template-ready dict. Returns None if hidden by visible_if."""
-    # visible_if guard
-    if hasattr(widget, "visible_if") and widget.visible_if is not None:
-        if not evaluate_when(widget.visible_if, fields):
+    """Render a single schema widget into a template-ready dict. Returns None if hidden by when."""
+    # when guard (conditional visibility)
+    if hasattr(widget, "when") and widget.when is not None:
+        if not evaluate_when(widget.when, fields):
             return None
 
     ctx: dict[str, Any] = {

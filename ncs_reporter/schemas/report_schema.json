@@ -20,7 +20,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -30,7 +30,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         }
       },
       "required": [
@@ -147,7 +147,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -157,7 +157,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "rows_field": {
           "title": "Rows Field",
@@ -447,7 +447,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -457,7 +457,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "rows_field": {
           "title": "Rows Field",
@@ -541,7 +541,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -551,7 +551,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "fields": {
           "items": {
@@ -617,7 +617,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -627,7 +627,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "items_field": {
           "title": "Items Field",
@@ -689,7 +689,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -699,7 +699,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "content": {
           "title": "Content",
@@ -781,7 +781,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -791,7 +791,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "field": {
           "title": "Field",
@@ -923,7 +923,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -933,7 +933,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "cards": {
           "items": {
@@ -1107,7 +1107,7 @@
         "layout": {
           "$ref": "#/$defs/WidgetLayout"
         },
-        "visible_if": {
+        "when": {
           "anyOf": [
             {
               "type": "string"
@@ -1117,7 +1117,7 @@
             }
           ],
           "default": null,
-          "title": "Visible If"
+          "title": "When"
         },
         "rows_field": {
           "title": "Rows Field",

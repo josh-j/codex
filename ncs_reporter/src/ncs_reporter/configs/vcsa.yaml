@@ -318,7 +318,7 @@ widgets:
 
   - type: table
     title: "Clusters"
-    visible_if: cluster_count > 0
+    when: cluster_count > 0
     rows: "{{ clusters }}"
     columns:
       'Cluster': "{{ name }}"
@@ -331,7 +331,7 @@ widgets:
 
   - type: table
     title: "Datastores"
-    visible_if: datastore_count > 0
+    when: datastore_count > 0
     rows: "{{ datastores }}"
     columns:
       'Name': "{{ name }}"
@@ -341,7 +341,7 @@ widgets:
 
   - type: table
     title: "Resource Pools"
-    visible_if: resource_pool_count > 0
+    when: resource_pool_count > 0
     rows: "{{ resource_pools }}"
     columns:
       'Name': "{{ name }}"
@@ -352,7 +352,7 @@ widgets:
 
   - type: table
     title: "Distributed Switches"
-    visible_if: dvswitch_count > 0
+    when: dvswitch_count > 0
     rows: "{{ dvswitches }}"
     columns:
       'Name': "{{ name }}"
@@ -362,7 +362,7 @@ widgets:
 
   - type: table
     title: "Distributed Portgroups"
-    visible_if: dvs_portgroup_count > 0
+    when: dvs_portgroup_count > 0
     rows: "{{ dvs_portgroups }}"
     columns:
       'Name': "{{ portgroup_name }}"
@@ -373,7 +373,7 @@ widgets:
 
   - type: table
     title: "Licenses"
-    visible_if: license_count > 0
+    when: license_count > 0
     rows: "{{ licenses }}"
     columns:
       'Name': "{{ name }}"
@@ -384,7 +384,7 @@ widgets:
 
   - type: table
     title: "Extensions"
-    visible_if: extension_count > 0
+    when: extension_count > 0
     rows: "{{ extensions }}"
     columns:
       'Label': "{{ ext_label }}"
@@ -394,7 +394,7 @@ widgets:
 
   - type: table
     title: "Content Libraries"
-    visible_if: content_library_count > 0
+    when: content_library_count > 0
     rows: "{{ content_libraries }}"
     columns:
       'Name': "{{ lib_name }}"
@@ -403,7 +403,7 @@ widgets:
 
   - type: table
     title: "Backup Schedules"
-    visible_if: backup_schedule_count > 0
+    when: backup_schedule_count > 0
     rows: "{{ backup_schedules }}"
     columns:
       - label: "Name"

@@ -149,7 +149,7 @@ widgets:
 
   - type: table
     title: "Snapshots"
-    visible_if: snapshot_count > 0
+    when: snapshot_count > 0
     rows: "{{ snapshots }}"
     columns:
       'VM': "{{ vm_name }}"

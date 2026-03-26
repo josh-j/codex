@@ -16,7 +16,7 @@ from pathlib import Path
 CONFIGS_DIR = Path(__file__).resolve().parent.parent / "src" / "ncs_reporter" / "configs"
 
 # Matches quoted when/visible_if values: '    when: "expression"'
-UNQUOTED_EXPR = re.compile(r"^(\s+)(when|visible_if):\s*\"(.+)\"\s*$")
+UNQUOTED_EXPR = re.compile(r"^(\s+)(when):\s*\"(.+)\"\s*$")
 
 # Matches compute values that are NOT "{{ }}" wrapped
 COMPUTE_LINE = re.compile(r"^(\s+)compute:\s*(.+)\s*$")
