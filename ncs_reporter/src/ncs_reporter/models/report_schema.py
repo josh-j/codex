@@ -134,9 +134,6 @@ class AlertRule(BaseModel):
     when: str  # Jinja2 expression evaluated against extracted fields
     action: str | None = None  # Optional command to run when alert fires
     message: str
-    detail_fields: list[str] = Field(default_factory=list)
-    affected_items_field: str | None = None
-    # Suppress this alert if another alert (by id) already fired.
     suppress_if: str | list[str] | None = None
 
 
@@ -163,7 +160,7 @@ class KeyValueField(BaseModel):
 class KeyValueWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -191,7 +188,7 @@ class TableColumn(BaseModel):
 class TableWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -203,7 +200,7 @@ class TableWidget(BaseModel):
 class AlertPanelWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["alert_panel"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -213,7 +210,7 @@ class AlertPanelWidget(BaseModel):
 class ProgressBarWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["progress_bar"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -227,7 +224,7 @@ class ProgressBarWidget(BaseModel):
 class MarkdownWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["markdown"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -248,7 +245,7 @@ class StatCardSpec(BaseModel):
 class StatCardsWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["stat_cards"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -259,7 +256,7 @@ class StatCardsWidget(BaseModel):
 class BarChartWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["bar_chart"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -274,7 +271,7 @@ class BarChartWidget(BaseModel):
 class ListWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["list"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -288,7 +285,7 @@ class ListWidget(BaseModel):
 class GroupedTableWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str = ""
     title: str
     type: Literal["grouped_table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
@@ -505,8 +502,18 @@ class ReportSchema(BaseModel):
         return values
 
     @model_validator(mode="after")
+    def _derive_widget_ids(self) -> "ReportSchema":
+        """Auto-derive widget IDs from titles when not set."""
+        import re as _re
+        for widget in self.widgets:
+            if not widget.id and hasattr(widget, "title"):
+                widget.id = _re.sub(r"[^a-z0-9]+", "_", widget.title.lower()).strip("_")
+        return self
+
+    @model_validator(mode="after")
     def _cross_check_references(self) -> "ReportSchema":
         """Ensure all field references in alerts, widgets, and fleet columns exist in fields."""
+        self._derive_widget_ids()
         import difflib
 
         declared = set(self.fields.keys())
@@ -522,9 +529,7 @@ class ReportSchema(BaseModel):
                 errors.append(f"{context} references undeclared field '{field_name}'{_hint(field_name)}")
 
         for rule in self.alerts:
-            for f in rule.detail_fields:
-                _check(f, f"alert '{rule.id}': detail_fields")
-            _check(rule.affected_items_field or "", f"alert '{rule.id}': affected_items_field")
+            pass  # when expression field refs are validated at runtime
 
         for widget in self.widgets:
             wctx = f"widget '{widget.id}'"

@@ -198,7 +198,6 @@ alerts:
     severity: CRITICAL
     when: "active_critical_alarm_count > 0"
     message: "Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered)"
-    affected_items_field: active_alarms
 
   - id: active_warning_alarms
     category: "vCenter Alarms"
@@ -206,7 +205,6 @@ alerts:
     suppress_if: active_critical_alarms
     when: "active_warning_alarm_count > 0"
     message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
-    affected_items_field: active_alarms
 
 widgets:
   - alert_panel: "Active Alerts"

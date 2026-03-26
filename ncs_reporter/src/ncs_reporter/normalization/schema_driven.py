@@ -125,6 +125,16 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     return result, coverage
 
 
+def _extract_when_refs(expression: str) -> list[str]:
+    """Extract field names referenced in a when expression."""
+    from jinja2 import Environment, meta
+    try:
+        ast = Environment().parse("{{ " + expression + " }}")
+        return sorted(meta.find_undeclared_variables(ast))
+    except Exception:
+        return []
+
+
 def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[dict[str, Any]]:
     """Evaluate all alert rules and return alert dicts compatible with build_alerts()."""
     alerts: list[dict[str, Any]] = []
@@ -145,14 +155,17 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
         except (KeyError, ValueError):
             message = rule.message
 
+        # Auto-derive detail (scalars) and affected_items (lists) from when expression
         detail: dict[str, Any] = {}
-        for df in rule.detail_fields:
-            if df in fields:
-                detail[df] = fields[df]
-
         affected_items: list[Any] = []
-        if rule.affected_items_field:
-            affected_items = safe_list(fields.get(rule.affected_items_field, []))
+        for ref in _extract_when_refs(rule.when):
+            if ref not in fields or ref.startswith("_"):
+                continue
+            val = fields[ref]
+            if isinstance(val, list):
+                affected_items = val
+            else:
+                detail[ref] = val
 
         alerts.append(
             {

@@ -76,14 +76,12 @@ alerts:
     severity: WARNING
     when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0"
     message: "Powered-on VMs detected with VMware Tools not running"
-    affected_items_field: virtual_machines
 
   - id: vm_tools_not_installed
     category: "Workload Compliance"
     severity: WARNING
     when: "virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0"
     message: "Powered-on VMs detected with VMware Tools not installed"
-    affected_items_field: virtual_machines
 
   - id: snapshots_present
     category: "Snapshots"
