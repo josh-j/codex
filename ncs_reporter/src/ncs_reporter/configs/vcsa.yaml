@@ -4,9 +4,7 @@ platform:
   name: vmware
   input_dir: vmware/vcenter
   report_dir: vmware/vcsa
-  target_types: [vcenter, vami, eam, lookup_svc, perfcharts, vcsa_photon_os, postgresql, rhttpproxy, sts, ui]
   asset_label: vCenters
-  inventory_groups: [vcenters]
   site_compute_node: true
   site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
   stig_playbook: "playbooks/vcsa/stig_remediate.yml"
@@ -31,7 +29,6 @@ platform:
   children:
     - input_dir: vmware/vcenter/vcsa
       report_dir: vmware/vcsa/vcsa
-      target_types: [vcsa]
       stig_skeleton_map:
         vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
 

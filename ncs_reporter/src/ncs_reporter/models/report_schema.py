@@ -338,7 +338,6 @@ class SubEntry(BaseModel):
 
     input_dir: str
     report_dir: str
-    target_types: list[str] = Field(default_factory=list)
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
     stig_playbook: str = ""
     stig_target_var: str = ""
@@ -352,9 +351,7 @@ class PlatformSpec(BaseModel):
     name: str = ""  # platform name (e.g. "linux", "vmware", "windows")
     input_dir: str = ""
     report_dir: str = ""
-    target_types: list[str] = Field(default_factory=list)
     asset_label: str = "Nodes"
-    inventory_groups: list[str] = Field(default_factory=list)
     stig_skeleton_map: dict[str, str] = Field(default_factory=dict)
     stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports

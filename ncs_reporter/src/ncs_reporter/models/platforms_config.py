@@ -123,11 +123,9 @@ class PlatformEntry(BaseModel):
     platform: str
     render: bool = True
     schema_name: str | None = None  # overrides platform-based schema lookup
-    target_types: list[str]
     paths: PlatformPaths = None  # type: ignore[assignment]  # filled by before-validator
     display_name: str | None = None  # human label; defaults to platform.capitalize()
     asset_label: str = "Nodes"  # "Nodes", "vCenters", etc.
-    inventory_groups: list[str] = []  # groups to count for site dashboard
     schema_names: list[str] = []  # schema name preference; defaults to [platform]
     stig_skeleton_map: dict[str, str] = {}  # target_type -> skeleton relative path
     stig_rule_prefixes: dict[str, str] = {}  # rule_version prefix -> target_type

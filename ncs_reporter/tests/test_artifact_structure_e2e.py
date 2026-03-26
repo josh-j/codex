@@ -137,7 +137,6 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         }
         groups_path = self.platform_root / "inventory_groups.json"
         groups_path.write_text(json.dumps(groups))
-        self.groups_path = groups_path
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -151,8 +150,6 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(self.groups_path),
                 "--report-stamp",
                 STAMP,
             ],
@@ -264,7 +261,6 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         }
         groups_path = self.platform_root / "inventory_groups.json"
         groups_path.write_text(json.dumps(groups))
-        self.groups_path = groups_path
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -278,8 +274,6 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
                 str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
-                "--groups",
-                str(self.groups_path),
                 "--report-stamp",
                 STAMP,
             ],

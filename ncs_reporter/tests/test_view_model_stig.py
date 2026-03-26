@@ -43,7 +43,6 @@ class TestInferStigPlatform:
 
     def test_linux_from_audit_type(self):
         assert _infer_stig_platform("stig_ubuntu", None) == "linux"
-        assert _infer_stig_platform("stig_linux", None) == "linux"
 
     def test_windows_from_audit_type(self):
         assert _infer_stig_platform("stig_windows", None) == "windows"

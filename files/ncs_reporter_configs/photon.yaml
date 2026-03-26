@@ -5,7 +5,6 @@ platform:
   input_dir: linux/photon
   report_dir: linux/photon
   render: false
-  target_types: [photon]
   stig_playbook: "playbooks/photon_stig_remediate.yml"
   stig_target_var: "photon_target_hosts"
   stig_skeleton_map:

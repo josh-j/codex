@@ -111,30 +111,23 @@ def _load_stig_artifacts(
 def _resolve_effective_config(
     config_dir: str | None,
     report_stamp: str | None,
-    groups_file: str | None,
     extra_config_dir: tuple[str, ...],
     platforms_config: str | None,
-) -> tuple[dict[str, Any], str | None, str | None, tuple[str, ...], list[dict[str, Any]]]:
-    """Resolve config_yaml, effective stamp, groups file, extra dirs, and platforms list.
+) -> tuple[dict[str, Any], str | None, tuple[str, ...], list[dict[str, Any]]]:
+    """Resolve config_yaml, effective stamp, extra dirs, and platforms list.
 
-    Returns ``(common_vars_seed, effective_stamp, effective_groups_file,
-    extra_dirs, platforms)``.  The caller still needs to call
-    ``generate_timestamps`` on *effective_stamp*.
+    Returns ``(config_yaml, effective_stamp, extra_dirs, platforms)``.
+    The caller still needs to call ``generate_timestamps`` on *effective_stamp*.
     """
     config_yaml = load_config_yaml(config_dir)
     effective_stamp = report_stamp or (
         str(config_yaml["report_stamp"]) if config_yaml.get("report_stamp") is not None else None
     )
-    effective_groups_file = groups_file or (
-        resolve_path_from_config_root(config_dir, config_yaml["groups_file"].strip())
-        if isinstance(config_yaml.get("groups_file"), str) and config_yaml["groups_file"].strip()
-        else None
-    )
 
     _extra_dirs, _platforms_cfg = resolve_config_dir(config_dir, extra_config_dir, platforms_config, config_yaml)
     platforms = load_platforms(_platforms_cfg, extra_config_dirs=_extra_dirs)
 
-    return config_yaml, effective_stamp, effective_groups_file, _extra_dirs, platforms
+    return config_yaml, effective_stamp, _extra_dirs, platforms
 
 
 def _augment_platforms_from_schemas(
@@ -158,7 +151,6 @@ def _augment_platforms_from_schemas(
             "render": True,
             "schema_name": _schema.name,
             "schema_names": [_schema.name],
-            "target_types": [],
             "paths": default_paths(),
         })
 
@@ -344,7 +336,6 @@ def _render_site_and_search(
     r_root: Path,
     global_data: dict[str, Any],
     global_changed: bool,
-    effective_groups_file: str | None,
     common_vars: dict[str, Any],
     global_inventory_index: dict[str, str],
     platforms_by_report_dir: dict[str, dict[str, Any]],
@@ -357,10 +348,8 @@ def _render_site_and_search(
     else:
         from .models.platforms_config import FILENAME_SITE_HEALTH as _FILENAME_SITE_HEALTH, TEMPLATE_SITE as _TEMPLATE_SITE
         click.echo("--- Processing Global Site Dashboard ---")
-        from .cli import _load_groups
-        groups_data = _load_groups(effective_groups_file)
         site_view = build_site_dashboard_view(
-            global_data, inventory_groups=groups_data,
+            global_data,
             ctx=report_context(common_vars),
             generated_fleet_dirs=generated_fleet_dirs,
         )
@@ -448,7 +437,6 @@ def _render_stig_and_cklb(
 @click.command("all")
 @click.option("--platform-root", required=True, type=click.Path(exists=True))
 @click.option("--reports-root", required=True, type=click.Path())
-@click.option("--groups", "groups_file", type=click.Path(exists=True))
 @click.option("--report-stamp")
 @click.option("--config-dir", default=None, type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.option("--extra-config-dir", "-S", multiple=True, metavar="DIR")
@@ -457,7 +445,6 @@ def _render_stig_and_cklb(
 def all_cmd(
     platform_root: str,
     reports_root: str,
-    groups_file: str | None,
     report_stamp: str | None,
     config_dir: str | None,
     extra_config_dir: tuple[str, ...],
@@ -470,8 +457,8 @@ def all_cmd(
     r_root.mkdir(parents=True, exist_ok=True)
 
     # Step 0: Resolve configuration
-    _config_yaml, effective_stamp, effective_groups_file, extra_dirs, platforms = (
-        _resolve_effective_config(config_dir, report_stamp, groups_file, extra_config_dir, platforms_config)
+    _config_yaml, effective_stamp, extra_dirs, platforms = (
+        _resolve_effective_config(config_dir, report_stamp, extra_config_dir, platforms_config)
     )
     common_vars = generate_timestamps(effective_stamp)
 
@@ -536,7 +523,7 @@ def all_cmd(
 
     # Step 3: Site dashboard + search index
     _render_site_and_search(
-        r_root, global_data, global_changed, effective_groups_file,
+        r_root, global_data, global_changed,
         common_vars, global_inventory_index, platforms_by_report_dir,
         generated_fleet_dirs,
     )

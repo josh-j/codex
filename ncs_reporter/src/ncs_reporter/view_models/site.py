@@ -31,7 +31,6 @@ def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | N
 
 def build_site_dashboard_view(
     aggregated_hosts: dict[str, Any],
-    inventory_groups: dict[str, Any] | None = None,
     *,
     ctx: ReportContext | None = None,
     registry: PlatformRegistry | None = None,
@@ -44,7 +43,6 @@ def build_site_dashboard_view(
         fleet_link_url,
     )
     reg = registry or default_registry()
-    groups = dict(inventory_groups or {})
     all_alerts: list[dict[str, Any]] = []
     compute_nodes: list[dict[str, Any]] = []
     infra: dict[str, int] = {}

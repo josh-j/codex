@@ -719,24 +719,10 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "target_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Target Types",
-          "type": "array"
-        },
         "asset_label": {
           "default": "Nodes",
           "title": "Asset Label",
           "type": "string"
-        },
-        "inventory_groups": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Inventory Groups",
-          "type": "array"
         },
         "stig_skeleton_map": {
           "additionalProperties": {
@@ -1010,13 +996,6 @@
         "report_dir": {
           "title": "Report Dir",
           "type": "string"
-        },
-        "target_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Target Types",
-          "type": "array"
         },
         "stig_skeleton_map": {
           "additionalProperties": {
