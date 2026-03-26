@@ -66,12 +66,6 @@ def validate_config(platforms_config: str | None) -> None:
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
-    from ncs_path_contract import validate_platforms_config_dict
-    try:
-        validate_platforms_config_dict({"platforms": entries})
-    except ValueError as exc:
-        raise click.ClickException(f"Path contract error: {exc}") from exc
-
     target_types = sorted({t for e in entries for t in e.get("target_types", [])})
     seen: set[str] = set()
     renderable = [p for e in entries if e.get("render", True) for p in [e["platform"]] if p not in seen and not seen.add(p)]  # type: ignore[func-returns-value]
