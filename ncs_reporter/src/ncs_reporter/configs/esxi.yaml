@@ -86,8 +86,8 @@ alerts:
 
 widgets:
 
-  - title: "Host Overview"
-    type: key_value
+  - type: key-value
+    title: "Host Overview"
     layout: half
     fields:
       'Connection State [badge]': "{{ connection_state }}"
@@ -99,9 +99,9 @@ widgets:
       'Maintenance Mode [badge]': "{{ in_maintenance_mode }}"
       'Lockdown Mode': "{{ lockdown_mode }}"
 
-  - id: resource_kpis
+  - type: stat-cards
+    id: resource_kpis
     title: "Resource Utilization"
-    type: stat_cards
     layout: half
     cards:
       'CPU %': "{{ cpu_used_pct | round(0) }}%"
@@ -109,24 +109,24 @@ widgets:
       'VMs': "{{ vm_count }}"
       'Uptime (days)': "{{ uptime_days | round(0) }}"
 
-  - title: "Security & Services"
-    type: key_value
+  - type: key-value
+    title: "Security & Services"
     layout: half
     fields:
       'SSH Enabled [badge]': "{{ ssh_enabled }}"
       'Shell Enabled [badge]': "{{ shell_enabled }}"
       'NTP Running [badge]': "{{ ntp_running }}"
 
-  - title: "Datastores"
-    type: table
+  - type: table
+    title: "Datastores"
     rows: "{{ datastores }}"
     columns:
       'Name': "{{ name }}"
       'Total': "{{ total }}"
       'Free': "{{ free }}"
 
-  - title: "Physical NICs"
-    type: table
+  - type: table
+    title: "Physical NICs"
     rows: "{{ nics }}"
     columns:
       'Device': "{{ device }}"

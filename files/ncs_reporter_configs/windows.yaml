@@ -188,8 +188,8 @@ alerts:
 
 widgets:
 
-  - title: "System Information"
-    type: key_value
+  - type: key-value
+    title: "System Information"
     fields:
       'Hostname': "{{ health_hostname }}"
       'OS': "{{ health_os_name }}"
@@ -198,8 +198,8 @@ widgets:
       'Reboot Pending': "{{ health_reboot_pending }}"
       'Secure Channel': "{{ health_secure_channel }}"
 
-  - title: "Disk Usage"
-    type: table
+  - type: table
+    title: "Disk Usage"
     rows: "{{ health_disk }}"
     columns:
       'Drive': "{{ DeviceID }}"
@@ -207,22 +207,22 @@ widgets:
       'Free (GB)': "{{ FreeGB }}"
       'Used % [badge]': "{{ UsedPct }}"
 
-  - title: "Memory & CPU"
-    type: key_value
+  - type: key-value
+    title: "Memory & CPU"
     fields:
       'Memory Used %': "{{ health_memory_used_pct }}"
       'CPU Load %': "{{ health_cpu_load_pct }}"
 
-  - title: "Critical Services"
-    type: table
+  - type: table
+    title: "Critical Services"
     rows: "{{ health_services }}"
     columns:
       'Service': "{{ display_name }}"
       'Status [badge]': "{{ status }}"
       'Start Type': "{{ start_type }}"
 
-  - title: "Recent Critical/Error Events"
-    type: table
+  - type: table
+    title: "Recent Critical/Error Events"
     rows: "{{ health_events }}"
     columns:
       'Time': "{{ time }}"
@@ -232,15 +232,15 @@ widgets:
       'ID': "{{ id }}"
       'Message': "{{ message }}"
 
-  - title: "Vulnerability Summary"
-    type: key_value
+  - type: key-value
+    title: "Vulnerability Summary"
     fields:
       'Total Findings': "{{ vuln_total_findings }}"
       'Remediated': "{{ vuln_remediated }}"
       'Open': "{{ vuln_open }}"
 
-  - title: "Vulnerability Findings"
-    type: table
+  - type: table
+    title: "Vulnerability Findings"
     rows: "{{ vuln_findings }}"
     columns:
       'Plugin ID': "{{ plugin_id }}"
@@ -248,39 +248,39 @@ widgets:
       'Title': "{{ title }}"
       'Remediated [badge]': "{{ remediated }}"
 
-  - title: "ConfigMgr Applications"
-    type: table
+  - type: table
+    title: "ConfigMgr Applications"
     rows: "{{ configmgr_apps }}"
     columns:
       'Name': "{{ Name }}"
       'Version': "{{ Version }}"
 
-  - title: "Applications Pending Update"
-    type: table
+  - type: table
+    title: "Applications Pending Update"
     rows: "{{ apps_to_update }}"
     columns:
       'Name': "{{ Name }}"
       'Current Version': "{{ CurrentVersion }}"
       'Target Version': "{{ TargetVersion }}"
 
-  - title: "Update Results"
-    type: table
+  - type: table
+    title: "Update Results"
     rows: "{{ update_results }}"
     columns:
       'Application': "{{ application }}"
       'Status [badge]': "{{ status }}"
       'Failed [badge]': "{{ failed }}"
 
-  - title: "KB Detection Status"
-    type: table
+  - type: table
+    title: "KB Detection Status"
     rows: "{{ kb_detection }}"
     columns:
       'KB': "{{ kb }}"
       'Installed [badge]': "{{ installed }}"
       'Detection Method': "{{ method }}"
 
-  - title: "Installed Software"
-    type: table
+  - type: table
+    title: "Installed Software"
     rows: "{{ health_software_versions }}"
     columns:
       'Name': "{{ name }}"
