@@ -7,7 +7,7 @@ platform:
   render: false
   stig_playbook: "playbooks/photon_stig_remediate.yml"
   stig_target_var: "photon_target_hosts"
-  stig_skeleton_map:
+  stig_checklist_map:
     photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
 
 # Detects the key emitted by the internal.linux role via ncs_collector callback.

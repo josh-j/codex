@@ -23,14 +23,14 @@ class PlatformRegistry:
 
     def __init__(self, entries: list[PlatformEntry]) -> None:
         self._entries = tuple(entries)
-        # Derive target-type lookup from stig_skeleton_map keys + stig_rule_prefixes values.
+        # Derive target-type lookup from stig_checklist_map keys + stig_rule_prefixes values.
         # Skeleton map entries take precedence (they're the authoritative owner).
         self._tt_lookup: dict[str, PlatformEntry] = {}
         for e in self._entries:
             for tt in e.stig_rule_prefixes.values():
                 self._tt_lookup.setdefault(tt.lower(), e)
         for e in self._entries:
-            for tt in e.stig_skeleton_map:
+            for tt in e.stig_checklist_map:
                 self._tt_lookup[tt.lower()] = e  # overwrite prefix-based entries
         self._all_target_types: frozenset[str] = frozenset(self._tt_lookup)
 
@@ -157,8 +157,8 @@ class PlatformRegistry:
 
     def stig_skeleton_for_target(self, target_type: str) -> str | None:
         for e in self._entries:
-            if target_type in e.stig_skeleton_map:
-                return e.stig_skeleton_map[target_type]
+            if target_type in e.stig_checklist_map:
+                return e.stig_checklist_map[target_type]
         return None
 
     def infer_target_type_from_rule_prefix(self, rule_version: str) -> str:
@@ -224,10 +224,10 @@ class PlatformRegistry:
             return (e.stig_playbook, e.stig_target_var)
         return None
 
-    def all_stig_skeleton_map(self) -> dict[str, str]:
+    def all_stig_checklist_map(self) -> dict[str, str]:
         merged: dict[str, str] = {}
         for e in self._entries:
-            for tt, skeleton in e.stig_skeleton_map.items():
+            for tt, skeleton in e.stig_checklist_map.items():
                 if tt not in merged:
                     merged[tt] = skeleton
         return merged
