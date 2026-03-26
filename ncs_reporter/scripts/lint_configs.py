@@ -2,8 +2,8 @@
 """Lint ncs_reporter YAML configs for style conventions.
 
 Checks:
-  - when: and visible_if: values should not be double-quoted
-  - style_rules when: values should not be double-quoted
+  - when: and visible_if: values should be unquoted (Ansible convention)
+  - compute: values must use "{{ expression }}" (Jinja2 delimiters)
 """
 
 from __future__ import annotations
@@ -14,19 +14,30 @@ from pathlib import Path
 
 CONFIGS_DIR = Path(__file__).resolve().parent.parent / "src" / "ncs_reporter" / "configs"
 
-EXPRESSION_KEYS = re.compile(r"^(\s+)(when|visible_if|compute):\s*\"(.+)\"\s*$")
+# Matches quoted when/visible_if values: '    when: "expression"'
+UNQUOTED_EXPR = re.compile(r"^(\s+)(when|visible_if):\s*\"(.+)\"\s*$")
+
+# Matches compute values that are NOT "{{ }}" wrapped
+COMPUTE_LINE = re.compile(r"^(\s+)compute:\s*(.+)\s*$")
 
 
 def lint_file(path: Path) -> list[str]:
     errors: list[str] = []
     for i, line in enumerate(path.read_text().splitlines(), 1):
-        m = EXPRESSION_KEYS.match(line)
+        # Check when/visible_if: should be unquoted
+        m = UNQUOTED_EXPR.match(line)
         if m:
             key, expr = m.group(2), m.group(3)
-            # Allow "{{ }}" wrapped expressions (needed for YAML-unfriendly chars)
-            if expr.startswith("{{") and expr.endswith("}}"):
-                continue
-            errors.append(f"{path.name}:{i}: {key}: should be unquoted — remove double quotes")
+            if not (expr.startswith("{{") and expr.endswith("}}")):
+                errors.append(f"{path.name}:{i}: {key}: should be unquoted — remove double quotes")
+
+        # Check compute: must use "{{ }}" delimiters
+        m = COMPUTE_LINE.match(line)
+        if m:
+            value = m.group(2).strip()
+            if not (value.startswith('"{{') and value.endswith('}}"')):
+                errors.append(f'{path.name}:{i}: compute: should use Jinja2 delimiters — "{{{{ expression }}}}"')
+
     return errors
 
 
