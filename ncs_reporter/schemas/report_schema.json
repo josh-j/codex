@@ -719,20 +719,6 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "stig_checklist_map": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "Stig Checklist Map",
-          "type": "object"
-        },
-        "stig_rule_prefixes": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "Stig Rule Prefixes",
-          "type": "object"
-        },
         "render": {
           "default": true,
           "title": "Render",
@@ -756,16 +742,6 @@
           "default": false,
           "title": "Site Compute Node",
           "type": "boolean"
-        },
-        "stig_playbook": {
-          "default": "",
-          "title": "Stig Playbook",
-          "type": "string"
-        },
-        "stig_target_var": {
-          "default": "",
-          "title": "Stig Target Var",
-          "type": "string"
         }
       },
       "title": "PlatformSpec",
@@ -1295,6 +1271,30 @@
     "split_name_key": {
       "default": "name",
       "title": "Split Name Key",
+      "type": "string"
+    },
+    "stig_checklist_map": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Stig Checklist Map",
+      "type": "object"
+    },
+    "stig_rule_prefixes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Stig Rule Prefixes",
+      "type": "object"
+    },
+    "stig_playbook": {
+      "default": "",
+      "title": "Stig Playbook",
+      "type": "string"
+    },
+    "stig_target_var": {
+      "default": "",
+      "title": "Stig Target Var",
       "type": "string"
     }
   },

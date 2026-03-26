@@ -351,8 +351,6 @@ class PlatformSpec(BaseModel):
     name: str = ""  # platform group name (e.g. "linux", "vmware", "windows")
     input_dir: str = Field(default="", validation_alias=AliasChoices("input_dir", "path"))
     report_dir: str = ""  # defaults to input_dir if not set
-    stig_checklist_map: dict[str, str] = Field(default_factory=dict)
-    stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
     render: bool = True  # False = STIG/routing only, no fleet/site reports
     sub_entries: list[SubEntry] = Field(
         default_factory=list,
@@ -360,8 +358,6 @@ class PlatformSpec(BaseModel):
     )
     site_infra_fields: list[str] = Field(default_factory=list)
     site_compute_node: bool = False
-    stig_playbook: str = ""
-    stig_target_var: str = ""
 
     @model_validator(mode="before")
     @classmethod
@@ -414,6 +410,11 @@ class ReportSchema(BaseModel):
     # using the item's "name" field as the hostname.
     split_field: str | None = None
     split_name_key: str = "name"
+    # STIG compliance fields
+    stig_checklist_map: dict[str, str] = Field(default_factory=dict)
+    stig_rule_prefixes: dict[str, str] = Field(default_factory=dict)
+    stig_playbook: str = ""
+    stig_target_var: str = ""
 
     # Track where this schema was loaded from (set post-load, not from YAML)
     _source_path: str | None = None

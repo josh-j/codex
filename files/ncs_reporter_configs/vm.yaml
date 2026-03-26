@@ -1,11 +1,10 @@
 name: vm
 display_name: "VMware VM"
-platform:
-  path: vmware/vm
-  stig_playbook: "playbooks/vm/stig_remediate.yml"
-  stig_target_var: "vm_stig_target_vms"
-  stig_checklist_map:
-    vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
+platform: vmware/vm
+stig_playbook: "playbooks/vm/stig_remediate.yml"
+stig_target_var: "vm_stig_target_vms"
+stig_checklist_map:
+  vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 
 detection:
   keys_any: [vmware_raw_vm]
