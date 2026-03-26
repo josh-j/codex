@@ -224,17 +224,6 @@ def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, An
     return output
 
 
-def load_ncs_reports(report_dir: str, audit_filter: str | None = None) -> dict[str, Any] | None:
-    """
-    Loads and normalizes reports from the state directory.
-    """
-    return load_all_reports(
-        report_dir,
-        audit_filter=audit_filter,
-        host_normalizer=normalize_host_bundle,
-    )
-
-
 def _hosts_hash(data: dict[str, Any]) -> str:
     """Deterministic hash of the hosts sub-dict."""
     raw = json.dumps(data.get("hosts", {}), sort_keys=True, default=str)

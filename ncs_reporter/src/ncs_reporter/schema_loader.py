@@ -257,21 +257,6 @@ def detect_schemas_for_bundle(bundle: dict[str, Any], extra_dirs: tuple[str, ...
     return matched
 
 
-def resolve_template_path(schema: ReportSchema, template_name: str) -> Path | None:
-    """
-    Resolve a template path:
-      1. If schema has template_override and _source_path, look relative to schema file.
-      2. Otherwise return None (caller falls back to built-in templates).
-    """
-    if not schema.template_override:
-        return None
-    source = getattr(schema, "_source_path", None)
-    if not source:
-        return None
-    candidate = Path(source).parent / schema.template_override
-    return candidate if candidate.exists() else None
-
-
 def _build_yaml_line_map(path: Path) -> dict[str, int]:
     """Build a mapping from dot-paths to YAML line numbers."""
     try:

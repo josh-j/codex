@@ -360,16 +360,17 @@ class NavBuilder:
         t_type_label = f"{target_type.upper()} STIG" if target_type else "STIG"
         stig_sibs = nav.get("tree_siblings", [])
         if stig_sibs or target_type:
+            all_sibs = [{"name": t_type_label, "report": "#"}] + list(stig_sibs)
+            all_sibs.sort(key=lambda x: x["name"])
             stig_items: list[dict[str, Any]] = [
-                {"text": t_type_label, "href": "#", "active": True, "css_class": ""},
-            ]
-            for s in stig_sibs:
-                stig_items.append({
+                {
                     "text": s["name"],
                     "href": s["report"],
-                    "active": False,
+                    "active": s["name"] == t_type_label or s["report"] == "#",
                     "css_class": "",
-                })
+                }
+                for s in all_sibs
+            ]
             crumbs.append({
                 "type": "dropdown",
                 "text": t_type_label,

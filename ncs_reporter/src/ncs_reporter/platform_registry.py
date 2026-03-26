@@ -263,15 +263,6 @@ class PlatformRegistry:
         return merged
 
 
-def registry_from_schemas(schemas: dict[str, "ReportSchema"]) -> PlatformRegistry:
-    """Build a PlatformRegistry from schemas that have embedded platform metadata."""
-    from ncs_reporter.schema_loader import build_platform_entries_from_schemas
-
-    entry_dicts = build_platform_entries_from_schemas(schemas)
-    entries = [PlatformEntry.model_validate(e) for e in entry_dicts]
-    return PlatformRegistry(entries)
-
-
 @functools.lru_cache(maxsize=1)
 def default_registry() -> PlatformRegistry:
     """Load and cache the built-in default platform registry.
@@ -297,6 +288,3 @@ def default_registry() -> PlatformRegistry:
 
     return PlatformRegistry([])
 
-
-def registry_from_entries(entries: list[PlatformEntry]) -> PlatformRegistry:
-    return PlatformRegistry(entries)
