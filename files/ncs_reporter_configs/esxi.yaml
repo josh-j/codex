@@ -88,7 +88,7 @@ widgets:
 
   - title: "Host Overview"
     type: key_value
-    layout: { width: "half" }
+    layout: half
     fields:
       'Connection State [badge]': "{{ connection_state }}"
       'Overall Status [badge]': "{{ overall_status }}"
@@ -102,7 +102,7 @@ widgets:
   - id: resource_kpis
     title: "Resource Utilization"
     type: stat_cards
-    layout: { width: "half" }
+    layout: half
     cards:
       'CPU %': "{{ cpu_used_pct | round(0) }}%"
       'Mem %': "{{ mem_used_pct | round(0) }}%"
@@ -111,7 +111,7 @@ widgets:
 
   - title: "Security & Services"
     type: key_value
-    layout: { width: "half" }
+    layout: half
     fields:
       'SSH Enabled [badge]': "{{ ssh_enabled }}"
       'Shell Enabled [badge]': "{{ shell_enabled }}"
