@@ -719,11 +719,6 @@
           "title": "Report Dir",
           "type": "string"
         },
-        "asset_label": {
-          "default": "Nodes",
-          "title": "Asset Label",
-          "type": "string"
-        },
         "stig_skeleton_map": {
           "additionalProperties": {
             "type": "string"

@@ -592,7 +592,6 @@ def build_platform_entries_from_schemas(
             "render": spec.render,
             "schema_name": schema.name,
             "display_name": schema.display_name,
-            "asset_label": spec.asset_label,
             "schema_names": [schema.name],
             "stig_skeleton_map": dict(spec.stig_skeleton_map),
             "stig_rule_prefixes": dict(spec.stig_rule_prefixes),

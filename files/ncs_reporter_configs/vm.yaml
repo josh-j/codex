@@ -4,7 +4,6 @@ platform:
   name: vmware
   input_dir: vmware/vm
   report_dir: vmware/vm
-  asset_label: vCenters
   stig_playbook: "playbooks/vm/stig_remediate.yml"
   stig_target_var: "vm_stig_target_vms"
   stig_skeleton_map:
