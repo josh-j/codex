@@ -16,7 +16,7 @@ distribution_version: ".ansible_facts.distribution_version = unknown"
 uptime_seconds: ".ansible_facts.uptime_seconds | float"
 
 uptime_days:
-  compute: "{uptime_seconds} / 86400"
+  compute: "uptime_seconds / 86400"
   type: float
 
 load_avg_15m: ".ansible_facts.loadavg.15m | float"
@@ -27,14 +27,14 @@ memory_total_mb: ".ansible_facts.memtotal_mb | float = 1.0"
 memory_free_mb: ".ansible_facts.memfree_mb | float"
 
 memory_used_pct:
-  compute: "({memory_total_mb} - {memory_free_mb}) / {memory_total_mb} * 100"
+  compute: "(memory_total_mb - memory_free_mb) / memory_total_mb * 100"
   type: float
 
 swap_total_mb: ".ansible_facts.swaptotal_mb | float"
 swap_free_mb: ".ansible_facts.swapfree_mb | float"
 
 swap_used_pct:
-  compute: "({swap_total_mb} - {swap_free_mb}) / {swap_total_mb} * 100"
+  compute: "(swap_total_mb - swap_free_mb) / swap_total_mb * 100"
   type: float
 
 # --- Services ---
@@ -57,9 +57,9 @@ disks:
       fstype: [tmpfs, devtmpfs, squashfs, overlay, proc, sysfs, devpts]
       device: ["^/dev/loop"]
   list_map:
-    total_gb: "{size_total} / 1073741824"
-    free_gb: "{size_available} / 1073741824"
-    used_pct: "({size_total} - {size_available}) / {size_total} * 100"
+    total_gb: "size_total / 1073741824"
+    free_gb: "size_available / 1073741824"
+    used_pct: "(size_total - size_available) / size_total * 100"
 
 # --- Security ---
 

@@ -55,7 +55,7 @@ fields:
   vm_count: "vm_count | int"
   uptime_seconds: "uptime_seconds | float"
   uptime_days:
-    compute: "{uptime_seconds} / 86400"
+    compute: "uptime_seconds / 86400"
     type: float
   version: "version = ''"
   build: "build = ''"

@@ -1,10 +1,8 @@
-"""Built-in pipe transforms and safe arithmetic expression evaluator."""
+"""Built-in pipe transforms for field path resolution."""
 
 from __future__ import annotations
 
-import ast
 import json
-import operator as _op
 import re as _re
 from collections.abc import Callable
 from typing import Any
@@ -177,66 +175,3 @@ def _round_transform(value: Any, digits: str = "0") -> float:
         return round(float(value), int(digits))
     except (TypeError, ValueError):
         return 0.0
-
-
-# ---------------------------------------------------------------------------
-# Safe arithmetic expression evaluator
-# ---------------------------------------------------------------------------
-
-_EXPR_OPS: dict[type, Any] = {
-    ast.Add: _op.add,
-    ast.Sub: _op.sub,
-    ast.Mult: _op.mul,
-    ast.Div: _op.truediv,
-    ast.USub: _op.neg,
-    ast.UAdd: lambda x: x,
-}
-
-_FIELD_REF_RE = _re.compile(r"\{(\w+)\}")
-
-
-def _safe_eval_expr(expression: str, context: dict[str, Any]) -> float:
-    """
-    Evaluate a numeric arithmetic expression with {field} substitutions.
-
-    - Supports: +  -  *  /  and numeric literals.
-    - Field references like ``{freeSpace}`` are replaced from *context*.
-    - Division by zero returns 0.0.
-    - Any non-numeric or structurally unsafe input raises ValueError.
-    """
-
-    def _sub(m: _re.Match[str]) -> str:
-        val = context.get(m.group(1), 0)
-        try:
-            return str(float(val))
-        except (TypeError, ValueError):
-            return "0"
-
-    substituted = _FIELD_REF_RE.sub(_sub, expression)
-
-    def _eval(node: ast.AST) -> float:
-        if isinstance(node, ast.Constant):
-            if isinstance(node.value, (int, float)):
-                return float(node.value)
-            raise ValueError(f"Non-numeric constant: {node.value!r}")
-        if isinstance(node, ast.BinOp):
-            op_fn = _EXPR_OPS.get(type(node.op))
-            if op_fn is None:
-                raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
-            left = _eval(node.left)
-            right = _eval(node.right)
-            if isinstance(node.op, ast.Div) and right == 0.0:
-                return 0.0
-            return float(op_fn(left, right))
-        if isinstance(node, ast.UnaryOp):
-            op_fn = _EXPR_OPS.get(type(node.op))
-            if op_fn is None:
-                raise ValueError(f"Unsupported unary op: {type(node.op).__name__}")
-            return float(op_fn(_eval(node.operand)))
-        raise ValueError(f"Unsupported AST node: {type(node).__name__}")
-
-    try:
-        tree = ast.parse(substituted, mode="eval")
-        return _eval(tree.body)
-    except (SyntaxError, ValueError) as exc:
-        raise ValueError(f"Expression error in '{expression}': {exc}") from exc

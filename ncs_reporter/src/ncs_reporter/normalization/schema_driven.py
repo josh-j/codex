@@ -10,7 +10,7 @@ from ncs_reporter.alerts import compute_audit_rollups
 from ncs_reporter.models.report_schema import ReportSchema
 from ncs_reporter.primitives import canonical_severity, safe_list
 
-from ._when import evaluate_when, _parse_iso  # noqa: F401
+from ._when import eval_expression, evaluate_when, _parse_iso  # noqa: F401
 from ._fields import (
     _BUILTIN_SCRIPTS_DIR,  # noqa: F401
     _SCRIPT_ERROR_SENTINEL,
@@ -25,7 +25,6 @@ from ._fields import (
     _run_script_field,
     resolve_field,  # noqa: F401
 )
-from ._transforms import _safe_eval_expr  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,7 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     for name, spec in schema.fields.items():
         if spec.compute is not None:
             try:
-                computed = _safe_eval_expr(spec.compute, result)
+                computed = eval_expression(spec.compute, result)
                 result[name] = _coerce(computed, spec.type, spec.fallback)
             except Exception as exc:
                 logger.warning("compute field '%s' failed: %s", name, exc)
@@ -114,7 +113,7 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     for name, spec in schema.fields.items():
         if spec.compute is not None:
             try:
-                computed = _safe_eval_expr(spec.compute, result)
+                computed = eval_expression(spec.compute, result)
                 result[name] = _coerce(computed, spec.type, spec.fallback)
             except Exception as exc:
                 logger.warning("compute field '%s' (pass 4) failed: %s", name, exc)

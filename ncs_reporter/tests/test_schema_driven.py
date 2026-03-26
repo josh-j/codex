@@ -10,9 +10,8 @@ from ncs_reporter.models.report_schema import (
     FieldSpec,
     ReportSchema,
 )
-from ncs_reporter.normalization._when import evaluate_when
+from ncs_reporter.normalization._when import eval_expression, evaluate_when
 from ncs_reporter.normalization.schema_driven import (
-    _safe_eval_expr,
     build_schema_alerts,
     extract_fields,
     normalize_from_schema,
@@ -37,7 +36,7 @@ def _simple_schema() -> ReportSchema:
             "interface_count": FieldSpec(path="interfaces | len_if_list", type="int", fallback=0),
             "interface_list": FieldSpec(path="interfaces", type="list", fallback=[]),
             "first_tag": FieldSpec(path="tags | first", type="str", fallback=None),
-            "first_tag_length": FieldSpec(compute="{first_tag} | len_if_list", type="int", fallback=0),
+            "first_tag_length": FieldSpec(compute="first_tag | len_if_list", type="int", fallback=0),
         },
         alerts=[
             AlertRule(
@@ -347,7 +346,7 @@ class TestSchemaModelValidation:
 
     def test_fieldspec_path_and_compute_mutually_exclusive(self) -> None:
         with pytest.raises(ValueError):
-            FieldSpec(path="a.b", compute="{x} + 1", type="float")
+            FieldSpec(path="a.b", compute="x + 1", type="float")
 
     def test_schema_alias_keys_parse(self) -> None:
         schema = ReportSchema.model_validate(
@@ -358,7 +357,7 @@ class TestSchemaModelValidation:
                 "detection": {"any": ["raw_test"]},
                 "fields": {
                     "hostname": {"from": "raw_test.data.hostname", "default": "unknown"},
-                    "uptime_days": {"expr": "{uptime_seconds} / 86400", "default": 0.0, "type": "float"},
+                    "uptime_days": {"expr": "uptime_seconds / 86400", "default": 0.0, "type": "float"},
                     "uptime_seconds": {"from": "raw_test.data.uptime", "type": "float", "default": 0.0},
                     "rows_data": {"from": "raw_test.data.rows", "type": "list", "default": []},
                 },
@@ -385,50 +384,48 @@ class TestSchemaModelValidation:
         assert schema.detection.keys_any == ["raw_test"]
         assert schema.fields["hostname"].path == "raw_test.data.hostname"
         assert schema.fields["hostname"].fallback == "unknown"
-        assert schema.fields["uptime_days"].compute == "{uptime_seconds} / 86400"
+        assert schema.fields["uptime_days"].compute == "uptime_seconds / 86400"
         assert schema.widgets[1].rows_field == "rows_data"
         assert schema.fleet_columns[0].label == "Host"
 
 
 # ---------------------------------------------------------------------------
-# Safe expression evaluator
+# Expression evaluator (Jinja2-based)
 # ---------------------------------------------------------------------------
 
 
-class TestSafeEvalExpr:
+class TestExpressionEvaluation:
     def test_simple_division(self) -> None:
-        assert _safe_eval_expr("{a} / {b}", {"a": 100.0, "b": 4.0}) == 25.0
+        assert eval_expression("a / b", {"a": 100.0, "b": 4.0}) == 25.0
 
     def test_ratio_times_100(self) -> None:
-        result = _safe_eval_expr("{freeSpace} / {capacity} * 100", {"freeSpace": 20.0, "capacity": 200.0})
+        result = eval_expression("freeSpace / capacity * 100", {"freeSpace": 20.0, "capacity": 200.0})
         assert abs(result - 10.0) < 0.001
 
     def test_division_by_zero_returns_zero(self) -> None:
-        assert _safe_eval_expr("{a} / {b}", {"a": 50.0, "b": 0.0}) == 0.0
+        assert eval_expression("a / b", {"a": 50.0, "b": 0.0}) == 0.0
 
     def test_missing_field_uses_zero(self) -> None:
-        assert _safe_eval_expr("{missing} + 5", {}) == 5.0
+        assert eval_expression("missing + 5", {}) == 5.0
 
     def test_addition(self) -> None:
-        assert _safe_eval_expr("{x} + {y}", {"x": 3.0, "y": 4.0}) == 7.0
+        assert eval_expression("x + y", {"x": 3.0, "y": 4.0}) == 7.0
 
     def test_negation(self) -> None:
-        assert _safe_eval_expr("-{x}", {"x": 5.0}) == -5.0
+        assert eval_expression("-x", {"x": 5.0}) == -5.0
 
     def test_scalar_constant(self) -> None:
-        assert _safe_eval_expr("86400", {}) == 86400.0
+        assert eval_expression("86400", {}) == 86400.0
 
     def test_uptime_days_formula(self) -> None:
-        result = _safe_eval_expr("{appliance_uptime_seconds} / 86400", {"appliance_uptime_seconds": 172800.0})
+        result = eval_expression("appliance_uptime_seconds / 86400", {"appliance_uptime_seconds": 172800.0})
         assert result == 2.0
 
-    def test_unsupported_operator_raises(self) -> None:
-        with pytest.raises(ValueError):
-            _safe_eval_expr("{x} ** 2", {"x": 3.0})
+    def test_exponentiation(self) -> None:
+        assert eval_expression("x ** 2", {"x": 3.0}) == 9.0
 
-    def test_string_constant_raises(self) -> None:
-        with pytest.raises((ValueError, SyntaxError)):
-            _safe_eval_expr("'hello'", {})
+    def test_string_coerced_to_zero(self) -> None:
+        assert eval_expression("'hello'", {}) == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -553,9 +550,9 @@ class TestComputeFields:
             fields={
                 "cpu_used_mhz": FieldSpec(path="cpu.used", type="float", fallback=0.0),
                 "cpu_total_mhz": FieldSpec(path="cpu.total", type="float", fallback=1.0),
-                "cpu_pct": FieldSpec(compute="{cpu_used_mhz} / {cpu_total_mhz} * 100", type="float", fallback=0.0),
+                "cpu_pct": FieldSpec(compute="cpu_used_mhz / cpu_total_mhz * 100", type="float", fallback=0.0),
                 "uptime_seconds": FieldSpec(path="uptime", type="float", fallback=0.0),
-                "uptime_days": FieldSpec(compute="{uptime_seconds} / 86400", type="float", fallback=0.0),
+                "uptime_days": FieldSpec(compute="uptime_seconds / 86400", type="float", fallback=0.0),
             },
             alerts=[
                 AlertRule(
@@ -589,7 +586,7 @@ class TestComputeFields:
 
     def test_compute_field_cannot_have_path_too(self) -> None:
         with pytest.raises(ValueError):
-            FieldSpec(path="a.b", compute="{x} * 2", type="float")
+            FieldSpec(path="a.b", compute="x * 2", type="float")
 
 
 # ---------------------------------------------------------------------------
