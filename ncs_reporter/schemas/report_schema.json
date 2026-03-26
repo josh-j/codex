@@ -941,14 +941,14 @@
       "additionalProperties": false,
       "description": "STIG compliance configuration nested under config.stig in YAML.",
       "properties": {
-        "playbook": {
+        "ansible_playbook": {
           "default": "",
-          "title": "Playbook",
+          "title": "Ansible Playbook",
           "type": "string"
         },
-        "target_var": {
+        "ansible_target_var": {
           "default": "",
-          "title": "Target Var",
+          "title": "Ansible Target Var",
           "type": "string"
         },
         "checklist_map": {
