@@ -4,7 +4,6 @@
       ncs_collect_vcenter:
         platform_dir: "vmware/vcenter"
         report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
-        name: "vcenter"
         payload: "{{ vmware_raw_vcenter }}"
         config: {}
     per_host: true

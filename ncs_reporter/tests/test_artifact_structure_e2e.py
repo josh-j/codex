@@ -120,7 +120,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         # --- Ubuntu: linux-01 ---
         linux_dir = self.platform_root / "linux" / "ubuntu" / "linux-01"
         linux_dir.mkdir(parents=True)
-        (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
+        (linux_dir / "raw_ubuntu.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
 
         # --- VMware: vc-01 (with ESXi STIG data) ---
         vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
@@ -180,7 +180,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
     def test_platform_fleet_reports_created(self):
         self._run_all()
         self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcenter_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa_fleet_report.html").exists())
 
     def test_stamped_fleet_reports_created(self):
         self._run_all()
@@ -188,7 +188,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
             (self.reports_root / "platform" / "linux" / "ubuntu" / f"ubuntu_fleet_report_{STAMP}.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "vcsa" / f"vcenter_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "vmware" / "vcsa" / f"vcsa_fleet_report_{STAMP}.html").exists()
         )
 
     def test_node_reports_under_platform_subdirectory(self):
@@ -246,7 +246,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         # Same hostname on both Ubuntu and VMware
         linux_dir = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME
         linux_dir.mkdir(parents=True)
-        (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
+        (linux_dir / "raw_ubuntu.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
 
         vmware_dir = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME
         vmware_dir.mkdir(parents=True)
@@ -282,7 +282,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
 
     def test_data_files_in_separate_platform_directories(self):
         """Raw data files under linux/ubuntu/ and vmware/vcenter/ never share a directory."""
-        linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "raw_discovery.yaml"
+        linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "raw_ubuntu.yaml"
         vmware_data = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "raw_vcenter.yaml"
         # Both exist before running — they live in separate paths
         self.assertTrue(linux_data.exists())

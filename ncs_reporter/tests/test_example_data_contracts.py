@@ -25,7 +25,7 @@ def test_vcenter_bundle_has_all_assemble_keys(unhealthy: bool) -> None:
 @pytest.mark.parametrize("unhealthy", [True, False])
 def test_linux_bundle_has_all_assemble_keys(unhealthy: bool) -> None:
     bundle = make_linux_bundle("test-host", "10.0.0.1", unhealthy=unhealthy)
-    data = bundle["raw_discovery"]["data"]
+    data = bundle["raw_ubuntu"]["data"]
     missing = LINUX_DATA_KEYS - set(data.keys())
     assert not missing, f"linux example bundle missing keys from discover.yaml: {missing}"
 
@@ -33,7 +33,7 @@ def test_linux_bundle_has_all_assemble_keys(unhealthy: bool) -> None:
 @pytest.mark.parametrize("unhealthy", [True, False])
 def test_windows_bundle_has_all_assemble_keys(unhealthy: bool) -> None:
     bundle = make_windows_bundle("test-win", unhealthy=unhealthy)
-    data = bundle["raw_audit"]["data"]
+    data = bundle["raw_windows"]["data"]
     missing = WINDOWS_DATA_KEYS - set(data.keys())
     assert not missing, f"windows example bundle missing keys from audit.yaml: {missing}"
 

@@ -24,9 +24,7 @@
   ansible.builtin.set_stats:
     data:
       ncs_collect:
-        platform: "photon"
         platform_dir: "{{ _ncs_platform_dir | default('linux/photon') }}"
-        name: "discovery"
         report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
         payload:
           ansible_facts: "{{ ansible_facts }}"

@@ -196,7 +196,7 @@ class TestBuildStigHostView:
             ),
         )
         reports = [f["report"] for f in view["nav"]["tree_fleets"]]
-        assert any("platform/vmware/vcsa/vcenter_fleet_report.html" in r for r in reports)
+        assert any("platform/vmware/vcsa/vcsa_fleet_report.html" in r for r in reports)
         assert any("platform/linux/ubuntu/ubuntu_fleet_report.html" in r for r in reports)
 
 
