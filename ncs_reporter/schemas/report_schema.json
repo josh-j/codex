@@ -950,11 +950,11 @@
           "title": "Platform To Checklist",
           "type": "object"
         },
-        "rule_prefixes": {
+        "rule_prefix_to_platform": {
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Rule Prefixes",
+          "title": "Rule Prefix To Platform",
           "type": "object"
         }
       },

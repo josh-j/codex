@@ -23,11 +23,11 @@ class PlatformRegistry:
 
     def __init__(self, entries: list[PlatformEntry]) -> None:
         self._entries = tuple(entries)
-        # Derive target-type lookup from stig_platform_to_checklist keys + stig_rule_prefixes values.
+        # Derive target-type lookup from stig_platform_to_checklist keys + stig_rule_prefix_to_platform values.
         # Skeleton map entries take precedence (they're the authoritative owner).
         self._tt_lookup: dict[str, PlatformEntry] = {}
         for e in self._entries:
-            for tt in e.stig_rule_prefixes.values():
+            for tt in e.stig_rule_prefix_to_platform.values():
                 self._tt_lookup.setdefault(tt.lower(), e)
         for e in self._entries:
             for tt in e.stig_platform_to_checklist:
@@ -167,7 +167,7 @@ class PlatformRegistry:
     def infer_target_type_from_rule_prefix(self, rule_version: str) -> str:
         rv = rule_version.upper()
         for e in self._entries:
-            for prefix, target_type in e.stig_rule_prefixes.items():
+            for prefix, target_type in e.stig_rule_prefix_to_platform.items():
                 if rv.startswith(prefix.upper()):
                     return target_type
         return ""

@@ -413,7 +413,7 @@ class StigConfig(BaseModel):
 
     ansible_playbook: AnsiblePlaybookConfig = Field(default_factory=AnsiblePlaybookConfig)
     platform_to_checklist: dict[str, str] = Field(default_factory=dict)
-    rule_prefixes: dict[str, str] = Field(default_factory=dict)
+    rule_prefix_to_platform: dict[str, str] = Field(default_factory=dict)
 
 
 class ReportSchema(BaseModel):
