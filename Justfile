@@ -117,6 +117,10 @@ verify-env:
 lint:
     ruff check .
 
+# Lint ncs_reporter YAML configs for style conventions
+lint-configs:
+    {{ python }} ncs_reporter/scripts/lint_configs.py
+
 # Auto-format python code
 format:
     ruff format .
