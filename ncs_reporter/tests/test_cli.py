@@ -40,34 +40,15 @@ def _linux_host_bundle():
 
 def _vmware_host_bundle():
     return {
-        "discovery": {
-            "summary": {"clusters": 1, "hosts": 2, "vms": 10},
-            "health": {"appliance": {"info": {"version": "8.0.2"}}},
-            "inventory": {
-                "clusters": {
-                    "list": [
-                        {
-                            "name": "Cluster-A",
-                            "datacenter": "DC1",
-                            "utilization": {"cpu_pct": 50.0, "mem_pct": 40.0},
-                            "compliance": {"ha_enabled": True, "drs_enabled": True},
-                        }
-                    ]
-                }
-            },
-        },
-        "vcsa": {
+        "schema_vcsa": {
+            "health": "HEALTHY",
             "alerts": [],
-            "vcenter_health": {
-                "health": "green",
-                "data": {
-                    "utilization": {
-                        "cpu_total_mhz": 10000,
-                        "cpu_used_mhz": 5000,
-                        "mem_total_mb": 32000,
-                        "mem_used_mb": 16000,
-                    }
-                },
+            "summary": {"critical_count": 0, "warning_count": 0},
+            "fields": {
+                "appliance_version": "8.0.2",
+                "appliance_health_overall": "green",
+                "cluster_count": 1,
+                "esxi_host_count": 2,
             },
         },
     }

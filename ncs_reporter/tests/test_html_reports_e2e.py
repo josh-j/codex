@@ -57,53 +57,30 @@ class TestHtmlReportsE2E(unittest.TestCase):
         vmware_data = {
             "metadata": {"host": "vc-01", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
-                "appliance_health_info": {
-                    "appliance": {
-                        "summary": {
-                            "product": "vCenter Server",
-                            "version": "8.0.2",
-                            "build_number": "23319199",
-                            "uptime": 864000,
-                        },
-                        "health": {
-                            "overall": "yellow",
-                            "cpu": "green",
-                            "memory": "yellow",
-                            "database": "green",
-                            "storage": "green",
-                            "swap": "green",
-                        },
-                        "access": {"ssh": False},
-                        "backup": {"enabled": True, "status": "SUCCEEDED"},
-                    }
-                },
-                "datacenters_info": {"value": [{"name": "DC1", "datacenter": "datacenter-1"}]},
-                "clusters_info": {
-                    "results": [
-                        {
-                            "item": "DC1",
-                            "clusters": {
-                                "Cluster-A": {
-                                    "resource_summary": {
-                                        "cpuCapacityMHz": 10000,
-                                        "cpuUsedMHz": 2000,
-                                        "memCapacityMB": 32768,
-                                        "memUsedMB": 8192,
-                                    },
-                                    "hosts": ["esxi-01.local"],
-                                }
-                            },
-                        }
-                    ]
-                },
-                "datastores_info": {
-                    "datastores": [
-                        {"name": "ds1", "capacity": 107374182400, "freeSpace": 53687091200, "accessible": True}
-                    ]
-                },
-                "vms_info": {"virtual_machines": []},
-                "snapshots_info": {"snapshots": []},
-                "alarms_info": {"alarms": []},
+                "appliance_version": "8.0.2",
+                "appliance_build": "23319199",
+                "appliance_uptime_seconds": 864000,
+                "appliance_health_overall": "yellow",
+                "appliance_health_cpu": "green",
+                "appliance_health_memory": "yellow",
+                "appliance_health_database": "green",
+                "appliance_health_storage": "green",
+                "ssh_enabled": False,
+                "shell_enabled": False,
+                "ntp_mode": "NTP",
+                "backup_schedules": [{"enabled": True, "status": "SUCCEEDED"}],
+                "backup_schedule_count": 1,
+                "active_alarms": [],
+                "alarm_count": 0,
+                "vcenter_count": 1,
+                "datacenter_count": 1,
+                "cluster_count": 1,
+                "esxi_host_count": 1,
+                "datastore_count": 1,
+                "clusters": [{"name": "Cluster-A", "datacenter": "DC1", "host_count": 1,
+                              "ha_enabled": False, "drs_enabled": False,
+                              "cpu_usage_pct": 20.0, "mem_usage_pct": 25.0}],
+                "datastores": [{"name": "ds1", "capacity": 107374182400, "freeSpace": 53687091200}],
             },
         }
         with open(self.vmware_dir / "raw_vcsa.yaml", "w") as f:

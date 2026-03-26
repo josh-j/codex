@@ -602,26 +602,26 @@ class TestVcsaSchema:
             "raw_vcsa": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
                 "data": {
-                    "appliance_health_info": {
-                        "appliance": {
-                            "summary": {
-                                "version": "8.0.1",
-                                "build_number": "12345",
-                                "uptime": 172800,
-                                "health": {
-                                    "overall": "yellow",
-                                    "cpu": "green",
-                                    "memory": "green",
-                                    "database": "green",
-                                    "storage": "green",
-                                },
-                            },
-                            "access": {"ssh": True, "shell": {"enabled": False}},
-                            "time": {"time_sync": {"mode": "NTP"}},
-                        }
-                    },
-                    "appliance_backup_info": {"schedules": []},
-                    "alarms_info": {"alarms": [], "count": 0, "python": "/usr/bin/python3"},
+                    "appliance_version": "8.0.1",
+                    "appliance_build": "12345",
+                    "appliance_uptime_seconds": 172800,
+                    "appliance_health_overall": "yellow",
+                    "appliance_health_cpu": "green",
+                    "appliance_health_memory": "green",
+                    "appliance_health_database": "green",
+                    "appliance_health_storage": "green",
+                    "ssh_enabled": True,
+                    "shell_enabled": False,
+                    "ntp_mode": "NTP",
+                    "backup_schedules": [],
+                    "backup_schedule_count": 0,
+                    "active_alarms": [],
+                    "alarm_count": 0,
+                    "vcenter_count": 1,
+                    "datacenter_count": 0,
+                    "cluster_count": 0,
+                    "esxi_host_count": 0,
+                    "datastore_count": 0,
                 },
             }
         }
