@@ -60,9 +60,9 @@ def test_vmware_public_readme_matches_supported_surface() -> None:
 def test_vmware_schema_doc_mentions_all_public_payload_keys() -> None:
     schema_doc = (VMWARE_ROOT / "docs" / "SCHEMA.md").read_text(encoding="utf-8")
 
-    assert "vmware_raw_vcenter" in schema_doc
-    assert "vmware_raw_esxi" in schema_doc
-    assert "vmware_raw_vm" in schema_doc
+    assert "raw_vcenter" in schema_doc
+    assert "raw_esxi" in schema_doc
+    assert "raw_vm" in schema_doc
 
     for key in VCENTER_DATA_KEYS | ESXI_DATA_KEYS | VM_DATA_KEYS:
         assert key in schema_doc, f"{key} missing from VMware schema documentation"

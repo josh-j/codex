@@ -5,10 +5,10 @@ stig_rule_prefixes:
 
 # Detects the key emitted by the internal.windows role via ncs_collector callback.
 detection:
-  keys_any: [windows_raw_audit]
+  keys_any: [raw_audit]
 
 # Paths starting with '.' are relative to path_prefix.
-path_prefix: "windows_raw_audit.data"
+path_prefix: "raw_audit.data"
 
 fleet_columns:
   - "Collected At: collected_at"
@@ -23,7 +23,7 @@ fleet_columns:
 
 fields:
   # --- Collection timestamp ---
-  collected_at: "windows_raw_audit.metadata.timestamp"
+  collected_at: "raw_audit.metadata.timestamp"
 
   # --- CCMExec service ---
   ccm_service_state: ".ccm_service.state = unknown"

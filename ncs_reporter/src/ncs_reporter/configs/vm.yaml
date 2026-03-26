@@ -6,9 +6,9 @@ stig_checklist_map:
   vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 
 detection:
-  keys_any: [vmware_raw_vm]
+  keys_any: [raw_vm]
 
-path_prefix: "vmware_raw_vm.data"
+path_prefix: "raw_vm.data"
 
 fleet_columns:
   - "VMs: vm_count"
@@ -41,7 +41,7 @@ fields:
     type: list
 
   snapshot_count: ".snapshots_info.snapshots | len_if_list | int"
-  collected_at: "vmware_raw_vm.metadata.timestamp"
+  collected_at: "raw_vm.metadata.timestamp"
 
   aged_snapshot_count:
     script: "normalize_snapshots.py"

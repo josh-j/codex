@@ -48,7 +48,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 }
             },
         }
-        with open(self.linux_dir / "ubuntu_raw_discovery.yaml", "w") as f:
+        with open(self.linux_dir / "raw_discovery.yaml", "w") as f:
             yaml.dump(linux_data, f)
 
         # 2. VMware Data (Trigger a health warning)
@@ -106,14 +106,14 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "alarms_info": {"alarms": []},
             },
         }
-        with open(self.vmware_dir / "vmware_raw_vcenter.yaml", "w") as f:
+        with open(self.vmware_dir / "raw_vcenter.yaml", "w") as f:
             yaml.dump(vmware_data, f)
 
         # 2b. ESXi per-host health data (separate input_dir: vmware/esxi)
         self.esxi_dir = self.platform_root / "vmware" / "esxi" / "vc-01"
         self.esxi_dir.mkdir(parents=True)
         esxi_data = {
-            "metadata": {"host": "vc-01", "audit_type": "vmware_raw_esxi", "raw_type": "esxi",
+            "metadata": {"host": "vc-01", "audit_type": "raw_esxi", "raw_type": "esxi",
                          "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
                 "hosts_info": {
@@ -147,7 +147,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "collection_error": "",
             },
         }
-        with open(self.esxi_dir / "vmware_raw_esxi.yaml", "w") as f:
+        with open(self.esxi_dir / "raw_esxi.yaml", "w") as f:
             yaml.dump(esxi_data, f)
 
         # 3. Windows Data
@@ -162,7 +162,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "applications": [{"name": "7-Zip 22.01 (x64)", "version": "22.01", "vendor": "Igor Pavlov"}],
             },
         }
-        with open(self.windows_dir / "windows_raw_audit.yaml", "w") as f:
+        with open(self.windows_dir / "raw_audit.yaml", "w") as f:
             yaml.dump(windows_data, f)
 
         # 4. Inventory Groups

@@ -120,12 +120,12 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         # --- Ubuntu: linux-01 ---
         linux_dir = self.platform_root / "linux" / "ubuntu" / "linux-01"
         linux_dir.mkdir(parents=True)
-        (linux_dir / "ubuntu_raw_discovery.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
+        (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
 
         # --- VMware: vc-01 (with ESXi STIG data) ---
         vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
         vmware_dir.mkdir(parents=True)
-        (vmware_dir / "vmware_raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw("vc-01")))
+        (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw("vc-01")))
         (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw("vc-01")))
 
         # --- Inventory groups ---
@@ -246,11 +246,11 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         # Same hostname on both Ubuntu and VMware
         linux_dir = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME
         linux_dir.mkdir(parents=True)
-        (linux_dir / "ubuntu_raw_discovery.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
+        (linux_dir / "raw_discovery.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
 
         vmware_dir = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME
         vmware_dir.mkdir(parents=True)
-        (vmware_dir / "vmware_raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw(self.SHARED_HOSTNAME)))
+        (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw(self.SHARED_HOSTNAME)))
         (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw(self.SHARED_HOSTNAME)))
 
         groups = {
@@ -282,8 +282,8 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
 
     def test_data_files_in_separate_platform_directories(self):
         """Raw data files under linux/ubuntu/ and vmware/vcenter/ never share a directory."""
-        linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "ubuntu_raw_discovery.yaml"
-        vmware_data = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "vmware_raw_vcenter.yaml"
+        linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "raw_discovery.yaml"
+        vmware_data = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "raw_vcenter.yaml"
         # Both exist before running — they live in separate paths
         self.assertTrue(linux_data.exists())
         self.assertTrue(vmware_data.exists())

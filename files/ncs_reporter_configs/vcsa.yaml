@@ -31,9 +31,9 @@ stig_rule_prefixes:
   PH: photon
 
 detection:
-  keys_any: [vmware_raw_vcenter]
+  keys_any: [raw_vcenter]
 
-path_prefix: "vmware_raw_vcenter.data"
+path_prefix: "raw_vcenter.data"
 
 fleet_columns:
   - "Version: appliance_version"

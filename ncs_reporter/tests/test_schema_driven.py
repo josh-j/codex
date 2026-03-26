@@ -620,7 +620,7 @@ class TestVcenterSchema:
         s = load_schema_from_file(schema_path)
 
         bundle = {
-            "vmware_raw_vcenter": {
+            "raw_vcenter": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
                 "data": {
                     "appliance_health_info": {
@@ -728,7 +728,7 @@ class TestVmHealthSchema:
         s = load_schema_from_file(schema_path)
 
         bundle = {
-            "vmware_raw_vm": {
+            "raw_vm": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
                 "data": {
                     "datacenters_info": {"datacenter_info": [{"name": "DC1"}]},
