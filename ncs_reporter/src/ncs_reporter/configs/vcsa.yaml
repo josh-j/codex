@@ -25,7 +25,7 @@ config:
       rhttpproxy: cklb_skeletons/cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
       sts: cklb_skeletons/cklb_skeleton_vsphere7_vca_sts_V1R2.json
       ui: cklb_skeletons/cklb_skeleton_vsphere7_vca_ui_V1R2.json
-    rule_prefixes:
+    rule_prefix_to_platform:
       VMCH: vm
       ESXI: esxi
       VC: vcsa

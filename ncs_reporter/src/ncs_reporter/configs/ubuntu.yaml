@@ -4,7 +4,7 @@ config:
     ansible_playbook:
       path: "playbooks/ubuntu_stig_remediate.yml"
       target_var: "ubuntu_target_hosts"
-    rule_prefixes:
+    rule_prefix_to_platform:
       UBTU: ubuntu
       GEN: ubuntu
   extra_fleet_widget_columns:

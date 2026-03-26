@@ -582,7 +582,7 @@ def build_platform_entries_from_schemas(
             primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
             primary_entry["stig_platform_to_checklist"].update(schema.stig.platform_to_checklist)
-            primary_entry["stig_rule_prefixes"].update(schema.stig.rule_prefixes)
+            primary_entry["stig_rule_prefix_to_platform"].update(schema.stig.rule_prefix_to_platform)
             continue
 
         # Primary entry
@@ -595,7 +595,7 @@ def build_platform_entries_from_schemas(
             "display_name": schema.display_name,
             "schema_names": [schema.name],
             "stig_platform_to_checklist": dict(schema.stig.platform_to_checklist),
-            "stig_rule_prefixes": dict(schema.stig.rule_prefixes),
+            "stig_rule_prefix_to_platform": dict(schema.stig.rule_prefix_to_platform),
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
             "stig_playbook": schema.stig.ansible_playbook.path,

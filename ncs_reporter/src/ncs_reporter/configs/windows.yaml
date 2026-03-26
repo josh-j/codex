@@ -1,7 +1,7 @@
 config:
   platform: windows
   stig:
-    rule_prefixes:
+    rule_prefix_to_platform:
       WN: windows
       MS: windows
   extra_fleet_widget_columns:
