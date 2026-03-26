@@ -144,10 +144,6 @@ class PlatformEntry(BaseModel):
         return None
 
     @property
-    def site_category(self) -> str | None:
-        return self.display_name
-
-    @property
     def fleet_link(self) -> str | None:
         if self.render and self.report_dir:
             schema = self.schema_names[0] if self.schema_names else self.platform
