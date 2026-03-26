@@ -107,12 +107,16 @@ class FieldSpec(BaseModel):
     all_where: dict[str, Any] | None = None
     # Sum a numeric field across all list items (after list_filter if set).
     sum_field: str | None = None
+    # Display thresholds: { value: color } for widgets that show this var.
+    thresholds: dict[int, str] | None = None
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
         sources = sum(x is not None for x in [self.path, self.compute, self.script])
-        if sources == 0:
-            raise ValueError("FieldSpec requires one of: 'path', 'compute', or 'script'")
+        # Allow metadata-only vars (e.g., just thresholds on auto-imported data)
+        has_metadata = self.thresholds is not None
+        if sources == 0 and not has_metadata:
+            raise ValueError("FieldSpec requires one of: 'path', 'compute', 'script', or 'thresholds'")
         if sources > 1:
             raise ValueError("FieldSpec: 'path', 'compute', and 'script' are mutually exclusive")
         # At most one aggregation mode

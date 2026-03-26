@@ -193,6 +193,7 @@ vars:
   alarm_count:
     path: ".alarms_info.alarms | len_if_list"
     type: int
+    thresholds: { 1: yellow, 5: red }
 
 alerts:
   - id: appliance_health_red
@@ -287,14 +288,14 @@ widgets:
     title: "Infrastructure KPIs"
     type: stat_cards
     cards:
-      - { field: "{{ datacenter_count }}", label: "Datacenters" }
-      - { field: "{{ cluster_count }}", label: "Clusters" }
-      - { field: "{{ esxi_host_count }}", label: "ESXi Hosts" }
-      - { field: "{{ datastore_count }}", label: "Datastores" }
-      - { field: "{{ dvswitch_count }}", label: "DVSwitches" }
-      - { field: "{{ resource_pool_count }}", label: "Resource Pools" }
-      - { field: "{{ license_count }}", label: "Licenses" }
-      - { field: "{{ alarm_count }}", label: "Alarms", thresholds: { 1: yellow, 5: red } }
+      'Datacenters': "{{ datacenter_count }}"
+      'Clusters': "{{ cluster_count }}"
+      'ESXi Hosts': "{{ esxi_host_count }}"
+      'Datastores': "{{ datastore_count }}"
+      'DVSwitches': "{{ dvswitch_count }}"
+      'Resource Pools': "{{ resource_pool_count }}"
+      'Licenses': "{{ license_count }}"
+      'Alarms': "{{ alarm_count }}"
 
   - title: "Appliance Overview"
     type: key_value

@@ -376,6 +376,21 @@
           ],
           "default": null,
           "title": "Sum Field"
+        },
+        "thresholds": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thresholds"
         }
       },
       "title": "FieldSpec",
