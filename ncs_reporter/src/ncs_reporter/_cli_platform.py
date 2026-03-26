@@ -79,7 +79,7 @@ def _validate_config_references(
     import difflib
     declared = set(s.fields.keys())
     for rule in s.alerts:
-        for match in re.finditer(r"\{(\w+)", rule.message):
+        for match in re.finditer(r"\{(\w+)", rule.msg):
             ref = match.group(1)
             if ref != "value" and not ref.startswith("_") and ref not in declared:
                 hint = difflib.get_close_matches(ref, list(declared), n=1, cutoff=0.6)

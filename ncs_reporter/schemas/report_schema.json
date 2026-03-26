@@ -77,8 +77,8 @@
           "default": null,
           "title": "Action"
         },
-        "message": {
-          "title": "Message",
+        "msg": {
+          "title": "Msg",
           "type": "string"
         },
         "suppress_if": {
@@ -104,7 +104,7 @@
         "id",
         "category",
         "when",
-        "message"
+        "msg"
       ],
       "title": "AlertRule",
       "type": "object"
