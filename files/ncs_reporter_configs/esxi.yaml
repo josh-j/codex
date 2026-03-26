@@ -22,63 +22,63 @@ alerts:
   - id: host_disconnected
     category: "Host Connectivity"
     severity: CRITICAL
-    when: "connection_state == 'disconnected'"
+    when: connection_state == 'disconnected'
     message: "ESXi host is disconnected from vCenter"
 
   - id: host_not_responding
     category: "Host Connectivity"
     severity: CRITICAL
-    when: "connection_state == 'notResponding'"
+    when: connection_state == 'notResponding'
     message: "ESXi host is not responding"
 
   - id: host_in_maintenance
     category: "Host Status"
     severity: WARNING
-    when: "in_maintenance_mode == 1.0"
+    when: in_maintenance_mode == 1.0
     message: "ESXi host is in maintenance mode"
 
   - id: mem_critical
     category: "Host Resources"
     severity: CRITICAL
-    when: "mem_used_pct >= 95.0"
+    when: mem_used_pct >= 95.0
     message: "Memory utilization critically high at {{ mem_used_pct | round(0) }}%"
 
   - id: mem_warning
     category: "Host Resources"
     severity: WARNING
     suppress_if: mem_critical
-    when: "mem_used_pct >= 85.0"
+    when: mem_used_pct >= 85.0
     message: "Memory utilization elevated at {{ mem_used_pct | round(0) }}%"
 
   - id: cpu_critical
     category: "Host Resources"
     severity: CRITICAL
-    when: "cpu_used_pct >= 95.0"
+    when: cpu_used_pct >= 95.0
     message: "CPU utilization critically high at {{ cpu_used_pct | round(0) }}%"
 
   - id: cpu_warning
     category: "Host Resources"
     severity: WARNING
     suppress_if: cpu_critical
-    when: "cpu_used_pct >= 85.0"
+    when: cpu_used_pct >= 85.0
     message: "CPU utilization elevated at {{ cpu_used_pct | round(0) }}%"
 
   - id: ssh_enabled
     category: "Security"
     severity: WARNING
-    when: "ssh_enabled == 1.0"
+    when: ssh_enabled == 1.0
     message: "SSH is enabled on this ESXi host"
 
   - id: shell_enabled
     category: "Security"
     severity: WARNING
-    when: "shell_enabled == 1.0"
+    when: shell_enabled == 1.0
     message: "ESXi Shell is enabled on this host"
 
   - id: uptime_excessive
     category: "Host Lifecycle"
     severity: WARNING
-    when: "uptime_days >= 90.0"
+    when: uptime_days >= 90.0
     message: "ESXi host has not been rebooted in {{ uptime_days | round(0) }} days — may be missing patches"
 
 widgets:
