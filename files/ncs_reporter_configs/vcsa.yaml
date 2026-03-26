@@ -1,4 +1,3 @@
-name: vcenter
 display_name: "VMware VCSA"
 platform:
   path: vmware/vcenter

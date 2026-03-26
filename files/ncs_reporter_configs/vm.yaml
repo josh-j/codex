@@ -1,4 +1,3 @@
-name: vm
 display_name: "VMware VM"
 platform: vmware/vm
 stig_playbook: "playbooks/vm/stig_remediate.yml"
