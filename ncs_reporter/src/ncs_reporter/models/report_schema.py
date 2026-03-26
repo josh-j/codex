@@ -425,7 +425,7 @@ class ReportSchema(BaseModel):
     display_name: str = Field(default="", validation_alias=AliasChoices("display_name", "title"))
     path_prefix: str | None = None
     detection: DetectionSpec = Field(default_factory=DetectionSpec)  # auto-derived from name
-    fields: dict[str, FieldSpec] = Field(default_factory=dict)
+    fields: dict[str, FieldSpec] = Field(default_factory=dict, validation_alias=AliasChoices("fields", "vars"))
     alerts: list[AlertRule] = Field(default_factory=list)
     widgets: list[ReportWidget] = Field(default_factory=list)
     fleet_columns: list[FleetColumn] = Field(
@@ -485,6 +485,9 @@ class ReportSchema(BaseModel):
         # Auto-derive display_name from name
         if not values.get("display_name") and not values.get("title"):
             values["display_name"] = name.replace("_", " ").title() if name else ""
+        # Normalize vars → fields (accept both keys)
+        if "vars" in values and "fields" not in values:
+            values["fields"] = values.pop("vars")
         # Expand short-form fields: bare string → path-only FieldSpec
         fields = values.get("fields")
         if isinstance(fields, dict):

@@ -20,7 +20,7 @@ config:
 split_field: esxi_hosts
 split_name_key: name
 
-fields:
+vars:
   # Raw data references for the assembly script
   hosts_info:
     path: ".hosts_info"
@@ -126,27 +126,27 @@ alerts:
     category: "Host Resources"
     severity: CRITICAL
     when: "mem_used_pct >= 95.0"
-    message: "Memory utilization critically high at {mem_used_pct:.0f}%"
+    message: "Memory utilization critically high at {{ mem_used_pct | round(0) }}%"
 
   - id: mem_warning
     category: "Host Resources"
     severity: WARNING
     suppress_if: mem_critical
     when: "mem_used_pct >= 85.0"
-    message: "Memory utilization elevated at {mem_used_pct:.0f}%"
+    message: "Memory utilization elevated at {{ mem_used_pct | round(0) }}%"
 
   - id: cpu_critical
     category: "Host Resources"
     severity: CRITICAL
     when: "cpu_used_pct >= 95.0"
-    message: "CPU utilization critically high at {cpu_used_pct:.0f}%"
+    message: "CPU utilization critically high at {{ cpu_used_pct | round(0) }}%"
 
   - id: cpu_warning
     category: "Host Resources"
     severity: WARNING
     suppress_if: cpu_critical
     when: "cpu_used_pct >= 85.0"
-    message: "CPU utilization elevated at {cpu_used_pct:.0f}%"
+    message: "CPU utilization elevated at {{ cpu_used_pct | round(0) }}%"
 
   - id: ssh_enabled
     category: "Security"
@@ -164,7 +164,7 @@ alerts:
     category: "Host Lifecycle"
     severity: WARNING
     when: "uptime_days >= 90.0"
-    message: "ESXi host has not been rebooted in {uptime_days:.0f} days — may be missing patches"
+    message: "ESXi host has not been rebooted in {{ uptime_days | round(0) }} days — may be missing patches"
 
 widgets:
   - title: "Active Alerts"
@@ -199,10 +199,10 @@ widgets:
     type: stat_cards
     layout: { width: "half" }
     cards:
-      - { field: cpu_used_pct, label: "CPU %", format: "{value:.0f}%", color: auto, thresholds: { 80: yellow, 90: red } }
-      - { field: mem_used_pct, label: "Mem %", format: "{value:.0f}%", color: auto, thresholds: { 80: yellow, 90: red } }
+      - { field: cpu_used_pct, label: "CPU %", format: "{{ value | round(0) }}%", color: auto, thresholds: { 80: yellow, 90: red } }
+      - { field: mem_used_pct, label: "Mem %", format: "{{ value | round(0) }}%", color: auto, thresholds: { 80: yellow, 90: red } }
       - { field: vm_count, label: "VMs" }
-      - { field: uptime_days, label: "Uptime (days)", format: "{value:.0f}" }
+      - { field: uptime_days, label: "Uptime (days)", format: "{{ value | round(0) }}" }
 
   - title: "Security & Services"
     type: key_value

@@ -4,14 +4,14 @@
   category: "Capacity"
   severity: CRITICAL
   when: "memory_used_pct >= 98.0"
-  message: "Memory saturation: {memory_used_pct:.1f}% used"
+  message: "Memory saturation: {{ memory_used_pct | round(1) }}% used"
 
 - id: memory_warning
   category: "Capacity"
   severity: WARNING
   suppress_if: memory_critical
   when: "memory_used_pct >= 85.0 and memory_used_pct < 98.0"
-  message: "Memory pressure: {memory_used_pct:.1f}% used"
+  message: "Memory pressure: {{ memory_used_pct | round(1) }}% used"
 
 - id: disk_critical
   category: "Capacity"
@@ -30,7 +30,7 @@
   category: "Availability"
   severity: CRITICAL
   when: "failed_services_count > 0"
-  message: "{failed_services_count} systemd service(s) failed"
+  message: "{{ failed_services_count }} systemd service(s) failed"
 
 - id: reboot_pending
   category: "Patching"
@@ -42,16 +42,16 @@
   category: "Patching"
   severity: WARNING
   when: "pending_updates_count > 0"
-  message: "{pending_updates_count} package update(s) pending"
+  message: "{{ pending_updates_count }} package update(s) pending"
 
 - id: uptime_violation
   category: "Maintenance"
   severity: WARNING
   when: "uptime_days > 180.0"
-  message: "Uptime policy violation: server has not rebooted in over 6 months ({uptime_days:.0f} days)"
+  message: "Uptime policy violation: server has not rebooted in over 6 months ({{ uptime_days | round(0) }} days)"
 
 - id: world_writable_files
   category: "Security"
   severity: WARNING
   when: "world_writable_count > 0"
-  message: "{world_writable_count} world-writable file(s) detected"
+  message: "{{ world_writable_count }} world-writable file(s) detected"

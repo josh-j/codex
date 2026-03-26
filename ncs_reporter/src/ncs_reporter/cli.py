@@ -241,8 +241,9 @@ def fire_on_alerts(input_file: str, dry_run: bool) -> None:
                 continue
 
             try:
-                rendered_action = action.format(**fields)
-            except (KeyError, ValueError):
+                from .normalization._when import _build_jinja_env
+                rendered_action = _build_jinja_env().from_string(action).render(**fields)
+            except Exception:
                 rendered_action = action
 
             if dry_run:

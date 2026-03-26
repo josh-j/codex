@@ -92,7 +92,7 @@ def _resolve_includes(data: dict[str, Any], root_path: Path) -> dict[str, Any]:
     result = dict(data)
 
     # Dict sections (fields): merge by key, local overrides win
-    for section_key in ("fields",):
+    for section_key in ("fields", "vars"):
         section = result.get(section_key)
         if not isinstance(section, dict):
             continue
@@ -395,8 +395,8 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
 
     Runs after YAML parsing and $ref/$include resolution, before model validation.
     """
-    # 1. Expand compact fields
-    fields = data.get("fields")
+    # 1. Expand compact fields (accept both "fields" and "vars" keys)
+    fields = data.get("fields") or data.get("vars")
     if isinstance(fields, dict):
         for key, val in list(fields.items()):
             if isinstance(val, str) and (" | " in val or " = " in val):

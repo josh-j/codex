@@ -34,7 +34,7 @@ config:
     - label: "Version"
       field: appliance_version
 
-fields:
+vars:
   # --- Appliance ---
   appliance_version:
     path: ".appliance_health_info.appliance.summary.version"
@@ -234,13 +234,13 @@ alerts:
     category: "Time Synchronization"
     severity: WARNING
     when: "ntp_mode not in ['NTP', 'HOST']"
-    message: "Time sync misconfigured: NTP mode is '{ntp_mode}' — clock drift may affect logs and certificates"
+    message: "Time sync misconfigured: NTP mode is '{{ ntp_mode }}' — clock drift may affect logs and certificates"
 
   - id: appliance_uptime_excessive
     category: "Appliance Lifecycle"
     severity: WARNING
     when: "appliance_uptime_days >= 90.0"
-    message: "VCSA has not been rebooted in {appliance_uptime_days:.0f} days — may be missing patches"
+    message: "VCSA has not been rebooted in {{ appliance_uptime_days | round(0) }} days — may be missing patches"
 
   - id: appliance_uptime_recent_reboot
     category: "Appliance Lifecycle"
@@ -265,14 +265,14 @@ alerts:
     category: "vCenter Alarms"
     severity: CRITICAL
     when: "active_critical_alarm_count > 0"
-    message: "Active CRITICAL alarms detected in vCenter ({alarm_count} total triggered)"
+    message: "Active CRITICAL alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
   - id: active_warning_alarms
     category: "vCenter Alarms"
     severity: WARNING
     suppress_if: active_critical_alarms
     when: "active_warning_alarm_count > 0"
-    message: "Active WARNING alarms detected in vCenter ({alarm_count} total triggered)"
+    message: "Active WARNING alarms detected in vCenter ({{ alarm_count }} total triggered)"
 
 widgets:
   - title: "Active Alerts"

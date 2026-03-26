@@ -44,7 +44,7 @@ def _simple_schema() -> ReportSchema:
                 category="Network Health",
                 severity="WARNING",
                 when="error_rate_pct > 5.0",
-                message="High error rate: {error_rate_pct}%",
+                message="High error rate: {{ error_rate_pct }}%",
             ),
             AlertRule(
                 id="interfaces_down",
@@ -783,7 +783,7 @@ class TestScriptFields:
                     category="Snapshots",
                     severity="WARNING",
                     when="aged_count > 0",
-                    message="{aged_count} aged snapshot(s)",
+                    message="{{ aged_count }} aged snapshot(s)",
                 )
             ],
         )
