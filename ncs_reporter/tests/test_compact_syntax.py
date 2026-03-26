@@ -396,6 +396,6 @@ class TestRoundTrip:
         path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "windows.yaml"
         schema = load_schema_from_file(path)
         assert schema.name == "windows"
-        assert len(schema.fields) == 29
+        assert len(schema.fields) == 1  # only collected_at; rest auto-imported
         assert len(schema.alerts) == 9
         assert len(schema.widgets) == 12  # alert_panel is auto-injected
