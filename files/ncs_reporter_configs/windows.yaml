@@ -20,7 +20,7 @@ config:
 # Fields
 # ---------------------------------------------------------------------------
 
-fields:
+vars:
   # --- Collection timestamp ---
   collected_at: "raw_windows.metadata.timestamp"
 
@@ -137,7 +137,7 @@ alerts:
     category: "Services"
     severity: WARNING
     when: "ccm_service_state != 'running'"
-    message: "ConfigMgr client service (CCMExec) is not running (state: {ccm_service_state})"
+    message: "ConfigMgr client service (CCMExec) is not running (state: {{ ccm_service_state }})"
 
   - id: failed_updates
     category: "Patching"
@@ -155,7 +155,7 @@ alerts:
     category: "Health"
     severity: WARNING
     when: "health_reboot_pending == 1"
-    message: "System has a pending reboot ({health_reboot_reasons})"
+    message: "System has a pending reboot ({{ health_reboot_reasons }})"
 
   - id: disk_space_warning
     category: "Health"
@@ -167,7 +167,7 @@ alerts:
     category: "Health"
     severity: WARNING
     when: "health_memory_used_pct > 85"
-    message: "Memory usage is high ({health_memory_used_pct}%)"
+    message: "Memory usage is high ({{ health_memory_used_pct }}%)"
 
   - id: secure_channel_failed
     category: "Health"
@@ -179,13 +179,13 @@ alerts:
     category: "Health"
     severity: WARNING
     when: "health_event_count > 0"
-    message: "{health_event_count} critical/error events in recent logs"
+    message: "{{ health_event_count }} critical/error events in recent logs"
 
   - id: open_vulnerabilities
     category: "Security"
     severity: WARNING
     when: "vuln_open > 0"
-    message: "{vuln_open} open vulnerability findings"
+    message: "{{ vuln_open }} open vulnerability findings"
 
 # ---------------------------------------------------------------------------
 # Widgets

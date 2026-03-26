@@ -19,7 +19,7 @@ config:
 # Fields
 # ---------------------------------------------------------------------------
 
-fields:
+vars:
   datacenters:
     path: ".datacenters_info.datacenter_info"
     type: list
@@ -33,7 +33,7 @@ fields:
   virtual_machines:
     script: "get_vms_list.py"
     script_args:
-      exclude_patterns: "{infra_patterns}"
+      exclude_patterns: "{{ infra_patterns }}"
     type: list
 
   vm_count:
@@ -81,7 +81,7 @@ alerts:
     category: "Workload Inventory"
     severity: INFO
     when: "powered_off_vm_count > 0"
-    message: "{powered_off_vm_count} powered-off VM(s) detected — review for cleanup or licensing"
+    message: "{{ powered_off_vm_count }} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
     category: "Workload Compliance"
@@ -99,13 +99,13 @@ alerts:
     category: "Snapshots"
     severity: INFO
     when: "recent_snapshot_count > 0"
-    message: "VM snapshots present: {snapshot_count} snapshot(s) found"
+    message: "VM snapshots present: {{ snapshot_count }} snapshot(s) found"
 
   - id: aged_snapshots
     category: "Snapshots"
     severity: WARNING
     when: "aged_snapshot_count > 0"
-    message: "{aged_snapshot_count} snapshot(s) older than 7 days — review for removal"
+    message: "{{ aged_snapshot_count }} snapshot(s) older than 7 days — review for removal"
 
 # ---------------------------------------------------------------------------
 # Widgets

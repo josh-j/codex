@@ -7,8 +7,8 @@
   title: "Key Metrics"
   type: stat_cards
   cards:
-    - { field: uptime_days, label: "Uptime (d)", format: "{value:.0f}" }
-    - { field: memory_used_pct, label: "Mem Used %", format: "{value:.1f}%", thresholds: { 85: yellow, 98: red } }
+    - { field: uptime_days, label: "Uptime (d)", format: "{{ value | round(0) }}" }
+    - { field: memory_used_pct, label: "Mem Used %", format: "{{ value | round(1) }}%", thresholds: { 85: yellow, 98: red } }
     - { field: failed_services_count, label: "Failed Svcs", thresholds: { 1: red } }
     - { field: pending_updates_count, label: "Pending Updates", thresholds: { 1: yellow } }
 
@@ -25,17 +25,17 @@
       field: distribution_version
     - label: "Kernel"
       field: kernel
-    - { label: "Uptime (days)", field: uptime_days, format: "{value:.1f}" }
+    - { label: "Uptime (days)", field: uptime_days, format: "{{ value | round(1) }}" }
     - { label: "Load Avg (15m)", field: load_avg_15m, format: "{value:.2f}" }
 
 - title: "Memory"
   type: key_value
   fields:
-    - { label: "Total (MB)", field: memory_total_mb, format: "{value:.1f}" }
-    - { label: "Free (MB)", field: memory_free_mb, format: "{value:.1f}" }
-    - { label: "Used %", field: memory_used_pct, format: "{value:.1f}" }
-    - { label: "Swap Total (MB)", field: swap_total_mb, format: "{value:.1f}" }
-    - { label: "Swap Used %", field: swap_used_pct, format: "{value:.1f}" }
+    - { label: "Total (MB)", field: memory_total_mb, format: "{{ value | round(1) }}" }
+    - { label: "Free (MB)", field: memory_free_mb, format: "{{ value | round(1) }}" }
+    - { label: "Used %", field: memory_used_pct, format: "{{ value | round(1) }}" }
+    - { label: "Swap Total (MB)", field: swap_total_mb, format: "{{ value | round(1) }}" }
+    - { label: "Swap Used %", field: swap_used_pct, format: "{{ value | round(1) }}" }
 
 - title: "Patching & Services"
   type: key_value

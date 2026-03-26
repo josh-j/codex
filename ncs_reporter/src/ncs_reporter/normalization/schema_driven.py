@@ -151,8 +151,9 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 continue
 
         try:
-            message = rule.message.format(**fields)
-        except (KeyError, ValueError):
+            from ._when import _build_jinja_env
+            message = _build_jinja_env().from_string(rule.message).render(**fields)
+        except Exception:
             message = rule.message
 
         # Auto-derive detail (scalars) and affected_items (lists) from when expression

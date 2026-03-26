@@ -17,7 +17,7 @@ config:
     - label: "Warning"
       field: _warning_count
 
-fields:
+vars:
   $include: "linux_base_fields.yaml"
   collected_at: "raw_ubuntu.metadata.timestamp"
 
