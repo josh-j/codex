@@ -1,9 +1,8 @@
 name: esxi
 display_name: "VMware ESXi"
-platform:
-  path: vmware/esxi
-  stig_checklist_map:
-    esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
+platform: vmware/esxi
+stig_checklist_map:
+  esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
 
 detection:
   keys_any: [vmware_raw_esxi]

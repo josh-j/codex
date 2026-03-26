@@ -1,9 +1,8 @@
 name: windows
-platform:
-  path: windows
-  stig_rule_prefixes:
-    WN: windows
-    MS: windows
+platform: windows
+stig_rule_prefixes:
+  WN: windows
+  MS: windows
 
 # Detects the key emitted by the internal.windows role via ncs_collector callback.
 detection:

@@ -1,11 +1,10 @@
 name: linux
-platform:
-  path: linux/ubuntu
-  stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
-  stig_target_var: "ubuntu_target_hosts"
-  stig_rule_prefixes:
-    UBTU: ubuntu
-    GEN: ubuntu
+platform: linux/ubuntu
+stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
+stig_target_var: "ubuntu_target_hosts"
+stig_rule_prefixes:
+  UBTU: ubuntu
+  GEN: ubuntu
 
 # Detects the key emitted by the internal.linux role via ncs_collector callback.
 detection:
