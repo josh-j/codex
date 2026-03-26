@@ -85,7 +85,7 @@
 # --- Licensing ---
 
 - name: Inventory | Query Licenses
-  community.vmware.vmware_license_info:
+  vmware.vmware.license_info:
   register: _raw_licenses
   delegate_to: localhost
   no_log: true
