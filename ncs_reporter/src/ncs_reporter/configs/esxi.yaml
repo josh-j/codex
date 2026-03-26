@@ -11,91 +11,73 @@ config:
     'Mem %': "{{ mem_used_pct }}"
     'VMs': "{{ vm_count }}"
 
-# Split the per-vCenter bundle into per-ESXi-host entries.
-split_field: esxi_hosts
-split_name_key: name
-
 vars:
-  # Raw data references for the assembly script
-  hosts_info:
-    path: ".hosts_info"
-    type: dict
-  clusters_info_results:
-    path: ".clusters_info.results"
-    type: list
-
-  # Assembly script: merges raw host_facts, host_nics, host_services
-  # into a flat list of per-host records for split_field expansion.
-  esxi_hosts:
-    script: "assemble_esxi_hosts.py"
-    type: list
-
-  # Per-host fields (resolved from the split item after expansion)
+  # Per-host fields (pre-assembled by collector)
   cluster:
-    path: "cluster"
+    path: "raw_esxi.data.cluster"
     fallback: ''
   datacenter:
-    path: "datacenter"
+    path: "raw_esxi.data.datacenter"
     fallback: ''
   connection_state:
-    path: "connection_state"
+    path: "raw_esxi.data.connection_state"
     fallback: "unknown"
   overall_status:
-    path: "overall_status"
+    path: "raw_esxi.data.overall_status"
     fallback: "unknown"
   cpu_used_pct:
-    path: "cpu_used_pct"
+    path: "raw_esxi.data.cpu_used_pct"
     type: float
   mem_used_pct:
-    path: "mem_used_pct"
+    path: "raw_esxi.data.mem_used_pct"
     type: float
   mem_mb_total:
-    path: "mem_mb_total"
+    path: "raw_esxi.data.mem_mb_total"
     type: float
   mem_mb_used:
-    path: "mem_mb_used"
+    path: "raw_esxi.data.mem_mb_used"
     type: float
   vm_count:
-    path: "vm_count"
+    path: "raw_esxi.data.vm_count"
     type: int
   uptime_seconds:
-    path: "uptime_seconds"
+    path: "raw_esxi.data.uptime_seconds"
     type: float
   uptime_days:
     compute: "uptime_seconds / 86400"
     type: float
   version:
-    path: "version"
+    path: "raw_esxi.data.version"
     fallback: ''
   build:
-    path: "build"
+    path: "raw_esxi.data.build"
     fallback: ''
   in_maintenance_mode:
-    path: "in_maintenance_mode"
+    path: "raw_esxi.data.in_maintenance_mode"
     type: bool
   lockdown_mode:
-    path: "lockdown_mode"
+    path: "raw_esxi.data.lockdown_mode"
     fallback: "unknown"
   ssh_enabled:
-    path: "ssh_enabled"
+    path: "raw_esxi.data.ssh_enabled"
     type: bool
   shell_enabled:
-    path: "shell_enabled"
+    path: "raw_esxi.data.shell_enabled"
     type: bool
   ntp_running:
-    path: "ntp_running"
+    path: "raw_esxi.data.ntp_running"
     type: bool
   datastores:
-    path: "datastores"
+    path: "raw_esxi.data.datastores"
     type: list
   nics:
-    path: "nics"
+    path: "raw_esxi.data.nics"
     type: list
   vmknics:
-    path: "vmknics"
+    path: "raw_esxi.data.vmknics"
     type: list
   hardware_alerts:
-    path: "hardware_alerts"
+    path: "raw_esxi.data.hardware_alerts"
     type: list
 
 alerts:
