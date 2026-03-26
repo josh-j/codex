@@ -68,6 +68,11 @@ class FieldSpec(BaseModel):
     # script  — path to an executable; receives JSON on stdin, returns JSON on stdout
     path: str | None = Field(default=None, validation_alias=AliasChoices("path", "from"))
     compute: str | None = Field(default=None, validation_alias=AliasChoices("compute", "expr"))
+
+    @field_validator("compute", mode="before")
+    @classmethod
+    def _coerce_compute(cls, v: Any) -> Any:
+        return str(v) if v is not None and not isinstance(v, str) else v
     script: str | None = Field(default=None, validation_alias=AliasChoices("script", "run"))
 
     # Static key/value args passed to the script alongside extracted fields.

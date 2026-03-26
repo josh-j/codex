@@ -14,7 +14,7 @@ from pathlib import Path
 
 CONFIGS_DIR = Path(__file__).resolve().parent.parent / "src" / "ncs_reporter" / "configs"
 
-EXPRESSION_KEYS = re.compile(r"^(\s+)(when|visible_if):\s*\"(.+)\"\s*$")
+EXPRESSION_KEYS = re.compile(r"^(\s+)(when|visible_if|compute):\s*\"(.+)\"\s*$")
 
 
 def lint_file(path: Path) -> list[str]:

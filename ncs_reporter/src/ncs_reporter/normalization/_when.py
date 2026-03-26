@@ -142,6 +142,21 @@ def eval_expression(expression: str, context: dict[str, Any]) -> float:
         return 0.0
 
 
+def eval_compute(expression: str, context: dict[str, Any]) -> Any:
+    """Evaluate a Jinja2 compute expression, returning the native type.
+
+    Like eval_expression but preserves int/float/str from the expression.
+    Missing variables default to 0.  Division by zero returns 0.0.
+    """
+    try:
+        return _compile_expr(expression).render(**context)
+    except ZeroDivisionError:
+        return 0.0
+    except Exception:
+        logger.debug("eval_compute failed: %r", expression, exc_info=True)
+        return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Boolean when-expression evaluation (alerts, visible_if, style_rules)
 # ---------------------------------------------------------------------------

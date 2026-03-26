@@ -60,8 +60,7 @@ vars:
     type: int
 
   recent_snapshot_count:
-    compute: "snapshot_count - aged_snapshot_count"
-    type: int
+    compute: snapshot_count - aged_snapshot_count
 
   powered_off_vm_count:
     path: ".vms_info.virtual_machines"
