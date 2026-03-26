@@ -12,8 +12,8 @@ from typing import Any
 
 from ncs_reporter.primitives import safe_list
 
-from ._when import _parse_iso
-from ._transforms import _PARAM_TRANSFORMS, _TRANSFORMS, _safe_eval_expr
+from ._when import _parse_iso, eval_expression
+from ._transforms import _PARAM_TRANSFORMS, _TRANSFORMS
 
 logger = logging.getLogger(__name__)
 
@@ -334,7 +334,7 @@ def _apply_list_map(items: list[Any], map_spec: dict[str, str]) -> list[Any]:
         enriched = dict(item)
         for field_name, expression in map_spec.items():
             try:
-                enriched[field_name] = round(_safe_eval_expr(expression, enriched), 2)
+                enriched[field_name] = round(eval_expression(expression, enriched), 2)
             except Exception:
                 logger.debug("list_map expression '%s' failed for field '%s': %s", expression, field_name, item, exc_info=True)
                 enriched[field_name] = 0.0

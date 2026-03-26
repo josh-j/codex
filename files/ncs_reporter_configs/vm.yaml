@@ -61,7 +61,7 @@ fields:
     type: int
 
   recent_snapshot_count:
-    compute: "{snapshot_count} - {aged_snapshot_count}"
+    compute: "snapshot_count - aged_snapshot_count"
     type: int
 
   powered_off_vm_count:

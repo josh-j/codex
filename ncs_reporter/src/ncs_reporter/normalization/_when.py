@@ -58,6 +58,87 @@ def _build_jinja_env() -> NativeEnvironment:
     return env
 
 
+# ---------------------------------------------------------------------------
+# Arithmetic expression evaluation (compute fields, list_map)
+# ---------------------------------------------------------------------------
+
+
+class _NumericUndefined(Undefined):
+    """Undefined that acts as ``0`` in arithmetic — for compute/list_map expressions."""
+
+    def __int__(self) -> int:
+        return 0
+
+    def __float__(self) -> float:
+        return 0.0
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __add__(self, o: Any) -> Any:
+        return o
+
+    def __radd__(self, o: Any) -> Any:
+        return o
+
+    def __sub__(self, o: Any) -> Any:
+        return -o if not isinstance(o, Undefined) else 0
+
+    def __rsub__(self, o: Any) -> Any:
+        return o
+
+    def __mul__(self, o: Any) -> Any:
+        return 0
+
+    def __rmul__(self, o: Any) -> Any:
+        return 0
+
+    def __truediv__(self, o: Any) -> float:
+        return 0.0
+
+    def __rtruediv__(self, o: Any) -> float:
+        return 0.0
+
+    def __neg__(self) -> int:
+        return 0
+
+
+@functools.lru_cache(maxsize=1)
+def _build_arithmetic_env() -> NativeEnvironment:
+    from ._transforms import _TRANSFORMS
+
+    env = NativeEnvironment(undefined=_NumericUndefined)
+    env.filters["age_days"] = _age_days
+    env.filters.update(_TRANSFORMS)
+    return env
+
+
+def eval_expression(expression: str, context: dict[str, Any]) -> float:
+    """Evaluate a Jinja2 arithmetic expression, returning a float.
+
+    Missing variables default to 0.  Division by zero returns 0.0.
+    """
+    env = _build_arithmetic_env()
+    try:
+        tmpl = env.from_string("{{ " + expression + " }}")
+        result = tmpl.render(**context)
+    except ZeroDivisionError:
+        return 0.0
+    except Exception:
+        logger.debug("eval_expression failed: %r", expression, exc_info=True)
+        return 0.0
+
+    try:
+        return float(result)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+# ---------------------------------------------------------------------------
+# Boolean when-expression evaluation (alerts, visible_if, style_rules)
+# ---------------------------------------------------------------------------
+
+
 def evaluate_when(expression: str, fields: dict[str, Any]) -> bool:
     """Evaluate a Jinja2 ``when`` expression against *fields* and return a bool.
 

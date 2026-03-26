@@ -61,7 +61,7 @@ fields:
   appliance_health_storage: ".appliance_health_info.appliance.summary.health.storage = gray"
   appliance_uptime_seconds: ".appliance_health_info.appliance.summary.uptime | float"
   appliance_uptime_days:
-    compute: "{appliance_uptime_seconds} / 86400"
+    compute: "appliance_uptime_seconds / 86400"
     type: float
   ssh_enabled: ".appliance_health_info.appliance.access.ssh | bool"
   shell_enabled: ".appliance_health_info.appliance.access.shell.enabled | bool"
@@ -92,9 +92,9 @@ fields:
     path: ".datastores_info.datastores"
     type: list
     list_map:
-      capacity_gb: "{capacity} / 1073741824"
-      free_gb: "{freeSpace} / 1073741824"
-      used_pct: "({capacity} - {freeSpace}) / {capacity} * 100"
+      capacity_gb: "capacity / 1073741824"
+      free_gb: "freeSpace / 1073741824"
+      used_pct: "(capacity - freeSpace) / capacity * 100"
   vcenter_count:
     compute: "1"
     type: int
