@@ -5,11 +5,11 @@ config:
     platform_to_checklist:
       esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
   extra_fleet_widget_columns:
-    Cluster: "{{ cluster }}"
-    Status: "{{ overall_status }}"
-    CPU %: "{{ cpu_used_pct }}"
-    Mem %: "{{ mem_used_pct }}"
-    VMs: "{{ vm_count }}"
+    'Cluster': "{{ cluster }}"
+    'Status': "{{ overall_status }}"
+    'CPU %': "{{ cpu_used_pct }}"
+    'Mem %': "{{ mem_used_pct }}"
+    'VMs': "{{ vm_count }}"
 
 # Split the per-vCenter bundle into per-ESXi-host entries.
 split_field: esxi_hosts
