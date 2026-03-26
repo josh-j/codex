@@ -158,9 +158,10 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
             logger.debug("Skipping %s: not a YAML mapping (likely a fragment)", path)
             return None
 
-        # Skip fragment files (used via $include) — they lack a platform or name key.
-        if "name" not in data and "platform" not in data:
-            logger.debug("Skipping %s: missing 'name'/'platform' (likely a fragment)", path)
+        # Skip fragment files (used via $include) — they lack a platform, config, or name key.
+        config_block = data.get("config") if isinstance(data.get("config"), dict) else {}
+        if "name" not in data and "platform" not in data and "platform" not in config_block:
+            logger.debug("Skipping %s: missing 'name'/'platform'/'config.platform' (likely a fragment)", path)
             return None
 
         data = _resolve_refs(data, path)
@@ -580,8 +581,8 @@ def build_platform_entries_from_schemas(
         if merge_key in seen_entries:
             primary_entry = seen_entries[merge_key]
             primary_entry["schema_names"].append(schema.name)
-            primary_entry["stig_checklist_map"].update(schema.stig_checklist_map)
-            primary_entry["stig_rule_prefixes"].update(schema.stig_rule_prefixes)
+            primary_entry["stig_checklist_map"].update(schema.stig.checklist_map)
+            primary_entry["stig_rule_prefixes"].update(schema.stig.rule_prefixes)
             continue
 
         # Primary entry
@@ -593,12 +594,12 @@ def build_platform_entries_from_schemas(
             "schema_name": schema.name,
             "display_name": schema.display_name,
             "schema_names": [schema.name],
-            "stig_checklist_map": dict(schema.stig_checklist_map),
-            "stig_rule_prefixes": dict(schema.stig_rule_prefixes),
+            "stig_checklist_map": dict(schema.stig.checklist_map),
+            "stig_rule_prefixes": dict(schema.stig.rule_prefixes),
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
-            "stig_playbook": schema.stig_playbook,
-            "stig_target_var": schema.stig_target_var,
+            "stig_playbook": schema.stig.playbook,
+            "stig_target_var": schema.stig.target_var,
         }
         entries.append(primary)
         seen_entries[merge_key] = primary
@@ -611,8 +612,8 @@ def build_platform_entries_from_schemas(
                 "platform": platform_name,
                 "render": False,
                 "stig_checklist_map": dict(sub.stig_checklist_map),
-                "stig_playbook": sub.stig_playbook or schema.stig_playbook,
-                "stig_target_var": sub.stig_target_var or schema.stig_target_var,
+                "stig_playbook": sub.stig_playbook or schema.stig.playbook,
+                "stig_target_var": sub.stig_target_var or schema.stig.target_var,
             }
             entries.append(sub_entry)
 

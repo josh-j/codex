@@ -1,37 +1,38 @@
-display_name: "VMware VCSA"
-detection:
-  keys_any: [raw_vcenter]
-path_prefix: "raw_vcenter.data"
-platform:
-  path: vmware/vcsa
-  input_dir: vmware/vcenter
-  site_compute_node: true
-  site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
-  children:
-    - input_dir: vmware/vcenter/vcsa
-      report_dir: vmware/vcsa/vcsa
-      stig_checklist_map:
-        vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
-
-stig_playbook: "playbooks/vcsa/stig_remediate.yml"
-stig_target_var: "vcsa_stig_target_hosts"
-stig_checklist_map:
-  vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
-  vcenter: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
-  vami: cklb_skeletons/cklb_skeleton_vsphere7_vami_V1R2.json
-  eam: cklb_skeletons/cklb_skeleton_vsphere7_vca_eam_V1R2.json
-  lookup_svc: cklb_skeletons/cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json
-  perfcharts: cklb_skeletons/cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json
-  vcsa_photon_os: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
-  postgresql: cklb_skeletons/cklb_skeleton_vsphere7_vca_postgresql_V1R2.json
-  rhttpproxy: cklb_skeletons/cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
-  sts: cklb_skeletons/cklb_skeleton_vsphere7_vca_sts_V1R2.json
-  ui: cklb_skeletons/cklb_skeleton_vsphere7_vca_ui_V1R2.json
-stig_rule_prefixes:
-  VMCH: vm
-  ESXI: esxi
-  VC: vcsa
-  PH: photon
+config:
+  display_name: "VMware VCSA"
+  detection:
+    keys_any: [raw_vcenter]
+  path_prefix: "raw_vcenter.data"
+  platform:
+    path: vmware/vcsa
+    input_dir: vmware/vcenter
+    site_compute_node: true
+    site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
+    children:
+      - input_dir: vmware/vcenter/vcsa
+        report_dir: vmware/vcsa/vcsa
+        stig_checklist_map:
+          vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+  stig:
+    playbook: "playbooks/vcsa/stig_remediate.yml"
+    target_var: "vcsa_stig_target_hosts"
+    checklist_map:
+      vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+      vcenter: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+      vami: cklb_skeletons/cklb_skeleton_vsphere7_vami_V1R2.json
+      eam: cklb_skeletons/cklb_skeleton_vsphere7_vca_eam_V1R2.json
+      lookup_svc: cklb_skeletons/cklb_skeleton_vsphere7_vca_lookup_svc_V1R2.json
+      perfcharts: cklb_skeletons/cklb_skeleton_vsphere7_vca_perfcharts_V1R1.json
+      vcsa_photon_os: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
+      postgresql: cklb_skeletons/cklb_skeleton_vsphere7_vca_postgresql_V1R2.json
+      rhttpproxy: cklb_skeletons/cklb_skeleton_vsphere7_vca_rhttpproxy_V1R1.json
+      sts: cklb_skeletons/cklb_skeleton_vsphere7_vca_sts_V1R2.json
+      ui: cklb_skeletons/cklb_skeleton_vsphere7_vca_ui_V1R2.json
+    rule_prefixes:
+      VMCH: vm
+      ESXI: esxi
+      VC: vcsa
+      PH: photon
 
 
 fleet_columns:

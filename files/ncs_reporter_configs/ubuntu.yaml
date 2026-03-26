@@ -1,9 +1,11 @@
-platform: linux/ubuntu
-stig_playbook: "playbooks/ubuntu_stig_remediate.yml"
-stig_target_var: "ubuntu_target_hosts"
-stig_rule_prefixes:
-  UBTU: ubuntu
-  GEN: ubuntu
+config:
+  platform: linux/ubuntu
+  stig:
+    playbook: "playbooks/ubuntu_stig_remediate.yml"
+    target_var: "ubuntu_target_hosts"
+    rule_prefixes:
+      UBTU: ubuntu
+      GEN: ubuntu
 
 
 fleet_columns:
