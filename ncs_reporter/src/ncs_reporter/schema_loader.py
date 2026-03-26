@@ -598,8 +598,8 @@ def build_platform_entries_from_schemas(
             "stig_rule_prefixes": dict(schema.stig.rule_prefixes),
             "site_infra_fields": list(spec.site_infra_fields),
             "site_compute_node": spec.site_compute_node,
-            "stig_playbook": schema.stig.playbook,
-            "stig_target_var": schema.stig.target_var,
+            "stig_playbook": schema.stig.ansible_playbook,
+            "stig_target_var": schema.stig.ansible_target_var,
         }
         entries.append(primary)
         seen_entries[merge_key] = primary
@@ -612,8 +612,8 @@ def build_platform_entries_from_schemas(
                 "platform": platform_name,
                 "render": False,
                 "stig_checklist_map": dict(sub.stig_checklist_map),
-                "stig_playbook": sub.stig_playbook or schema.stig.playbook,
-                "stig_target_var": sub.stig_target_var or schema.stig.target_var,
+                "stig_playbook": sub.stig_playbook or schema.stig.ansible_playbook,
+                "stig_target_var": sub.stig_target_var or schema.stig.ansible_target_var,
             }
             entries.append(sub_entry)
 

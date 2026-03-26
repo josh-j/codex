@@ -1,8 +1,8 @@
 config:
   platform: linux/ubuntu
   stig:
-    playbook: "playbooks/ubuntu_stig_remediate.yml"
-    target_var: "ubuntu_target_hosts"
+    ansible_playbook: "playbooks/ubuntu_stig_remediate.yml"
+    ansible_target_var: "ubuntu_target_hosts"
     rule_prefixes:
       UBTU: ubuntu
       GEN: ubuntu

@@ -2,8 +2,8 @@ config:
   display_name: "VMware VM"
   platform: vmware/vm
   stig:
-    playbook: "playbooks/vm/stig_remediate.yml"
-    target_var: "vm_stig_target_vms"
+    ansible_playbook: "playbooks/vm/stig_remediate.yml"
+    ansible_target_var: "vm_stig_target_vms"
     checklist_map:
       vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
 

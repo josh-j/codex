@@ -405,8 +405,8 @@ class StigConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    playbook: str = ""
-    target_var: str = ""
+    ansible_playbook: str = ""
+    ansible_target_var: str = ""
     checklist_map: dict[str, str] = Field(default_factory=dict)
     rule_prefixes: dict[str, str] = Field(default_factory=dict)
 
