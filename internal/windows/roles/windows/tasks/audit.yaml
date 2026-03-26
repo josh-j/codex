@@ -1,5 +1,6 @@
 ---
 # internal.windows.windows : tasks/audit.yaml
+# Full Windows audit: applications, health, and telemetry in one pass.
 
 - name: Windows Audit Orchestrator
   vars:
@@ -8,6 +9,51 @@
     - name: Run Application Checks
       ansible.builtin.include_tasks: checks/applications.yaml
       tags: ["audit", "applications"]
+
+    - name: Run Health Checks
+      ansible.builtin.include_tasks: checks/health/os_info.yaml
+      when: windows_health_check_os | default(true) | bool
+      tags: [health, os]
+
+    - name: "Health | Disk Space"
+      ansible.builtin.include_tasks: checks/health/disk.yaml
+      when: windows_health_check_disk | default(true) | bool
+      tags: [health, disk]
+
+    - name: "Health | Memory & CPU"
+      ansible.builtin.include_tasks: checks/health/memory_cpu.yaml
+      when: windows_health_check_memory_cpu | default(true) | bool
+      tags: [health, memory, cpu]
+
+    - name: "Health | Critical Services"
+      ansible.builtin.include_tasks: checks/health/services.yaml
+      when: windows_health_check_services | default(true) | bool
+      tags: [health, services]
+
+    - name: "Health | Network Adapters"
+      ansible.builtin.include_tasks: checks/health/network.yaml
+      when: windows_health_check_network | default(true) | bool
+      tags: [health, network]
+
+    - name: "Health | Pending Reboot"
+      ansible.builtin.include_tasks: checks/health/reboot_pending.yaml
+      when: windows_health_check_reboot_pending | default(true) | bool
+      tags: [health, reboot]
+
+    - name: "Health | Event Logs"
+      ansible.builtin.include_tasks: checks/health/event_logs.yaml
+      when: windows_health_check_event_logs | default(true) | bool
+      tags: [health, events]
+
+    - name: "Health | Secure Channel"
+      ansible.builtin.include_tasks: checks/health/secure_channel.yaml
+      when: windows_health_check_secure_channel | default(true) | bool
+      tags: [health, domain]
+
+    - name: "Health | Software Versions"
+      ansible.builtin.include_tasks: checks/health/software_versions.yaml
+      when: windows_health_check_software_versions | default(true) | bool
+      tags: [health, software]
 
     - name: Run ConfigMgr Updates
       ansible.builtin.include_tasks: updates/configmgr.yaml
@@ -20,15 +66,39 @@
       changed_when: false
 
   always:
-    - name: Assemble raw audit context
+    - name: Assemble flat audit payload
       ansible.builtin.set_fact:
         _win_raw_payload:
-          ansible_facts: "{{ ansible_facts }}"
-          ccm_service: "{{ _ccm_service | default({}) }}"
+          # CCMExec service
+          ccm_service_state: "{{ (_ccm_service | default({})).state | default('unknown') }}"
+          # ConfigMgr applications
           configmgr_apps: "{{ _win_configmgr_apps | default([]) }}"
-          installed_apps: "{{ _win_installed_apps | default([]) }}"
           apps_to_update: "{{ _win_apps_to_update | default([]) }}"
+          installed_apps: "{{ _win_installed_apps | default([]) }}"
           update_results: "{{ _win_update_results | default([]) }}"
+          # Health
+          health_hostname: "{{ (_health_os_info | default({})).hostname | default('') }}"
+          health_os_name: "{{ (_health_os_info | default({})).os_name | default('') }}"
+          health_uptime_hours: "{{ (_health_os_info | default({})).uptime_hours | default(0) }}"
+          health_disk: "{{ _health_disk | default([]) }}"
+          health_memory_used_pct: "{{ (_health_memory_cpu | default({})).memory_used_pct | default(0) }}"
+          health_cpu_load_pct: "{{ (_health_memory_cpu | default({})).cpu_load_pct | default(0) }}"
+          health_services: "{{ _health_services | default([]) }}"
+          health_network: "{{ _health_network | default([]) }}"
+          health_reboot_pending: "{{ (_health_reboot_pending | default({})).reboot_pending | default(false) }}"
+          health_reboot_reasons: "{{ (_health_reboot_pending | default({})).reasons | default([]) }}"
+          health_event_count: "{{ (_health_event_logs | default({})).event_count | default(0) }}"
+          health_events: "{{ (_health_event_logs | default({})).events | default([]) }}"
+          health_secure_channel: "{{ (_health_secure_channel | default({})).secure_channel | default('N/A') }}"
+          health_software_versions: "{{ _health_software_versions | default([]) }}"
+          # Vulnerability scan
+          vuln_total_findings: "{{ (_vuln_results | default({})).total_findings | default(0) }}"
+          vuln_remediated: "{{ (_vuln_results | default({})).remediated | default(0) }}"
+          vuln_open: "{{ (_vuln_results | default({})).open | default(0) }}"
+          vuln_findings: "{{ (_vuln_results | default({})).findings | default([]) }}"
+          # KB status
+          kb_detection: "{{ _kb_detection | default([]) }}"
+          kb_install_results: "{{ _kb_install_results | default([]) }}"
           audit_failed: "{{ _windows_audit_failed | bool }}"
       changed_when: false
 
