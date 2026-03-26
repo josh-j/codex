@@ -52,7 +52,7 @@ def read_report(file_path: str) -> tuple[dict[str, Any] | None, dict[str, Any] |
     )
 
     # Return the raw document as-is so schema paths match the file exactly.
-    # No data unwrapping — vmware_raw_vcenter.data.appliance_health_info maps
+    # No data unwrapping — vmware_raw_vcsa.data.appliance_health_info maps
     # directly to what is written on disk.
     return raw, raw, audit_type
 

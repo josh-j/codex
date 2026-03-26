@@ -346,7 +346,7 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
 
 
 def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
-    """Build a realistic raw_vcenter bundle.
+    """Build a realistic raw_vcsa bundle.
 
     Structural templates come from actual module RETURN samples:
     - appliance_health_info: vmware.vmware.appliance_info
@@ -646,7 +646,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     _appl["time"]["time_sync"]["servers"] = ["time.google.com"]
 
     return {
-        "raw_vcenter": {
+        "raw_vcsa": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "vcenter",
@@ -903,7 +903,7 @@ def _make_site_cluster(
 
 
 def make_vcenter_site_bundle(cfg: dict) -> dict:
-    """Build a realistic multi-site raw_vcenter bundle from a site config dict.
+    """Build a realistic multi-site raw_vcsa bundle from a site config dict.
 
     cfg keys:
       hostname      str  — vCenter FQDN used as bundle key
@@ -971,7 +971,7 @@ def make_vcenter_site_bundle(cfg: dict) -> dict:
 
     alarms = cfg.get("alarms", [])
     return {
-        "raw_vcenter": {
+        "raw_vcsa": {
             "metadata": {
                 "host": hostname,
                 "raw_type": "vcenter",

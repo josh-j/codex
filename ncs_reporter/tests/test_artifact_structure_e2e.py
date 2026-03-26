@@ -123,9 +123,9 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         (linux_dir / "raw_ubuntu.yaml").write_text(yaml.dump(_linux_raw("linux-01")))
 
         # --- VMware: vc-01 (with ESXi STIG data) ---
-        vmware_dir = self.platform_root / "vmware" / "vcenter" / "vc-01"
+        vmware_dir = self.platform_root / "vmware" / "vcsa" / "vc-01"
         vmware_dir.mkdir(parents=True)
-        (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw("vc-01")))
+        (vmware_dir / "raw_vcsa.yaml").write_text(yaml.dump(_vmware_raw("vc-01")))
         (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw("vc-01")))
 
         # --- Inventory groups ---
@@ -220,7 +220,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
     def test_platform_state_files_created(self):
         self._run_all()
         self.assertTrue((self.platform_root / "linux" / "ubuntu" / "linux_fleet_state.yaml").exists())
-        self.assertTrue((self.platform_root / "vmware" / "vcenter" / "vmware_fleet_state.yaml").exists())
+        self.assertTrue((self.platform_root / "vmware" / "vcsa" / "vmware_fleet_state.yaml").exists())
         self.assertTrue((self.platform_root / "all_hosts_state.yaml").exists())
 
     def test_no_windows_directories_created_when_no_windows_data(self):
@@ -248,9 +248,9 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         linux_dir.mkdir(parents=True)
         (linux_dir / "raw_ubuntu.yaml").write_text(yaml.dump(_linux_raw(self.SHARED_HOSTNAME)))
 
-        vmware_dir = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME
+        vmware_dir = self.platform_root / "vmware" / "vcsa" / self.SHARED_HOSTNAME
         vmware_dir.mkdir(parents=True)
-        (vmware_dir / "raw_vcenter.yaml").write_text(yaml.dump(_vmware_raw(self.SHARED_HOSTNAME)))
+        (vmware_dir / "raw_vcsa.yaml").write_text(yaml.dump(_vmware_raw(self.SHARED_HOSTNAME)))
         (vmware_dir / "raw_stig_esxi.yaml").write_text(yaml.dump(_esxi_stig_raw(self.SHARED_HOSTNAME)))
 
         groups = {
@@ -281,9 +281,9 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI failed:\n{result.output}")
 
     def test_data_files_in_separate_platform_directories(self):
-        """Raw data files under linux/ubuntu/ and vmware/vcenter/ never share a directory."""
+        """Raw data files under linux/ubuntu/ and vmware/vcsa/ never share a directory."""
         linux_data = self.platform_root / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "raw_ubuntu.yaml"
-        vmware_data = self.platform_root / "vmware" / "vcenter" / self.SHARED_HOSTNAME / "raw_vcenter.yaml"
+        vmware_data = self.platform_root / "vmware" / "vcsa" / self.SHARED_HOSTNAME / "raw_vcsa.yaml"
         # Both exist before running — they live in separate paths
         self.assertTrue(linux_data.exists())
         self.assertTrue(vmware_data.exists())
@@ -328,7 +328,7 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         platforms do not clobber each other's state."""
         self._run_all()
         linux_state_path = self.platform_root / "linux" / "ubuntu" / "linux_fleet_state.yaml"
-        vmware_state_path = self.platform_root / "vmware" / "vcenter" / "vmware_fleet_state.yaml"
+        vmware_state_path = self.platform_root / "vmware" / "vcsa" / "vmware_fleet_state.yaml"
         self.assertTrue(linux_state_path.exists())
         self.assertTrue(vmware_state_path.exists())
 

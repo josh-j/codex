@@ -599,7 +599,7 @@ class TestVcenterSchema:
         s = load_schema_from_file(schema_path)
 
         bundle = {
-            "raw_vcenter": {
+            "raw_vcsa": {
                 "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
                 "data": {
                     "appliance_health_info": {

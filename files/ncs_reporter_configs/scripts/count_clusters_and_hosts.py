@@ -6,7 +6,7 @@ stdin  — JSON: {"fields": {"clusters_info_results": [...], "metric": "cluster_
 stdout — JSON integer
 exit 0 on success, 2 on unrecoverable error
 
-The clusters_info field stored in raw_vcenter is an Ansible loop result:
+The clusters_info field stored in raw_vcsa is an Ansible loop result:
   {
     "results": [
       {
