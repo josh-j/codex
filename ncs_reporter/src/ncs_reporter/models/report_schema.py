@@ -400,13 +400,21 @@ class FleetColumn(BaseModel):
     width: str | None = None
 
 
+class StigAnsibleConfig(BaseModel):
+    """Ansible invocation config for STIG remediation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    playbook: str = ""
+    target_var: str = ""
+
+
 class StigConfig(BaseModel):
     """STIG compliance configuration nested under config.stig in YAML."""
 
     model_config = ConfigDict(extra="forbid")
 
-    ansible_playbook: str = ""
-    ansible_target_var: str = ""
+    ansible: StigAnsibleConfig = Field(default_factory=StigAnsibleConfig)
     checklist_map: dict[str, str] = Field(default_factory=dict)
     rule_prefixes: dict[str, str] = Field(default_factory=dict)
 
