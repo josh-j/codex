@@ -949,10 +949,13 @@ class CallbackModule(CallbackBase):
             if not entry_host:
                 continue
 
-            # Build a per-host collect_data with the full payload
-            # (the reporter's split_field handles the actual field extraction)
+            # Write per-host payload with assembled data.
             per_host_data = dict(collect_data)
             per_host_data.pop("per_host_split", None)
+            # Build assembled payload for this host from full context + entry
+            per_host_data["payload"] = self._assemble_split_host_payload(
+                entry, entry_host, payload, split_cfg,
+            )
             self._persist_single_host(entry_host, per_host_data)
             persisted += 1
 
@@ -966,6 +969,122 @@ class CallbackModule(CallbackBase):
                 f"[ncs_collector] Split '{ansible_host}' into {persisted} per-host entries",
                 color="cyan",
             )
+
+    @staticmethod
+    def _assemble_split_host_payload(
+        entry: dict[str, Any],
+        hostname: str,
+        full_payload: dict[str, Any],
+        split_cfg: dict[str, str],
+    ) -> dict[str, Any]:
+        """Assemble a flat per-host payload from a loop entry + full context.
+
+        Extracts this host's ansible_facts from the entry, then merges
+        related per-host data (NICs, services) and shared context (clusters)
+        from the full payload. Returns a flat dict ready for the reporter.
+        """
+        facts = entry.get("ansible_facts", {})
+        if not isinstance(facts, dict):
+            facts = {}
+
+        def _safe_float(v: Any, d: float = 0.0) -> float:
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return d
+
+        def _safe_int(v: Any, d: int = 0) -> int:
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return d
+
+        # Core host metrics from ansible_facts
+        mem_total = _safe_float(facts.get("ansible_memtotal_mb", 0))
+        mem_free = _safe_float(facts.get("ansible_memfree_mb", 0))
+        mem_used = mem_total - mem_free
+
+        assembled: dict[str, Any] = {
+            "name": hostname,
+            "version": facts.get("ansible_distribution_version", ""),
+            "build": facts.get("ansible_distribution_build", ""),
+            "connection_state": facts.get("ansible_host_connection_state", "unknown"),
+            "overall_status": facts.get("ansible_overall_status", "unknown"),
+            "in_maintenance_mode": facts.get("ansible_in_maintenance_mode", False),
+            "lockdown_mode": facts.get("ansible_lockdown_mode", "unknown"),
+            "mem_mb_total": mem_total,
+            "mem_mb_used": mem_used,
+            "mem_used_pct": round((mem_used / mem_total) * 100, 1) if mem_total > 0 else 0.0,
+            "cpu_used_pct": _safe_float(facts.get("ansible_cpu_used_pct", 0.0)),
+            "vm_count": _safe_int(facts.get("ansible_vm_count", 0)),
+            "uptime_seconds": _safe_int(facts.get("ansible_uptime", 0)),
+            "ssh_enabled": False,
+            "shell_enabled": False,
+            "ntp_running": False,
+            "datastores": [],
+            "nics": [],
+            "vmknics": [],
+            "hardware_alerts": [],
+            "cluster": "",
+            "datacenter": "",
+        }
+
+        # Datastores from facts
+        for ds in facts.get("ansible_datastore", []):
+            if isinstance(ds, dict):
+                assembled["datastores"].append({
+                    "name": ds.get("name", ""), "total": ds.get("total", ""), "free": ds.get("free", ""),
+                })
+
+        # Merge NIC info from full payload
+        hosts_info = full_payload.get("hosts_info", {})
+        if isinstance(hosts_info, dict):
+            for nic_result in (hosts_info.get("host_nics") or {}).get("results", []):
+                if not isinstance(nic_result, dict):
+                    continue
+                host_nics = (nic_result.get("hosts_vmnic_info") or {}).get(hostname, {})
+                if isinstance(host_nics, dict):
+                    for nic in host_nics.get("vmnic_details", []):
+                        if isinstance(nic, dict):
+                            assembled["nics"].append({
+                                "device": nic.get("device", ""),
+                                "link_status": nic.get("status", "unknown"),
+                                "speed_mbps": _safe_int(nic.get("speed", 0)),
+                                "driver": nic.get("driver", ""),
+                                "switch": nic.get("vswitch", ""),
+                            })
+
+            # Merge service info from full payload
+            for svc_result in (hosts_info.get("host_services") or {}).get("results", []):
+                if not isinstance(svc_result, dict):
+                    continue
+                host_svcs = (svc_result.get("host_service_info") or {}).get(hostname, [])
+                if isinstance(host_svcs, list):
+                    for svc in host_svcs:
+                        if isinstance(svc, dict):
+                            key = svc.get("key", "")
+                            if key == "TSM-SSH":
+                                assembled["ssh_enabled"] = svc.get("running", False)
+                            elif key == "TSM":
+                                assembled["shell_enabled"] = svc.get("running", False)
+                            elif key == "ntpd":
+                                assembled["ntp_running"] = svc.get("running", False)
+
+        # Merge cluster context from full payload
+        for dc_result in (full_payload.get("clusters_info") or {}).get("results", []):
+            if not isinstance(dc_result, dict):
+                continue
+            datacenter = dc_result.get("item", "")
+            clusters = dc_result.get("clusters_info") or dc_result.get("clusters") or {}
+            if isinstance(clusters, dict):
+                for cluster_name, cluster_data in clusters.items():
+                    if isinstance(cluster_data, dict):
+                        for host in cluster_data.get("hosts", []):
+                            if isinstance(host, dict) and host.get("name") == hostname:
+                                assembled["cluster"] = cluster_name
+                                assembled["datacenter"] = datacenter
+
+        return assembled
 
     def _persist_single_host(self, host: str, collect_data: dict[str, Any]):
         """Write collection payload and config to disk for a single host."""

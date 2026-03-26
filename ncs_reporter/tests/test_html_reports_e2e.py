@@ -109,42 +109,35 @@ class TestHtmlReportsE2E(unittest.TestCase):
         with open(self.vmware_dir / "raw_vcsa.yaml", "w") as f:
             yaml.dump(vmware_data, f)
 
-        # 2b. ESXi per-host health data (separate input_dir: vmware/esxi)
-        self.esxi_dir = self.platform_root / "vmware" / "esxi" / "vc-01"
+        # 2b. ESXi per-host health data (pre-assembled by collector)
+        self.esxi_dir = self.platform_root / "vmware" / "esxi" / "esxi-01.local"
         self.esxi_dir.mkdir(parents=True)
         esxi_data = {
-            "metadata": {"host": "vc-01", "audit_type": "raw_esxi", "raw_type": "esxi",
+            "metadata": {"host": "esxi-01.local", "audit_type": "raw_esxi",
                          "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
-                "hosts_info": {
-                    "host_facts": {"results": [{
-                        "item": "esxi-01.local",
-                        "ansible_facts": {
-                            "ansible_distribution_version": "7.0.3",
-                            "ansible_distribution_build": "12345",
-                            "ansible_memtotal_mb": 65536,
-                            "ansible_memfree_mb": 32768,
-                            "ansible_uptime": 86400,
-                            "ansible_overall_status": "green",
-                            "ansible_host_connection_state": "connected",
-                            "ansible_in_maintenance_mode": False,
-                            "ansible_lockdown_mode": "disabled",
-                            "ansible_datastore": [{"name": "ds1", "total": "1TB", "free": "500GB"}],
-                        },
-                    }]},
-                    "host_nics": {"results": []},
-                    "host_services": {"results": []},
-                },
-                "clusters_info": {
-                    "results": [{
-                        "item": "DC1",
-                        "clusters": {"Cluster-A": {"hosts": [{"name": "esxi-01.local"}]}},
-                    }],
-                },
-                "datastores_info": {"datastores": []},
-                "config": {},
-                "collection_status": "SUCCESS",
-                "collection_error": "",
+                "name": "esxi-01.local",
+                "version": "7.0.3",
+                "build": "12345",
+                "connection_state": "connected",
+                "overall_status": "green",
+                "in_maintenance_mode": False,
+                "lockdown_mode": "disabled",
+                "mem_mb_total": 65536,
+                "mem_mb_used": 32768,
+                "mem_used_pct": 50.0,
+                "cpu_used_pct": 42.0,
+                "vm_count": 18,
+                "uptime_seconds": 86400,
+                "ssh_enabled": True,
+                "shell_enabled": False,
+                "ntp_running": True,
+                "cluster": "Cluster-A",
+                "datacenter": "DC1",
+                "datastores": [{"name": "ds1", "total": "1TB", "free": "500GB"}],
+                "nics": [],
+                "vmknics": [],
+                "hardware_alerts": [],
             },
         }
         with open(self.esxi_dir / "raw_esxi.yaml", "w") as f:

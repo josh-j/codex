@@ -648,7 +648,6 @@ class TestEsxiHealthSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "esxi"
         assert s.platform == "vmware"
-        assert s.split_field == "esxi_hosts"
         when_exprs = {a.when for a in s.alerts}
         assert any("disconnected" in w for w in when_exprs)  # host_disconnected
         assert "connection_state" in s.fields
@@ -662,20 +661,25 @@ class TestEsxiHealthSchema:
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
-        # Simulate a per-host bundle (after split_field expansion)
+        # Simulate a pre-assembled per-host bundle from the collector
         bundle = {
-            "connection_state": "disconnected",
-            "overall_status": "red",
-            "cluster": "prod-cluster",
-            "datacenter": "dc01",
-            "cpu_used_pct": 42.0,
-            "mem_used_pct": 78.0,
-            "mem_mb_total": 131072,
-            "mem_mb_used": 102236,
-            "vm_count": 18,
-            "uptime_seconds": 4071600,
-            "ssh_enabled": True,
-            "shell_enabled": False,
+            "raw_esxi": {
+                "metadata": {"host": "esxi-01", "timestamp": "2026-02-27T00:00:00Z"},
+                "data": {
+                    "connection_state": "disconnected",
+                    "overall_status": "red",
+                    "cluster": "prod-cluster",
+                    "datacenter": "dc01",
+                    "cpu_used_pct": 42.0,
+                    "mem_used_pct": 78.0,
+                    "mem_mb_total": 131072,
+                    "mem_mb_used": 102236,
+                    "vm_count": 18,
+                    "uptime_seconds": 4071600,
+                    "ssh_enabled": True,
+                    "shell_enabled": False,
+                },
+            },
         }
 
         result = normalize_from_schema(s, bundle)
