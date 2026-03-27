@@ -14,27 +14,22 @@
 - type: key-value
   title: "System Overview"
   fields:
-    - label: "Hostname"
-      field: "{{ hostname }}"
-    - label: "IP Address"
-      field: "{{ ip_address }}"
-    - label: "Distribution"
-      field: "{{ distribution }}"
-    - label: "Version"
-      field: "{{ distribution_version }}"
-    - label: "Kernel"
-      field: "{{ kernel }}"
-    - { label: "Uptime (days)", field: "{{ uptime_days }}", format: "{{ value | round(1) }}" }
-    - { label: "Load Avg (15m)", field: "{{ load_avg_15m }}", format: "{value:.2f}" }
+    - 'Hostname': "{{ hostname }}"
+    - 'IP Address': "{{ ip_address }}"
+    - 'Distribution': "{{ distribution }}"
+    - 'Version': "{{ distribution_version }}"
+    - 'Kernel': "{{ kernel }}"
+    - { 'Uptime (days)': "{{ uptime_days }}", format: "{{ value | round(1) }}" }
+    - { 'Load Avg (15m)': "{{ load_avg_15m }}", format: "{value:.2f}" }
 
 - type: key-value
   title: "Memory"
   fields:
-    - { label: "Total (MB)", field: "{{ memory_total_mb }}", format: "{{ value | round(1) }}" }
-    - { label: "Free (MB)", field: "{{ memory_free_mb }}", format: "{{ value | round(1) }}" }
-    - { label: "Used %", field: "{{ memory_used_pct }}", format: "{{ value | round(1) }}" }
-    - { label: "Swap Total (MB)", field: "{{ swap_total_mb }}", format: "{{ value | round(1) }}" }
-    - { label: "Swap Used %", field: "{{ swap_used_pct }}", format: "{{ value | round(1) }}" }
+    - { 'Total (MB)': "{{ memory_total_mb }}", format: "{{ value | round(1) }}" }
+    - { 'Free (MB)': "{{ memory_free_mb }}", format: "{{ value | round(1) }}" }
+    - { 'Used %': "{{ memory_used_pct }}", format: "{{ value | round(1) }}" }
+    - { 'Swap Total (MB)': "{{ swap_total_mb }}", format: "{{ value | round(1) }}" }
+    - { 'Swap Used %': "{{ swap_used_pct }}", format: "{{ value | round(1) }}" }
 
 - type: key-value
   title: "Patching & Services"

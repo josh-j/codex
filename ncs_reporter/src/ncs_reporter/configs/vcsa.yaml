@@ -244,15 +244,11 @@ widgets:
     when: backup_schedule_count > 0
     rows: "{{ backup_schedules }}"
     columns:
-      - label: "Name"
-        field: "{{ name }}"
-      - label: "Enabled"
-        field: "{{ enabled }}"
+      - 'Name': "{{ name }}"
+      - 'Enabled': "{{ enabled }}"
         badge: true
         style_rules:
           - when: enabled == 0.0
             css_class: "sv-critical"
-      - label: "Location"
-        field: "{{ location }}"
-      - label: "Retain Count"
-        field: "{{ retain_count }}"
+      - 'Location': "{{ location }}"
+      - 'Retain Count': "{{ retain_count }}"

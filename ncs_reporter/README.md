@@ -26,9 +26,9 @@ Existing schema files continue to work unchanged.
 | `detection.keys_all` | `detection.all` |
 | `path` | `from` |
 | `compute` | `expr` |
-| `script` | `run` |
-| `script_args` | `args` |
-| `script_timeout` | `timeout` |
+| `script.path` | `script.run` |
+| `script.args` | `script.script_args` |
+| `script.timeout` | `script.script_timeout` |
 | `fallback` | `default` |
 | `table.rows_field` | `table.rows` |
 | `label` (field/column) | `title` |

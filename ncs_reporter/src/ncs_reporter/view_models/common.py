@@ -158,6 +158,8 @@ def extract_platform_alerts(
                     "platform": platform_label or audit_type,
                     "category": alert.get("category", category_default),
                     "message": alert.get("message", ""),
+                    "detail": alert.get("detail", {}),
+                    "affected_items": alert.get("affected_items", []),
                 }
             )
     return result

@@ -109,7 +109,13 @@ def build_site_dashboard_view(
                 "alerts": [],
             }
         _host_groups[host]["alerts"].append(
-            {"severity": alert["severity"], "message": alert.get("message", ""), "category": alert.get("category", "")}
+            {
+                "severity": alert["severity"],
+                "message": alert.get("message", ""),
+                "category": alert.get("category", ""),
+                "detail": alert.get("detail", {}),
+                "affected_items": alert.get("affected_items", []),
+            }
         )
     alert_groups = [_host_groups[h] for h in _host_order]
 

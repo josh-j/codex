@@ -66,7 +66,7 @@ def _validate_config_references(
     for col in s.fleet_columns:
         referenced.add(col.field)
     for spec in s.fields.values():
-        for tmpl in [spec.compute or "", *((spec.script_args or {}).values())]:
+        for tmpl in [spec.compute or "", *(spec.script.args if spec.script else {}).values()]:
             if isinstance(tmpl, str):
                 for ref in re.findall(r"\{(\w+)\}", tmpl):
                     referenced.add(ref)
@@ -91,8 +91,8 @@ def _validate_config_references(
     for name, spec in s.fields.items():
         if spec.script is None:
             continue
-        if _resolve_script(spec.script, str(config_file)) is None:
-            errors.append(f"field '{name}': script '{spec.script}' not found")
+        if _resolve_script(spec.script.path, str(config_file)) is None:
+            errors.append(f"field '{name}': script '{spec.script.path}' not found")
 
     return warnings, errors
 
@@ -350,9 +350,9 @@ def info_aliases() -> None:
     aliases = [
         ("from", "path", "Field data source path"),
         ("expr", "compute", "Computed expression"),
-        ("run", "script", "Script to execute"),
-        ("args", "script_args", "Script arguments"),
-        ("timeout", "script_timeout", "Script timeout"),
+        ("run", "script.path", "Script to execute"),
+        ("script_args", "script.args", "Script arguments (nested under script:)"),
+        ("script_timeout", "script.timeout", "Script timeout (nested under script:)"),
         ("default", "fallback", "Default value when null"),
         ("title", "display_name", "Human-readable name"),
         ("title", "label", "Widget/column label"),

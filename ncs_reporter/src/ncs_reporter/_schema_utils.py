@@ -84,11 +84,12 @@ fields:
 
   # --- Script field (runs a Python script) ---
   # complex_data:
-  #   script: "my_script.py"         # aliases: 'run'
-  #   script_args:                   # aliases: 'args'
-  #     source: "raw_data"
+  #   script:
+  #     path: "my_script.py"         # aliases: 'run'
+  #     args:                        # aliases: 'script_args'
+  #       source: "raw_data"
+  #     timeout: 30                  # aliases: 'script_timeout'
   #   type: list
-  #   script_timeout: 30             # aliases: 'timeout'
 
   # --- List processing ---
   # filtered_items:

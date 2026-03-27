@@ -8,7 +8,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 # Re-export for backwards compatibility with tests that import from here
 # (the actual evaluation now lives in normalization/_when.py)
-__all__ = ["AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "StyleRule"]
+__all__ = ["AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "ScriptSpec", "StyleRule"]
 
 
 # ---------------------------------------------------------------------------
@@ -59,13 +59,23 @@ class CountWhereSpec(BaseModel):
     # All conditions must match (AND). Count of matching items is the result.
 
 
+class ScriptSpec(BaseModel):
+    """Nested script specification: path + optional args and timeout."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(validation_alias=AliasChoices("path", "run"))
+    args: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("args", "script_args"))
+    timeout: int = Field(default=30, validation_alias=AliasChoices("timeout", "script_timeout"))
+
+
 class FieldSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # Exactly one of path / compute / script must be set.
     # path    — dot-notation traversal with optional pipe transform
     # compute — arithmetic expression using {field_name} references
-    # script  — path to an executable; receives JSON on stdin, returns JSON on stdout
+    # script  — nested spec with path, args, timeout; receives JSON on stdin, returns JSON on stdout
     path: str | None = Field(default=None, validation_alias=AliasChoices("path", "from"))
     compute: str | None = Field(default=None, validation_alias=AliasChoices("compute", "expr"))
 
@@ -73,12 +83,45 @@ class FieldSpec(BaseModel):
     @classmethod
     def _coerce_compute(cls, v: Any) -> Any:
         return str(v) if v is not None and not isinstance(v, str) else v
-    script: str | None = Field(default=None, validation_alias=AliasChoices("script", "run"))
+    script: ScriptSpec | None = Field(default=None)
 
-    # Static key/value args passed to the script alongside extracted fields.
-    script_args: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("script_args", "args"))
-    # Seconds before a script invocation is killed and the fallback is used.
-    script_timeout: int = Field(default=30, validation_alias=AliasChoices("script_timeout", "timeout"))
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_script(cls, values: Any) -> Any:
+        """Accept both flat and nested script forms.
+
+        Flat (legacy):
+            script: "foo.py"
+            script_args: {k: v}
+            script_timeout: 30
+
+        Nested (preferred):
+            script:
+              path: "foo.py"
+              args: {k: v}
+              timeout: 30
+        """
+        if not isinstance(values, dict):
+            return values
+        raw = values.get("script") or values.get("run")
+        if isinstance(raw, str):
+            # Flat form — hoist into nested dict
+            nested: dict[str, Any] = {"path": raw}
+            for src in ("script_args", "args"):
+                if src in values:
+                    nested["args"] = values.pop(src)
+                    break
+            for src in ("script_timeout", "timeout"):
+                if src in values:
+                    nested["timeout"] = values.pop(src)
+                    break
+            values["script"] = nested
+            values.pop("run", None)
+        elif raw is None:
+            # No script — still strip stale flat keys so extra="forbid" doesn't reject them
+            for src in ("script_args", "args", "script_timeout", "timeout", "run"):
+                values.pop(src, None)
+        return values
 
     type: Literal[
         "str", "int", "float", "bool", "list", "dict", "bytes", "percentage", "datetime", "duration_seconds"

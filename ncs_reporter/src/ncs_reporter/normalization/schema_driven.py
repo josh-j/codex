@@ -90,26 +90,27 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     _script_cache: dict[tuple[str, frozenset[tuple[str, str]]], Any] = {}
     for name, spec in schema.fields.items():
         if spec.script is not None:
-            script_path = _resolve_script(spec.script, schema_source)
+            ss = spec.script
+            script_path = _resolve_script(ss.path, schema_source)
             if script_path is None:
-                logger.warning("Script not found for field '%s': %s", name, spec.script)
+                logger.warning("Script not found for field '%s': %s", name, ss.path)
                 result[name] = _get_sentinel(spec)
                 continue
             # Cache key: (resolved_path, frozen args) — avoids re-running identical invocations
             cache_key = (
                 str(script_path),
-                frozenset((k, repr(v)) for k, v in sorted((spec.script_args or {}).items())),
+                frozenset((k, repr(v)) for k, v in sorted((ss.args or {}).items())),
             )
             if cache_key in _script_cache:
                 value = _script_cache[cache_key]
             else:
-                value = _run_script_field(script_path, result, spec.script_args, spec.script_timeout)
+                value = _run_script_field(script_path, result, ss.args, ss.timeout)
                 _script_cache[cache_key] = value
             if value is _SCRIPT_ERROR_SENTINEL:
                 result[name] = _get_sentinel(spec)
             else:
                 # script_bundles expansion sets _extract_key to pluck from a dict result
-                extract_key = (spec.script_args or {}).get("_extract_key")
+                extract_key = (ss.args or {}).get("_extract_key")
                 if extract_key and isinstance(value, dict):
                     value = value.get(extract_key)
                 processed = _apply_list_processing(value, spec)

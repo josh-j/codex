@@ -889,8 +889,9 @@ class TestScriptFields:
         s = load_schema_from_file(schema_path)
         assert "aged_snapshot_count" in s.fields
         spec = s.fields["aged_snapshot_count"]
-        assert spec.script == "normalize_snapshots.py"
-        assert spec.script_args.get("age_days") == 7
+        assert spec.script is not None
+        assert spec.script.path == "normalize_snapshots.py"
+        assert spec.script.args.get("age_days") == 7
         assert any(a.id == "aged_snapshots" for a in s.alerts)
 
 
