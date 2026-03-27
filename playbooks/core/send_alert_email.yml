@@ -1,0 +1,87 @@
+---
+# playbooks/core/send_alert_email.yml
+# Send an alert notification email via SMTP.
+#
+# Designed to be called from ncs-reporter fire-on-alerts via the alert action: field.
+#
+# Required variables (passed via -e):
+#   alert_id:       Alert identifier (e.g., "disk_critical")
+#   alert_severity: CRITICAL, WARNING, or INFO
+#   alert_msg:      Human-readable alert message
+#   alert_host:     Hostname that triggered the alert
+#
+# Optional variables (from group_vars or -e):
+#   smtp_host:      SMTP server (default: localhost)
+#   smtp_port:      SMTP port (default: 25)
+#   smtp_username:  SMTP auth username (default: omitted)
+#   smtp_password:  SMTP auth password (default: omitted)
+#   smtp_secure:    starttls, always, or never (default: starttls)
+#   alert_email_to: Recipient address(es) — comma-separated or list
+#   alert_email_from: Sender address
+#   alert_email_subject: Override subject line
+#
+# Example alert config:
+#   - id: disk_critical
+#     when: disks | selectattr('used_pct', 'ge', 95.0) | list | length > 0
+#     msg: "One or more filesystems critically full"
+#     action: >-
+#       ansible-playbook playbooks/core/send_alert_email.yml
+#       -e alert_id=disk_critical
+#       -e alert_severity=CRITICAL
+#       -e alert_host={{ inventory_hostname }}
+#       -e 'alert_msg={{ msg }}'
+
+- name: "Send alert email notification"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    smtp_host: "{{ ncs_smtp_host | default('localhost') }}"
+    smtp_port: "{{ ncs_smtp_port | default(25) }}"
+    smtp_username: "{{ ncs_smtp_username | default(omit) }}"
+    smtp_password: "{{ ncs_smtp_password | default(omit) }}"
+    smtp_secure: "{{ ncs_smtp_secure | default('starttls') }}"
+    alert_email_from: "{{ ncs_alert_email_from | default('ncs-alerts@' + ansible_domain | default('localhost')) }}"
+    alert_email_to: "{{ ncs_alert_email_to | default('admin@' + ansible_domain | default('localhost')) }}"
+    alert_email_subject: "[NCS {{ alert_severity | default('ALERT') }}] {{ alert_id | default('unknown') }} on {{ alert_host | default('unknown') }}"
+
+  tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - alert_id is defined
+          - alert_severity is defined
+          - alert_msg is defined
+          - alert_host is defined
+        fail_msg: "Missing required variable. Pass alert_id, alert_severity, alert_msg, and alert_host via -e."
+
+    - name: Send alert email
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        username: "{{ smtp_username }}"
+        password: "{{ smtp_password }}"
+        secure: "{{ smtp_secure }}"
+        from: "{{ alert_email_from }}"
+        to: "{{ alert_email_to }}"
+        subject: "{{ alert_email_subject }}"
+        body: |
+          NCS Alert Notification
+          ======================
+
+          Severity: {{ alert_severity }}
+          Alert:    {{ alert_id }}
+          Host:     {{ alert_host }}
+
+          {{ alert_msg }}
+
+          ---
+          Sent by NCS Reporter fire-on-alerts
+        subtype: plain
+      register: _mail_result
+
+    - name: Log send result
+      ansible.builtin.debug:
+        msg: "Alert email sent to {{ alert_email_to }} for {{ alert_id }} on {{ alert_host }}"
+      when: _mail_result is succeeded
