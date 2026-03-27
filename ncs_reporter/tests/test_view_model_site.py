@@ -115,3 +115,29 @@ class TestBuildSiteDashboardView:
         view = build_site_dashboard_view(hosts)
         assert view["platforms"]["ubuntu"]["asset_count"] == 1
         assert view["platforms"]["vcsa"]["asset_count"] == 0
+
+    def test_alert_detail_and_affected_items_passed_through(self):
+        alerts = [
+            {
+                "severity": "CRITICAL",
+                "category": "disk",
+                "message": "Disk full on /data",
+                "detail": {"mount": "/data", "usage": "98%"},
+                "affected_items": [{"path": "/data/file1"}, {"path": "/data/file2"}],
+            }
+        ]
+        hosts = {"hosts": {"h1": _linux_bundle(health="CRITICAL", alerts=alerts)}}
+        view = build_site_dashboard_view(hosts)
+        assert len(view["alert_groups"]) >= 1
+        group_alert = view["alert_groups"][0]["alerts"][0]
+        assert group_alert["detail"] == {"mount": "/data", "usage": "98%"}
+        assert len(group_alert["affected_items"]) == 2
+        assert group_alert["affected_items"][0]["path"] == "/data/file1"
+
+    def test_alert_without_detail_has_empty_defaults(self):
+        alerts = [{"severity": "WARNING", "category": "test", "message": "plain alert"}]
+        hosts = {"hosts": {"h1": _linux_bundle(alerts=alerts)}}
+        view = build_site_dashboard_view(hosts)
+        group_alert = view["alert_groups"][0]["alerts"][0]
+        assert group_alert["detail"] == {}
+        assert group_alert["affected_items"] == []

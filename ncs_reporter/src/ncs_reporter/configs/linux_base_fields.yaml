@@ -64,5 +64,6 @@ world_writable_count:
   type: int
 
 users:
-  script: "user_inventory.py"
+  script:
+    path: "user_inventory.py"
   type: list

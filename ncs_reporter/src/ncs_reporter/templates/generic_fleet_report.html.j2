@@ -8,6 +8,9 @@
     {% set nav = view.get('nav', {}) %}
     {% set hosts = view.get('hosts', []) %}
     {% set active_alerts = view.get('active_alerts', []) %}
+    {% set alert_groups = view.get('alert_groups', []) %}
+    {% set crit_count = view.get('crit_count', 0) %}
+    {% set warn_count = view.get('warn_count', 0) %}
     {% set crit_hosts  = hosts | selectattr('critical_count', 'gt', 0) | list | length %}
     {% set warn_hosts  = hosts | selectattr('warning_count',  'gt', 0) | list | length %}
     {% set ok_hosts    = hosts | selectattr('health', 'eq', 'OK') | list | length %}
@@ -18,6 +21,7 @@
 <div class="page-wrap">
 
     {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {% from '_alert_detail.html.j2' import alert_detail_row %}
     {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
     <div class="page-header">
@@ -77,35 +81,7 @@
                     </td>
                 </tr>
                 {% if has_items %}
-                {% set items = alert.affected_items %}
-                {% set display_items = items[:50] %}
-                {% set remaining = items | length - 50 %}
-                {% set sample = display_items[0] if display_items else {} %}
-                {% set col_keys = sample.keys() | list if sample is mapping else [] %}
-                {% set skip_keys = ['tags', 'attributes', 'moid', 'uuid', 'instance_uuid', 'datastore_url', 'backup_info'] %}
-                {% set display_cols = [] %}
-                {% for k in col_keys %}{% if k not in skip_keys and not k.startswith('_') %}{% if display_cols.append(k) %}{% endif %}{% endif %}{% endfor %}
-                {% set display_cols = display_cols[:8] %}
-                <tr class="alert-detail-row group-row" id="{{ fleet_alert_id }}" data-group="{{ gid }}" style="display: none;">
-                    <td colspan="3">
-                        <div class="alert-affected-items">
-                            {% if display_cols %}
-                            <table class="affected-items-table">
-                                <thead><tr>{% for col in display_cols %}<th>{{ col | replace('_', ' ') | title }}</th>{% endfor %}</tr></thead>
-                                <tbody>
-                                {% for item in display_items %}
-                                    <tr>{% for col in display_cols %}{% set val = item[col] if item is mapping else item %}<td>{% if val is mapping or (val is iterable and val is not string) %}<span class="subtle-text">{{ val | length }} items</span>{% else %}{{ val }}{% endif %}</td>{% endfor %}</tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                            {% if remaining > 0 %}<div class="affected-items-overflow">&hellip;and {{ remaining }} more item{{ 's' if remaining != 1 else '' }}</div>{% endif %}
-                            {% else %}
-                            <ul class="affected-items-list">{% for item in display_items %}<li>{{ item }}</li>{% endfor %}</ul>
-                            {% if remaining > 0 %}<div class="affected-items-overflow">&hellip;and {{ remaining }} more</div>{% endif %}
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
+                {{ alert_detail_row(alert, fleet_alert_id, extra_class='group-row', extra_attrs='data-group="' ~ gid ~ '"') }}
                 {% endif %}
                 {% endfor %}
             {% endfor %}

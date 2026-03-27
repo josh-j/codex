@@ -27,6 +27,7 @@
 <div class="page-wrap">
 
     {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {% from '_alert_detail.html.j2' import alert_detail_row %}
     {{ breadcrumb_bar(site.get('nav', {}).get('breadcrumbs', [])) }}
 
     <div class="page-header">
@@ -58,23 +59,39 @@
         <div class="widget-body widget-table-view">
         <table>
             <thead>
-                <tr><th class="th-severity">Severity</th><th>Message</th></tr>
+                <tr><th class="th-severity">Severity</th><th class="th-category">Category</th><th>Message</th></tr>
             </thead>
             <tbody>
             {% for group in alert_groups %}
                 {% set gid = loop.index %}
                 <tr class="group-hdr" data-group="{{ gid }}">
-                    <td colspan="2">
+                    <td colspan="3">
                         <span class="group-toggle"></span>
                         <strong><a href="{{ group.node_report }}">{{ group.host }}</a></strong>
                         <span class="group-platform">{{ group.platform }}</span>
                     </td>
                 </tr>
                 {% for alert in group.alerts %}
-                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}" data-group="{{ gid }}">
+                {% set has_items = alert.get('affected_items', []) | length > 0 %}
+                {% set site_alert_id = 'site-alert-' ~ gid ~ '-' ~ loop.index %}
+                <tr class="group-row {{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }} {{ 'alert-expandable' if has_items else '' }}" data-group="{{ gid }}" {% if has_items %}data-alert-detail="{{ site_alert_id }}"{% endif %}>
                     <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} severity-cell">{{ alert.severity }}</td>
-                    <td>{{ alert.get('message', '') }}</td>
+                    <td class="nowrap subtle-text strong-text alert-category">{{ alert.get('category', '') }}</td>
+                    <td>
+                        {{ alert.get('message', '') }}
+                        {% if has_items %}<span class="alert-expand-hint">({{ alert.affected_items | length }} item{{ 's' if alert.affected_items | length != 1 else '' }})</span>{% endif %}
+                        {% if alert.get('detail') %}
+                        <div class="alert-details">
+                            {% for dk, dv in alert.detail.items() %}
+                            <span><strong>{{ dk }}:</strong> {{ dv }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
                 </tr>
+                {% if has_items %}
+                {{ alert_detail_row(alert, site_alert_id, extra_class='group-row', extra_attrs='data-group="' ~ gid ~ '"') }}
+                {% endif %}
                 {% endfor %}
             {% endfor %}
             </tbody>

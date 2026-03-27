@@ -377,9 +377,43 @@ def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
     return _expand_columns_in_widget(item)
 
 
+_COLUMN_KEYS = frozenset({"label", "title", "field", "badge", "format", "link_field", "style_rules", "width"})
+
+
+def _expand_compact_column_dict(item: dict[str, Any]) -> dict[str, Any]:
+    """Expand a dict column that uses a compact label→field entry.
+
+    Accepts: {'Tools Status': '{{ tools_status }}', badge: true}
+    Returns: {label: 'Tools Status', field: '{{ tools_status }}', badge: true}
+    """
+    unknown = {k: v for k, v in item.items() if k not in _COLUMN_KEYS}
+    if len(unknown) != 1:
+        return item  # not compact form — leave as-is
+    compact_label, compact_field = next(iter(unknown.items()))
+    if not isinstance(compact_field, str):
+        return item  # value isn't a field ref — leave as-is
+    result: dict[str, Any] = {"label": compact_label, "field": compact_field}
+    for k, v in item.items():
+        if k != compact_label:
+            result[k] = v
+    # Support [badge] suffix in label
+    if "[badge]" in compact_label:
+        result["label"] = compact_label.replace(" [badge]", "").replace("[badge]", "")
+        result["badge"] = True
+    return result
+
+
 def _expand_column_list(items: list[Any]) -> list[Any]:
-    """Expand compact column/field strings in a list, leaving dicts unchanged."""
-    return [_expand_compact_column(c) if isinstance(c, str) else c for c in items]
+    """Expand compact column/field strings and compact dicts in a list."""
+    result: list[Any] = []
+    for c in items:
+        if isinstance(c, str):
+            result.append(_expand_compact_column(c))
+        elif isinstance(c, dict) and "label" not in c and "title" not in c and "field" not in c:
+            result.append(_expand_compact_column_dict(c))
+        else:
+            result.append(c)
+    return result
 
 
 def _expand_dict_columns(mapping: dict[str, str]) -> list[dict[str, Any]]:
@@ -464,8 +498,14 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(bundle, dict):
                 continue
             script = bundle.get("script")
-            base_args = dict(bundle.get("script_args", {}))
-            timeout = bundle.get("script_timeout", 30)
+            if isinstance(script, dict):
+                script_path = script.get("path", "")
+                base_args = dict(script.get("args", {}))
+                timeout = script.get("timeout", 30)
+            else:
+                script_path = script
+                base_args = dict(bundle.get("script_args", {}))
+                timeout = bundle.get("script_timeout", 30)
             unpack = bundle.get("unpack", {})
             for field_name, spec in unpack.items():
                 if isinstance(spec, dict):
@@ -475,10 +515,12 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
                     key = str(spec)
                     field_type = "str"
                 entry: dict[str, Any] = {
-                    "script": script,
-                    "script_args": {**base_args, "metric": "_all", "_extract_key": key},
+                    "script": {
+                        "path": script_path,
+                        "args": {**base_args, "metric": "_all", "_extract_key": key},
+                        "timeout": timeout,
+                    },
                     "type": field_type,
-                    "script_timeout": timeout,
                 }
                 fields[field_name] = entry
 
