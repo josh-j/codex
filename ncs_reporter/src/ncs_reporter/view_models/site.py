@@ -74,10 +74,9 @@ def build_site_dashboard_view(
             alerts_list = safe_list(audit.get("alerts"))
             status = _status_from_health(audit.get("health"))
 
-            # Aggregate numeric fields from all platforms into infra totals
             _f = audit.get("fields") or {}
             for k, v in _f.items():
-                if isinstance(v, (int, float)) and not k.startswith("_"):
+                if k.endswith("_count") and isinstance(v, (int, float)):
                     infra[k] = infra.get(k, 0) + int(v)
 
             all_alerts.extend(
@@ -167,8 +166,5 @@ def build_site_dashboard_view(
         "platforms": platforms_dict,
         "security": {
             "stig_fleet": stig_fleet,
-        },
-        "compute": {
-            "nodes": [],
         },
     }
