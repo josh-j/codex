@@ -181,6 +181,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 "detail": detail,
                 "affected_items": affected_items,
                 "action": rule.action,
+                "cooldown": rule.cooldown,
                 "condition": True,
             }
         )

@@ -203,12 +203,47 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
 # ---------------------------------------------------------------------------
 
 
+def _parse_cooldown(cooldown: str) -> float:
+    """Parse a cooldown string like '7d', '24h', '1h' into seconds."""
+    import re
+    m = re.match(r"(\d+)\s*([dhms])", cooldown.strip().lower())
+    if not m:
+        return 7 * 86400  # default 7 days
+    val, unit = int(m.group(1)), m.group(2)
+    return val * {"d": 86400, "h": 3600, "m": 60, "s": 1}[unit]
+
+
+def _load_alert_state(state_path: str) -> dict:
+    """Load alert state from YAML file."""
+    from pathlib import Path
+    p = Path(state_path)
+    if p.exists():
+        with open(p) as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+def _save_alert_state(state_path: str, state: dict) -> None:
+    """Save alert state to YAML file."""
+    from pathlib import Path
+    Path(state_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(state_path, "w") as f:
+        yaml.dump(state, f, default_flow_style=False)
+
+
 @main.command("fire-on-alerts")
 @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
+@click.option("--hostname", "-n", default=None, help="Hostname for state tracking (auto-detected from bundle if omitted).")
+@click.option("--state-file", default=".alert_state.yaml", type=click.Path(), help="Path to alert state file for cooldown tracking.")
 @click.option("--dry-run", is_flag=True, default=False, help="Print actions without executing.")
-def fire_on_alerts(input_file: str, dry_run: bool) -> None:
-    """Evaluate alerts against a raw bundle and execute actions for fired alerts."""
+def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, dry_run: bool) -> None:
+    """Evaluate alerts against a raw bundle and execute actions for fired alerts.
+
+    Respects per-alert cooldown periods to prevent duplicate notifications.
+    State is tracked in a YAML file (default: .alert_state.yaml).
+    """
     import subprocess
+    from datetime import datetime, timezone
 
     with open(input_file) as f:
         bundle = yaml.safe_load(f)
@@ -221,24 +256,63 @@ def fire_on_alerts(input_file: str, dry_run: bool) -> None:
 
     from .normalization.schema_driven import build_schema_alerts, extract_fields
 
+    # Auto-detect hostname from bundle metadata
+    if not hostname:
+        for key in bundle:
+            meta = bundle[key].get("metadata", {}) if isinstance(bundle.get(key), dict) else {}
+            if meta.get("host"):
+                hostname = meta["host"]
+                break
+        hostname = hostname or "unknown"
+
+    state = _load_alert_state(state_file)
+    now = datetime.now(timezone.utc)
+    fired_alert_ids: set[str] = set()
     failures = 0
+
     for schema in matched:
         click.echo(f"Schema: {schema.name}")
         fields, _coverage = extract_fields(schema, bundle)
         alerts = build_schema_alerts(schema, fields)
 
+        # Track which alert IDs fired this run (for clear-on-resolve)
+        current_fired = {a["id"] for a in alerts}
+
         if not alerts:
             click.echo("  No alerts fired.")
-            continue
 
         for alert in alerts:
+            alert_id = alert["id"]
             sev = alert["severity"]
             msg = alert["message"]
             action = alert.get("action")
-            click.echo(f"  [{sev}] {alert['id']}: {msg}")
+            cooldown_str = alert.get("cooldown", "7d")
+            fired_alert_ids.add(alert_id)
+
+            click.echo(f"  [{sev}] {alert_id}: {msg}")
 
             if not action:
                 continue
+
+            # Check cooldown
+            cooldown_secs = _parse_cooldown(cooldown_str)
+            alert_state = state.get(alert_id, {})
+            host_state = alert_state.get(hostname, {})
+            last_fired = host_state.get("last_fired")
+
+            if last_fired:
+                try:
+                    last_dt = datetime.fromisoformat(str(last_fired))
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=timezone.utc)
+                    elapsed = (now - last_dt).total_seconds()
+                    if elapsed < cooldown_secs:
+                        remaining = cooldown_secs - elapsed
+                        hours = int(remaining // 3600)
+                        click.echo(f"    COOLDOWN: {hours}h remaining (last fired {last_fired})")
+                        continue
+                except (ValueError, TypeError):
+                    pass  # invalid timestamp, proceed
 
             try:
                 from .normalization._when import _build_jinja_env
@@ -254,6 +328,22 @@ def fire_on_alerts(input_file: str, dry_run: bool) -> None:
                 if result.returncode != 0:
                     click.echo(f"    FAILED (exit code {result.returncode})", err=True)
                     failures += 1
+                else:
+                    # Update state on successful execution
+                    if alert_id not in state:
+                        state[alert_id] = {}
+                    state[alert_id][hostname] = {"last_fired": now.isoformat()}
+
+        # Clear resolved alerts (fired last time but not this time)
+        for alert_id in list(state.keys()):
+            if alert_id not in current_fired and hostname in state.get(alert_id, {}):
+                del state[alert_id][hostname]
+                if not state[alert_id]:
+                    del state[alert_id]
+                click.echo(f"  CLEARED: {alert_id} on {hostname}")
+
+    if not dry_run:
+        _save_alert_state(state_file, state)
 
     if failures:
         raise SystemExit(1)

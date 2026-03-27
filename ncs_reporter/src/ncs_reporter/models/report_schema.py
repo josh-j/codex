@@ -142,6 +142,7 @@ class AlertRule(BaseModel):
     severity: Literal["CRITICAL", "WARNING", "INFO"] = "WARNING"
     when: str  # Jinja2 expression evaluated against extracted fields
     action: str | None = None  # Optional command to run when alert fires
+    cooldown: str = "7d"  # Minimum time between re-firing (e.g., "7d", "24h", "1h")
     msg: str = Field(validation_alias=AliasChoices("msg", "message"))
     suppress_if: str | list[str] | None = None
 
