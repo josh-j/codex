@@ -586,13 +586,10 @@ def build_platform_entries_from_schemas(
 ) -> list[dict[str, Any]]:
     """Extract PlatformEntry dicts from schemas that have embedded platform metadata.
 
-    Each schema with a ``platform_spec`` produces one primary entry and zero or more
-    sub-entries (non-renderable, STIG-only entries like vcsa/esxi/vm under vmware).
-
     When multiple schemas share the same ``input_dir``, the first one encountered
     becomes the primary entry and subsequent schemas are merged into its
-    ``schema_names`` list.  Schemas with renderable entries are processed first so
-    they always serve as the primary.
+    ``schema_names`` list.  Renderable schemas are processed first so they
+    always serve as the primary.
     """
     entries: list[dict[str, Any]] = []
     seen_entries: dict[tuple[str, str], dict[str, Any]] = {}
@@ -622,7 +619,7 @@ def build_platform_entries_from_schemas(
         # Primary entry
         primary: dict[str, Any] = {
             "input_dir": input_dir,
-            "report_dir": spec.report_dir or schema.platform or schema.name,
+            "report_dir": report_dir,
             "platform": platform_name,
             "render": spec.render,
             "schema_name": schema.name,

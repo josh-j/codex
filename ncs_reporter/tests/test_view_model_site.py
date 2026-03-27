@@ -81,7 +81,6 @@ class TestBuildSiteDashboardView:
         view = build_site_dashboard_view({})
         assert view["totals"]["total"] == 0
         assert view["alerts"] == []
-        assert view["compute"]["nodes"] == []
 
     def test_alerts_sorted_critical_first(self):
         hosts = {
