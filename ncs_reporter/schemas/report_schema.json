@@ -77,6 +77,11 @@
           "default": null,
           "title": "Action"
         },
+        "cooldown": {
+          "default": "7d",
+          "title": "Cooldown",
+          "type": "string"
+        },
         "msg": {
           "title": "Msg",
           "type": "string"
