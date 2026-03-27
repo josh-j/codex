@@ -1,14 +1,6 @@
 config:
   display_name: "VMware VCSA"
-  platform:
-    path: vmware/vcsa
-    site_compute_node: true
-    site_infra_fields: [vcenter_count, datacenter_count, cluster_count, esxi_host_count, vm_count, datastore_count, snapshot_count, active_alarm_count]
-    children:
-      - input_dir: vmware/vcsa/vcsa
-        report_dir: vmware/vcsa/vcsa
-        stig_platform_to_checklist:
-          vcsa: cklb_skeletons/cklb_skeleton_vsphere7_vcsa_V1R3.json
+  platform: vmware/vcsa
   stig:
     ansible_playbook:
       path: "playbooks/vcsa/stig_remediate.yml"

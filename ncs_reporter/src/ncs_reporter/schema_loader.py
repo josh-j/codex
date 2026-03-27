@@ -591,16 +591,16 @@ def build_platform_entries_from_schemas(
 
     When multiple schemas share the same ``input_dir``, the first one encountered
     becomes the primary entry and subsequent schemas are merged into its
-    ``schema_names`` list.  Schemas with ``sub_entries`` are processed first so
+    ``schema_names`` list.  Schemas with renderable entries are processed first so
     they always serve as the primary.
     """
     entries: list[dict[str, Any]] = []
     seen_entries: dict[tuple[str, str], dict[str, Any]] = {}
 
-    # Process schemas with sub_entries first so they become the primary entry
+    # Process renderable schemas first so they become the primary entry
     # for their input_dir (they carry the richest metadata).
     platform_schemas = [s for s in schemas.values() if s.platform_spec is not None]
-    platform_schemas.sort(key=lambda s: (not s.platform_spec.sub_entries,))
+    platform_schemas.sort(key=lambda s: (not s.platform_spec.render,))
 
     for schema in platform_schemas:
         spec: PlatformSpec = schema.platform_spec  # type: ignore[assignment]
@@ -630,25 +630,10 @@ def build_platform_entries_from_schemas(
             "schema_names": [schema.name],
             "stig_platform_to_checklist": dict(schema.stig.platform_to_checklist),
             "stig_rule_prefix_to_platform": dict(schema.stig.rule_prefix_to_platform),
-            "site_infra_fields": list(spec.site_infra_fields),
-            "site_compute_node": spec.site_compute_node,
             "stig_playbook": schema.stig.ansible_playbook.path,
             "stig_target_var": schema.stig.ansible_playbook.target_var,
         }
         entries.append(primary)
         seen_entries[merge_key] = primary
-
-        # Sub-entries (non-renderable)
-        for sub in spec.sub_entries:
-            sub_entry: dict[str, Any] = {
-                "input_dir": sub.input_dir,
-                "report_dir": sub.report_dir,
-                "platform": platform_name,
-                "render": False,
-                "stig_platform_to_checklist": dict(sub.stig_platform_to_checklist),
-                "stig_playbook": sub.stig_playbook or schema.stig.ansible_playbook.path,
-                "stig_target_var": sub.stig_target_var or schema.stig.ansible_playbook.target_var,
-            }
-            entries.append(sub_entry)
 
     return entries
