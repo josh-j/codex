@@ -44,7 +44,6 @@ def build_site_dashboard_view(
     )
     reg = registry or default_registry()
     all_alerts: list[dict[str, Any]] = []
-    compute_nodes: list[dict[str, Any]] = []
     infra: dict[str, int] = {}
     stig_fleet = build_stig_fleet_view(
         aggregated_hosts,
@@ -75,22 +74,11 @@ def build_site_dashboard_view(
             alerts_list = safe_list(audit.get("alerts"))
             status = _status_from_health(audit.get("health"))
 
-            # Compute nodes and infra totals (driven by platform config)
-            if entry.site_compute_node:
-                cn_counts = _count_alerts(alerts_list)
-                if cn_counts["total"] or audit.get("health"):
-                    fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
-                    compute_nodes.append(
-                        {
-                            "host": hostname,
-                            "status": {"raw": status},
-                            "clusters": [],
-                            "links": {"fleet_dashboard": fleet_link},
-                        }
-                    )
-                _f = audit.get("fields") or {}
-                for infra_field in entry.site_infra_fields:
-                    infra[infra_field] = infra.get(infra_field, 0) + int(_f.get(infra_field) or 0)
+            # Aggregate numeric fields from all platforms into infra totals
+            _f = audit.get("fields") or {}
+            for k, v in _f.items():
+                if isinstance(v, (int, float)) and not k.startswith("_"):
+                    infra[k] = infra.get(k, 0) + int(v)
 
             all_alerts.extend(
                 extract_platform_alerts(alerts_list, hostname, audit_type_key, category, platform_label=display)
@@ -149,12 +137,6 @@ def build_site_dashboard_view(
             "status": {"raw": p_status},
             "links": {"fleet_dashboard": fleet_link},
         }
-        # Infra-specific fields (driven by platform config)
-        if entry.site_infra_fields:
-            for infra_field in entry.site_infra_fields:
-                if infra_field in infra:
-                    platform_data[infra_field] = infra[infra_field]
-
         # Only include platforms that have generated reports
         has_reports = generated_fleet_dirs is None or entry.report_dir in generated_fleet_dirs
         if has_reports:
@@ -187,6 +169,6 @@ def build_site_dashboard_view(
             "stig_fleet": stig_fleet,
         },
         "compute": {
-            "nodes": compute_nodes,
+            "nodes": [],
         },
     }

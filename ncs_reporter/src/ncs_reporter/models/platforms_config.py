@@ -128,8 +128,6 @@ class PlatformEntry(BaseModel):
     schema_names: list[str] = []  # schema name preference; defaults to [platform]
     stig_platform_to_checklist: dict[str, str] = {}  # target_type -> skeleton relative path
     stig_rule_prefix_to_platform: dict[str, str] = {}  # rule_version prefix -> target_type
-    site_infra_fields: list[str] = []
-    site_compute_node: bool = False
     stig_playbook: str = ""
     stig_target_var: str = ""
 

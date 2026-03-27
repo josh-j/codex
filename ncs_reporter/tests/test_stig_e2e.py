@@ -308,9 +308,9 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
     def tearDown(self):
         self.test_dir.cleanup()
 
-    def test_vcsa_stig_report_renders_under_vmware_vcenter_vcsa(self):
+    def test_vcsa_stig_report_renders_under_vmware_vcsa(self):
         host = "vcsa-01.local"
-        host_dir = self.platform_root / "vmware" / "vcsa" / "vcsa" / host
+        host_dir = self.platform_root / "vmware" / "vcsa" / host
         host_dir.mkdir(parents=True)
 
         raw_data = {
@@ -352,8 +352,8 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
-        host_report = self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa" / host / f"{host}_stig_vcsa.html"
-        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcsa/vcsa")
+        host_report = self.reports_root / "platform" / "vmware" / "vcsa" / host / f"{host}_stig_vcsa.html"
+        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcsa")
 
     def test_photon_stig_report_renders_under_linux_photon(self):
         host = "photon-01.local"

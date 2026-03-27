@@ -344,18 +344,6 @@ class DetectionSpec(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SubEntry(BaseModel):
-    """A STIG-only sub-entry under a parent platform (e.g. vcsa, esxi, vm under vmware)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    input_dir: str
-    report_dir: str
-    stig_platform_to_checklist: dict[str, str] = Field(default_factory=dict)
-    stig_playbook: str = ""
-    stig_target_var: str = ""
-
-
 class PlatformSpec(BaseModel):
     """Platform routing metadata embedded in a schema YAML."""
 
@@ -365,12 +353,6 @@ class PlatformSpec(BaseModel):
     input_dir: str = Field(default="", validation_alias=AliasChoices("input_dir", "path"))
     report_dir: str = ""  # defaults to input_dir if not set
     render: bool = True  # False = STIG/routing only, no fleet/site reports
-    sub_entries: list[SubEntry] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("sub_entries", "children"),
-    )
-    site_infra_fields: list[str] = Field(default_factory=list)
-    site_compute_node: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -392,13 +374,6 @@ class PlatformSpec(BaseModel):
         if not values.get("name") and report_dir:
             values["name"] = report_dir.split("/")[0]
         return values
-
-    @field_validator("sub_entries", mode="before")
-    @classmethod
-    def _coerce_sub_entries(cls, v: Any) -> Any:
-        if v is None:
-            return []
-        return v
 
 
 # ---------------------------------------------------------------------------
