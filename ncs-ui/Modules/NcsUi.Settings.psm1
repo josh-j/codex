@@ -39,25 +39,9 @@ function ConvertTo-NcsUiSettings {
 
     $settings = [NcsUiSettings]::new()
 
-    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "SshPassword", "RemoteRepoPath", "RemoteVaultPath", "DefaultSite", "DefaultAnsibleHost", "LastAction")) {
+    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "RemoteVaultPath", "DefaultSite", "DefaultAnsibleHost", "LastAction")) {
         if ($InputObject.PSObject.Properties.Name -contains $property) {
             $settings.$property = $InputObject.$property
-        }
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($settings.SshPassword)) {
-        try {
-            $secureString = ConvertTo-SecureString -String $settings.SshPassword -ErrorAction Stop
-            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureString)
-            try {
-                $settings.SshPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-            } finally {
-                [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-            }
-        } catch {
-            if ($settings.SshPassword.Length -gt 100) {
-                $settings.SshPassword = ""
-            }
         }
     }
 
@@ -107,20 +91,12 @@ function Save-NcsUiSettings {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 
-    $encryptedPassword = if ([string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-        ""
-    } else {
-        $secureString = ConvertTo-SecureString -String $Settings.SshPassword -AsPlainText -Force
-        ConvertFrom-SecureString -SecureString $secureString
-    }
-
     $payload = [ordered]@{
         SshHost         = $Settings.SshHost
         SshPort         = $Settings.SshPort
         SshUser         = $Settings.SshUser
         SshAuthMode     = $Settings.SshAuthMode
         SshKeyPath      = $Settings.SshKeyPath
-        SshPassword     = $encryptedPassword
         RemoteRepoPath  = $Settings.RemoteRepoPath
         RemoteVaultPath = $Settings.RemoteVaultPath
         DefaultSite     = $Settings.DefaultSite

@@ -4,7 +4,6 @@
   "SshUser": "",
   "SshAuthMode": "Agent",
   "SshKeyPath": "",
-  "SshPassword": "",
   "RemoteRepoPath": "~/ansible-ncs",
   "RemoteVaultPath": ".vaultpass",
   "DefaultSite": "",
