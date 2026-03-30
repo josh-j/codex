@@ -125,5 +125,3 @@ function ConvertFrom-NcsActionDisplayName {
 function Get-NcsSshAuthModeNames {
     [NcsSshAuthMode].GetEnumNames()
 }
-
-Export-ModuleMember -Function Get-NcsUiActionNames, Get-NcsSshAuthModeNames, Get-NcsUiActionDisplayMap, ConvertTo-NcsActionDisplayName, ConvertFrom-NcsActionDisplayName

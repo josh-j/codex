@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 
+$script:NcsProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $script:MaxOutputLines = 50000
 
 function ConvertTo-NcsBashLiteral {
@@ -121,8 +122,7 @@ function New-NcsSshPasswordEnvironment {
         throw "Password authentication requires an SSH password."
     }
 
-    $moduleRoot = Split-Path -Parent $PSScriptRoot
-    $askPassScript = Join-Path -Path $moduleRoot -ChildPath "Scripts/askpass.cmd"
+    $askPassScript = Join-Path -Path $script:NcsProjectRoot -ChildPath "Scripts/askpass.cmd"
     return @{
         SSH_ASKPASS         = $askPassScript
         SSH_ASKPASS_REQUIRE = "force"
@@ -496,5 +496,3 @@ function Invoke-NcsRecentLogs {
     $request.ExtraArgs = $ExtraArgs
     Invoke-NcsAction -Settings $Settings -Request $request -OnOutput $OnOutput -OnCompleted $OnCompleted
 }
-
-Export-ModuleMember -Function ConvertTo-NcsBashLiteral, ConvertTo-NcsRemotePathExpression, Get-NcsSshArgumentList, Invoke-NcsToolCommand, New-NcsSshPasswordEnvironment, Resolve-NcsActionCommand, Get-NcsRemoteShellCommand, Start-NcsRemoteCommand, Stop-NcsRemoteCommand, Invoke-NcsAction, Invoke-NcsRunAll, Invoke-NcsRunSite, Invoke-NcsRunHost, Invoke-NcsRunVcenter, Invoke-NcsDryRun, Invoke-NcsDebug, Invoke-NcsInventoryPreview, Invoke-NcsInventoryHost, Invoke-NcsRecentLogs

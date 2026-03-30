@@ -151,5 +151,3 @@ function Test-NcsRemotePreflight {
     $result.IsReady = $result.BlockingIssues.Count -eq 0
     return $result
 }
-
-Export-ModuleMember -Function Test-NcsRemotePreflight

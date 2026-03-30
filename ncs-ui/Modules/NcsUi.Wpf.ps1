@@ -481,5 +481,3 @@ function Show-NcsUiApp {
 
     [void] $window.ShowDialog()
 }
-
-Export-ModuleMember -Function Show-NcsUiApp
