@@ -76,7 +76,7 @@ function ConvertTo-NcsUiSettings {
     return $settings
 }
 
-function Load-NcsUiSettings {
+function Import-NcsUiSettings {
     $path = Get-NcsUiSettingsPath
     if (-not (Test-Path -LiteralPath $path)) {
         return New-NcsUiSettings
@@ -131,4 +131,4 @@ function Save-NcsUiSettings {
     Set-Content -LiteralPath (Get-NcsUiSettingsPath) -Value $payload -Encoding UTF8
 }
 
-Export-ModuleMember -Function ConvertTo-NcsUiSettings, Get-NcsUiConfigDefaultsPath, Get-NcsUiSettingsDirectory, Get-NcsUiSettingsPath, New-NcsUiSettings, Load-NcsUiSettings, Save-NcsUiSettings
+Export-ModuleMember -Function ConvertTo-NcsUiSettings, Get-NcsUiConfigDefaultsPath, Get-NcsUiSettingsDirectory, Get-NcsUiSettingsPath, New-NcsUiSettings, Import-NcsUiSettings, Save-NcsUiSettings
