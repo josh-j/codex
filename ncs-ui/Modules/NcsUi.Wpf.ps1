@@ -125,7 +125,7 @@ function Set-NcsRunStateBadge {
 
     $Controls.RunStateText.Text = $State
     $color = switch ($State) {
-        "Succeeded" { "#73bf69" }
+        "Succeeded" { "#6e9fff" }
         "Failed"    { "#f2495c" }
         "Canceled"  { "#ff9830" }
         "Blocked"   { "#f2495c" }
@@ -160,7 +160,7 @@ function Set-NcsPreflightState {
 
     $controls.PreflightStateText.Text = $State
     $palette = switch ($State) {
-        "Passed" { @{ Background = "#1f3326"; Foreground = "#7fb069" } }
+        "Passed" { @{ Background = "#182742"; Foreground = "#6e9fff" } }
         "Failed" { @{ Background = "#381e24"; Foreground = "#f06478" } }
         "Stale"  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
         default  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
@@ -543,7 +543,7 @@ function Show-NcsUiApp {
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             if ($preflight.IsReady) {
                 $controls.PreflightSummaryText.Text = "Preflight passed. The app can run remote actions."
-                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#73bf69"
+                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
                 $controls.StatusTextBlock.Text = "Preflight passed."
                 Set-NcsPreflightState -Controls $controls -State "Passed"
             } else {
