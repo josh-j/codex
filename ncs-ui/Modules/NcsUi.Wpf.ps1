@@ -529,20 +529,28 @@ function Show-NcsUiApp {
 
     $consoleColumn = $controls.OperatePanel.ColumnDefinitions[2]
 
-    $controls.ConsoleToggleButton.Add_Click({
-        $controls.ConsolePane.Visibility = "Collapsed"
-        $controls.ConsoleSplitter.Visibility = "Collapsed"
-        $consoleColumn.Width = [System.Windows.GridLength]::new(0)
-        $consoleColumn.MinWidth = 0
-        $controls.ConsoleShowButton.Visibility = "Visible"
-    })
-
-    $controls.ConsoleShowButton.Add_Click({
+    $openConsole = {
         $consoleColumn.Width = [System.Windows.GridLength]::new(400)
         $consoleColumn.MinWidth = 250
         $controls.ConsolePane.Visibility = "Visible"
         $controls.ConsoleSplitter.Visibility = "Visible"
-        $controls.ConsoleShowButton.Visibility = "Collapsed"
+    }
+
+    $closeConsole = {
+        $controls.ConsolePane.Visibility = "Collapsed"
+        $controls.ConsoleSplitter.Visibility = "Collapsed"
+        $consoleColumn.Width = [System.Windows.GridLength]::new(0)
+        $consoleColumn.MinWidth = 0
+    }
+
+    $controls.ConsoleToggleButton.Add_Click({ & $closeConsole })
+
+    $controls.ConsoleShowButton.Add_Click({
+        if ($controls.ConsolePane.Visibility -eq "Visible") {
+            & $closeConsole
+        } else {
+            & $openConsole
+        }
     })
 
     $controls.PreflightButton.Add_Click({
@@ -593,11 +601,7 @@ function Show-NcsUiApp {
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
             if ($controls.ConsolePane.Visibility -eq "Collapsed") {
-                $consoleColumn.Width = [System.Windows.GridLength]::new(400)
-                $consoleColumn.MinWidth = 250
-                $controls.ConsolePane.Visibility = "Visible"
-                $controls.ConsoleSplitter.Visibility = "Visible"
-                $controls.ConsoleShowButton.Visibility = "Collapsed"
+                & $openConsole
             }
 
             $request = [NcsActionRequest]::new($selectedPlaybook)

@@ -435,7 +435,8 @@
                         <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                        <Button x:Name="SettingsToggleButton" Content="⚙ Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ToolTip="Toggle settings panel" />
+                        <Button x:Name="SettingsToggleButton" Content="⚙ Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="{StaticResource MarginLabelValue}" ToolTip="Toggle settings panel" />
+                        <Button x:Name="ConsoleShowButton" Content="▸ Console" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ToolTip="Toggle console panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -568,6 +569,10 @@
                                                             <ItemsPresenter x:Name="ItemsHost" Margin="20,0,0,0" Visibility="Collapsed" />
                                                         </StackPanel>
                                                         <ControlTemplate.Triggers>
+                                                            <Trigger Property="HasItems" Value="False">
+                                                                <Setter TargetName="Glyph" Property="Text" Value=" ▶" />
+                                                                <Setter TargetName="Glyph" Property="FontSize" Value="8" />
+                                                            </Trigger>
                                                             <Trigger Property="HasItems" Value="True">
                                                                 <Setter TargetName="Glyph" Property="Text" Value="[+]" />
                                                             </Trigger>
@@ -612,7 +617,6 @@
                                 <WrapPanel Grid.Row="3" Margin="{StaticResource MarginGapMd}">
                                     <Button x:Name="RunButton" Content="Run" />
                                     <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
-                                    <Button x:Name="ConsoleShowButton" Content="Console ▸" Style="{StaticResource SecondaryButtonStyle}" ToolTip="Show console" />
                                 </WrapPanel>
                             </Grid>
                         </Border>

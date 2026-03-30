@@ -35,6 +35,11 @@
     - label: STIG Remediate
       playbook: esxi/stig_remediate.yml
       mutating: true
+    - label: Rotate Password
+      playbook: esxi/rotate_password.yml
+      mutating: true
+    - label: Password Status
+      playbook: esxi/password_status.yml
 
 - group: VCSA
   actions:
@@ -45,6 +50,11 @@
     - label: STIG Remediate
       playbook: vcsa/stig_remediate.yml
       mutating: true
+    - label: Rotate Password
+      playbook: vcsa/rotate_password.yml
+      mutating: true
+    - label: Password Status
+      playbook: vcsa/password_status.yml
 
 - group: VM
   actions:
@@ -52,8 +62,13 @@
       playbook: vm/audit.yml
     - label: STIG Audit
       playbook: vm/stig_audit.yml
+    - label: STIG Audit (Parallel)
+      playbook: vm/stig_audit_parallel.yml
     - label: STIG Remediate
       playbook: vm/stig_remediate.yml
+      mutating: true
+    - label: STIG Remediate (Parallel)
+      playbook: vm/stig_remediate_parallel.yml
       mutating: true
 
 - group: Ubuntu
@@ -71,6 +86,14 @@
     - label: Update
       playbook: ubuntu/update.yml
       mutating: true
+    - label: Rotate Password
+      playbook: ubuntu/rotate_password.yml
+      mutating: true
+    - label: Rotate Passwords (Bulk)
+      playbook: ubuntu/rotate_passwords.yml
+      mutating: true
+    - label: Password Status
+      playbook: ubuntu/password_status.yml
 
 - group: Windows
   actions:
@@ -86,6 +109,44 @@
     - label: Update
       playbook: windows/update.yml
       mutating: true
+    - label: Post-Patch Audit
+      playbook: windows/post_patch_audit.yml
+    - label: Cleanup
+      playbook: windows/cleanup.yml
+      mutating: true
+    - label: Vuln Scan
+      playbook: windows/vuln_scan.yml
+    - label: Registry Fix
+      playbook: windows/registry_fix.yml
+      mutating: true
+    - label: KB Install
+      playbook: windows/kb_install.yml
+      mutating: true
+    - label: Windows Update
+      playbook: windows/windows_update.yml
+      mutating: true
+    - label: Install Software
+      playbook: windows/update_software.yml
+      mutating: true
+    - label: Uninstall Software
+      playbook: windows/uninstall_software.yml
+      mutating: true
+    - label: Service Management
+      playbook: windows/service.yml
+      mutating: true
+    - label: Scheduled Task
+      playbook: windows/scheduled_task.yml
+      mutating: true
+    - label: OpenSSH Setup
+      playbook: windows/openssh.yml
+      mutating: true
+    - label: WinRM Enable
+      playbook: windows/winrm_enable.yml
+      mutating: true
+    - label: Remote Ops
+      playbook: windows/remote_ops.yml
+    - label: AD Search
+      playbook: windows/ad_search.yml
 
 - group: Photon
   actions:
@@ -94,10 +155,18 @@
     - label: STIG Remediate
       playbook: photon/stig_remediate.yml
       mutating: true
+    - label: Rotate Password
+      playbook: photon/rotate_password.yml
+      mutating: true
+    - label: Password Status
+      playbook: photon/password_status.yml
 
 - group: Infra
   actions:
     - label: Setup Environment
       playbook: infra/setup_env.yml
+    - label: Setup Samba
+      playbook: infra/setup_samba.yml
+      mutating: true
     - label: Generate Reports
       playbook: infra/generate_reports.yml
