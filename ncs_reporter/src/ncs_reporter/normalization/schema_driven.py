@@ -8,7 +8,7 @@ from typing import Any
 
 from ncs_reporter.alerts import compute_audit_rollups
 from ncs_reporter.models.report_schema import ReportSchema
-from ncs_reporter.primitives import canonical_severity, safe_list
+from ncs_reporter.primitives import canonical_severity
 
 from ._when import eval_compute, eval_expression, evaluate_when, _parse_iso  # noqa: F401
 from ._fields import (
@@ -141,7 +141,7 @@ def _extract_when_refs(expression: str) -> list[str]:
 
 
 def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[dict[str, Any]]:
-    """Evaluate all alert rules and return alert dicts compatible with build_alerts()."""
+    """Evaluate all alert rules and return alert dicts."""
     alerts: list[dict[str, Any]] = []
     fired_ids: set[str] = set()
 

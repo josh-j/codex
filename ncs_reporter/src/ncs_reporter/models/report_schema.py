@@ -313,35 +313,6 @@ class StatCardsWidget(BaseModel):
     cards: list[StatCardSpec]
 
 
-class BarChartWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str = ""
-    title: str
-    type: Literal["bar_chart"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
-    label_field: str
-    value_field: str
-    max: float = 100
-    thresholds: dict[int, str] | None = None
-
-
-class ListWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str = ""
-    title: str
-    type: Literal["list"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    items_field: str
-    display_field: str | None = None
-    style: Literal["bullet", "numbered", "comma"] = "bullet"
-    empty_text: str = "None"
-
-
 class GroupedTableWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -363,8 +334,6 @@ ReportWidget = Annotated[
         ProgressBarWidget,
         MarkdownWidget,
         StatCardsWidget,
-        BarChartWidget,
-        ListWidget,
         GroupedTableWidget,
     ],
     Field(discriminator="type"),
@@ -607,10 +576,6 @@ class ReportSchema(BaseModel):
             elif isinstance(widget, StatCardsWidget):
                 for card in widget.cards:
                     _check(card.field, f"{wctx}: stat_cards")
-            elif isinstance(widget, BarChartWidget):
-                _check(widget.rows_field, f"{wctx}: bar_chart rows_field")
-            elif isinstance(widget, ListWidget):
-                _check(widget.items_field, f"{wctx}: list")
             elif isinstance(widget, GroupedTableWidget):
                 _check(widget.rows_field, f"{wctx}: grouped_table rows_field")
 

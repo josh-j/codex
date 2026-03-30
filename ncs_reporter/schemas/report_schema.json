@@ -132,81 +132,6 @@
       "title": "AnsiblePlaybookConfig",
       "type": "object"
     },
-    "BarChartWidget": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "default": "",
-          "title": "Id",
-          "type": "string"
-        },
-        "title": {
-          "title": "Title",
-          "type": "string"
-        },
-        "type": {
-          "const": "bar_chart",
-          "title": "Type",
-          "type": "string"
-        },
-        "layout": {
-          "$ref": "#/$defs/WidgetLayout"
-        },
-        "when": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "When"
-        },
-        "rows_field": {
-          "title": "Rows Field",
-          "type": "string"
-        },
-        "label_field": {
-          "title": "Label Field",
-          "type": "string"
-        },
-        "value_field": {
-          "title": "Value Field",
-          "type": "string"
-        },
-        "max": {
-          "default": 100,
-          "title": "Max",
-          "type": "number"
-        },
-        "thresholds": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Thresholds"
-        }
-      },
-      "required": [
-        "title",
-        "type",
-        "rows_field",
-        "label_field",
-        "value_field"
-      ],
-      "title": "BarChartWidget",
-      "type": "object"
-    },
     "DetectionSpec": {
       "additionalProperties": false,
       "properties": {
@@ -258,24 +183,13 @@
         "script": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/ScriptSpec"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Script"
-        },
-        "script_args": {
-          "additionalProperties": true,
-          "title": "Script Args",
-          "type": "object"
-        },
-        "script_timeout": {
-          "default": 30,
-          "title": "Script Timeout",
-          "type": "integer"
+          "default": null
         },
         "type": {
           "default": "str",
@@ -602,78 +516,6 @@
       "title": "ListFilterSpec",
       "type": "object"
     },
-    "ListWidget": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "default": "",
-          "title": "Id",
-          "type": "string"
-        },
-        "title": {
-          "title": "Title",
-          "type": "string"
-        },
-        "type": {
-          "const": "list",
-          "title": "Type",
-          "type": "string"
-        },
-        "layout": {
-          "$ref": "#/$defs/WidgetLayout"
-        },
-        "when": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "When"
-        },
-        "items_field": {
-          "title": "Items Field",
-          "type": "string"
-        },
-        "display_field": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Display Field"
-        },
-        "style": {
-          "default": "bullet",
-          "enum": [
-            "bullet",
-            "numbered",
-            "comma"
-          ],
-          "title": "Style",
-          "type": "string"
-        },
-        "empty_text": {
-          "default": "None",
-          "title": "Empty Text",
-          "type": "string"
-        }
-      },
-      "required": [
-        "title",
-        "type",
-        "items_field"
-      ],
-      "title": "ListWidget",
-      "type": "object"
-    },
     "MarkdownWidget": {
       "additionalProperties": false,
       "properties": {
@@ -829,6 +671,31 @@
         "field"
       ],
       "title": "ProgressBarWidget",
+      "type": "object"
+    },
+    "ScriptSpec": {
+      "additionalProperties": false,
+      "description": "Nested script specification: path + optional args and timeout.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "timeout": {
+          "default": 30,
+          "title": "Timeout",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "ScriptSpec",
       "type": "object"
     },
     "StatCardSpec": {
@@ -1182,10 +1049,8 @@
         "discriminator": {
           "mapping": {
             "alert_panel": "#/$defs/AlertPanelWidget",
-            "bar_chart": "#/$defs/BarChartWidget",
             "grouped_table": "#/$defs/GroupedTableWidget",
             "key_value": "#/$defs/KeyValueWidget",
-            "list": "#/$defs/ListWidget",
             "markdown": "#/$defs/MarkdownWidget",
             "progress_bar": "#/$defs/ProgressBarWidget",
             "stat_cards": "#/$defs/StatCardsWidget",
@@ -1211,12 +1076,6 @@
           },
           {
             "$ref": "#/$defs/StatCardsWidget"
-          },
-          {
-            "$ref": "#/$defs/BarChartWidget"
-          },
-          {
-            "$ref": "#/$defs/ListWidget"
           },
           {
             "$ref": "#/$defs/GroupedTableWidget"

@@ -236,18 +236,18 @@ src/ncs_reporter/
 ├── _stig_apply.py            # Break-glass ESXi apply helpers
 ├── _report_context.py        # Jinja env, YAML loaders, timestamp helpers
 ├── aggregation.py            # Multi-host state aggregation
-├── normalization/            # Platform-specific data normalization + alert logic
-│   ├── stig.py
-│   ├── vmware.py
-│   ├── linux.py
-│   └── windows.py
+├── normalization/            # Data normalization + alert logic
+│   ├── schema_driven.py      # Schema-driven field extraction + alert evaluation
+│   ├── stig.py               # STIG-specific normalization
+│   ├── _fields.py            # Field resolution, coercion, script execution
+│   ├── _transforms.py        # Pipe transform registry
+│   └── _when.py              # Jinja2 expression evaluator
 ├── view_models/              # Typed Pydantic view contracts for templates
 ├── models/                   # Pydantic base models
 ├── templates/                # Jinja2 HTML templates
 ├── cklb_skeletons/           # CKLB JSON skeletons (ESXi V1R4, VM V1R4)
 ├── alerts.py                 # Health rollup logic
-├── cklb_export.py            # CKLB file generation
-└── date_utils.py             # Date helpers
+└── cklb_export.py            # CKLB file generation
 ```
 
 **Key conventions:**
