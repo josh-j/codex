@@ -18,11 +18,11 @@ The backend target is the sibling repo at `../dev/ansible-ncs`, but the app stor
 
 - `ncs-ui.ps1` - application entrypoint
 - `App/MainWindow.xaml` - WPF layout
-- `Modules/NcsUi.Types.psm1` - internal typed contracts
-- `Modules/NcsUi.Settings.psm1` - settings load/save/defaults
-- `Modules/NcsUi.Execution.psm1` - remote SSH execution and action wrappers
-- `Modules/NcsUi.Preflight.psm1` - local and remote readiness checks
-- `Modules/NcsUi.Wpf.psm1` - WPF startup and event wiring
+- `Modules/NcsUi.Types.ps1` - internal typed contracts
+- `Modules/NcsUi.Settings.ps1` - settings load/save/defaults
+- `Modules/NcsUi.Execution.ps1` - remote SSH execution and action wrappers
+- `Modules/NcsUi.Preflight.ps1` - local and remote readiness checks
+- `Modules/NcsUi.Wpf.ps1` - WPF startup and event wiring
 
 ## Requirements
 

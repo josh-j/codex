@@ -15,9 +15,9 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $moduleRoot = Join-Path -Path $projectRoot -ChildPath "Modules"
 
-. (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Types.psm1")
-Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Settings.psm1") -Force
-Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Execution.psm1") -Force
+foreach ($module in @("NcsUi.Types.ps1", "NcsUi.Settings.ps1", "NcsUi.Execution.ps1")) {
+    . (Join-Path -Path $moduleRoot -ChildPath $module)
+}
 
 $settings = if ([string]::IsNullOrWhiteSpace($SettingsPath)) {
     Import-NcsUiSettings
