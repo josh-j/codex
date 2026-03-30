@@ -111,13 +111,16 @@
           ],
           "default": null,
           "title": "Suppress If"
+        },
+        "message": {
+          "title": "Msg",
+          "type": "string"
         }
       },
       "required": [
         "id",
         "category",
-        "when",
-        "msg"
+        "when"
       ],
       "title": "AlertRule",
       "type": "object"
