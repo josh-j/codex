@@ -23,8 +23,16 @@ function Get-NcsXamlControlMap {
 
     $map = @{}
     foreach ($name in @(
+        "TitleBarDragRegion",
+        "TitleBarTitleText",
+        "TitleBarSubtitleText",
+        "TitleBarRunStateText",
+        "MinimizeWindowButton",
+        "MaximizeWindowButton",
+        "CloseWindowButton",
         "RunStateText",
         "RunMetaText",
+        "SetupSummaryText",
         "SshHostTextBox",
         "SshPortTextBox",
         "SshUserTextBox",
@@ -37,15 +45,20 @@ function Get-NcsXamlControlMap {
         "DefaultHostTextBox",
         "SaveSettingsButton",
         "PreflightButton",
+        "PreflightStateBadge",
+        "PreflightStateText",
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionComboBox",
+        "ActionSummaryText",
+        "ScopeRequirementText",
         "SiteTextBox",
         "HostTextBox",
         "ExtraArgsTextBox",
         "RunButton",
         "CancelButton",
         "CommandPreviewTextBox",
+        "CommandReadinessText",
         "DetectedPathsListBox",
         "CopyOutputButton",
         "ExportOutputButton",
@@ -104,6 +117,7 @@ function Set-NcsRunStateBadge {
     )
 
     $Controls.RunStateText.Text = $State
+    $Controls.TitleBarRunStateText.Text = $State
     $color = switch ($State) {
         "Succeeded" { "#73bf69" }
         "Failed"    { "#f2495c" }
@@ -112,6 +126,131 @@ function Set-NcsRunStateBadge {
         default     { "#1e2228" }
     }
     $Controls.RunStateBorder.Background = Get-NcsBrush -Color $color
+}
+
+function Update-NcsWindowChromeState {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Window] $Window,
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    if ($Window.WindowState -eq [System.Windows.WindowState]::Maximized) {
+        $Controls.MaximizeWindowButton.Content = "❐"
+    }
+    else {
+        $Controls.MaximizeWindowButton.Content = "□"
+    }
+}
+
+function Set-NcsPreflightState {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [string] $State
+    )
+
+    $controls.PreflightStateText.Text = $State
+    $palette = switch ($State) {
+        "Passed" { @{ Background = "#1f3326"; Foreground = "#7fb069" } }
+        "Failed" { @{ Background = "#381e24"; Foreground = "#f06478" } }
+        "Stale"  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
+        default  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
+    }
+    $controls.PreflightStateBadge.Background = Get-NcsBrush -Color $palette.Background
+    $controls.PreflightStateText.Foreground = Get-NcsBrush -Color $palette.Foreground
+}
+
+function Get-NcsActionSummary {
+    param(
+        [Parameter(Mandatory)]
+        [string] $ActionName
+    )
+
+    switch ($ActionName) {
+        ([NcsUiAction]::RunAll.ToString()) {
+            return @{
+                Summary = "Run the full ops check workflow across the inventory."
+                Scope   = "No extra scope value required."
+            }
+        }
+        ([NcsUiAction]::RunSite.ToString()) {
+            return @{
+                Summary = "Limit the workflow to a single site when you want a narrower blast radius."
+                Scope   = "Requires a site value."
+            }
+        }
+        ([NcsUiAction]::RunHost.ToString()) {
+            return @{
+                Summary = "Target one ansible host directly for focused remediation or verification."
+                Scope   = "Requires an ansible host value."
+            }
+        }
+        ([NcsUiAction]::RunVcenter.ToString()) {
+            return @{
+                Summary = "Run only the vCenter-tagged portion of the workflow."
+                Scope   = "No extra scope value required."
+            }
+        }
+        ([NcsUiAction]::DryRun.ToString()) {
+            return @{
+                Summary = "Preview changes with check and diff output before touching anything."
+                Scope   = "No extra scope value required."
+            }
+        }
+        ([NcsUiAction]::Debug.ToString()) {
+            return @{
+                Summary = "Increase verbosity for investigation when the normal run is not telling you enough."
+                Scope   = "No extra scope value required."
+            }
+        }
+        ([NcsUiAction]::InventoryPreview.ToString()) {
+            return @{
+                Summary = "Inspect inventory output without executing the main workflow."
+                Scope   = "No extra scope value required."
+            }
+        }
+        ([NcsUiAction]::InventoryHost.ToString()) {
+            return @{
+                Summary = "Inspect inventory data for one specific host."
+                Scope   = "Requires an ansible host value."
+            }
+        }
+        ([NcsUiAction]::RecentLogs.ToString()) {
+            return @{
+                Summary = "Pull recent logs when you need quick operational context."
+                Scope   = "No extra scope value required."
+            }
+        }
+        default {
+            return @{
+                Summary = "Select an action to preview what the run will do."
+                Scope   = "No extra scope value required."
+            }
+        }
+    }
+}
+
+function Update-NcsSetupSummary {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    $missing = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($Controls.SshHostTextBox.Text)) { $missing.Add("host") }
+    if ([string]::IsNullOrWhiteSpace($Controls.SshUserTextBox.Text)) { $missing.Add("user") }
+    if ([string]::IsNullOrWhiteSpace($Controls.RemoteRepoPathTextBox.Text)) { $missing.Add("repo path") }
+    if ([string]::IsNullOrWhiteSpace($Controls.RemoteVaultPathTextBox.Text)) { $missing.Add("vault path") }
+
+    if ($missing.Count -eq 0) {
+        $Controls.SetupSummaryText.Text = "Connection details look complete."
+        return
+    }
+
+    $Controls.SetupSummaryText.Text = "Missing " + ($missing -join ", ") + "."
 }
 
 function Sync-NcsSettingsFromControls {
@@ -234,6 +373,9 @@ function Update-NcsCommandPreview {
     )
 
     $actionName = Get-NcsSelectedActionName -Controls $Controls
+    $actionSummary = Get-NcsActionSummary -ActionName $actionName
+    $Controls.ActionSummaryText.Text = $actionSummary.Summary
+    $Controls.ScopeRequirementText.Text = $actionSummary.Scope
 
     try {
         $request = [NcsActionRequest]::new((ConvertFrom-NcsActionName -ActionName $actionName))
@@ -242,8 +384,10 @@ function Update-NcsCommandPreview {
         $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
         $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
         $Controls.CommandPreviewTextBox.Text = $preview
+        $Controls.CommandReadinessText.Text = "Preview updates live."
     } catch {
         $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
+        $Controls.CommandReadinessText.Text = "Preview blocked until required input is filled."
     }
 
     $isRunSite = $actionName -eq [NcsUiAction]::RunSite.ToString()
@@ -259,6 +403,8 @@ function Update-NcsCommandPreview {
     if (-not $isRunHost -and [string]::IsNullOrWhiteSpace($Controls.HostTextBox.Text)) {
         $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
     }
+
+    Update-NcsSetupSummary -Controls $Controls
 }
 
 function Format-NcsDuration {
@@ -295,7 +441,9 @@ function Show-NcsUiApp {
     Set-NcsIdleUiState -Controls $controls
     $controls.StatusTextBlock.Text = "Load settings or run preflight."
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
+    Set-NcsPreflightState -Controls $controls -State "Not Run"
     $controls.RunMetaText.Text = "No command started yet."
+    Update-NcsWindowChromeState -Window $window -Controls $controls
 
     $durationTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $durationTimer.Interval = [timespan]::FromSeconds(1)
@@ -316,6 +464,7 @@ function Show-NcsUiApp {
         $state.PreflightResult = $null
         $controls.PreflightSummaryText.Text = "Settings changed. Run preflight again."
         $controls.PreflightSummaryText.Foreground = $neutralBrush
+        Set-NcsPreflightState -Controls $controls -State "Stale"
     }
 
     & $refreshPreview
@@ -350,6 +499,50 @@ function Show-NcsUiApp {
         }
     })
 
+    $controls.MinimizeWindowButton.Add_Click({
+        $window.WindowState = [System.Windows.WindowState]::Minimized
+    })
+
+    $controls.MaximizeWindowButton.Add_Click({
+        if ($window.WindowState -eq [System.Windows.WindowState]::Maximized) {
+            $window.WindowState = [System.Windows.WindowState]::Normal
+        }
+        else {
+            $window.WindowState = [System.Windows.WindowState]::Maximized
+        }
+        Update-NcsWindowChromeState -Window $window -Controls $controls
+    })
+
+    $controls.CloseWindowButton.Add_Click({
+        $window.Close()
+    })
+
+    $controls.TitleBarDragRegion.Add_MouseLeftButtonDown({
+        param($sender, $eventArgs)
+
+        if ($eventArgs.ClickCount -eq 2) {
+            if ($window.ResizeMode -ne [System.Windows.ResizeMode]::NoResize) {
+                if ($window.WindowState -eq [System.Windows.WindowState]::Maximized) {
+                    $window.WindowState = [System.Windows.WindowState]::Normal
+                }
+                else {
+                    $window.WindowState = [System.Windows.WindowState]::Maximized
+                }
+                Update-NcsWindowChromeState -Window $window -Controls $controls
+            }
+            return
+        }
+
+        try {
+            $window.DragMove()
+        } catch {
+        }
+    })
+
+    $window.Add_StateChanged({
+        Update-NcsWindowChromeState -Window $window -Controls $controls
+    })
+
     $controls.PreflightButton.Add_Click({
         try {
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
@@ -363,14 +556,17 @@ function Show-NcsUiApp {
                 $controls.PreflightSummaryText.Text = "Preflight passed. The app can run remote actions."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#73bf69"
                 $controls.StatusTextBlock.Text = "Preflight passed."
+                Set-NcsPreflightState -Controls $controls -State "Passed"
             } else {
                 $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
+                Set-NcsPreflightState -Controls $controls -State "Failed"
             }
         } catch {
             $controls.PreflightSummaryText.Text = "Preflight errored."
             $controls.StatusTextBlock.Text = $_.Exception.Message
+            Set-NcsPreflightState -Controls $controls -State "Failed"
         }
     })
 
