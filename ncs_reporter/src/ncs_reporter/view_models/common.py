@@ -60,12 +60,6 @@ def _status_from_health(value: Any) -> str:
     return text.upper()
 
 
-def _safe_pct(used: Any, total: Any) -> float:
-    used_f = to_float(used, 0.0)
-    total_f = max(to_float(total, 0.0), 1.0)
-    return float(round((used_f / total_f) * 100.0, 1))
-
-
 def _count_alerts(alerts: Any) -> dict[str, int]:
     counts = {"critical": 0, "warning": 0, "total": 0}
     for alert in safe_list(alerts):

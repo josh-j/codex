@@ -7,15 +7,8 @@ across cli.py, aggregation.py, view_models/, and normalization/.
 from __future__ import annotations
 
 import functools
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
 
-import yaml
-
-if TYPE_CHECKING:
-    from ncs_reporter.models.report_schema import ReportSchema
-
-from ncs_reporter.models.platforms_config import PlatformEntry, PlatformNode, PlatformsConfig
+from ncs_reporter.models.platforms_config import PlatformEntry, PlatformNode
 
 
 class PlatformRegistry:
@@ -188,12 +181,6 @@ class PlatformRegistry:
 
     # -- STIG fleet nav / link helpers ----------------------------------------
 
-    def platform_fleet_link(self, platform: str) -> str | None:
-        for e in self._entries:
-            if e.platform == platform and e.fleet_link:
-                return e.fleet_link
-        return None
-
     def platform_display_name(self, platform: str) -> str:
         for e in self._entries:
             if e.platform == platform and e.display_name:
@@ -238,26 +225,11 @@ class PlatformRegistry:
 
 @functools.lru_cache(maxsize=1)
 def default_registry() -> PlatformRegistry:
-    """Load and cache the built-in default platform registry.
-
-    Prefers schema-embedded platform metadata. Falls back to platforms_default.yaml
-    if no schemas have platform specs.
-    """
+    """Load and cache the built-in default platform registry from schema-embedded metadata."""
     from ncs_reporter.schema_loader import build_platform_entries_from_schemas, discover_schemas
 
     schemas = discover_schemas()
     entry_dicts = build_platform_entries_from_schemas(schemas)
-    if entry_dicts:
-        entries = [PlatformEntry.model_validate(e) for e in entry_dicts]
-        return PlatformRegistry(entries)
-
-    # Legacy fallback
-    default_yaml = Path(__file__).parent / "platforms_default.yaml"
-    if default_yaml.is_file():
-        with open(default_yaml) as f:
-            raw = yaml.safe_load(f)
-        config = PlatformsConfig.model_validate(raw)
-        return PlatformRegistry(config.platforms)
-
-    return PlatformRegistry([])
+    entries = [PlatformEntry.model_validate(e) for e in entry_dicts] if entry_dicts else []
+    return PlatformRegistry(entries)
 

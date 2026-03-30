@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import Any
 
 from ncs_reporter._report_context import ReportContext
 from ncs_reporter.models.report_schema import (
     AlertPanelWidget,
-    BarChartWidget,
     GroupedTableWidget,
     KeyValueWidget,
-    ListWidget,
     MarkdownWidget,
     ProgressBarWidget,
     ReportSchema,
@@ -111,7 +109,7 @@ def _render_table_cell(
 
 
 # Widget types that are compact enough to sit side-by-side at half width
-_COMPACT_WIDGET_TYPES = (KeyValueWidget, StatCardsWidget, ProgressBarWidget, ListWidget, BarChartWidget)
+_COMPACT_WIDGET_TYPES = (KeyValueWidget, StatCardsWidget, ProgressBarWidget)
 
 # Tables with this many columns or fewer auto-size to half width
 _TABLE_HALF_WIDTH_MAX_COLS = 4
@@ -226,32 +224,6 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
     return _widget_base(widget, cards=cards_rendered)
 
 
-def _render_bar_chart(widget: BarChartWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
-    """Render a BarChartWidget."""
-    bars = []
-    for item in _safe_rows(fields, widget.rows_field):
-        if not isinstance(item, dict):
-            continue
-        label = str(item.get(widget.label_field, ""))
-        try:
-            val = float(item.get(widget.value_field, 0))
-        except (ValueError, TypeError):
-            val = 0.0
-        width_pct = min(100.0, max(0.0, val / widget.max * 100)) if widget.max else 0.0
-        color = _resolve_threshold_color(val, widget.thresholds)
-        bars.append({"label": label, "value": val, "width_pct": width_pct, "color": color})
-    return _widget_base(widget, bars=bars)
-
-
-def _render_list(widget: ListWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
-    """Render a ListWidget."""
-    display_items = [
-        str(item.get(widget.display_field, "")) if widget.display_field and isinstance(item, dict) else str(item)
-        for item in _safe_rows(fields, widget.items_field)
-    ]
-    return _widget_base(widget, items=display_items, style=widget.style, empty_text=widget.empty_text)
-
-
 def _render_grouped_table(widget: GroupedTableWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a GroupedTableWidget."""
     groups: dict[str, list[list[dict[str, Any]]]] = {}
@@ -273,8 +245,6 @@ _WIDGET_DISPATCH: dict[type, _WidgetHandler] = {
     MarkdownWidget: _render_markdown,
     AlertPanelWidget: _render_alert_panel,
     StatCardsWidget: _render_stat_cards,
-    BarChartWidget: _render_bar_chart,
-    ListWidget: _render_list,
     GroupedTableWidget: _render_grouped_table,
 }
 
