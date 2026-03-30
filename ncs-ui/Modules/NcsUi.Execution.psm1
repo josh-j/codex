@@ -8,7 +8,7 @@ function ConvertTo-NcsBashLiteral {
         [string] $Value
     )
 
-    return "'" + ($Value -replace "'", "'\"'\"'") + "'"
+    return "'" + ($Value -replace "'", "'`"'`"'") + "'"
 }
 
 function ConvertTo-NcsRemotePathExpression {
