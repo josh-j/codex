@@ -53,6 +53,7 @@ function Get-NcsXamlControlMap {
         "PreflightStateText",
         "PreflightSummaryText",
         "PreflightListBox",
+        "TargetTreeView",
         "ActionTreeView",
         "SiteTextBox",
         "HostTextBox",
@@ -93,6 +94,42 @@ function Get-NcsSelectedPlaybook {
         return ""
     }
     return [string] $selectedItem.Tag
+}
+
+function Get-NcsSelectedTarget {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    $selectedItem = $Controls.TargetTreeView.SelectedItem
+    if ($null -ne $selectedItem -and -not [string]::IsNullOrWhiteSpace($selectedItem.Tag)) {
+        return [string] $selectedItem.Tag
+    }
+    return ""
+}
+
+function Build-NcsTargetTree {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        $TargetGroups
+    )
+
+    $Controls.TargetTreeView.Items.Clear()
+    foreach ($group in $TargetGroups) {
+        $groupItem = [System.Windows.Controls.TreeViewItem]::new()
+        $groupItem.Header = $group.Group
+        $groupItem.IsExpanded = $false
+        foreach ($target in $group.Targets) {
+            $leafItem = [System.Windows.Controls.TreeViewItem]::new()
+            $leafItem.Header = $target.Label
+            $leafItem.Tag = $target.Limit
+            $groupItem.Items.Add($leafItem) | Out-Null
+        }
+        $Controls.TargetTreeView.Items.Add($groupItem) | Out-Null
+    }
 }
 
 function Build-NcsActionTree {
@@ -342,8 +379,13 @@ function Update-NcsCommandPreview {
     } else {
         try {
             $request = [NcsActionRequest]::new($playbook)
-            $request.Site = $Controls.SiteTextBox.Text.Trim()
-            $request.Host = $Controls.HostTextBox.Text.Trim()
+            $targetLimit = Get-NcsSelectedTarget -Controls $Controls
+            if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
+                $request.Site = $targetLimit
+            } else {
+                $request.Site = $Controls.SiteTextBox.Text.Trim()
+                $request.Host = $Controls.HostTextBox.Text.Trim()
+            }
             $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
             $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
             $Controls.CommandPreviewTextBox.Text = $preview
@@ -386,6 +428,10 @@ function Show-NcsUiApp {
         LastRunResult   = $null
     }
 
+    $targetsConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/targets.yml"
+    $targetGroups = Import-NcsTargetsConfig -Path $targetsConfigPath
+    Build-NcsTargetTree -Controls $controls -TargetGroups $targetGroups
+
     $actionsConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
     $actionGroups = Import-NcsActionsConfig -Path $actionsConfigPath
     Build-NcsActionTree -Controls $controls -ActionGroups $actionGroups
@@ -422,6 +468,10 @@ function Show-NcsUiApp {
     }
 
     & $refreshPreview
+
+    $controls.TargetTreeView.Add_SelectedItemChanged({
+        & $refreshPreview
+    })
 
     $controls.ActionTreeView.Add_SelectedItemChanged({
         param($sender, $eventArgs)
@@ -605,8 +655,13 @@ function Show-NcsUiApp {
             }
 
             $request = [NcsActionRequest]::new($selectedPlaybook)
-            $request.Site = $controls.SiteTextBox.Text.Trim()
-            $request.Host = $controls.HostTextBox.Text.Trim()
+            $targetLimit = Get-NcsSelectedTarget -Controls $controls
+            if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
+                $request.Site = $targetLimit
+            } else {
+                $request.Site = $controls.SiteTextBox.Text.Trim()
+                $request.Host = $controls.HostTextBox.Text.Trim()
+            }
             $request.ExtraArgs = $controls.ExtraArgsTextBox.Text.Trim()
             $handle = Invoke-NcsAction -Settings $state.Settings -Request $request `
                 -OnOutput {

@@ -1,0 +1,81 @@
+- group: Platforms
+  targets:
+    - label: All Ubuntu
+      limit: ubuntu_servers
+    - label: All Windows
+      limit: windows_servers
+    - label: All Photon
+      limit: photon_servers
+    - label: All vCenter
+      limit: vcsa
+    - label: All ESXi
+      limit: esxi_standalone
+
+- group: Site 1
+  targets:
+    - label: Ubuntu
+      limit: site1_ubuntu_servers
+    - label: Windows
+      limit: site1_windows_servers
+    - label: Photon
+      limit: site1_photon_servers
+
+- group: Site 2
+  targets:
+    - label: Ubuntu
+      limit: site2_ubuntu_servers
+    - label: Windows
+      limit: site2_windows_servers
+    - label: Photon
+      limit: site2_photon_servers
+
+- group: Site 3
+  targets:
+    - label: Ubuntu
+      limit: site3_ubuntu_servers
+    - label: Windows
+      limit: site3_windows_servers
+    - label: Photon
+      limit: site3_photon_servers
+
+- group: Site 4
+  targets:
+    - label: Ubuntu
+      limit: site4_ubuntu_servers
+    - label: Windows
+      limit: site4_windows_servers
+    - label: Photon
+      limit: site4_photon_servers
+
+- group: Site 5
+  targets:
+    - label: Ubuntu
+      limit: site5_ubuntu_servers
+    - label: Windows
+      limit: site5_windows_servers
+    - label: Photon
+      limit: site5_photon_servers
+
+- group: Site 6
+  targets:
+    - label: Ubuntu
+      limit: site6_ubuntu_servers
+    - label: Windows
+      limit: site6_windows_servers
+    - label: Photon
+      limit: site6_photon_servers
+
+- group: vCenter Instances
+  targets:
+    - label: vcsa-aedw
+      limit: vcsa-aedw
+    - label: vcsa-ashe
+      limit: vcsa-ashe
+    - label: vcsa-gfpy
+      limit: vcsa-gfpy
+    - label: vcsa-mqna
+      limit: vcsa-mqna
+    - label: vcsa-sdhm
+      limit: vcsa-sdhm
+    - label: vcsa-tyfq
+      limit: vcsa-tyfq
