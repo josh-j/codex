@@ -144,13 +144,16 @@
           ],
           "default": null,
           "title": "Suppress If"
+        },
+        "message": {
+          "title": "Msg",
+          "type": "string"
         }
       },
       "required": [
         "id",
         "category",
-        "when",
-        "msg"
+        "when"
       ],
       "title": "AlertRule",
       "type": "object"
@@ -184,6 +187,20 @@
           "type": "array"
         },
         "keys_all": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys All",
+          "type": "array"
+        },
+        "any": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys Any",
+          "type": "array"
+        },
+        "all": {
           "items": {
             "type": "string"
           },
@@ -351,6 +368,30 @@
           ],
           "default": null,
           "title": "Thresholds"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "expr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compute"
         }
       },
       "title": "FieldSpec",
@@ -731,11 +772,23 @@
           "default": 30,
           "title": "Timeout",
           "type": "integer"
+        },
+        "run": {
+          "title": "Path",
+          "type": "string"
+        },
+        "script_args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "script_timeout": {
+          "default": 30,
+          "title": "Timeout",
+          "type": "integer"
         }
       },
-      "required": [
-        "path"
-      ],
+      "required": [],
       "title": "ScriptSpec",
       "type": "object"
     },
@@ -986,12 +1039,15 @@
           },
           "title": "Columns",
           "type": "array"
+        },
+        "rows": {
+          "title": "Rows Field",
+          "type": "string"
         }
       },
       "required": [
         "title",
         "type",
-        "rows_field",
         "columns"
       ],
       "title": "TableWidget",
@@ -1028,7 +1084,6 @@
       "type": "object"
     }
   },
-  "additionalProperties": false,
   "properties": {
     "name": {
       "default": "",
@@ -1164,6 +1219,23 @@
     },
     "stig": {
       "$ref": "#/$defs/StigConfig"
+    },
+    "title": {
+      "default": "",
+      "title": "Display Name",
+      "type": "string"
+    },
+    "vars": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FieldSpec"
+      },
+      "title": "Fields",
+      "type": "object"
+    },
+    "config": {
+      "type": "object",
+      "title": "Config",
+      "description": "Top-level config block (keys are merged into the schema root)."
     }
   },
   "title": "NCS Reporter Schema Config",
