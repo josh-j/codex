@@ -527,22 +527,41 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Style="{StaticResource StatusCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
-                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                <TextBox x:Name="SiteTextBox" />
-                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                <TextBox x:Name="HostTextBox" />
-                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                    <Expander.Header>
-                                        <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                    </Expander.Header>
-                                    <StackPanel Margin="{StaticResource MarginGapSm}">
-                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
-                                    </StackPanel>
-                                </Expander>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" MaxHeight="200" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
+                                <TreeView x:Name="TargetTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapSm}">
+                                    <TextBlock Text="Or enter manually:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginSectionTitle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                            <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="SiteTextBox" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                            <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="HostTextBox" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
+                                        <Expander.Header>
+                                            <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                        </Expander.Header>
+                                        <StackPanel Margin="{StaticResource MarginGapSm}">
+                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
+                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Grid>
                         </Border>
 
                         <Border Grid.Row="1" Style="{StaticResource StatusCardStyle}" Margin="0">
