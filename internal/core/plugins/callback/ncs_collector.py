@@ -1039,29 +1039,31 @@ class CallbackModule(CallbackBase):
                     "name": ds.get("name", ""), "total": ds.get("total", ""), "free": ds.get("free", ""),
                 })
 
+        def _safe_dict(val: Any) -> dict:
+            return val if isinstance(val, dict) else {}
+
         # Merge NIC info from full payload
-        hosts_info = full_payload.get("hosts_info", {})
-        if isinstance(hosts_info, dict):
-            for nic_result in (hosts_info.get("host_nics") or {}).get("results", []):
+        hosts_info = _safe_dict(full_payload.get("hosts_info"))
+        if hosts_info:
+            for nic_result in _safe_dict(hosts_info.get("host_nics")).get("results", []):
                 if not isinstance(nic_result, dict):
                     continue
-                host_nics = (nic_result.get("hosts_vmnic_info") or {}).get(hostname, {})
-                if isinstance(host_nics, dict):
-                    for nic in host_nics.get("vmnic_details", []):
-                        if isinstance(nic, dict):
-                            assembled["nics"].append({
-                                "device": nic.get("device", ""),
-                                "link_status": nic.get("status", "unknown"),
-                                "speed_mbps": _safe_int(nic.get("speed", 0)),
-                                "driver": nic.get("driver", ""),
-                                "switch": nic.get("vswitch", ""),
-                            })
+                host_nics = _safe_dict(_safe_dict(nic_result.get("hosts_vmnic_info")).get(hostname))
+                for nic in host_nics.get("vmnic_details", []):
+                    if isinstance(nic, dict):
+                        assembled["nics"].append({
+                            "device": nic.get("device", ""),
+                            "link_status": nic.get("status", "unknown"),
+                            "speed_mbps": _safe_int(nic.get("speed", 0)),
+                            "driver": nic.get("driver", ""),
+                            "switch": nic.get("vswitch", ""),
+                        })
 
             # Merge service info from full payload
-            for svc_result in (hosts_info.get("host_services") or {}).get("results", []):
+            for svc_result in _safe_dict(hosts_info.get("host_services")).get("results", []):
                 if not isinstance(svc_result, dict):
                     continue
-                host_svcs = (svc_result.get("host_service_info") or {}).get(hostname, [])
+                host_svcs = _safe_dict(svc_result.get("host_service_info")).get(hostname, [])
                 if isinstance(host_svcs, list):
                     for svc in host_svcs:
                         if isinstance(svc, dict):
@@ -1074,7 +1076,7 @@ class CallbackModule(CallbackBase):
                                 assembled["ntp_running"] = svc.get("running", False)
 
         # Merge cluster context from full payload
-        for dc_result in (full_payload.get("clusters_info") or {}).get("results", []):
+        for dc_result in _safe_dict(full_payload.get("clusters_info")).get("results", []):
             if not isinstance(dc_result, dict):
                 continue
             datacenter = dc_result.get("item", "")
