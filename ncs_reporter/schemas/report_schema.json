@@ -229,190 +229,198 @@
       "type": "object"
     },
     "FieldSpec": {
-      "additionalProperties": false,
-      "properties": {
-        "path": {
-          "anyOf": [
-            {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Path"
+            },
+            "compute": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Compute"
+            },
+            "script": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ScriptSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "type": {
+              "default": "str",
+              "enum": [
+                "str",
+                "int",
+                "float",
+                "bool",
+                "list",
+                "dict",
+                "bytes",
+                "percentage",
+                "datetime",
+                "duration_seconds"
+              ],
+              "title": "Type",
               "type": "string"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Path"
-        },
-        "compute": {
-          "anyOf": [
-            {
-              "type": "string"
+            "fallback": {
+              "title": "Fallback"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Compute"
-        },
-        "script": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ScriptSpec"
+            "sentinel": {
+              "default": null,
+              "title": "Sentinel"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "type": {
-          "default": "str",
-          "enum": [
-            "str",
-            "int",
-            "float",
-            "bool",
-            "list",
-            "dict",
-            "bytes",
-            "percentage",
-            "datetime",
-            "duration_seconds"
-          ],
-          "title": "Type",
-          "type": "string"
-        },
-        "fallback": {
-          "title": "Fallback"
-        },
-        "sentinel": {
-          "default": null,
-          "title": "Sentinel"
-        },
-        "format": {
-          "anyOf": [
-            {
-              "type": "string"
+            "format": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Format"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Format"
-        },
-        "list_filter": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ListFilterSpec"
+            "list_filter": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ListFilterSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "list_map": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "List Map",
-          "type": "object"
-        },
-        "count_where": {
-          "anyOf": [
-            {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Count Where"
-        },
-        "any_where": {
-          "anyOf": [
-            {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Any Where"
-        },
-        "all_where": {
-          "anyOf": [
-            {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "All Where"
-        },
-        "sum_field": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Sum Field"
-        },
-        "thresholds": {
-          "anyOf": [
-            {
+            "list_map": {
               "additionalProperties": {
                 "type": "string"
               },
+              "title": "List Map",
               "type": "object"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Thresholds"
-        },
-        "from": {
-          "anyOf": [
-            {
-              "type": "string"
+            "count_where": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Count Where"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Path"
-        },
-        "expr": {
-          "anyOf": [
-            {
-              "type": "string"
+            "any_where": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Any Where"
             },
-            {
-              "type": "null"
+            "all_where": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "All Where"
+            },
+            "sum_field": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Sum Field"
+            },
+            "thresholds": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Thresholds"
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Path"
+            },
+            "expr": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Compute"
             }
-          ],
-          "default": null,
-          "title": "Compute"
+          },
+          "title": "FieldSpec",
+          "type": "object"
+        },
+        {
+          "type": "string",
+          "description": "Shorthand for {path: <value>}"
         }
-      },
-      "title": "FieldSpec",
-      "type": "object"
+      ]
     },
     "FleetColumn": {
       "additionalProperties": false,
@@ -508,7 +516,12 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/TableColumn"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                ]
               }
             },
             {
@@ -622,7 +635,12 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/KeyValueField"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                ]
               }
             },
             {
@@ -1006,7 +1024,12 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/StatCardSpec"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                ]
               }
             },
             {
@@ -1179,7 +1202,12 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/TableColumn"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                ]
               }
             },
             {
@@ -1275,59 +1303,93 @@
       "$ref": "#/$defs/DetectionSpec"
     },
     "fields": {
-      "additionalProperties": {
-        "$ref": "#/$defs/FieldSpec"
-      },
-      "title": "Fields",
-      "type": "object"
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldSpec"
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
     },
     "alerts": {
-      "items": {
-        "$ref": "#/$defs/AlertRule"
-      },
       "title": "Alerts",
-      "type": "array"
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AlertRule"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$include": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "widgets": {
-      "items": {
-        "discriminator": {
-          "mapping": {
-            "alert_panel": "#/$defs/AlertPanelWidget",
-            "grouped_table": "#/$defs/GroupedTableWidget",
-            "key_value": "#/$defs/KeyValueWidget",
-            "markdown": "#/$defs/MarkdownWidget",
-            "progress_bar": "#/$defs/ProgressBarWidget",
-            "stat_cards": "#/$defs/StatCardsWidget",
-            "table": "#/$defs/TableWidget"
-          },
-          "propertyName": "type"
-        },
-        "oneOf": [
-          {
-            "$ref": "#/$defs/KeyValueWidget"
-          },
-          {
-            "$ref": "#/$defs/TableWidget"
-          },
-          {
-            "$ref": "#/$defs/AlertPanelWidget"
-          },
-          {
-            "$ref": "#/$defs/ProgressBarWidget"
-          },
-          {
-            "$ref": "#/$defs/MarkdownWidget"
-          },
-          {
-            "$ref": "#/$defs/StatCardsWidget"
-          },
-          {
-            "$ref": "#/$defs/GroupedTableWidget"
-          }
-        ]
-      },
       "title": "Widgets",
-      "type": "array"
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "alert_panel": "#/$defs/AlertPanelWidget",
+                "grouped_table": "#/$defs/GroupedTableWidget",
+                "key_value": "#/$defs/KeyValueWidget",
+                "markdown": "#/$defs/MarkdownWidget",
+                "progress_bar": "#/$defs/ProgressBarWidget",
+                "stat_cards": "#/$defs/StatCardsWidget",
+                "table": "#/$defs/TableWidget"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/KeyValueWidget"
+              },
+              {
+                "$ref": "#/$defs/TableWidget"
+              },
+              {
+                "$ref": "#/$defs/AlertPanelWidget"
+              },
+              {
+                "$ref": "#/$defs/ProgressBarWidget"
+              },
+              {
+                "$ref": "#/$defs/MarkdownWidget"
+              },
+              {
+                "$ref": "#/$defs/StatCardsWidget"
+              },
+              {
+                "$ref": "#/$defs/GroupedTableWidget"
+              }
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$include": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "fleet_columns": {
       "items": {
@@ -1374,11 +1436,19 @@
       "type": "string"
     },
     "vars": {
-      "additionalProperties": {
-        "$ref": "#/$defs/FieldSpec"
-      },
-      "title": "Fields",
-      "type": "object"
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldSpec"
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
     },
     "config": {
       "type": "object",

@@ -97,14 +97,47 @@ def _add_aliases(schema: dict) -> None:
         props = defn.get("properties", {})
         for prop_name in prop_names:
             prop = props.get(prop_name)
-            if prop and prop.get("type") == "array":
+            if prop and (prop.get("type") == "array" or "anyOf" not in prop):
                 # Allow either array (canonical) or object (compact dict shorthand)
-                items = prop.pop("items", None)
+                prop.pop("items", None)
                 prop.pop("type", None)
                 prop["anyOf"] = [
-                    {"type": "array", **({"items": items} if items else {})},
+                    {"type": "array", "items": {"anyOf": [{"type": "object", "additionalProperties": True}]}},
                     {"type": "object", "additionalProperties": True},
                 ]
+
+    # Accept $include strings where arrays or dicts are expected.
+    # The schema_loader resolves $include at load time before validation.
+    top_props = schema.get("properties", {})
+    for prop_name in ("alerts", "widgets"):
+        prop = top_props.get(prop_name, {})
+        if prop.get("type") == "array":
+            items = prop.pop("items", None)
+            prop.pop("type", None)
+            prop["anyOf"] = [
+                {"type": "array", **({"items": items} if items else {})},
+                {"type": "object", "properties": {"$include": {"type": "string"}}, "additionalProperties": False},
+            ]
+    # vars/fields: accept dict of FieldSpec OR $include object OR bare strings
+    for prop_name in ("fields", "vars"):
+        prop = top_props.get(prop_name, {})
+        if prop:
+            top_props[prop_name] = {
+                "anyOf": [
+                    prop,
+                    {"type": "object", "additionalProperties": True},
+                ],
+            }
+
+    # FieldSpec: accept bare string shorthand (path-only)
+    field_spec = defs.get("FieldSpec", {})
+    if field_spec:
+        defs["FieldSpec"] = {
+            "anyOf": [
+                field_spec,
+                {"type": "string", "description": "Shorthand for {path: <value>}"},
+            ],
+        }
 
 
 def main() -> None:
