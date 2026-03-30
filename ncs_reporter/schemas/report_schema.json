@@ -503,17 +503,28 @@
           "type": "string"
         },
         "columns": {
-          "items": {
-            "$ref": "#/$defs/TableColumn"
-          },
           "title": "Columns",
-          "type": "array"
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/TableColumn"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        },
+        "rows": {
+          "title": "Rows Field",
+          "type": "string"
         }
       },
       "required": [
         "title",
         "type",
-        "rows_field",
         "group_by",
         "columns"
       ],
