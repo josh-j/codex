@@ -47,6 +47,13 @@
         <Thickness x:Key="CardMargin">0,0,0,8</Thickness>
         <Thickness x:Key="ContentMargin">8</Thickness>
         <Thickness x:Key="SectionGap">0,6,0,0</Thickness>
+        <Thickness x:Key="PaddingXs">4,2,4,2</Thickness>
+        <Thickness x:Key="PaddingSm">6,3,6,3</Thickness>
+        <Thickness x:Key="PaddingMd">8,4,8,4</Thickness>
+        <Thickness x:Key="PaddingLg">10,6,10,6</Thickness>
+        <Thickness x:Key="PaddingPill">8,2,8,2</Thickness>
+        <Thickness x:Key="PaddingTab">12,4,12,4</Thickness>
+        <Thickness x:Key="PaddingBar">12,0,12,0</Thickness>
 
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="{StaticResource InputMargin}" />
@@ -168,7 +175,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Background="#151920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="10,5">
+                        <Border x:Name="TabBorder" Background="#151920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingTab}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" ContentSource="Header" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -194,7 +201,7 @@
                         <Border Background="Transparent">
                             <StackPanel>
                                 <ToggleButton x:Name="HeaderSite" Background="Transparent" BorderThickness="0" Foreground="{TemplateBinding Foreground}" Focusable="False" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="8,6">
+                                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -347,7 +354,7 @@
                 <ToggleButton Name="ToggleButton" Style="{StaticResource ComboBoxToggleButtonStyle}" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" />
                 <ContentPresenter Margin="10,5,40,5" VerticalAlignment="Center" HorizontalAlignment="Left" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
                 <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                    <Border Background="#171b21" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                    <Border Background="#171b21" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingSm}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                         <ScrollViewer>
                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
                         </ScrollViewer>
@@ -356,7 +363,7 @@
             </Grid>
         </ControlTemplate>
         <DataTemplate x:Key="PreflightItemTemplate">
-            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="6,4">
+            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingSm}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -381,7 +388,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="PathItemTemplate">
-            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingLg}">
                 <TextBlock Text="{Binding}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
             </Border>
         </DataTemplate>
@@ -409,8 +416,8 @@
                         <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="12,4" FontSize="11" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="0,0,4,0" />
-                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="12,4" FontSize="11" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
+                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="11" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="0,0,4,0" />
+                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="11" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -439,13 +446,13 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,4">
                                     <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="10" Padding="8,2">
+                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}">
                                         <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="10" FontWeight="SemiBold" />
                                     </Border>
                                 </DockPanel>
                                 <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,6" Text="Run preflight to validate." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
                                 <DockPanel>
-                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="10,4" FontSize="11" />
+                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="11" />
                                 </DockPanel>
                                 <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,6,0,0">
                                     <Expander.Header>
@@ -564,24 +571,24 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="10,6">
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                                     <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Left" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
-                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
-                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" ToolTip="Collapse console" />
+                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" />
+                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" />
+                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" ToolTip="Collapse console" />
                                     </StackPanel>
                                 </DockPanel>
-                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,4,0,0" Padding="6,3" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}" />
+                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,4,0,0" Padding="{StaticResource PaddingSm}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}" />
                             </StackPanel>
                         </Border>
 
                         <TextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" />
 
-                        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="8,4">
+                        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="{StaticResource PaddingMd}">
                             <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
                                 <Expander.Header>
                                     <TextBlock Text="Detected Paths" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
@@ -640,7 +647,7 @@
                 </ScrollViewer>
             </Grid>
 
-            <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="12,0">
+            <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
                 <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -652,7 +659,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" />
                     <Border Grid.Column="1" Width="1" Height="14" Background="#2c3038" Margin="10,0" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="8" Padding="8,2" VerticalAlignment="Center">
+                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBlock x:Name="RunMetaText" Margin="6,0,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" VerticalAlignment="Center" />
