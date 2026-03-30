@@ -655,8 +655,6 @@
                     </Grid>
                 </Grid>
 
-            </Grid>
-
             <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
                 <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
