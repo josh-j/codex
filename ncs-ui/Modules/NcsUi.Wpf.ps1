@@ -26,13 +26,16 @@ function Get-NcsXamlControlMap {
         "TitleBarDragRegion",
         "TitleBarTitleText",
         "TitleBarSubtitleText",
-        "TitleBarRunStateText",
+        "OperateTabButton",
+        "SettingsTabButton",
+        "OperatePanel",
+        "SettingsPanel",
         "MinimizeWindowButton",
         "MaximizeWindowButton",
         "CloseWindowButton",
         "RunStateText",
         "RunMetaText",
-        "SetupSummaryText",
+        "ConnectionInfoText",
         "SshHostTextBox",
         "SshPortTextBox",
         "SshUserTextBox",
@@ -49,16 +52,13 @@ function Get-NcsXamlControlMap {
         "PreflightStateText",
         "PreflightSummaryText",
         "PreflightListBox",
-        "ActionComboBox",
-        "ActionSummaryText",
-        "ScopeRequirementText",
+        "ActionTreeView",
         "SiteTextBox",
         "HostTextBox",
         "ExtraArgsTextBox",
         "RunButton",
         "CancelButton",
         "CommandPreviewTextBox",
-        "CommandReadinessText",
         "DetectedPathsListBox",
         "CopyOutputButton",
         "ExportOutputButton",
@@ -92,8 +92,11 @@ function Get-NcsSelectedActionName {
         [hashtable] $Controls
     )
 
-    $displayName = [string] $Controls.ActionComboBox.SelectedItem
-    return ConvertFrom-NcsActionDisplayName -DisplayName $displayName
+    $selectedItem = $Controls.ActionTreeView.SelectedItem
+    if ($null -eq $selectedItem -or [string]::IsNullOrWhiteSpace($selectedItem.Tag)) {
+        return [NcsUiAction]::RunAll.ToString()
+    }
+    return [string] $selectedItem.Tag
 }
 
 function Update-NcsSshAuthVisibility {
@@ -117,7 +120,6 @@ function Set-NcsRunStateBadge {
     )
 
     $Controls.RunStateText.Text = $State
-    $Controls.TitleBarRunStateText.Text = $State
     $color = switch ($State) {
         "Succeeded" { "#73bf69" }
         "Failed"    { "#f2495c" }
@@ -163,94 +165,26 @@ function Set-NcsPreflightState {
     $controls.PreflightStateText.Foreground = Get-NcsBrush -Color $palette.Foreground
 }
 
-function Get-NcsActionSummary {
-    param(
-        [Parameter(Mandatory)]
-        [string] $ActionName
-    )
-
-    switch ($ActionName) {
-        ([NcsUiAction]::RunAll.ToString()) {
-            return @{
-                Summary = "Run across inventory."
-                Scope   = "No extra scope required."
-            }
-        }
-        ([NcsUiAction]::RunSite.ToString()) {
-            return @{
-                Summary = "Run one site."
-                Scope   = "Requires a site."
-            }
-        }
-        ([NcsUiAction]::RunHost.ToString()) {
-            return @{
-                Summary = "Run one host."
-                Scope   = "Requires a host."
-            }
-        }
-        ([NcsUiAction]::RunVcenter.ToString()) {
-            return @{
-                Summary = "Run vCenter targets."
-                Scope   = "No extra scope required."
-            }
-        }
-        ([NcsUiAction]::DryRun.ToString()) {
-            return @{
-                Summary = "Dry run with diff."
-                Scope   = "No extra scope required."
-            }
-        }
-        ([NcsUiAction]::Debug.ToString()) {
-            return @{
-                Summary = "Verbose debug run."
-                Scope   = "No extra scope required."
-            }
-        }
-        ([NcsUiAction]::InventoryPreview.ToString()) {
-            return @{
-                Summary = "Preview inventory."
-                Scope   = "No extra scope required."
-            }
-        }
-        ([NcsUiAction]::InventoryHost.ToString()) {
-            return @{
-                Summary = "Preview one host in inventory."
-                Scope   = "Requires a host."
-            }
-        }
-        ([NcsUiAction]::RecentLogs.ToString()) {
-            return @{
-                Summary = "Fetch recent logs."
-                Scope   = "No extra scope required."
-            }
-        }
-        default {
-            return @{
-                Summary = "Select an action."
-                Scope   = "No extra scope required."
-            }
-        }
-    }
-}
-
-function Update-NcsSetupSummary {
+function Update-NcsConnectionInfo {
     param(
         [Parameter(Mandatory)]
         [hashtable] $Controls
     )
 
-    $missing = [System.Collections.Generic.List[string]]::new()
-    if ([string]::IsNullOrWhiteSpace($Controls.SshHostTextBox.Text)) { $missing.Add("host") }
-    if ([string]::IsNullOrWhiteSpace($Controls.SshUserTextBox.Text)) { $missing.Add("user") }
-    if ([string]::IsNullOrWhiteSpace($Controls.RemoteRepoPathTextBox.Text)) { $missing.Add("repo path") }
-    if ([string]::IsNullOrWhiteSpace($Controls.RemoteVaultPathTextBox.Text)) { $missing.Add("vault path") }
+    $sshHost = $Controls.SshHostTextBox.Text.Trim()
+    $sshUser = $Controls.SshUserTextBox.Text.Trim()
+    $sshPort = $Controls.SshPortTextBox.Text.Trim()
 
-    if ($missing.Count -eq 0) {
-        $Controls.SetupSummaryText.Text = "Settings look complete."
+    if ([string]::IsNullOrWhiteSpace($sshHost) -or [string]::IsNullOrWhiteSpace($sshUser)) {
+        $Controls.ConnectionInfoText.Text = "not connected"
         return
     }
 
-    $Controls.SetupSummaryText.Text = "Missing " + ($missing -join ", ") + "."
+    if ([string]::IsNullOrWhiteSpace($sshPort) -or $sshPort -eq "22") {
+        $Controls.ConnectionInfoText.Text = "${sshUser}@${sshHost}"
+    } else {
+        $Controls.ConnectionInfoText.Text = "${sshUser}@${sshHost}:${sshPort}"
+    }
 }
 
 function Sync-NcsSettingsFromControls {
@@ -308,16 +242,20 @@ function Sync-NcsControlsFromSettings {
     $Controls.DefaultHostTextBox.Text = $Settings.DefaultAnsibleHost
     $Controls.SiteTextBox.Text = $Settings.DefaultSite
     $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
-    $displayMap = Get-NcsUiActionDisplayMap
-    $displayNames = @($displayMap.Values)
-    $Controls.ActionComboBox.ItemsSource = $displayNames
-
-    $lastDisplayName = ConvertTo-NcsActionDisplayName -EnumName $Settings.LastAction
-    if ($displayNames -contains $lastDisplayName) {
-        $Controls.ActionComboBox.SelectedItem = $lastDisplayName
+    $targetTag = $Settings.LastAction
+    $found = $false
+    foreach ($category in $Controls.ActionTreeView.Items) {
+        foreach ($leaf in $category.Items) {
+            if ($leaf.Tag -eq $targetTag) {
+                $leaf.IsSelected = $true
+                $found = $true
+                break
+            }
+        }
+        if ($found) { break }
     }
-    else {
-        $Controls.ActionComboBox.SelectedItem = $displayNames[0]
+    if (-not $found -and $Controls.ActionTreeView.Items.Count -gt 0) {
+        $Controls.ActionTreeView.Items[0].Items[0].IsSelected = $true
     }
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
@@ -373,9 +311,6 @@ function Update-NcsCommandPreview {
     )
 
     $actionName = Get-NcsSelectedActionName -Controls $Controls
-    $actionSummary = Get-NcsActionSummary -ActionName $actionName
-    $Controls.ActionSummaryText.Text = $actionSummary.Summary
-    $Controls.ScopeRequirementText.Text = $actionSummary.Scope
 
     try {
         $request = [NcsActionRequest]::new((ConvertFrom-NcsActionName -ActionName $actionName))
@@ -384,10 +319,8 @@ function Update-NcsCommandPreview {
         $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
         $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
         $Controls.CommandPreviewTextBox.Text = $preview
-        $Controls.CommandReadinessText.Text = "Live preview"
     } catch {
         $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
-        $Controls.CommandReadinessText.Text = "Needs required input"
     }
 
     $isRunSite = $actionName -eq [NcsUiAction]::RunSite.ToString()
@@ -404,7 +337,7 @@ function Update-NcsCommandPreview {
         $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
     }
 
-    Update-NcsSetupSummary -Controls $Controls
+    Update-NcsConnectionInfo -Controls $Controls
 }
 
 function Format-NcsDuration {
@@ -439,11 +372,12 @@ function Show-NcsUiApp {
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
     Set-NcsIdleUiState -Controls $controls
-    $controls.StatusTextBlock.Text = "Load settings or run preflight."
+    $controls.StatusTextBlock.Text = "Ready."
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
     Set-NcsPreflightState -Controls $controls -State "Not Run"
-    $controls.RunMetaText.Text = "No run yet."
+    $controls.RunMetaText.Text = ""
     Update-NcsWindowChromeState -Window $window -Controls $controls
+    Update-NcsConnectionInfo -Controls $controls
 
     $durationTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $durationTimer.Interval = [timespan]::FromSeconds(1)
@@ -469,9 +403,13 @@ function Show-NcsUiApp {
 
     & $refreshPreview
 
-    $controls.ActionComboBox.Add_SelectionChanged({
-        $state.Settings.LastAction = Get-NcsSelectedActionName -Controls $controls
-        & $refreshPreview
+    $controls.ActionTreeView.Add_SelectedItemChanged({
+        param($sender, $eventArgs)
+        $item = $eventArgs.NewValue
+        if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
+            $state.Settings.LastAction = [string] $item.Tag
+            & $refreshPreview
+        }
     })
 
     $controls.SiteTextBox.Add_TextChanged({ & $refreshPreview })
@@ -541,6 +479,35 @@ function Show-NcsUiApp {
 
     $window.Add_StateChanged({
         Update-NcsWindowChromeState -Window $window -Controls $controls
+    })
+
+    $activeBg = Get-NcsBrush -Color "#242932"
+    $inactiveBg = Get-NcsBrush -Color "#151920"
+    $activeBorder = Get-NcsBrush -Color "#3c4654"
+    $inactiveBorder = Get-NcsBrush -Color "#2c3038"
+    $activeText = Get-NcsBrush -Color "#d8dce2"
+    $inactiveText = Get-NcsBrush -Color "#8e939c"
+
+    $controls.OperateTabButton.Add_Click({
+        $controls.OperatePanel.Visibility = "Visible"
+        $controls.SettingsPanel.Visibility = "Collapsed"
+        $controls.OperateTabButton.Background = $activeBg
+        $controls.OperateTabButton.BorderBrush = $activeBorder
+        $controls.OperateTabButton.Foreground = $activeText
+        $controls.SettingsTabButton.Background = $inactiveBg
+        $controls.SettingsTabButton.BorderBrush = $inactiveBorder
+        $controls.SettingsTabButton.Foreground = $inactiveText
+    })
+
+    $controls.SettingsTabButton.Add_Click({
+        $controls.SettingsPanel.Visibility = "Visible"
+        $controls.OperatePanel.Visibility = "Collapsed"
+        $controls.SettingsTabButton.Background = $activeBg
+        $controls.SettingsTabButton.BorderBrush = $activeBorder
+        $controls.SettingsTabButton.Foreground = $activeText
+        $controls.OperateTabButton.Background = $inactiveBg
+        $controls.OperateTabButton.BorderBrush = $inactiveBorder
+        $controls.OperateTabButton.Foreground = $inactiveText
     })
 
     $controls.PreflightButton.Add_Click({
