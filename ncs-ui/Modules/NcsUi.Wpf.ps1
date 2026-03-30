@@ -105,11 +105,11 @@ function Set-NcsRunStateBadge {
 
     $Controls.RunStateText.Text = $State
     $color = switch ($State) {
-        "Succeeded" { "#1B6B3A" }
-        "Failed"    { "#8B2D2D" }
-        "Canceled"  { "#7D6020" }
-        "Blocked"   { "#8B2D2D" }
-        default     { "#1C6466" }
+        "Succeeded" { "#73bf69" }
+        "Failed"    { "#f2495c" }
+        "Canceled"  { "#ff9830" }
+        "Blocked"   { "#f2495c" }
+        default     { "#1e2228" }
     }
     $Controls.RunStateBorder.Background = Get-NcsBrush -Color $color
 }
@@ -310,7 +310,7 @@ function Show-NcsUiApp {
         Update-NcsCommandPreview -Controls $controls -Settings $state.Settings
     }
 
-    $neutralBrush = Get-NcsBrush -Color "#202020"
+    $neutralBrush = Get-NcsBrush -Color "#8e939c"
 
     $invalidatePreflight = {
         $state.PreflightResult = $null
@@ -361,11 +361,11 @@ function Show-NcsUiApp {
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             if ($preflight.IsReady) {
                 $controls.PreflightSummaryText.Text = "Preflight passed. The app can run remote actions."
-                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#1B6B3A"
+                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#73bf69"
                 $controls.StatusTextBlock.Text = "Preflight passed."
             } else {
                 $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
-                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#8B2D2D"
+                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
             }
         } catch {
