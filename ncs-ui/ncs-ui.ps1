@@ -7,17 +7,8 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $moduleRoot = Join-Path -Path $projectRoot -ChildPath "Modules"
 
-. (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Types.psm1")
-
-$modules = @(
-    "NcsUi.Settings.psm1",
-    "NcsUi.Execution.psm1",
-    "NcsUi.Preflight.psm1",
-    "NcsUi.Wpf.psm1"
-)
-
-foreach ($module in $modules) {
-    Import-Module (Join-Path -Path $moduleRoot -ChildPath $module) -Force
+foreach ($module in @("NcsUi.Types.ps1", "NcsUi.Settings.ps1", "NcsUi.Execution.ps1", "NcsUi.Preflight.ps1", "NcsUi.Wpf.ps1")) {
+    . (Join-Path -Path $moduleRoot -ChildPath $module)
 }
 
 if (-not $IsWindows) {
