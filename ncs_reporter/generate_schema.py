@@ -24,6 +24,7 @@ _ALIASES: dict[str, dict[str, list[str]]] = {
     "FieldSpec": {"path": ["from"], "compute": ["expr"]},
     "ScriptSpec": {"path": ["run"], "args": ["script_args"], "timeout": ["script_timeout"]},
     "TableWidget": {"rows_field": ["rows"]},
+    "GroupedTableWidget": {"rows_field": ["rows"]},
     "DetectionSpec": {"keys_any": ["any"], "keys_all": ["all"]},
     "ReportSchema": {"display_name": ["title"], "fields": ["vars"]},
 }
@@ -89,6 +90,7 @@ def _add_aliases(schema: dict) -> None:
         "KeyValueWidget": ["fields"],
         "StatCardsWidget": ["cards"],
         "TableWidget": ["columns"],
+        "GroupedTableWidget": ["columns"],
     }
     for def_name, prop_names in _DICT_OR_ARRAY.items():
         defn = defs.get(def_name, {})
