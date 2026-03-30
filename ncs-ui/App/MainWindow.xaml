@@ -267,6 +267,56 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource FontMono}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeLg}" />
+            <Setter Property="Padding" Value="4,3" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="IsExpanded" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <StackPanel>
+                            <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusMd}" Padding="{TemplateBinding Padding}" Margin="0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost" Margin="20,0,0,0" Visibility="Collapsed" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Glyph" Property="Text" Value=" ▶" />
+                                <Setter TargetName="Glyph" Property="FontSize" Value="8" />
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="Glyph" Property="Text" Value="[+]" />
+                            </Trigger>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="Glyph" Property="Text" Value="[-]" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsSelected" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1a1f27" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="NcsScrollBarRepeatButtonStyle" TargetType="RepeatButton">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Background" Value="#151820" />
@@ -574,60 +624,8 @@
 
                                 <TextBlock Grid.Row="0" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
 
-                                <TreeView x:Name="ActionTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0">
-                                    <TreeView.Resources>
-                                        <Style TargetType="TreeViewItem">
-                                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                                            <Setter Property="FontFamily" Value="{StaticResource FontMono}" />
-                                            <Setter Property="FontSize" Value="{StaticResource FontSizeLg}" />
-                                            <Setter Property="Padding" Value="4,3" />
-                                            <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="IsExpanded" Value="True" />
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="TreeViewItem">
-                                                        <StackPanel>
-                                                            <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusMd}" Padding="{TemplateBinding Padding}" Margin="0,1">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="20" />
-                                                                        <ColumnDefinition Width="*" />
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                                                                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
-                                                                </Grid>
-                                                            </Border>
-                                                            <ItemsPresenter x:Name="ItemsHost" Margin="20,0,0,0" Visibility="Collapsed" />
-                                                        </StackPanel>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="HasItems" Value="False">
-                                                                <Setter TargetName="Glyph" Property="Text" Value=" ▶" />
-                                                                <Setter TargetName="Glyph" Property="FontSize" Value="8" />
-                                                            </Trigger>
-                                                            <Trigger Property="HasItems" Value="True">
-                                                                <Setter TargetName="Glyph" Property="Text" Value="[+]" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsExpanded" Value="True">
-                                                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                                                <Setter TargetName="Glyph" Property="Text" Value="[-]" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsSelected" Value="True">
-                                                                <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
-                                                            </Trigger>
-                                                            <MultiTrigger>
-                                                                <MultiTrigger.Conditions>
-                                                                    <Condition Property="IsMouseOver" Value="True" />
-                                                                    <Condition Property="IsSelected" Value="False" />
-                                                                </MultiTrigger.Conditions>
-                                                                <Setter TargetName="ItemBorder" Property="Background" Value="#1a1f27" />
-                                                            </MultiTrigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </TreeView.Resources>
-                                </TreeView>
+                                <TreeView x:Name="ActionTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+
 
                                 <WrapPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">
                                     <Button x:Name="RunButton" Content="Run" />
