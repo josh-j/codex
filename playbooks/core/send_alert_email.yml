@@ -33,6 +33,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
 
   vars:
     smtp_host: "{{ ncs_smtp_host | default('localhost') }}"

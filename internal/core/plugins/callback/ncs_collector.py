@@ -315,11 +315,14 @@ class CallbackModule(CallbackBase):
     def v2_playbook_on_stats(self, stats):
         """End of playbook — persist ncs_collect payloads and STIG telemetry."""
         raw_custom = getattr(stats, "custom", {}) or {}
-        all_custom = _unwrap_custom_stats(raw_custom)
+        # Coerce tagged Ansible types (AnsibleTaggedList, etc.) to plain
+        # Python builtins before any dict traversal — tagged lists don't
+        # have .get() and will crash downstream code that expects dicts.
+        all_custom = self._to_builtin(_unwrap_custom_stats(raw_custom))
 
         for host in stats.processed.keys():
             custom_stats = all_custom.get(host, {})
-            if not custom_stats:
+            if not custom_stats or not isinstance(custom_stats, dict):
                 continue
 
             collect_keys = [k for k in custom_stats if k.startswith("ncs_collect")]
@@ -1272,10 +1275,9 @@ class CallbackModule(CallbackBase):
 
     def _write_yaml(self, path: str, data: dict[str, Any]):
         try:
-            clean_data = self._to_builtin(data)
             dir_ = os.path.dirname(path) or "."
             with tempfile.NamedTemporaryFile("w", dir=dir_, suffix=".tmp", delete=False, encoding="utf-8") as tmp:
-                yaml.dump(clean_data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
+                yaml.dump(data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
                 tmp_path = tmp.name
             os.replace(tmp_path, path)
             self._apply_file_mode_from_parent(path)

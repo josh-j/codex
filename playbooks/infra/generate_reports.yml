@@ -11,6 +11,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   vars:
     _reports_root: "{{ ncs_config.report_directory }}"
     _platform_root: "{{ _reports_root }}/platform"

@@ -6,6 +6,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   tags: ["vmware", "stig", "remediate", "snapshot"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
@@ -29,6 +30,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   tags: ["vmware", "stig", "remediate", "vm"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
@@ -50,6 +52,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   tags: ["vmware", "stig", "audit", "vm"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
