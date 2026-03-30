@@ -499,6 +499,21 @@
                             <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="DefaultHostTextBox" />
                             <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
+                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
+                            <DockPanel Margin="{StaticResource MarginSectionTitle}">
+                                <TextBlock DockPanel.Dock="Left" Text="Verify" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}">
+                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
+                                </Border>
+                            </DockPanel>
+                            <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
+                            <Button x:Name="PreflightButton" Content="Verify Connection" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="{StaticResource FontSizeMd}" />
+                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapMd}">
+                                <Expander.Header>
+                                    <TextBlock Text="Details" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                </Expander.Header>
+                                <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" MaxHeight="160" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                            </Expander>
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
@@ -513,21 +528,19 @@
 
                         <Border Grid.Row="0" Style="{StaticResource StatusCardStyle}">
                             <StackPanel>
-                                <DockPanel Margin="{StaticResource MarginLabelValue}">
-                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}">
-                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
-                                    </Border>
-                                </DockPanel>
-                                <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Run preflight to validate." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
-                                <DockPanel>
-                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="{StaticResource FontSizeMd}" />
-                                </DockPanel>
-                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapMd}">
+                                <TextBlock Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
+                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
+                                <TextBox x:Name="SiteTextBox" />
+                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
+                                <TextBox x:Name="HostTextBox" />
+                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
                                     <Expander.Header>
-                                        <TextBlock Text="Details" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                        <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                                     </Expander.Header>
-                                    <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" MaxHeight="160" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                                    <StackPanel Margin="{StaticResource MarginGapSm}">
+                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
+                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
+                                    </StackPanel>
                                 </Expander>
                             </StackPanel>
                         </Border>
@@ -537,7 +550,6 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
@@ -598,23 +610,7 @@
                                     </TreeView.Resources>
                                 </TreeView>
 
-                                <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">
-                                    <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                    <TextBox x:Name="SiteTextBox" />
-                                    <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                    <TextBox x:Name="HostTextBox" />
-                                    <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                        <Expander.Header>
-                                            <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        </Expander.Header>
-                                        <StackPanel Margin="{StaticResource MarginGapSm}">
-                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
-                                        </StackPanel>
-                                    </Expander>
-                                </StackPanel>
-
-                                <WrapPanel Grid.Row="3" Margin="{StaticResource MarginGapMd}">
+                                <WrapPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">
                                     <Button x:Name="RunButton" Content="Run" />
                                     <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
                                 </WrapPanel>
