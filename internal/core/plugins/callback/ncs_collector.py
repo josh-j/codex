@@ -259,8 +259,11 @@ def _load_platforms_contract(
 
     explicit_cfg = os.environ.get("NCS_PLATFORMS_CONFIG", "").strip()
     if explicit_cfg:
-        cfg_path = explicit_cfg
-        platforms = path_contract.load_platforms_config_file(cfg_path)
+        if os.path.isdir(explicit_cfg):
+            # Env var points to a directory of schema files, not a single config
+            platforms = _load_platforms_from_schema_dir(explicit_cfg)
+        else:
+            platforms = path_contract.load_platforms_config_file(explicit_cfg)
     else:
         cfg_path = os.path.join(repo_root, "files", "ncs_reporter_configs", "platforms.yaml")
         if os.path.isfile(cfg_path):
