@@ -14,7 +14,7 @@
     FontFamily="Segoe UI">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
-            CaptionHeight="44"
+            CaptionHeight="0"
             CornerRadius="0"
             GlassFrameThickness="0"
             ResizeBorderThickness="6"
@@ -60,6 +60,8 @@
             <Setter Property="Background" Value="#1e2228" />
             <Setter Property="Foreground" Value="#d8dce2" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template" Value="{DynamicResource NcsComboBoxTemplate}" />
         </Style>
         <Style TargetType="Button">
             <Setter Property="Margin" Value="0,0,8,8" />
@@ -85,6 +87,16 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#20252d" />
+                    <Setter Property="BorderBrush" Value="#3a4250" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#282f38" />
+                    <Setter Property="BorderBrush" Value="#465162" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="StatusCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PanelBrush}" />
@@ -94,16 +106,209 @@
             <Setter Property="Padding" Value="18" />
             <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="#151920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="16" Padding="14,8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" ContentSource="Header" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceAltBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#3c4654" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#3c4654" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SectionExpanderStyle" TargetType="Expander">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border Background="Transparent">
+                            <StackPanel>
+                                <ToggleButton x:Name="HeaderSite" Background="Transparent" BorderThickness="0" Foreground="{TemplateBinding Foreground}" Focusable="False">
+                                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ContentPresenter ContentSource="Header" />
+                                            <Border Grid.Column="1" Width="28" Height="28" Background="#161920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" VerticalAlignment="Center">
+                                                <TextBlock x:Name="ExpanderGlyph" Text="+" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </ToggleButton>
+                                <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,10,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="ExpanderGlyph" Property="Text" Value="-" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="8" SnapsToDevicePixels="True">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1a1f27" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1d2834" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
+        <Style x:Key="NcsScrollBarRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Background" Value="#151820" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="NcsScrollBarThumbStyle" TargetType="Thumb">
+            <Setter Property="Background" Value="#3d4654" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbBorder" Background="{TemplateBinding Background}" CornerRadius="6" Margin="2" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="#58657a" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="#78a9ff" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="12" />
+            <Setter Property="Background" Value="#151820" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource NcsScrollBarRepeatButtonStyle}" Command="ScrollBar.PageUpCommand" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource NcsScrollBarThumbStyle}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource NcsScrollBarRepeatButtonStyle}" Command="ScrollBar.PageDownCommand" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Height" Value="12" />
+                                <Setter Property="Width" Value="Auto" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ComboItemBorder" Background="{TemplateBinding Background}" CornerRadius="6" Margin="4,2">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ComboItemBorder" Property="Background" Value="#25303c" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ComboItemBorder" Property="Background" Value="#1f3326" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ComboBoxToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="ToggleBorder" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="{Binding BorderThickness, RelativeSource={RelativeSource AncestorType=ComboBox}}" CornerRadius="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="36" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="1" Background="#161920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0" CornerRadius="0,8,8,0">
+                                    <TextBlock Text="▾" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <ControlTemplate x:Key="NcsComboBoxTemplate" TargetType="ComboBox">
+            <Grid>
+                <ToggleButton Name="ToggleButton" Style="{StaticResource ComboBoxToggleButtonStyle}" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" />
+                <ContentPresenter Margin="10,5,40,5" VerticalAlignment="Center" HorizontalAlignment="Left" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                    <Border Background="#171b21" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                        <ScrollViewer>
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+        </ControlTemplate>
         <DataTemplate x:Key="PreflightItemTemplate">
             <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
                 <Grid>
@@ -154,7 +359,7 @@
                         <Border Width="12" Height="12" Background="{StaticResource AccentBrush}" CornerRadius="6" Margin="0,0,10,0" />
                         <StackPanel>
                             <TextBlock x:Name="TitleBarTitleText" Text="NCS UI" Foreground="White" FontSize="14" FontWeight="Bold" />
-                            <TextBlock x:Name="TitleBarSubtitleText" Text="Operator console for ansible-ncs" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                            <TextBlock x:Name="TitleBarSubtitleText" Text="Operate and configure" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
                         </StackPanel>
                     </StackPanel>
                     <Border Grid.Column="1" Margin="18,0,0,0" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="16" Padding="12,6" VerticalAlignment="Center">
@@ -182,23 +387,17 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="290" />
-                            <ColumnDefinition Width="290" />
+                            <ColumnDefinition Width="250" />
+                            <ColumnDefinition Width="250" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Margin="0,0,24,0">
-                            <TextBlock Text="NCS UI" Foreground="White" FontSize="30" FontWeight="Bold" />
-                            <TextBlock
-                                Margin="0,8,0,0"
-                                Foreground="{StaticResource TextMutedBrush}"
-                                FontSize="14"
-                                TextWrapping="Wrap"
-                                Text="A staged operator console for ansible-ncs. Connect once, validate the target, then run the narrowest safe action with live output." />
+                        <StackPanel Margin="0,0,24,0" VerticalAlignment="Center">
+                            <TextBlock Text="NCS UI" Foreground="White" FontSize="28" FontWeight="Bold" />
+                            <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="13" Text="Remote operations console" />
                         </StackPanel>
                         <Border Grid.Column="1" Margin="12,0,12,0" Background="{StaticResource SurfaceAltBrush}" CornerRadius="10" Padding="16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
                                 <TextBlock Text="Setup" Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
                                 <TextBlock x:Name="SetupSummaryText" Text="Connection details need review." Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
-                                <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextMutedBrush}" Text="Stage 1: confirm remote host, auth, and defaults." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                         <Border
@@ -212,230 +411,176 @@
                             <StackPanel>
                                 <TextBlock Text="Run State" Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
                                 <TextBlock x:Name="RunStateText" Text="Idle" Foreground="White" FontSize="22" FontWeight="Bold" />
-                                <TextBlock x:Name="RunMetaText" Margin="0,6,0,0" Foreground="{StaticResource TextMutedBrush}" Text="No command started yet." TextWrapping="Wrap" />
+                                <TextBlock x:Name="RunMetaText" Margin="0,6,0,0" Foreground="{StaticResource TextMutedBrush}" Text="No run yet." TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
 
                 <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="390" />
-                <ColumnDefinition Width="430" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+                    <TabControl>
+                        <TabItem Header="Operate">
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="420" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,20,0">
-                <StackPanel>
-                    <Border Style="{StaticResource StatusCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="1. Connect And Validate" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                            <TextBlock Margin="0,8,0,16" Text="Keep the required connection fields upfront and move defaults into secondary panels." Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
-
-                            <Expander IsExpanded="True" Style="{StaticResource SectionExpanderStyle}">
-                                <Expander.Header>
+                                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,20,0">
                                     <StackPanel>
-                                        <TextBlock Text="Connection" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        <TextBlock Text="Remote target and SSH authentication." Foreground="{StaticResource TextMutedBrush}" />
+                                        <Border Style="{StaticResource StatusCardStyle}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,10">
+                                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="12" Padding="10,4">
+                                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontWeight="SemiBold" />
+                                                    </Border>
+                                                </DockPanel>
+                                                <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,12" Text="Preflight has not been run." Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+                                                <Button x:Name="PreflightButton" Content="Run Preflight" Width="140" />
+                                                <ListBox x:Name="PreflightListBox" Margin="0,10,0,0" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Style="{StaticResource StatusCardStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="Action" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                                <TextBlock x:Name="ActionSummaryText" Margin="0,10,0,6" Text="Run across inventory." Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
+                                                <TextBlock x:Name="ScopeRequirementText" Margin="0,0,0,12" Foreground="{StaticResource InfoBrush}" Text="No extra scope required." TextWrapping="Wrap" />
+                                                <ComboBox x:Name="ActionComboBox" />
+                                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" />
+                                                <TextBox x:Name="SiteTextBox" />
+                                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" />
+                                                <TextBox x:Name="HostTextBox" />
+                                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
+                                                    <Expander.Header>
+                                                        <TextBlock Text="Advanced" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                                    </Expander.Header>
+                                                    <StackPanel Margin="0,14,0,0">
+                                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" />
+                                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="92" VerticalScrollBarVisibility="Auto" />
+                                                    </StackPanel>
+                                                </Expander>
+                                                <WrapPanel Margin="0,12,0,0">
+                                                    <Button x:Name="RunButton" Content="Run" />
+                                                    <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Style="{StaticResource StatusCardStyle}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,12">
+                                                    <TextBlock DockPanel.Dock="Left" Text="Preview" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                                    <TextBlock x:Name="CommandReadinessText" DockPanel.Dock="Right" Foreground="{StaticResource TextMutedBrush}" Text="Live preview" />
+                                                </DockPanel>
+                                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" Height="90" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+                                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,12,0,0">
+                                                    <Expander.Header>
+                                                        <TextBlock Text="Detected Paths" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                                    </Expander.Header>
+                                                    <StackPanel Margin="0,14,0,0">
+                                                        <ListBox x:Name="DetectedPathsListBox" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
+                                                    </StackPanel>
+                                                </Expander>
+                                                <WrapPanel Margin="0,12,0,0">
+                                                    <Button x:Name="CopyOutputButton" Content="Copy Output" Style="{StaticResource SecondaryButtonStyle}" />
+                                                    <Button x:Name="ExportOutputButton" Content="Export Output" Style="{StaticResource SecondaryButtonStyle}" />
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
-                                </Expander.Header>
-                                <StackPanel Margin="0,14,0,0">
-                                    <TextBlock Text="SSH Host *" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="SshHostTextBox" />
-                                    <TextBlock Text="SSH User *" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="SshUserTextBox" />
+                                </ScrollViewer>
+
+                                <Border Grid.Column="1" Style="{StaticResource StatusCardStyle}" Margin="0">
                                     <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="130" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                            <TextBlock Text="SSH Port" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBox x:Name="SshPortTextBox" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="SSH Auth Mode" Foreground="{StaticResource TextMutedBrush}" />
-                                            <ComboBox x:Name="SshAuthModeComboBox" />
-                                        </StackPanel>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                                            <TextBlock DockPanel.Dock="Left" Text="Console" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                            <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Right" Foreground="#6c727d" Text="Newest lines at the bottom" />
+                                        </DockPanel>
+                                        <TextBox
+                                            x:Name="ConsoleTextBox"
+                                            Grid.Row="1"
+                                            FontFamily="Consolas"
+                                            FontSize="13"
+                                            IsReadOnly="True"
+                                            AcceptsReturn="True"
+                                            TextWrapping="Wrap"
+                                            VerticalScrollBarVisibility="Auto"
+                                            HorizontalScrollBarVisibility="Auto"
+                                            Background="#101319"
+                                            Foreground="#d8dce2"
+                                            CaretBrush="#d8dce2"
+                                            BorderThickness="0" />
                                     </Grid>
-                                    <StackPanel x:Name="SshKeyPathPanel">
-                                        <TextBlock Text="SSH Key Path" Foreground="{StaticResource TextMutedBrush}" />
-                                        <TextBox x:Name="SshKeyPathTextBox" />
-                                    </StackPanel>
-                                    <StackPanel x:Name="SshPasswordPanel">
-                                        <TextBlock Text="SSH Password" Foreground="{StaticResource TextMutedBrush}" />
-                                        <PasswordBox x:Name="SshPasswordBox" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Expander>
-
-                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                <Expander.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="Remote Paths" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        <TextBlock Text="Repository and vault locations used during remote runs." Foreground="{StaticResource TextMutedBrush}" />
-                                    </StackPanel>
-                                </Expander.Header>
-                                <StackPanel Margin="0,14,0,0">
-                                    <TextBlock Text="Remote Repo Path *" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="RemoteRepoPathTextBox" />
-                                    <TextBlock Text="Remote Vault Path *" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="RemoteVaultPathTextBox" />
-                                </StackPanel>
-                            </Expander>
-
-                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                <Expander.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="Defaults" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        <TextBlock Text="Optional values that pre-fill narrower runs." Foreground="{StaticResource TextMutedBrush}" />
-                                    </StackPanel>
-                                </Expander.Header>
-                                <StackPanel Margin="0,14,0,0">
-                                    <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="DefaultSiteTextBox" />
-                                    <TextBlock Text="Default Ansible Host" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="DefaultHostTextBox" />
-                                </StackPanel>
-                            </Expander>
-
-                            <WrapPanel Margin="0,8,0,0">
-                                <Button x:Name="SaveSettingsButton" Content="Save Settings" Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button x:Name="PreflightButton" Content="Run Preflight" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource StatusCardStyle}">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,10">
-                                <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="12" Padding="10,4">
-                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontWeight="SemiBold" />
                                 </Border>
-                            </DockPanel>
-                            <TextBlock
-                                x:Name="PreflightSummaryText"
-                                Margin="0,0,0,12"
-                                Text="Preflight has not been run."
-                                Foreground="{StaticResource TextMutedBrush}"
-                                TextWrapping="Wrap" />
-                            <ListBox x:Name="PreflightListBox" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                            </Grid>
+                        </TabItem>
 
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="0,0,20,0">
-                <StackPanel>
-                    <Border Style="{StaticResource StatusCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="2. Plan The Run" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                            <TextBlock Margin="0,8,0,16" Text="Choose the smallest action that answers the question, then only expose the scope inputs that matter." Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+                        <TabItem Header="Settings">
+                            <ScrollViewer Margin="0,16,0,0" VerticalScrollBarVisibility="Auto">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,14">
-                                <StackPanel>
-                                    <TextBlock Text="Selected Action" Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
-                                    <TextBlock x:Name="ActionSummaryText" Text="Run the full workflow across all targets." Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
-                                    <TextBlock x:Name="ScopeRequirementText" Margin="0,6,0,0" Foreground="{StaticResource InfoBrush}" Text="No extra scope value required." TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
+                                    <Border Grid.Column="0" Style="{StaticResource StatusCardStyle}" Margin="0,0,10,16">
+                                        <StackPanel>
+                                            <TextBlock Text="Connection" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                            <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0" />
+                                            <TextBox x:Name="SshHostTextBox" />
+                                            <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBox x:Name="SshUserTextBox" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="140" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                    <TextBlock Text="Port" Foreground="{StaticResource TextMutedBrush}" />
+                                                    <TextBox x:Name="SshPortTextBox" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="Auth" Foreground="{StaticResource TextMutedBrush}" />
+                                                    <ComboBox x:Name="SshAuthModeComboBox" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <StackPanel x:Name="SshKeyPathPanel">
+                                                <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
+                                                <TextBox x:Name="SshKeyPathTextBox" />
+                                            </StackPanel>
+                                            <StackPanel x:Name="SshPasswordPanel">
+                                                <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />
+                                                <PasswordBox x:Name="SshPasswordBox" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
 
-                            <TextBlock Text="Select Action" Foreground="{StaticResource TextMutedBrush}" />
-                            <ComboBox x:Name="ActionComboBox" />
-
-                            <Border Background="{StaticResource InfoSoftBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,14">
-                                <StackPanel>
-                                    <TextBlock Text="Scope" Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
-                                    <TextBlock Text="Only the relevant limit field stays active for the current action." Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="Site Limit" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="SiteTextBox" />
-                            <TextBlock Text="Ansible Host" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="HostTextBox" />
-
-                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                <Expander.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="Advanced Arguments" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        <TextBlock Text="Optional raw arguments appended to the remote command." Foreground="{StaticResource TextMutedBrush}" />
-                                    </StackPanel>
-                                </Expander.Header>
-                                <StackPanel Margin="0,14,0,0">
-                                    <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="92" VerticalScrollBarVisibility="Auto" />
-                                    <TextBlock
-                                        Foreground="#6c727d"
-                                        TextWrapping="Wrap"
-                                        Text="Raw arguments are appended verbatim. Treat this as an escape hatch for operators who know exactly what they need." />
-                                </StackPanel>
-                            </Expander>
-
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button x:Name="RunButton" Content="Run Action" />
-                                <Button x:Name="CancelButton" Content="Cancel Run" Style="{StaticResource SecondaryButtonStyle}" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource StatusCardStyle}">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,12">
-                                <TextBlock DockPanel.Dock="Left" Text="Run Preview" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                <TextBlock x:Name="CommandReadinessText" DockPanel.Dock="Right" Foreground="{StaticResource TextMutedBrush}" Text="Preview updates live." />
-                            </DockPanel>
-                            <TextBlock Margin="0,0,0,8" Text="Command" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" Height="90" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-
-                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                <Expander.Header>
-                                    <StackPanel>
-                                        <TextBlock Text="Detected Paths" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        <TextBlock Text="Artifacts surfaced after a run finishes." Foreground="{StaticResource TextMutedBrush}" />
-                                    </StackPanel>
-                                </Expander.Header>
-                                <StackPanel Margin="0,14,0,0">
-                                    <ListBox x:Name="DetectedPathsListBox" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
-                                </StackPanel>
-                            </Expander>
-
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button x:Name="CopyOutputButton" Content="Copy Output" Style="{StaticResource SecondaryButtonStyle}" />
-                                <Button x:Name="ExportOutputButton" Content="Export Output" Style="{StaticResource SecondaryButtonStyle}" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
-
-            <Border Grid.Column="2" Style="{StaticResource StatusCardStyle}" Margin="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock Text="3. Observe Output" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                        <TextBlock x:Name="ConsoleHintText" Margin="0,6,0,0" Foreground="#6c727d" Text="Live console output streams here in time order." TextWrapping="Wrap" />
-                    </StackPanel>
-                    <TextBox
-                        x:Name="ConsoleTextBox"
-                        Grid.Row="1"
-                        FontFamily="Consolas"
-                        FontSize="13"
-                        IsReadOnly="True"
-                        AcceptsReturn="True"
-                        TextWrapping="Wrap"
-                        VerticalScrollBarVisibility="Auto"
-                        HorizontalScrollBarVisibility="Auto"
-                        Background="#101319"
-                        Foreground="#d8dce2"
-                        CaretBrush="#d8dce2"
-                        BorderThickness="0" />
-                </Grid>
-            </Border>
+                                    <Border Grid.Column="1" Style="{StaticResource StatusCardStyle}" Margin="10,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Text="Defaults" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                            <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0" />
+                                            <TextBox x:Name="RemoteRepoPathTextBox" />
+                                            <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBox x:Name="RemoteVaultPathTextBox" />
+                                            <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBox x:Name="DefaultSiteTextBox" />
+                                            <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBox x:Name="DefaultHostTextBox" />
+                                            <WrapPanel Margin="0,12,0,0">
+                                                <Button x:Name="SaveSettingsButton" Content="Save Settings" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
 
                 <Border Grid.Row="2" Style="{StaticResource StatusCardStyle}" Margin="0,20,0,0">

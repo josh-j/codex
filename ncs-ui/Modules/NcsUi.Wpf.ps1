@@ -172,62 +172,62 @@ function Get-NcsActionSummary {
     switch ($ActionName) {
         ([NcsUiAction]::RunAll.ToString()) {
             return @{
-                Summary = "Run the full ops check workflow across the inventory."
-                Scope   = "No extra scope value required."
+                Summary = "Run across inventory."
+                Scope   = "No extra scope required."
             }
         }
         ([NcsUiAction]::RunSite.ToString()) {
             return @{
-                Summary = "Limit the workflow to a single site when you want a narrower blast radius."
-                Scope   = "Requires a site value."
+                Summary = "Run one site."
+                Scope   = "Requires a site."
             }
         }
         ([NcsUiAction]::RunHost.ToString()) {
             return @{
-                Summary = "Target one ansible host directly for focused remediation or verification."
-                Scope   = "Requires an ansible host value."
+                Summary = "Run one host."
+                Scope   = "Requires a host."
             }
         }
         ([NcsUiAction]::RunVcenter.ToString()) {
             return @{
-                Summary = "Run only the vCenter-tagged portion of the workflow."
-                Scope   = "No extra scope value required."
+                Summary = "Run vCenter targets."
+                Scope   = "No extra scope required."
             }
         }
         ([NcsUiAction]::DryRun.ToString()) {
             return @{
-                Summary = "Preview changes with check and diff output before touching anything."
-                Scope   = "No extra scope value required."
+                Summary = "Dry run with diff."
+                Scope   = "No extra scope required."
             }
         }
         ([NcsUiAction]::Debug.ToString()) {
             return @{
-                Summary = "Increase verbosity for investigation when the normal run is not telling you enough."
-                Scope   = "No extra scope value required."
+                Summary = "Verbose debug run."
+                Scope   = "No extra scope required."
             }
         }
         ([NcsUiAction]::InventoryPreview.ToString()) {
             return @{
-                Summary = "Inspect inventory output without executing the main workflow."
-                Scope   = "No extra scope value required."
+                Summary = "Preview inventory."
+                Scope   = "No extra scope required."
             }
         }
         ([NcsUiAction]::InventoryHost.ToString()) {
             return @{
-                Summary = "Inspect inventory data for one specific host."
-                Scope   = "Requires an ansible host value."
+                Summary = "Preview one host in inventory."
+                Scope   = "Requires a host."
             }
         }
         ([NcsUiAction]::RecentLogs.ToString()) {
             return @{
-                Summary = "Pull recent logs when you need quick operational context."
-                Scope   = "No extra scope value required."
+                Summary = "Fetch recent logs."
+                Scope   = "No extra scope required."
             }
         }
         default {
             return @{
-                Summary = "Select an action to preview what the run will do."
-                Scope   = "No extra scope value required."
+                Summary = "Select an action."
+                Scope   = "No extra scope required."
             }
         }
     }
@@ -246,7 +246,7 @@ function Update-NcsSetupSummary {
     if ([string]::IsNullOrWhiteSpace($Controls.RemoteVaultPathTextBox.Text)) { $missing.Add("vault path") }
 
     if ($missing.Count -eq 0) {
-        $Controls.SetupSummaryText.Text = "Connection details look complete."
+        $Controls.SetupSummaryText.Text = "Settings look complete."
         return
     }
 
@@ -384,10 +384,10 @@ function Update-NcsCommandPreview {
         $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
         $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
         $Controls.CommandPreviewTextBox.Text = $preview
-        $Controls.CommandReadinessText.Text = "Preview updates live."
+        $Controls.CommandReadinessText.Text = "Live preview"
     } catch {
         $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
-        $Controls.CommandReadinessText.Text = "Preview blocked until required input is filled."
+        $Controls.CommandReadinessText.Text = "Needs required input"
     }
 
     $isRunSite = $actionName -eq [NcsUiAction]::RunSite.ToString()
@@ -442,7 +442,7 @@ function Show-NcsUiApp {
     $controls.StatusTextBlock.Text = "Load settings or run preflight."
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
     Set-NcsPreflightState -Controls $controls -State "Not Run"
-    $controls.RunMetaText.Text = "No command started yet."
+    $controls.RunMetaText.Text = "No run yet."
     Update-NcsWindowChromeState -Window $window -Controls $controls
 
     $durationTimer = [System.Windows.Threading.DispatcherTimer]::new()
