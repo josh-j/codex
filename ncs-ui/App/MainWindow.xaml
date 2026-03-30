@@ -37,8 +37,8 @@
         <SolidColorBrush x:Key="TextMutedBrush" Color="#8e939c" />
 
         <Style TargetType="TextBox">
-            <Setter Property="Margin" Value="0,4,0,10" />
-            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Margin" Value="0,3,0,6" />
+            <Setter Property="Padding" Value="8,5" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="#1e2228" />
@@ -46,8 +46,8 @@
             <Setter Property="CaretBrush" Value="#d8dce2" />
         </Style>
         <Style TargetType="PasswordBox">
-            <Setter Property="Margin" Value="0,4,0,10" />
-            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Margin" Value="0,3,0,6" />
+            <Setter Property="Padding" Value="8,5" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="#1e2228" />
@@ -55,8 +55,8 @@
             <Setter Property="CaretBrush" Value="#d8dce2" />
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="Margin" Value="0,4,0,10" />
-            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Margin" Value="0,3,0,6" />
+            <Setter Property="Padding" Value="8,4" />
             <Setter Property="Background" Value="#1e2228" />
             <Setter Property="Foreground" Value="#d8dce2" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -125,8 +125,8 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="18" />
-            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,10" />
         </Style>
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent" />
@@ -437,110 +437,111 @@
                         <TabItem Header="Operate">
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="420" />
+                                    <ColumnDefinition Width="340" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
-                                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,20,0">
-                                    <StackPanel>
-                                        <Border Style="{StaticResource StatusCardStyle}">
-                                            <StackPanel>
-                                                <DockPanel Margin="0,0,0,10">
-                                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="12" Padding="10,4">
-                                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontWeight="SemiBold" />
-                                                    </Border>
-                                                </DockPanel>
-                                                <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,12" Text="Preflight has not been run." Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
-                                                <Button x:Name="PreflightButton" Content="Run Preflight" Width="140" />
-                                                <ListBox x:Name="PreflightListBox" Margin="0,10,0,0" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border Style="{StaticResource StatusCardStyle}">
-                                            <StackPanel>
-                                                <TextBlock Text="Action" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                                <TextBlock x:Name="ActionSummaryText" Margin="0,10,0,6" Text="Run across inventory." Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
-                                                <TextBlock x:Name="ScopeRequirementText" Margin="0,0,0,12" Foreground="{StaticResource InfoBrush}" Text="No extra scope required." TextWrapping="Wrap" />
-                                                <ComboBox x:Name="ActionComboBox" />
-                                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" />
-                                                <TextBox x:Name="SiteTextBox" />
-                                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" />
-                                                <TextBox x:Name="HostTextBox" />
-                                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                                    <Expander.Header>
-                                                        <TextBlock Text="Advanced" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                                    </Expander.Header>
-                                                    <StackPanel Margin="0,14,0,0">
-                                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" />
-                                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="92" VerticalScrollBarVisibility="Auto" />
-                                                    </StackPanel>
-                                                </Expander>
-                                                <WrapPanel Margin="0,12,0,0">
-                                                    <Button x:Name="RunButton" Content="Run" />
-                                                    <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
-                                                </WrapPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </StackPanel>
-                                </ScrollViewer>
-
-                                <StackPanel Grid.Column="1">
-                                    <Border Style="{StaticResource StatusCardStyle}" Margin="0,0,0,16">
+                                <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                    <Border Style="{StaticResource StatusCardStyle}">
                                         <StackPanel>
-                                            <Grid Margin="0,0,0,12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="Preview" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" x:Name="CommandReadinessText" Foreground="{StaticResource TextMutedBrush}" Text="Live preview" VerticalAlignment="Center" />
-                                            </Grid>
-                                            <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" Height="90" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,12,0,0">
+                                            <DockPanel Margin="0,0,0,6">
+                                                <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="10" Padding="8,3">
+                                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="11" FontWeight="SemiBold" />
+                                                </Border>
+                                            </DockPanel>
+                                            <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,8" Text="Preflight has not been run." Foreground="{StaticResource TextMutedBrush}" FontSize="12" TextWrapping="Wrap" />
+                                            <Button x:Name="PreflightButton" Content="Run Preflight" MinWidth="100" />
+                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,8,0,0">
                                                 <Expander.Header>
-                                                    <TextBlock Text="Detected Paths" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                                    <TextBlock Text="Check Details" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                                                 </Expander.Header>
-                                                <StackPanel Margin="0,14,0,0">
-                                                    <ListBox x:Name="DetectedPathsListBox" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
-                                                </StackPanel>
+                                                <ListBox x:Name="PreflightListBox" Margin="0,8,0,0" MaxHeight="180" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                                             </Expander>
-                                            <WrapPanel Margin="0,12,0,0">
-                                                <Button x:Name="CopyOutputButton" Content="Copy Output" Style="{StaticResource SecondaryButtonStyle}" />
-                                                <Button x:Name="ExportOutputButton" Content="Export Output" Style="{StaticResource SecondaryButtonStyle}" />
-                                            </WrapPanel>
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Style="{StaticResource StatusCardStyle}" Margin="0">
-                                        <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
-                                            <Expander.Header>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="Console" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="1" x:Name="ConsoleHintText" Foreground="{StaticResource TextMutedBrush}" Text="Newest at bottom" VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Expander.Header>
-                                            <TextBox
-                                                x:Name="ConsoleTextBox"
-                                                Margin="0,14,0,0"
-                                                FontFamily="Consolas"
-                                                FontSize="13"
-                                                IsReadOnly="True"
-                                                AcceptsReturn="True"
-                                                TextWrapping="Wrap"
-                                                VerticalScrollBarVisibility="Auto"
-                                                HorizontalScrollBarVisibility="Auto"
-                                                Background="#101319"
-                                                Foreground="#d8dce2"
-                                                CaretBrush="#d8dce2"
-                                                BorderThickness="0" />
-                                        </Expander>
+                                    <Border Style="{StaticResource StatusCardStyle}">
+                                        <StackPanel>
+                                            <TextBlock Text="Action" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4" />
+                                            <TextBlock x:Name="ActionSummaryText" Text="" Foreground="{StaticResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2" TextWrapping="Wrap" />
+                                            <TextBlock x:Name="ScopeRequirementText" Text="" Foreground="{StaticResource InfoBrush}" FontSize="11" Margin="0,0,0,6" TextWrapping="Wrap" />
+                                            <ComboBox x:Name="ActionComboBox" />
+                                            <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                            <TextBox x:Name="SiteTextBox" />
+                                            <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                            <TextBox x:Name="HostTextBox" />
+                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
+                                                <Expander.Header>
+                                                    <TextBlock Text="Advanced" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                                </Expander.Header>
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                                    <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto" />
+                                                </StackPanel>
+                                            </Expander>
+                                            <WrapPanel Margin="0,8,0,0">
+                                                <Button x:Name="RunButton" Content="Run" />
+                                                <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
+                                            </WrapPanel>
+                                        </StackPanel>
                                     </Border>
                                 </StackPanel>
+
+                                <Grid Grid.Column="1">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10,10,0,0" Padding="12,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Command" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                            <TextBox x:Name="CommandPreviewTextBox" Grid.Column="1" IsReadOnly="True" TextWrapping="NoWrap" Background="Transparent" BorderThickness="0" Margin="0" Padding="0" FontFamily="Consolas" FontSize="12" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                <TextBlock x:Name="CommandReadinessText" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Live preview" Margin="0,0,8,0" />
+                                                <TextBlock x:Name="ConsoleHintText" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <TextBox
+                                        x:Name="ConsoleTextBox"
+                                        Grid.Row="1"
+                                        FontFamily="Consolas"
+                                        FontSize="12"
+                                        IsReadOnly="True"
+                                        AcceptsReturn="True"
+                                        TextWrapping="Wrap"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Auto"
+                                        Background="#0d1015"
+                                        Foreground="#d8dce2"
+                                        CaretBrush="#d8dce2"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1,0,1,1" />
+
+                                    <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,10,10" Padding="8,6">
+                                        <DockPanel>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="60" Padding="8,4" FontSize="11" />
+                                                <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="60" Padding="8,4" FontSize="11" />
+                                            </StackPanel>
+                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
+                                                <Expander.Header>
+                                                    <TextBlock Text="Detected Paths" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                                </Expander.Header>
+                                                <ListBox x:Name="DetectedPathsListBox" Margin="0,6,0,0" MaxHeight="120" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
+                                            </Expander>
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </TabItem>
 
