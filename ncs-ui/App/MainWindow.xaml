@@ -4,8 +4,8 @@
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
     Title="NCS UI"
-    Height="900"
-    Width="1440"
+    Height="800"
+    Width="900"
     MinHeight="600"
     MinWidth="900"
     WindowStartupLocation="CenterScreen"
@@ -435,8 +435,7 @@
                         <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="{StaticResource MarginLabelValue}" />
-                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
+                        <Button x:Name="SettingsToggleButton" Content="⚙ Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ToolTip="Toggle settings panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -447,15 +446,65 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Margin="{StaticResource ContentMargin}">
-                <Grid x:Name="OperatePanel" Visibility="Visible">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="280" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition x:Name="ConsoleColumn" Width="0" MinWidth="0" />
-                    </Grid.ColumnDefinitions>
+            <Grid x:Name="OperatePanel" Grid.Row="1" Margin="{StaticResource ContentMargin}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="SettingsColumn" Width="0" MinWidth="0" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" MinWidth="250" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="ConsoleColumn" Width="0" MinWidth="0" />
+                </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0">
+                <ScrollViewer x:Name="SettingsPanel" Grid.Column="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                    <Border Style="{StaticResource StatusCardStyle}">
+                        <StackPanel>
+                            <DockPanel Margin="{StaticResource MarginSectionTitle}">
+                                <TextBlock DockPanel.Dock="Left" Text="Settings" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                <Button x:Name="SettingsCloseButton" DockPanel.Dock="Right" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Right" ToolTip="Close settings" />
+                            </DockPanel>
+                            <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="SshHostTextBox" />
+                            <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="SshUserTextBox" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                    <TextBlock Text="Port" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="SshPortTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Auth" Foreground="{StaticResource TextMutedBrush}" />
+                                    <ComboBox x:Name="SshAuthModeComboBox" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel x:Name="SshKeyPathPanel">
+                                <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
+                                <TextBox x:Name="SshKeyPathTextBox" />
+                            </StackPanel>
+                            <StackPanel x:Name="SshPasswordPanel">
+                                <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />
+                                <PasswordBox x:Name="SshPasswordBox" />
+                            </StackPanel>
+                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
+                            <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="RemoteRepoPathTextBox" />
+                            <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="RemoteVaultPathTextBox" />
+                            <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="DefaultSiteTextBox" />
+                            <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBox x:Name="DefaultHostTextBox" />
+                            <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+
+                <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+
+                    <Grid Grid.Column="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
@@ -582,9 +631,9 @@
                         </Border>
                     </Grid>
 
-                    <GridSplitter x:Name="ConsoleSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+                    <GridSplitter x:Name="ConsoleSplitter" Grid.Column="3" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
 
-                    <Grid x:Name="ConsolePane" Grid.Column="2" Visibility="Collapsed">
+                    <Grid x:Name="ConsolePane" Grid.Column="4" Visibility="Collapsed">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
@@ -619,52 +668,6 @@
                     </Grid>
                 </Grid>
 
-                <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                    <Border Style="{StaticResource StatusCardStyle}" MaxWidth="480">
-                        <StackPanel>
-                            <TextBlock Text="Connection" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginGapLg}" />
-                            <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="SshHostTextBox" />
-                            <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="SshUserTextBox" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                    <TextBlock Text="Port" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="SshPortTextBox" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Auth" Foreground="{StaticResource TextMutedBrush}" />
-                                    <ComboBox x:Name="SshAuthModeComboBox" />
-                                </StackPanel>
-                            </Grid>
-                            <StackPanel x:Name="SshKeyPathPanel">
-                                <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
-                                <TextBox x:Name="SshKeyPathTextBox" />
-                            </StackPanel>
-                            <StackPanel x:Name="SshPasswordPanel">
-                                <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />
-                                <PasswordBox x:Name="SshPasswordBox" />
-                            </StackPanel>
-
-                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
-
-                            <TextBlock Text="Defaults" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginGapLg}" />
-                            <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="RemoteRepoPathTextBox" />
-                            <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="RemoteVaultPathTextBox" />
-                            <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="DefaultSiteTextBox" />
-                            <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="DefaultHostTextBox" />
-                            <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
-                        </StackPanel>
-                    </Border>
-                </ScrollViewer>
             </Grid>
 
             <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">

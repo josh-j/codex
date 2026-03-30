@@ -26,10 +26,11 @@ function Get-NcsXamlControlMap {
         "TitleBarDragRegion",
         "TitleBarTitleText",
         "TitleBarSubtitleText",
-        "OperateTabButton",
-        "SettingsTabButton",
-        "OperatePanel",
+        "SettingsToggleButton",
+        "SettingsCloseButton",
         "SettingsPanel",
+        "SettingsSplitter",
+        "OperatePanel",
         "MinimizeWindowButton",
         "MaximizeWindowButton",
         "CloseWindowButton",
@@ -248,8 +249,8 @@ function Sync-NcsControlsFromSettings {
     $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
     $targetTag = $Settings.LastAction
     $found = $false
-    foreach ($category in $Controls.ActionTreeView.Items) {
-        foreach ($leaf in $category.Items) {
+    foreach ($category in @($Controls.ActionTreeView.Items)) {
+        foreach ($leaf in @($category.Items)) {
             if ($leaf.Tag -eq $targetTag) {
                 $leaf.IsSelected = $true
                 $found = $true
@@ -258,8 +259,12 @@ function Sync-NcsControlsFromSettings {
         }
         if ($found) { break }
     }
-    if (-not $found -and $Controls.ActionTreeView.Items.Count -gt 0) {
-        $Controls.ActionTreeView.Items[0].Items[0].IsSelected = $true
+    if (-not $found) {
+        $firstCategory = @($Controls.ActionTreeView.Items)[0]
+        if ($null -ne $firstCategory) {
+            $firstLeaf = @($firstCategory.Items)[0]
+            if ($null -ne $firstLeaf) { $firstLeaf.IsSelected = $true }
+        }
     }
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
@@ -485,34 +490,31 @@ function Show-NcsUiApp {
         Update-NcsWindowChromeState -Window $window -Controls $controls
     })
 
-    $activeBg = Get-NcsBrush -Color "#242932"
-    $inactiveBg = Get-NcsBrush -Color "#151920"
-    $activeBorder = Get-NcsBrush -Color "#3c4654"
-    $inactiveBorder = Get-NcsBrush -Color "#2c3038"
-    $activeText = Get-NcsBrush -Color "#d8dce2"
-    $inactiveText = Get-NcsBrush -Color "#8e939c"
+    $settingsColumn = $controls.OperatePanel.ColumnDefinitions[0]
 
-    $controls.OperateTabButton.Add_Click({
-        $controls.OperatePanel.Visibility = "Visible"
-        $controls.SettingsPanel.Visibility = "Collapsed"
-        $controls.OperateTabButton.Background = $activeBg
-        $controls.OperateTabButton.BorderBrush = $activeBorder
-        $controls.OperateTabButton.Foreground = $activeText
-        $controls.SettingsTabButton.Background = $inactiveBg
-        $controls.SettingsTabButton.BorderBrush = $inactiveBorder
-        $controls.SettingsTabButton.Foreground = $inactiveText
-    })
-
-    $controls.SettingsTabButton.Add_Click({
+    $openSettings = {
+        $settingsColumn.Width = [System.Windows.GridLength]::new(260)
+        $settingsColumn.MinWidth = 200
         $controls.SettingsPanel.Visibility = "Visible"
-        $controls.OperatePanel.Visibility = "Collapsed"
-        $controls.SettingsTabButton.Background = $activeBg
-        $controls.SettingsTabButton.BorderBrush = $activeBorder
-        $controls.SettingsTabButton.Foreground = $activeText
-        $controls.OperateTabButton.Background = $inactiveBg
-        $controls.OperateTabButton.BorderBrush = $inactiveBorder
-        $controls.OperateTabButton.Foreground = $inactiveText
+        $controls.SettingsSplitter.Visibility = "Visible"
+    }
+
+    $closeSettings = {
+        $controls.SettingsPanel.Visibility = "Collapsed"
+        $controls.SettingsSplitter.Visibility = "Collapsed"
+        $settingsColumn.Width = [System.Windows.GridLength]::new(0)
+        $settingsColumn.MinWidth = 0
+    }
+
+    $controls.SettingsToggleButton.Add_Click({
+        if ($controls.SettingsPanel.Visibility -eq "Visible") {
+            & $closeSettings
+        } else {
+            & $openSettings
+        }
     })
+
+    $controls.SettingsCloseButton.Add_Click({ & $closeSettings })
 
     $consoleColumn = $controls.OperatePanel.ColumnDefinitions[2]
 
