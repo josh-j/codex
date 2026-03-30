@@ -1,0 +1,103 @@
+- group: Fleet
+  actions:
+    - label: Full Audit
+      playbook: site.yml
+    - label: STIG Audit
+      playbook: site_stig_audit.yml
+    - label: Remediate
+      playbook: site_remediate.yml
+      mutating: true
+    - label: Collect Only
+      playbook: site_collect_only.yml
+    - label: Reports Only
+      playbook: site_reports_only.yml
+    - label: VMware Only
+      playbook: site_vmware_only.yml
+    - label: Windows Only
+      playbook: site_windows_only.yml
+
+- group: VMware
+  actions:
+    - label: Audit
+      playbook: vmware/audit.yml
+    - label: STIG Audit
+      playbook: vmware/stig_audit.yml
+    - label: STIG Remediate
+      playbook: vmware/stig_remediate.yml
+      mutating: true
+
+- group: ESXi
+  actions:
+    - label: Audit
+      playbook: esxi/audit.yml
+    - label: STIG Audit
+      playbook: esxi/stig_audit.yml
+    - label: STIG Remediate
+      playbook: esxi/stig_remediate.yml
+      mutating: true
+
+- group: VCSA
+  actions:
+    - label: Audit
+      playbook: vcsa/audit.yml
+    - label: STIG Audit
+      playbook: vcsa/stig_audit.yml
+    - label: STIG Remediate
+      playbook: vcsa/stig_remediate.yml
+      mutating: true
+
+- group: VM
+  actions:
+    - label: Audit
+      playbook: vm/audit.yml
+    - label: STIG Audit
+      playbook: vm/stig_audit.yml
+    - label: STIG Remediate
+      playbook: vm/stig_remediate.yml
+      mutating: true
+
+- group: Ubuntu
+  actions:
+    - label: Audit
+      playbook: ubuntu/audit.yml
+    - label: STIG Audit
+      playbook: ubuntu/stig_audit.yml
+    - label: STIG Remediate
+      playbook: ubuntu/stig_remediate.yml
+      mutating: true
+    - label: Patch
+      playbook: ubuntu/patch.yml
+      mutating: true
+    - label: Update
+      playbook: ubuntu/update.yml
+      mutating: true
+
+- group: Windows
+  actions:
+    - label: Audit
+      playbook: windows/audit.yml
+    - label: STIG Audit
+      playbook: windows/stig_audit.yml
+    - label: STIG Remediate
+      playbook: windows/stig_remediate.yml
+      mutating: true
+    - label: Health
+      playbook: windows/health.yml
+    - label: Update
+      playbook: windows/update.yml
+      mutating: true
+
+- group: Photon
+  actions:
+    - label: STIG Audit
+      playbook: photon/stig_audit.yml
+    - label: STIG Remediate
+      playbook: photon/stig_remediate.yml
+      mutating: true
+
+- group: Infra
+  actions:
+    - label: Setup Environment
+      playbook: infra/setup_env.yml
+    - label: Generate Reports
+      playbook: infra/generate_reports.yml

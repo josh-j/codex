@@ -1,17 +1,5 @@
 Set-StrictMode -Version Latest
 
-enum NcsUiAction {
-    RunAll
-    RunSite
-    RunHost
-    RunVcenter
-    DryRun
-    Debug
-    InventoryPreview
-    InventoryHost
-    RecentLogs
-}
-
 enum NcsSshAuthMode {
     Agent
     KeyFile
@@ -29,21 +17,21 @@ class NcsUiSettings {
     [string] $RemoteVaultPath = ".vaultpass"
     [string] $DefaultSite = ""
     [string] $DefaultAnsibleHost = ""
-    [string] $LastAction = [NcsUiAction]::RunAll.ToString()
+    [string] $LastAction = ""
 
     NcsUiSettings() {
     }
 }
 
 class NcsActionRequest {
-    [NcsUiAction] $Action
+    [string] $Playbook
     [string] $Site = ""
     [string] $Host = ""
     [string] $ExtraArgs = ""
     [datetime] $RequestedAt = [datetime]::UtcNow
 
-    NcsActionRequest([NcsUiAction] $Action) {
-        $this.Action = $Action
+    NcsActionRequest([string] $Playbook) {
+        $this.Playbook = $Playbook
     }
 }
 
@@ -85,43 +73,47 @@ class NcsRunResult {
     }
 }
 
-function Get-NcsUiActionNames {
-    [NcsUiAction].GetEnumNames()
-}
-
-$script:ActionDisplayMap = [ordered]@{
-    "RunAll"           = "Run All"
-    "RunSite"          = "Run Site"
-    "RunHost"          = "Run Host"
-    "RunVcenter"       = "Run vCenter"
-    "DryRun"           = "Dry Run"
-    "Debug"            = "Debug"
-    "InventoryPreview" = "Inventory Preview"
-    "InventoryHost"    = "Inventory Host"
-    "RecentLogs"       = "Recent Logs"
-}
-
-$script:ActionReverseMap = @{}
-foreach ($key in $script:ActionDisplayMap.Keys) {
-    $script:ActionReverseMap[$script:ActionDisplayMap[$key]] = $key
-}
-
-function Get-NcsUiActionDisplayMap {
-    return $script:ActionDisplayMap
-}
-
-function ConvertTo-NcsActionDisplayName {
-    param([string] $EnumName)
-    if ($script:ActionDisplayMap.Contains($EnumName)) { return $script:ActionDisplayMap[$EnumName] }
-    return $EnumName
-}
-
-function ConvertFrom-NcsActionDisplayName {
-    param([string] $DisplayName)
-    if ($script:ActionReverseMap.ContainsKey($DisplayName)) { return $script:ActionReverseMap[$DisplayName] }
-    return $DisplayName
-}
-
 function Get-NcsSshAuthModeNames {
     [NcsSshAuthMode].GetEnumNames()
+}
+
+function Import-NcsActionsConfig {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path
+    )
+
+    $lines = Get-Content -LiteralPath $Path
+    $groups = [System.Collections.Generic.List[hashtable]]::new()
+    $currentGroup = $null
+    $currentAction = $null
+
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
+
+        if ($line -match '^- group:\s*(.+)$') {
+            $currentGroup = @{ Group = $Matches[1].Trim(); Actions = [System.Collections.Generic.List[hashtable]]::new() }
+            $groups.Add($currentGroup)
+            $currentAction = $null
+            continue
+        }
+
+        if ($line -match '^\s+- label:\s*(.+)$' -and $null -ne $currentGroup) {
+            $currentAction = @{ Label = $Matches[1].Trim(); Playbook = ""; Mutating = $false }
+            $currentGroup.Actions.Add($currentAction)
+            continue
+        }
+
+        if ($line -match '^\s+playbook:\s*(.+)$' -and $null -ne $currentAction) {
+            $currentAction.Playbook = $Matches[1].Trim()
+            continue
+        }
+
+        if ($line -match '^\s+mutating:\s*true' -and $null -ne $currentAction) {
+            $currentAction.Mutating = $true
+            continue
+        }
+    }
+
+    return $groups
 }
