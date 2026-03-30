@@ -4,7 +4,7 @@ param(
     [ValidateSet("RunAll", "RunSite", "RunHost", "RunVcenter", "DryRun", "Debug", "InventoryPreview", "InventoryHost", "RecentLogs")]
     [string] $Action,
     [string] $Site = "",
-    [string] $Host = "",
+    [string] $AnsibleHost = "",
     [string] $ExtraArgs = "",
     [string] $SettingsPath = ""
 )
@@ -27,7 +27,7 @@ $settings = if ([string]::IsNullOrWhiteSpace($SettingsPath)) {
 
 $request = [NcsActionRequest]::new([System.Enum]::Parse([NcsUiAction], $Action))
 $request.Site = $Site
-$request.Host = $Host
+$request.Host = $AnsibleHost
 $request.ExtraArgs = $ExtraArgs
 
 $done = $false

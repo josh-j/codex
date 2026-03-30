@@ -8,7 +8,10 @@ function ConvertTo-NcsBashLiteral {
         [string] $Value
     )
 
-    return "'" + ($Value -replace "'", "'`"'`"'") + "'"
+    $sq = [char]39
+    $dq = [char]34
+    $escaped = $Value -replace "$sq", "$sq$dq$sq$dq$sq"
+    return "$sq$escaped$sq"
 }
 
 function ConvertTo-NcsRemotePathExpression {
@@ -302,7 +305,7 @@ function Find-NcsDetectedPaths {
             continue
         }
 
-        foreach ($match in [regex]::Matches($line, '((/|~)[\w\.\-\/]+)')) {
+        foreach ($match in [regex]::Matches($line, "((/|~)[\w\.\-\/]+)")) {
             $match.Value
         }
     }
@@ -444,9 +447,9 @@ function Invoke-NcsRunSite {
 }
 
 function Invoke-NcsRunHost {
-    param([NcsUiSettings] $Settings, [string] $Host, [string] $ExtraArgs, [scriptblock] $OnOutput, [scriptblock] $OnCompleted)
+    param([NcsUiSettings] $Settings, [string] $AnsibleHost, [string] $ExtraArgs, [scriptblock] $OnOutput, [scriptblock] $OnCompleted)
     $request = [NcsActionRequest]::new([NcsUiAction]::RunHost)
-    $request.Host = $Host
+    $request.Host = $AnsibleHost
     $request.ExtraArgs = $ExtraArgs
     Invoke-NcsAction -Settings $Settings -Request $request -OnOutput $OnOutput -OnCompleted $OnCompleted
 }
@@ -480,9 +483,9 @@ function Invoke-NcsInventoryPreview {
 }
 
 function Invoke-NcsInventoryHost {
-    param([NcsUiSettings] $Settings, [string] $Host, [string] $ExtraArgs, [scriptblock] $OnOutput, [scriptblock] $OnCompleted)
+    param([NcsUiSettings] $Settings, [string] $AnsibleHost, [string] $ExtraArgs, [scriptblock] $OnOutput, [scriptblock] $OnCompleted)
     $request = [NcsActionRequest]::new([NcsUiAction]::InventoryHost)
-    $request.Host = $Host
+    $request.Host = $AnsibleHost
     $request.ExtraArgs = $ExtraArgs
     Invoke-NcsAction -Settings $Settings -Request $request -OnOutput $OnOutput -OnCompleted $OnCompleted
 }
