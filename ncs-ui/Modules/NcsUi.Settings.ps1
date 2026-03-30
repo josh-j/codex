@@ -52,7 +52,7 @@ function ConvertTo-NcsUiSettings {
     }
 
     if ([string]::IsNullOrWhiteSpace($settings.LastAction)) {
-        $settings.LastAction = [NcsUiAction]::RunAll.ToString()
+        $settings.LastAction = ""
     }
 
     if ([string]::IsNullOrWhiteSpace($settings.SshAuthMode)) {

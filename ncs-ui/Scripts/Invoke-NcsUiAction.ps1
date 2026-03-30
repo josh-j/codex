@@ -1,8 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("RunAll", "RunSite", "RunHost", "RunVcenter", "DryRun", "Debug", "InventoryPreview", "InventoryHost", "RecentLogs")]
-    [string] $Action,
+    [string] $Playbook,
     [string] $Site = "",
     [string] $AnsibleHost = "",
     [string] $ExtraArgs = "",
@@ -25,7 +24,7 @@ $settings = if ([string]::IsNullOrWhiteSpace($SettingsPath)) {
     ConvertTo-NcsUiSettings -InputObject ((Get-Content -LiteralPath $SettingsPath -Raw) | ConvertFrom-Json)
 }
 
-$request = [NcsActionRequest]::new([System.Enum]::Parse([NcsUiAction], $Action))
+$request = [NcsActionRequest]::new($Playbook)
 $request.Site = $Site
 $request.Host = $AnsibleHost
 $request.ExtraArgs = $ExtraArgs

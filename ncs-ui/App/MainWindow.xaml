@@ -591,19 +591,6 @@
                                             </Setter>
                                         </Style>
                                     </TreeView.Resources>
-                                    <TreeViewItem Header="Run" IsExpanded="True">
-                                        <TreeViewItem Header="All" Tag="RunAll" />
-                                        <TreeViewItem Header="Site" Tag="RunSite" />
-                                        <TreeViewItem Header="Host" Tag="RunHost" />
-                                        <TreeViewItem Header="vCenter" Tag="RunVcenter" />
-                                    </TreeViewItem>
-                                    <TreeViewItem Header="Inspect" IsExpanded="True">
-                                        <TreeViewItem Header="Dry Run" Tag="DryRun" />
-                                        <TreeViewItem Header="Debug" Tag="Debug" />
-                                        <TreeViewItem Header="Inventory" Tag="InventoryPreview" />
-                                        <TreeViewItem Header="Inventory Host" Tag="InventoryHost" />
-                                        <TreeViewItem Header="Recent Logs" Tag="RecentLogs" />
-                                    </TreeViewItem>
                                 </TreeView>
 
                                 <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">

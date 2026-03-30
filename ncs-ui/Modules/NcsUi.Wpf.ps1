@@ -82,16 +82,7 @@ function Get-NcsXamlControlMap {
     return $map
 }
 
-function ConvertFrom-NcsActionName {
-    param(
-        [Parameter(Mandatory)]
-        [string] $ActionName
-    )
-
-    return [System.Enum]::Parse([NcsUiAction], $ActionName)
-}
-
-function Get-NcsSelectedActionName {
+function Get-NcsSelectedPlaybook {
     param(
         [Parameter(Mandatory)]
         [hashtable] $Controls
@@ -99,9 +90,32 @@ function Get-NcsSelectedActionName {
 
     $selectedItem = $Controls.ActionTreeView.SelectedItem
     if ($null -eq $selectedItem -or [string]::IsNullOrWhiteSpace($selectedItem.Tag)) {
-        return [NcsUiAction]::RunAll.ToString()
+        return ""
     }
     return [string] $selectedItem.Tag
+}
+
+function Build-NcsActionTree {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        $ActionGroups
+    )
+
+    $Controls.ActionTreeView.Items.Clear()
+    foreach ($group in $ActionGroups) {
+        $groupItem = [System.Windows.Controls.TreeViewItem]::new()
+        $groupItem.Header = $group.Group
+        $groupItem.IsExpanded = $true
+        foreach ($action in $group.Actions) {
+            $leafItem = [System.Windows.Controls.TreeViewItem]::new()
+            $leafItem.Header = $action.Label
+            $leafItem.Tag = $action.Playbook
+            $groupItem.Items.Add($leafItem) | Out-Null
+        }
+        $Controls.ActionTreeView.Items.Add($groupItem) | Out-Null
+    }
 }
 
 function Update-NcsSshAuthVisibility {
@@ -218,7 +232,7 @@ function Sync-NcsSettingsFromControls {
     $Settings.RemoteVaultPath = $Controls.RemoteVaultPathTextBox.Text.Trim()
     $Settings.DefaultSite = $Controls.DefaultSiteTextBox.Text.Trim()
     $Settings.DefaultAnsibleHost = $Controls.DefaultHostTextBox.Text.Trim()
-    $Settings.LastAction = Get-NcsSelectedActionName -Controls $Controls
+    $Settings.LastAction = Get-NcsSelectedPlaybook -Controls $Controls
 }
 
 function Sync-NcsControlsFromSettings {
@@ -247,17 +261,19 @@ function Sync-NcsControlsFromSettings {
     $Controls.DefaultHostTextBox.Text = $Settings.DefaultAnsibleHost
     $Controls.SiteTextBox.Text = $Settings.DefaultSite
     $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
-    $targetTag = $Settings.LastAction
+    $targetPlaybook = $Settings.LastAction
     $found = $false
-    foreach ($category in @($Controls.ActionTreeView.Items)) {
-        foreach ($leaf in @($category.Items)) {
-            if ($leaf.Tag -eq $targetTag) {
-                $leaf.IsSelected = $true
-                $found = $true
-                break
+    if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {
+        foreach ($category in @($Controls.ActionTreeView.Items)) {
+            foreach ($leaf in @($category.Items)) {
+                if ($leaf.Tag -eq $targetPlaybook) {
+                    $leaf.IsSelected = $true
+                    $found = $true
+                    break
+                }
             }
+            if ($found) { break }
         }
-        if ($found) { break }
     }
     if (-not $found) {
         $firstCategory = @($Controls.ActionTreeView.Items)[0]
@@ -319,33 +335,24 @@ function Update-NcsCommandPreview {
         [NcsUiSettings] $Settings
     )
 
-    $actionName = Get-NcsSelectedActionName -Controls $Controls
+    $playbook = Get-NcsSelectedPlaybook -Controls $Controls
 
-    try {
-        $request = [NcsActionRequest]::new((ConvertFrom-NcsActionName -ActionName $actionName))
-        $request.Site = $Controls.SiteTextBox.Text.Trim()
-        $request.Host = $Controls.HostTextBox.Text.Trim()
-        $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
-        $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
-        $Controls.CommandPreviewTextBox.Text = $preview
-    } catch {
-        $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
+    if ([string]::IsNullOrWhiteSpace($playbook)) {
+        $Controls.CommandPreviewTextBox.Text = "Select an action"
+    } else {
+        try {
+            $request = [NcsActionRequest]::new($playbook)
+            $request.Site = $Controls.SiteTextBox.Text.Trim()
+            $request.Host = $Controls.HostTextBox.Text.Trim()
+            $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
+            $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
+            $Controls.CommandPreviewTextBox.Text = $preview
+        } catch {
+            $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
+        }
     }
-
-    $isRunSite = $actionName -eq [NcsUiAction]::RunSite.ToString()
-    $isRunHost = $actionName -in @([NcsUiAction]::RunHost.ToString(), [NcsUiAction]::InventoryHost.ToString())
-    $Controls.SiteTextBox.IsEnabled = $isRunSite
-    $Controls.HostTextBox.IsEnabled = $isRunHost
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode ([string] $Controls.SshAuthModeComboBox.SelectedItem)
-
-    if (-not $isRunSite -and [string]::IsNullOrWhiteSpace($Controls.SiteTextBox.Text)) {
-        $Controls.SiteTextBox.Text = $Settings.DefaultSite
-    }
-    if (-not $isRunHost -and [string]::IsNullOrWhiteSpace($Controls.HostTextBox.Text)) {
-        $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
-    }
-
     Update-NcsConnectionInfo -Controls $Controls
 }
 
@@ -378,6 +385,10 @@ function Show-NcsUiApp {
         CurrentHandle   = $null
         LastRunResult   = $null
     }
+
+    $actionsConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
+    $actionGroups = Import-NcsActionsConfig -Path $actionsConfigPath
+    Build-NcsActionTree -Controls $controls -ActionGroups $actionGroups
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
     Set-NcsIdleUiState -Controls $controls
@@ -416,9 +427,9 @@ function Show-NcsUiApp {
         param($sender, $eventArgs)
         $item = $eventArgs.NewValue
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
-            $state.Settings.LastAction = [string] $item.Tag
-            & $refreshPreview
+            $state.Settings.LastAction = $item.Tag
         }
+        & $refreshPreview
     })
 
     $controls.SiteTextBox.Add_TextChanged({ & $refreshPreview })
@@ -574,8 +585,11 @@ function Show-NcsUiApp {
             $controls.ExitCodeTextBlock.Text = "-"
             $controls.DurationTextBlock.Text = "-"
             Set-NcsRunStateBadge -Controls $controls -State "Running"
-            $selectedAction = Get-NcsSelectedActionName -Controls $controls
-            $controls.RunMetaText.Text = $selectedAction
+            $selectedPlaybook = Get-NcsSelectedPlaybook -Controls $controls
+            if ([string]::IsNullOrWhiteSpace($selectedPlaybook)) {
+                throw "Select an action before running."
+            }
+            $controls.RunMetaText.Text = $selectedPlaybook
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
             if ($controls.ConsolePane.Visibility -eq "Collapsed") {
@@ -586,7 +600,7 @@ function Show-NcsUiApp {
                 $controls.ConsoleShowButton.Visibility = "Collapsed"
             }
 
-            $request = [NcsActionRequest]::new((ConvertFrom-NcsActionName -ActionName $selectedAction))
+            $request = [NcsActionRequest]::new($selectedPlaybook)
             $request.Site = $controls.SiteTextBox.Text.Trim()
             $request.Host = $controls.HostTextBox.Text.Trim()
             $request.ExtraArgs = $controls.ExtraArgsTextBox.Text.Trim()
