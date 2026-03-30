@@ -55,12 +55,29 @@
           "type": "string"
         },
         "type": {
-          "const": "alert_panel",
           "title": "Type",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "alert_panel",
+            "alert-panel"
+          ]
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -441,12 +458,29 @@
           "type": "string"
         },
         "type": {
-          "const": "grouped_table",
           "title": "Type",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "grouped_table",
+            "grouped-table"
+          ]
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -535,12 +569,29 @@
           "type": "string"
         },
         "type": {
-          "const": "key_value",
           "title": "Type",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "key_value",
+            "key-value"
+          ]
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -555,11 +606,19 @@
           "title": "When"
         },
         "fields": {
-          "items": {
-            "$ref": "#/$defs/KeyValueField"
-          },
           "title": "Fields",
-          "type": "array"
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/KeyValueField"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
         }
       },
       "required": [
@@ -616,7 +675,21 @@
           "type": "string"
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -684,12 +757,29 @@
           "type": "string"
         },
         "type": {
-          "const": "progress_bar",
           "title": "Type",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "progress_bar",
+            "progress-bar"
+          ]
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -863,12 +953,29 @@
           "type": "string"
         },
         "type": {
-          "const": "stat_cards",
           "title": "Type",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "stat_cards",
+            "stat-cards"
+          ]
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -883,11 +990,19 @@
           "title": "When"
         },
         "cards": {
-          "items": {
-            "$ref": "#/$defs/StatCardSpec"
-          },
           "title": "Cards",
-          "type": "array"
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/StatCardSpec"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
         }
       },
       "required": [
@@ -1015,7 +1130,21 @@
           "type": "string"
         },
         "layout": {
-          "$ref": "#/$defs/WidgetLayout"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
         },
         "when": {
           "anyOf": [
@@ -1034,11 +1163,19 @@
           "type": "string"
         },
         "columns": {
-          "items": {
-            "$ref": "#/$defs/TableColumn"
-          },
           "title": "Columns",
-          "type": "array"
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/TableColumn"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
         },
         "rows": {
           "title": "Rows Field",
