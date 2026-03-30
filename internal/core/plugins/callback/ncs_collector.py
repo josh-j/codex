@@ -1032,24 +1032,27 @@ class CallbackModule(CallbackBase):
             "datacenter": "",
         }
 
+        def _safe_dict(val: Any) -> dict:
+            return val if isinstance(val, dict) else {}
+
+        def _safe_list(val: Any) -> list:
+            return val if isinstance(val, list) else []
+
         # Datastores from facts
-        for ds in facts.get("ansible_datastore", []):
+        for ds in _safe_list(facts.get("ansible_datastore")):
             if isinstance(ds, dict):
                 assembled["datastores"].append({
                     "name": ds.get("name", ""), "total": ds.get("total", ""), "free": ds.get("free", ""),
                 })
 
-        def _safe_dict(val: Any) -> dict:
-            return val if isinstance(val, dict) else {}
-
         # Merge NIC info from full payload
         hosts_info = _safe_dict(full_payload.get("hosts_info"))
         if hosts_info:
-            for nic_result in _safe_dict(hosts_info.get("host_nics")).get("results", []):
+            for nic_result in _safe_list(_safe_dict(hosts_info.get("host_nics")).get("results")):
                 if not isinstance(nic_result, dict):
                     continue
                 host_nics = _safe_dict(_safe_dict(nic_result.get("hosts_vmnic_info")).get(hostname))
-                for nic in host_nics.get("vmnic_details", []):
+                for nic in _safe_list(host_nics.get("vmnic_details")):
                     if isinstance(nic, dict):
                         assembled["nics"].append({
                             "device": nic.get("device", ""),
@@ -1060,23 +1063,22 @@ class CallbackModule(CallbackBase):
                         })
 
             # Merge service info from full payload
-            for svc_result in _safe_dict(hosts_info.get("host_services")).get("results", []):
+            for svc_result in _safe_list(_safe_dict(hosts_info.get("host_services")).get("results")):
                 if not isinstance(svc_result, dict):
                     continue
                 host_svcs = _safe_dict(svc_result.get("host_service_info")).get(hostname, [])
-                if isinstance(host_svcs, list):
-                    for svc in host_svcs:
-                        if isinstance(svc, dict):
-                            key = svc.get("key", "")
-                            if key == "TSM-SSH":
-                                assembled["ssh_enabled"] = svc.get("running", False)
-                            elif key == "TSM":
-                                assembled["shell_enabled"] = svc.get("running", False)
-                            elif key == "ntpd":
-                                assembled["ntp_running"] = svc.get("running", False)
+                for svc in _safe_list(host_svcs):
+                    if isinstance(svc, dict):
+                        key = svc.get("key", "")
+                        if key == "TSM-SSH":
+                            assembled["ssh_enabled"] = svc.get("running", False)
+                        elif key == "TSM":
+                            assembled["shell_enabled"] = svc.get("running", False)
+                        elif key == "ntpd":
+                            assembled["ntp_running"] = svc.get("running", False)
 
         # Merge cluster context from full payload
-        for dc_result in _safe_dict(full_payload.get("clusters_info")).get("results", []):
+        for dc_result in _safe_list(_safe_dict(full_payload.get("clusters_info")).get("results")):
             if not isinstance(dc_result, dict):
                 continue
             datacenter = dc_result.get("item", "")
@@ -1084,7 +1086,7 @@ class CallbackModule(CallbackBase):
             if isinstance(clusters, dict):
                 for cluster_name, cluster_data in clusters.items():
                     if isinstance(cluster_data, dict):
-                        for host in cluster_data.get("hosts", []):
+                        for host in _safe_list(cluster_data.get("hosts")):
                             if isinstance(host, dict) and host.get("name") == hostname:
                                 assembled["cluster"] = cluster_name
                                 assembled["datacenter"] = datacenter
