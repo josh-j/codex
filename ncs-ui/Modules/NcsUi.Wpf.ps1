@@ -64,6 +64,10 @@ function Get-NcsXamlControlMap {
         "ExportOutputButton",
         "ConsoleTextBox",
         "ConsoleHintText",
+        "ConsolePane",
+        "ConsoleSplitter",
+        "ConsoleToggleButton",
+        "ConsoleShowButton",
         "StatusTextBlock",
         "ExitCodeTextBlock",
         "DurationTextBlock",
@@ -508,6 +512,18 @@ function Show-NcsUiApp {
         $controls.OperateTabButton.Background = $inactiveBg
         $controls.OperateTabButton.BorderBrush = $inactiveBorder
         $controls.OperateTabButton.Foreground = $inactiveText
+    })
+
+    $controls.ConsoleToggleButton.Add_Click({
+        $controls.ConsolePane.Visibility = "Collapsed"
+        $controls.ConsoleSplitter.Visibility = "Collapsed"
+        $controls.ConsoleShowButton.Visibility = "Visible"
+    })
+
+    $controls.ConsoleShowButton.Add_Click({
+        $controls.ConsolePane.Visibility = "Visible"
+        $controls.ConsoleSplitter.Visibility = "Visible"
+        $controls.ConsoleShowButton.Visibility = "Collapsed"
     })
 
     $controls.PreflightButton.Add_Click({
