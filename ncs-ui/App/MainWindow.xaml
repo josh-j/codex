@@ -537,14 +537,15 @@
                                 <WrapPanel Grid.Row="3" Margin="0,6,0,0">
                                     <Button x:Name="RunButton" Content="Run" />
                                     <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button x:Name="ConsoleShowButton" Content="Console ▸" Style="{StaticResource SecondaryButtonStyle}" Visibility="Collapsed" ToolTip="Show console" />
                                 </WrapPanel>
                             </Grid>
                         </Border>
                     </Grid>
 
-                    <GridSplitter Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" />
+                    <GridSplitter x:Name="ConsoleSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" />
 
-                    <Grid Grid.Column="2">
+                    <Grid x:Name="ConsolePane" Grid.Column="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
@@ -559,6 +560,7 @@
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                         <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
                                         <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
+                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" ToolTip="Collapse console" />
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,4,0,0" Padding="6,3" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}" />
