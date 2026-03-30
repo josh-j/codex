@@ -1305,6 +1305,7 @@ class CallbackModule(CallbackBase):
 
     def _write_yaml(self, path: str, data: dict[str, Any]):
         try:
+            data = self._to_builtin(data)
             dir_ = os.path.dirname(path) or "."
             with tempfile.NamedTemporaryFile("w", dir=dir_, suffix=".tmp", delete=False, encoding="utf-8") as tmp:
                 yaml.dump(data, tmp, Dumper=_IndentedDumper, default_flow_style=False, indent=2)
