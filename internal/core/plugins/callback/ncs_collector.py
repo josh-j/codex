@@ -191,7 +191,22 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
         if not isinstance(schema, dict):
             continue
 
+        # Unwrap config: wrapper (NCS configs nest platform under config:)
+        if "config" in schema and isinstance(schema["config"], dict):
+            schema = {**schema["config"], **{k: v for k, v in schema.items() if k != "config"}}
+
         platform_block = schema.get("platform")
+        if isinstance(platform_block, str) and platform_block:
+            platform_block = {"input_dir": platform_block, "report_dir": platform_block, "name": platform_block.split("/")[0]}
+        elif isinstance(platform_block, dict):
+            # Handle dict form: {path: "linux/photon", render: false}
+            p_path = platform_block.get("path") or platform_block.get("report_dir") or platform_block.get("input_dir") or ""
+            if p_path and "report_dir" not in platform_block:
+                platform_block["report_dir"] = p_path
+            if p_path and "input_dir" not in platform_block:
+                platform_block["input_dir"] = p_path
+            if p_path and "name" not in platform_block:
+                platform_block["name"] = p_path.split("/")[0]
         if not isinstance(platform_block, dict):
             continue
 
@@ -209,6 +224,14 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
 
         if "schema_name" not in platform_block:
             platform_block["schema_name"] = schema.get("name", filename.replace(".yaml", "").replace(".yml", ""))
+
+        # Extract STIG target_types from rule_prefix_to_platform if not already set
+        if "target_types" not in platform_block:
+            stig_cfg = schema.get("stig", {})
+            if isinstance(stig_cfg, dict):
+                r2p = stig_cfg.get("rule_prefix_to_platform", {})
+                if isinstance(r2p, dict) and r2p:
+                    platform_block["target_types"] = sorted(set(r2p.values()))
 
         platforms.append(platform_block)
 
