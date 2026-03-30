@@ -283,7 +283,7 @@ function Show-NcsUiApp {
     $window = [Windows.Markup.XamlReader]::Load($reader)
     $controls = Get-NcsXamlControlMap -Window $window
 
-    $settings = Load-NcsUiSettings
+    $settings = Import-NcsUiSettings
     $state = [pscustomobject]@{
         Settings        = $settings
         PreflightResult = $null
