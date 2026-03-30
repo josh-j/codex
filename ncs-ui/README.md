@@ -82,8 +82,8 @@ The app stores the remote vault file path. If `Password` SSH mode is selected, t
 
 The app uses standard Windows components but some patterns may trigger EDR/AV heuristics. To whitelist in managed environments:
 
-- **Process chain**: `pwsh.exe` spawns `ssh.exe` with `CreateNoWindow` and redirected streams for live console output. This is expected.
-- **WPF assemblies**: The app loads `PresentationFramework`, `PresentationCore`, and `WindowsBase` for the GUI. This is standard WPF usage, not a credential harvesting dialog.
-- **SSH_ASKPASS temp file**: When using Password auth mode, a static `.cmd` file is written to `%TEMP%` that reads a password from a process environment variable. The password itself is never written to disk. Agent or KeyFile auth modes avoid this entirely and are recommended for enterprise use.
+- **Process chain**: `pwsh.exe` spawns `ssh.exe` with redirected streams for live console output. This is expected.
+- **WPF assemblies**: The app loads `PresentationFramework`, `PresentationCore`, and `WindowsBase` for the GUI. This is standard WPF usage.
+- **SSH_ASKPASS**: When using Password auth mode, SSH_ASKPASS points to a bundled `Scripts/askpass.cmd` that reads a password from a process environment variable. No credentials are written to disk. Agent or KeyFile auth modes avoid this entirely and are recommended for enterprise use.
 - **DPAPI credential storage**: `ConvertTo-SecureString`/`ConvertFrom-SecureString` are used to encrypt the SSH password at rest in `%APPDATA%\NcsUi\settings.json`. This is standard Windows credential protection.
 - **Execution policy**: The app does not require `-ExecutionPolicy Bypass`. Use `RemoteSigned` with code-signed scripts for managed deployments.
