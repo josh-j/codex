@@ -23,19 +23,12 @@ function Invoke-NcsSshProbe {
 
     $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand
     $environment = $null
-    $askPassScript = $null
 
     if ($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) {
-        $passEnv = New-NcsSshPasswordEnvironment -Settings $Settings
-        $askPassScript = $passEnv.AskPassScript
-        $environment = $passEnv.Environment
+        $environment = New-NcsSshPasswordEnvironment -Settings $Settings
     }
 
-    try {
-        return Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment $environment
-    } finally {
-        Remove-NcsAskPassScript -Path $askPassScript
-    }
+    return Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment $environment
 }
 
 function Test-NcsRemotePreflight {

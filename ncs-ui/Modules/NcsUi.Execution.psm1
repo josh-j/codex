@@ -377,7 +377,6 @@ function Start-NcsRemoteCommand {
         $process.remove_ErrorDataReceived($outputHandler)
         $process.remove_Exited($completedHandler)
         $process.Dispose()
-        Remove-NcsAskPassScript -Path $askPassScript
 
         if ($OnCompleted) {
             & $OnCompleted $result
@@ -394,16 +393,14 @@ function Start-NcsRemoteCommand {
         $process.BeginOutputReadLine()
         $process.BeginErrorReadLine()
     } catch {
-        Remove-NcsAskPassScript -Path $askPassScript
         $process.Dispose()
         throw
     }
 
     return [pscustomobject]@{
-        Process        = $process
-        RemoteCommand  = $remoteCommand
-        StartedAt      = $startedAt
-        AskPassScript  = $askPassScript
+        Process       = $process
+        RemoteCommand = $remoteCommand
+        StartedAt     = $startedAt
     }
 }
 
@@ -416,7 +413,6 @@ function Stop-NcsRemoteCommand {
     if ($Handle.Process -and -not $Handle.Process.HasExited) {
         $Handle.Process.Kill($true)
     }
-    Remove-NcsAskPassScript -Path $Handle.AskPassScript
 }
 
 function Invoke-NcsAction {
@@ -498,4 +494,4 @@ function Invoke-NcsRecentLogs {
     Invoke-NcsAction -Settings $Settings -Request $request -OnOutput $OnOutput -OnCompleted $OnCompleted
 }
 
-Export-ModuleMember -Function ConvertTo-NcsBashLiteral, ConvertTo-NcsRemotePathExpression, Get-NcsSshArgumentList, Invoke-NcsToolCommand, New-NcsAskPassScript, New-NcsSshPasswordEnvironment, Remove-NcsAskPassScript, Resolve-NcsActionCommand, Get-NcsRemoteShellCommand, Start-NcsRemoteCommand, Stop-NcsRemoteCommand, Invoke-NcsAction, Invoke-NcsRunAll, Invoke-NcsRunSite, Invoke-NcsRunHost, Invoke-NcsRunVcenter, Invoke-NcsDryRun, Invoke-NcsDebug, Invoke-NcsInventoryPreview, Invoke-NcsInventoryHost, Invoke-NcsRecentLogs
+Export-ModuleMember -Function ConvertTo-NcsBashLiteral, ConvertTo-NcsRemotePathExpression, Get-NcsSshArgumentList, Invoke-NcsToolCommand, New-NcsSshPasswordEnvironment, Resolve-NcsActionCommand, Get-NcsRemoteShellCommand, Start-NcsRemoteCommand, Stop-NcsRemoteCommand, Invoke-NcsAction, Invoke-NcsRunAll, Invoke-NcsRunSite, Invoke-NcsRunHost, Invoke-NcsRunVcenter, Invoke-NcsDryRun, Invoke-NcsDebug, Invoke-NcsInventoryPreview, Invoke-NcsInventoryHost, Invoke-NcsRecentLogs
