@@ -69,14 +69,14 @@ Settings are stored per-user under:
 Stored values include:
 
 - SSH host, port, username, and auth mode
-- SSH key path or password depending on the selected auth mode
+- SSH key path (if KeyFile auth mode is selected)
 - remote repo path
 - remote vault path
 - default site
 - default Ansible host
 - last selected action
 
-The app stores the remote vault file path. If `Password` SSH mode is selected, the SSH password is encrypted at rest using Windows DPAPI (tied to the current user account). Legacy plaintext passwords from older settings files are migrated automatically on the next save. The settings file should still be treated as sensitive.
+Passwords are never stored to disk. If `Password` SSH mode is selected, the password must be re-entered each session.
 
 ## Enterprise Deployment Notes
 
@@ -85,5 +85,5 @@ The app uses standard Windows components but some patterns may trigger EDR/AV he
 - **Process chain**: `pwsh.exe` spawns `ssh.exe` with redirected streams for live console output. This is expected.
 - **WPF assemblies**: The app loads `PresentationFramework`, `PresentationCore`, and `WindowsBase` for the GUI. This is standard WPF usage.
 - **SSH_ASKPASS**: When using Password auth mode, SSH_ASKPASS points to a bundled `Scripts/askpass.cmd` that reads a password from a process environment variable. No credentials are written to disk. Agent or KeyFile auth modes avoid this entirely and are recommended for enterprise use.
-- **DPAPI credential storage**: `ConvertTo-SecureString`/`ConvertFrom-SecureString` are used to encrypt the SSH password at rest in `%APPDATA%\NcsUi\settings.json`. This is standard Windows credential protection.
+- **No credential storage**: Passwords are never persisted. They live in memory only for the duration of the session.
 - **Execution policy**: The app does not require `-ExecutionPolicy Bypass`. Use `RemoteSigned` with code-signed scripts for managed deployments.
