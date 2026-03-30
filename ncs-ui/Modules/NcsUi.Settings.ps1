@@ -1,7 +1,9 @@
 Set-StrictMode -Version Latest
 
+$script:NcsProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+
 function Get-NcsUiConfigDefaultsPath {
-    $moduleRoot = Split-Path -Parent $PSScriptRoot
+    $moduleRoot = $script:NcsProjectRoot
     return Join-Path -Path $moduleRoot -ChildPath "Config/default-settings.json"
 }
 
@@ -106,5 +108,3 @@ function Save-NcsUiSettings {
 
     Set-Content -LiteralPath (Get-NcsUiSettingsPath) -Value $payload -Encoding UTF8
 }
-
-Export-ModuleMember -Function ConvertTo-NcsUiSettings, Get-NcsUiConfigDefaultsPath, Get-NcsUiSettingsDirectory, Get-NcsUiSettingsPath, New-NcsUiSettings, Import-NcsUiSettings, Save-NcsUiSettings
