@@ -378,252 +378,292 @@
     <Border Background="#0f1117" BorderBrush="#2c3038" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="64" />
+                <RowDefinition Height="48" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="28" />
             </Grid.RowDefinitions>
 
             <Border x:Name="TitleBarDragRegion" Grid.Row="0" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,0,0,1">
-                <Grid Margin="16,12,12,12">
+                <Grid Margin="14,0,8,0">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="12" Height="12" Background="{StaticResource AccentBrush}" CornerRadius="6" Margin="0,0,10,0" />
-                        <StackPanel>
-                            <TextBlock x:Name="TitleBarTitleText" Text="NCS UI" Foreground="White" FontSize="14" FontWeight="Bold" />
-                            <TextBlock x:Name="TitleBarSubtitleText" Text="Operate and configure" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
-                        </StackPanel>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="10" Height="10" Background="{StaticResource AccentBrush}" CornerRadius="5" Margin="0,0,8,0" />
+                        <TextBlock x:Name="TitleBarTitleText" Text="NCS UI" Foreground="White" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
-                    <Border Grid.Column="1" Margin="18,0,0,0" Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="16" Padding="12,6" VerticalAlignment="Center">
-                        <TextBlock x:Name="SetupSummaryText" Text="Settings incomplete" Foreground="{StaticResource TextBrush}" FontSize="11" FontWeight="SemiBold" />
-                    </Border>
-                    <Border
-                        x:Name="RunStateBorder"
-                        Grid.Column="2"
-                        Margin="10,0,0,0"
-                        Background="#1e2228"
-                        BorderBrush="#2c3038"
-                        BorderThickness="1"
-                        CornerRadius="16"
-                        Padding="12,6"
-                        VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="State" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="TitleBarRunStateText" Visibility="Collapsed" Text="Idle" />
-                            <TextBlock x:Name="RunMetaText" Margin="8,0,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Text="No run yet." VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                    <WrapPanel Grid.Column="3" VerticalAlignment="Center" Margin="18,0,0,0">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="12,4" FontSize="11" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="0,0,4,0" />
+                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="12,4" FontSize="11" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
+                    </StackPanel>
+                    <Border Grid.Column="2" Background="Transparent" />
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="MinimizeWindowButton" Content="-" Style="{StaticResource TitleBarButtonStyle}" />
                         <Button x:Name="MaximizeWindowButton" Content="□" Style="{StaticResource TitleBarButtonStyle}" />
                         <Button x:Name="CloseWindowButton" Content="X" Style="{StaticResource TitleBarButtonStyle}" />
-                    </WrapPanel>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Margin="10,8,10,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
-                    <TabControl>
-                        <TabItem Header="Operate">
-                            <Grid Margin="0,6,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="300" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+            <Grid Grid.Row="1" Margin="10,8,10,4">
+                <Grid x:Name="OperatePanel" Visibility="Visible">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="280" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="400" MinWidth="250" />
+                    </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0" Margin="0,0,14,0">
-                                    <Border Style="{StaticResource StatusCardStyle}">
-                                        <StackPanel>
-                                            <DockPanel Margin="0,0,0,6">
-                                                <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="10" Padding="8,3">
-                                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="11" FontWeight="SemiBold" />
-                                                </Border>
-                                            </DockPanel>
-                                            <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,8" Text="Preflight has not been run." Foreground="{StaticResource TextMutedBrush}" FontSize="12" TextWrapping="Wrap" />
-                                            <Button x:Name="PreflightButton" Content="Run Preflight" MinWidth="100" />
-                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,8,0,0">
-                                                <Expander.Header>
-                                                    <TextBlock Text="Check Details" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                                </Expander.Header>
-                                                <ListBox x:Name="PreflightListBox" Margin="0,8,0,0" MaxHeight="180" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
-                                            </Expander>
-                                        </StackPanel>
-                                    </Border>
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                                    <Border Style="{StaticResource StatusCardStyle}">
-                                        <StackPanel>
-                                            <TextBlock Text="Action" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4" />
-                                            <TextBlock x:Name="ActionSummaryText" Text="" Foreground="{StaticResource TextBrush}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2" TextWrapping="Wrap" />
-                                            <TextBlock x:Name="ScopeRequirementText" Text="" Foreground="{StaticResource InfoBrush}" FontSize="11" Margin="0,0,0,6" TextWrapping="Wrap" />
-                                            <ComboBox x:Name="ActionComboBox" />
-                                            <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
-                                            <TextBox x:Name="SiteTextBox" />
-                                            <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
-                                            <TextBox x:Name="HostTextBox" />
-                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                                <Expander.Header>
-                                                    <TextBlock Text="Advanced" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                                </Expander.Header>
-                                                <StackPanel Margin="0,8,0,0">
-                                                    <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
-                                                    <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto" />
-                                                </StackPanel>
-                                            </Expander>
-                                            <WrapPanel Margin="0,8,0,0">
-                                                <Button x:Name="RunButton" Content="Run" />
-                                                <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
-                                            </WrapPanel>
-                                        </StackPanel>
+                        <Border Grid.Row="0" Style="{StaticResource StatusCardStyle}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,4">
+                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                    <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="10" Padding="8,2">
+                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="10" FontWeight="SemiBold" />
                                     </Border>
+                                </DockPanel>
+                                <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,6" Text="Run preflight to validate." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                                <DockPanel>
+                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="10,4" FontSize="11" />
+                                </DockPanel>
+                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,6,0,0">
+                                    <Expander.Header>
+                                        <TextBlock Text="Details" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                    </Expander.Header>
+                                    <ListBox x:Name="PreflightListBox" Margin="0,4,0,0" MaxHeight="160" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                                </Expander>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Style="{StaticResource StatusCardStyle}" Margin="0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="Action" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+
+                                <TreeView x:Name="ActionTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" Padding="0">
+                                    <TreeView.Resources>
+                                        <Style TargetType="TreeViewItem">
+                                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                            <Setter Property="FontSize" Value="12" />
+                                            <Setter Property="Padding" Value="4,3" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="IsExpanded" Value="True" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="TreeViewItem">
+                                                        <StackPanel>
+                                                            <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}" Margin="0,1">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="14" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                                                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
+                                                                </Grid>
+                                                            </Border>
+                                                            <ItemsPresenter x:Name="ItemsHost" Margin="14,0,0,0" Visibility="Collapsed" />
+                                                        </StackPanel>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="HasItems" Value="True">
+                                                                <Setter TargetName="Glyph" Property="Text" Value="▸" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsExpanded" Value="True">
+                                                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                                                                <Setter TargetName="Glyph" Property="Text" Value="▾" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="ItemBorder" Property="Background" Value="#1f3326" />
+                                                            </Trigger>
+                                                            <MultiTrigger>
+                                                                <MultiTrigger.Conditions>
+                                                                    <Condition Property="IsMouseOver" Value="True" />
+                                                                    <Condition Property="IsSelected" Value="False" />
+                                                                </MultiTrigger.Conditions>
+                                                                <Setter TargetName="ItemBorder" Property="Background" Value="#1a1f27" />
+                                                            </MultiTrigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </TreeView.Resources>
+                                    <TreeViewItem Header="Run" IsExpanded="True">
+                                        <TreeViewItem Header="All" Tag="RunAll" />
+                                        <TreeViewItem Header="Site" Tag="RunSite" />
+                                        <TreeViewItem Header="Host" Tag="RunHost" />
+                                        <TreeViewItem Header="vCenter" Tag="RunVcenter" />
+                                    </TreeViewItem>
+                                    <TreeViewItem Header="Inspect" IsExpanded="True">
+                                        <TreeViewItem Header="Dry Run" Tag="DryRun" />
+                                        <TreeViewItem Header="Debug" Tag="Debug" />
+                                        <TreeViewItem Header="Inventory" Tag="InventoryPreview" />
+                                        <TreeViewItem Header="Inventory Host" Tag="InventoryHost" />
+                                        <TreeViewItem Header="Recent Logs" Tag="RecentLogs" />
+                                    </TreeViewItem>
+                                </TreeView>
+
+                                <StackPanel Grid.Row="2" Margin="0,6,0,0">
+                                    <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                    <TextBox x:Name="SiteTextBox" />
+                                    <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                    <TextBox x:Name="HostTextBox" />
+                                    <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
+                                        <Expander.Header>
+                                            <TextBlock Text="Advanced" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                        </Expander.Header>
+                                        <StackPanel Margin="0,4,0,0">
+                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
+                                        </StackPanel>
+                                    </Expander>
                                 </StackPanel>
 
-                                <Grid Grid.Column="1">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10,10,0,0" Padding="12,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Command" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                            <TextBox x:Name="CommandPreviewTextBox" Grid.Column="1" IsReadOnly="True" TextWrapping="NoWrap" Background="Transparent" BorderThickness="0" Margin="0" Padding="0" FontFamily="Consolas" FontSize="12" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                                                <TextBlock x:Name="CommandReadinessText" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="Live preview" Margin="0,0,8,0" />
-                                                <TextBlock x:Name="ConsoleHintText" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Text="" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-
-                                    <TextBox
-                                        x:Name="ConsoleTextBox"
-                                        Grid.Row="1"
-                                        FontFamily="Consolas"
-                                        FontSize="12"
-                                        IsReadOnly="True"
-                                        AcceptsReturn="True"
-                                        TextWrapping="Wrap"
-                                        VerticalScrollBarVisibility="Auto"
-                                        HorizontalScrollBarVisibility="Auto"
-                                        Background="#0d1015"
-                                        Foreground="#d8dce2"
-                                        CaretBrush="#d8dce2"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1,0,1,1" />
-
-                                    <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,10,10" Padding="8,6">
-                                        <DockPanel>
-                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="60" Padding="8,4" FontSize="11" />
-                                                <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="60" Padding="8,4" FontSize="11" />
-                                            </StackPanel>
-                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
-                                                <Expander.Header>
-                                                    <TextBlock Text="Detected Paths" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
-                                                </Expander.Header>
-                                                <ListBox x:Name="DetectedPathsListBox" Margin="0,6,0,0" MaxHeight="120" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
-                                            </Expander>
-                                        </DockPanel>
-                                    </Border>
-                                </Grid>
+                                <WrapPanel Grid.Row="3" Margin="0,6,0,0">
+                                    <Button x:Name="RunButton" Content="Run" />
+                                    <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
+                                </WrapPanel>
                             </Grid>
-                        </TabItem>
+                        </Border>
+                    </Grid>
 
-                        <TabItem Header="Settings">
-                            <ScrollViewer Margin="0,6,0,0" VerticalScrollBarVisibility="Auto">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                    <GridSplitter Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" />
 
-                                    <Border Grid.Column="0" Style="{StaticResource StatusCardStyle}" Margin="0,0,10,16">
-                                        <StackPanel>
-                                            <TextBlock Text="Connection" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                            <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0" />
-                                            <TextBox x:Name="SshHostTextBox" />
-                                            <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBox x:Name="SshUserTextBox" />
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="140" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                                    <TextBlock Text="Port" Foreground="{StaticResource TextMutedBrush}" />
-                                                    <TextBox x:Name="SshPortTextBox" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="Auth" Foreground="{StaticResource TextMutedBrush}" />
-                                                    <ComboBox x:Name="SshAuthModeComboBox" />
-                                                </StackPanel>
-                                            </Grid>
-                                            <StackPanel x:Name="SshKeyPathPanel">
-                                                <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
-                                                <TextBox x:Name="SshKeyPathTextBox" />
-                                            </StackPanel>
-                                            <StackPanel x:Name="SshPasswordPanel">
-                                                <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />
-                                                <PasswordBox x:Name="SshPasswordBox" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                                    <Border Grid.Column="1" Style="{StaticResource StatusCardStyle}" Margin="10,0,0,16">
-                                        <StackPanel>
-                                            <TextBlock Text="Defaults" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
-                                            <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" Margin="0,12,0,0" />
-                                            <TextBox x:Name="RemoteRepoPathTextBox" />
-                                            <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBox x:Name="RemoteVaultPathTextBox" />
-                                            <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBox x:Name="DefaultSiteTextBox" />
-                                            <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
-                                            <TextBox x:Name="DefaultHostTextBox" />
-                                            <WrapPanel Margin="0,12,0,0">
-                                                <Button x:Name="SaveSettingsButton" Content="Save Settings" />
-                                            </WrapPanel>
-                                        </StackPanel>
-                                    </Border>
-                                </Grid>
-                            </ScrollViewer>
-                        </TabItem>
-                    </TabControl>
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="10,6">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Left" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
+                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="8,2" FontSize="10" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,4,0,0" Padding="6,3" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" />
+
+                        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="8,4">
+                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
+                                <Expander.Header>
+                                    <TextBlock Text="Detected Paths" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                </Expander.Header>
+                                <ListBox x:Name="DetectedPathsListBox" Margin="0,4,0,0" MaxHeight="100" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
+                            </Expander>
+                        </Border>
+                    </Grid>
                 </Grid>
 
-                <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Margin="0,6,0,0" Padding="10,6">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="StatusTextBlock" Text="Ready to configure." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                            <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,4,0" />
-                            <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="11" FontWeight="SemiBold" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                            <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,4,0" />
-                            <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="11" FontWeight="SemiBold" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                <Grid x:Name="SettingsPanel" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource StatusCardStyle}" Margin="0,0,10,10">
+                                <StackPanel>
+                                    <TextBlock Text="Connection" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                    <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" Margin="0,10,0,0" />
+                                    <TextBox x:Name="SshHostTextBox" />
+                                    <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="SshUserTextBox" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                            <TextBlock Text="Port" Foreground="{StaticResource TextMutedBrush}" />
+                                            <TextBox x:Name="SshPortTextBox" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Auth" Foreground="{StaticResource TextMutedBrush}" />
+                                            <ComboBox x:Name="SshAuthModeComboBox" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel x:Name="SshKeyPathPanel">
+                                        <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
+                                        <TextBox x:Name="SshKeyPathTextBox" />
+                                    </StackPanel>
+                                    <StackPanel x:Name="SshPasswordPanel">
+                                        <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />
+                                        <PasswordBox x:Name="SshPasswordBox" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource StatusCardStyle}" Margin="10,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="Defaults" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+                                    <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" Margin="0,10,0,0" />
+                                    <TextBox x:Name="RemoteRepoPathTextBox" />
+                                    <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="RemoteVaultPathTextBox" />
+                                    <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="DefaultSiteTextBox" />
+                                    <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="DefaultHostTextBox" />
+                                    <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
+
+            <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="12,0">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" />
+                    <Border Grid.Column="1" Width="1" Height="14" Background="#2c3038" Margin="10,0" VerticalAlignment="Center" />
+                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="8" Padding="8,2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunMetaText" Margin="6,0,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,4,0" />
+                        <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,4,0" />
+                        <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </Window>
