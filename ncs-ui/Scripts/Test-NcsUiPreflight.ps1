@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $moduleRoot = Join-Path -Path $projectRoot -ChildPath "Modules"
 
-Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Types.psm1") -Force
+. (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Types.psm1")
 Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Settings.psm1") -Force
 Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Execution.psm1") -Force
 Import-Module (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Preflight.psm1") -Force

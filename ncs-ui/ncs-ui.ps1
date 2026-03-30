@@ -7,8 +7,9 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $moduleRoot = Join-Path -Path $projectRoot -ChildPath "Modules"
 
+. (Join-Path -Path $moduleRoot -ChildPath "NcsUi.Types.psm1")
+
 $modules = @(
-    "NcsUi.Types.psm1",
     "NcsUi.Settings.psm1",
     "NcsUi.Execution.psm1",
     "NcsUi.Preflight.psm1",
