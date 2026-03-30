@@ -39,8 +39,25 @@ VM_DATA_KEYS = _extract_set_fact_keys(
     "vmware_raw_vm",
 )
 
+# Hardcoded because discover.yaml's set_fact is inside a block (not
+# top-level), so _extract_set_fact_keys can't reach it.  Keep in sync
+# with internal.linux.ubuntu tasks/discover.yaml → ubuntu_raw_discovery.
 LINUX_DATA_KEYS: set[str] = {
-    "ansible_facts",
+    "hostname",
+    "ip_address",
+    "kernel",
+    "os_family",
+    "distribution",
+    "distribution_version",
+    "uptime_seconds",
+    "load_avg_15m",
+    "memory_total_mb",
+    "memory_free_mb",
+    "swap_total_mb",
+    "swap_free_mb",
+    "getent_passwd",
+    "epoch_seconds",
+    "mounts",
     "failed_services",
     "shadow_raw",
     "sshd_raw",

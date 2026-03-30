@@ -238,8 +238,8 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
         ]
         load_avg = 0.4
 
-    # ansible.builtin.command shape: {stdout_lines, rc, ...}
-    # ansible.builtin.stat shape: {stat: {exists, path, ...}}
+    # Flat payload matching discover.yaml's ubuntu_raw_discovery set_fact.
+    # The Ansible task flattens ansible_facts into individual keys.
     return {
         "raw_ubuntu": {
             "metadata": {
@@ -249,41 +249,34 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
                 "engine": "ncs_collector_callback",
             },
             "data": {
-                # ansible.builtin.setup — ansible_facts keys stored without ansible_ prefix
-                "ansible_facts": {
-                    "hostname": hostname,
-                    "default_ipv4": {"address": ip},
-                    "kernel": "6.8.0-48-generic",
-                    "os_family": "Debian",
-                    "distribution": "Ubuntu",
-                    "distribution_version": "24.04",
-                    "uptime_seconds": uptime_seconds,
-                    "loadavg": {"15m": load_avg},
-                    "memtotal_mb": 32768,
-                    "memfree_mb": memfree_mb,
-                    "swaptotal_mb": 8192,
-                    "swapfree_mb": 7372,
-                    "mounts": mounts,
-                    "getent_passwd": {
-                        "root": ["x", "0", "0", "root", "/root", "/bin/bash"],
-                        "ubuntu": ["x", "1000", "1000", "Ubuntu", "/home/ubuntu", "/bin/bash"],
-                        "syslog": ["x", "104", "110", "", "/home/syslog", "/usr/sbin/nologin"],
-                        "deploy": ["x", "1001", "1001", "deploy", "/home/deploy", "/bin/bash"],
-                    },
-                    "date_time": {"epoch": str(int(time.time()))},
+                # System identity (flattened from ansible_facts)
+                "hostname": hostname,
+                "ip_address": ip,
+                "kernel": "6.8.0-48-generic",
+                "os_family": "Debian",
+                "distribution": "Ubuntu",
+                "distribution_version": "24.04",
+                "uptime_seconds": float(uptime_seconds),
+                "load_avg_15m": float(load_avg),
+                # Memory
+                "memory_total_mb": 32768.0,
+                "memory_free_mb": float(memfree_mb),
+                "swap_total_mb": 8192.0,
+                "swap_free_mb": 7372.0,
+                # Security
+                "getent_passwd": {
+                    "root": ["x", "0", "0", "root", "/root", "/bin/bash"],
+                    "ubuntu": ["x", "1000", "1000", "Ubuntu", "/home/ubuntu", "/bin/bash"],
+                    "syslog": ["x", "104", "110", "", "/home/syslog", "/usr/sbin/nologin"],
+                    "deploy": ["x", "1001", "1001", "deploy", "/home/deploy", "/bin/bash"],
                 },
-                # ansible.builtin.command: {stdout_lines, rc}
+                "epoch_seconds": float(int(time.time())),
+                # Raw mounts
+                "mounts": mounts,
+                # Command output
                 "failed_services": {
                     "stdout_lines": failed_svc_lines,
                     "rc": 0,
-                },
-                "apt_simulate": {
-                    "stdout_lines": apt_lines,
-                    "rc": 0,
-                },
-                # ansible.builtin.stat: {stat: {exists, path}}
-                "reboot_stat": {
-                    "stat": {"exists": reboot_exists, "path": "/var/run/reboot-required"},
                 },
                 "shadow_raw": {
                     "stdout_lines": [
@@ -317,6 +310,13 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
                 },
                 "world_writable": {
                     "stdout_lines": world_writable,
+                    "rc": 0,
+                },
+                "reboot_stat": {
+                    "stat": {"exists": reboot_exists, "path": "/var/run/reboot-required"},
+                },
+                "apt_simulate": {
+                    "stdout_lines": apt_lines,
                     "rc": 0,
                 },
                 "file_stats": {
@@ -645,6 +645,21 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
     _appl["time"]["time_sync"]["mode"] = "NTP"
     _appl["time"]["time_sync"]["servers"] = ["time.google.com"]
 
+    # Extract flat values from the appliance_health_info structure built above.
+    _appl = appliance_health_info.get("appliance", {})
+    _health = _appl.get("summary", {}).get("health", {})
+    _access = _appl.get("access", {})
+    _time_sync = _appl.get("time", {}).get("time_sync", {})
+
+    # Pre-computed flat cluster data (matches assemble.yaml output).
+    flat_clusters = [
+        {"name": "Prod-Cluster-01", "datacenter": "DC-Production", "host_count": 3,
+         "ha_enabled": True, "drs_enabled": True, "cpu_usage_pct": 25.0, "mem_usage_pct": 66.7},
+        {"name": "DR-Cluster-01", "datacenter": "DC-Production", "host_count": 1,
+         "ha_enabled": False, "drs_enabled": False, "cpu_usage_pct": 6.2, "mem_usage_pct": 12.5},
+    ]
+    esxi_host_count = 4
+
     return {
         "raw_vcsa": {
             "metadata": {
@@ -654,106 +669,51 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 "engine": "ncs_collector_callback",
             },
             "data": {
-                "appliance_health_info": appliance_health_info,
-                "appliance_backup_info": {"schedules": backup_schedules},
-                "datacenters_info": {
-                    # vmware.vmware_rest.vcenter_datacenter_info returns datacenter_info list
-                    "datacenter_info": [
-                        {
-                            "name": "DC-Production",
-                            "moid": "datacenter-1",
-                            "config_status": "green",
-                            "overall_status": "green",
-                        },
-                        {"name": "DC-DR", "moid": "datacenter-2", "config_status": "green", "overall_status": "green"},
-                    ]
-                },
-                "clusters_info": {
-                    # Ansible loop result shape: results list, one entry per datacenter
-                    # Each entry has the cluster_info module output at top level
-                    "results": [
-                        {
-                            "item": "DC-Production",
-                            "clusters": {
-                                "Prod-Cluster-01": {
-                                    "datacenter": "DC-Production",
-                                    "drs_enabled": True,
-                                    "drs_default_vm_behavior": "fullyAutomated",
-                                    "drs_vmotion_rate": 3,
-                                    "dpm_enabled": False,
-                                    "ha_enabled": True,
-                                    "ha_admission_control_enabled": True,
-                                    "ha_failover_level": 1,
-                                    "ha_host_monitoring": "enabled",
-                                    "ha_vm_monitoring": "vmMonitoringDisabled",
-                                    "moid": "domain-c10",
-                                    "vsan_enabled": False,
-                                    "hosts": [
-                                        {"name": "esxi01.corp.local", "folder": "/DC-Production/host/Prod-Cluster-01"},
-                                        {"name": "esxi02.corp.local", "folder": "/DC-Production/host/Prod-Cluster-01"},
-                                        {"name": "esxi03.corp.local", "folder": "/DC-Production/host/Prod-Cluster-01"},
-                                    ],
-                                    "resource_summary": {
-                                        "cpuCapacityMHz": 192000,
-                                        "cpuUsedMHz": 48000,
-                                        "memCapacityMB": 786432,
-                                        "memUsedMB": 524288,
-                                        "storageCapacityMB": 76800000,
-                                        "storageUsedMB": 25600000,
-                                    },
-                                    "tags": [],
-                                },
-                                "DR-Cluster-01": {
-                                    "datacenter": "DC-Production",
-                                    "drs_enabled": False,
-                                    "drs_default_vm_behavior": "manual",
-                                    "drs_vmotion_rate": 3,
-                                    "dpm_enabled": False,
-                                    "ha_enabled": False,
-                                    "ha_admission_control_enabled": False,
-                                    "ha_failover_level": 1,
-                                    "ha_host_monitoring": "disabled",
-                                    "ha_vm_monitoring": "vmMonitoringDisabled",
-                                    "moid": "domain-c20",
-                                    "vsan_enabled": False,
-                                    "hosts": [
-                                        {"name": "esxi04.corp.local", "folder": "/DC-Production/host/DR-Cluster-01"},
-                                    ],
-                                    "resource_summary": {
-                                        "cpuCapacityMHz": 64000,
-                                        "cpuUsedMHz": 4000,
-                                        "memCapacityMB": 262144,
-                                        "memUsedMB": 32768,
-                                        "storageCapacityMB": 20480000,
-                                        "storageUsedMB": 2048000,
-                                    },
-                                    "tags": [],
-                                },
-                            },
-                        },
-                    ],
-                },
-                "datastores_info": {"datastores": datastores},
-                "vms_info": {"virtual_machines": vms},
-                "snapshots_info": {"snapshots": snapshots},
-                # internal.vmware.vmware_triggered_alarms_info returns {alarms, count, python}
-                # — no payload wrapper
-                "alarms_info": {
-                    "alarms": alarms,
-                    "count": len(alarms),
-                    "python": "/usr/bin/python3",
-                },
-                "resource_pools_info": {"resource_pool_info": []},
-                "dvswitches_info": {"distributed_virtual_switches": []},
-                "dvs_portgroups_info": {"dvs_portgroup_info": []},
-                "licenses_info": {"licenses": []},
-                "extensions_info": {"ext_facts": []},
-                "content_libraries_info": {"content_libs": []},
-                "tag_categories_info": {"tag_category_info": []},
-                "tags_info": {"tag_info": []},
+                # Appliance health (flattened from appliance_info module output)
+                "appliance_version": _appl.get("summary", {}).get("version", "unknown"),
+                "appliance_build": _appl.get("summary", {}).get("build_number", "unknown"),
+                "appliance_health_overall": _health.get("overall", "gray"),
+                "appliance_health_cpu": _health.get("cpu", "gray"),
+                "appliance_health_memory": _health.get("memory", "gray"),
+                "appliance_health_database": _health.get("database", "gray"),
+                "appliance_health_storage": _health.get("storage", "gray"),
+                "appliance_uptime_seconds": float(_appl.get("summary", {}).get("uptime", 0)),
+                "ssh_enabled": bool(_access.get("ssh", False)),
+                "shell_enabled": _access.get("shell", {}).get("enabled", "False") in (True, "True"),
+                "ntp_mode": _time_sync.get("mode", "unknown"),
+                "ntp_servers": _time_sync.get("servers", []),
+                # Backup
+                "backup_schedules": backup_schedules,
+                "backup_schedule_count": len(backup_schedules),
+                # Infrastructure counts
+                "vcenter_count": 1,
+                "datacenter_count": 2,
+                "cluster_count": len(flat_clusters),
+                "esxi_host_count": esxi_host_count,
+                "datastore_count": len(datastores),
+                "resource_pool_count": 0,
+                "dvswitch_count": 0,
+                "dvs_portgroup_count": 0,
+                "license_count": 0,
+                "extension_count": 0,
+                "content_library_count": 0,
+                "tag_category_count": 0,
+                "tag_count": 0,
+                "alarm_count": len(alarms),
+                # Lists
+                "clusters": flat_clusters,
+                "datastores": datastores,
+                "resource_pools": [],
+                "dvswitches": [],
+                "dvs_portgroups": [],
+                "licenses": [],
+                "extensions": [],
+                "content_libraries": [],
+                "tag_categories": [],
+                "tags": [],
+                "active_alarms": alarms,
+                # Config
                 "config": {"infrastructure_vm_patterns": ["^vCenter$", "^ESXi-.*$"]},
-                "collection_status": "SUCCESS",
-                "collection_error": "",
             },
         }
     }

@@ -24,12 +24,10 @@
 #   - id: disk_critical
 #     when: disks | selectattr('used_pct', 'ge', 95.0) | list | length > 0
 #     msg: "One or more filesystems critically full"
-#     action: >-
-#       ansible-playbook playbooks/core/send_alert_email.yml
-#       -e alert_id=disk_critical
-#       -e alert_severity=CRITICAL
-#       -e alert_host={{ inventory_hostname }}
-#       -e 'alert_msg={{ msg }}'
+#     action:
+#       playbook: playbooks/core/send_alert_email.yml
+#     # alert_id, alert_severity, alert_host, alert_msg are auto-injected.
+#     # Run with: ncs-reporter fire-on-alerts -i raw_linux.yaml -C /opt/ncs
 
 - name: "Send alert email notification"
   hosts: localhost

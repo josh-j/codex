@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/report_schema.json
 config:
   display_name: "VMware VM"
   platform: vmware/vm
@@ -18,19 +19,18 @@ config:
 
 vars:
   # All raw_vm.data.* fields are auto-imported from the collector payload.
-  # Only scripts, computes, and metadata need explicit declaration.
-  collected_at: "raw_vm.metadata.timestamp"
+  # Only scripts and computes need explicit declaration.
 
   virtual_machines:
     script:
-      path: "get_vms_list.py"
+      run: "get_vms_list.py"
       args:
         exclude_patterns: "{{ infra_patterns }}"
     type: list
 
   snapshots:
     script:
-      path: "normalize_snapshots.py"
+      run: "normalize_snapshots.py"
       args:
         mode: list
         age_days: 7
@@ -41,7 +41,7 @@ vars:
 
   aged_snapshot_count:
     script:
-      path: "normalize_snapshots.py"
+      run: "normalize_snapshots.py"
       args:
         mode: count
         age_days: 7

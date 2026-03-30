@@ -10,7 +10,7 @@ from ncs_reporter.alerts import compute_audit_rollups
 from ncs_reporter.models.report_schema import ReportSchema
 from ncs_reporter.primitives import canonical_severity
 
-from ._when import eval_compute, eval_expression, evaluate_when, _parse_iso  # noqa: F401
+from ._when import _build_jinja_env, eval_compute, eval_expression, evaluate_when, _parse_iso  # noqa: F401
 from ._fields import (
     _BUILTIN_SCRIPTS_DIR,  # noqa: F401
     _SCRIPT_ERROR_SENTINEL,
@@ -27,6 +27,15 @@ from ._fields import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _metadata_path(path_prefix: str) -> str:
+    """Derive the ``metadata.timestamp`` path from a ``path_prefix``.
+
+    Convention: ``raw_<name>.data`` → ``raw_<name>.metadata.timestamp``.
+    Works for any nesting depth (strips the rightmost ``.data`` segment).
+    """
+    return path_prefix.rsplit(".data", 1)[0] + ".metadata.timestamp"
 
 
 def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
@@ -49,6 +58,10 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
         prefix_data = resolve_field(schema.path_prefix, raw)
         if isinstance(prefix_data, dict):
             result.update(prefix_data)
+        # Auto-inject collected_at from metadata.timestamp
+        ts = resolve_field(_metadata_path(schema.path_prefix), raw)
+        if ts and "collected_at" not in result:
+            result["collected_at"] = ts
 
     # Set of field names whose paths are known-broken (populated at schema load
     # time by schema_loader._attach_broken_paths).  Empty if no example file.
@@ -132,9 +145,9 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
 
 def _extract_when_refs(expression: str) -> list[str]:
     """Extract field names referenced in a when expression."""
-    from jinja2 import Environment, meta
+    from jinja2 import meta
     try:
-        ast = Environment().parse("{{ " + expression + " }}")
+        ast = _build_jinja_env().parse("{{ " + expression + " }}")
         return sorted(meta.find_undeclared_variables(ast))
     except Exception:
         return []
@@ -144,6 +157,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
     """Evaluate all alert rules and return alert dicts."""
     alerts: list[dict[str, Any]] = []
     fired_ids: set[str] = set()
+    jinja_env = _build_jinja_env()
 
     for rule in schema.alerts:
         if not evaluate_when(rule.when, fields):
@@ -156,8 +170,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 continue
 
         try:
-            from ._when import _build_jinja_env
-            message = _build_jinja_env().from_string(rule.msg).render(**fields)
+            message = jinja_env.from_string(rule.msg).render(**fields)
         except Exception:
             message = rule.msg
 

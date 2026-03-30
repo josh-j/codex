@@ -8,7 +8,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 # Re-export for backwards compatibility with tests that import from here
 # (the actual evaluation now lives in normalization/_when.py)
-__all__ = ["AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "ScriptSpec", "StyleRule"]
+__all__ = ["ActionSpec", "AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "ScriptSpec", "StyleRule"]
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +173,30 @@ class FieldSpec(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Alert action
+# ---------------------------------------------------------------------------
+
+
+class ActionSpec(BaseModel):
+    """Structured alert action: ansible-playbook invocation or raw shell command."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    playbook: str | None = None  # Path to ansible playbook (relative to --project-dir)
+    extra_vars: dict[str, Any] = Field(default_factory=dict)
+    timeout: int = 120  # Seconds — ansible-playbook can be slow
+    command: str | None = None  # Raw shell command (legacy / escape-hatch)
+
+    @model_validator(mode="after")
+    def _require_one(self) -> ActionSpec:
+        if not self.playbook and not self.command:
+            raise ValueError("ActionSpec requires 'playbook' or 'command'")
+        if self.playbook and self.command:
+            raise ValueError("'playbook' and 'command' are mutually exclusive")
+        return self
+
+
+# ---------------------------------------------------------------------------
 # Alert rule
 # ---------------------------------------------------------------------------
 
@@ -184,10 +208,21 @@ class AlertRule(BaseModel):
     category: str
     severity: Literal["CRITICAL", "WARNING", "INFO"] = "WARNING"
     when: str  # Jinja2 expression evaluated against extracted fields
-    action: str | None = None  # Optional command to run when alert fires
+    action: ActionSpec | None = None
     cooldown: str = "7d"  # Minimum time between re-firing (e.g., "7d", "24h", "1h")
     msg: str = Field(validation_alias=AliasChoices("msg", "message"))
     suppress_if: str | list[str] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_action(cls, values: Any) -> Any:
+        """Coerce bare-string action to ``{"command": str}`` for backward compat."""
+        if not isinstance(values, dict):
+            return values
+        raw = values.get("action")
+        if isinstance(raw, str):
+            values["action"] = {"command": raw}
+        return values
 
 
 # ---------------------------------------------------------------------------

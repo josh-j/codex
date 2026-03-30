@@ -26,26 +26,38 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.reports_root = self.root / "reports"
 
         # 1. Linux Data (Trigger a disk warning)
+        # Flat payload matching discover.yaml's set_fact output.
         self.linux_dir = self.platform_root / "linux" / "ubuntu" / "linux-01"
         self.linux_dir.mkdir(parents=True)
         linux_data = {
             "metadata": {"host": "linux-01", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
-                "ansible_facts": {
-                    "ansible_distribution": "Ubuntu",
-                    "ansible_distribution_version": "24.04",
-                    "ansible_kernel": "6.8.0-lowlatency",
-                    "mounts": [
-                        {
-                            "mount": "/",
-                            "device": "/dev/sda1",
-                            "fstype": "ext4",
-                            "size_total": 107374182400,  # 100GB
-                            "size_available": 2147483648,  # 2GB (98% used -> CRITICAL)
-                        }
-                    ],
-                    "date_time": {"epoch": "1740610800"},
-                }
+                "hostname": "linux-01",
+                "distribution": "Ubuntu",
+                "distribution_version": "24.04",
+                "kernel": "6.8.0-lowlatency",
+                "uptime_seconds": 86400,
+                "memory_total_mb": 16384,
+                "memory_free_mb": 8192,
+                "swap_total_mb": 4096,
+                "swap_free_mb": 4096,
+                "mounts": [
+                    {
+                        "mount": "/",
+                        "device": "/dev/sda1",
+                        "fstype": "ext4",
+                        "size_total": 107374182400,  # 100GB
+                        "size_available": 2147483648,  # 2GB (98% used -> CRITICAL)
+                    }
+                ],
+                "failed_services": {"stdout_lines": []},
+                "shadow_raw": {"stdout_lines": []},
+                "sshd_raw": {"stdout_lines": []},
+                "world_writable": {"stdout_lines": []},
+                "reboot_stat": {"stat": {"exists": False}},
+                "apt_simulate": {"stdout_lines": ["0 upgraded, 0 newly installed"]},
+                "file_stats": {"results": []},
+                "epoch_seconds": 1740610800,
             },
         }
         with open(self.linux_dir / "raw_ubuntu.yaml", "w") as f:
@@ -134,7 +146,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                 "health_memory_used_pct": 60,
                 "health_cpu_load_pct": 25,
                 "health_services": [],
-                "health_reboot_pending": False,
+                "health_reboot_pending": True,  # Triggers reboot_pending alert
                 "health_reboot_reasons": [],
                 "health_event_count": 0,
                 "health_events": [],

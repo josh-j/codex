@@ -52,6 +52,14 @@ def _resolve_script(script: str, schema_source_path: str | None) -> Path | None:
     return None
 
 
+# Interpreter commands keyed by file extension.  Used by _run_script_field()
+# to invoke scripts without requiring a shebang / chmod.
+_INTERPRETERS: dict[str, list[str]] = {
+    ".py": [sys.executable],
+    ".ps1": ["pwsh", "-NoProfile", "-File"],
+    ".sh": ["bash"],
+}
+
 # Sentinel object returned by _run_script_field on rc >= 2 / timeout / crash.
 # Distinct from None (data absent) so the script pass can tell them apart.
 _SCRIPT_ERROR_SENTINEL = object()
@@ -74,7 +82,7 @@ def _run_script_field(
     is required for built-in scripts.
     """
     payload = json.dumps({"fields": fields, "args": args})
-    cmd: list[str] = [sys.executable, str(script_path)] if script_path.suffix == ".py" else [str(script_path)]
+    cmd: list[str] = [*_INTERPRETERS.get(script_path.suffix, []), str(script_path)]
     # Return-code convention:
     #   0  — success; stdout is the JSON value
     #   1  — data not available on this host (normal); use fallback, no warning

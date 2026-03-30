@@ -65,5 +65,5 @@ world_writable_count:
 
 users:
   script:
-    path: "user_inventory.py"
+    run: "user_inventory.py"
   type: list
