@@ -11,7 +11,7 @@
     WindowStyle="None"
     ResizeMode="CanResize"
     Background="#111217"
-    FontFamily="Segoe UI">
+    FontFamily="{StaticResource FontUI}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
             CaptionHeight="0"
@@ -47,6 +47,26 @@
         <Thickness x:Key="CardMargin">0,0,0,8</Thickness>
         <Thickness x:Key="ContentMargin">8</Thickness>
         <Thickness x:Key="SectionGap">0,6,0,0</Thickness>
+        <FontFamily x:Key="FontUI">Segoe UI</FontFamily>
+        <FontFamily x:Key="FontMono">Consolas</FontFamily>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeXs">9</sys:Double>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeSm">10</sys:Double>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeMd">11</sys:Double>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeLg">12</sys:Double>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeXl">13</sys:Double>
+        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="FontSizeTitle">14</sys:Double>
+
+        <Thickness x:Key="MarginGapSm">0,4,0,0</Thickness>
+        <Thickness x:Key="MarginGapMd">0,6,0,0</Thickness>
+        <Thickness x:Key="MarginGapLg">0,8,0,0</Thickness>
+        <Thickness x:Key="MarginStatusItem">10,0,0,0</Thickness>
+        <Thickness x:Key="MarginLabelValue">0,0,4,0</Thickness>
+        <Thickness x:Key="MarginInlineSm">0,0,4,0</Thickness>
+        <Thickness x:Key="MarginInlineMd">8,0,0,0</Thickness>
+        <Thickness x:Key="MarginDivider">0,10,0,10</Thickness>
+        <Thickness x:Key="MarginTabPanel">0,0,0,6</Thickness>
+        <Thickness x:Key="MarginSectionTitle">0,0,0,6</Thickness>
+
         <Thickness x:Key="PaddingXs">4,2,4,2</Thickness>
         <Thickness x:Key="PaddingSm">6,3,6,3</Thickness>
         <Thickness x:Key="PaddingMd">8,4,8,4</Thickness>
@@ -159,7 +179,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TabPanel Grid.Row="0" Margin="0,0,0,6" IsItemsHost="True" />
+                            <TabPanel Grid.Row="0" Margin="{StaticResource MarginTabPanel}" IsItemsHost="True" />
                             <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" />
                         </Grid>
                     </ControlTemplate>
@@ -208,11 +228,11 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
-                                            <TextBlock x:Name="ExpanderGlyph" Grid.Column="1" Text="+" Foreground="{StaticResource TextMutedBrush}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                            <TextBlock x:Name="ExpanderGlyph" Grid.Column="1" Text="+" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXl}" FontWeight="Bold" VerticalAlignment="Center" Margin="{StaticResource MarginInlineMd}" />
                                         </Grid>
                                     </Border>
                                 </ToggleButton>
-                                <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,6,0,0" />
+                                <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="{StaticResource MarginGapMd}" />
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -370,11 +390,11 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border x:Name="StatusBadge" Width="40" Height="18" CornerRadius="9" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusBadgeText" Text="FAIL" Foreground="{StaticResource DangerBrush}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusBadgeText" Text="FAIL" Foreground="{StaticResource DangerBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}" />
-                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
+                    <StackPanel Grid.Column="1" Margin="{StaticResource MarginInlineMd}">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeLg}" Foreground="{StaticResource TextBrush}" />
+                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="{StaticResource FontSizeMd}" Foreground="{StaticResource TextMutedBrush}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -412,12 +432,12 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Width="10" Height="10" Background="{StaticResource AccentBrush}" CornerRadius="5" Margin="0,0,8,0" />
-                        <TextBlock x:Name="TitleBarTitleText" Text="NCS UI" Foreground="White" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TitleBarTitleText" Text="NCS UI" Foreground="White" FontSize="{StaticResource FontSizeXl}" FontWeight="Bold" VerticalAlignment="Center" />
                         <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="11" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="0,0,4,0" />
-                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="11" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
+                        <Button x:Name="OperateTabButton" Content="Operate" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#242932" Foreground="{StaticResource TextBrush}" BorderBrush="#3c4654" BorderThickness="1" Margin="{StaticResource MarginLabelValue}" />
+                        <Button x:Name="SettingsTabButton" Content="Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -444,21 +464,21 @@
 
                         <Border Grid.Row="0" Style="{StaticResource StatusCardStyle}">
                             <StackPanel>
-                                <DockPanel Margin="0,0,0,4">
-                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                <DockPanel Margin="{StaticResource MarginLabelValue}">
+                                    <TextBlock DockPanel.Dock="Left" Text="Preflight" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
                                     <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}">
-                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="10" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                                     </Border>
                                 </DockPanel>
-                                <TextBlock x:Name="PreflightSummaryText" Margin="0,0,0,6" Text="Run preflight to validate." Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                                <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Run preflight to validate." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
                                 <DockPanel>
-                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="11" />
+                                    <Button x:Name="PreflightButton" DockPanel.Dock="Left" Content="Run Preflight" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="{StaticResource FontSizeMd}" />
                                 </DockPanel>
-                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0,6,0,0">
+                                <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapMd}">
                                     <Expander.Header>
-                                        <TextBlock Text="Details" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                        <TextBlock Text="Details" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                                     </Expander.Header>
-                                    <ListBox x:Name="PreflightListBox" Margin="0,4,0,0" MaxHeight="160" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                                    <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" MaxHeight="160" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                                 </Expander>
                             </StackPanel>
                         </Border>
@@ -472,7 +492,7 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Grid.Row="0" Text="Action" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                                <TextBlock Grid.Row="0" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
 
                                 <TreeView x:Name="ActionTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" Padding="0">
                                     <TreeView.Resources>
@@ -492,7 +512,7 @@
                                                                         <ColumnDefinition Width="14" />
                                                                         <ColumnDefinition Width="*" />
                                                                     </Grid.ColumnDefinitions>
-                                                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontSize="{StaticResource FontSizeSm}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
                                                                     <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
                                                                 </Grid>
                                                             </Border>
@@ -537,23 +557,23 @@
                                     </TreeViewItem>
                                 </TreeView>
 
-                                <StackPanel Grid.Row="2" Margin="0,6,0,0">
-                                    <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">
+                                    <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
                                     <TextBox x:Name="SiteTextBox" />
-                                    <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                    <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
                                     <TextBox x:Name="HostTextBox" />
                                     <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
                                         <Expander.Header>
-                                            <TextBlock Text="Advanced" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                            <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                                         </Expander.Header>
-                                        <StackPanel Margin="0,4,0,0">
-                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="11" />
+                                        <StackPanel Margin="{StaticResource MarginGapSm}">
+                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
                                             <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>
 
-                                <WrapPanel Grid.Row="3" Margin="0,6,0,0">
+                                <WrapPanel Grid.Row="3" Margin="{StaticResource MarginGapMd}">
                                     <Button x:Name="RunButton" Content="Run" />
                                     <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
                                     <Button x:Name="ConsoleShowButton" Content="Console ▸" Style="{StaticResource SecondaryButtonStyle}" ToolTip="Show console" />
@@ -574,26 +594,26 @@
                         <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
                             <StackPanel>
                                 <DockPanel>
-                                    <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Left" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Left" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginInlineMd}" VerticalAlignment="Center" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" />
-                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" />
-                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="10" ToolTip="Collapse console" />
+                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
+                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
+                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse console" />
                                     </StackPanel>
                                 </DockPanel>
-                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,4,0,0" Padding="{StaticResource PaddingSm}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource TextBrush}" />
+                                <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="{StaticResource MarginGapSm}" Padding="{StaticResource PaddingSm}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" Foreground="{StaticResource TextBrush}" />
                             </StackPanel>
                         </Border>
 
-                        <TextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" />
+                        <TextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" />
 
                         <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="{StaticResource PaddingMd}">
                             <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
                                 <Expander.Header>
-                                    <TextBlock Text="Detected Paths" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBlock Text="Detected Paths" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
                                 </Expander.Header>
-                                <ListBox x:Name="DetectedPathsListBox" Margin="0,4,0,0" MaxHeight="100" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
+                                <ListBox x:Name="DetectedPathsListBox" Margin="{StaticResource MarginGapSm}" MaxHeight="100" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
                             </Expander>
                         </Border>
                     </Grid>
@@ -602,7 +622,7 @@
                 <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                     <Border Style="{StaticResource StatusCardStyle}" MaxWidth="480">
                         <StackPanel>
-                            <TextBlock Text="Connection" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
+                            <TextBlock Text="Connection" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginGapLg}" />
                             <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="SshHostTextBox" />
                             <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
@@ -630,9 +650,9 @@
                                 <PasswordBox x:Name="SshPasswordBox" />
                             </StackPanel>
 
-                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,10" />
+                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
 
-                            <TextBlock Text="Defaults" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
+                            <TextBlock Text="Defaults" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginGapLg}" />
                             <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="RemoteRepoPathTextBox" />
                             <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
@@ -641,7 +661,7 @@
                             <TextBox x:Name="DefaultSiteTextBox" />
                             <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="DefaultHostTextBox" />
-                            <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="0,8,0,0" />
+                            <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
@@ -657,22 +677,22 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" />
+                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
                     <Border Grid.Column="1" Width="1" Height="14" Background="#2c3038" Margin="10,0" VerticalAlignment="Center" />
                     <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="RunMetaText" Margin="6,0,0,0" Foreground="{StaticResource TextMutedBrush}" FontSize="10" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="Bold" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" />
-                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                        <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,4,0" />
-                        <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="SemiBold" />
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                        <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
+                        <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
-                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                        <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,4,0" />
-                        <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="10" FontWeight="SemiBold" />
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                        <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
+                        <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
                 </Grid>
             </Border>
