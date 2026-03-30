@@ -7,50 +7,57 @@
     MinHeight="720"
     MinWidth="1180"
     WindowStartupLocation="CenterScreen"
-    Background="#F4F1EB"
+    Background="#111217"
     FontFamily="Segoe UI">
     <Window.Resources>
-        <SolidColorBrush x:Key="PanelBrush" Color="#FFFDF9" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#0F5A5A" />
-        <SolidColorBrush x:Key="AccentSoftBrush" Color="#D7ECE8" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#D2C8B7" />
-        <SolidColorBrush x:Key="TextBrush" Color="#202020" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#181b1f" />
+        <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1e2228" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#6e9fff" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#2c3038" />
+        <SolidColorBrush x:Key="TextBrush" Color="#d8dce2" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#8e939c" />
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="0,4,0,10" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="White" />
+            <Setter Property="Background" Value="#1e2228" />
+            <Setter Property="Foreground" Value="#d8dce2" />
+            <Setter Property="CaretBrush" Value="#d8dce2" />
         </Style>
         <Style TargetType="PasswordBox">
             <Setter Property="Margin" Value="0,4,0,10" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="White" />
+            <Setter Property="Background" Value="#1e2228" />
+            <Setter Property="Foreground" Value="#d8dce2" />
+            <Setter Property="CaretBrush" Value="#d8dce2" />
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Margin" Value="0,4,0,10" />
             <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Background" Value="#1e2228" />
+            <Setter Property="Foreground" Value="#d8dce2" />
         </Style>
         <Style TargetType="Button">
             <Setter Property="Margin" Value="0,0,8,8" />
             <Setter Property="Padding" Value="14,8" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="#111217" />
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
         </Style>
         <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#E5DED0" />
+            <Setter Property="Background" Value="#1e2228" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="#E5DED0" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         </Style>
         <Style x:Key="StatusCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource PanelBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="16" />
             <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
@@ -63,7 +70,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" CornerRadius="24" Padding="24" Background="#113B42" Margin="0,0,0,20">
+        <Border Grid.Row="0" CornerRadius="8" Padding="24" Background="#181b1f" BorderBrush="#2c3038" BorderThickness="1" Margin="0,0,0,20">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -73,21 +80,23 @@
                     <TextBlock Text="NCS UI" Foreground="White" FontSize="28" FontWeight="Bold" />
                     <TextBlock
                         Margin="0,8,0,0"
-                        Foreground="#E8F6F4"
+                        Foreground="#8e939c"
                         FontSize="14"
                         Text="Remote operator console for ansible-ncs workflows. Preflight first, then run safe actions with live output." />
                 </StackPanel>
                 <Border
                     x:Name="RunStateBorder"
                     Grid.Column="1"
-                    Background="#1C6466"
-                    CornerRadius="18"
+                    Background="#1e2228"
+                    CornerRadius="8"
                     Padding="16"
+                    BorderBrush="#2c3038"
+                    BorderThickness="1"
                     HorizontalAlignment="Right">
                     <StackPanel>
-                        <TextBlock Text="Run State" Foreground="#D9F0EE" FontSize="12" TextWrapping="Wrap" />
+                        <TextBlock Text="Run State" Foreground="#8e939c" FontSize="12" TextWrapping="Wrap" />
                         <TextBlock x:Name="RunStateText" Text="Idle" Foreground="White" FontSize="22" FontWeight="Bold" />
-                        <TextBlock x:Name="RunMetaText" Margin="0,6,0,0" Foreground="#D9F0EE" Text="No command started yet." />
+                        <TextBlock x:Name="RunMetaText" Margin="0,6,0,0" Foreground="#8e939c" Text="No command started yet." />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -104,30 +113,30 @@
                 <StackPanel>
                     <Border Style="{StaticResource StatusCardStyle}">
                         <StackPanel>
-                            <TextBlock Text="Remote Target" FontSize="18" FontWeight="Bold" />
-                            <TextBlock Margin="0,12,0,0" Text="SSH Host *" />
+                            <TextBlock Text="Remote Target" FontSize="18" FontWeight="Bold" Foreground="#d8dce2" />
+                            <TextBlock Margin="0,12,0,0" Text="SSH Host *" Foreground="#8e939c" />
                             <TextBox x:Name="SshHostTextBox" />
-                            <TextBlock Text="SSH Port" />
+                            <TextBlock Text="SSH Port" Foreground="#8e939c" />
                             <TextBox x:Name="SshPortTextBox" />
-                            <TextBlock Text="SSH User *" />
+                            <TextBlock Text="SSH User *" Foreground="#8e939c" />
                             <TextBox x:Name="SshUserTextBox" />
-                            <TextBlock Text="SSH Auth Mode" />
+                            <TextBlock Text="SSH Auth Mode" Foreground="#8e939c" />
                             <ComboBox x:Name="SshAuthModeComboBox" />
                             <StackPanel x:Name="SshKeyPathPanel">
-                                <TextBlock Text="SSH Key Path" />
+                                <TextBlock Text="SSH Key Path" Foreground="#8e939c" />
                                 <TextBox x:Name="SshKeyPathTextBox" />
                             </StackPanel>
                             <StackPanel x:Name="SshPasswordPanel">
-                                <TextBlock Text="SSH Password" />
+                                <TextBlock Text="SSH Password" Foreground="#8e939c" />
                                 <PasswordBox x:Name="SshPasswordBox" />
                             </StackPanel>
-                            <TextBlock Text="Remote Repo Path *" />
+                            <TextBlock Text="Remote Repo Path *" Foreground="#8e939c" />
                             <TextBox x:Name="RemoteRepoPathTextBox" />
-                            <TextBlock Text="Remote Vault Path *" />
+                            <TextBlock Text="Remote Vault Path *" Foreground="#8e939c" />
                             <TextBox x:Name="RemoteVaultPathTextBox" />
-                            <TextBlock Text="Default Site" />
+                            <TextBlock Text="Default Site" Foreground="#8e939c" />
                             <TextBox x:Name="DefaultSiteTextBox" />
-                            <TextBlock Text="Default Ansible Host" />
+                            <TextBlock Text="Default Ansible Host" Foreground="#8e939c" />
                             <TextBox x:Name="DefaultHostTextBox" />
                             <WrapPanel Margin="0,8,0,0">
                                 <Button x:Name="SaveSettingsButton" Content="Save Settings" Style="{StaticResource SecondaryButtonStyle}" />
@@ -138,13 +147,14 @@
 
                     <Border Style="{StaticResource StatusCardStyle}">
                         <StackPanel>
-                            <TextBlock Text="Preflight Checks" FontSize="18" FontWeight="Bold" />
+                            <TextBlock Text="Preflight Checks" FontSize="18" FontWeight="Bold" Foreground="#d8dce2" />
                             <TextBlock
                                 x:Name="PreflightSummaryText"
                                 Margin="0,10,0,10"
                                 Text="Preflight has not been run."
+                                Foreground="#8e939c"
                                 TextWrapping="Wrap" />
-                            <ListBox x:Name="PreflightListBox" Height="220" BorderThickness="0" Background="#FFFDF9" />
+                            <ListBox x:Name="PreflightListBox" Height="220" BorderThickness="0" Background="#181b1f" Foreground="#d8dce2" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -154,14 +164,14 @@
                 <StackPanel>
                     <Border Style="{StaticResource StatusCardStyle}">
                         <StackPanel>
-                            <TextBlock Text="Action" FontSize="18" FontWeight="Bold" />
-                            <TextBlock Margin="0,12,0,0" Text="Select Action" />
+                            <TextBlock Text="Action" FontSize="18" FontWeight="Bold" Foreground="#d8dce2" />
+                            <TextBlock Margin="0,12,0,0" Text="Select Action" Foreground="#8e939c" />
                             <ComboBox x:Name="ActionComboBox" />
-                            <TextBlock Text="Site Limit" />
+                            <TextBlock Text="Site Limit" Foreground="#8e939c" />
                             <TextBox x:Name="SiteTextBox" />
-                            <TextBlock Text="Ansible Host" />
+                            <TextBlock Text="Ansible Host" Foreground="#8e939c" />
                             <TextBox x:Name="HostTextBox" />
-                            <TextBlock Text="Extra Args" />
+                            <TextBlock Text="Extra Args" Foreground="#8e939c" />
                             <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="84" VerticalScrollBarVisibility="Auto" />
                             <WrapPanel Margin="0,12,0,0">
                                 <Button x:Name="RunButton" Content="Run Action" />
@@ -169,7 +179,7 @@
                             </WrapPanel>
                             <TextBlock
                                 Margin="0,10,0,0"
-                                Foreground="#555"
+                                Foreground="#6c727d"
                                 TextWrapping="Wrap"
                                 Text="`Run Site` requires a site value. `Run Host` and `Inventory Host` require an Ansible host. `Extra Args` are appended to the remote command verbatim, so keep them operator-safe." />
                         </StackPanel>
@@ -177,11 +187,11 @@
 
                     <Border Style="{StaticResource StatusCardStyle}">
                         <StackPanel>
-                            <TextBlock Text="Run Details" FontSize="18" FontWeight="Bold" />
-                            <TextBlock Margin="0,12,0,0" Text="Command" />
+                            <TextBlock Text="Run Details" FontSize="18" FontWeight="Bold" Foreground="#d8dce2" />
+                            <TextBlock Margin="0,12,0,0" Text="Command" Foreground="#8e939c" />
                             <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" Height="78" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-                            <TextBlock Margin="0,8,0,0" Text="Detected Paths" />
-                            <ListBox x:Name="DetectedPathsListBox" Height="120" BorderThickness="0" Background="#FFFDF9" />
+                            <TextBlock Margin="0,8,0,0" Text="Detected Paths" Foreground="#8e939c" />
+                            <ListBox x:Name="DetectedPathsListBox" Height="120" BorderThickness="0" Background="#181b1f" Foreground="#d8dce2" />
                             <WrapPanel Margin="0,12,0,0">
                                 <Button x:Name="CopyOutputButton" Content="Copy Output" Style="{StaticResource SecondaryButtonStyle}" />
                                 <Button x:Name="ExportOutputButton" Content="Export Output" Style="{StaticResource SecondaryButtonStyle}" />
@@ -198,8 +208,8 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <DockPanel Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock DockPanel.Dock="Left" Text="Live Console" FontSize="18" FontWeight="Bold" />
-                        <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Right" Foreground="#555" Text="Output appears here in time order." />
+                        <TextBlock DockPanel.Dock="Left" Text="Live Console" FontSize="18" FontWeight="Bold" Foreground="#d8dce2" />
+                        <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Right" Foreground="#6c727d" Text="Output appears here in time order." />
                     </DockPanel>
                     <TextBox
                         x:Name="ConsoleTextBox"
@@ -211,14 +221,15 @@
                         TextWrapping="Wrap"
                         VerticalScrollBarVisibility="Auto"
                         HorizontalScrollBarVisibility="Auto"
-                        Background="#191919"
-                        Foreground="#EDEDED"
+                        Background="#111217"
+                        Foreground="#d8dce2"
+                        CaretBrush="#d8dce2"
                         BorderThickness="0" />
                 </Grid>
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="#FFFDF9" CornerRadius="16" Padding="16" BorderBrush="#D2C8B7" BorderThickness="1" Margin="0,20,0,0">
+        <Border Grid.Row="2" Style="{StaticResource StatusCardStyle}" Margin="0,20,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -226,16 +237,16 @@
                     <ColumnDefinition Width="220" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Status" FontWeight="Bold" />
-                    <TextBlock x:Name="StatusTextBlock" Text="Ready to configure." TextWrapping="Wrap" />
+                    <TextBlock Text="Status" FontWeight="Bold" Foreground="#8e939c" />
+                    <TextBlock x:Name="StatusTextBlock" Text="Ready to configure." TextWrapping="Wrap" Foreground="#d8dce2" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                    <TextBlock Text="Exit Code" FontWeight="Bold" />
-                    <TextBlock x:Name="ExitCodeTextBlock" Text="-" />
+                    <TextBlock Text="Exit Code" FontWeight="Bold" Foreground="#8e939c" />
+                    <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="#d8dce2" />
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Duration" FontWeight="Bold" />
-                    <TextBlock x:Name="DurationTextBlock" Text="-" />
+                    <TextBlock Text="Duration" FontWeight="Bold" Foreground="#8e939c" />
+                    <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="#d8dce2" />
                 </StackPanel>
             </Grid>
         </Border>
