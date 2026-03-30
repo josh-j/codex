@@ -56,6 +56,54 @@ def _add_aliases(schema: dict) -> None:
     # Relax additionalProperties on ReportSchema to allow config/vars passthrough
     schema.pop("additionalProperties", None)
 
+    # Accept hyphenated widget type values (key-value, stat-cards, etc.)
+    # The model_validator normalises hyphens → underscores at runtime.
+    for def_name in defs:
+        defn = defs[def_name]
+        type_prop = defn.get("properties", {}).get("type", {})
+        if "const" in type_prop and "_" in str(type_prop["const"]):
+            canonical = type_prop["const"]
+            hyphenated = canonical.replace("_", "-")
+            type_prop.pop("const")
+            type_prop["enum"] = [canonical, hyphenated]
+
+    # Accept dict shorthand for fields/cards/columns properties.
+    # Configs use compact dict form {'Label': "{{ field }}"} which the
+    # model_validator normalises to arrays at runtime.
+    # Accept string shorthand for WidgetLayout (e.g. layout: half)
+    # The model_validator converts "half" → {"width": "half"} at runtime.
+    for def_name in defs:
+        defn = defs[def_name]
+        props = defn.get("properties", {})
+        layout = props.get("layout")
+        if layout and layout.get("$ref", "").endswith("/WidgetLayout"):
+            props["layout"] = {
+                "anyOf": [
+                    {"$ref": "#/$defs/WidgetLayout"},
+                    {"type": "string", "enum": ["full", "half", "third", "quarter"]},
+                ],
+                "default": "full",
+            }
+
+    _DICT_OR_ARRAY = {
+        "KeyValueWidget": ["fields"],
+        "StatCardsWidget": ["cards"],
+        "TableWidget": ["columns"],
+    }
+    for def_name, prop_names in _DICT_OR_ARRAY.items():
+        defn = defs.get(def_name, {})
+        props = defn.get("properties", {})
+        for prop_name in prop_names:
+            prop = props.get(prop_name)
+            if prop and prop.get("type") == "array":
+                # Allow either array (canonical) or object (compact dict shorthand)
+                items = prop.pop("items", None)
+                prop.pop("type", None)
+                prop["anyOf"] = [
+                    {"type": "array", **({"items": items} if items else {})},
+                    {"type": "object", "additionalProperties": True},
+                ]
+
 
 def main() -> None:
     out_dir = Path(__file__).resolve().parent / "schemas"
