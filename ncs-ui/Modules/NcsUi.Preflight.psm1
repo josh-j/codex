@@ -26,12 +26,9 @@ function Invoke-NcsSshProbe {
     $askPassScript = $null
 
     if ($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) {
-        $askPassScript = New-NcsAskPassScript -Password $Settings.SshPassword
-        $environment = @{
-            SSH_ASKPASS = $askPassScript
-            SSH_ASKPASS_REQUIRE = "force"
-            DISPLAY = "ncs-ui"
-        }
+        $passEnv = New-NcsSshPasswordEnvironment -Settings $Settings
+        $askPassScript = $passEnv.AskPassScript
+        $environment = $passEnv.Environment
     }
 
     try {

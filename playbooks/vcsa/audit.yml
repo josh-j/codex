@@ -6,6 +6,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   roles:
     - role: internal.vmware.vcsa
       vars:

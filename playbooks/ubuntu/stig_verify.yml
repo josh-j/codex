@@ -6,6 +6,7 @@
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
   connection: local
+  become: false
   tags: ["ubuntu", "stig", "verify", "report"]
 
   vars:

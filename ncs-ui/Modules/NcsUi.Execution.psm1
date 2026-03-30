@@ -62,7 +62,6 @@ function Invoke-NcsToolCommand {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
 
     foreach ($argument in $Arguments) {
         $psi.ArgumentList.Add($argument)
@@ -109,25 +108,23 @@ function Get-NcsSshTarget {
     return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
 }
 
-function New-NcsAskPassScript {
+function New-NcsSshPasswordEnvironment {
     param(
         [Parameter(Mandatory)]
-        [string] $Password
+        [NcsUiSettings] $Settings
     )
 
-    $tempPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("ncs-ui-askpass-{0}.cmd" -f ([guid]::NewGuid().ToString("N")))
-    $escapedPassword = $Password -replace '"', '""'
-    Set-Content -LiteralPath $tempPath -Encoding ASCII -Value "@echo off`r`necho $escapedPassword`r`n"
-    return $tempPath
-}
+    if ([string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
+        throw "Password authentication requires an SSH password."
+    }
 
-function Remove-NcsAskPassScript {
-    param(
-        [string] $Path
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($Path)) {
-        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    $moduleRoot = Split-Path -Parent $PSScriptRoot
+    $askPassScript = Join-Path -Path $moduleRoot -ChildPath "Scripts/askpass.cmd"
+    return @{
+        SSH_ASKPASS         = $askPassScript
+        SSH_ASKPASS_REQUIRE = "force"
+        NCS_UI_PASS         = $Settings.SshPassword
+        DISPLAY             = "ncs-ui"
     }
 }
 
@@ -330,21 +327,15 @@ function Start-NcsRemoteCommand {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
     foreach ($argument in (Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $remoteCommand)) {
         $psi.ArgumentList.Add($argument)
     }
 
-    $askPassScript = $null
     if ($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) {
-        if ([string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-            throw "Password authentication requires an SSH password."
+        $passEnv = New-NcsSshPasswordEnvironment -Settings $Settings
+        foreach ($key in $passEnv.Keys) {
+            $psi.Environment[$key] = $passEnv[$key]
         }
-
-        $askPassScript = New-NcsAskPassScript -Password $Settings.SshPassword
-        $psi.Environment["SSH_ASKPASS"] = $askPassScript
-        $psi.Environment["SSH_ASKPASS_REQUIRE"] = "force"
-        $psi.Environment["DISPLAY"] = "ncs-ui"
     }
 
     $process = [System.Diagnostics.Process]::new()
@@ -507,4 +498,4 @@ function Invoke-NcsRecentLogs {
     Invoke-NcsAction -Settings $Settings -Request $request -OnOutput $OnOutput -OnCompleted $OnCompleted
 }
 
-Export-ModuleMember -Function ConvertTo-NcsBashLiteral, ConvertTo-NcsRemotePathExpression, Get-NcsSshArgumentList, Invoke-NcsToolCommand, New-NcsAskPassScript, Remove-NcsAskPassScript, Resolve-NcsActionCommand, Get-NcsRemoteShellCommand, Start-NcsRemoteCommand, Stop-NcsRemoteCommand, Invoke-NcsAction, Invoke-NcsRunAll, Invoke-NcsRunSite, Invoke-NcsRunHost, Invoke-NcsRunVcenter, Invoke-NcsDryRun, Invoke-NcsDebug, Invoke-NcsInventoryPreview, Invoke-NcsInventoryHost, Invoke-NcsRecentLogs
+Export-ModuleMember -Function ConvertTo-NcsBashLiteral, ConvertTo-NcsRemotePathExpression, Get-NcsSshArgumentList, Invoke-NcsToolCommand, New-NcsAskPassScript, New-NcsSshPasswordEnvironment, Remove-NcsAskPassScript, Resolve-NcsActionCommand, Get-NcsRemoteShellCommand, Start-NcsRemoteCommand, Stop-NcsRemoteCommand, Invoke-NcsAction, Invoke-NcsRunAll, Invoke-NcsRunSite, Invoke-NcsRunHost, Invoke-NcsRunVcenter, Invoke-NcsDryRun, Invoke-NcsDebug, Invoke-NcsInventoryPreview, Invoke-NcsInventoryHost, Invoke-NcsRecentLogs

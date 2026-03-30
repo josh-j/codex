@@ -6,6 +6,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   tags: ["vmware", "stig", "remediate", "esxi"]
   vars:
     esxi_stig_enable_ssh_checks: false
@@ -29,6 +30,7 @@
   hosts: vcsa
   connection: local
   gather_facts: false
+  become: false
   tags: ["vmware", "stig", "audit", "esxi"]
   tasks:
     - name: "Execute Post-Remediation ESXi STIG Audit"

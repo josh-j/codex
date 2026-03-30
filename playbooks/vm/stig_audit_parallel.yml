@@ -5,6 +5,7 @@
   hosts: "vcsa-{{ site | default('undefined') }}"
   connection: local
   gather_facts: false
+  become: false
   strategy: linear
   tags: ["vmware", "stig", "audit", "vm"]
   vars:
@@ -38,6 +39,7 @@
   hosts: _stig_vm_targets
   connection: local
   gather_facts: false
+  become: false
   strategy: free
   tags: ["vmware", "stig", "audit", "vm"]
   vars:
