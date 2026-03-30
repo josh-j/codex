@@ -514,13 +514,19 @@ function Show-NcsUiApp {
         $controls.OperateTabButton.Foreground = $inactiveText
     })
 
+    $consoleColumn = $controls.OperatePanel.ColumnDefinitions[2]
+
     $controls.ConsoleToggleButton.Add_Click({
         $controls.ConsolePane.Visibility = "Collapsed"
         $controls.ConsoleSplitter.Visibility = "Collapsed"
+        $consoleColumn.Width = [System.Windows.GridLength]::new(0)
+        $consoleColumn.MinWidth = 0
         $controls.ConsoleShowButton.Visibility = "Visible"
     })
 
     $controls.ConsoleShowButton.Add_Click({
+        $consoleColumn.Width = [System.Windows.GridLength]::new(400)
+        $consoleColumn.MinWidth = 250
         $controls.ConsolePane.Visibility = "Visible"
         $controls.ConsoleSplitter.Visibility = "Visible"
         $controls.ConsoleShowButton.Visibility = "Collapsed"
@@ -570,6 +576,13 @@ function Show-NcsUiApp {
             $controls.RunMetaText.Text = $selectedAction
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
+            if ($controls.ConsolePane.Visibility -eq "Collapsed") {
+                $consoleColumn.Width = [System.Windows.GridLength]::new(400)
+                $consoleColumn.MinWidth = 250
+                $controls.ConsolePane.Visibility = "Visible"
+                $controls.ConsoleSplitter.Visibility = "Visible"
+                $controls.ConsoleShowButton.Visibility = "Collapsed"
+            }
 
             $request = [NcsActionRequest]::new((ConvertFrom-NcsActionName -ActionName $selectedAction))
             $request.Site = $controls.SiteTextBox.Text.Trim()
