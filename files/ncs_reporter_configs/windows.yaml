@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/report_schema.json
 config:
   platform: windows
   stig:
@@ -15,10 +16,7 @@ config:
 # Fields
 # ---------------------------------------------------------------------------
 
-vars:
-  # All raw_windows.data.* fields are auto-imported from the collector payload.
-  # Only vars needing metadata or computation need explicit declaration.
-  collected_at: "raw_windows.metadata.timestamp"
+# All raw_windows.data.* fields are auto-imported from the collector payload.
 
 # ---------------------------------------------------------------------------
 # Alerts

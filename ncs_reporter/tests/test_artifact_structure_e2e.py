@@ -27,26 +27,40 @@ STAMP = "20260226"
 def _linux_raw(host: str) -> dict:
     # Disk at 90% used (10% free) — crosses the 80% warning threshold so this
     # host generates an alert that surfaces in the site report's Global Alert Queue.
+    #
+    # Matches the flat payload that discover.yaml's set_fact produces — individual
+    # fields are extracted from ansible_facts by the Ansible task, NOT nested.
     size_total = 107374182400
     size_available = int(size_total * 0.10)
     return {
         "metadata": {"host": host, "timestamp": "2026-02-26T23:00:00Z"},
         "data": {
-            "ansible_facts": {
-                "ansible_distribution": "Ubuntu",
-                "ansible_distribution_version": "24.04",
-                "ansible_kernel": "6.8.0-lowlatency",
-                "mounts": [
-                    {
-                        "mount": "/",
-                        "device": "/dev/sda1",
-                        "fstype": "ext4",
-                        "size_total": size_total,
-                        "size_available": size_available,
-                    }
-                ],
-                "date_time": {"epoch": "1740610800"},
-            }
+            "hostname": host,
+            "distribution": "Ubuntu",
+            "distribution_version": "24.04",
+            "kernel": "6.8.0-lowlatency",
+            "uptime_seconds": 86400,
+            "memory_total_mb": 16384,
+            "memory_free_mb": 8192,
+            "swap_total_mb": 4096,
+            "swap_free_mb": 4096,
+            "mounts": [
+                {
+                    "mount": "/",
+                    "device": "/dev/sda1",
+                    "fstype": "ext4",
+                    "size_total": size_total,
+                    "size_available": size_available,
+                }
+            ],
+            "failed_services": {"stdout_lines": []},
+            "shadow_raw": {"stdout_lines": []},
+            "sshd_raw": {"stdout_lines": []},
+            "world_writable": {"stdout_lines": []},
+            "reboot_stat": {"stat": {"exists": False}},
+            "apt_simulate": {"stdout_lines": ["0 upgraded, 0 newly installed"]},
+            "file_stats": {"results": []},
+            "epoch_seconds": 1740610800,
         },
     }
 
@@ -63,7 +77,7 @@ def _vmware_raw(host: str) -> dict:
             "appliance_health_memory": "green",
             "appliance_health_database": "green",
             "appliance_health_storage": "green",
-            "ssh_enabled": False,
+            "ssh_enabled": True,  # Triggers ssh_enabled alert → host appears in site alert queue
             "shell_enabled": False,
             "ntp_mode": "NTP",
             "backup_schedules": [{"enabled": True, "status": "SUCCEEDED"}],
@@ -160,7 +174,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         content = site.read_text()
         # linux-01 has a disk at 90% → warning alert → appears in Global Alert Queue
         self.assertIn("linux-01", content)
-        # vc-01 has STIG data → appears in STIG compliance section
+        # vc-01 has SSH enabled → ssh_enabled alert → appears in Global Alert Queue
         self.assertIn("vc-01", content)
 
     def test_stamped_fleet_reports_but_site_report_is_not_stamped(self):

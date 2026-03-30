@@ -235,13 +235,21 @@ def _save_alert_state(state_path: str, state: dict) -> None:
 @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
 @click.option("--hostname", "-n", default=None, help="Hostname for state tracking (auto-detected from bundle if omitted).")
 @click.option("--state-file", default=".alert_state.yaml", type=click.Path(), help="Path to alert state file for cooldown tracking.")
+@click.option(
+    "--project-dir",
+    "-C",
+    default=None,
+    type=click.Path(exists=True, file_okay=False),
+    help="Ansible project root. Playbook paths resolve relative to this directory. Defaults to cwd.",
+)
 @click.option("--dry-run", is_flag=True, default=False, help="Print actions without executing.")
-def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, dry_run: bool) -> None:
+def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, project_dir: str | None, dry_run: bool) -> None:
     """Evaluate alerts against a raw bundle and execute actions for fired alerts.
 
     Respects per-alert cooldown periods to prevent duplicate notifications.
     State is tracked in a YAML file (default: .alert_state.yaml).
     """
+    import json
     import subprocess
     from datetime import datetime, timezone
 
@@ -254,7 +262,10 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, dry_r
         click.echo("No matching schema detected for bundle.", err=True)
         raise SystemExit(1)
 
+    from .models.report_schema import ActionSpec
     from .normalization.schema_driven import build_schema_alerts, extract_fields
+    from .normalization._when import _build_jinja_env
+    jinja_env = _build_jinja_env()
 
     # Auto-detect hostname from bundle metadata
     if not hostname:
@@ -314,25 +325,36 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, dry_r
                 except (ValueError, TypeError):
                     pass  # invalid timestamp, proceed
 
-            try:
-                from .normalization._when import _build_jinja_env
-                rendered_action = _build_jinja_env().from_string(action).render(**fields)
-            except Exception:
-                rendered_action = action
+            spec = action if isinstance(action, ActionSpec) else ActionSpec(**(action if isinstance(action, dict) else {"command": action}))
+
+            if spec.playbook:
+                merged_vars = {"alert_id": alert_id, "alert_severity": sev, "alert_host": hostname, "alert_msg": msg}
+                merged_vars.update(spec.extra_vars)
+                run_cmd: str | list[str] = ["ansible-playbook", spec.playbook, "-e", json.dumps(merged_vars)]
+                display = f"ansible-playbook {spec.playbook}"
+                run_shell = False
+                run_timeout: int | None = spec.timeout
+            else:
+                raw_cmd = spec.command or ""
+                try:
+                    rendered = jinja_env.from_string(raw_cmd).render(**fields)
+                except Exception:
+                    rendered = raw_cmd
+                run_cmd = rendered
+                display = rendered
+                run_shell = True
+                run_timeout = None
 
             if dry_run:
-                click.echo(f"    DRY-RUN: {rendered_action}")
+                click.echo(f"    DRY-RUN: {display if run_shell else ' '.join(run_cmd)}")
             else:
-                click.echo(f"    EXEC: {rendered_action}")
-                result = subprocess.run(rendered_action, shell=True)  # noqa: S602
+                click.echo(f"    EXEC: {display}")
+                result = subprocess.run(run_cmd, shell=run_shell, cwd=project_dir, timeout=run_timeout)  # noqa: S602
                 if result.returncode != 0:
                     click.echo(f"    FAILED (exit code {result.returncode})", err=True)
                     failures += 1
                 else:
-                    # Update state on successful execution
-                    if alert_id not in state:
-                        state[alert_id] = {}
-                    state[alert_id][hostname] = {"last_fired": now.isoformat()}
+                    state.setdefault(alert_id, {})[hostname] = {"last_fired": now.isoformat()}
 
         # Clear resolved alerts (fired last time but not this time)
         for alert_id in list(state.keys()):

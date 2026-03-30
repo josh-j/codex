@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/alert_list_schema.json
 # Shared Linux alerts — included by linux.yaml, photon.yaml, etc.
 
 - id: memory_critical

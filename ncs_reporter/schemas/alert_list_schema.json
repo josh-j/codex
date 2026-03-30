@@ -7,6 +7,48 @@
     "$ref": "#/$defs/AlertRule"
   },
   "$defs": {
+    "ActionSpec": {
+      "additionalProperties": false,
+      "description": "Structured alert action: ansible-playbook invocation or raw shell command.",
+      "properties": {
+        "playbook": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Playbook"
+        },
+        "extra_vars": {
+          "additionalProperties": true,
+          "title": "Extra Vars",
+          "type": "object"
+        },
+        "timeout": {
+          "default": 120,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "command": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command"
+        }
+      },
+      "title": "ActionSpec",
+      "type": "object"
+    },
     "AlertRule": {
       "additionalProperties": false,
       "properties": {
@@ -35,14 +77,13 @@
         "action": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/ActionSpec"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Action"
+          "default": null
         },
         "cooldown": {
           "default": "7d",

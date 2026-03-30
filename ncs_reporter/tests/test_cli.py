@@ -40,15 +40,31 @@ def _linux_host_bundle():
 
 def _vmware_host_bundle():
     return {
-        "schema_vcsa": {
-            "health": "HEALTHY",
-            "alerts": [],
-            "summary": {"critical_count": 0, "warning_count": 0},
-            "fields": {
+        "raw_vcsa": {
+            "metadata": {"host": "vc01", "timestamp": "2025-01-01T00:00:00Z"},
+            "data": {
                 "appliance_version": "8.0.2",
+                "appliance_build": "23319199",
+                "appliance_uptime_seconds": 864000,
                 "appliance_health_overall": "green",
+                "appliance_health_cpu": "green",
+                "appliance_health_memory": "green",
+                "appliance_health_database": "green",
+                "appliance_health_storage": "green",
+                "ssh_enabled": False,
+                "shell_enabled": False,
+                "ntp_mode": "NTP",
+                "backup_schedules": [],
+                "backup_schedule_count": 0,
+                "active_alarms": [],
+                "alarm_count": 0,
+                "vcenter_count": 1,
+                "datacenter_count": 1,
                 "cluster_count": 1,
                 "esxi_host_count": 2,
+                "datastore_count": 0,
+                "clusters": [],
+                "datastores": [],
             },
         },
     }

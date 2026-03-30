@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/report_schema.json
 config:
   platform: linux/ubuntu
   stig:
@@ -15,7 +16,6 @@ config:
 
 vars:
   $include: "linux_base_fields.yaml"
-  collected_at: "raw_ubuntu.metadata.timestamp"
 
 alerts:
   $include: "linux_base_alerts.yaml"
