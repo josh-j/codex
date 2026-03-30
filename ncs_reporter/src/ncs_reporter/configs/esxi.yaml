@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../schemas/report_schema.json
+# yaml-language-server: $schema=../../.schemas/report_schema.json
 config:
   display_name: "VMware ESXi"
   platform: vmware/esxi
