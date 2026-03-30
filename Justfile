@@ -522,18 +522,11 @@ report:
     if command -v {{ ansible_inventory }} >/dev/null 2>&1; then
         {{ ansible_inventory }} -i {{ inventory_file }} --list --output {{ groups_json }}
         echo "✓ Inventory written to {{ groups_json }}"
-        {{ ncs_reporter }} all \
-            --config-dir {{ reporter_config_dir }} \
-            --platform-root {{ platform_root }} \
-            --reports-root {{ reports_dir }} \
-            --groups {{ groups_json }}
-    else
-        echo "ansible-inventory not found, running report without --groups"
-        {{ ncs_reporter }} all \
-            --config-dir {{ reporter_config_dir }} \
-            --platform-root {{ platform_root }} \
-            --reports-root {{ reports_dir }}
     fi
+    {{ ncs_reporter }} all \
+        --config-dir {{ reporter_config_dir }} \
+        --platform-root {{ platform_root }} \
+        --reports-root {{ reports_dir }}
     {{ python }} scripts/verify_report_artifacts.py --report-root {{ reports_dir }}
 
 # Generate reports with custom paths
