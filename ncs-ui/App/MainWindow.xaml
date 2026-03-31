@@ -241,7 +241,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
                         <StackPanel>
-                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Cursor="Hand">
+                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Content="{TemplateBinding Header}" Cursor="Hand">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
@@ -261,7 +261,6 @@
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
-                                <ContentPresenter ContentSource="Header" />
                             </ToggleButton>
                             <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed" Margin="{StaticResource MarginGapSm}" />
                         </StackPanel>
@@ -527,8 +526,8 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
-                        <Button x:Name="OperateToggleButton" Content="▶ Operate" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
-                        <Button x:Name="ConsoleShowButton" Content="▸ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
+                        <Button x:Name="OperateToggleButton" Content="⚡ Operate" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
+                        <Button x:Name="ConsoleShowButton" Content="⌨ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
