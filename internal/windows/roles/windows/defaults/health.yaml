@@ -1,0 +1,26 @@
+---
+# internal.windows.windows : defaults/health.yaml
+
+windows_health_check_os: true
+windows_health_check_disk: true
+windows_health_check_memory_cpu: true
+windows_health_check_services: true
+windows_health_check_network: true
+windows_health_check_reboot_pending: true
+windows_health_check_event_logs: true
+windows_health_check_secure_channel: true
+windows_health_check_software_versions: true
+
+windows_health_disk_warning_pct: 80
+windows_health_disk_critical_pct: 90
+windows_health_memory_warning_pct: 85
+windows_health_memory_critical_pct: 95
+windows_health_event_log_hours: 24
+
+windows_health_critical_services:
+  - CcmExec
+  - WinRM
+  - wuauserv
+  - MpsSvc
+  - WinDefend
+  - Tanium Client
