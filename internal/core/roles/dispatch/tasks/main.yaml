@@ -14,8 +14,9 @@
 #   _ncs_allowed_operations  — List of valid operations (default: [])
 #   _ncs_extra_validations   — List of additional assert conditions beyond the base set
 #   _ncs_action_routes       — Actions that route directly (e.g. ['collect'] for VMware)
-#   _ncs_dynamic_dispatch    — If true, unmapped keys use the key itself as filename
-#   _ncs_pre_dispatch_facts  — Dict of extra facts to set before dispatch
+#   _ncs_dynamic_dispatch        — If true, unmapped keys use the key itself as filename
+#   _ncs_dynamic_dispatch_prefix — Prefix for dynamic dispatch filenames (e.g. "maintain/")
+#   _ncs_pre_dispatch_facts      — Dict of extra facts to set before dispatch
 
 - name: "{{ _ncs_role_label }} | Resolve public interface"
   ansible.builtin.set_fact:
@@ -58,7 +59,7 @@
            else _ncs_requested_operation
            if _ncs_requested_operation != 'none'
            else '_default_',
-           _ncs_requested_operation
+           (_ncs_dynamic_dispatch_prefix | default('')) ~ _ncs_requested_operation
            if (_ncs_dynamic_dispatch | default(false))
            else _dispatch_map.get('_default_', 'discover')
          ) ~ '.yaml' }}
