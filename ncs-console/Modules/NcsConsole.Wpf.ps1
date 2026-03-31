@@ -210,7 +210,13 @@ function Set-NcsRequestFromControls {
     $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
     $Request.Diff = $Controls.ActionDiffCheckBox.IsChecked
     $verbosity = [string] $Controls.ActionVerbosityComboBox.SelectedItem
-    $Request.Verbosity = if ($verbosity -eq "Normal") { "" } else { $verbosity }
+    $Request.Verbosity = switch ($verbosity) {
+        "Verbose"          { "-v" }
+        "More Verbose"     { "-vv" }
+        "Debug"            { "-vvv" }
+        "Connection Debug" { "-vvvv" }
+        default            { "" }
+    }
     $Request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
     $Request.Options = Get-NcsActionOptionValues -Controls $Controls
 }
@@ -501,7 +507,7 @@ function Show-NcsConsoleApp {
     $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
     Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true
 
-    $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "-v", "-vv", "-vvv", "-vvvv")
+    $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
