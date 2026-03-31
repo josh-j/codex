@@ -21,13 +21,10 @@
       - network
 
 - name: Photon | Emit discovery telemetry
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform_dir: "{{ _ncs_platform_dir | default('linux/photon') }}"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          ansible_facts: "{{ ansible_facts }}"
-    per_host: true
-  when: not (photon_skip_export | default(false) | bool)
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "{{ _ncs_platform_dir | default('linux/photon') }}"
+    _ncs_emit_payload:
+      ansible_facts: "{{ ansible_facts }}"
+    _ncs_emit_skip: "{{ photon_skip_export | default(false) }}"
