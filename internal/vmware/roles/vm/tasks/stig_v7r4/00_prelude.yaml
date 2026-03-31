@@ -1,6 +1,10 @@
 ---
 # stig_v7r4/00_prelude.yaml — VM STIG initialization
-# Extracted from stig_v7r4/main.yaml for consistency with ESXi refactor pattern.
+
+- name: "VM STIG | Load STIG defaults"
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/tasks/stig_v7r4/stig.yaml"
+  tags: [always]
 
 - name: "VM STIG | Register target VM for callback"
   ansible.builtin.set_fact:

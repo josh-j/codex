@@ -3,12 +3,12 @@
 # Run native checks + conditional remediation. Skipped if input rows pre-populated audit_full_list.
 
 - name: "Windows STIG | Execute native baseline checks"
-  ansible.builtin.include_tasks: stig_check.yaml
+  ansible.builtin.include_tasks: stig_ws2022/stig_check.yaml
   when: not (_stig_audit_ran | default(false))
   tags: [windows, stig, security, checks]
 
 - name: "Windows STIG | Execute native remediation"
-  ansible.builtin.include_tasks: stig_remediate.yaml
+  ansible.builtin.include_tasks: stig_ws2022/stig_remediate.yaml
   when:
     - not (_stig_audit_ran | default(false))
     - _ncs_stig_action == 'remediate'

@@ -18,7 +18,7 @@
 
 - name: "stigrule_PHTN-30-000003 - Deploy DoD banner"
   ansible.builtin.template:
-    src: issue
+    src: "{{ role_path }}/tasks/stig_photon3/templates/issue"
     dest: /etc/issue
     owner: root
     group: root
