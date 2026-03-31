@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/cleanup.yaml
+# internal.windows.server : tasks/cleanup.yaml
 # Machine cleanup — temp files and stale profile removal.
 
 - name: "Cleanup | Orchestrator"

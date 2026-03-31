@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/update_software.yaml
+# internal.windows.server : tasks/update_software.yaml
 # Software update orchestrator — dispatches to per-app subtasks.
 
 - name: "Update Software | Orchestrator"

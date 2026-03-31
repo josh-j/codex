@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/audit.yaml
+# internal.windows.server : tasks/audit.yaml
 # Full Windows audit: applications, health, and telemetry in one pass.
 
 - name: Windows Audit Orchestrator

@@ -7,7 +7,7 @@
   gather_facts: false
   tags: ["windows", "audit", "verify", "post-patch"]
   roles:
-    - role: internal.windows.windows
+    - role: internal.windows.server
       vars:
         ncs_action: verify
         ncs_operation: patch

@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/stig_check.yaml
+# internal.windows.server : tasks/stig_check.yaml
 #
 # Minimal native Windows Server STIG baseline checks.
 

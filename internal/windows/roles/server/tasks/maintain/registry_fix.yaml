@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/registry_fix.yaml
+# internal.windows.server : tasks/registry_fix.yaml
 # Apply registry-based CVE remediations from predefined catalog.
 
 - name: "Registry Fix | Load fix catalog"

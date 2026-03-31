@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/stig_pre.yaml
+# internal.windows.server : tasks/stig_pre.yaml
 # Pre-phase1: initialize payload and optionally ingest provided findings.
 
 - name: "Windows STIG | Initialize payload"

@@ -11,7 +11,7 @@
     ansible_winrm_transport: "{{ windows_bootstrap_winrm_transport | default('kerberos') }}"
     ansible_port: 5985
   roles:
-    - role: internal.windows.windows
+    - role: internal.windows.server
       vars:
         ncs_action: remediate
         ncs_operation: openssh

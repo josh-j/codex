@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : defaults/health.yaml
+# internal.windows.server : defaults/health.yaml
 
 windows_health_check_os: true
 windows_health_check_disk: true

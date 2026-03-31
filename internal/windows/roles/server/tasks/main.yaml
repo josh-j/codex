@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/main.yaml
+# internal.windows.server : tasks/main.yaml
 
 - name: "Windows | Dispatch"
   ansible.builtin.include_role:

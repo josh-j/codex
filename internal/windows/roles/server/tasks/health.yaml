@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/health.yaml
+# internal.windows.server : tasks/health.yaml
 # Comprehensive system health check orchestrator.
 # Covers: OS info, disk, memory/CPU, services, network, reboot pending,
 # event logs, secure channel, and software version inventory.

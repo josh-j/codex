@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/winrm_enable.yaml
+# internal.windows.server : tasks/winrm_enable.yaml
 # Enable WinRM on targets — test first, fall back to CIM/DCOM scheduled task.
 
 - name: "WinRM Enable | Test current WinRM state"

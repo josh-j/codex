@@ -1,4 +1,4 @@
-# internal.windows.windows
+# internal.windows.server
 
 Unified role for managing and auditing Windows systems.
 
@@ -28,7 +28,7 @@ Runs targeted admin and maintenance workflows such as `patch`, `registry_fix`,
 - name: Audit Windows Fleet
   hosts: windows_servers
   roles:
-    - role: internal.windows.windows
+    - role: internal.windows.server
       vars:
         ncs_action: audit
 ```

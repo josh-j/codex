@@ -13,7 +13,7 @@
   vars:
     master_enable_windows_stig: true
   roles:
-    - role: internal.windows.windows
+    - role: internal.windows.server
       vars:
         ncs_action: audit
         ncs_profile: stig

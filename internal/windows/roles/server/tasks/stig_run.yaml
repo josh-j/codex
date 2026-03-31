@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/stig_run.yaml
+# internal.windows.server : tasks/stig_run.yaml
 # Run native checks + conditional remediation. Skipped if input rows pre-populated audit_full_list.
 
 - name: "Windows STIG | Execute native baseline checks"

@@ -2,11 +2,6 @@
 # internal.vmware.esxi : tasks/collect.yaml
 # Collects ESXi infrastructure data: datacenters, clusters, datastores, per-host health.
 
-- name: ESXi Collect | Save caller role path
-  ansible.builtin.set_fact:
-    _caller_role_path: "{{ role_path }}"
-  changed_when: false
-
 - name: ESXi Collect
   block:
     - name: ESXi Collect | Bootstrap shared collection state
@@ -21,8 +16,6 @@
           _raw_host_facts: {}
           _raw_host_nics: {}
           _raw_host_services: {}
-
-    # --- Inventory ---
 
     - name: Inventory | Query Datacenters
       community.vmware.vmware_datacenter_info:
@@ -64,83 +57,71 @@
       retries: 2
       delay: 5
       until: _raw_datastores is succeeded
-      ignore_errors: true
       when:
         - esxi_collect_storage | default(true) | bool
         - _vcenter_datacenters | default([]) | length > 0
 
-    # --- Per-Host Health ---
-
-    - name: Per-Host | Build host list from cluster data
-      ansible.builtin.set_fact:
-        _all_esxi_hosts: >-
-          {{
-            _raw_clusters.results | default([])
-            | selectattr('clusters', 'defined')
-            | map(attribute='clusters')
-            | map('dict2items') | flatten
-            | map(attribute='value')
-            | selectattr('hosts', 'defined')
-            | map(attribute='hosts') | flatten
-            | map(attribute='name') | list
-          }}
-      changed_when: false
+    - name: Per-Host | Collect health data
       when: esxi_collect_per_host | default(true) | bool
+      block:
+        - name: Per-Host | Build host list from cluster data
+          ansible.builtin.set_fact:
+            _all_esxi_hosts: >-
+              {{
+                _raw_clusters.results | default([])
+                | selectattr('clusters', 'defined')
+                | map(attribute='clusters')
+                | map('dict2items') | flatten
+                | map(attribute='value')
+                | selectattr('hosts', 'defined')
+                | map(attribute='hosts') | flatten
+                | map(attribute='name') | list
+              }}
+          changed_when: false
 
-    - name: Per-Host | Query host facts (CPU, memory, system info)
-      community.vmware.vmware_host_facts:
-        esxi_hostname: "{{ item }}"
-      loop: "{{ _all_esxi_hosts }}"
-      register: _raw_host_facts
-      delegate_to: localhost
-      no_log: true
-      failed_when: false
-      changed_when: false
-      retries: 1
-      delay: 3
-      until: _raw_host_facts is succeeded
-      ignore_errors: true
-      when:
-        - esxi_collect_per_host | default(true) | bool
-        - _all_esxi_hosts | default([]) | length > 0
+        - name: Per-Host | Query host facts (CPU, memory, system info)
+          community.vmware.vmware_host_facts:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          register: _raw_host_facts
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          retries: 1
+          delay: 3
+          until: _raw_host_facts is succeeded
+          when: _all_esxi_hosts | length > 0
 
-    - name: Per-Host | Query physical NIC info
-      community.vmware.vmware_host_vmnic_info:
-        esxi_hostname: "{{ item }}"
-      loop: "{{ _all_esxi_hosts }}"
-      register: _raw_host_nics
-      delegate_to: localhost
-      no_log: true
-      failed_when: false
-      changed_when: false
-      retries: 1
-      delay: 3
-      until: _raw_host_nics is succeeded
-      ignore_errors: true
-      when:
-        - esxi_collect_per_host | default(true) | bool
-        - _all_esxi_hosts | default([]) | length > 0
+        - name: Per-Host | Query physical NIC info
+          community.vmware.vmware_host_vmnic_info:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          register: _raw_host_nics
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          retries: 1
+          delay: 3
+          until: _raw_host_nics is succeeded
+          when: _all_esxi_hosts | length > 0
 
-    - name: Per-Host | Query service status (SSH, NTP, syslog)
-      community.vmware.vmware_host_service_info:
-        esxi_hostname: "{{ item }}"
-      loop: "{{ _all_esxi_hosts }}"
-      register: _raw_host_services
-      delegate_to: localhost
-      no_log: true
-      failed_when: false
-      changed_when: false
-      retries: 1
-      delay: 3
-      until: _raw_host_services is succeeded
-      ignore_errors: true
-      when:
-        - esxi_collect_per_host | default(true) | bool
-        - _all_esxi_hosts | default([]) | length > 0
+        - name: Per-Host | Query service status (SSH, NTP, syslog)
+          community.vmware.vmware_host_service_info:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          register: _raw_host_services
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          retries: 1
+          delay: 3
+          until: _raw_host_services is succeeded
+          when: _all_esxi_hosts | length > 0
 
   always:
-    # --- Assemble + Export ---
-
     - name: Assemble raw ESXi infrastructure context
       ansible.builtin.set_fact:
         vmware_raw_esxi:
@@ -159,8 +140,6 @@
             host_nics: "{{ _raw_host_nics.results | default([]) }}"
             host_services: "{{ _raw_host_services.results | default([]) }}"
           config: "{{ (vcenter | default({})).config | default({}) }}"
-          collection_status: "{{ 'FAILED' if esxi_collect_failed | default(false) | bool else 'SUCCESS' }}"
-          collection_error: "{{ esxi_connectivity_error | default('') }}"
       changed_when: false
       no_log: true
 
@@ -180,5 +159,6 @@
               vmware_datastore_free_critical_pct: "{{ vmware_datastore_free_critical_pct | default(10) }}"
               vmware_datastore_free_warning_pct: "{{ vmware_datastore_free_warning_pct | default(15) }}"
         per_host: true
+      when: vmware_raw_esxi is defined
       changed_when: false
       no_log: true
