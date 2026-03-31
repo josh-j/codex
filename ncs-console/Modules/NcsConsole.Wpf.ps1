@@ -52,6 +52,7 @@ function Get-NcsXamlControlMap {
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
+        "ActionSelectionTitle",
         "ActionLimitTextBox",
         "ActionLimitTree",
         "ActionLimitTreeBorder",
@@ -576,10 +577,22 @@ function Show-NcsConsoleApp {
         param($s, $e)
         $item = $e.NewValue
         $playbook = ""
+        $label = "Select a playbook"
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
             $state.Settings.LastAction = $item.Tag
             $playbook = $item.Tag
+            if ($item.Header -is [System.Windows.Controls.StackPanel]) {
+                foreach ($child in @($item.Header.Children)) {
+                    if ($child -is [System.Windows.Controls.TextBlock]) {
+                        $label = $child.Text
+                        break
+                    }
+                }
+            } else {
+                $label = [string] $item.Header
+            }
         }
+        $controls.ActionSelectionTitle.Text = $label
         Update-NcsActionOptions -Controls $controls -ActionGroups $script:ActionGroups -Playbook $playbook
         & $refreshPreview
     })
