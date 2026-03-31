@@ -146,6 +146,7 @@ function Get-NcsSshArgumentList {
     $arguments = [System.Collections.Generic.List[string]]::new()
     $arguments.Add("-p")
     $arguments.Add([string] $Settings.SshPort)
+    $arguments.Add("-tt")
     $arguments.Add("-o")
     $arguments.Add("BatchMode=no")
 
@@ -229,7 +230,7 @@ function Get-NcsRemoteShellCommand {
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $actionCommand = Resolve-NcsPlaybookCommand -Settings $Settings -Request $Request
-    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && $actionCommand"
+    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && export PYTHONUNBUFFERED=1 && if command -v stdbuf >/dev/null 2>&1; then stdbuf -oL -eL $actionCommand; else $actionCommand; fi"
 }
 
 function Find-NcsDetectedPaths {
