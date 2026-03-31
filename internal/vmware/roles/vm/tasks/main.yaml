@@ -36,13 +36,17 @@
         password: "{{ vmware_password }}"
         validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   block:
+    - name: "VM | Build dispatch map"
+      ansible.builtin.set_fact:
+        _dispatch_map:
+          snapshot: snapshot
+          _default_: stig
+      changed_when: false
+
     - name: "VM | Run dispatcher"
       ansible.builtin.include_tasks:
         file: >-
-          {{
-            role_path ~ '/tasks/collect.yaml'
-            if vm_ncs_requested_action == 'collect'
-            else role_path ~ '/tasks/snapshot.yaml'
-            if vm_ncs_requested_operation == 'snapshot'
-            else role_path ~ '/tasks/stig.yaml'
-          }}
+          {{ role_path ~ '/tasks/' ~ (
+               'collect' if vm_ncs_requested_action == 'collect'
+               else _dispatch_map.get(vm_ncs_requested_operation, '_default_')
+             ) ~ '.yaml' }}
