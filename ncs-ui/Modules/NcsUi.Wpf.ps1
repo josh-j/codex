@@ -52,8 +52,6 @@ function Get-NcsXamlControlMap {
         "PreflightStateText",
         "PreflightSummaryText",
         "PreflightListBox",
-        "TargetTreeView",
-        "TargetScrollViewer",
         "ActionTreeView",
         "ActionLimitTextBox",
         "ActionTagsTextBox",
@@ -62,8 +60,6 @@ function Get-NcsXamlControlMap {
         "ActionVerbosityComboBox",
         "ActionOptionsPanel",
         "ActionScrollViewer",
-        "SiteTextBox",
-        "HostTextBox",
         "ExtraArgsTextBox",
         "RunButton",
         "CancelButton",
@@ -206,7 +202,6 @@ function Set-NcsRequestFromControls {
         [NcsActionRequest] $Request
     )
 
-    Resolve-NcsTargetLimit -Controls $Controls -Request $Request
     $Request.Limit = $Controls.ActionLimitTextBox.Text.Trim()
     $Request.Tags = $Controls.ActionTagsTextBox.Text.Trim()
     $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
@@ -217,22 +212,6 @@ function Set-NcsRequestFromControls {
     $Request.Options = Get-NcsActionOptionValues -Controls $Controls
 }
 
-function Resolve-NcsTargetLimit {
-    param(
-        [Parameter(Mandatory)]
-        [hashtable] $Controls,
-        [Parameter(Mandatory)]
-        [NcsActionRequest] $Request
-    )
-
-    $targetLimit = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "TargetTreeView"
-    if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
-        $Request.Site = $targetLimit
-    } else {
-        $Request.Site = $Controls.SiteTextBox.Text.Trim()
-        $Request.Host = $Controls.HostTextBox.Text.Trim()
-    }
-}
 
 function Update-NcsSshAuthVisibility {
     param(
@@ -393,8 +372,6 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     $Controls.RemoteVaultPathTextBox.Text = $Settings.RemoteVaultPath
-    $Controls.SiteTextBox.Text = ""
-    $Controls.HostTextBox.Text = ""
     $targetPlaybook = $Settings.LastAction
     $found = $false
     if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {
@@ -518,9 +495,6 @@ function Show-NcsUiApp {
         LastRunResult   = $null
     }
 
-    $targetGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/targets.yml")
-    Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $targetGroups -TagProperty "limit" -Expanded $false
-
     $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
     Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true
 
@@ -561,20 +535,10 @@ function Show-NcsUiApp {
 
     & $refreshPreview
 
-    $controls.TargetTreeView.Add_PreviewMouseWheel({
-        param($s, $e)
-        $controls.TargetScrollViewer.ScrollToVerticalOffset($controls.TargetScrollViewer.VerticalOffset - $e.Delta / 3)
-        $e.Handled = $true
-    })
-
     $controls.ActionTreeView.Add_PreviewMouseWheel({
         param($s, $e)
         $controls.ActionScrollViewer.ScrollToVerticalOffset($controls.ActionScrollViewer.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
-    })
-
-    $controls.TargetTreeView.Add_SelectedItemChanged({
-        & $refreshPreview
     })
 
     $controls.ActionTreeView.Add_SelectedItemChanged({
@@ -589,7 +553,6 @@ function Show-NcsUiApp {
         & $refreshPreview
     })
 
-    $controls.SiteTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
@@ -597,7 +560,6 @@ function Show-NcsUiApp {
     $controls.ActionDiffCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionDiffCheckBox.Add_Unchecked({ & $refreshPreview })
     $controls.ActionVerbosityComboBox.Add_SelectionChanged({ & $refreshPreview })
-    $controls.HostTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ExtraArgsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.SshHostTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.SshPortTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
@@ -756,20 +718,10 @@ function Show-NcsUiApp {
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             $controls.PreflightListBox.Visibility = "Visible"
             if ($preflight.IsReady) {
-                $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
+                $controls.PreflightSummaryText.Text = "Preflight passed. Ready to run actions."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
-                $controls.StatusTextBlock.Text = "Fetching remote inventory..."
+                $controls.StatusTextBlock.Text = "Preflight passed."
                 Set-NcsPreflightState -Controls $controls -State "Passed"
-
-                try {
-                    $remoteTargets = Get-NcsRemoteInventory -Settings $state.Settings
-                    Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $remoteTargets -TagProperty "limit" -Expanded $false
-                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory loaded ($(@($remoteTargets).Length) groups)."
-                    $controls.PreflightSummaryText.Text = "Connected. Inventory loaded from remote."
-                } catch {
-                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory load failed: $($_.Exception.Message)"
-                    $controls.PreflightSummaryText.Text = "Connected. Using static targets (inventory fetch failed)."
-                }
             } else {
                 $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"

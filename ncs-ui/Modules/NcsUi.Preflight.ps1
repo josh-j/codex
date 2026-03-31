@@ -113,7 +113,6 @@ function Test-NcsRemotePreflight {
         "(cd $repo && test -f $vault) && echo CHECK:vault:ok || echo CHECK:vault:fail"
         "command -v make >/dev/null 2>&1 && echo CHECK:make:ok || echo CHECK:make:fail"
         "command -v ansible-playbook >/dev/null 2>&1 && echo CHECK:ansible:ok || echo CHECK:ansible:fail"
-        "command -v ansible-inventory >/dev/null 2>&1 && echo CHECK:ainventory:ok || echo CHECK:ainventory:fail"
     ) -join "; "
 
     $checkMeta = [ordered]@{
@@ -124,7 +123,6 @@ function Test-NcsRemotePreflight {
         vault      = @{ Name = "Vault file exists";           FailMsg = "Configured vault file was not found on the remote repo." }
         make       = @{ Name = "make available";              FailMsg = "make command not found on the remote host." }
         ansible    = @{ Name = "ansible-playbook available";  FailMsg = "ansible-playbook command not found on the remote host." }
-        ainventory = @{ Name = "ansible-inventory available"; FailMsg = "ansible-inventory command not found on the remote host." }
     }
 
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $script

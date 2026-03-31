@@ -189,10 +189,6 @@ function Resolve-NcsPlaybookCommand {
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Limit)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Limit)
-    } elseif (-not [string]::IsNullOrWhiteSpace($Request.Site)) {
-        $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Site) + ",localhost"
-    } elseif (-not [string]::IsNullOrWhiteSpace($Request.Host)) {
-        $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Host) + ",localhost"
     }
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Tags)) {
