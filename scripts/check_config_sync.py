@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Verify ncs_reporter configs/scripts are in sync with files/ncs_reporter_configs/.
+"""Verify ncs-reporter configs/scripts are in sync with files/ncs-reporter_configs/.
 
-ncs_reporter/src/ncs_reporter/ is the single source of truth.
-files/ncs_reporter_configs/ is the runtime copy used by ncs_collector.
+ncs-reporter/src/ncs_reporter/ is the single source of truth.
+files/ncs-reporter_configs/ is the runtime copy used by ncs_collector.
 
 Exit 0 if in sync, exit 1 with details if not.
 Use --fix to copy source → destination automatically.
@@ -20,13 +20,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SYNC_PAIRS: list[tuple[Path, Path, str]] = [
     (
-        REPO_ROOT / "ncs_reporter" / "src" / "ncs_reporter" / "configs",
-        REPO_ROOT / "files" / "ncs_reporter_configs",
+        REPO_ROOT / "ncs-reporter" / "src" / "ncs_reporter" / "configs",
+        REPO_ROOT / "files" / "ncs-reporter_configs",
         "*.yaml",
     ),
     (
-        REPO_ROOT / "ncs_reporter" / "src" / "ncs_reporter" / "scripts",
-        REPO_ROOT / "files" / "ncs_reporter_configs" / "scripts",
+        REPO_ROOT / "ncs-reporter" / "src" / "ncs_reporter" / "scripts",
+        REPO_ROOT / "files" / "ncs-reporter_configs" / "scripts",
         "*.py",
     ),
 ]
@@ -72,7 +72,7 @@ def main() -> None:
     errors = check_sync(fix=args.fix)
 
     if not errors:
-        print("ncs_reporter configs/scripts are in sync.")
+        print("ncs-reporter configs/scripts are in sync.")
         raise SystemExit(0)
 
     label = "Fixed" if args.fix else "Out of sync"

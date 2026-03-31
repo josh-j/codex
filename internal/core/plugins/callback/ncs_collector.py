@@ -140,7 +140,7 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
         for _ in range(max_up + 1):
             for marker in (
                 os.path.join(cur, "collections", "ansible_collections"),
-                os.path.join(cur, "files", "ncs_reporter_configs"),
+                os.path.join(cur, "files", "ncs-reporter_configs"),
             ):
                 if os.path.isdir(marker):
                     return cur
@@ -265,11 +265,11 @@ def _load_platforms_contract(
         else:
             platforms = path_contract.load_platforms_config_file(explicit_cfg)
     else:
-        cfg_path = os.path.join(repo_root, "files", "ncs_reporter_configs", "platforms.yaml")
+        cfg_path = os.path.join(repo_root, "files", "ncs-reporter_configs", "platforms.yaml")
         if os.path.isfile(cfg_path):
             platforms = path_contract.load_platforms_config_file(cfg_path)
         else:
-            schema_dir = os.path.join(repo_root, "files", "ncs_reporter_configs")
+            schema_dir = os.path.join(repo_root, "files", "ncs-reporter_configs")
             platforms = _load_platforms_from_schema_dir(schema_dir)
             if not platforms:
                 raise RuntimeError(

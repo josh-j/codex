@@ -200,12 +200,12 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
 #### Render HTML and CKLB reports
 
 ```bash
-./ncs_reporter/.venv/bin/python -m ncs_reporter.cli all \
+./ncs-reporter/.venv/bin/python -m ncs_reporter.cli all \
   --platform-root /srv/samba/reports/platform \
   --reports-root /srv/samba/reports \
   --groups /srv/samba/reports/platform/inventory_groups.json \
   --report-stamp 20260316 \
-  --config-dir files/ncs_reporter_configs
+  --config-dir files/ncs-reporter_configs
 ```
 
 ### Manual Validation Examples
