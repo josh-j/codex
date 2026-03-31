@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/vuln_scan.yaml
+# internal.windows.server : tasks/vuln_scan.yaml
 # ACAS vulnerability scan import + live remediation status check.
 
 - name: "Vuln Scan | Orchestrator"

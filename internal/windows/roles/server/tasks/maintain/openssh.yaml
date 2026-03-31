@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/openssh.yaml
+# internal.windows.server : tasks/openssh.yaml
 # Install and configure OpenSSH Server Windows feature.
 
 - name: "OpenSSH | Install and configure"

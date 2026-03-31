@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : defaults/main.yaml
+# internal.windows.server : defaults/main.yaml
 
 # Performance/Safety
 windows_audit_startup_delay: 5

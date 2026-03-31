@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/scheduled_task.yaml
+# internal.windows.server : tasks/scheduled_task.yaml
 # Remote scheduled task management — list, run, enable, disable, delete.
 
 - name: "Scheduled Task | List tasks"

@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/windows_update.yaml
+# internal.windows.server : tasks/windows_update.yaml
 # Direct Windows Update via COM API (not ConfigMgr).
 
 - name: "Windows Update | Orchestrator"

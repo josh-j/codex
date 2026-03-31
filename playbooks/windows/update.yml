@@ -7,7 +7,7 @@
   gather_facts: false
   tags: ["windows", "update", "apply"]
   roles:
-    - role: internal.windows.windows
+    - role: internal.windows.server
       vars:
         ncs_action: remediate
         ncs_operation: patch

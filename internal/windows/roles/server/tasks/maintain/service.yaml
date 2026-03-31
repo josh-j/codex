@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/service.yaml
+# internal.windows.server : tasks/service.yaml
 # Remote service management — list, start, stop, restart.
 
 - name: "Service | List services"

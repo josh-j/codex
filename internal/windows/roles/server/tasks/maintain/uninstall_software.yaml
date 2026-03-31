@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/uninstall_software.yaml
+# internal.windows.server : tasks/uninstall_software.yaml
 # Software uninstaller — Win32 apps, AppX packages, VC++ cleanup, winget removal.
 
 - name: "Uninstall Software | Orchestrator"

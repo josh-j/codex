@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/ad_search.yaml
+# internal.windows.server : tasks/ad_search.yaml
 # Active Directory user/computer search with BitLocker key recovery.
 
 - name: "AD Search | Validate input"

@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/stig.yaml
+# internal.windows.server : tasks/stig.yaml
 
 - name: "Windows STIG"
   ansible.builtin.include_role:

@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/stig_remediate.yaml
+# internal.windows.server : tasks/stig_remediate.yaml
 #
 # Remediation logic for Windows Server STIG rules.
 # This file performs the actual mutations to bring the system into compliance.

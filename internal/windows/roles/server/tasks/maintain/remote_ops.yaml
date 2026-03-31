@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/remote_ops.yaml
+# internal.windows.server : tasks/remote_ops.yaml
 # Quick remote operations: reboot, shutdown, logoff, gpupdate, message, uptime.
 
 - name: "Remote Ops | Reboot"

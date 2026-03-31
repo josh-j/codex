@@ -1,5 +1,5 @@
 ---
-# internal.windows.windows : tasks/kb_install.yaml
+# internal.windows.server : tasks/kb_install.yaml
 # KB detection (3 methods) and installation via DISM.
 
 - name: "KB Install | Validate input"
