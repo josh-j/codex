@@ -41,7 +41,7 @@ function ConvertTo-NcsConsoleSettings {
 
     $settings = [NcsConsoleSettings]::new()
 
-    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "RemoteVaultPath", "LastAction")) {
+    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "LastAction")) {
         if ($InputObject.PSObject.Properties.Name -contains $property) {
             $settings.$property = $InputObject.$property
         }
@@ -100,7 +100,6 @@ function Save-NcsConsoleSettings {
         SshAuthMode     = $Settings.SshAuthMode
         SshKeyPath      = $Settings.SshKeyPath
         RemoteRepoPath  = $Settings.RemoteRepoPath
-        RemoteVaultPath = $Settings.RemoteVaultPath
         LastAction      = $Settings.LastAction
     } | ConvertTo-Json -Depth 4
 

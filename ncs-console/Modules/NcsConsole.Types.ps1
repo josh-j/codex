@@ -15,7 +15,6 @@ class NcsConsoleSettings {
     [string] $SshKeyPassphrase = ""
     [string] $SshPassword = ""
     [string] $RemoteRepoPath = "~/ansible-ncs"
-    [string] $RemoteVaultPath = ".vaultpass"
     [string] $LastAction = ""
 
     NcsConsoleSettings() {

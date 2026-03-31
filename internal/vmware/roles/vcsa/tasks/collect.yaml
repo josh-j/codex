@@ -34,31 +34,20 @@
           _raw_tag_categories: {}
           _raw_tags: {}
 
-    - name: Collect | Simulated vCenter State
-      ansible.builtin.include_tasks: collect/simulated.yaml
-      tags: [collect, simulation]
-      when: simulation_mode | default(false) | bool
-
     - name: Collect | vCenter Infrastructure Inventory
       ansible.builtin.include_tasks: collect/inventory.yaml
       tags: [collect, inventory]
-      when:
-        - not (simulation_mode | default(false) | bool)
-        - vcsa_collect_inventory | default(true) | bool
+      when: vcsa_collect_inventory | default(true) | bool
 
     - name: Collect | vCenter Appliance State
       ansible.builtin.include_tasks: collect/appliance.yaml
       tags: [collect, infrastructure]
-      when:
-        - not (simulation_mode | default(false) | bool)
-        - vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+      when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
 
     - name: Collect | vCenter Active Alarms
       ansible.builtin.include_tasks: collect/alarms.yaml
       tags: [collect, alarms]
-      when:
-        - not (simulation_mode | default(false) | bool)
-        - vcsa_collect_alarms | default(vcenter_collect_alarms | default(true)) | bool
+      when: vcsa_collect_alarms | default(vcenter_collect_alarms | default(true)) | bool
 
   always:
     - name: Finalize vCenter collection state
