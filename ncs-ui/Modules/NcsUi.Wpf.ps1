@@ -660,7 +660,7 @@ function Show-NcsUiApp {
 
     $openOperate = {
         $operateColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $operateColumn.MinWidth = 250
+        $operateColumn.MinWidth = 0
         $controls.OperateContent.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
     }
