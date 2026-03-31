@@ -651,7 +651,7 @@
                                                 </Button>
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit host or group pattern" />
+                                            <ComboBox x:Name="ActionLimitComboBox" IsEditable="True" ToolTip="--limit host or group pattern" />
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
                                             <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />

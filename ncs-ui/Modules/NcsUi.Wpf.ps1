@@ -53,7 +53,7 @@ function Get-NcsXamlControlMap {
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
-        "ActionLimitTextBox",
+        "ActionLimitComboBox",
         "ActionTagsTextBox",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
@@ -202,7 +202,7 @@ function Set-NcsRequestFromControls {
         [NcsActionRequest] $Request
     )
 
-    $Request.Limit = $Controls.ActionLimitTextBox.Text.Trim()
+    $Request.Limit = $Controls.ActionLimitComboBox.Text.Trim()
     $Request.Tags = $Controls.ActionTagsTextBox.Text.Trim()
     $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
     $Request.Diff = $Controls.ActionDiffCheckBox.IsChecked
@@ -553,7 +553,7 @@ function Show-NcsUiApp {
         & $refreshPreview
     })
 
-    $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionLimitComboBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
@@ -718,10 +718,22 @@ function Show-NcsUiApp {
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             $controls.PreflightListBox.Visibility = "Visible"
             if ($preflight.IsReady) {
-                $controls.PreflightSummaryText.Text = "Preflight passed. Ready to run actions."
+                $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
                 $controls.StatusTextBlock.Text = "Preflight passed."
                 Set-NcsPreflightState -Controls $controls -State "Passed"
+
+                try {
+                    $inventoryNames = Get-NcsRemoteInventoryNames -Settings $state.Settings
+                    if ($inventoryNames.Length -gt 0) {
+                        $controls.ActionLimitComboBox.ItemsSource = $inventoryNames
+                        $controls.PreflightSummaryText.Text = "Connected. $($inventoryNames.Length) targets available."
+                    } else {
+                        $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
+                    }
+                } catch {
+                    $controls.PreflightSummaryText.Text = "Connected. Inventory fetch failed — enter limit manually."
+                }
             } else {
                 $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"
