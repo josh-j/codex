@@ -598,7 +598,7 @@
                             </DockPanel>
                             <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
                             <Button x:Name="PreflightButton" Content="Verify Connection" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="{StaticResource FontSizeMd}" />
-                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapMd}">
+                            <Expander x:Name="PreflightDetailsExpander" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapMd}">
                                 <Expander.Header>
                                     <TextBlock Text="Details" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
                                 </Expander.Header>
