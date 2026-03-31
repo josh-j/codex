@@ -337,16 +337,4 @@ function Stop-NcsRemoteCommand {
     }
 }
 
-function Invoke-NcsAction {
-    param(
-        [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
-        [Parameter(Mandatory)]
-        [NcsActionRequest] $Request,
-        [scriptblock] $OnOutput,
-        [scriptblock] $OnCompleted
-    )
-
-    return Start-NcsRemoteCommand -Settings $Settings -Request $Request -OnOutput $OnOutput -OnCompleted $OnCompleted
-}
 

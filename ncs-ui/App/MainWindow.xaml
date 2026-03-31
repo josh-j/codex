@@ -63,7 +63,6 @@
         <Thickness x:Key="MarginInlineSm">0,0,4,0</Thickness>
         <Thickness x:Key="MarginInlineMd">8,0,0,0</Thickness>
         <Thickness x:Key="MarginDivider">0,10,0,10</Thickness>
-        <Thickness x:Key="MarginTabPanel">0,0,0,6</Thickness>
         <Thickness x:Key="MarginSectionTitle">0,0,0,6</Thickness>
 
         <Thickness x:Key="PaddingXs">4,2,4,2</Thickness>
@@ -234,51 +233,6 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusLg}" />
             <Setter Property="Padding" Value="{StaticResource CardPadding}" />
             <Setter Property="Margin" Value="{StaticResource CardMargin}" />
-        </Style>
-        <Style TargetType="TabControl">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TabControl">
-                        <Grid KeyboardNavigation.TabNavigation="Local">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <TabPanel Grid.Row="0" Margin="{StaticResource MarginTabPanel}" IsItemsHost="True" />
-                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" />
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,0,10,0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Background="#151920" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingTab}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" ContentSource="Header" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceAltBrush}" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#3c4654" />
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#3c4654" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
         <Style x:Key="SectionExpanderStyle" TargetType="Expander">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -570,7 +524,6 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Width="10" Height="10" Background="{StaticResource AccentBrush}" CornerRadius="5" Margin="0,0,8,0" />
                         <TextBlock x:Name="TitleBarTitleText" Text="NCS Console" Foreground="White" FontSize="{StaticResource FontSizeXl}" FontWeight="Bold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
@@ -748,7 +701,6 @@
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="ConsoleHintText" DockPanel.Dock="Left" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginInlineMd}" VerticalAlignment="Center" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                         <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
                                         <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />

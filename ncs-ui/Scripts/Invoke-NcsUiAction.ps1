@@ -31,7 +31,7 @@ $request.ExtraArgs = $ExtraArgs
 
 $done = $false
 $resultRef = $null
-$handle = Invoke-NcsAction -Settings $settings -Request $request `
+$handle = Start-NcsRemoteCommand -Settings $settings -Request $request `
     -OnOutput {
         param($line)
         Write-Host $line

@@ -72,8 +72,6 @@ Stored values include:
 - SSH key path (if KeyFile auth mode is selected)
 - remote repo path
 - remote vault path
-- default site
-- default Ansible host
 - last selected action
 
 Passwords are never stored to disk. If `Password` SSH mode is selected, the password must be re-entered each session.
