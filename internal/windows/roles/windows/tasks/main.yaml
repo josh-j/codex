@@ -9,6 +9,7 @@
     _ncs_task_root: "{{ role_path }}/tasks"
     _ncs_default_action: audit
     _ncs_dynamic_dispatch: true
+    _ncs_dynamic_dispatch_prefix: "maintain/"
     _ncs_pre_dispatch_facts:
       windows_audit_force_update: "{{ ncs_action | default('audit') == 'remediate' and ncs_operation | default('none') == 'patch' }}"
     _ncs_allowed_profiles:

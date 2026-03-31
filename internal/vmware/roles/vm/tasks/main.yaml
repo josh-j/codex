@@ -30,5 +30,5 @@
           - (_ncs_requested_operation == 'none') or (_ncs_requested_action == 'remediate')
         _dispatch_map:
           collect: collect
-          snapshot: snapshot
+          snapshot: maintain/snapshot
           _default_: stig

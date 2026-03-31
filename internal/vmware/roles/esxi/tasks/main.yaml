@@ -37,6 +37,6 @@
           - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
         _dispatch_map:
           collect: collect
-          password_status: password_status
-          password_rotate: password_rotate
+          password_status: maintain/password_status
+          password_rotate: maintain/password_rotate
           _default_: stig
