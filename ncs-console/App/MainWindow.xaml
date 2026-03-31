@@ -144,12 +144,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#2a3040" />
-                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#3c4654" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#242932" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#363b44" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#343c4c" />
-                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#4a5568" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#2a3040" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#3c4654" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.45" />
