@@ -144,3 +144,20 @@ function Import-NcsGroupedConfig {
     return $groups
 }
 
+function Get-NcsRemoteInventoryNames {
+    param(
+        [Parameter(Mandatory)]
+        [NcsUiSettings] $Settings
+    )
+
+    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
+    $command = "cd $repo && ansible-inventory -i inventory/production --graph 2>/dev/null | grep -oP '[@|][\w\-\.]+' | sed 's/^[@|]//' | sort -u"
+    $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
+
+    if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
+        return @()
+    }
+
+    return @($probe.StdOut -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
