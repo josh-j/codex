@@ -48,6 +48,7 @@ function Get-NcsXamlControlMap {
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightButtonText",
+        "RefreshPlaybooksButton",
         "PlaybookPlaceholder",
         "PlaybookSplitPane",
         "ActionTreeView",
@@ -894,6 +895,7 @@ function Show-NcsConsoleApp {
                 $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
+                $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
                 return
             }
 
@@ -1008,6 +1010,7 @@ function Show-NcsConsoleApp {
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
                 $controls.PlaybookPlaceholder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Visible"
+                $controls.RefreshPlaybooksButton.Visibility = "Visible"
                 Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $state.Settings.LastAction -FallbackToFirst
                 $controls.StatusTextBlock.Text = $statusParts -join " "
             } else {
@@ -1017,6 +1020,32 @@ function Show-NcsConsoleApp {
         } catch {
             $controls.StatusTextBlock.Text = $_.Exception.Message
             Set-NcsPreflightState -Controls $controls -State "Failed"
+        }
+    })
+
+    $controls.RefreshPlaybooksButton.Add_Click({
+        if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
+        try {
+            $controls.StatusTextBlock.Text = "Refreshing..."
+            $selectedPlaybook = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
+            try {
+                $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
+                if (@($inventoryTree).Length -gt 0) {
+                    Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
+                    $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                }
+            } catch {}
+            try {
+                $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
+                if (@($remotePlaybooks).Length -gt 0) {
+                    $script:ActionGroups = $remotePlaybooks
+                }
+            } catch {}
+            Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+            Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedPlaybook -FallbackToFirst
+            $controls.StatusTextBlock.Text = "Refreshed."
+        } catch {
+            $controls.StatusTextBlock.Text = "Refresh failed."
         }
     })
 
