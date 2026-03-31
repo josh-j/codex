@@ -53,7 +53,7 @@ function Get-NcsXamlControlMap {
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
-        "ActionLimitComboBox",
+        "ActionLimitTextBox",
         "ActionTagsTextBox",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
@@ -202,7 +202,7 @@ function Set-NcsRequestFromControls {
         [NcsActionRequest] $Request
     )
 
-    $Request.Limit = $Controls.ActionLimitComboBox.Text.Trim()
+    $Request.Limit = $Controls.ActionLimitTextBox.Text.Trim()
     $Request.Tags = $Controls.ActionTagsTextBox.Text.Trim()
     $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
     $Request.Diff = $Controls.ActionDiffCheckBox.IsChecked
@@ -553,8 +553,7 @@ function Show-NcsConsoleApp {
         & $refreshPreview
     })
 
-    $controls.ActionLimitComboBox.Add_SelectionChanged({ & $refreshPreview })
-    $controls.ActionLimitComboBox.Add_KeyUp({ & $refreshPreview })
+    $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
@@ -727,8 +726,7 @@ function Show-NcsConsoleApp {
                 try {
                     $inventoryNames = Get-NcsRemoteInventoryNames -Settings $state.Settings
                     if ($inventoryNames.Length -gt 0) {
-                        $controls.ActionLimitComboBox.ItemsSource = $inventoryNames
-                        $controls.ActionLimitComboBox.MaxDropDownHeight = 200
+                        $controls.ActionLimitTextBox.ToolTip = "Available: " + ($inventoryNames -join ", ")
                         $controls.PreflightSummaryText.Text = "Connected. $($inventoryNames.Length) targets available."
                     } else {
                         $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
