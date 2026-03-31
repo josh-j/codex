@@ -682,8 +682,18 @@
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
-                                        <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
+                                        <Button x:Name="CopyOutputButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Copy output to clipboard">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M4 0 L12 0 L12 10 L4 10 Z M0 3 L0 13 L8 13 L8 10" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                <TextBlock Text="Copy" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="ExportOutputButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Export output to file">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M5 0 L5 8 M2 5 L5 8 L8 5 M0 10 L10 10" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                <TextBlock Text="Export" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                         <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse console" />
                                     </StackPanel>
                                 </DockPanel>
