@@ -80,7 +80,7 @@
 
 - name: "VCPG-70-000019 | Deploy vmware-services-vmware-postgres-archiver.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-vmware-postgres-archiver.conf
+    src: vmware-services-vmware-postgres-archiver.conf
     dest: "{{ var_syslog_conf_path2 }}"
     owner: root
     group: root
@@ -94,7 +94,7 @@
 
 - name: "VCPG-70-000019 | Deploy vmware-services-vmware-vpostgres.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-vmware-vpostgres.conf
+    src: vmware-services-vmware-vpostgres.conf
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root

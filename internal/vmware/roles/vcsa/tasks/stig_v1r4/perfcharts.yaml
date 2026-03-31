@@ -32,7 +32,7 @@
 
 - name: "VCPF-70-000011/000018/000031/000032 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: stig/perfcharts_catalina.properties
+    src: perfcharts_catalina.properties
     dest: "{{ var_catalina_props_path }}"
     owner: perfcharts
     group: cis
@@ -49,7 +49,7 @@
 
 - name: "VCPF-70-000029 | Deploy log4j.properties"
   ansible.builtin.template:
-    src: stig/perfcharts_log4j.properties
+    src: perfcharts_log4j.properties
     dest: "{{ var_perf_log4j_path }}"
     owner: root
     group: root
@@ -61,7 +61,7 @@
 
 - name: "VCPF-70-000030 | Deploy vmware-services-perfcharts.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-perfcharts.conf
+    src: vmware-services-perfcharts.conf
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root
