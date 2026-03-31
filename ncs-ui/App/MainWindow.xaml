@@ -142,20 +142,43 @@
             <Setter Property="Height" Value="32" />
             <Setter Property="Margin" Value="8,0,0,0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="#171a20" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#20252d" />
-                    <Setter Property="BorderBrush" Value="#3a4250" />
+                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#282f38" />
-                    <Setter Property="BorderBrush" Value="#465162" />
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#5d6470" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CloseTitleBarButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Foreground" Value="#ff8ea0" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#5d6470" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -499,7 +522,7 @@
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="MinimizeWindowButton" Content="-" Style="{StaticResource TitleBarButtonStyle}" />
                         <Button x:Name="MaximizeWindowButton" Content="□" Style="{StaticResource TitleBarButtonStyle}" />
-                        <Button x:Name="CloseWindowButton" Content="X" Style="{StaticResource TitleBarButtonStyle}" />
+                        <Button x:Name="CloseWindowButton" Content="X" Style="{StaticResource CloseTitleBarButtonStyle}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -518,7 +541,7 @@
                         <StackPanel>
                             <DockPanel Margin="{StaticResource MarginSectionTitle}">
                                 <TextBlock DockPanel.Dock="Left" Text="Settings" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                <Button x:Name="SettingsCloseButton" DockPanel.Dock="Right" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Right" ToolTip="Close settings" />
+                                <Button x:Name="SettingsCloseButton" DockPanel.Dock="Right" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Right" ToolTip="Close settings" />
                             </DockPanel>
                             <TextBlock Text="SSH Ansible Host" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="SshHostTextBox" />
@@ -583,11 +606,15 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" MaxHeight="200" />
+                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
-                                <TreeView x:Name="TargetTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="180">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                        <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                    </ScrollViewer>
+                                </Border>
                                 <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapSm}">
                                     <TextBlock Text="Or enter manually:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginSectionTitle}" />
                                     <Grid>
@@ -627,7 +654,11 @@
 
                                 <TextBlock Grid.Row="0" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
 
-                                <TreeView x:Name="ActionTreeView" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="240">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                        <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                    </ScrollViewer>
+                                </Border>
 
 
                                 <WrapPanel Grid.Row="2" Margin="{StaticResource MarginGapMd}">
@@ -655,7 +686,7 @@
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                         <Button x:Name="CopyOutputButton" Content="Copy" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
                                         <Button x:Name="ExportOutputButton" Content="Export" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" />
-                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse console" />
+                                        <Button x:Name="ConsoleToggleButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse console" />
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBox x:Name="CommandPreviewTextBox" IsReadOnly="True" TextWrapping="NoWrap" Background="#0d1015" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="{StaticResource MarginGapSm}" Padding="{StaticResource PaddingSm}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" Foreground="{StaticResource TextBrush}" />
