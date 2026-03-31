@@ -15,6 +15,98 @@ function Import-NcsWpfAssemblies {
     Add-Type -AssemblyName WindowsBase
 }
 
+function Import-NcsWebView2Assemblies {
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProjectRoot
+    )
+
+    if ("Microsoft.Web.WebView2.Wpf.WebView2" -as [type]) {
+        return $true
+    }
+
+    $candidateRoots = [System.Collections.Generic.List[string]]::new()
+    $candidateRoots.Add((Join-Path -Path $ProjectRoot -ChildPath "lib/WebView2"))
+    $candidateRoots.Add((Join-Path -Path $ProjectRoot -ChildPath "lib"))
+
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $candidateRoots.Add((Join-Path -Path $env:USERPROFILE -ChildPath ".nuget/packages/microsoft.web.webview2"))
+    }
+
+    foreach ($root in $candidateRoots) {
+        if (-not (Test-Path -LiteralPath $root)) {
+            continue
+        }
+
+        $coreDll = Get-ChildItem -LiteralPath $root -Filter "Microsoft.Web.WebView2.Core.dll" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        $wpfDll = Get-ChildItem -LiteralPath $root -Filter "Microsoft.Web.WebView2.Wpf.dll" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+        if ($null -eq $coreDll -or $null -eq $wpfDll) {
+            continue
+        }
+
+        Add-Type -Path $coreDll.FullName
+        Add-Type -Path $wpfDll.FullName
+        return $true
+    }
+
+    return $false
+}
+
+function New-NcsReportBrowser {
+    param(
+        [Parameter(Mandatory)]
+        [string] $ProjectRoot,
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [psobject] $State
+    )
+
+    if (-not (Import-NcsWebView2Assemblies -ProjectRoot $ProjectRoot)) {
+        return $null
+    }
+
+    $browser = [Microsoft.Web.WebView2.Wpf.WebView2]::new()
+    $browser.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Stretch
+    $browser.VerticalAlignment = [System.Windows.VerticalAlignment]::Stretch
+    $browser.Visibility = [System.Windows.Visibility]::Collapsed
+
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $creationProperties = [Microsoft.Web.WebView2.Wpf.CoreWebView2CreationProperties]::new()
+        $creationProperties.UserDataFolder = Join-Path -Path $env:LOCALAPPDATA -ChildPath "NcsConsole/WebView2"
+        $browser.CreationProperties = $creationProperties
+    }
+
+    $browser.Add_CoreWebView2InitializationCompleted({
+        param($sender, $eventArgs)
+        if (-not $eventArgs.IsSuccess) {
+            $State.ReportBrowserReady = $false
+            $Controls.ReportPlaceholder.Text = "WebView2 initialization failed: $($eventArgs.InitializationException.Message)"
+            $Controls.ReportPlaceholder.Visibility = "Visible"
+            $Controls.ReportBrowserHost.Visibility = "Collapsed"
+            return
+        }
+
+        $State.ReportBrowserReady = $true
+        if (-not [string]::IsNullOrWhiteSpace($State.PendingReportHtml)) {
+            $html = $State.PendingReportHtml
+            $State.PendingReportHtml = ""
+            $Controls.ReportPlaceholder.Visibility = "Collapsed"
+            $Controls.ReportBrowserHost.Visibility = "Visible"
+            $sender.NavigateToString($html)
+        }
+    }.GetNewClosure())
+
+    $Controls.ReportBrowserHost.Content = $browser
+    [void] $browser.EnsureCoreWebView2Async($null)
+    return $browser
+}
+
 function Get-NcsXamlControlMap {
     param(
         [Parameter(Mandatory)]
@@ -80,7 +172,7 @@ function Get-NcsXamlControlMap {
         "ReportsToggleButton",
         "ReportsPane",
         "ReportsSplitter",
-        "ReportBrowser",
+        "ReportBrowserHost",
         "ReportPlaceholder",
         "ReportBackButton",
         "ReportHomeButton",
@@ -543,12 +635,18 @@ function Show-NcsConsoleApp {
     $window = [Windows.Markup.XamlReader]::Load($reader)
     $controls = Get-NcsXamlControlMap -Window $window
 
-    $settings = Import-NcsConsoleSettings
     $state = [pscustomobject]@{
-        Settings        = $settings
-        PreflightResult = $null
-        CurrentHandle   = $null
-        LastRunResult   = $null
+        Settings           = (Import-NcsConsoleSettings)
+        PreflightResult    = $null
+        CurrentHandle      = $null
+        LastRunResult      = $null
+        ReportBrowser      = $null
+        ReportBrowserReady = $false
+        PendingReportHtml  = ""
+    }
+    $state.ReportBrowser = New-NcsReportBrowser -ProjectRoot $ProjectRoot -Controls $controls -State $state
+    if ($null -eq $state.ReportBrowser) {
+        $controls.ReportPlaceholder.Text = "WebView2 SDK not found. Install Microsoft.Web.WebView2 or add the DLLs under ncs-console/lib/WebView2."
     }
 
     $script:ActionGroups = @()
@@ -557,7 +655,7 @@ function Show-NcsConsoleApp {
     $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
 
-    Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
+    Sync-NcsControlsFromSettings -Controls $controls -Settings $state.Settings
     Set-NcsIdleUiState -Controls $controls
     $controls.StatusTextBlock.Text = "Ready."
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
@@ -919,13 +1017,25 @@ function Show-NcsConsoleApp {
             } else {
                 $html = "<head><base href=`"$baseUrl`" /></head>$($probe.StdOut)"
             }
+            if ($null -eq $state.ReportBrowser) {
+                $controls.ReportPlaceholder.Text = "WebView2 SDK not found. Install Microsoft.Web.WebView2 or add the DLLs under ncs-console/lib/WebView2."
+                $controls.ReportPlaceholder.Visibility = "Visible"
+                $controls.ReportBrowserHost.Visibility = "Collapsed"
+                return
+            }
+
             $controls.ReportPlaceholder.Visibility = "Collapsed"
-            $controls.ReportBrowser.Visibility = "Visible"
-            $controls.ReportBrowser.NavigateToString($html)
+            $controls.ReportBrowserHost.Visibility = "Visible"
+            if ($state.ReportBrowserReady) {
+                $state.PendingReportHtml = ""
+                $state.ReportBrowser.NavigateToString($html)
+            } else {
+                $state.PendingReportHtml = $html
+            }
         } else {
             $controls.ReportPlaceholder.Text = "Report not found: $RelativePath"
             $controls.ReportPlaceholder.Visibility = "Visible"
-            $controls.ReportBrowser.Visibility = "Collapsed"
+            $controls.ReportBrowserHost.Visibility = "Collapsed"
         }
     }
 
@@ -935,7 +1045,7 @@ function Show-NcsConsoleApp {
         $controls.ReportsPane.Visibility = "Visible"
         $controls.ReportsSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
-        if ($controls.ReportBrowser.Visibility -ne "Visible" -and $state.PreflightResult -and $state.PreflightResult.IsReady) {
+        if ($controls.ReportBrowserHost.Visibility -ne "Visible" -and $state.PreflightResult -and $state.PreflightResult.IsReady) {
             & $loadReport "site_health_report.html"
         }
     }
@@ -979,10 +1089,16 @@ function Show-NcsConsoleApp {
         }
     })
 
-    $controls.ReportBrowser.Add_Navigating({
+    if ($null -ne $state.ReportBrowser) {
+        $state.ReportBrowser.Add_NavigationStarting({
         param($s, $e)
-        $uri = $e.Uri
-        if ($null -eq $uri) { return }
+        $uriText = $e.Uri
+        if ([string]::IsNullOrWhiteSpace($uriText)) { return }
+
+        $uri = $null
+        if (-not [System.Uri]::TryCreate($uriText, [System.UriKind]::Absolute, [ref] $uri)) {
+            return
+        }
         if ($uri.Scheme -eq "about") { return }
         $e.Cancel = $true
         if ($uri.Scheme -eq "ncsreport") {
@@ -990,7 +1106,8 @@ function Show-NcsConsoleApp {
             if ($relative.EndsWith('/')) { return }
             & $loadReport $relative
         }
-    })
+    }.GetNewClosure())
+    }
 
     $controls.PreflightButton.Add_Click({
         try {
@@ -1003,7 +1120,7 @@ function Show-NcsConsoleApp {
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
-                $controls.ReportBrowser.Visibility = "Collapsed"
+                $controls.ReportBrowserHost.Visibility = "Collapsed"
                 $controls.ReportPlaceholder.Text = "Connect to load reports"
                 $controls.ReportPlaceholder.Visibility = "Visible"
                 $script:ReportHistory.Clear()

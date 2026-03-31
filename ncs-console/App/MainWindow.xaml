@@ -740,7 +740,7 @@
                         <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" ClipToBounds="True">
                             <Grid>
                                 <TextBlock x:Name="ReportPlaceholder" Text="Connect to load reports" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                <WebBrowser x:Name="ReportBrowser" Visibility="Collapsed" />
+                                <ContentControl x:Name="ReportBrowserHost" Visibility="Collapsed" />
                             </Grid>
                         </Border>
                     </Grid>
