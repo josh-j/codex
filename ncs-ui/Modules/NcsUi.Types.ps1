@@ -174,8 +174,8 @@ function Get-NcsRemoteInventory {
         foreach ($child in $children) {
             $group.Items.Add(@{ Label = $child; limit = $child })
         }
-        foreach ($host in $hosts) {
-            $group.Items.Add(@{ Label = $host; limit = $host })
+        foreach ($h in $hosts) {
+            $group.Items.Add(@{ Label = $h; limit = $h })
         }
 
         $groups.Add($group)
