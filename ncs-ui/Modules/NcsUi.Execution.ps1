@@ -63,6 +63,7 @@ function Invoke-NcsToolCommand {
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $FilePath
+    $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
@@ -82,6 +83,7 @@ function Invoke-NcsToolCommand {
 
     try {
         [void] $process.Start()
+        $process.StandardInput.Close()
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
 
@@ -248,6 +250,7 @@ function Start-NcsRemoteCommand {
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = "ssh.exe"
+    $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
@@ -321,6 +324,7 @@ function Start-NcsRemoteCommand {
 
     try {
         [void] $process.Start()
+        $process.StandardInput.Close()
         $process.BeginOutputReadLine()
         $process.BeginErrorReadLine()
     } catch {
