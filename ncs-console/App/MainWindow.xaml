@@ -265,6 +265,7 @@
 
                         <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" ClipToBounds="True">
                             <Grid>
+                                <ContentControl x:Name="ReportBrowserHost" Visibility="Collapsed" />
                                 <TextBlock x:Name="ReportPlaceholder" Text="Connect to load reports" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="20" />
                             </Grid>
                         </Border>
