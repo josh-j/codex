@@ -18,7 +18,7 @@
 
 - group: VMware
   actions:
-    - label: Audit
+    - label: Collect
       playbook: vmware/collect.yml
     - label: STIG Audit
       playbook: vmware/stig_audit.yml
@@ -28,7 +28,7 @@
 
 - group: ESXi
   actions:
-    - label: Audit
+    - label: Collect
       playbook: esxi/collect.yml
     - label: STIG Audit
       playbook: esxi/stig_audit.yml
@@ -47,7 +47,7 @@
 
 - group: VCSA
   actions:
-    - label: Audit
+    - label: Collect
       playbook: vcsa/collect.yml
     - label: STIG Audit
       playbook: vcsa/stig_audit.yml
@@ -66,7 +66,7 @@
 
 - group: VM
   actions:
-    - label: Audit
+    - label: Collect
       playbook: vm/collect.yml
     - label: STIG Audit
       playbook: vm/stig_audit.yml
@@ -81,7 +81,7 @@
 
 - group: Ubuntu
   actions:
-    - label: Audit
+    - label: Collect
       playbook: ubuntu/collect.yml
     - label: STIG Audit
       playbook: ubuntu/stig_audit.yml
@@ -106,7 +106,7 @@
 
 - group: Windows
   actions:
-    - label: Audit
+    - label: Collect
       playbook: windows/collect.yml
     - label: STIG Audit
       playbook: windows/stig_audit.yml
@@ -118,54 +118,183 @@
     - label: Patch
       playbook: windows/patch.yml
       mutating: true
-    - label: Cleanup
-      playbook: windows/cleanup.yml
-      mutating: true
+    - label: AD Search
+      playbook: windows/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: ad_search
+        - name: windows_ad_search_term
+          label: Search Term
+        - name: windows_ad_search_type
+          label: Type
+          default: computer
     - label: Vuln Scan
-      playbook: windows/vuln_scan.yml
-    - label: Registry Fix
-      playbook: windows/registry_fix.yml
+      playbook: windows/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: vuln_scan
+        - name: windows_vuln_scan_file
+          label: Scan File Path
+    - label: Cleanup
+      playbook: windows/run.yml
       mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: cleanup
     - label: KB Install
-      playbook: windows/kb_install.yml
+      playbook: windows/run.yml
       mutating: true
       options:
-        - name: kb_number
-          label: KB Number
+        - name: ncs_operation
+          label: Operation
+          default: kb_install
+        - name: windows_kb_list
+          label: KB Numbers
     - label: Windows Update
-      playbook: windows/windows_update.yml
-      mutating: true
-    - label: Install Software
-      playbook: windows/update_software.yml
-      mutating: true
-    - label: Uninstall Software
-      playbook: windows/uninstall_software.yml
-      mutating: true
-    - label: Service Management
-      playbook: windows/service.yml
+      playbook: windows/run.yml
       mutating: true
       options:
-        - name: service_name
+        - name: ncs_operation
+          label: Operation
+          default: windows_update
+    - label: Install Software
+      playbook: windows/run.yml
+      mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: update_software
+    - label: Uninstall Software
+      playbook: windows/run.yml
+      mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: uninstall_software
+    - label: Service Management
+      playbook: windows/run.yml
+      mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: service
+        - name: windows_service_name
           label: Service Name
-        - name: service_action
+        - name: windows_service_action
           label: Action
           default: restart
     - label: Scheduled Task
-      playbook: windows/scheduled_task.yml
+      playbook: windows/run.yml
       mutating: true
       options:
-        - name: task_name
+        - name: ncs_operation
+          label: Operation
+          default: scheduled_task
+        - name: windows_task_name
           label: Task Name
+    - label: Registry Fix
+      playbook: windows/run.yml
+      mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: registry_fix
     - label: OpenSSH Setup
-      playbook: windows/openssh.yml
+      playbook: windows/run.yml
       mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: openssh
     - label: WinRM Enable
-      playbook: windows/winrm_enable.yml
+      playbook: windows/run.yml
       mutating: true
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: winrm_enable
     - label: Remote Ops
-      playbook: windows/remote_ops.yml
-    - label: AD Search
-      playbook: windows/ad_search.yml
+      playbook: windows/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: remote_ops
+        - name: windows_remote_op
+          label: Command
+          default: uptime
+
+- group: Domain
+  actions:
+    - label: AD Summary
+      playbook: domain/run.yml
+    - label: User Search
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: user_search
+        - name: domain_search_filter
+          label: Filter
+          default: "*"
+    - label: Group Search
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: group_search
+    - label: Computer Search
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: computer_search
+    - label: Privileged Groups
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: privileged_groups
+    - label: Stale Accounts
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: stale_accounts
+    - label: Password Policy
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: password_policy
+    - label: GPO Audit
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: gpo_audit
+    - label: DNS Zones
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: dns_zones
+    - label: DHCP Scopes
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: dhcp_scopes
+        - name: domain_dhcp_server
+          label: DHCP Server
+    - label: Domain Trusts
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: domain_trusts
 
 - group: Photon
   actions:

@@ -549,6 +549,7 @@ function Show-NcsConsoleApp {
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
     Set-NcsPreflightState -Controls $controls -State "Not Connected"
     $controls.RunMetaText.Text = ""
+
     Update-NcsWindowChromeState -Window $window -Controls $controls
     Update-NcsTopTabState -Controls $controls
     Update-NcsConnectionInfo -Controls $controls
@@ -955,6 +956,9 @@ function Show-NcsConsoleApp {
             $state.PreflightResult = $preflight
             if ($preflight.IsReady) {
                 Set-NcsPreflightState -Controls $controls -State "Connected"
+                if (-not [string]::IsNullOrWhiteSpace($preflight.Banner)) {
+                    $controls.ConsoleTextBox.AppendText($preflight.Banner + [Environment]::NewLine + [Environment]::NewLine)
+                }
                 $statusParts = @("Connected.")
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings

@@ -608,15 +608,15 @@
                                 </DockPanel>
                                 <Grid Grid.Row="1">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MaxWidth="220" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,4,0">
                                         <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
                                             <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                         </ScrollViewer>
                                     </Border>
-                                    <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0" MinWidth="200" Visibility="Collapsed">
+                                    <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
                                             <StackPanel Orientation="Horizontal" Margin="{StaticResource MarginSectionTitle}">
