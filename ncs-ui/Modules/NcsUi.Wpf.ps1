@@ -52,7 +52,9 @@ function Get-NcsXamlControlMap {
         "PreflightSummaryText",
         "PreflightListBox",
         "TargetTreeView",
+        "TargetScrollViewer",
         "ActionTreeView",
+        "ActionScrollViewer",
         "SiteTextBox",
         "HostTextBox",
         "ExtraArgsTextBox",
@@ -452,6 +454,18 @@ function Show-NcsUiApp {
     }
 
     & $refreshPreview
+
+    $controls.TargetTreeView.Add_PreviewMouseWheel({
+        param($sender, $e)
+        $controls.TargetScrollViewer.ScrollToVerticalOffset($controls.TargetScrollViewer.VerticalOffset - $e.Delta / 3)
+        $e.Handled = $true
+    })
+
+    $controls.ActionTreeView.Add_PreviewMouseWheel({
+        param($sender, $e)
+        $controls.ActionScrollViewer.ScrollToVerticalOffset($controls.ActionScrollViewer.VerticalOffset - $e.Delta / 3)
+        $e.Handled = $true
+    })
 
     $controls.TargetTreeView.Add_SelectedItemChanged({
         & $refreshPreview
