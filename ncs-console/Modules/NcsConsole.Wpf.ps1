@@ -595,7 +595,6 @@ function Show-NcsConsoleApp {
     $controls.SshKeyPassphraseBox.Add_PasswordChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.SshPasswordBox.Add_PasswordChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.RemoteRepoPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
-    $controls.RemoteVaultPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
 
     $controls.SaveSettingsButton.Add_Click({
         try {
@@ -738,7 +737,7 @@ function Show-NcsConsoleApp {
             $controls.PreflightListBox.ItemsSource = $null
             $controls.PreflightListBox.Visibility = "Collapsed"
             $controls.PreflightSummaryText.Text = "Running preflight..."
-            $controls.StatusTextBlock.Text = "Checking SSH, repo, inventory, vault, and remote commands."
+            $controls.StatusTextBlock.Text = "Checking SSH, repo, inventory, and remote commands."
             $preflight = Test-NcsRemotePreflight -Settings $state.Settings
             $state.PreflightResult = $preflight
             $controls.PreflightListBox.ItemsSource = $preflight.Checks

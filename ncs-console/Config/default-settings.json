@@ -5,6 +5,5 @@
   "SshAuthMode": "Agent",
   "SshKeyPath": "",
   "RemoteRepoPath": "~/ansible-ncs",
-  "RemoteVaultPath": ".vaultpass",
   "LastAction": ""
 }
