@@ -472,6 +472,9 @@ function Set-NcsRunningUiState {
 
     $Controls.RunButton.Visibility = "Collapsed"
     $Controls.CancelButton.Visibility = "Visible"
+    $Controls.RunStateBorder.Visibility = "Visible"
+    $Controls.ExitCodePanel.Visibility = "Visible"
+    $Controls.DurationPanel.Visibility = "Visible"
 }
 
 function Update-NcsCommandPreview {
@@ -826,11 +829,11 @@ function Show-NcsConsoleApp {
         try {
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
 
-            if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and [string]::IsNullOrWhiteSpace($state.Settings.SshKeyPassphrase)) {
+            if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) {
                 $inputBox = [System.Windows.Window]::new()
                 $inputBox.Title = "SSH Key Passphrase"
                 $inputBox.Width = 350
-                $inputBox.Height = 140
+                $inputBox.Height = 160
                 $inputBox.WindowStartupLocation = "CenterOwner"
                 $inputBox.Owner = $window
                 $inputBox.WindowStyle = "ToolWindow"
@@ -839,9 +842,10 @@ function Show-NcsConsoleApp {
                 $sp = [System.Windows.Controls.StackPanel]::new()
                 $sp.Margin = [System.Windows.Thickness]::new(12)
                 $label = [System.Windows.Controls.TextBlock]::new()
-                $label.Text = "Enter passphrase for SSH key:"
+                $label.Text = "Enter passphrase for SSH key (leave empty if none):"
                 $label.Foreground = Get-NcsBrush -Color "#d8dce2"
                 $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
+                $label.TextWrapping = "Wrap"
                 $sp.Children.Add($label) | Out-Null
                 $pwBox = [System.Windows.Controls.PasswordBox]::new()
                 $pwBox.Background = Get-NcsBrush -Color "#1e2228"
@@ -850,8 +854,8 @@ function Show-NcsConsoleApp {
                 $pwBox.Padding = [System.Windows.Thickness]::new(6,4,6,4)
                 $sp.Children.Add($pwBox) | Out-Null
                 $okBtn = [System.Windows.Controls.Button]::new()
-                $okBtn.Content = "OK"
-                $okBtn.Width = 70
+                $okBtn.Content = "Connect"
+                $okBtn.Width = 80
                 $okBtn.Margin = [System.Windows.Thickness]::new(0,8,0,0)
                 $okBtn.HorizontalAlignment = "Right"
                 $okBtn.Add_Click({ $inputBox.DialogResult = $true })
@@ -860,13 +864,12 @@ function Show-NcsConsoleApp {
                 $pwBox.Focus() | Out-Null
 
                 $result = $inputBox.ShowDialog()
-                if ($result -eq $true -and -not [string]::IsNullOrWhiteSpace($pwBox.Password)) {
-                    $state.Settings.SshKeyPassphrase = $pwBox.Password
-                    $controls.SshKeyPassphraseBox.Password = $pwBox.Password
-                } else {
-                    $controls.StatusTextBlock.Text = "Passphrase required for SSH key."
+                if ($result -ne $true) {
+                    $controls.StatusTextBlock.Text = "Connection cancelled."
                     return
                 }
+                $state.Settings.SshKeyPassphrase = $pwBox.Password
+                $controls.SshKeyPassphraseBox.Password = $pwBox.Password
             }
 
             $controls.PreflightListBox.ItemsSource = $null
