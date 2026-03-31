@@ -10,7 +10,7 @@ ansible_vault    := if path_exists(".venv/bin/ansible-vault") == "true" { ".venv
 ncs_reporter     := if path_exists(".venv/bin/ncs-reporter") == "true" { ".venv/bin/ncs-reporter" } else { "ncs-reporter" }
 # VCSA SSH-based STIG requires ansible-core 2.15 + Python 3.7-compat collections
 vcsa_playbook    := "ANSIBLE_CONFIG=ansible-vcsa.cfg " + (if path_exists(".venv-vcsa/bin/ansible-playbook") == "true" { ".venv-vcsa/bin/ansible-playbook" } else { ansible_playbook })
-reporter_config_dir := "files/ncs_reporter_configs"
+reporter_config_dir := "files/ncs-reporter_configs"
 inventory_file   := "inventory/production/"
 simulation_inventory_file := "inventory/simulation/hosts.yaml"
 reports_dir      := "/srv/samba/reports"
@@ -40,7 +40,7 @@ setup-main-venv:
         echo "Installing via pip..."
         python3.12 -m venv .venv
         .venv/bin/pip install --upgrade pip
-        .venv/bin/pip install -e ../ncs_reporter
+        .venv/bin/pip install -e ../ncs-reporter
         .venv/bin/pip install ruff mypy pytest basedpyright
     fi
     echo "✓ Main venv ready"
@@ -117,9 +117,9 @@ verify-env:
 lint:
     ruff check .
 
-# Lint ncs_reporter YAML configs for style conventions
+# Lint ncs-reporter YAML configs for style conventions
 lint-configs:
-    {{ python }} ncs_reporter/scripts/lint_configs.py
+    {{ python }} ncs-reporter/scripts/lint_configs.py
 
 # Auto-format python code
 format:
@@ -148,7 +148,7 @@ ansible-lint:
 
 # Regenerate JSON Schema for YAML editor autocomplete
 schema:
-    cd ncs_reporter && {{ python }} generate_schema.py
+    cd ncs-reporter && {{ python }} generate_schema.py
 
 # =============================================================================
 # Fleet Audits (non-STIG health/compliance collection)

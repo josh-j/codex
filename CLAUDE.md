@@ -23,9 +23,9 @@ just lint                   # ruff check .
 just format                 # ruff format .
 just check                  # mypy + basedpyright
 just test                   # pytest tests/unit
-just lint-configs           # Lint ncs_reporter YAML configs
+just lint-configs           # Lint ncs-reporter YAML configs
 
-# ncs-reporter development (cd ncs_reporter/)
+# ncs-reporter development (cd ncs-reporter/)
 just test                   # pytest tests (all ncs-reporter tests)
 just lint                   # ruff check
 just check                  # mypy + basedpyright on src/
@@ -60,21 +60,21 @@ Organized by platform subdirectory. Key patterns:
 - `*/stig_remediate.yml` — MUTATING STIG hardening
 - Playbooks use `ncs_action`, `ncs_profile`, and `ncs_operation` as the shared role interface
 
-### ncs-reporter (ncs_reporter/)
+### ncs-reporter (ncs-reporter/)
 
-Standalone Python package (`ncs_reporter/src/ncs_reporter/`). Key modules:
+Standalone Python package (`ncs-reporter/src/ncs_reporter/`). Key modules:
 - `cli.py` — Click entry point for all subcommands (`all`, `site`, `linux`, `vmware`, `windows`, `node`, `stig`, `cklb`, `stig-apply`)
 - `normalization/` — Platform-specific data normalization and alert logic (health evaluation lives here, never in templates or Ansible)
 - `view_models/` — Typed Pydantic view contracts consumed by templates
 - `aggregation.py` — Multi-host state aggregation
-- `configs/` — Bundled YAML config schemas (mirrored to `files/ncs_reporter_configs/`)
+- `configs/` — Bundled YAML config schemas (mirrored to `files/ncs-reporter_configs/`)
 - `_config.py` — Config schema loader supporting both canonical and alias keys
 
 ### Config Sync
 
 Reporter configs exist in two places that must stay in sync:
-- `ncs_reporter/src/ncs_reporter/configs/` (bundled with the package)
-- `files/ncs_reporter_configs/` (deployed by Ansible)
+- `ncs-reporter/src/ncs_reporter/configs/` (bundled with the package)
+- `files/ncs-reporter_configs/` (deployed by Ansible)
 
 A pre-commit hook runs `scripts/check_config_sync.py` when either side is staged. Fix with: `python3 scripts/check_config_sync.py --fix`
 

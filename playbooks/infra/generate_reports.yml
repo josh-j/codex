@@ -16,7 +16,7 @@
     _reports_root: "{{ ncs_config.report_directory }}"
     _platform_root: "{{ _reports_root }}/platform"
     _groups_json: "{{ _platform_root }}/inventory_groups.json"
-    _platforms_config: "{{ playbook_dir }}/../../files/ncs_reporter_configs/platforms.yaml"
+    _platforms_config: "{{ playbook_dir }}/../../files/ncs-reporter_configs/platforms.yaml"
 
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
 
@@ -43,7 +43,7 @@
               --reports-root "{{ _reports_root }}"
               --groups "{{ _groups_json }}"
               --report-stamp "{{ report_stamp }}"
-              --config-dir "{{ playbook_dir }}/../../files/ncs_reporter_configs"
+              --config-dir "{{ playbook_dir }}/../../files/ncs-reporter_configs"
           environment:
             NCS_PLATFORMS_CONFIG: "{{ _platforms_config }}"
           register: _reporter_result

@@ -36,14 +36,14 @@ Existing schema files continue to work unchanged.
 ## Setup
 
 ```bash
-cd ncs_reporter
+cd ncs-reporter
 uv sync --dev   # installs runtime + dev deps (including pytest)
 ```
 
 Alternative (existing venv flow):
 
 ```bash
-cd ncs_reporter
+cd ncs-reporter
 just setup        # creates .venv, installs ncs-reporter in editable mode
 ```
 

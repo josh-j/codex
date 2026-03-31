@@ -6,7 +6,7 @@ Usage:
     stig_report.py /srv/samba/reports/platform/linux/ubuntu/192.168.2.111/raw_stig_ubuntu.yaml
 
 If the CKLB skeleton is omitted, the script searches for a matching skeleton
-in files/ncs_reporter_configs/cklb_skeletons/ based on the target_type in the
+in files/ncs-reporter_configs/cklb_skeletons/ based on the target_type in the
 raw STIG data.
 """
 
@@ -55,7 +55,7 @@ def find_cklb_skeleton(target_type: str) -> str | None:
     """Search for a CKLB skeleton matching the target type."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.dirname(script_dir)
-    skeleton_dir = os.path.join(repo_root, "files", "ncs_reporter_configs", "cklb_skeletons")
+    skeleton_dir = os.path.join(repo_root, "files", "ncs-reporter_configs", "cklb_skeletons")
 
     if not os.path.isdir(skeleton_dir):
         return None
