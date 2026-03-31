@@ -54,7 +54,9 @@ function Get-NcsXamlControlMap {
         "PreflightListBox",
         "ActionTreeView",
         "ActionLimitTextBox",
-        "ActionLimitSuggestions",
+        "ActionLimitTree",
+        "ActionLimitTreeBorder",
+        "ActionLimitTreeScroll",
         "ActionTagsTextBox",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
@@ -555,11 +557,25 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
-    $controls.ActionLimitSuggestions.Add_SelectionChanged({
-        $selected = $controls.ActionLimitSuggestions.SelectedItem
-        if ($null -ne $selected) {
-            $controls.ActionLimitTextBox.Text = [string] $selected
+    $controls.ActionLimitTree.Add_SelectedItemChanged({
+        param($s, $e)
+        $item = $e.NewValue
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return }
+        $tag = [string] $item.Tag
+        $current = $controls.ActionLimitTextBox.Text.Trim()
+        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+        if ($parts -contains $tag) {
+            $parts = @($parts | Where-Object { $_ -ne $tag })
+        } else {
+            $parts += $tag
         }
+        $controls.ActionLimitTextBox.Text = $parts -join ','
+    })
+
+    $controls.ActionLimitTree.Add_PreviewMouseWheel({
+        param($s, $e)
+        $controls.ActionLimitTreeScroll.ScrollToVerticalOffset($controls.ActionLimitTreeScroll.VerticalOffset - $e.Delta / 3)
+        $e.Handled = $true
     })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
@@ -731,11 +747,11 @@ function Show-NcsConsoleApp {
                 Set-NcsPreflightState -Controls $controls -State "Passed"
 
                 try {
-                    $inventoryNames = Get-NcsRemoteInventoryNames -Settings $state.Settings
-                    if ($inventoryNames.Length -gt 0) {
-                        $controls.ActionLimitSuggestions.ItemsSource = $inventoryNames
-                        $controls.ActionLimitSuggestions.Visibility = "Visible"
-                        $controls.PreflightSummaryText.Text = "Connected. $($inventoryNames.Length) targets available."
+                    $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
+                    if (@($inventoryTree).Length -gt 0) {
+                        Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false
+                        $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                        $controls.PreflightSummaryText.Text = "Connected. $(@($inventoryTree).Length) groups available."
                     } else {
                         $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
                     }
