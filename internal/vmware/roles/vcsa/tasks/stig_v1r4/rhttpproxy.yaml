@@ -174,7 +174,7 @@
 
 - name: "VCRP-70-000007 | Deploy vmware-services-rhttpproxy.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-rhttpproxy.conf
+    src: vmware-services-rhttpproxy.conf
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root
@@ -203,7 +203,7 @@
 
 - name: "VCRP-70-000008 | Deploy vmware-services-envoy.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-envoy.conf
+    src: vmware-services-envoy.conf
     dest: "{{ var_syslog_conf_path2 }}"
     owner: root
     group: root

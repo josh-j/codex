@@ -529,7 +529,7 @@
 
 - name: "VCEM-70-000011/000018/000031/000032 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: stig/eam_catalina.properties
+    src: eam_catalina.properties
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root
@@ -708,7 +708,7 @@
 
 - name: "VCEM-70-000029 | Deploy vmware-services-eam.conf"
   ansible.builtin.template:
-    src: stig/vmware-services-eam.conf
+    src: vmware-services-eam.conf
     dest: /etc/vmware-syslog/vmware-services-eam.conf
     owner: root
     group: root

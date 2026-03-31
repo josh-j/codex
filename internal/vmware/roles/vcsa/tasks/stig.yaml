@@ -30,11 +30,11 @@
   vars:
     _ncs_stig_label: "VCSA STIG"
     _ncs_stig_target_type: "vcsa"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/stig/stig_service.yaml"
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_service.yaml"
     _ncs_stig_mode_facts:
       vcsa_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
       vcsa_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
-    _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig/stig_vcsa_pre.yaml"
+    _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig_vcsa_pre.yaml"
     _ncs_stig_phase1_loop: "{{ vcsa_stig_services | default(_vcsa_stig_default_services) }}"
     _ncs_stig_phase1_loop_var: _vcsa_service
     _ncs_stig_phase1_apply:
