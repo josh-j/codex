@@ -137,6 +137,51 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         </Style>
+        <Style x:Key="PrimaryTabButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Padding" Value="14,8,14,8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeMd}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TabContainer" Background="Transparent" CornerRadius="16" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabContainer" Property="Background" Value="#1a2029" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="TabContainer" Property="Background" Value="#202938" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="Active">
+                                <Setter TargetName="TabContainer" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Tag" Value="Active" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="TabContainer" Property="Background" Value="#223456" />
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#5d6470" />
+                                <Setter TargetName="TabContainer" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="42" />
             <Setter Property="Height" Value="32" />
@@ -330,8 +375,14 @@
                             </Trigger>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="GlyphIcon" Property="Data" Value="M1 10 L8 3 L15 10" />
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsExpanded" Value="True" />
+                                    <Condition Property="HasItems" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M1 10 L8 3 L15 10" />
+                            </MultiTrigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
                             </Trigger>
@@ -515,8 +566,8 @@
                         <TextBlock x:Name="TitleBarSubtitleText" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                        <Button x:Name="SettingsToggleButton" Content="⚙ Settings" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="{StaticResource MarginLabelValue}" ToolTip="Toggle settings panel" />
-                        <Button x:Name="ConsoleShowButton" Content="▸ Console" MinWidth="0" Padding="{StaticResource PaddingTab}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" Background="#151920" Foreground="{StaticResource TextMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" ToolTip="Toggle console panel" />
+                        <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
+                        <Button x:Name="ConsoleShowButton" Content="▸ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
