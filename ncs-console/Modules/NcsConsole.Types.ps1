@@ -189,7 +189,7 @@ for root, dirs, files in os.walk(base):
             name = play.get("name", "")
             label = re.sub(r"^[^|]+\|\s*", "", name).strip() if name else ""
             label = re.sub(r"^Phase\s+\d+\w*:\s*", "", label).strip()
-            if not label:
+            if not label or "{{" in label:
                 label = f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
         stem = os.path.splitext(f)[0]
         mutating = any(k in stem for k in MUTATING_KEYWORDS)
@@ -229,6 +229,56 @@ print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups
     }
 
     return $groups
+}
+
+function Merge-NcsActionGroups {
+    param(
+        [Parameter(Mandatory)]
+        $ConfigGroups,
+        [Parameter(Mandatory)]
+        $RemoteGroups
+    )
+
+    $configPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($group in $ConfigGroups) {
+        foreach ($item in $group.Items) {
+            [void] $configPlaybooks.Add($item['playbook'])
+        }
+    }
+
+    $merged = [System.Collections.Generic.List[hashtable]]::new()
+    $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
+
+    foreach ($group in $ConfigGroups) {
+        $merged.Add($group)
+        [void] $mergedGroupNames.Add($group.Group)
+    }
+
+    foreach ($group in $RemoteGroups) {
+        $newItems = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($item in $group.Items) {
+            if (-not $configPlaybooks.Contains($item['playbook'])) {
+                $newItems.Add($item)
+            }
+        }
+        if ($newItems.Count -gt 0) {
+            if ($mergedGroupNames.Contains($group.Group)) {
+                foreach ($existing in $merged) {
+                    if ($existing.Group -eq $group.Group) {
+                        foreach ($newItem in $newItems) {
+                            $existing.Items.Add($newItem)
+                        }
+                        break
+                    }
+                }
+            } else {
+                $merged.Add(@{ Group = $group.Group; Items = $newItems })
+                [void] $mergedGroupNames.Add($group.Group)
+            }
+        }
+    }
+
+    return $merged
 }
 
 function Get-NcsRemoteInventoryTree {
