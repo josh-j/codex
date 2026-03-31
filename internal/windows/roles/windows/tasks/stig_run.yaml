@@ -1,0 +1,22 @@
+---
+# internal.windows.windows : tasks/stig_run.yaml
+# Run native checks + conditional remediation. Skipped if input rows pre-populated audit_full_list.
+
+- name: "Windows STIG | Execute native baseline checks"
+  ansible.builtin.include_tasks: stig_check.yaml
+  when: not (_stig_audit_ran | default(false))
+  tags: [windows, stig, security, checks]
+
+- name: "Windows STIG | Execute native remediation"
+  ansible.builtin.include_tasks: stig_remediate.yaml
+  when:
+    - not (_stig_audit_ran | default(false))
+    - _ncs_stig_action == 'remediate'
+  tags: [windows, stig, security, remediate]
+
+- name: "Windows STIG | Fail if native-only mode and checks failed"
+  when:
+    - windows_stig_native_checks_only | default(false) | bool
+    - _stig_run_failed | default(false) | bool
+  ansible.builtin.fail:
+    msg: "Windows Server STIG native checks failed on {{ inventory_hostname }}."

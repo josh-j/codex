@@ -69,9 +69,7 @@
     - name: "{{ _ncs_stig_label }} | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_task_file }}"
-        apply:
-          check_mode: "{{ _stig_audit_only | bool }}"
-          tags: [stig_task]
+        apply: "{{ _ncs_stig_phase1_apply | default({'check_mode': _stig_audit_only | bool, 'tags': ['stig_task']}) }}"
       when: _ncs_stig_phase1_loop is not defined
       tags: [stig, security]
 
@@ -124,9 +122,7 @@
     - name: "{{ _ncs_stig_label }} | Phase 2a | Verify remediation"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_verify_file | default(_ncs_stig_task_file) }}"
-        apply:
-          check_mode: true
-          tags: [stig_task]
+        apply: "{{ _ncs_stig_phase2_apply | default({'check_mode': true, 'tags': ['stig_task']}) }}"
       when: _ncs_stig_phase2_loop is not defined and _ncs_stig_phase1_loop is not defined
       tags: [stig, security, verify]
 

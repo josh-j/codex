@@ -1,0 +1,75 @@
+---
+# internal.windows.windows : defaults/maintain.yaml
+# Defaults for maintenance operations (ncs_operation: *).
+
+# vuln_scan
+windows_vuln_scan_file: ""
+windows_vuln_scan_format: "csv"
+
+# registry_fix
+windows_registry_fix_ids: []
+windows_registry_fix_apply: false
+
+# kb_install
+windows_kb_list: ""
+windows_kb_install: false
+windows_kb_source_path: ""
+
+# update_software
+windows_update_software_targets:
+  - chrome
+windows_update_software_force: false
+
+# uninstall_software
+windows_uninstall_names: []
+windows_uninstall_appx: false
+windows_uninstall_vcredist_cleanup: false
+windows_uninstall_winget_remove: false
+windows_uninstall_winget_names: []
+
+# cleanup
+windows_cleanup_temp: true
+windows_cleanup_profiles: false
+windows_cleanup_profile_days: 30
+
+# windows_update
+windows_update_categories:
+  - "SecurityUpdates"
+  - "CriticalUpdates"
+windows_update_install: false
+windows_update_allow_reboot: false
+windows_update_timeout_minutes: 60
+
+# service
+windows_service_action: list
+windows_service_name: "*"
+
+# scheduled_task
+windows_task_action: list
+windows_task_name: ""
+windows_task_path: "\\"
+
+# winrm_enable
+windows_winrm_enable_force: false
+
+# remote_ops
+windows_remote_op: uptime
+windows_remote_message: ""
+windows_remote_reboot_delay: 0
+
+# ad_search
+windows_ad_search_type: computer
+windows_ad_search_term: ""
+windows_ad_search_properties: []
+windows_ad_bitlocker_recovery: false
+
+# openssh
+windows_openssh_default_shell: "powershell"
+windows_openssh_manage_config: true
+windows_openssh_allow_gssapi: true
+windows_openssh_allow_password: false
+windows_openssh_allow_pubkey: false
+windows_openssh_allow_groups: []
+windows_openssh_max_auth_tries: 3
+windows_openssh_client_alive_interval: 300
+windows_openssh_client_alive_count_max: 3

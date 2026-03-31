@@ -1,0 +1,13 @@
+---
+# internal.windows.windows : tasks/stig_pre.yaml
+# Pre-phase1: initialize payload and optionally ingest provided findings.
+
+- name: "Windows STIG | Initialize payload"
+  ansible.builtin.set_fact:
+    audit_full_list: []
+
+- name: "Windows STIG | Load findings from provided rows"
+  when: windows_stig_input_rows | default([]) | length > 0
+  ansible.builtin.set_fact:
+    audit_full_list: "{{ windows_stig_input_rows | default([]) | list }}"
+    _stig_audit_ran: true

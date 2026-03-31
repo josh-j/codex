@@ -1,25 +1,25 @@
 ---
-# collections/ansible_collections/internal/windows/roles/windows/defaults/main.yaml
+# internal.windows.windows : defaults/main.yaml
 
-# --- Performance/Safety ---
+# Performance/Safety
 windows_audit_startup_delay: 5
 windows_audit_skip_startup_delay: true
 windows_audit_timeout_minutes: 30
 
-# --- Inventory Configuration ---
+# Inventory Configuration
 windows_config_include_system_apps: false
 
-# --- Thresholds (Used by ncs-reporter) ---
+# Thresholds (used by ncs-reporter)
 windows_audit_update_age_warning_days: 30
 windows_audit_update_age_critical_days: 90
 
-# --- Update Management ---
+# Update Management
 windows_audit_force_update: false
 windows_audit_allow_reboot: false
 windows_audit_enforce_preference: "Immediate"
 windows_audit_update_priority: "Normal"
 
-# --- STIG Settings ---
+# STIG Settings
 windows_stig_enable_audit: true
 windows_stig_enable_hardening: false
 windows_stig_native_checks_only: false
@@ -29,128 +29,3 @@ windows_stig_target_type: "windows_server_2022"
 windows_audit_excluded_apps:
   - "USAF - MDE - DeviceTagging"
   - "Intel(R)_Chipset Device Software_*"
-
-# =============================================================================
-# Health Check Settings (ncs_action: audit, ncs_profile: health)
-# =============================================================================
-windows_health_check_os: true
-windows_health_check_disk: true
-windows_health_check_memory_cpu: true
-windows_health_check_services: true
-windows_health_check_network: true
-windows_health_check_reboot_pending: true
-windows_health_check_event_logs: true
-windows_health_check_secure_channel: true
-windows_health_check_software_versions: true
-
-windows_health_disk_warning_pct: 80
-windows_health_disk_critical_pct: 90
-windows_health_memory_warning_pct: 85
-windows_health_memory_critical_pct: 95
-windows_health_event_log_hours: 24
-
-windows_health_critical_services:
-  - CcmExec
-  - WinRM
-  - wuauserv
-  - MpsSvc
-  - WinDefend
-  - Tanium Client
-
-# =============================================================================
-# Vulnerability Scan Settings (ncs_action: audit, ncs_operation: vuln_scan)
-# =============================================================================
-windows_vuln_scan_file: ""
-windows_vuln_scan_format: "csv"
-
-# =============================================================================
-# Registry Fix Settings (ncs_action: remediate, ncs_operation: registry_fix)
-# =============================================================================
-windows_registry_fix_ids: []
-windows_registry_fix_apply: false
-
-# =============================================================================
-# KB Install Settings (ncs_action: remediate, ncs_operation: kb_install)
-# =============================================================================
-windows_kb_list: ""
-windows_kb_install: false
-windows_kb_source_path: ""
-
-# =============================================================================
-# Software Update Settings (ncs_action: remediate, ncs_operation: update_software)
-# =============================================================================
-windows_update_software_targets:
-  - chrome
-windows_update_software_force: false
-
-# =============================================================================
-# Software Uninstall Settings (ncs_action: remediate, ncs_operation: uninstall_software)
-# =============================================================================
-windows_uninstall_names: []
-windows_uninstall_appx: false
-windows_uninstall_vcredist_cleanup: false
-windows_uninstall_winget_remove: false
-windows_uninstall_winget_names: []
-
-# =============================================================================
-# Cleanup Settings (ncs_action: remediate, ncs_operation: cleanup)
-# =============================================================================
-windows_cleanup_temp: true
-windows_cleanup_profiles: false
-windows_cleanup_profile_days: 30
-
-# =============================================================================
-# Windows Update Settings (ncs_action: remediate, ncs_operation: windows_update)
-# =============================================================================
-windows_update_categories:
-  - "SecurityUpdates"
-  - "CriticalUpdates"
-windows_update_install: false
-windows_update_allow_reboot: false
-windows_update_timeout_minutes: 60
-
-# =============================================================================
-# Service Management Settings (ncs_action: remediate, ncs_operation: service)
-# =============================================================================
-windows_service_action: list
-windows_service_name: "*"
-
-# =============================================================================
-# Scheduled Task Settings (ncs_action: remediate, ncs_operation: scheduled_task)
-# =============================================================================
-windows_task_action: list
-windows_task_name: ""
-windows_task_path: "\\"
-
-# =============================================================================
-# WinRM Enable Settings (ncs_action: remediate, ncs_operation: winrm_enable)
-# =============================================================================
-windows_winrm_enable_force: false
-
-# =============================================================================
-# Remote Operations Settings (ncs_action: remediate, ncs_operation: remote_ops)
-# =============================================================================
-windows_remote_op: uptime
-windows_remote_message: ""
-windows_remote_reboot_delay: 0
-
-# =============================================================================
-# AD Search Settings (ncs_action: audit, ncs_operation: ad_search)
-# =============================================================================
-windows_ad_search_type: computer
-windows_ad_search_term: ""
-windows_ad_search_properties: []
-windows_ad_bitlocker_recovery: false
-
-# =============================================================================
-# OpenSSH Settings (ncs_action: remediate, ncs_operation: openssh)
-# =============================================================================
-windows_openssh_default_shell: "powershell"
-windows_openssh_manage_config: true
-windows_openssh_allow_gssapi: true
-windows_openssh_allow_password: false
-windows_openssh_allow_pubkey: false
-windows_openssh_allow_groups: []          # e.g. ["SG-Ansible-Admins", "Domain Admins"]
-windows_openssh_max_auth_tries: 3
-windows_openssh_client_alive_interval: 300
-windows_openssh_client_alive_count_max: 3

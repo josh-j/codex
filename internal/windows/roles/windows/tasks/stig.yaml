@@ -1,132 +1,25 @@
 ---
 # internal.windows.windows : tasks/stig.yaml
-#
-# Windows STIG uses a different flow from the other platforms:
-# - import_tasks for prelude and checks (not include_tasks with check_mode)
-# - Input ingestion (Phase 1a) can skip native checks entirely
-# - Separate stig_check.yaml and stig_remediate.yaml
-# - Telemetry emitted at the end
-#
-# Because of these differences, Windows keeps its own orchestration
-# but delegates the common parts (Phase 0 resolve, Phase 2 verify pattern)
-# to the shared orchestrator.
 
-# =============================================================================
-# Phase 0 | Initialize
-# =============================================================================
-- import_tasks: stig_prelude.yaml
-
-- name: "Windows STIG | Phase 0 | Resolve canonical action"
-  ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
-  changed_when: false
-
-- name: "Windows STIG | Phase 0 | Normalize compatibility flags"
-  ansible.builtin.set_fact:
-    windows_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
-    windows_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
-    _stig_audit_only: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
-    _stig_phase_hint: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
-    _stig_active_phase: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
-  changed_when: false
-
-# =============================================================================
-# Phase 1 | Ingest Inputs / Evaluate
-# =============================================================================
-
-- name: "Windows STIG | Phase 1a | Load findings from provided rows"
-  when: windows_stig_input_rows | default([]) | length > 0
-  ansible.builtin.set_fact:
-    audit_full_list: "{{ windows_stig_input_rows | default([]) | list }}"
-    _stig_audit_ran: true
-  changed_when: false
-
-- name: "Windows STIG | Phase 1b | Run native checks"
-  when:
-    - _ncs_stig_action in ['audit', 'remediate']
-    - not (_stig_audit_ran | default(false))
-  block:
-    - name: "Windows STIG | Phase 1b.1 | Execute native baseline checks"
-      ansible.builtin.import_tasks: stig_check.yaml
-      tags: [windows, stig, security, checks]
-
-    - name: "Windows STIG | Phase 1b.2 | Execute native remediation"
-      ansible.builtin.import_tasks: stig_remediate.yaml
-      when: _ncs_stig_action == 'remediate'
-      tags: [windows, stig, security, remediate]
-
-    - name: "Windows STIG | Phase 1b.3 | Flag remediation as complete"
-      ansible.builtin.set_fact:
-        _stig_remediation_ran: true
-      changed_when: false
-      when: _ncs_stig_action == 'remediate'
-  rescue:
-    - name: "Windows STIG | Phase 1b.r | Mark native check failure"
-      ansible.builtin.set_fact:
-        _stig_run_failed: true
-      changed_when: false
-
-    - name: "Windows STIG | Phase 1b.r | Fail native-only mode"
-      when: windows_stig_native_checks_only | default(false) | bool
-      ansible.builtin.fail:
-        msg: "Windows Server STIG native checks failed on {{ inventory_hostname }}."
-  always:
-    - name: "Windows STIG | Phase 1 | Log completion"
-      ansible.builtin.debug:
-        msg: >-
-          Windows STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
-          completed on {{ inventory_hostname }}.
-
-- name: "Windows STIG | Phase 1c.1 | Mark audit ran if checks performed"
-  when:
-    - audit_full_list is defined
-    - audit_full_list | default([]) | length > 0
-    - not (_stig_audit_ran | default(false))
-  ansible.builtin.set_fact:
-    _stig_audit_ran: true
-  changed_when: false
-
-# =============================================================================
-# Phase 2 | Post-remediation verification
-# =============================================================================
-
-- name: "Windows STIG | Phase 2 | Set phase hint to audit"
-  ansible.builtin.set_fact:
-    _stig_phase_hint: "audit"
-    _stig_active_phase: "audit"
-  changed_when: false
-  when:
-    - _ncs_stig_action == 'verify'
-
-- name: "Windows STIG | Phase 2 | Post-remediation audit"
-  when:
-    - _ncs_stig_action == 'verify'
-  block:
-    - name: "Windows STIG | Phase 2a | Refresh checks after remediation"
-      ansible.builtin.import_tasks: stig_check.yaml
-      tags: [windows, stig, security, checks, verify]
-
-    - name: "Windows STIG | Phase 2b | Flag verification as complete"
-      ansible.builtin.set_fact:
-        _stig_audit_ran: true
-      changed_when: false
-  rescue:
-    - name: "Windows STIG | Phase 2r | Log verification failure"
-      ansible.builtin.debug:
-        msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
-
-# =============================================================================
-# Phase 3 | Export
-# =============================================================================
-
-- name: Windows STIG | Emit telemetry
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "stig_windows"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload: "{{ audit_full_list }}"
-    per_host: true
-  when: _stig_audit_ran | default(false)
-  changed_when: false
+- name: "Windows STIG"
+  ansible.builtin.include_role:
+    name: internal.core.stig_orchestrator
+  vars:
+    _ncs_stig_label: "Windows STIG"
+    _ncs_stig_target_type: "windows"
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_run.yaml"
+    _ncs_stig_verify_file: "{{ role_path }}/tasks/stig_check.yaml"
+    _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig_pre.yaml"
+    _ncs_stig_mode_facts:
+      windows_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+      windows_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
+    _ncs_stig_phase1_apply:
+      check_mode: false
+      tags: [stig_task]
+    _ncs_stig_phase2_apply:
+      check_mode: false
+      tags: [stig_task]
+    _ncs_stig_telemetry:
+      platform: "windows"
+      name: "stig_windows"
+      payload_var: "audit_full_list"
