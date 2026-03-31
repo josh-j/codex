@@ -1,107 +1,13 @@
 ---
 # internal.linux.photon : tasks/stig.yaml
-# =============================================================================
-# Photon OS 3.0 STIG — three-phase audit/remediate orchestrator
-#
-# Phase 0: Determine run mode and set context
-# Phase 1: Execute STIG tasks (audit-only via check_mode, or remediate)
-# Phase 2: Post-remediation verification (re-run in check_mode)
-# =============================================================================
 
-# =============================================================================
-# Phase 0 | Preconditions
-# =============================================================================
-- name: "Photon STIG | Phase 0 | Resolve canonical action"
-  ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
-  changed_when: false
-
-- name: "Photon STIG | Phase 0 | Determine run mode"
-  ansible.builtin.set_fact:
-    _stig_audit_only: >-
-      {{ _ncs_stig_action in ['audit', 'verify'] }}
-    photon_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
-    photon_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
-  changed_when: false
-
-- name: "Photon STIG | Phase 0 | Register target context for ncs_collector"
-  ansible.builtin.set_fact:
-    _ncs_stig_target_host: "{{ inventory_hostname }}"
+- name: "Photon STIG"
+  ansible.builtin.include_role:
+    name: internal.core.stig_orchestrator
+  vars:
+    _ncs_stig_label: "Photon STIG"
     _ncs_stig_target_type: "photon"
-  tags:
-    - always
-
-- name: "Photon STIG | Phase 0 | Set phase hint for included tasks"
-  ansible.builtin.set_fact:
-    _stig_phase_hint: "{{ 'audit' if (_stig_audit_only | bool) else 'remediate' }}"
-  changed_when: false
-
-# =============================================================================
-# Phase 1 | Evaluate / Remediate
-# =============================================================================
-- name: "Photon STIG | Phase 1 | Evaluate and/or remediate"
-  when:
-    - _ncs_stig_action in ['audit', 'remediate']
-  block:
-    - name: "Photon STIG | Phase 1a | Run STIG tasks"
-      ansible.builtin.include_tasks:
-        file: stig_photon3/main.yaml
-        apply:
-          check_mode: "{{ _stig_audit_only | bool }}"
-          tags: [stig_task]
-      tags: [stig, security]
-
-    - name: "Photon STIG | Phase 1b | Flag run as complete"
-      ansible.builtin.set_fact:
-        _stig_audit_ran: true
-        _stig_remediation_ran: "{{ not (_stig_audit_only | bool) }}"
-      changed_when: false
-  rescue:
-    - name: "Photon STIG | Phase 1r | Set failure flag"
-      ansible.builtin.set_fact:
-        _stig_run_failed: true
-      changed_when: false
-
-    - name: "Photon STIG | Phase 1r | Log failure"
-      ansible.builtin.debug:
-        msg: >-
-          Photon STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
-          failed on {{ inventory_hostname }}. Partial results emitted via ncs_collector.
-  always:
-    - name: "Photon STIG | Phase 1 | Log completion"
-      ansible.builtin.debug:
-        msg: >-
-          Photon STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
-          completed on {{ inventory_hostname }}. Results emitted via ncs_collector.
-
-# =============================================================================
-# Phase 2 | Post-remediation verification (remediate mode only)
-# =============================================================================
-- name: "Photon STIG | Phase 2 | Set phase hint to audit"
-  ansible.builtin.set_fact:
-    _stig_phase_hint: "audit"
-    _stig_active_phase: "audit"
-  changed_when: false
-  when:
-    - _ncs_stig_action == 'verify'
-
-- name: "Photon STIG | Phase 2 | Post-remediation audit"
-  when:
-    - _ncs_stig_action == 'verify'
-  block:
-    - name: "Photon STIG | Phase 2a | Verify remediation (check_mode)"
-      ansible.builtin.include_tasks:
-        file: stig_photon3/main.yaml
-        apply:
-          check_mode: true
-          tags: [stig_task]
-      tags: [stig, security, verify]
-
-    - name: "Photon STIG | Phase 2b | Flag verification as complete"
-      ansible.builtin.set_fact:
-        _stig_audit_ran: true
-      changed_when: false
-  rescue:
-    - name: "Photon STIG | Phase 2r | Log failure"
-      ansible.builtin.debug:
-        msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_photon3/main.yaml"
+    _ncs_stig_mode_facts:
+      photon_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+      photon_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"

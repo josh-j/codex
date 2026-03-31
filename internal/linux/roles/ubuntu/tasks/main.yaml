@@ -8,12 +8,12 @@
     _ncs_role_label: Ubuntu
     _ncs_task_root: "{{ role_path }}/tasks"
     _ncs_default_action: collect
-    _ncs_validations:
-      - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
-      - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
-      - (_ncs_requested_operation == 'none') or (_ncs_requested_operation in ['maintain', 'patch', 'password_status', 'rotate_password'])
-      - not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')
-      - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
+    _ncs_allowed_operations:
+      - maintain
+      - patch
+      - password_status
+      - rotate_password
+    _ncs_extra_validations:
       - (_ncs_requested_operation not in ['patch', 'maintain', 'rotate_password']) or (_ncs_requested_action == 'remediate')
       - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
     _dispatch_map:

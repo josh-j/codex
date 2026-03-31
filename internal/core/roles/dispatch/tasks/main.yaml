@@ -7,13 +7,15 @@
 #   _ncs_role_label        — Display name for task labels (e.g. "Ubuntu")
 #   _ncs_task_root         — Absolute path to calling role's tasks/ dir
 #   _ncs_default_action    — Default ncs_action value (e.g. "collect" or "audit")
-#   _ncs_validations       — List of assert condition strings
 #   _dispatch_map          — Dict mapping dispatch keys to task filenames
 #
 # Optional vars:
-#   _ncs_action_routes     — Actions that route directly (e.g. ['collect'] for VMware)
-#   _ncs_dynamic_dispatch  — If true, unmapped keys use the key itself as filename
-#   _ncs_pre_dispatch_facts — Dict of extra facts to set before dispatch
+#   _ncs_allowed_profiles    — List of valid profiles (default: ['stig'])
+#   _ncs_allowed_operations  — List of valid operations (default: [])
+#   _ncs_extra_validations   — List of additional assert conditions beyond the base set
+#   _ncs_action_routes       — Actions that route directly (e.g. ['collect'] for VMware)
+#   _ncs_dynamic_dispatch    — If true, unmapped keys use the key itself as filename
+#   _ncs_pre_dispatch_facts  — Dict of extra facts to set before dispatch
 
 - name: "{{ _ncs_role_label }} | Resolve public interface"
   ansible.builtin.set_fact:
@@ -24,7 +26,17 @@
 
 - name: "{{ _ncs_role_label }} | Validate public interface"
   ansible.builtin.assert:
-    that: "{{ _ncs_validations }}"
+    that: >-
+      {{
+        [
+          "_ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']",
+          "(_ncs_requested_profile == 'none') or (_ncs_requested_profile in " ~ (_ncs_allowed_profiles | default(['stig']) | string) ~ ")",
+          "(_ncs_requested_operation == 'none') or (_ncs_requested_operation in " ~ (_ncs_allowed_operations | default([]) | string) ~ ")",
+          "not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')",
+          "(_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])",
+        ]
+        + (_ncs_extra_validations | default([]))
+      }}
     fail_msg: >-
       Unsupported {{ _ncs_role_label | lower }} role interface:
       action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.

@@ -1,147 +1,34 @@
 ---
 # internal.vmware.esxi : tasks/stig.yaml
-# =============================================================================
-# ESXi STIG — three-phase audit/remediate orchestrator
-#
-# Phase 0: Determine run mode and set context
-# Phase 1: Execute STIG tasks (audit-only via check_mode, or remediate)
-# Phase 2: Post-remediation verification (re-run in check_mode)
-# =============================================================================
 
-# =============================================================================
-# Phase 0 | Preconditions
-# =============================================================================
-- name: "ESXi STIG | Phase 0 | Backward-compat aliases"
-  ansible.builtin.set_fact:
-    esxi_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(esxi_stig_enable_hardening) | default(false) }}"
-  changed_when: false
-
-- name: "ESXi STIG | Phase 0 | Resolve canonical action"
-  ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
-  changed_when: false
-
-- name: "ESXi STIG | Phase 0 | Validate target hosts"
-  ansible.builtin.assert:
-    that: esxi_stig_target_hosts | default([]) | length > 0
-    fail_msg: "No ESXi hosts defined in esxi_stig_target_hosts"
-
-- name: "ESXi STIG | Phase 0 | Determine run mode"
-  ansible.builtin.set_fact:
-    _stig_audit_only: >-
-      {{ _ncs_stig_action in ['audit', 'verify'] }}
-    esxi_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
-    esxi_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
-  changed_when: false
-
-- name: "ESXi STIG | Phase 0 | Register target context for ncs_collector"
-  ansible.builtin.set_fact:
-    _ncs_stig_target_host: "{{ inventory_hostname }}"
+- name: "ESXi STIG"
+  ansible.builtin.include_role:
+    name: internal.core.stig_orchestrator
+  vars:
+    _ncs_stig_label: "ESXi STIG"
     _ncs_stig_target_type: "esxi"
-  tags:
-    - always
-
-- name: "ESXi STIG | Phase 0 | Set phase hint for included tasks"
-  ansible.builtin.set_fact:
-    _stig_phase_hint: "{{ 'audit' if (_stig_audit_only | bool) else 'remediate' }}"
-    _stig_active_phase: "{{ 'audit' if (_stig_audit_only | bool) else 'remediate' }}"
-  changed_when: false
-
-- name: "ESXi STIG | Phase 0 | Validate required STIG settings"
-  when: esxi_stig_enable_hardening | default(false) | bool
-  ansible.builtin.assert:
-    that:
-      - (not (esxi_70_000004_manage | default(true) | bool)) or (esxi_stig_syslog_host | default('') | length > 0)
-      - (not (esxi_70_000007_manage | default(true) | bool)) or (esxi_stig_welcome_message | default('') | length > 0)
-      - (not (esxi_70_000046_manage | default(true) | bool)) or (esxi_stig_ntp_servers | default([]) | length > 0)
-      - (not (esxi_70_000039_manage | default(true) | bool)) or (esxi_stig_ad_admin_group | default('') | length > 0)
-      - (not (esxi_70_000045_manage | default(true) | bool)) or (esxi_stig_log_dir | default('') | length > 0)
-    fail_msg: >-
-      Required STIG variables are empty while their rules are enabled.
-      Set the variables or disable the rules via *_manage: false.
-
-# =============================================================================
-# Phase 1 | Evaluate / Remediate
-# =============================================================================
-- name: "ESXi STIG | Phase 1 | Evaluate and/or remediate"
-  when:
-    - _ncs_stig_action in ['audit', 'remediate']
-  block:
-    - name: "ESXi STIG | Phase 1a | Process each host"
-      ansible.builtin.include_tasks: stig_v7r4/main.yaml
-      loop: "{{ esxi_stig_target_hosts | unique | list }}"
-      loop_control:
-        loop_var: _current_esxi_host
-        label: "{{ _current_esxi_host }}"
-      args:
-        apply:
-          check_mode: "{{ not (esxi_stig_enable_hardening | default(false) | bool) }}"
-          tags: [stig_task]
-          vars:
-            stig_target_host: "{{ _current_esxi_host }}"
-            stig_target_type: "esxi"
-            stig_platform: "vmware/esxi"
-      ignore_errors: true
-
-    - name: "ESXi STIG | Phase 1b | Flag run as complete"
-      ansible.builtin.set_fact:
-        _stig_audit_ran: true
-        _stig_remediation_ran: "{{ not (_stig_audit_only | bool) }}"
-      changed_when: false
-  rescue:
-    - name: "ESXi STIG | Phase 1r | Set failure flag"
-      ansible.builtin.set_fact:
-        _stig_run_failed: true
-      changed_when: false
-
-    - name: "ESXi STIG | Phase 1r | Log failure"
-      ansible.builtin.debug:
-        msg: >-
-          ESXi STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
-          failed on {{ inventory_hostname }}. Partial results emitted via ncs_collector.
-  always:
-    - name: "ESXi STIG | Phase 1 | Log completion"
-      ansible.builtin.debug:
-        msg: >-
-          ESXi STIG {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
-          completed on {{ inventory_hostname }}. Results emitted via ncs_collector.
-
-# =============================================================================
-# Phase 2 | Post-remediation verification (remediate mode only)
-# =============================================================================
-- name: "ESXi STIG | Phase 2 | Set phase hint to audit"
-  ansible.builtin.set_fact:
-    _stig_phase_hint: "audit"
-    _stig_active_phase: "audit"
-  changed_when: false
-  when:
-    - _ncs_stig_action == 'verify'
-
-- name: "ESXi STIG | Phase 2 | Post-remediation audit"
-  when:
-    - _ncs_stig_action == 'verify'
-  block:
-    - name: "ESXi STIG | Phase 2a | Verify each host"
-      ansible.builtin.include_tasks: stig_v7r4/main.yaml
-      loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
-      loop_control:
-        loop_var: _current_esxi_host
-        label: "{{ _current_esxi_host }}"
-      args:
-        apply:
-          check_mode: true
-          tags: [stig_task]
-          vars:
-            stig_target_host: "{{ _current_esxi_host }}"
-            stig_target_type: "esxi"
-            stig_platform: "vmware/esxi"
-      ignore_errors: true
-
-    - name: "ESXi STIG | Phase 2b | Flag verification as complete"
-      ansible.builtin.set_fact:
-        _stig_audit_ran: true
-      changed_when: false
-  rescue:
-    - name: "ESXi STIG | Phase 2r | Log verification failure"
-      ansible.builtin.debug:
-        msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_v7r4/main.yaml"
+    _ncs_stig_compat_facts:
+      esxi_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(esxi_stig_enable_hardening) | default(false) }}"
+    _ncs_stig_mode_facts:
+      esxi_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+      esxi_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
+    _ncs_stig_pre_validations:
+      - esxi_stig_target_hosts | default([]) | length > 0
+    _ncs_stig_phase1_loop: "{{ esxi_stig_target_hosts | unique | list }}"
+    _ncs_stig_phase1_loop_var: _current_esxi_host
+    _ncs_stig_phase1_apply:
+      check_mode: "{{ not (esxi_stig_enable_hardening | default(false) | bool) }}"
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ _current_esxi_host }}"
+        stig_target_type: "esxi"
+        stig_platform: "vmware/esxi"
+    _ncs_stig_phase2_loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
+    _ncs_stig_phase2_apply:
+      check_mode: true
+      tags: [stig_task]
+      vars:
+        stig_target_host: "{{ _current_esxi_host }}"
+        stig_target_type: "esxi"
+        stig_platform: "vmware/esxi"
