@@ -616,26 +616,45 @@ function Show-NcsConsoleApp {
         }
     }
 
+    $removeFromLimit = {
+        $tag = & $getSelectedTag
+        if (-not $tag) { return }
+        $current = $controls.ActionLimitTextBox.Text.Trim()
+        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object {
+            $_ -ne '' -and $_ -ne $tag -and $_ -ne "!$tag" -and $_ -ne ":&$tag" -and $_ -ne "$tag*"
+        })
+        $controls.ActionLimitTextBox.Text = $parts -join ','
+    }
+
     $limitContextMenu = [System.Windows.Controls.ContextMenu]::new()
     $limitContextMenu.Background = Get-NcsBrush -Color "#1e2228"
     $limitContextMenu.BorderBrush = Get-NcsBrush -Color "#2c3038"
     $limitContextMenu.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $limitContextMenu.Padding = [System.Windows.Thickness]::new(0)
+    $limitContextMenu.HasDropShadow = $false
 
     $menuItems = @(
-        @{ Header = "Include"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } } }
-        @{ Header = "Exclude (!)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag" } } }
-        @{ Header = "Intersect (:&)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } } }
-        @{ Header = "Wildcard (*)" ; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*" } } }
+        @{ Header = "Add"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } } }
+        @{ Header = "Remove"; Action = { & $removeFromLimit } }
         @{ Header = "-" }
-        @{ Header = "Clear limit"; Action = { $controls.ActionLimitTextBox.Text = "" } }
+        @{ Header = "Exclude (!)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag" } } }
+        @{ Header = "Intersect (:&&)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } } }
+        @{ Header = "Wildcard (*)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*" } } }
+        @{ Header = "-" }
+        @{ Header = "Clear all"; Action = { $controls.ActionLimitTextBox.Text = "" } }
     )
 
     foreach ($mi in $menuItems) {
         if ($mi.Header -eq "-") {
-            $limitContextMenu.Items.Add([System.Windows.Controls.Separator]::new()) | Out-Null
+            $sep = [System.Windows.Controls.Separator]::new()
+            $sep.Background = Get-NcsBrush -Color "#2c3038"
+            $sep.Margin = [System.Windows.Thickness]::new(4,2,4,2)
+            $limitContextMenu.Items.Add($sep) | Out-Null
         } else {
             $item = [System.Windows.Controls.MenuItem]::new()
             $item.Header = $mi.Header
+            $item.Padding = [System.Windows.Thickness]::new(8,4,16,4)
+            $item.Background = [System.Windows.Media.Brushes]::Transparent
             $action = $mi.Action
             $item.Add_Click({ & $action }.GetNewClosure())
             $limitContextMenu.Items.Add($item) | Out-Null
