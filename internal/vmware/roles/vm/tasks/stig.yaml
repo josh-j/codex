@@ -7,8 +7,8 @@
   vars:
     _ncs_stig_label: "VM STIG"
     _ncs_stig_target_type: "vm"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/check.yaml"
-    _ncs_stig_verify_file: "{{ role_path }}/tasks/check_verify.yaml"
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_v7r4/check.yaml"
+    _ncs_stig_verify_file: "{{ role_path }}/tasks/stig_v7r4/check_verify.yaml"
     _ncs_stig_compat_facts:
       vm_stig_enable_audit: "{{ vmware_stig_enable_audit | default(vm_stig_enable_audit) | default(true) }}"
       vm_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(vm_stig_enable_hardening) | default(false) }}"

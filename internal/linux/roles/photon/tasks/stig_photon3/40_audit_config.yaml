@@ -23,7 +23,7 @@
 
 - name: "stigrule_PHTN-30-000001 - Deploy audit rules template"
   ansible.builtin.template:
-    src: photon3/audit.STIG.rules
+    src: "{{ role_path }}/tasks/stig_photon3/templates/photon3/audit.STIG.rules"
     dest: '{{ var_auditd_rule_file }}'
     owner: root
     group: root

@@ -4,7 +4,7 @@
 
 - name: "Registry Fix | Load fix catalog"
   ansible.builtin.include_vars:
-    file: registry_fixes.yaml
+    file: "{{ role_path }}/tasks/stig_ws2022/registry_fixes.yaml"
   tags: [registry_fix]
 
 - name: "Registry Fix | Determine fixes to apply"

@@ -7,9 +7,9 @@
   vars:
     _ncs_stig_label: "Windows STIG"
     _ncs_stig_target_type: "windows"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_run.yaml"
-    _ncs_stig_verify_file: "{{ role_path }}/tasks/stig_check.yaml"
-    _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig_pre.yaml"
+    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_ws2022/stig_run.yaml"
+    _ncs_stig_verify_file: "{{ role_path }}/tasks/stig_ws2022/stig_check.yaml"
+    _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig_ws2022/stig_pre.yaml"
     _ncs_stig_mode_facts:
       windows_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
       windows_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"

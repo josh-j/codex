@@ -65,7 +65,7 @@
 
     - name: "OpenSSH | Deploy managed sshd_config"
       ansible.windows.win_template:
-        src: sshd_config.j2
+        src: "{{ role_path }}/tasks/stig_ws2022/sshd_config.j2"
         dest: 'C:\ProgramData\ssh\sshd_config'
       register: _openssh_config_result
       when: windows_openssh_manage_config | bool

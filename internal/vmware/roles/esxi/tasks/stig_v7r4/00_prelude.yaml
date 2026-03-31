@@ -28,7 +28,10 @@
 # =========================================================================
 - name: "ESXi STIG | Load STIG defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_v7r4/default.yaml"
+    file: "{{ item }}"
+  loop:
+    - "{{ role_path }}/tasks/stig_v7r4/stig.yaml"
+    - "{{ role_path }}/tasks/stig_v7r4/default.yaml"
   tags:
     - always
 

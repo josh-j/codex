@@ -1,6 +1,13 @@
 ---
 # Photon OS 3.0 STIG — Phase setup and fact gathering
 
+- name: "Photon STIG | Load STIG defaults and vars"
+  ansible.builtin.include_vars:
+    file: "{{ item }}"
+  loop:
+    - "{{ role_path }}/tasks/stig_photon3/stig.yaml"
+    - "{{ role_path }}/tasks/stig_photon3/vars.yaml"
+
 - name: "Set NCS STIG target type to photon"
   ansible.builtin.set_fact:
     _ncs_stig_target_type: "photon"
