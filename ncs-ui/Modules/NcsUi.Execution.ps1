@@ -187,10 +187,23 @@ function Resolve-NcsPlaybookCommand {
     $vault = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteVaultPath
     $command = "ansible-playbook -i $inventory playbooks/$($Request.Playbook) --vault-password-file $vault"
 
-    if (-not [string]::IsNullOrWhiteSpace($Request.Site)) {
+    if (-not [string]::IsNullOrWhiteSpace($Request.Limit)) {
+        $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Limit)
+    } elseif (-not [string]::IsNullOrWhiteSpace($Request.Site)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Site) + ",localhost"
     } elseif (-not [string]::IsNullOrWhiteSpace($Request.Host)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Host) + ",localhost"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Request.Tags)) {
+        $command += " --tags " + (ConvertTo-NcsBashLiteral -Value $Request.Tags)
+    }
+
+    if ($Request.CheckMode) { $command += " --check" }
+    if ($Request.Diff) { $command += " --diff" }
+
+    if (-not [string]::IsNullOrWhiteSpace($Request.Verbosity) -and $Request.Verbosity -ne "Normal") {
+        $command += " $($Request.Verbosity)"
     }
 
     if ($Request.Options.Count -gt 0) {
