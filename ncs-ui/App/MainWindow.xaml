@@ -548,7 +548,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="SettingsColumn" Width="0" MinWidth="0" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" MinWidth="150" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="ConsoleColumn" Width="0" MinWidth="0" />
                 </Grid.ColumnDefinitions>
@@ -613,7 +613,7 @@
 
                 <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
 
-                    <Grid x:Name="OperateContent" Grid.Column="2">
+                    <Grid x:Name="OperateContent" Grid.Column="2" Width="280">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
