@@ -215,7 +215,7 @@ audit-ubuntu-discover:
 
 # Run Windows audit
 audit-windows target="windows_servers":
-    {{ ansible_playbook }} playbooks/windows/audit.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/collect.yml -l {{ target }}
 
 # Run Windows update apply phase
 update-windows:
@@ -239,7 +239,7 @@ audit-linux-host hostname:
 
 # Audit a specific Windows host
 audit-windows-host hostname:
-    {{ ansible_playbook }} playbooks/windows/audit.yml -l {{ hostname }}
+    {{ ansible_playbook }} playbooks/windows/collect.yml -l {{ hostname }}
 
 # =============================================================================
 # Windows Administration (targeted single-host actions)

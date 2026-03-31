@@ -1,5 +1,5 @@
 ---
-# playbooks/windows/audit.yml
+# playbooks/windows/collect.yml
 # Comprehensive health and inventory auditing for Windows Server fleet.
 # This playbook uses PowerShell-based discovery to collect system specs,
 # installed software, service health, and security configuration states.
@@ -14,5 +14,5 @@
   roles:
     - role: internal.windows.server
       vars:
-        ncs_action: audit
+        ncs_action: collect
         # Default thresholds are defined in roles/windows/defaults/main.yaml
