@@ -112,21 +112,17 @@ function Get-NcsSshTarget {
     return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
 }
 
-function New-NcsSshPasswordEnvironment {
+function New-NcsSshAskPassEnvironment {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [string] $Secret
     )
-
-    if ([string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-        throw "Password authentication requires an SSH password."
-    }
 
     $askPassScript = Join-Path -Path $script:NcsProjectRoot -ChildPath "Scripts/askpass.cmd"
     return @{
         SSH_ASKPASS         = $askPassScript
         SSH_ASKPASS_REQUIRE = "force"
-        NCS_UI_PASS         = $Settings.SshPassword
+        NCS_UI_PASS         = $Secret
         DISPLAY             = "ncs-ui"
     }
 }
@@ -259,10 +255,17 @@ function Start-NcsRemoteCommand {
         $psi.ArgumentList.Add($argument)
     }
 
-    if ($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) {
-        $passEnv = New-NcsSshPasswordEnvironment -Settings $Settings
-        foreach ($key in $passEnv.Keys) {
-            $psi.Environment[$key] = $passEnv[$key]
+    $authMode = $Settings.SshAuthMode
+    $askPassSecret = $null
+    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
+        $askPassSecret = $Settings.SshPassword
+    } elseif ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
+        $askPassSecret = $Settings.SshKeyPassphrase
+    }
+    if ($null -ne $askPassSecret) {
+        $askEnv = New-NcsSshAskPassEnvironment -Secret $askPassSecret
+        foreach ($key in $askEnv.Keys) {
+            $psi.Environment[$key] = $askEnv[$key]
         }
     }
 

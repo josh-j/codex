@@ -12,6 +12,7 @@ class NcsUiSettings {
     [string] $SshUser = ""
     [string] $SshAuthMode = [NcsSshAuthMode]::Agent.ToString()
     [string] $SshKeyPath = ""
+    [string] $SshKeyPassphrase = ""
     [string] $SshPassword = ""
     [string] $RemoteRepoPath = "~/ansible-ncs"
     [string] $RemoteVaultPath = ".vaultpass"
