@@ -680,7 +680,11 @@
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit host or group pattern" />
-                                            <ListBox x:Name="ActionLimitSuggestions" MaxHeight="100" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Margin="0,0,0,4" />
+                                            <Border x:Name="ActionLimitTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
+                                                <ScrollViewer x:Name="ActionLimitTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                    <TreeView x:Name="ActionLimitTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                </ScrollViewer>
+                                            </Border>
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
                                             <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />

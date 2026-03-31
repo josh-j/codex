@@ -144,20 +144,47 @@ function Import-NcsGroupedConfig {
     return $groups
 }
 
-function Get-NcsRemoteInventoryNames {
+function Get-NcsRemoteInventoryTree {
     param(
         [Parameter(Mandatory)]
         [NcsConsoleSettings] $Settings
     )
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
-    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && ansible-inventory -i inventory/production --graph 2>/dev/null | grep -oP '[@|][\w\-\.]+' | sed 's/^[@|]//' | sort -u"
+    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && ansible-inventory -i inventory/production --list 2>/dev/null"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
         return @()
     }
 
-    return @($probe.StdOut -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $inventory = $probe.StdOut | ConvertFrom-Json
+    $groups = [System.Collections.Generic.List[hashtable]]::new()
+
+    foreach ($key in @($inventory.PSObject.Properties.Name | Sort-Object)) {
+        if ($key -in @('_meta', 'all', 'ungrouped')) { continue }
+
+        $groupData = $inventory.$key
+        if ($null -eq $groupData -or $null -eq $groupData.PSObject) { continue }
+
+        $items = [System.Collections.Generic.List[hashtable]]::new()
+
+        if ($groupData.PSObject.Properties.Name -contains 'children') {
+            foreach ($child in @($groupData.children)) {
+                $items.Add(@{ Label = $child; limit = $child })
+            }
+        }
+        if ($groupData.PSObject.Properties.Name -contains 'hosts') {
+            foreach ($h in @($groupData.hosts)) {
+                $items.Add(@{ Label = $h; limit = $h })
+            }
+        }
+
+        if ($items.Count -gt 0) {
+            $groups.Add(@{ Group = $key; Items = $items })
+        }
+    }
+
+    return $groups
 }
 
