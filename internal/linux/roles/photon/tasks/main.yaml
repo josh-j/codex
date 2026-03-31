@@ -1,16 +1,14 @@
 ---
 # internal.linux.photon : tasks/main.yaml
 
-- name: "Photon | Resolve public interface"
-  ansible.builtin.set_fact:
-    _ncs_requested_action: "{{ ncs_action | default('collect') }}"
-    _ncs_requested_profile: "{{ ncs_profile | default('none') }}"
-    _ncs_requested_operation: "{{ ncs_operation | default('none') }}"
-  changed_when: false
-
-- name: "Photon | Validate public interface"
-  ansible.builtin.assert:
-    that:
+- name: "Photon | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: Photon
+    _ncs_task_root: "{{ role_path }}/tasks"
+    _ncs_default_action: collect
+    _ncs_validations:
       - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
       - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
       - (_ncs_requested_operation == 'none') or (_ncs_requested_operation in ['password_status', 'rotate_password'])
@@ -18,24 +16,8 @@
       - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
       - (_ncs_requested_operation != 'rotate_password') or (_ncs_requested_action == 'remediate')
       - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
-    fail_msg: >-
-      Unsupported photon role interface:
-      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
-  changed_when: false
-
-- name: "Photon | Build dispatch map"
-  ansible.builtin.set_fact:
     _dispatch_map:
       stig: stig
       rotate_password: rotate_password
       password_status: password_status
       _default_: discover
-  changed_when: false
-
-- name: "Photon | Dispatch: {{ _ncs_requested_action }} / {{ _ncs_requested_profile }} / {{ _ncs_requested_operation }}"
-  ansible.builtin.include_tasks:
-    file: >-
-      {{ role_path ~ '/tasks/' ~ _dispatch_map.get(
-           _ncs_requested_profile if _ncs_requested_profile != 'none'
-           else _ncs_requested_operation, '_default_'
-         ) ~ '.yaml' }}

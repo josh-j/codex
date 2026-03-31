@@ -1,25 +1,6 @@
 ---
 # internal.vmware.vcsa : tasks/main.yaml
 
-- name: "VCSA | Resolve public interface"
-  ansible.builtin.set_fact:
-    vcsa_ncs_requested_action: "{{ ncs_action | default('audit') }}"
-    vcsa_ncs_requested_profile: "{{ ncs_profile | default('none') }}"
-    vcsa_ncs_requested_operation: "none"
-  changed_when: false
-
-- name: "VCSA | Validate public interface"
-  ansible.builtin.assert:
-    that:
-      - vcsa_ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
-      - (vcsa_ncs_requested_profile == 'none') or (vcsa_ncs_requested_profile == 'stig')
-      - (vcsa_ncs_requested_operation == 'none')
-      - (vcsa_ncs_requested_profile != 'stig') or (vcsa_ncs_requested_action in ['audit', 'remediate', 'verify'])
-    fail_msg: >-
-      Unsupported VCSA role interface:
-      action={{ vcsa_ncs_requested_action }}, profile={{ vcsa_ncs_requested_profile }}, operation={{ vcsa_ncs_requested_operation }}.
-  changed_when: false
-
 - name: "VCSA | Dispatch"
   module_defaults:
     group/community.vmware.vmware:
@@ -54,11 +35,20 @@
         password: "{{ vmware_password }}"
         validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
   block:
-    - name: "VCSA | Run dispatcher"
-      ansible.builtin.include_tasks:
-        file: >-
-          {{
-            role_path ~ '/tasks/collect.yaml'
-            if vcsa_ncs_requested_action == 'collect'
-            else role_path ~ '/tasks/stig.yaml'
-          }}
+    - name: "VCSA | Include dispatcher"
+      ansible.builtin.include_role:
+        name: internal.core.dispatch
+      vars:
+        _ncs_role_label: VCSA
+        _ncs_task_root: "{{ role_path }}/tasks"
+        _ncs_default_action: audit
+        _ncs_action_routes:
+          - collect
+        _ncs_validations:
+          - _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']
+          - (_ncs_requested_profile == 'none') or (_ncs_requested_profile == 'stig')
+          - (_ncs_requested_operation == 'none')
+          - (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])
+        _dispatch_map:
+          collect: collect
+          _default_: stig
