@@ -575,6 +575,8 @@
                             <StackPanel x:Name="SshKeyPathPanel">
                                 <TextBlock Text="Key Path" Foreground="{StaticResource TextMutedBrush}" />
                                 <TextBox x:Name="SshKeyPathTextBox" />
+                                <TextBlock Text="Passphrase" Foreground="{StaticResource TextMutedBrush}" />
+                                <PasswordBox x:Name="SshKeyPassphraseBox" />
                             </StackPanel>
                             <StackPanel x:Name="SshPasswordPanel">
                                 <TextBlock Text="Password" Foreground="{StaticResource TextMutedBrush}" />

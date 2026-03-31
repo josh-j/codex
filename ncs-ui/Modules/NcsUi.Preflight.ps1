@@ -24,8 +24,15 @@ function Invoke-NcsSshProbe {
     $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand
     $environment = $null
 
-    if ($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) {
-        $environment = New-NcsSshPasswordEnvironment -Settings $Settings
+    $authMode = $Settings.SshAuthMode
+    $askPassSecret = $null
+    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
+        $askPassSecret = $Settings.SshPassword
+    } elseif ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
+        $askPassSecret = $Settings.SshKeyPassphrase
+    }
+    if ($null -ne $askPassSecret) {
+        $environment = New-NcsSshAskPassEnvironment -Secret $askPassSecret
     }
 
     return Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment $environment
