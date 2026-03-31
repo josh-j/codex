@@ -544,7 +544,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
-                        <Button x:Name="OperateToggleButton" Content="⚡ Operate" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
+                        <Button x:Name="OperateToggleButton" Content="▶ Playbooks" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
                         <Button x:Name="ConsoleShowButton" Content="⌨ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
@@ -631,7 +631,7 @@
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
-                                    <TextBlock DockPanel.Dock="Left" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                    <TextBlock DockPanel.Dock="Left" Text="Playbooks" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
                                 </DockPanel>
                                 <Grid Grid.Row="1">
                                     <Grid.ColumnDefinitions>
