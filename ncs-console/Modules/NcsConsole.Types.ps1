@@ -151,7 +151,7 @@ function Get-NcsRemoteInventoryNames {
     )
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
-    $command = "cd $repo && ansible-inventory -i inventory/production --graph 2>/dev/null | grep -oP '[@|][\w\-\.]+' | sed 's/^[@|]//' | sort -u"
+    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && ansible-inventory -i inventory/production --graph 2>/dev/null | grep -oP '[@|][\w\-\.]+' | sed 's/^[@|]//' | sort -u"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
