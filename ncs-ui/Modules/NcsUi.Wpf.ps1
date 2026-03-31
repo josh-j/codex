@@ -657,7 +657,7 @@ function Show-NcsUiApp {
                 try {
                     $remoteTargets = Get-NcsRemoteInventory -Settings $state.Settings
                     Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $remoteTargets -TagProperty "limit" -Expanded $false
-                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory loaded ($($remoteTargets.Count) groups)."
+                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory loaded ($(@($remoteTargets).Length) groups)."
                     $controls.PreflightSummaryText.Text = "Connected. Inventory loaded from remote."
                 } catch {
                     $controls.StatusTextBlock.Text = "Preflight passed. Inventory load failed: $($_.Exception.Message)"
