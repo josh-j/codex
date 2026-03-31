@@ -640,7 +640,7 @@ function Show-NcsConsoleApp {
         $item.Margin = [System.Windows.Thickness]::new(0)
         $item.Padding = [System.Windows.Thickness]::new(10,5,10,5)
         $item.Template = [System.Windows.Markup.XamlReader]::Parse(
-            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="MenuItem">' +
+            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="MenuItem">' +
             '<Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">' +
             '<ContentPresenter ContentSource="Header" />' +
             '</Border>' +
