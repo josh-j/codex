@@ -875,6 +875,7 @@ function Show-NcsConsoleApp {
                 $okBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
                 $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
                 $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
+                $okBtn.IsDefault = $true
                 $okBtn.Add_Click({ $inputBox.DialogResult = $true })
                 $cancelBtn = [System.Windows.Controls.Button]::new()
                 $cancelBtn.Content = "Cancel"
