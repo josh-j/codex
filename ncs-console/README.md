@@ -44,19 +44,9 @@ If execution policy blocks unsigned scripts, set `RemoteSigned` for the current 
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-## Default Action Mapping
+## Actions
 
-- `Run All` -> `make run`
-- `Run Site` -> `make run-site SITE=<site>`
-- `Run Host` -> `ansible-playbook ... --limit <host>,localhost`
-- `Run vCenter` -> `make run-vcenter`
-- `Dry Run` -> `make dry-run`
-- `Debug` -> `make debug`
-- `Inventory Preview` -> `make inventory`
-- `Inventory Host` -> `make inventory-host HOST=<host>`
-- `Recent Logs` -> `make logs-recent`
-
-If the configured vault path is not the default `.vaultpass`, the wrapper falls back to direct `ansible-playbook` commands for the actions that require a vault file, so the UI still honors the configured remote path without mutating the backend repo.
+Actions are defined in `Config/actions.yml` and map directly to Ansible playbooks. The app runs `ansible-playbook` directly (activating `.venv` if present) — no Makefile, Justfile, or make targets are involved.
 
 ## Settings Storage
 
