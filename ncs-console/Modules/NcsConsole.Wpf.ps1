@@ -656,24 +656,33 @@ function Show-NcsConsoleApp {
     }
 
     $limitContextMenu = [System.Windows.Controls.ContextMenu]::new()
-    $limitContextMenu.Background = Get-NcsBrush -Color "#1e2228"
-    $limitContextMenu.BorderBrush = Get-NcsBrush -Color "#2c3038"
-    $limitContextMenu.Foreground = Get-NcsBrush -Color "#d8dce2"
-    $limitContextMenu.Padding = [System.Windows.Thickness]::new(0)
-    $limitContextMenu.MinWidth = 140
-    $limitContextMenu.HasDropShadow = $false
+    $limitContextMenu.Template = [System.Windows.Markup.XamlReader]::Parse(
+        '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ContextMenu">' +
+        '<Border Background="#1e2228" BorderBrush="#2c3038" BorderThickness="1" Padding="0" MinWidth="140">' +
+        '<StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />' +
+        '</Border>' +
+        '</ControlTemplate>'
+    )
+
+    $newSep = {
+        $sep = [System.Windows.Controls.Separator]::new()
+        $sep.Template = [System.Windows.Markup.XamlReader]::Parse(
+            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Separator">' +
+            '<Border Height="1" Background="#2c3038" Margin="4,2,4,2" />' +
+            '</ControlTemplate>'
+        )
+        return $sep
+    }
 
     $addItem = & $newMenuItem "Add" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }
     $removeItem = & $newMenuItem "Remove" { & $removeFromLimit }
     $limitContextMenu.Items.Add($addItem) | Out-Null
     $limitContextMenu.Items.Add($removeItem) | Out-Null
-    $sep1 = [System.Windows.Controls.Separator]::new(); $sep1.Background = Get-NcsBrush -Color "#2c3038"; $sep1.Margin = [System.Windows.Thickness]::new(0,2,0,2)
-    $limitContextMenu.Items.Add($sep1) | Out-Null
+    $limitContextMenu.Items.Add((& $newSep)) | Out-Null
     $limitContextMenu.Items.Add((& $newMenuItem "Exclude (!)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag" } })) | Out-Null
     $limitContextMenu.Items.Add((& $newMenuItem "Intersect (:&)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
     $limitContextMenu.Items.Add((& $newMenuItem "Wildcard (*)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*" } })) | Out-Null
-    $sep2 = [System.Windows.Controls.Separator]::new(); $sep2.Background = Get-NcsBrush -Color "#2c3038"; $sep2.Margin = [System.Windows.Thickness]::new(0,2,0,2)
-    $limitContextMenu.Items.Add($sep2) | Out-Null
+    $limitContextMenu.Items.Add((& $newSep)) | Out-Null
     $limitContextMenu.Items.Add((& $newMenuItem "Clear all" { $controls.ActionLimitTextBox.Text = "" })) | Out-Null
 
     $limitContextMenu.Add_Opened({
