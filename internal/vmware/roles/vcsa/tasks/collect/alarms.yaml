@@ -1,8 +1,0 @@
----
-# internal.vmware.vcsa : tasks/collect/alarms.yaml
-
-- name: Alarms | Get triggered alarms via custom module
-  internal.vmware.vmware_triggered_alarms_info:
-  register: _raw_alarms
-  delegate_to: localhost
-  changed_when: false
