@@ -587,7 +587,12 @@
                             <TextBox x:Name="RemoteRepoPathTextBox" />
                             <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="RemoteVaultPathTextBox" />
-                            <Button x:Name="SaveSettingsButton" Content="Save" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="{StaticResource MarginGapLg}" HorizontalAlignment="Left" />
+                            <Button x:Name="SaveSettingsButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="{StaticResource MarginGapLg}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L3 15 M1 13 L3 15 L5 13 M13 15 L13 1 M11 3 L13 1 L15 3" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="Save" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
                             <DockPanel Margin="{StaticResource MarginSectionTitle}">
                                 <TextBlock DockPanel.Dock="Left" Text="Verify" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
@@ -596,7 +601,12 @@
                                 </Border>
                             </DockPanel>
                             <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
-                            <Button x:Name="PreflightButton" Content="Verify" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Left" />
+                            <Button x:Name="PreflightButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M1 8 L5 12 L13 2" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBlock Text="Verify" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                             <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                         </StackPanel>
                     </Border>
@@ -663,11 +673,17 @@
                                     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="{StaticResource MarginSectionTitle}">
-                                                <Button x:Name="RunButton" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0,0,4,0" ToolTip="Run selected action">
-                                                    <Path Width="12" Height="12" Stretch="Uniform" Fill="{StaticResource AccentBrush}" Data="M8 5V19L19 12L8 5Z" />
+                                                <Button x:Name="RunButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0,0,4,0" ToolTip="Run selected action">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Width="8" Height="10" Stretch="Uniform" Fill="White" Data="M0 0 L8 5 L0 10 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                        <TextBlock Text="Run" VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                 </Button>
-                                                <Button x:Name="CancelButton" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed">
-                                                    <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 10 M10 0 L0 10" Stroke="{StaticResource DangerBrush}" StrokeThickness="1.5" />
+                                                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Width="8" Height="8" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L8 0 L8 8 L0 8 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                        <TextBlock Text="Stop" VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                 </Button>
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
