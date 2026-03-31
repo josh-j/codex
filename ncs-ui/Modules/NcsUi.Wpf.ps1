@@ -31,6 +31,8 @@ function Get-NcsXamlControlMap {
         "SettingsPanel",
         "SettingsSplitter",
         "OperatePanel",
+        "OperateToggleButton",
+        "OperateContent",
         "MinimizeWindowButton",
         "MaximizeWindowButton",
         "CloseWindowButton",
@@ -190,6 +192,7 @@ function Update-NcsTopTabState {
     )
 
     $Controls.SettingsToggleButton.Tag = if ($Controls.SettingsPanel.Visibility -eq "Visible") { "Active" } else { "Inactive" }
+    $Controls.OperateToggleButton.Tag = if ($Controls.OperateContent.Visibility -eq "Visible") { "Active" } else { "Inactive" }
     $Controls.ConsoleShowButton.Tag = if ($Controls.ConsolePane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
 }
 
@@ -575,7 +578,31 @@ function Show-NcsUiApp {
 
     $controls.SettingsCloseButton.Add_Click({ & $closeSettings })
 
-    $consoleColumn = $controls.OperatePanel.ColumnDefinitions[2]
+    $operateColumn = $controls.OperatePanel.ColumnDefinitions[2]
+
+    $openOperate = {
+        $operateColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $operateColumn.MinWidth = 250
+        $controls.OperateContent.Visibility = "Visible"
+        Update-NcsTopTabState -Controls $controls
+    }
+
+    $closeOperate = {
+        $controls.OperateContent.Visibility = "Collapsed"
+        $operateColumn.Width = [System.Windows.GridLength]::new(0)
+        $operateColumn.MinWidth = 0
+        Update-NcsTopTabState -Controls $controls
+    }
+
+    $controls.OperateToggleButton.Add_Click({
+        if ($controls.OperateContent.Visibility -eq "Visible") {
+            & $closeOperate
+        } else {
+            & $openOperate
+        }
+    })
+
+    $consoleColumn = $controls.OperatePanel.ColumnDefinitions[4]
 
     $openConsole = {
         $consoleColumn.Width = [System.Windows.GridLength]::new(400)

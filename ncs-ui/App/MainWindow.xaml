@@ -574,6 +574,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
+                        <Button x:Name="OperateToggleButton" Content="▶ Operate" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
                         <Button x:Name="ConsoleShowButton" Content="▸ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
@@ -660,7 +661,7 @@
 
                 <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
 
-                    <Grid Grid.Column="2">
+                    <Grid x:Name="OperateContent" Grid.Column="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
