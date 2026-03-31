@@ -651,7 +651,18 @@
                                                 </Button>
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <ComboBox x:Name="ActionLimitComboBox" IsEditable="True" ToolTip="--limit host or group pattern" />
+                                            <ComboBox x:Name="ActionLimitComboBox" IsEditable="True" IsTextSearchEnabled="True" ToolTip="--limit host or group pattern">
+                                                <ComboBox.Style>
+                                                    <Style TargetType="ComboBox">
+                                                        <Setter Property="Margin" Value="{StaticResource InputMargin}" />
+                                                        <Setter Property="Padding" Value="{StaticResource InputPadding}" />
+                                                        <Setter Property="Background" Value="#1e2228" />
+                                                        <Setter Property="Foreground" Value="#d8dce2" />
+                                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                                        <Setter Property="BorderThickness" Value="1" />
+                                                    </Style>
+                                                </ComboBox.Style>
+                                            </ComboBox>
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
                                             <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
