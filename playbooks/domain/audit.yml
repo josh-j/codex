@@ -1,17 +1,14 @@
 ---
 # playbooks/domain/audit.yml
-# Run AD summary audit against domain controllers.
+# Run AD information gathering from a domain-joined Windows host.
 #
 # Usage:
-#   ansible-playbook playbooks/domain/audit.yml -l domain_controllers
+#   ansible-playbook playbooks/domain/audit.yml -l windows_servers --limit 1
+#   ansible-playbook playbooks/domain/audit.yml -e 'ncs_operation=privileged_groups'
 
 - name: "Domain | AD Audit"
-  hosts: "{{ domain_target_hosts | default('domain_controllers') }}"
-  connection: local
+  hosts: "{{ domain_target_hosts | default('windows_servers') }}"
   gather_facts: false
-  become: false
-  vars:
-    ansible_python_interpreter: "{{ ansible_playbook_python }}"
   roles:
     - role: internal.windows.domain
       vars:

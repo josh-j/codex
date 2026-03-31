@@ -8,7 +8,6 @@
         DisallowTransivity, SelectiveAuthentication, IntraForest,
         ForestTransitive, Source, Target
   register: _ad_trusts
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "Domain Trusts | Store results"
   ansible.builtin.set_fact:

@@ -9,7 +9,6 @@
       Get-ADUser @params -Properties DisplayName, EmailAddress, Enabled, LastLogonDate, PasswordLastSet, WhenCreated |
         Select-Object SamAccountName, DisplayName, EmailAddress, Enabled, LastLogonDate, PasswordLastSet, WhenCreated, DistinguishedName
   register: _ad_users
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "User Search | Store results"
   ansible.builtin.set_fact:
