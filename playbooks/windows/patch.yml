@@ -1,9 +1,23 @@
 ---
 # playbooks/windows/patch.yml
-# Compatibility wrapper for Windows patch workflow.
+# Apply Windows updates via ConfigMgr + post-patch verification audit.
 
-- name: "Composite Windows Patch | Apply Updates"
-  ansible.builtin.import_playbook: update.yml
+- name: "Windows | Apply Updates"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ["windows", "update", "apply"]
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: remediate
+        ncs_operation: patch
 
-- name: "Composite Windows Patch | Post-Patch Audit"
-  ansible.builtin.import_playbook: post_patch_audit.yml
+- name: "Windows | Post-Patch Audit"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: ["windows", "audit", "verify", "post-patch"]
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: verify
+        ncs_operation: patch

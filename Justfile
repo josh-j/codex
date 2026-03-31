@@ -219,7 +219,7 @@ audit-windows target="windows_servers":
 
 # Run Windows update apply phase
 update-windows:
-    {{ ansible_playbook }} playbooks/windows/update.yml
+    {{ ansible_playbook }} playbooks/windows/patch.yml
 
 # Run Windows health check
 health-windows target="windows_servers":
