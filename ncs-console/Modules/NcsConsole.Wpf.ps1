@@ -598,20 +598,43 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
-    $controls.ActionLimitTree.Add_SelectedItemChanged({
-        param($s, $e)
-        $item = $e.NewValue
+    $addToLimit = {
+        $item = $controls.ActionLimitTree.SelectedItem
         if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return }
         $tag = [string] $item.Tag
         $current = $controls.ActionLimitTextBox.Text.Trim()
         $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-        if ($parts -contains $tag) {
-            $parts = @($parts | Where-Object { $_ -ne $tag })
-        } else {
+        if ($parts -notcontains $tag) {
             $parts += $tag
+            $controls.ActionLimitTextBox.Text = $parts -join ','
         }
+    }
+
+    $removeFromLimit = {
+        $item = $controls.ActionLimitTree.SelectedItem
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return }
+        $tag = [string] $item.Tag
+        $current = $controls.ActionLimitTextBox.Text.Trim()
+        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' -and $_ -ne $tag })
         $controls.ActionLimitTextBox.Text = $parts -join ','
-    })
+    }
+
+    $limitContextMenu = [System.Windows.Controls.ContextMenu]::new()
+    $limitContextMenu.Background = Get-NcsBrush -Color "#1e2228"
+    $limitContextMenu.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $limitContextMenu.Foreground = Get-NcsBrush -Color "#d8dce2"
+
+    $addMenuItem = [System.Windows.Controls.MenuItem]::new()
+    $addMenuItem.Header = "Add to limit"
+    $addMenuItem.Add_Click({ & $addToLimit })
+    $limitContextMenu.Items.Add($addMenuItem) | Out-Null
+
+    $removeMenuItem = [System.Windows.Controls.MenuItem]::new()
+    $removeMenuItem.Header = "Remove from limit"
+    $removeMenuItem.Add_Click({ & $removeFromLimit })
+    $limitContextMenu.Items.Add($removeMenuItem) | Out-Null
+
+    $controls.ActionLimitTree.ContextMenu = $limitContextMenu
 
     $controls.ActionLimitTree.Add_PreviewMouseWheel({
         param($s, $e)
