@@ -831,35 +831,61 @@ function Show-NcsConsoleApp {
 
             if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) {
                 $inputBox = [System.Windows.Window]::new()
-                $inputBox.Title = "SSH Key Passphrase"
+                $inputBox.Title = ""
                 $inputBox.Width = 350
-                $inputBox.Height = 160
+                $inputBox.SizeToContent = "Height"
                 $inputBox.WindowStartupLocation = "CenterOwner"
                 $inputBox.Owner = $window
-                $inputBox.WindowStyle = "ToolWindow"
+                $inputBox.WindowStyle = "None"
                 $inputBox.ResizeMode = "NoResize"
                 $inputBox.Background = Get-NcsBrush -Color "#181b1f"
+                $inputBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $inputBox.BorderThickness = [System.Windows.Thickness]::new(1)
                 $sp = [System.Windows.Controls.StackPanel]::new()
-                $sp.Margin = [System.Windows.Thickness]::new(12)
+                $sp.Margin = [System.Windows.Thickness]::new(16)
+                $title = [System.Windows.Controls.TextBlock]::new()
+                $title.Text = "SSH Key Passphrase"
+                $title.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $title.FontSize = 14
+                $title.FontWeight = "Bold"
+                $title.Margin = [System.Windows.Thickness]::new(0,0,0,8)
+                $sp.Children.Add($title) | Out-Null
                 $label = [System.Windows.Controls.TextBlock]::new()
                 $label.Text = "Enter passphrase for SSH key (leave empty if none):"
-                $label.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $label.Foreground = Get-NcsBrush -Color "#8e939c"
                 $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
                 $label.TextWrapping = "Wrap"
+                $label.FontSize = 11
                 $sp.Children.Add($label) | Out-Null
                 $pwBox = [System.Windows.Controls.PasswordBox]::new()
                 $pwBox.Background = Get-NcsBrush -Color "#1e2228"
                 $pwBox.Foreground = Get-NcsBrush -Color "#d8dce2"
                 $pwBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $pwBox.Padding = [System.Windows.Thickness]::new(6,4,6,4)
+                $pwBox.CaretBrush = Get-NcsBrush -Color "#d8dce2"
+                $pwBox.Padding = [System.Windows.Thickness]::new(8,5,8,5)
                 $sp.Children.Add($pwBox) | Out-Null
+                $btnPanel = [System.Windows.Controls.StackPanel]::new()
+                $btnPanel.Orientation = "Horizontal"
+                $btnPanel.HorizontalAlignment = "Right"
+                $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
                 $okBtn = [System.Windows.Controls.Button]::new()
                 $okBtn.Content = "Connect"
-                $okBtn.Width = 80
-                $okBtn.Margin = [System.Windows.Thickness]::new(0,8,0,0)
-                $okBtn.HorizontalAlignment = "Right"
+                $okBtn.Background = Get-NcsBrush -Color "#1e2228"
+                $okBtn.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $okBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+                $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
                 $okBtn.Add_Click({ $inputBox.DialogResult = $true })
-                $sp.Children.Add($okBtn) | Out-Null
+                $cancelBtn = [System.Windows.Controls.Button]::new()
+                $cancelBtn.Content = "Cancel"
+                $cancelBtn.Background = Get-NcsBrush -Color "#1e2228"
+                $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
+                $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+                $cancelBtn.Add_Click({ $inputBox.DialogResult = $false })
+                $btnPanel.Children.Add($cancelBtn) | Out-Null
+                $btnPanel.Children.Add($okBtn) | Out-Null
+                $sp.Children.Add($btnPanel) | Out-Null
                 $inputBox.Content = $sp
                 $pwBox.Focus() | Out-Null
 
