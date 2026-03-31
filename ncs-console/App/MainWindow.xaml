@@ -651,7 +651,7 @@
                                                 </Button>
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <ComboBox x:Name="ActionLimitComboBox" IsEditable="True" IsTextSearchEnabled="True" ToolTip="--limit host or group pattern">
+                                            <ComboBox x:Name="ActionLimitComboBox" IsEditable="True" IsTextSearchEnabled="True" MaxDropDownHeight="0" ToolTip="--limit host or group pattern">
                                                 <ComboBox.Style>
                                                     <Style TargetType="ComboBox">
                                                         <Setter Property="Margin" Value="{StaticResource InputMargin}" />
