@@ -144,10 +144,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.94" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#2a3040" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#3c4654" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.82" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#343c4c" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#4a5568" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.45" />
@@ -678,6 +680,7 @@
                                             </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit host or group pattern" />
+                                            <ListBox x:Name="ActionLimitSuggestions" MaxHeight="100" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Margin="0,0,0,4" />
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
                                             <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />

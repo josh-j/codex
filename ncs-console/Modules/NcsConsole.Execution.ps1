@@ -288,9 +288,11 @@ function Start-NcsRemoteCommand {
     $process.StartInfo = $psi
     $lines = [System.Collections.Generic.List[string]]::new()
     $startedAt = Get-Date
+    $runspace = [System.Management.Automation.Runspaces.Runspace]::DefaultRunspace
 
     $outputHandler = [System.Diagnostics.DataReceivedEventHandler]{
         param($s, $e)
+        [System.Management.Automation.Runspaces.Runspace]::DefaultRunspace = $runspace
         if ($null -eq $e.Data) {
             return
         }
@@ -304,6 +306,7 @@ function Start-NcsRemoteCommand {
 
     $completedHandler = [System.EventHandler]{
         param($s, $e)
+        [System.Management.Automation.Runspaces.Runspace]::DefaultRunspace = $runspace
         $process.WaitForExit()
         if ($lines.Count -gt $script:MaxOutputLines) {
             $lines.RemoveRange(0, $lines.Count - $script:MaxOutputLines)

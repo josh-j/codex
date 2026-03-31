@@ -54,6 +54,7 @@ function Get-NcsXamlControlMap {
         "PreflightListBox",
         "ActionTreeView",
         "ActionLimitTextBox",
+        "ActionLimitSuggestions",
         "ActionTagsTextBox",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
@@ -554,6 +555,12 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionLimitSuggestions.Add_SelectionChanged({
+        $selected = $controls.ActionLimitSuggestions.SelectedItem
+        if ($null -ne $selected) {
+            $controls.ActionLimitTextBox.Text = [string] $selected
+        }
+    })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
@@ -726,7 +733,8 @@ function Show-NcsConsoleApp {
                 try {
                     $inventoryNames = Get-NcsRemoteInventoryNames -Settings $state.Settings
                     if ($inventoryNames.Length -gt 0) {
-                        $controls.ActionLimitTextBox.ToolTip = "Available: " + ($inventoryNames -join ", ")
+                        $controls.ActionLimitSuggestions.ItemsSource = $inventoryNames
+                        $controls.ActionLimitSuggestions.Visibility = "Visible"
                         $controls.PreflightSummaryText.Text = "Connected. $($inventoryNames.Length) targets available."
                     } else {
                         $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
