@@ -1,0 +1,21 @@
+---
+# internal.windows.domain : ops/user_search.yaml
+
+- name: "User Search | Query AD users"
+  ansible.windows.win_powershell:
+    script: |
+      $params = @{ Filter = '{{ domain_search_filter | default("*") }}' }
+      if ('{{ domain_search_base }}') { $params.SearchBase = '{{ domain_search_base }}' }
+      Get-ADUser @params -Properties DisplayName, EmailAddress, Enabled, LastLogonDate, PasswordLastSet, WhenCreated |
+        Select-Object SamAccountName, DisplayName, EmailAddress, Enabled, LastLogonDate, PasswordLastSet, WhenCreated, DistinguishedName
+  register: _ad_users
+  delegate_to: "{{ domain_dc_hostname }}"
+
+- name: "User Search | Store results"
+  ansible.builtin.set_fact:
+    domain_user_results: "{{ _ad_users.output }}"
+  changed_when: false
+
+- name: "User Search | Display count"
+  ansible.builtin.debug:
+    msg: "Found {{ domain_user_results | length }} users"

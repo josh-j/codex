@@ -1,0 +1,42 @@
+---
+# internal.windows.domain : ops/stale_accounts.yaml
+
+- name: "Stale Accounts | Query inactive computers and users"
+  ansible.windows.win_powershell:
+    script: |
+      $computerDays = {{ domain_stale_computer_days | default(90) }}
+      $userDays = {{ domain_stale_user_days | default(90) }}
+      $computerCutoff = (Get-Date).AddDays(-$computerDays)
+      $userCutoff = (Get-Date).AddDays(-$userDays)
+
+      $staleComputers = Get-ADComputer -Filter {LastLogonDate -lt $computerCutoff -and Enabled -eq $true} -Properties LastLogonDate |
+        Select-Object Name, LastLogonDate, DistinguishedName
+      $staleUsers = Get-ADUser -Filter {LastLogonDate -lt $userCutoff -and Enabled -eq $true} -Properties LastLogonDate, DisplayName |
+        Select-Object SamAccountName, DisplayName, LastLogonDate, DistinguishedName
+      $disabledUsers = Get-ADUser -Filter {Enabled -eq $false} -Properties DisplayName, WhenChanged |
+        Select-Object SamAccountName, DisplayName, WhenChanged, DistinguishedName
+
+      @{
+        stale_computers      = $staleComputers
+        stale_computer_count = $staleComputers.Count
+        stale_users          = $staleUsers
+        stale_user_count     = $staleUsers.Count
+        disabled_users       = $disabledUsers
+        disabled_user_count  = $disabledUsers.Count
+        computer_threshold_days = $computerDays
+        user_threshold_days     = $userDays
+      }
+  register: _ad_stale
+  delegate_to: "{{ domain_dc_hostname }}"
+
+- name: "Stale Accounts | Store results"
+  ansible.builtin.set_fact:
+    domain_stale_accounts: "{{ _ad_stale.output[0] }}"
+  changed_when: false
+
+- name: "Stale Accounts | Display summary"
+  ansible.builtin.debug:
+    msg: >-
+      Stale computers: {{ domain_stale_accounts.stale_computer_count }},
+      Stale users: {{ domain_stale_accounts.stale_user_count }},
+      Disabled users: {{ domain_stale_accounts.disabled_user_count }}

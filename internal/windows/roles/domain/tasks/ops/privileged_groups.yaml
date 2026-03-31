@@ -1,0 +1,35 @@
+---
+# internal.windows.domain : ops/privileged_groups.yaml
+
+- name: "Privileged Groups | Enumerate high-privilege group membership"
+  ansible.windows.win_powershell:
+    script: |
+      $groups = @(
+        'Domain Admins', 'Enterprise Admins', 'Schema Admins',
+        'Administrators', 'Account Operators', 'Backup Operators',
+        'Server Operators', 'Print Operators'
+      )
+      $results = foreach ($g in $groups) {
+        try {
+          $members = Get-ADGroupMember -Identity $g -Recursive -ErrorAction Stop |
+            Select-Object Name, SamAccountName, ObjectClass
+          @{ group = $g; members = $members; count = $members.Count }
+        } catch {
+          @{ group = $g; members = @(); count = 0; error = $_.Exception.Message }
+        }
+      }
+      $results
+  register: _ad_privgroups
+  delegate_to: "{{ domain_dc_hostname }}"
+
+- name: "Privileged Groups | Store results"
+  ansible.builtin.set_fact:
+    domain_privileged_groups: "{{ _ad_privgroups.output }}"
+  changed_when: false
+
+- name: "Privileged Groups | Display summary"
+  ansible.builtin.debug:
+    msg: "{{ item.group }}: {{ item.count }} members"
+  loop: "{{ domain_privileged_groups }}"
+  loop_control:
+    label: "{{ item.group }}"
