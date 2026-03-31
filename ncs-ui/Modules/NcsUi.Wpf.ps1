@@ -631,8 +631,8 @@ function Show-NcsUiApp {
     $settingsColumn = $controls.OperatePanel.ColumnDefinitions[0]
 
     $openSettings = {
-        $settingsColumn.Width = [System.Windows.GridLength]::new(260)
-        $settingsColumn.MinWidth = 200
+        $settingsColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $settingsColumn.MinWidth = 0
         $controls.SettingsPanel.Visibility = "Visible"
         $controls.SettingsSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
@@ -683,8 +683,8 @@ function Show-NcsUiApp {
     $consoleColumn = $controls.OperatePanel.ColumnDefinitions[4]
 
     $openConsole = {
-        $consoleColumn.Width = [System.Windows.GridLength]::new(400)
-        $consoleColumn.MinWidth = 250
+        $consoleColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $consoleColumn.MinWidth = 0
         $controls.ConsolePane.Visibility = "Visible"
         $controls.ConsoleSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
