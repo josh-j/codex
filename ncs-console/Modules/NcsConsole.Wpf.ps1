@@ -1261,13 +1261,17 @@ function Show-NcsConsoleApp {
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)
-                    $window.Dispatcher.Invoke([action]{
+                    if ($window.Dispatcher.CheckAccess()) {
                         Add-NcsConsoleLine -Controls $controls -Line $line
-                    })
+                    } else {
+                        [void] $window.Dispatcher.BeginInvoke([action]{
+                            Add-NcsConsoleLine -Controls $controls -Line $line
+                        })
+                    }
                 } `
                 -OnCompleted {
                     param($runResult)
-                    $window.Dispatcher.Invoke([action]{
+                    $updateUi = [action]{
                         $durationTimer.Stop()
                         $state.LastRunResult = $runResult
                         $state.CurrentHandle = $null
@@ -1278,7 +1282,12 @@ function Show-NcsConsoleApp {
                         $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
                         $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
                         $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
-                    })
+                    }
+                    if ($window.Dispatcher.CheckAccess()) {
+                        & $updateUi
+                    } else {
+                        [void] $window.Dispatcher.BeginInvoke($updateUi)
+                    }
                 }
             $state.CurrentHandle = $handle
             $controls.CommandPreviewTextBox.Text = $handle.RemoteCommand
