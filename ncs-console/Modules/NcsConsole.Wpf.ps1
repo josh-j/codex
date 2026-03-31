@@ -1034,18 +1034,22 @@ function Show-NcsConsoleApp {
                     Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
                     $controls.ActionLimitTreeBorder.Visibility = "Visible"
                 }
-            } catch {}
+            } catch {
+                Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
+            }
             try {
                 $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
                 if (@($remotePlaybooks).Length -gt 0) {
                     $script:ActionGroups = $remotePlaybooks
                 }
-            } catch {}
+            } catch {
+                Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
+            }
             Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
             Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedPlaybook -FallbackToFirst
             $controls.StatusTextBlock.Text = "Refreshed."
         } catch {
-            $controls.StatusTextBlock.Text = "Refresh failed."
+            $controls.StatusTextBlock.Text = "Refresh failed: $($_.Exception.Message)"
         }
     })
 
