@@ -587,7 +587,7 @@
                             <TextBox x:Name="RemoteRepoPathTextBox" />
                             <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="RemoteVaultPathTextBox" />
-                            <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
+                            <Button x:Name="SaveSettingsButton" Content="Save" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="{StaticResource MarginGapLg}" />
                             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
                             <DockPanel Margin="{StaticResource MarginSectionTitle}">
                                 <TextBlock DockPanel.Dock="Left" Text="Verify" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
@@ -596,7 +596,7 @@
                                 </Border>
                             </DockPanel>
                             <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
-                            <Button x:Name="PreflightButton" Content="Verify Connection" MinWidth="0" Padding="{StaticResource PaddingMd}" FontSize="{StaticResource FontSizeMd}" />
+                            <Button x:Name="PreflightButton" Content="Verify" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" />
                             <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                         </StackPanel>
                     </Border>
