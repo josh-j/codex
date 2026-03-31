@@ -52,6 +52,7 @@ function Get-NcsXamlControlMap {
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
+        "ActionPropertiesPanel",
         "ActionSelectionTitle",
         "ActionLimitTextBox",
         "ActionLimitTree",
@@ -593,6 +594,7 @@ function Show-NcsConsoleApp {
             }
         }
         $controls.ActionSelectionTitle.Text = $label
+        $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
         Update-NcsActionOptions -Controls $controls -ActionGroups $script:ActionGroups -Playbook $playbook
         & $refreshPreview
     })
