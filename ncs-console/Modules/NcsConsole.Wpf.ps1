@@ -47,7 +47,6 @@ function Get-NcsXamlControlMap {
         "RemoteRepoPathTextBox",
         "SaveSettingsButton",
         "PreflightButton",
-        "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
         "ActionPropertiesPanel",
@@ -557,8 +556,6 @@ function Show-NcsConsoleApp {
         Update-NcsCommandPreview -Controls $controls -Settings $state.Settings
     }
 
-    $neutralBrush = Get-NcsBrush -Color "#8e939c"
-
     $invalidatePreflight = {
         $state.PreflightResult = $null
         Set-NcsPreflightState -Controls $controls -State "Not Connected"
@@ -902,15 +899,15 @@ function Show-NcsConsoleApp {
 
             $controls.PreflightListBox.ItemsSource = $null
             $controls.PreflightListBox.Visibility = "Collapsed"
-            $controls.PreflightSummaryText.Text = "Running preflight..."
+            $controls.StatusTextBlock.Text = "Running preflight..."
             $controls.StatusTextBlock.Text = "Checking SSH, repo, inventory, and remote commands."
             $preflight = Test-NcsRemotePreflight -Settings $state.Settings
             $state.PreflightResult = $preflight
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             $controls.PreflightListBox.Visibility = "Visible"
             if ($preflight.IsReady) {
-                $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
-                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
+                $controls.StatusTextBlock.Text = "Preflight passed. Loading inventory..."
+                
                 $controls.StatusTextBlock.Text = "Preflight passed."
                 Set-NcsPreflightState -Controls $controls -State "Connected"
 
@@ -919,21 +916,21 @@ function Show-NcsConsoleApp {
                     if (@($inventoryTree).Length -gt 0) {
                         Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
-                        $controls.PreflightSummaryText.Text = "Connected. $(@($inventoryTree).Length) groups available."
+                        $controls.StatusTextBlock.Text = "Connected. $(@($inventoryTree).Length) groups available."
                     } else {
-                        $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
+                        $controls.StatusTextBlock.Text = "Connected. Enter limit manually."
                     }
                 } catch {
-                    $controls.PreflightSummaryText.Text = "Connected. Inventory fetch failed — enter limit manually."
+                    $controls.StatusTextBlock.Text = "Connected. Inventory fetch failed — enter limit manually."
                 }
             } else {
-                $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
-                $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"
+                $controls.StatusTextBlock.Text = "Preflight failed. Resolve the blocking issues before running."
+                
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
                 Set-NcsPreflightState -Controls $controls -State "Failed"
             }
         } catch {
-            $controls.PreflightSummaryText.Text = "Preflight errored."
+            $controls.StatusTextBlock.Text = "Preflight errored."
             $controls.StatusTextBlock.Text = $_.Exception.Message
             Set-NcsPreflightState -Controls $controls -State "Failed"
         }
