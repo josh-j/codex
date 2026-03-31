@@ -45,8 +45,6 @@ function Get-NcsXamlControlMap {
         "SshPasswordBox",
         "RemoteRepoPathTextBox",
         "RemoteVaultPathTextBox",
-        "DefaultSiteTextBox",
-        "DefaultHostTextBox",
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightStateBadge",
@@ -174,6 +172,16 @@ function Update-NcsWindowChromeState {
     }
 }
 
+function Update-NcsTopTabState {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    $Controls.SettingsToggleButton.Tag = if ($Controls.SettingsPanel.Visibility -eq "Visible") { "Active" } else { "Inactive" }
+    $Controls.ConsoleShowButton.Tag = if ($Controls.ConsolePane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
+}
+
 function Set-NcsPreflightState {
     param(
         [Parameter(Mandatory)]
@@ -239,8 +247,6 @@ function Sync-NcsSettingsFromControls {
     $Settings.SshPassword = $Controls.SshPasswordBox.Password
     $Settings.RemoteRepoPath = $Controls.RemoteRepoPathTextBox.Text.Trim()
     $Settings.RemoteVaultPath = $Controls.RemoteVaultPathTextBox.Text.Trim()
-    $Settings.DefaultSite = $Controls.DefaultSiteTextBox.Text.Trim()
-    $Settings.DefaultAnsibleHost = $Controls.DefaultHostTextBox.Text.Trim()
     $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 }
 
@@ -266,10 +272,8 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     $Controls.RemoteVaultPathTextBox.Text = $Settings.RemoteVaultPath
-    $Controls.DefaultSiteTextBox.Text = $Settings.DefaultSite
-    $Controls.DefaultHostTextBox.Text = $Settings.DefaultAnsibleHost
-    $Controls.SiteTextBox.Text = $Settings.DefaultSite
-    $Controls.HostTextBox.Text = $Settings.DefaultAnsibleHost
+    if ($Controls.SiteTextBox) { $Controls.SiteTextBox.Text = "" }
+    if ($Controls.HostTextBox) { $Controls.HostTextBox.Text = "" }
     $targetPlaybook = $Settings.LastAction
     $found = $false
     if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {
@@ -413,6 +417,7 @@ function Show-NcsUiApp {
     Set-NcsPreflightState -Controls $controls -State "Not Run"
     $controls.RunMetaText.Text = ""
     Update-NcsWindowChromeState -Window $window -Controls $controls
+    Update-NcsTopTabState -Controls $controls
     Update-NcsConnectionInfo -Controls $controls
 
     $durationTimer = [System.Windows.Threading.DispatcherTimer]::new()
@@ -463,8 +468,6 @@ function Show-NcsUiApp {
     $controls.SshPasswordBox.Add_PasswordChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.RemoteRepoPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.RemoteVaultPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
-    $controls.DefaultSiteTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
-    $controls.DefaultHostTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
 
     $controls.SaveSettingsButton.Add_Click({
         try {
@@ -528,6 +531,7 @@ function Show-NcsUiApp {
         $settingsColumn.MinWidth = 200
         $controls.SettingsPanel.Visibility = "Visible"
         $controls.SettingsSplitter.Visibility = "Visible"
+        Update-NcsTopTabState -Controls $controls
     }
 
     $closeSettings = {
@@ -535,6 +539,7 @@ function Show-NcsUiApp {
         $controls.SettingsSplitter.Visibility = "Collapsed"
         $settingsColumn.Width = [System.Windows.GridLength]::new(0)
         $settingsColumn.MinWidth = 0
+        Update-NcsTopTabState -Controls $controls
     }
 
     $controls.SettingsToggleButton.Add_Click({
@@ -554,6 +559,7 @@ function Show-NcsUiApp {
         $consoleColumn.MinWidth = 250
         $controls.ConsolePane.Visibility = "Visible"
         $controls.ConsoleSplitter.Visibility = "Visible"
+        Update-NcsTopTabState -Controls $controls
     }
 
     $closeConsole = {
@@ -561,6 +567,7 @@ function Show-NcsUiApp {
         $controls.ConsoleSplitter.Visibility = "Collapsed"
         $consoleColumn.Width = [System.Windows.GridLength]::new(0)
         $consoleColumn.MinWidth = 0
+        Update-NcsTopTabState -Controls $controls
     }
 
     $controls.ConsoleToggleButton.Add_Click({ & $closeConsole })
