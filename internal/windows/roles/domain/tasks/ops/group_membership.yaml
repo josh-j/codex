@@ -8,7 +8,6 @@
       Get-ADGroupMember -Identity '{{ domain_group_name }}' -Recursive |
         Select-Object Name, SamAccountName, ObjectClass, DistinguishedName
   register: _ad_members
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "Group Membership | Store results"
   ansible.builtin.set_fact:

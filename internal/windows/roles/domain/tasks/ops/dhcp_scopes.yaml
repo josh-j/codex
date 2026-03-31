@@ -5,7 +5,7 @@
 - name: "DHCP Scopes | Query DHCP server scopes"
   ansible.windows.win_powershell:
     script: |
-      $server = '{{ domain_dhcp_server | default(domain_dc_hostname) }}'
+      $server = '{{ domain_dhcp_server }}'
       $scopes = Get-DhcpServerv4Scope -ComputerName $server |
         Select-Object ScopeId, Name, SubnetMask, StartRange, EndRange, State, LeaseDuration
       $stats = foreach ($s in $scopes) {
@@ -24,7 +24,6 @@
       }
       $stats
   register: _dhcp_scopes
-  delegate_to: "{{ domain_dc_hostname }}"
   when: domain_dhcp_server | default('') | length > 0
 
 - name: "DHCP Scopes | Store results"

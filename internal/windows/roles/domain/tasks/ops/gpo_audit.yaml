@@ -10,7 +10,6 @@
         @{N='UserEnabled'; E={$_.GpoStatus -notmatch 'UserSettingsDisabled|AllSettingsDisabled'}},
         @{N='ComputerEnabled'; E={$_.GpoStatus -notmatch 'ComputerSettingsDisabled|AllSettingsDisabled'}}
   register: _ad_gpos
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "GPO Audit | Store results"
   ansible.builtin.set_fact:

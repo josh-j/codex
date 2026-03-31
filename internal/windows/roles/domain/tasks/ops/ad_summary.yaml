@@ -25,7 +25,6 @@
         ou_count           = $ouCount
       }
   register: _ad_summary
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "AD Summary | Store results"
   ansible.builtin.set_fact:

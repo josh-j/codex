@@ -27,7 +27,6 @@
         user_threshold_days     = $userDays
       }
   register: _ad_stale
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "Stale Accounts | Store results"
   ansible.builtin.set_fact:

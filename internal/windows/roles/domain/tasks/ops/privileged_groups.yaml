@@ -20,7 +20,6 @@
       }
       $results
   register: _ad_privgroups
-  delegate_to: "{{ domain_dc_hostname }}"
 
 - name: "Privileged Groups | Store results"
   ansible.builtin.set_fact:
