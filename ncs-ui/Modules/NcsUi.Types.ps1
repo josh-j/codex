@@ -114,3 +114,51 @@ function Import-NcsGroupedConfig {
 
     return $groups
 }
+
+function Get-NcsRemoteInventory {
+    param(
+        [Parameter(Mandatory)]
+        [NcsUiSettings] $Settings
+    )
+
+    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
+    $command = "cd $repo && ansible-inventory -i inventory/production --list 2>/dev/null"
+    $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
+
+    if ($probe.ExitCode -ne 0) {
+        throw "ansible-inventory failed (exit $($probe.ExitCode)): $($probe.StdErr)"
+    }
+
+    $inventory = $probe.StdOut | ConvertFrom-Json
+    $groups = [System.Collections.Generic.List[hashtable]]::new()
+
+    foreach ($key in ($inventory.PSObject.Properties.Name | Sort-Object)) {
+        if ($key -eq '_meta' -or $key -eq 'all') { continue }
+
+        $groupData = $inventory.$key
+        $hosts = @()
+        if ($groupData.PSObject.Properties.Name -contains 'hosts') {
+            $hosts = @($groupData.hosts)
+        }
+
+        $children = @()
+        if ($groupData.PSObject.Properties.Name -contains 'children') {
+            $children = @($groupData.children)
+        }
+
+        if ($hosts.Count -eq 0 -and $children.Count -eq 0) { continue }
+
+        $group = @{ Group = $key; Items = [System.Collections.Generic.List[hashtable]]::new() }
+
+        foreach ($child in $children) {
+            $group.Items.Add(@{ Label = $child; limit = $child })
+        }
+        foreach ($host in $hosts) {
+            $group.Items.Add(@{ Label = $host; limit = $host })
+        }
+
+        $groups.Add($group)
+    }
+
+    return $groups
+}
