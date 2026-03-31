@@ -17,7 +17,7 @@ Applies non-STIG system maintenance or patching actions.
 Performs STIG compliance evaluation.
 - **Handoff:** Emits STIG telemetry via `ansible.builtin.set_stats` and `ncs_collector`.
 
-### `ncs_action: remediate`, `ncs_operation: rotate_password`
+### `ncs_action: remediate`, `ncs_operation: password_rotate`
 Manages local user passwords and aging policies.
 
 ### `ncs_action: audit`, `ncs_operation: password_status`

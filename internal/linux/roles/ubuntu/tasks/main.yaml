@@ -12,14 +12,14 @@
       - maintain
       - patch
       - password_status
-      - rotate_password
+      - password_rotate
     _ncs_extra_validations:
-      - (_ncs_requested_operation not in ['patch', 'maintain', 'rotate_password']) or (_ncs_requested_action == 'remediate')
+      - (_ncs_requested_operation not in ['patch', 'maintain', 'password_rotate']) or (_ncs_requested_action == 'remediate')
       - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
     _dispatch_map:
       stig: stig
       maintain: maintain/package_upgrade
       patch: maintain/package_update
       password_status: maintain/password_status
-      rotate_password: maintain/password_rotate
+      password_rotate: maintain/password_rotate
       _default_: discover
