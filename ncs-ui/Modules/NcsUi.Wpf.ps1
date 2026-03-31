@@ -337,8 +337,8 @@ function Set-NcsIdleUiState {
         [hashtable] $Controls
     )
 
-    $Controls.RunButton.IsEnabled = $true
-    $Controls.CancelButton.IsEnabled = $false
+    $Controls.RunButton.Visibility = "Visible"
+    $Controls.CancelButton.Visibility = "Collapsed"
 }
 
 function Set-NcsRunningUiState {
@@ -347,8 +347,8 @@ function Set-NcsRunningUiState {
         [hashtable] $Controls
     )
 
-    $Controls.RunButton.IsEnabled = $false
-    $Controls.CancelButton.IsEnabled = $true
+    $Controls.RunButton.Visibility = "Collapsed"
+    $Controls.CancelButton.Visibility = "Visible"
 }
 
 function Update-NcsCommandPreview {
