@@ -728,6 +728,7 @@ function Show-NcsConsoleApp {
                     $inventoryNames = Get-NcsRemoteInventoryNames -Settings $state.Settings
                     if ($inventoryNames.Length -gt 0) {
                         $controls.ActionLimitComboBox.ItemsSource = $inventoryNames
+                        $controls.ActionLimitComboBox.MaxDropDownHeight = 200
                         $controls.PreflightSummaryText.Text = "Connected. $($inventoryNames.Length) targets available."
                     } else {
                         $controls.PreflightSummaryText.Text = "Connected. Enter limit manually."
