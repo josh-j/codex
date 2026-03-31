@@ -326,9 +326,12 @@ function Start-NcsRemoteCommand {
         }
     }
 
-    # DispatcherTimer drains pending output on the UI thread (no runspace needed).
-    $drainTimer = [System.Windows.Threading.DispatcherTimer]::new()
-    $drainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
+    # Keep timer state on a shared object so event handlers do not depend on
+    # a local variable surviving strict-mode closure semantics.
+    $executionState = [pscustomobject]@{
+        DrainTimer = [System.Windows.Threading.DispatcherTimer]::new()
+    }
+    $executionState.DrainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
     $tickHandler = {
         param($sender, $eventArgs)
         try {
@@ -373,7 +376,7 @@ function Start-NcsRemoteCommand {
             throw
         }
     }.GetNewClosure()
-    $drainTimer.Add_Tick($tickHandler)
+    $executionState.DrainTimer.Add_Tick($tickHandler)
 
     try {
         [void] $process.Start()
@@ -387,15 +390,16 @@ function Start-NcsRemoteCommand {
         $process.StandardInput.Close()
         & $startRead $stdoutState
         & $startRead $stderrState
-        $drainTimer.Start()
+        $executionState.DrainTimer.Start()
     } catch {
-        $drainTimer.Stop()
+        $executionState.DrainTimer.Stop()
         $process.Dispose()
         throw
     }
 
     return [pscustomobject]@{
         Process       = $process
+        DrainTimer    = $executionState.DrainTimer
         RemoteCommand = $remoteCommand
         StartedAt     = $startedAt
     }
@@ -406,6 +410,10 @@ function Stop-NcsRemoteCommand {
         [Parameter(Mandatory)]
         $Handle
     )
+
+    if ($Handle.PSObject.Properties.Match('DrainTimer').Count -gt 0 -and $null -ne $Handle.DrainTimer) {
+        $Handle.DrainTimer.Stop()
+    }
 
     if ($Handle.Process -and -not $Handle.Process.HasExited) {
         $Handle.Process.Kill($true)

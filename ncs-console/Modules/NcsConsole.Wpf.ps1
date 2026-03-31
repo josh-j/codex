@@ -630,7 +630,11 @@ function Show-NcsConsoleApp {
     Import-NcsWpfAssemblies
 
     $xamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.xaml"
-    [xml] $xaml = Get-Content -LiteralPath $xamlPath -Raw
+    $resourceXamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.Resources.xaml"
+    $xamlText = Get-Content -LiteralPath $xamlPath -Raw
+    $resourceXamlText = Get-Content -LiteralPath $resourceXamlPath -Raw
+    $xamlText = $xamlText.Replace("<!-- @@MAIN_WINDOW_RESOURCES@@ -->", $resourceXamlText)
+    [xml] $xaml = $xamlText
     $reader = [System.Xml.XmlNodeReader]::new($xaml)
     $window = [Windows.Markup.XamlReader]::Load($reader)
     $controls = Get-NcsXamlControlMap -Window $window
