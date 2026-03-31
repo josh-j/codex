@@ -113,7 +113,8 @@ function Build-NcsTreeView {
         $Groups,
         [Parameter(Mandatory)]
         [string] $TagProperty,
-        [bool] $Expanded = $true
+        [bool] $Expanded = $true,
+        [string] $LeafIcon = ""
     )
 
     $tree = $Controls[$TreeViewName]
@@ -121,11 +122,35 @@ function Build-NcsTreeView {
     foreach ($group in $Groups) {
         $groupItem = [System.Windows.Controls.TreeViewItem]::new()
         $groupItem.Header = $group.Group
+        $groupItem.Tag = $group.Group
         $groupItem.IsExpanded = $Expanded
         foreach ($item in $group.Items) {
             $leafItem = [System.Windows.Controls.TreeViewItem]::new()
-            $leafItem.Header = $item.Label
             $leafItem.Tag = $item[$TagProperty]
+
+            if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
+                $sp = [System.Windows.Controls.StackPanel]::new()
+                $sp.Orientation = "Horizontal"
+                $icon = [System.Windows.Shapes.Path]::new()
+                $icon.Data = [System.Windows.Media.Geometry]::Parse($LeafIcon)
+                $icon.Stroke = Get-NcsBrush -Color "#8e939c"
+                $icon.StrokeThickness = 1
+                $icon.Fill = [System.Windows.Media.Brushes]::Transparent
+                $icon.Width = 10
+                $icon.Height = 10
+                $icon.Stretch = [System.Windows.Media.Stretch]::Uniform
+                $icon.VerticalAlignment = "Center"
+                $icon.Margin = [System.Windows.Thickness]::new(0,0,5,0)
+                $sp.Children.Add($icon) | Out-Null
+                $tb = [System.Windows.Controls.TextBlock]::new()
+                $tb.Text = $item.Label
+                $tb.VerticalAlignment = "Center"
+                $sp.Children.Add($tb) | Out-Null
+                $leafItem.Header = $sp
+            } else {
+                $leafItem.Header = $item.Label
+            }
+
             $groupItem.Items.Add($leafItem) | Out-Null
         }
         $tree.Items.Add($groupItem) | Out-Null
@@ -502,7 +527,7 @@ function Show-NcsConsoleApp {
     }
 
     $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
-    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true
+    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
 
     $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
@@ -751,7 +776,7 @@ function Show-NcsConsoleApp {
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
-                        Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false
+                        Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
                         $controls.PreflightSummaryText.Text = "Connected. $(@($inventoryTree).Length) groups available."
                     } else {
