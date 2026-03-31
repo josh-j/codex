@@ -600,25 +600,20 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
-    $addToLimit = {
+    $getSelectedTag = {
         $item = $controls.ActionLimitTree.SelectedItem
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return }
-        $tag = [string] $item.Tag
-        $current = $controls.ActionLimitTextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-        if ($parts -notcontains $tag) {
-            $parts += $tag
-            $controls.ActionLimitTextBox.Text = $parts -join ','
-        }
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
+        return [string] $item.Tag
     }
 
-    $removeFromLimit = {
-        $item = $controls.ActionLimitTree.SelectedItem
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return }
-        $tag = [string] $item.Tag
+    $appendToLimit = {
+        param([string] $Value)
         $current = $controls.ActionLimitTextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' -and $_ -ne $tag })
-        $controls.ActionLimitTextBox.Text = $parts -join ','
+        if ([string]::IsNullOrWhiteSpace($current)) {
+            $controls.ActionLimitTextBox.Text = $Value
+        } else {
+            $controls.ActionLimitTextBox.Text = "$current,$Value"
+        }
     }
 
     $limitContextMenu = [System.Windows.Controls.ContextMenu]::new()
@@ -626,15 +621,26 @@ function Show-NcsConsoleApp {
     $limitContextMenu.BorderBrush = Get-NcsBrush -Color "#2c3038"
     $limitContextMenu.Foreground = Get-NcsBrush -Color "#d8dce2"
 
-    $addMenuItem = [System.Windows.Controls.MenuItem]::new()
-    $addMenuItem.Header = "Add to limit"
-    $addMenuItem.Add_Click({ & $addToLimit })
-    $limitContextMenu.Items.Add($addMenuItem) | Out-Null
+    $menuItems = @(
+        @{ Header = "Include"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } } }
+        @{ Header = "Exclude (!)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag" } } }
+        @{ Header = "Intersect (:&)"; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } } }
+        @{ Header = "Wildcard (*)" ; Action = { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*" } } }
+        @{ Header = "-" }
+        @{ Header = "Clear limit"; Action = { $controls.ActionLimitTextBox.Text = "" } }
+    )
 
-    $removeMenuItem = [System.Windows.Controls.MenuItem]::new()
-    $removeMenuItem.Header = "Remove from limit"
-    $removeMenuItem.Add_Click({ & $removeFromLimit })
-    $limitContextMenu.Items.Add($removeMenuItem) | Out-Null
+    foreach ($mi in $menuItems) {
+        if ($mi.Header -eq "-") {
+            $limitContextMenu.Items.Add([System.Windows.Controls.Separator]::new()) | Out-Null
+        } else {
+            $item = [System.Windows.Controls.MenuItem]::new()
+            $item.Header = $mi.Header
+            $action = $mi.Action
+            $item.Add_Click({ & $action }.GetNewClosure())
+            $limitContextMenu.Items.Add($item) | Out-Null
+        }
+    }
 
     $controls.ActionLimitTree.ContextMenu = $limitContextMenu
 
