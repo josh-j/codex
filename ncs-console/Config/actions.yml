@@ -30,11 +30,19 @@
   actions:
     - label: Collect
       playbook: esxi/collect.yml
+      options:
+        - name: esxi_collect_per_host
+          label: Per-Host Health
+          default: "true"
     - label: STIG Audit
       playbook: esxi/stig_audit.yml
     - label: STIG Remediate
       playbook: esxi/stig_remediate.yml
       mutating: true
+      options:
+        - name: esxi_stig_enable_ssh_checks
+          label: SSH Checks
+          default: "true"
     - label: Rotate Password
       playbook: esxi/rotate_password.yml
       mutating: true
@@ -51,9 +59,20 @@
       playbook: vcsa/collect.yml
     - label: STIG Audit
       playbook: vcsa/stig_audit.yml
+      options:
+        - name: vcsa_stig_include_photon
+          label: Include Photon Baseline
+          default: "false"
     - label: STIG Remediate
       playbook: vcsa/stig_remediate.yml
       mutating: true
+      options:
+        - name: vcsa_stig_include_photon
+          label: Include Photon Baseline
+          default: "false"
+        - name: vcsa_stig_create_backups
+          label: Create Backups
+          default: "true"
     - label: Rotate Password
       playbook: vcsa/rotate_password.yml
       mutating: true
@@ -70,14 +89,26 @@
       playbook: vm/collect.yml
     - label: STIG Audit
       playbook: vm/stig_audit.yml
+      options:
+        - name: vm_stig_target_vms
+          label: Target VMs (comma-separated, empty=auto)
     - label: STIG Audit (Parallel)
       playbook: vm/stig_audit_parallel.yml
+      options:
+        - name: vm_stig_target_vms
+          label: Target VMs (comma-separated, empty=auto)
     - label: STIG Remediate
       playbook: vm/stig_remediate.yml
       mutating: true
+      options:
+        - name: vm_stig_target_vms
+          label: Target VMs (comma-separated, empty=auto)
     - label: STIG Remediate (Parallel)
       playbook: vm/stig_remediate_parallel.yml
       mutating: true
+      options:
+        - name: vm_stig_target_vms
+          label: Target VMs (comma-separated, empty=auto)
 
 - group: Ubuntu
   actions:
@@ -91,6 +122,10 @@
     - label: Update
       playbook: ubuntu/update.yml
       mutating: true
+      options:
+        - name: ubuntu_enable_upgrade_reboots
+          label: Allow Reboot
+          default: "true"
     - label: Rotate Password
       playbook: ubuntu/rotate_password.yml
       mutating: true
@@ -115,9 +150,29 @@
       mutating: true
     - label: Health
       playbook: windows/health.yml
+      options:
+        - name: windows_health_check_disk
+          label: Disk Check
+          default: "true"
+        - name: windows_health_check_memory_cpu
+          label: Memory/CPU Check
+          default: "true"
+        - name: windows_health_check_services
+          label: Services Check
+          default: "true"
+        - name: windows_health_check_event_logs
+          label: Event Logs Check
+          default: "true"
+        - name: windows_health_check_secure_channel
+          label: Secure Channel Check
+          default: "true"
     - label: Patch
       playbook: windows/patch.yml
       mutating: true
+      options:
+        - name: windows_update_allow_reboot
+          label: Allow Reboot
+          default: "false"
     - label: AD Search
       playbook: windows/run.yml
       options:
@@ -129,6 +184,9 @@
         - name: windows_ad_search_type
           label: Type
           default: computer
+        - name: windows_ad_bitlocker_recovery
+          label: BitLocker Recovery
+          default: "false"
     - label: Vuln Scan
       playbook: windows/run.yml
       options:
@@ -144,6 +202,12 @@
         - name: ncs_operation
           label: Operation
           default: cleanup
+        - name: windows_cleanup_profiles
+          label: Clean Profiles
+          default: "false"
+        - name: windows_cleanup_profile_days
+          label: Profile Age (days)
+          default: "30"
     - label: KB Install
       playbook: windows/run.yml
       mutating: true
@@ -174,6 +238,8 @@
         - name: ncs_operation
           label: Operation
           default: uninstall_software
+        - name: windows_uninstall_names
+          label: Software Names
     - label: Service Management
       playbook: windows/run.yml
       mutating: true
@@ -225,6 +291,8 @@
         - name: windows_remote_op
           label: Command
           default: uptime
+        - name: windows_remote_message
+          label: Message
 
 - group: Domain
   actions:
@@ -245,12 +313,35 @@
         - name: ncs_operation
           label: Operation
           default: group_search
+        - name: domain_search_filter
+          label: Filter
+          default: "*"
     - label: Computer Search
       playbook: domain/run.yml
       options:
         - name: ncs_operation
           label: Operation
           default: computer_search
+        - name: domain_search_filter
+          label: Filter
+          default: "*"
+    - label: OU Search
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: ou_search
+        - name: domain_search_filter
+          label: Filter
+          default: "*"
+    - label: Group Membership
+      playbook: domain/run.yml
+      options:
+        - name: ncs_operation
+          label: Operation
+          default: group_membership
+        - name: domain_group_name
+          label: Group Name
     - label: Privileged Groups
       playbook: domain/run.yml
       options:
@@ -263,6 +354,12 @@
         - name: ncs_operation
           label: Operation
           default: stale_accounts
+        - name: domain_stale_computer_days
+          label: Computer Days
+          default: "90"
+        - name: domain_stale_user_days
+          label: User Days
+          default: "90"
     - label: Password Policy
       playbook: domain/run.yml
       options:

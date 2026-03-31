@@ -48,6 +48,8 @@ function Get-NcsXamlControlMap {
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightButtonText",
+        "PlaybookPlaceholder",
+        "PlaybookSplitPane",
         "ActionTreeView",
         "ActionPropertiesPanel",
         "ActionSelectionTitle",
@@ -890,6 +892,8 @@ function Show-NcsConsoleApp {
                 $controls.ConnectionInfoText.Text = ""
                 $controls.StatusTextBlock.Text = "Disconnected."
                 $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
+                $controls.PlaybookSplitPane.Visibility = "Collapsed"
+                $controls.PlaybookPlaceholder.Visibility = "Visible"
                 return
             }
 
@@ -1002,6 +1006,8 @@ function Show-NcsConsoleApp {
                     }
                 }
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+                $controls.PlaybookPlaceholder.Visibility = "Collapsed"
+                $controls.PlaybookSplitPane.Visibility = "Visible"
                 Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $state.Settings.LastAction -FallbackToFirst
                 $controls.StatusTextBlock.Text = $statusParts -join " "
             } else {
