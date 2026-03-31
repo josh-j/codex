@@ -1,0 +1,14 @@
+---
+# playbooks/windows/run.yml
+# Generic Windows role runner — driven by ncs_action and ncs_operation.
+# Used by ncs-console to run any operation without a dedicated playbook.
+#
+# Usage:
+#   ansible-playbook playbooks/windows/run.yml -e 'ncs_action=audit ncs_operation=ad_search'
+#   ansible-playbook playbooks/windows/run.yml -e 'ncs_action=remediate ncs_operation=cleanup'
+
+- name: "Windows | {{ ncs_operation | default('collect') }}"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  roles:
+    - role: internal.windows.server

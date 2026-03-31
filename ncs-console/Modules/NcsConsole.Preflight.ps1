@@ -126,11 +126,22 @@ function Test-NcsRemotePreflight {
     }
 
     $checkResults = @{}
+    $bannerLines = [System.Collections.Generic.List[string]]::new()
     foreach ($line in ($probe.StdOut -split "`n")) {
         if ($line -match '^CHECK:(\w+):(ok|fail)') {
             $checkResults[$Matches[1]] = $Matches[2] -eq 'ok'
+        } elseif (-not [string]::IsNullOrWhiteSpace($line)) {
+            $bannerLines.Add($line.TrimEnd())
         }
     }
+    if ($null -ne $probe.StdErr) {
+        foreach ($line in ($probe.StdErr -split "`n")) {
+            if (-not [string]::IsNullOrWhiteSpace($line) -and $line -notmatch '^Warning:') {
+                $bannerLines.Add($line.TrimEnd())
+            }
+        }
+    }
+    $result.Banner = ($bannerLines -join [Environment]::NewLine).Trim()
 
     foreach ($key in $checkMeta.Keys) {
         $meta = $checkMeta[$key]

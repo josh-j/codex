@@ -1,0 +1,13 @@
+---
+# playbooks/domain/run.yml
+# Generic domain role runner — driven by ncs_action and ncs_operation.
+#
+# Usage:
+#   ansible-playbook playbooks/domain/run.yml -e 'ncs_operation=privileged_groups'
+#   ansible-playbook playbooks/domain/run.yml -e 'ncs_operation=stale_accounts'
+
+- name: "Domain | {{ ncs_operation | default('collect') }}"
+  hosts: "{{ domain_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  roles:
+    - role: internal.windows.domain

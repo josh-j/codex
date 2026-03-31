@@ -58,6 +58,7 @@ class NcsPreflightResult {
     [bool] $IsReady = $false
     [System.Collections.Generic.List[NcsPreflightCheck]] $Checks = [System.Collections.Generic.List[NcsPreflightCheck]]::new()
     [System.Collections.Generic.List[string]] $BlockingIssues = [System.Collections.Generic.List[string]]::new()
+    [string] $Banner = ""
 }
 
 class NcsRunResult {
