@@ -241,32 +241,29 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
                         <StackPanel>
-                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Content="{TemplateBinding Header}" Cursor="Hand">
+                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False" Cursor="Hand" OverridesDefaultStyle="True">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <Path x:Name="ExpanderIcon" Grid.Column="0" Width="8" Height="8" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L10 8 L3 15" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
-                                            </Grid>
+                                            <ContentPresenter />
                                         </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter TargetName="ExpanderIcon" Property="Data" Value="M1 3 L8 10 L15 3" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Path x:Name="ExpanderIcon" Grid.Column="0" Width="8" Height="8" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L10 8 L3 15" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
+                                </Grid>
                             </ToggleButton>
                             <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed" Margin="{StaticResource MarginGapSm}" />
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="ExpanderIcon" Property="Data" Value="M1 3 L8 10 L15 3" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
