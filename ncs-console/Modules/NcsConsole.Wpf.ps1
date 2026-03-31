@@ -77,6 +77,15 @@ function Get-NcsXamlControlMap {
         "ConsoleSplitter",
         "ConsoleToggleButton",
         "ConsoleShowButton",
+        "ReportsToggleButton",
+        "ReportsPane",
+        "ReportsSplitter",
+        "ReportBrowser",
+        "ReportPlaceholder",
+        "ReportBackButton",
+        "ReportHomeButton",
+        "ReportRefreshButton",
+        "ReportsCloseButton",
         "StatusTextBlock",
         "ExitCodePanel",
         "ExitCodeTextBlock",
@@ -343,6 +352,7 @@ function Update-NcsTopTabState {
     $Controls.SettingsToggleButton.Tag = if ($Controls.SettingsPanel.Visibility -eq "Visible") { "Active" } else { "Inactive" }
     $Controls.OperateToggleButton.Tag = if ($Controls.OperateContent.Visibility -eq "Visible") { "Active" } else { "Inactive" }
     $Controls.ConsoleShowButton.Tag = if ($Controls.ConsolePane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
+    $Controls.ReportsToggleButton.Tag = if ($Controls.ReportsPane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
 }
 
 function Set-NcsPreflightState {
@@ -885,6 +895,104 @@ function Show-NcsConsoleApp {
         }
     })
 
+    $reportsColumn = $controls.OperatePanel.ColumnDefinitions[6]
+    $script:ReportHistory = [System.Collections.Generic.List[string]]::new()
+    $script:CurrentReportPath = ""
+
+    $loadReport = {
+        param([string] $RelativePath)
+        if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
+        $remotePath = "/srv/samba/reports/$RelativePath"
+        $command = "cat " + (ConvertTo-NcsBashLiteral -Value $remotePath)
+        $probe = Invoke-NcsSshProbe -Settings $state.Settings -RemoteCommand $command
+        if ($probe.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($probe.StdOut)) {
+            if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $RelativePath) {
+                $script:ReportHistory.Add($script:CurrentReportPath)
+            }
+            $script:CurrentReportPath = $RelativePath
+            $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
+            $controls.ReportPlaceholder.Visibility = "Collapsed"
+            $controls.ReportBrowser.Visibility = "Visible"
+            $controls.ReportBrowser.NavigateToString($probe.StdOut)
+        } else {
+            $controls.ReportPlaceholder.Text = "Report not found: $RelativePath"
+            $controls.ReportPlaceholder.Visibility = "Visible"
+            $controls.ReportBrowser.Visibility = "Collapsed"
+        }
+    }
+
+    $openReports = {
+        $reportsColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $reportsColumn.MinWidth = 0
+        $controls.ReportsPane.Visibility = "Visible"
+        $controls.ReportsSplitter.Visibility = "Visible"
+        Update-NcsTopTabState -Controls $controls
+        if ($controls.ReportBrowser.Visibility -ne "Visible" -and $state.PreflightResult -and $state.PreflightResult.IsReady) {
+            & $loadReport "site_health_report.html"
+        }
+    }
+
+    $closeReports = {
+        $controls.ReportsPane.Visibility = "Collapsed"
+        $controls.ReportsSplitter.Visibility = "Collapsed"
+        $reportsColumn.Width = [System.Windows.GridLength]::new(0)
+        $reportsColumn.MinWidth = 0
+        Update-NcsTopTabState -Controls $controls
+    }
+
+    $controls.ReportsCloseButton.Add_Click({ & $closeReports })
+
+    $controls.ReportsToggleButton.Add_Click({
+        if ($controls.ReportsPane.Visibility -eq "Visible") {
+            & $closeReports
+        } else {
+            & $openReports
+        }
+    })
+
+    $controls.ReportHomeButton.Add_Click({
+        & $loadReport "site_health_report.html"
+    })
+
+    $controls.ReportBackButton.Add_Click({
+        if ($script:ReportHistory.Count -gt 0) {
+            $prev = $script:ReportHistory[$script:ReportHistory.Count - 1]
+            $script:ReportHistory.RemoveAt($script:ReportHistory.Count - 1)
+            $script:CurrentReportPath = ""
+            & $loadReport $prev
+        }
+    })
+
+    $controls.ReportRefreshButton.Add_Click({
+        if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath)) {
+            $path = $script:CurrentReportPath
+            $script:CurrentReportPath = ""
+            & $loadReport $path
+        }
+    })
+
+    $controls.ReportBrowser.Add_Navigating({
+        param($s, $e)
+        $uri = $e.Uri
+        if ($null -eq $uri) { return }
+        if ($uri.Scheme -eq "about") { return }
+        $e.Cancel = $true
+        $path = $uri.LocalPath
+        if ($path.StartsWith("/srv/samba/reports/")) {
+            $relative = $path.Substring("/srv/samba/reports/".Length)
+        } elseif (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath)) {
+            $currentDir = [System.IO.Path]::GetDirectoryName($script:CurrentReportPath) -replace '\\', '/'
+            if ([string]::IsNullOrWhiteSpace($currentDir)) {
+                $relative = $path.TrimStart('/')
+            } else {
+                $relative = "$currentDir/$($path.TrimStart('/'))"
+            }
+        } else {
+            $relative = $path.TrimStart('/')
+        }
+        & $loadReport $relative
+    })
+
     $controls.PreflightButton.Add_Click({
         try {
             if ($null -ne $state.PreflightResult -and $state.PreflightResult.IsReady) {
@@ -896,6 +1004,12 @@ function Show-NcsConsoleApp {
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
+                $controls.ReportBrowser.Visibility = "Collapsed"
+                $controls.ReportPlaceholder.Text = "Connect to load reports"
+                $controls.ReportPlaceholder.Visibility = "Visible"
+                $script:ReportHistory.Clear()
+                $script:CurrentReportPath = ""
+                $controls.ReportBackButton.IsEnabled = $false
                 return
             }
 
