@@ -1,5 +1,5 @@
 ---
-# playbooks/esxi/audit.yml
+# playbooks/esxi/collect.yml
 # Read-only audit focused on ESXi host and datastore inventory/health data.
 
 - name: Phase 2b | ESXi Infrastructure Audit

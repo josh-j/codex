@@ -175,31 +175,31 @@ site-windows:
 
 # Run VMware health audit (all sites or limited)
 audit-vmware target="vcsa":
-    {{ ansible_playbook }} playbooks/vmware/audit.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vmware/collect.yml -l {{ target }} -v
 
 # Run VMware health audit for a single site
 audit-vmware-site site:
-    {{ ansible_playbook }} playbooks/vmware/audit.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vmware/collect.yml -l vcsa-{{ site }}
 
 # Run ESXi health audit (all sites or limited)
 audit-esxi target="vcsa":
-    {{ ansible_playbook }} playbooks/esxi/audit.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/esxi/collect.yml -l {{ target }} -v
 
 # Run ESXi health audit for a single site
 audit-esxi-site site:
-    {{ ansible_playbook }} playbooks/esxi/audit.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/esxi/collect.yml -l vcsa-{{ site }}
 
 # Run VM workload audit (all sites or limited)
 audit-vm target="vcsa":
-    {{ ansible_playbook }} playbooks/vm/audit.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vm/collect.yml -l {{ target }} -v
 
 # Run VM workload audit for a single site
 audit-vm-site site:
-    {{ ansible_playbook }} playbooks/vm/audit.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vm/collect.yml -l vcsa-{{ site }}
 
 # Run Ubuntu audit
 audit-ubuntu target="ubuntu_servers":
-    {{ ansible_playbook }} playbooks/ubuntu/audit.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/ubuntu/collect.yml -l {{ target }}
 
 # Run Ubuntu apt update + dist-upgrade
 update-ubuntu target="ubuntu_servers":
@@ -211,7 +211,7 @@ update-ubuntu-apply target="ubuntu_servers":
 
 # Run Ubuntu discovery phase only
 audit-ubuntu-discover:
-    {{ ansible_playbook }} playbooks/ubuntu/discover.yml
+    {{ ansible_playbook }} playbooks/ubuntu/collect.yml
 
 # Run Windows audit
 audit-windows target="windows_servers":
@@ -235,7 +235,7 @@ audit-windows-post-patch:
 
 # Audit a specific Linux host
 audit-linux-host hostname:
-    {{ ansible_playbook }} playbooks/ubuntu/audit.yml -l {{ hostname }}
+    {{ ansible_playbook }} playbooks/ubuntu/collect.yml -l {{ hostname }}
 
 # Audit a specific Windows host
 audit-windows-host hostname:
@@ -357,11 +357,11 @@ stig-audit-vm-site site:
 
 # Run VCSA health audit (all sites or limited)
 audit-vcsa target="vcsa":
-    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vcsa/collect.yml -l {{ target }} -v
 
 # Run VCSA health audit for a single site
 audit-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vcsa/audit.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vcsa/collect.yml -l vcsa-{{ site }}
 
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 

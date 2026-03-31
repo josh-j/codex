@@ -530,8 +530,8 @@ function Show-NcsConsoleApp {
         LastRunResult   = $null
     }
 
-    $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
-    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+    $script:ActionGroups = @()
+    $script:ActionConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
 
     $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
@@ -948,18 +948,31 @@ function Show-NcsConsoleApp {
             $state.PreflightResult = $preflight
             if ($preflight.IsReady) {
                 Set-NcsPreflightState -Controls $controls -State "Connected"
+                $statusParts = @("Connected.")
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
                         Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
-                        $controls.StatusTextBlock.Text = "Connected. $(@($inventoryTree).Length) groups available."
-                    } else {
-                        $controls.StatusTextBlock.Text = "Connected."
+                        $statusParts += "$(@($inventoryTree).Length) inventory groups."
                     }
                 } catch {
-                    $controls.StatusTextBlock.Text = "Connected. Inventory fetch failed."
+                    $statusParts += "Inventory fetch failed."
                 }
+                try {
+                    $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
+                    if (@($remotePlaybooks).Length -gt 0) {
+                        $script:ActionGroups = $remotePlaybooks
+                    } else {
+                        $script:ActionGroups = Import-NcsGroupedConfig -Path $script:ActionConfigPath
+                        $statusParts += "Playbook scan empty, using local config."
+                    }
+                } catch {
+                    $script:ActionGroups = Import-NcsGroupedConfig -Path $script:ActionConfigPath
+                    $statusParts += "Playbook scan failed, using local config."
+                }
+                Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+                $controls.StatusTextBlock.Text = $statusParts -join " "
             } else {
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
                 Set-NcsPreflightState -Controls $controls -State "Failed"

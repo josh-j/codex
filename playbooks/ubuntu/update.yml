@@ -3,10 +3,10 @@
 # Composite Ubuntu update workflow: discover → update → discover.
 
 - name: "Composite Ubuntu Update | Pre-Discover"
-  ansible.builtin.import_playbook: discover.yml
+  ansible.builtin.import_playbook: collect.yml
 
 - name: "Composite Ubuntu Update | Apply"
   ansible.builtin.import_playbook: update_apply.yml
 
 - name: "Composite Ubuntu Update | Post-Discover"
-  ansible.builtin.import_playbook: discover.yml
+  ansible.builtin.import_playbook: collect.yml
