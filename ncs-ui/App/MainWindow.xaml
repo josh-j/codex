@@ -293,19 +293,21 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="GlyphIcon" Property="Data" Value="M3 0 L10 6 L3 12 Z" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M0 0 L8 6 L0 12 Z" />
                                 <Setter TargetName="GlyphIcon" Property="Fill" Value="{StaticResource AccentBrush}" />
-                                <Setter TargetName="GlyphIcon" Property="Width" Value="7" />
-                                <Setter TargetName="GlyphIcon" Property="Height" Value="8" />
+                                <Setter TargetName="GlyphIcon" Property="Stroke" Value="Transparent" />
+                                <Setter TargetName="GlyphIcon" Property="Width" Value="8" />
+                                <Setter TargetName="GlyphIcon" Property="Height" Value="10" />
                             </Trigger>
                             <Trigger Property="HasItems" Value="True">
-                                <Setter TargetName="GlyphIcon" Property="Data" Value="M2 4 L8 10 L14 4" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M1 3 L8 10 L15 3" />
+                                <Setter TargetName="GlyphIcon" Property="Fill" Value="Transparent" />
                                 <Setter TargetName="GlyphIcon" Property="Stroke" Value="{StaticResource TextMutedBrush}" />
                                 <Setter TargetName="GlyphIcon" Property="StrokeThickness" Value="1.5" />
                             </Trigger>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="GlyphIcon" Property="Data" Value="M2 10 L8 4 L14 10" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M1 10 L8 3 L15 10" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
