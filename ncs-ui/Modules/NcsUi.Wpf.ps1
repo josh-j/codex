@@ -553,7 +553,8 @@ function Show-NcsUiApp {
         & $refreshPreview
     })
 
-    $controls.ActionLimitComboBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionLimitComboBox.Add_SelectionChanged({ & $refreshPreview })
+    $controls.ActionLimitComboBox.Add_KeyUp({ & $refreshPreview })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
