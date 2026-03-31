@@ -1,0 +1,11 @@
+---
+# Interactive-safe apt dist-upgrade (maintain operation).
+
+- name: "Ubuntu Maintenance | Perform package upgrades"
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+  become: true
+
+- name: "Ubuntu Maintenance | Reboot check"
+  ansible.builtin.include_tasks: maintain/reboot_check.yaml

@@ -1,0 +1,16 @@
+---
+# Non-interactive apt dist-upgrade (patch operation).
+# Preserves existing config files and suppresses interactive prompts.
+
+- name: "Ubuntu Update | apt update + dist-upgrade"
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+    dpkg_options: "force-confold,force-confdef"
+  become: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    NEEDRESTART_MODE: a
+
+- name: "Ubuntu Update | Reboot check"
+  ansible.builtin.include_tasks: maintain/reboot_check.yaml

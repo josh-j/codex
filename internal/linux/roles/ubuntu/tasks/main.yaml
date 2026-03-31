@@ -18,8 +18,8 @@
       - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
     _dispatch_map:
       stig: stig
-      maintain: maintain
-      patch: update
-      password_status: password_status
-      rotate_password: passwords
+      maintain: maintain/apt_upgrade
+      patch: maintain/apt_update
+      password_status: maintain/password_status
+      rotate_password: maintain/rotate_password
       _default_: discover
