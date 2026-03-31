@@ -329,7 +329,8 @@ function Start-NcsRemoteCommand {
     # DispatcherTimer drains pending output on the UI thread (no runspace needed).
     $drainTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $drainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
-    $drainTimer.Add_Tick({
+    $tickHandler = {
+        param($sender, $eventArgs)
         try {
             & $drainRead $stdoutState
             & $drainRead $stderrState
@@ -343,7 +344,7 @@ function Start-NcsRemoteCommand {
                 return
             }
 
-            $drainTimer.Stop()
+            $sender.Stop()
             # Drain any remaining lines after process exit
             while ($pendingLines.TryDequeue([ref]$line)) {
                 if ($OnOutput) { & $OnOutput $line }
@@ -367,11 +368,12 @@ function Start-NcsRemoteCommand {
 
             if ($OnCompleted) { & $OnCompleted $result }
         } catch {
-            $drainTimer.Stop()
+            $sender.Stop()
             $process.Dispose()
             throw
         }
-    })
+    }.GetNewClosure()
+    $drainTimer.Add_Tick($tickHandler)
 
     try {
         [void] $process.Start()
@@ -409,4 +411,3 @@ function Stop-NcsRemoteCommand {
         $Handle.Process.Kill($true)
     }
 }
-
