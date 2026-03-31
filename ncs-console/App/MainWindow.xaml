@@ -343,12 +343,7 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="GlyphIcon" Property="Data" Value="M2 0 L2 12 M2 0 L8 0 L10 2 L10 12 L2 12" />
-                                <Setter TargetName="GlyphIcon" Property="Fill" Value="Transparent" />
-                                <Setter TargetName="GlyphIcon" Property="Stroke" Value="{StaticResource TextMutedBrush}" />
-                                <Setter TargetName="GlyphIcon" Property="StrokeThickness" Value="1" />
-                                <Setter TargetName="GlyphIcon" Property="Width" Value="10" />
-                                <Setter TargetName="GlyphIcon" Property="Height" Value="12" />
+                                <Setter TargetName="GlyphIcon" Property="Visibility" Value="Collapsed" />
                             </Trigger>
                             <Trigger Property="HasItems" Value="True">
                                 <Setter TargetName="GlyphIcon" Property="Data" Value="M3 1 L10 6 L3 11" />
