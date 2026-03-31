@@ -77,7 +77,7 @@ function Get-NcsSshAuthModeNames {
     [NcsSshAuthMode].GetEnumNames()
 }
 
-function Import-NcsActionsConfig {
+function Import-NcsGroupedConfig {
     param(
         [Parameter(Mandatory)]
         [string] $Path
@@ -86,67 +86,30 @@ function Import-NcsActionsConfig {
     $lines = Get-Content -LiteralPath $Path
     $groups = [System.Collections.Generic.List[hashtable]]::new()
     $currentGroup = $null
-    $currentAction = $null
+    $currentItem = $null
 
     foreach ($line in $lines) {
         if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
 
         if ($line -match '^- group:\s*(.+)$') {
-            $currentGroup = @{ Group = $Matches[1].Trim(); Actions = [System.Collections.Generic.List[hashtable]]::new() }
+            $currentGroup = @{ Group = $Matches[1].Trim(); Items = [System.Collections.Generic.List[hashtable]]::new() }
             $groups.Add($currentGroup)
-            $currentAction = $null
+            $currentItem = $null
             continue
         }
 
         if ($line -match '^\s+- label:\s*(.+)$' -and $null -ne $currentGroup) {
-            $currentAction = @{ Label = $Matches[1].Trim(); Playbook = ""; Mutating = $false }
-            $currentGroup.Actions.Add($currentAction)
+            $currentItem = @{ Label = $Matches[1].Trim() }
+            $currentGroup.Items.Add($currentItem)
             continue
         }
 
-        if ($line -match '^\s+playbook:\s*(.+)$' -and $null -ne $currentAction) {
-            $currentAction.Playbook = $Matches[1].Trim()
-            continue
-        }
-
-        if ($line -match '^\s+mutating:\s*true' -and $null -ne $currentAction) {
-            $currentAction.Mutating = $true
-            continue
-        }
-    }
-
-    return $groups
-}
-
-function Import-NcsTargetsConfig {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path
-    )
-
-    $lines = Get-Content -LiteralPath $Path
-    $groups = [System.Collections.Generic.List[hashtable]]::new()
-    $currentGroup = $null
-    $currentTarget = $null
-
-    foreach ($line in $lines) {
-        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
-
-        if ($line -match '^- group:\s*(.+)$') {
-            $currentGroup = @{ Group = $Matches[1].Trim(); Targets = [System.Collections.Generic.List[hashtable]]::new() }
-            $groups.Add($currentGroup)
-            $currentTarget = $null
-            continue
-        }
-
-        if ($line -match '^\s+- label:\s*(.+)$' -and $null -ne $currentGroup) {
-            $currentTarget = @{ Label = $Matches[1].Trim(); Limit = "" }
-            $currentGroup.Targets.Add($currentTarget)
-            continue
-        }
-
-        if ($line -match '^\s+limit:\s*(.+)$' -and $null -ne $currentTarget) {
-            $currentTarget.Limit = $Matches[1].Trim()
+        if ($line -match '^\s+(\w+):\s*(.+)$' -and $null -ne $currentItem) {
+            $key = $Matches[1].Trim()
+            $value = $Matches[2].Trim()
+            if ($value -eq 'true') { $value = $true }
+            elseif ($value -eq 'false') { $value = $false }
+            $currentItem[$key] = $value
             continue
         }
     }
