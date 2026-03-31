@@ -537,13 +537,13 @@ function Show-NcsUiApp {
     & $refreshPreview
 
     $controls.TargetTreeView.Add_PreviewMouseWheel({
-        param($sender, $e)
+        param($s, $e)
         $controls.TargetScrollViewer.ScrollToVerticalOffset($controls.TargetScrollViewer.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
     })
 
     $controls.ActionTreeView.Add_PreviewMouseWheel({
-        param($sender, $e)
+        param($s, $e)
         $controls.ActionScrollViewer.ScrollToVerticalOffset($controls.ActionScrollViewer.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
     })
@@ -553,8 +553,8 @@ function Show-NcsUiApp {
     })
 
     $controls.ActionTreeView.Add_SelectedItemChanged({
-        param($sender, $eventArgs)
-        $item = $eventArgs.NewValue
+        param($s, $e)
+        $item = $e.NewValue
         $playbook = ""
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
             $state.Settings.LastAction = $item.Tag
@@ -607,9 +607,9 @@ function Show-NcsUiApp {
     })
 
     $controls.TitleBarDragRegion.Add_MouseLeftButtonDown({
-        param($sender, $eventArgs)
+        param($s, $e)
 
-        if ($eventArgs.ClickCount -eq 2) {
+        if ($e.ClickCount -eq 2) {
             if ($window.ResizeMode -ne [System.Windows.ResizeMode]::NoResize) {
                 if ($window.WindowState -eq [System.Windows.WindowState]::Maximized) {
                     $window.WindowState = [System.Windows.WindowState]::Normal
