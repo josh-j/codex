@@ -286,27 +286,34 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
-                        <Border Background="Transparent">
-                            <StackPanel>
-                                <ToggleButton x:Name="HeaderSite" Background="Transparent" BorderThickness="0" Foreground="{TemplateBinding Foreground}" Focusable="False" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
-                                            <TextBlock x:Name="ExpanderGlyph" Grid.Column="1" Text="+" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXl}" FontWeight="Bold" VerticalAlignment="Center" Margin="{StaticResource MarginInlineMd}" />
-                                        </Grid>
-                                    </Border>
-                                </ToggleButton>
-                                <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed" Margin="{StaticResource MarginGapMd}" />
-                            </StackPanel>
-                        </Border>
+                        <StackPanel>
+                            <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Cursor="Hand">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Path x:Name="ExpanderIcon" Grid.Column="0" Width="8" Height="8" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L10 8 L3 15" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ExpanderIcon" Property="Data" Value="M1 3 L8 10 L15 3" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter ContentSource="Header" />
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed" Margin="{StaticResource MarginGapSm}" />
+                        </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="ExpanderGlyph" Property="Text" Value="-" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -672,32 +679,29 @@
                                         <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
                                 </Border>
-                                <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapSm}">
-                                    <TextBlock Text="Or enter manually:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginSectionTitle}" />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                            <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <TextBox x:Name="SiteTextBox" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                            <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <TextBox x:Name="HostTextBox" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}">
-                                        <Expander.Header>
-                                            <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                        </Expander.Header>
-                                        <StackPanel Margin="{StaticResource MarginGapSm}">
-                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
-                                        </StackPanel>
-                                    </Expander>
-                                </StackPanel>
+                                <Expander Grid.Row="2" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
+                                    <Expander.Header>
+                                        <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                    </Expander.Header>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                                <TextBox x:Name="SiteTextBox" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                                <TextBox x:Name="HostTextBox" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
+                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
+                                    </StackPanel>
+                                </Expander>
                             </Grid>
                         </Border>
 
