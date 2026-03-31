@@ -669,7 +669,7 @@
                                 <TextBlock Grid.Row="0" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
                                 <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="180">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                        <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                        <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
                                 </Border>
                                 <StackPanel Grid.Row="2" Margin="{StaticResource MarginGapSm}">
@@ -713,7 +713,7 @@
 
                                 <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="240">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                        <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" />
+                                        <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
                                 </Border>
 
