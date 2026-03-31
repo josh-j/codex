@@ -615,21 +615,8 @@
                                     <TextBlock Text="Save" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
-                            <DockPanel Margin="{StaticResource MarginSectionTitle}">
-                                <TextBlock DockPanel.Dock="Left" Text="Verify" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" Margin="8,0,0,0">
-                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="SemiBold" />
-                                </Border>
-                            </DockPanel>
-                            <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
-                            <Button x:Name="PreflightButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M1 8 L5 12 L13 2" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                    <TextBlock Text="Verify" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <ListBox x:Name="PreflightListBox" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
+                            <TextBlock x:Name="PreflightSummaryText" Visibility="Collapsed" />
+                            <ListBox x:Name="PreflightListBox" Visibility="Collapsed" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
@@ -748,24 +735,33 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
-                    <Border Grid.Column="1" Width="1" Height="14" Background="#2c3038" Margin="10,0" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
+                    <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Padding="6,2" FontSize="{StaticResource FontSizeSm}" Margin="0,0,6,0" ToolTip="Connect and verify remote environment">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="8" Height="8" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M1 8 L5 12 L13 2" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="Connect" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="PreflightStateBadge" Grid.Column="1" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusSm}" Padding="6,1" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock x:Name="PreflightStateText" Text="Not Connected" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="SemiBold" />
+                    </Border>
+                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="2" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
+                    <Border x:Name="RunStateBorder" Grid.Column="3" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
-                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="4" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
-                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                    <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
                         <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>

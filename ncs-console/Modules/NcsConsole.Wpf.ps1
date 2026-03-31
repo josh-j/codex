@@ -325,10 +325,11 @@ function Set-NcsPreflightState {
 
     $controls.PreflightStateText.Text = $State
     $palette = switch ($State) {
-        "Passed" { @{ Background = "#182742"; Foreground = "#6e9fff" } }
-        "Failed" { @{ Background = "#381e24"; Foreground = "#f06478" } }
-        "Stale"  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
-        default  { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
+        "Connected" { @{ Background = "#182742"; Foreground = "#6e9fff" } }
+        "Passed"    { @{ Background = "#182742"; Foreground = "#6e9fff" } }
+        "Failed"    { @{ Background = "#381e24"; Foreground = "#f06478" } }
+        "Stale"     { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
+        default     { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
     }
     $controls.PreflightStateBadge.Background = Get-NcsBrush -Color $palette.Background
     $controls.PreflightStateText.Foreground = Get-NcsBrush -Color $palette.Foreground
@@ -538,7 +539,7 @@ function Show-NcsConsoleApp {
     Set-NcsIdleUiState -Controls $controls
     $controls.StatusTextBlock.Text = "Ready."
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
-    Set-NcsPreflightState -Controls $controls -State "Not Run"
+    Set-NcsPreflightState -Controls $controls -State "Not Connected"
     $controls.RunMetaText.Text = ""
     Update-NcsWindowChromeState -Window $window -Controls $controls
     Update-NcsTopTabState -Controls $controls
@@ -834,7 +835,7 @@ function Show-NcsConsoleApp {
                 $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
                 $controls.StatusTextBlock.Text = "Preflight passed."
-                Set-NcsPreflightState -Controls $controls -State "Passed"
+                Set-NcsPreflightState -Controls $controls -State "Connected"
 
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
