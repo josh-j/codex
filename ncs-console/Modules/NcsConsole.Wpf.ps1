@@ -47,7 +47,6 @@ function Get-NcsXamlControlMap {
         "RemoteRepoPathTextBox",
         "SaveSettingsButton",
         "PreflightButton",
-        "PreflightListBox",
         "ActionTreeView",
         "ActionPropertiesPanel",
         "ActionSelectionTitle",
@@ -919,14 +918,9 @@ function Show-NcsConsoleApp {
                 $controls.SshKeyPassphraseBox.Password = $pwBox.Password
             }
 
-            $controls.PreflightListBox.ItemsSource = $null
-            $controls.PreflightListBox.Visibility = "Collapsed"
-            $controls.StatusTextBlock.Text = "Running preflight..."
-            $controls.StatusTextBlock.Text = "Checking SSH, repo, inventory, and remote commands."
+            $controls.StatusTextBlock.Text = "Connecting..."
             $preflight = Test-NcsRemotePreflight -Settings $state.Settings
             $state.PreflightResult = $preflight
-            $controls.PreflightListBox.ItemsSource = $preflight.Checks
-            $controls.PreflightListBox.Visibility = "Visible"
             if ($preflight.IsReady) {
                 $controls.StatusTextBlock.Text = "Preflight passed. Loading inventory..."
                 
