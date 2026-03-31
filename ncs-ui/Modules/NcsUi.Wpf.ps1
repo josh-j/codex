@@ -51,7 +51,6 @@ function Get-NcsXamlControlMap {
         "PreflightStateBadge",
         "PreflightStateText",
         "PreflightSummaryText",
-        "PreflightDetailsExpander",
         "PreflightListBox",
         "TargetTreeView",
         "TargetScrollViewer",
@@ -713,12 +712,13 @@ function Show-NcsUiApp {
         try {
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
             $controls.PreflightListBox.ItemsSource = $null
+            $controls.PreflightListBox.Visibility = "Collapsed"
             $controls.PreflightSummaryText.Text = "Running preflight..."
             $controls.StatusTextBlock.Text = "Checking SSH, repo, inventory, vault, and remote commands."
             $preflight = Test-NcsRemotePreflight -Settings $state.Settings
             $state.PreflightResult = $preflight
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
-            $controls.PreflightDetailsExpander.IsExpanded = $true
+            $controls.PreflightListBox.Visibility = "Visible"
             if ($preflight.IsReady) {
                 $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
