@@ -649,10 +649,20 @@ function Show-NcsUiApp {
             $state.PreflightResult = $preflight
             $controls.PreflightListBox.ItemsSource = $preflight.Checks
             if ($preflight.IsReady) {
-                $controls.PreflightSummaryText.Text = "Preflight passed. The app can run remote actions."
+                $controls.PreflightSummaryText.Text = "Preflight passed. Loading inventory..."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#6e9fff"
-                $controls.StatusTextBlock.Text = "Preflight passed."
+                $controls.StatusTextBlock.Text = "Fetching remote inventory..."
                 Set-NcsPreflightState -Controls $controls -State "Passed"
+
+                try {
+                    $remoteTargets = Get-NcsRemoteInventory -Settings $state.Settings
+                    Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $remoteTargets -TagProperty "limit" -Expanded $false
+                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory loaded ($($remoteTargets.Count) groups)."
+                    $controls.PreflightSummaryText.Text = "Connected. Inventory loaded from remote."
+                } catch {
+                    $controls.StatusTextBlock.Text = "Preflight passed. Inventory load failed: $($_.Exception.Message)"
+                    $controls.PreflightSummaryText.Text = "Connected. Using static targets (inventory fetch failed)."
+                }
             } else {
                 $controls.PreflightSummaryText.Text = "Preflight failed. Resolve the blocking issues before running."
                 $controls.PreflightSummaryText.Foreground = Get-NcsBrush -Color "#f2495c"

@@ -106,16 +106,18 @@ function Test-NcsRemotePreflight {
         "(cd $repo && test -f $vault) && echo CHECK:vault:ok || echo CHECK:vault:fail"
         "command -v make >/dev/null 2>&1 && echo CHECK:make:ok || echo CHECK:make:fail"
         "command -v ansible-playbook >/dev/null 2>&1 && echo CHECK:ansible:ok || echo CHECK:ansible:fail"
+        "command -v ansible-inventory >/dev/null 2>&1 && echo CHECK:ainventory:ok || echo CHECK:ainventory:fail"
     ) -join "; "
 
     $checkMeta = [ordered]@{
-        ssh       = @{ Name = "SSH connectivity";            FailMsg = "Could not connect to the remote host." }
-        repo      = @{ Name = "Repo path exists";            FailMsg = "Remote repo path does not exist." }
-        makefile  = @{ Name = "Makefile exists";             FailMsg = "No Makefile found in the remote repo." }
-        inventory = @{ Name = "Inventory file exists";       FailMsg = "Missing inventory/production/hosts.yml on the remote repo." }
-        vault     = @{ Name = "Vault file exists";           FailMsg = "Configured vault file was not found on the remote repo." }
-        make      = @{ Name = "make available";              FailMsg = "make command not found on the remote host." }
-        ansible   = @{ Name = "ansible-playbook available";  FailMsg = "ansible-playbook command not found on the remote host." }
+        ssh        = @{ Name = "SSH connectivity";            FailMsg = "Could not connect to the remote host." }
+        repo       = @{ Name = "Repo path exists";            FailMsg = "Remote repo path does not exist." }
+        makefile   = @{ Name = "Makefile exists";             FailMsg = "No Makefile found in the remote repo." }
+        inventory  = @{ Name = "Inventory file exists";       FailMsg = "Missing inventory/production/hosts.yml on the remote repo." }
+        vault      = @{ Name = "Vault file exists";           FailMsg = "Configured vault file was not found on the remote repo." }
+        make       = @{ Name = "make available";              FailMsg = "make command not found on the remote host." }
+        ansible    = @{ Name = "ansible-playbook available";  FailMsg = "ansible-playbook command not found on the remote host." }
+        ainventory = @{ Name = "ansible-inventory available"; FailMsg = "ansible-inventory command not found on the remote host." }
     }
 
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $script
