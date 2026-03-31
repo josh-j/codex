@@ -158,13 +158,13 @@ INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_be
     "gather_facts", "connection", "become", "become_method", "become_user"}
 MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uninstall",
     "patch", "fix", "enable", "service", "remove", "delete"}
+NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
 base = "playbooks"
 groups = {}
 for root, dirs, files in os.walk(base):
     dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
     rel = os.path.relpath(root, base)
     raw_grp = "Fleet" if rel == "." else rel.replace(os.sep, "/").split("/")[0]
-    NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
     grp = NAME_MAP.get(raw_grp, raw_grp.title())
     for f in sorted(files):
         if not f.endswith((".yml", ".yaml")) or f.startswith("_"):
@@ -218,31 +218,12 @@ print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups
         return @()
     }
 
-    $data = $probe.StdOut | ConvertFrom-Json
+    $data = $probe.StdOut | ConvertFrom-Json -AsHashtable
     $groups = [System.Collections.Generic.List[hashtable]]::new()
 
     foreach ($entry in @($data)) {
-        $items = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($item in @($entry.Items)) {
-            $h = @{ Label = $item.Label; playbook = $item.playbook }
-            if ($item.PSObject.Properties.Name -contains 'mutating' -and $item.mutating -eq $true) {
-                $h['mutating'] = $true
-            }
-            if ($item.PSObject.Properties.Name -contains 'options' -and $null -ne $item.options) {
-                $optList = [System.Collections.Generic.List[hashtable]]::new()
-                foreach ($opt in @($item.options)) {
-                    $optList.Add(@{
-                        name    = $opt.name
-                        label   = $opt.label
-                        default = if ($opt.PSObject.Properties.Name -contains 'default') { $opt.default } else { "" }
-                    })
-                }
-                $h['options'] = $optList
-            }
-            $items.Add($h)
-        }
-        if ($items.Count -gt 0) {
-            $groups.Add(@{ Group = $entry.Group; Items = $items })
+        if ($entry.ContainsKey('Items') -and @($entry['Items']).Length -gt 0) {
+            $groups.Add($entry)
         }
     }
 
