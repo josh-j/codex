@@ -111,7 +111,7 @@ function Invoke-NcsToolCommand {
 function Get-NcsSshTarget {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
@@ -128,14 +128,14 @@ function New-NcsSshAskPassEnvironment {
         SSH_ASKPASS         = $askPassScript
         SSH_ASKPASS_REQUIRE = "force"
         NCS_UI_PASS         = $Secret
-        DISPLAY             = "ncs-ui"
+        DISPLAY             = "ncs-console"
     }
 }
 
 function Get-NcsSshArgumentList {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
+        [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
         [string] $RemoteCommand
     )
@@ -178,7 +178,7 @@ function Get-NcsSshArgumentList {
 function Resolve-NcsPlaybookCommand {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
+        [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
         [NcsActionRequest] $Request
     )
@@ -220,7 +220,7 @@ function Resolve-NcsPlaybookCommand {
 function Get-NcsRemoteShellCommand {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
+        [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
         [NcsActionRequest] $Request
     )
@@ -251,7 +251,7 @@ function Find-NcsDetectedPaths {
 function Start-NcsRemoteCommand {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
+        [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
         [NcsActionRequest] $Request,
         [scriptblock] $OnOutput,

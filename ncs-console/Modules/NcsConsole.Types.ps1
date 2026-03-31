@@ -6,7 +6,7 @@ enum NcsSshAuthMode {
     Password
 }
 
-class NcsUiSettings {
+class NcsConsoleSettings {
     [string] $SshHost = ""
     [int] $SshPort = 22
     [string] $SshUser = ""
@@ -18,7 +18,7 @@ class NcsUiSettings {
     [string] $RemoteVaultPath = ".vaultpass"
     [string] $LastAction = ""
 
-    NcsUiSettings() {
+    NcsConsoleSettings() {
     }
 }
 
@@ -147,7 +147,7 @@ function Import-NcsGroupedConfig {
 function Get-NcsRemoteInventoryNames {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath

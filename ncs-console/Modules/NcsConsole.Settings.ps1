@@ -2,44 +2,44 @@ Set-StrictMode -Version Latest
 
 $script:NcsProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-function Get-NcsUiConfigDefaultsPath {
+function Get-NcsConsoleConfigDefaultsPath {
     $moduleRoot = $script:NcsProjectRoot
     return Join-Path -Path $moduleRoot -ChildPath "Config/default-settings.json"
 }
 
-function Get-NcsUiSettingsDirectory {
+function Get-NcsConsoleSettingsDirectory {
     $root = if ($env:APPDATA) {
         $env:APPDATA
     } else {
         Join-Path -Path $HOME -ChildPath ".config"
     }
 
-    return Join-Path -Path $root -ChildPath "NcsUi"
+    return Join-Path -Path $root -ChildPath "NcsConsole"
 }
 
-function Get-NcsUiSettingsPath {
-    return Join-Path -Path (Get-NcsUiSettingsDirectory) -ChildPath "settings.json"
+function Get-NcsConsoleSettingsPath {
+    return Join-Path -Path (Get-NcsConsoleSettingsDirectory) -ChildPath "settings.json"
 }
 
-function New-NcsUiSettings {
-    $settings = [NcsUiSettings]::new()
-    $defaultsPath = Get-NcsUiConfigDefaultsPath
+function New-NcsConsoleSettings {
+    $settings = [NcsConsoleSettings]::new()
+    $defaultsPath = Get-NcsConsoleConfigDefaultsPath
 
     if (Test-Path -LiteralPath $defaultsPath) {
         $defaults = Get-Content -LiteralPath $defaultsPath -Raw | ConvertFrom-Json
-        $settings = ConvertTo-NcsUiSettings -InputObject $defaults
+        $settings = ConvertTo-NcsConsoleSettings -InputObject $defaults
     }
 
     return $settings
 }
 
-function ConvertTo-NcsUiSettings {
+function ConvertTo-NcsConsoleSettings {
     param(
         [Parameter(Mandatory)]
         [pscustomobject] $InputObject
     )
 
-    $settings = [NcsUiSettings]::new()
+    $settings = [NcsConsoleSettings]::new()
 
     foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "RemoteVaultPath", "LastAction")) {
         if ($InputObject.PSObject.Properties.Name -contains $property) {
@@ -62,33 +62,33 @@ function ConvertTo-NcsUiSettings {
     return $settings
 }
 
-function Import-NcsUiSettings {
-    $path = Get-NcsUiSettingsPath
+function Import-NcsConsoleSettings {
+    $path = Get-NcsConsoleSettingsPath
     if (-not (Test-Path -LiteralPath $path)) {
-        return New-NcsUiSettings
+        return New-NcsConsoleSettings
     }
 
     try {
         $raw = Get-Content -LiteralPath $path -Raw
         if ([string]::IsNullOrWhiteSpace($raw)) {
-            return New-NcsUiSettings
+            return New-NcsConsoleSettings
         }
 
         $obj = $raw | ConvertFrom-Json
-        return ConvertTo-NcsUiSettings -InputObject $obj
+        return ConvertTo-NcsConsoleSettings -InputObject $obj
     } catch {
         Write-Warning "Failed to load settings from '$path': $($_.Exception.Message). Using defaults."
-        return New-NcsUiSettings
+        return New-NcsConsoleSettings
     }
 }
 
-function Save-NcsUiSettings {
+function Save-NcsConsoleSettings {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
-    $dir = Get-NcsUiSettingsDirectory
+    $dir = Get-NcsConsoleSettingsDirectory
     if (-not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
@@ -104,5 +104,5 @@ function Save-NcsUiSettings {
         LastAction      = $Settings.LastAction
     } | ConvertTo-Json -Depth 4
 
-    Set-Content -LiteralPath (Get-NcsUiSettingsPath) -Value $payload -Encoding UTF8
+    Set-Content -LiteralPath (Get-NcsConsoleSettingsPath) -Value $payload -Encoding UTF8
 }
