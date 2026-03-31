@@ -25,7 +25,7 @@
 
 - name: "VCSA STIG | Phase 0 | Resolve canonical action"
   ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ vcsa_ncs_requested_action | default(ncs_action | default('audit')) }}"
+    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
   changed_when: false
 
 # Back-set vmware_stig_enable_hardening so the VCSA service tasks
