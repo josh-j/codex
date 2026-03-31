@@ -26,6 +26,7 @@ class NcsActionRequest {
     [string] $Site = ""
     [string] $Host = ""
     [string] $ExtraArgs = ""
+    [hashtable] $Options = @{}
     [datetime] $RequestedAt = [datetime]::UtcNow
 
     NcsActionRequest([string] $Playbook) {
@@ -85,6 +86,8 @@ function Import-NcsGroupedConfig {
     $groups = [System.Collections.Generic.List[hashtable]]::new()
     $currentGroup = $null
     $currentItem = $null
+    $currentOption = $null
+    $inOptions = $false
 
     foreach ($line in $lines) {
         if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
@@ -93,16 +96,38 @@ function Import-NcsGroupedConfig {
             $currentGroup = @{ Group = $Matches[1].Trim(); Items = [System.Collections.Generic.List[hashtable]]::new() }
             $groups.Add($currentGroup)
             $currentItem = $null
+            $currentOption = $null
+            $inOptions = $false
             continue
         }
 
-        if ($line -match '^\s+- label:\s*(.+)$' -and $null -ne $currentGroup) {
+        if ($line -match '^\s{2,4}- label:\s*(.+)$' -and $null -ne $currentGroup) {
             $currentItem = @{ Label = $Matches[1].Trim() }
             $currentGroup.Items.Add($currentItem)
+            $currentOption = $null
+            $inOptions = $false
             continue
         }
 
-        if ($line -match '^\s+(\w+):\s*(.+)$' -and $null -ne $currentItem) {
+        if ($line -match '^\s+options:\s*$' -and $null -ne $currentItem) {
+            $currentItem['options'] = [System.Collections.Generic.List[hashtable]]::new()
+            $inOptions = $true
+            $currentOption = $null
+            continue
+        }
+
+        if ($inOptions -and $line -match '^\s{6,10}- name:\s*(.+)$') {
+            $currentOption = @{ name = $Matches[1].Trim() }
+            $currentItem['options'].Add($currentOption)
+            continue
+        }
+
+        if ($inOptions -and $null -ne $currentOption -and $line -match '^\s{8,12}(\w+):\s*(.+)$') {
+            $currentOption[$Matches[1].Trim()] = $Matches[2].Trim()
+            continue
+        }
+
+        if (-not $inOptions -and $line -match '^\s+(\w+):\s*(.+)$' -and $null -ne $currentItem) {
             $key = $Matches[1].Trim()
             $value = $Matches[2].Trim()
             if ($value -eq 'true') { $value = $true }
