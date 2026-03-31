@@ -192,8 +192,14 @@ function Resolve-NcsPlaybookCommand {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Host) + ",localhost"
     }
 
+    if ($Request.Options.Count -gt 0) {
+        foreach ($key in $Request.Options.Keys) {
+            $command += " -e " + (ConvertTo-NcsBashLiteral -Value "$key=$($Request.Options[$key])")
+        }
+    }
+
     $extraArgs = Split-NcsExtraArgs -ExtraArgs $Request.ExtraArgs
-    if ($extraArgs.Count -gt 0) {
+    if (@($extraArgs).Length -gt 0) {
         $escapedArgs = $extraArgs | ForEach-Object { ConvertTo-NcsBashLiteral -Value $_ }
         $command += " " + ($escapedArgs -join " ")
     }

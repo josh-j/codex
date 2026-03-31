@@ -55,6 +55,7 @@ function Get-NcsXamlControlMap {
         "TargetTreeView",
         "TargetScrollViewer",
         "ActionTreeView",
+        "ActionOptionsPanel",
         "ActionScrollViewer",
         "SiteTextBox",
         "HostTextBox",
@@ -125,6 +126,70 @@ function Build-NcsTreeView {
         }
         $tree.Items.Add($groupItem) | Out-Null
     }
+}
+
+function Update-NcsActionOptions {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        $ActionGroups,
+        [string] $Playbook
+    )
+
+    $Controls.ActionOptionsPanel.Children.Clear()
+    $Controls.ActionOptionsPanel.Visibility = "Collapsed"
+
+    if ([string]::IsNullOrWhiteSpace($Playbook)) { return }
+
+    $actionItem = $null
+    foreach ($group in $ActionGroups) {
+        foreach ($item in $group.Items) {
+            if ($item['playbook'] -eq $Playbook -and $item.ContainsKey('options')) {
+                $actionItem = $item
+                break
+            }
+        }
+        if ($null -ne $actionItem) { break }
+    }
+
+    if ($null -eq $actionItem) { return }
+
+    $options = $actionItem['options']
+    if ($null -eq $options -or @($options).Length -eq 0) { return }
+
+    $Controls.ActionOptionsPanel.Visibility = "Visible"
+
+    foreach ($opt in @($options)) {
+        $label = [System.Windows.Controls.TextBlock]::new()
+        $label.Text = $opt['label']
+        $label.Foreground = Get-NcsBrush -Color "#8e939c"
+        $label.FontSize = 11
+        $Controls.ActionOptionsPanel.Children.Add($label) | Out-Null
+
+        $textBox = [System.Windows.Controls.TextBox]::new()
+        $textBox.Tag = $opt['name']
+        if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
+        $Controls.ActionOptionsPanel.Children.Add($textBox) | Out-Null
+    }
+}
+
+function Get-NcsActionOptionValues {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    $values = @{}
+    foreach ($child in @($Controls.ActionOptionsPanel.Children)) {
+        if ($child -is [System.Windows.Controls.TextBox] -and -not [string]::IsNullOrWhiteSpace($child.Tag)) {
+            $val = $child.Text.Trim()
+            if (-not [string]::IsNullOrWhiteSpace($val)) {
+                $values[$child.Tag] = $val
+            }
+        }
+    }
+    return $values
 }
 
 function Resolve-NcsTargetLimit {
@@ -386,6 +451,7 @@ function Update-NcsCommandPreview {
             $request = [NcsActionRequest]::new($playbook)
             Resolve-NcsTargetLimit -Controls $Controls -Request $request
             $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
+            $request.Options = Get-NcsActionOptionValues -Controls $Controls
             $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
             $Controls.CommandPreviewTextBox.Text = $preview
         } catch {
@@ -430,8 +496,8 @@ function Show-NcsUiApp {
     $targetGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/targets.yml")
     Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $targetGroups -TagProperty "limit" -Expanded $false
 
-    $actionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
-    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $actionGroups -TagProperty "playbook" -Expanded $true
+    $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
+    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
     Set-NcsIdleUiState -Controls $controls
@@ -486,9 +552,12 @@ function Show-NcsUiApp {
     $controls.ActionTreeView.Add_SelectedItemChanged({
         param($sender, $eventArgs)
         $item = $eventArgs.NewValue
+        $playbook = ""
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
             $state.Settings.LastAction = $item.Tag
+            $playbook = $item.Tag
         }
+        Update-NcsActionOptions -Controls $controls -ActionGroups $script:ActionGroups -Playbook $playbook
         & $refreshPreview
     })
 
@@ -703,6 +772,7 @@ function Show-NcsUiApp {
             $request = [NcsActionRequest]::new($selectedPlaybook)
             Resolve-NcsTargetLimit -Controls $controls -Request $request
             $request.ExtraArgs = $controls.ExtraArgsTextBox.Text.Trim()
+            $request.Options = Get-NcsActionOptionValues -Controls $controls
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)

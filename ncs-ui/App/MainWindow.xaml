@@ -665,6 +665,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
@@ -682,6 +683,8 @@
                                         <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
                                 </Border>
+
+                                <StackPanel x:Name="ActionOptionsPanel" Grid.Row="2" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
                             </Grid>
                         </Border>
                     </Grid>

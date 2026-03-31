@@ -38,6 +38,10 @@
     - label: Rotate Password
       playbook: esxi/rotate_password.yml
       mutating: true
+      options:
+        - name: rotate_user
+          label: Username
+          default: root
     - label: Password Status
       playbook: esxi/password_status.yml
 
@@ -53,6 +57,10 @@
     - label: Rotate Password
       playbook: vcsa/rotate_password.yml
       mutating: true
+      options:
+        - name: rotate_user
+          label: Username
+          default: root
     - label: Password Status
       playbook: vcsa/password_status.yml
 
@@ -89,6 +97,10 @@
     - label: Rotate Password
       playbook: ubuntu/rotate_password.yml
       mutating: true
+      options:
+        - name: rotate_user
+          label: Username
+          default: root
     - label: Rotate Passwords (Bulk)
       playbook: ubuntu/rotate_passwords.yml
       mutating: true
@@ -122,6 +134,9 @@
     - label: KB Install
       playbook: windows/kb_install.yml
       mutating: true
+      options:
+        - name: kb_number
+          label: KB Number
     - label: Windows Update
       playbook: windows/windows_update.yml
       mutating: true
@@ -134,9 +149,18 @@
     - label: Service Management
       playbook: windows/service.yml
       mutating: true
+      options:
+        - name: service_name
+          label: Service Name
+        - name: service_action
+          label: Action
+          default: restart
     - label: Scheduled Task
       playbook: windows/scheduled_task.yml
       mutating: true
+      options:
+        - name: task_name
+          label: Task Name
     - label: OpenSSH Setup
       playbook: windows/openssh.yml
       mutating: true
@@ -158,6 +182,10 @@
     - label: Rotate Password
       playbook: photon/rotate_password.yml
       mutating: true
+      options:
+        - name: rotate_user
+          label: Username
+          default: root
     - label: Password Status
       playbook: photon/password_status.yml
 
