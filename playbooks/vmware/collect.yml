@@ -1,5 +1,5 @@
 ---
-# playbooks/vmware/audit.yml
+# playbooks/vmware/collect.yml
 # Comprehensive health and policy audit for VMware vCenter environments.
 # This playbook connects to vCenter APIs to analyze ESXi host states,
 # VM configuration drift, and virtual networking compliance.

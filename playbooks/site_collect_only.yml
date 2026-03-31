@@ -6,10 +6,10 @@
   ansible.builtin.import_playbook: infra/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware/audit.yml
+  ansible.builtin.import_playbook: vmware/collect.yml
 
 - name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: ubuntu/audit.yml
+  ansible.builtin.import_playbook: ubuntu/collect.yml
 
 - name: "Phase 3b: Windows System Audit"
   ansible.builtin.import_playbook: windows/audit.yml

@@ -143,6 +143,112 @@ function Import-NcsGroupedConfig {
     return $groups
 }
 
+function Get-NcsRemotePlaybookTree {
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings
+    )
+
+    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
+    $pyScript = @'
+import os, json, yaml, re
+SKIP_DIRS = {"templates", "test", "roles", "__pycache__"}
+INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_become",
+    "ansible_become_method", "ansible_user", "ansible_host", "ansible_port",
+    "gather_facts", "connection", "become", "become_method", "become_user"}
+MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uninstall",
+    "patch", "fix", "enable", "service", "remove", "delete"}
+base = "playbooks"
+groups = {}
+for root, dirs, files in os.walk(base):
+    dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+    rel = os.path.relpath(root, base)
+    raw_grp = "Fleet" if rel == "." else rel.replace(os.sep, "/").split("/")[0]
+    NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
+    grp = NAME_MAP.get(raw_grp, raw_grp.title())
+    for f in sorted(files):
+        if not f.endswith((".yml", ".yaml")) or f.startswith("_"):
+            continue
+        path = os.path.join(root, f)
+        playbook = os.path.relpath(path, base)
+        try:
+            with open(path) as fh:
+                docs = yaml.safe_load(fh)
+            if not isinstance(docs, list) or len(docs) == 0:
+                continue
+            play = docs[0]
+            if not isinstance(play, dict):
+                continue
+            is_import = any(k.endswith("import_playbook") for k in play)
+        except Exception:
+            continue
+        if is_import:
+            label = f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
+        else:
+            name = play.get("name", "")
+            label = re.sub(r"^[^|]+\|\s*", "", name).strip() if name else ""
+            label = re.sub(r"^Phase\s+\d+\w*:\s*", "", label).strip()
+            if not label:
+                label = f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
+        stem = os.path.splitext(f)[0]
+        mutating = any(k in stem for k in MUTATING_KEYWORDS)
+        options = []
+        pvars = play.get("vars", {}) if not is_import else {}
+        if isinstance(pvars, dict):
+            for k, v in pvars.items():
+                if k in INTERNAL_VARS or k.startswith(("ansible_", "ncs_", "_")):
+                    continue
+                dv = str(v) if v is not None else ""
+                if "{{" in dv:
+                    continue
+                options.append({"name": k, "label": k.replace("_", " ").title(), "default": dv})
+        item = {"Label": label, "playbook": playbook.replace(os.sep, "/")}
+        if mutating:
+            item["mutating"] = True
+        if options:
+            item["options"] = options
+        groups.setdefault(grp, []).append(item)
+order = ["Fleet"] + sorted(k for k in groups if k != "Fleet")
+print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups]))
+'@
+    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && python3 << 'NCSPLAYBOOKS'" + "`n" + $pyScript + "`n" + "NCSPLAYBOOKS"
+    $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
+
+    if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
+        return @()
+    }
+
+    $data = $probe.StdOut | ConvertFrom-Json
+    $groups = [System.Collections.Generic.List[hashtable]]::new()
+
+    foreach ($entry in @($data)) {
+        $items = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($item in @($entry.Items)) {
+            $h = @{ Label = $item.Label; playbook = $item.playbook }
+            if ($item.PSObject.Properties.Name -contains 'mutating' -and $item.mutating -eq $true) {
+                $h['mutating'] = $true
+            }
+            if ($item.PSObject.Properties.Name -contains 'options' -and $null -ne $item.options) {
+                $optList = [System.Collections.Generic.List[hashtable]]::new()
+                foreach ($opt in @($item.options)) {
+                    $optList.Add(@{
+                        name    = $opt.name
+                        label   = $opt.label
+                        default = if ($opt.PSObject.Properties.Name -contains 'default') { $opt.default } else { "" }
+                    })
+                }
+                $h['options'] = $optList
+            }
+            $items.Add($h)
+        }
+        if ($items.Count -gt 0) {
+            $groups.Add(@{ Group = $entry.Group; Items = $items })
+        }
+    }
+
+    return $groups
+}
+
 function Get-NcsRemoteInventoryTree {
     param(
         [Parameter(Mandatory)]

@@ -1,5 +1,5 @@
 ---
-# playbooks/ubuntu/discover.yml
+# playbooks/ubuntu/collect.yml
 # Read-only Ubuntu discovery and health collection.
 
 - name: "Ubuntu | Discover"

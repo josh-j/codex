@@ -19,7 +19,7 @@
 - group: VMware
   actions:
     - label: Audit
-      playbook: vmware/audit.yml
+      playbook: vmware/collect.yml
     - label: STIG Audit
       playbook: vmware/stig_audit.yml
     - label: STIG Remediate
@@ -29,7 +29,7 @@
 - group: ESXi
   actions:
     - label: Audit
-      playbook: esxi/audit.yml
+      playbook: esxi/collect.yml
     - label: STIG Audit
       playbook: esxi/stig_audit.yml
     - label: STIG Remediate
@@ -48,7 +48,7 @@
 - group: VCSA
   actions:
     - label: Audit
-      playbook: vcsa/audit.yml
+      playbook: vcsa/collect.yml
     - label: STIG Audit
       playbook: vcsa/stig_audit.yml
     - label: STIG Remediate
@@ -67,7 +67,7 @@
 - group: VM
   actions:
     - label: Audit
-      playbook: vm/audit.yml
+      playbook: vm/collect.yml
     - label: STIG Audit
       playbook: vm/stig_audit.yml
     - label: STIG Audit (Parallel)
@@ -82,7 +82,7 @@
 - group: Ubuntu
   actions:
     - label: Audit
-      playbook: ubuntu/audit.yml
+      playbook: ubuntu/collect.yml
     - label: STIG Audit
       playbook: ubuntu/stig_audit.yml
     - label: STIG Remediate

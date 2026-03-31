@@ -1,5 +1,5 @@
 ---
-# playbooks/vm/audit.yml
+# playbooks/vm/collect.yml
 # Read-only audit focused on VM inventory and snapshot state.
 
 - name: Phase 2c | VMware VM Workload Audit
