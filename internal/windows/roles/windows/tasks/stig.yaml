@@ -1,5 +1,15 @@
 ---
 # internal.windows.windows : tasks/stig.yaml
+#
+# Windows STIG uses a different flow from the other platforms:
+# - import_tasks for prelude and checks (not include_tasks with check_mode)
+# - Input ingestion (Phase 1a) can skip native checks entirely
+# - Separate stig_check.yaml and stig_remediate.yaml
+# - Telemetry emitted at the end
+#
+# Because of these differences, Windows keeps its own orchestration
+# but delegates the common parts (Phase 0 resolve, Phase 2 verify pattern)
+# to the shared orchestrator.
 
 # =============================================================================
 # Phase 0 | Initialize
@@ -77,7 +87,7 @@
   changed_when: false
 
 # =============================================================================
-# Phase 2 | Post-remediation verification (remediate mode only)
+# Phase 2 | Post-remediation verification
 # =============================================================================
 
 - name: "Windows STIG | Phase 2 | Set phase hint to audit"
