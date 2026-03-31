@@ -70,6 +70,7 @@
         <Thickness x:Key="PaddingSm">6,3,6,3</Thickness>
         <Thickness x:Key="PaddingMd">8,4,8,4</Thickness>
         <Thickness x:Key="PaddingLg">10,6,10,6</Thickness>
+        <Thickness x:Key="PaddingBadgeSm">6,1,6,1</Thickness>
         <Thickness x:Key="PaddingPill">8,2,8,2</Thickness>
         <Thickness x:Key="PaddingTab">12,4,12,4</Thickness>
         <Thickness x:Key="PaddingBar">12,0,12,0</Thickness>
@@ -284,7 +285,7 @@
                                         <ColumnDefinition Width="20" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontFamily="Segoe UI Symbol" FontSize="{StaticResource FontSizeSm}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    <Path x:Name="GlyphIcon" Grid.Column="0" Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
@@ -292,15 +293,19 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="Glyph" Property="Text" Value="▶" />
-                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M3 0 L10 6 L3 12 Z" />
+                                <Setter TargetName="GlyphIcon" Property="Fill" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="GlyphIcon" Property="Width" Value="7" />
+                                <Setter TargetName="GlyphIcon" Property="Height" Value="8" />
                             </Trigger>
                             <Trigger Property="HasItems" Value="True">
-                                <Setter TargetName="Glyph" Property="Text" Value="▸" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M2 4 L8 10 L14 4" />
+                                <Setter TargetName="GlyphIcon" Property="Stroke" Value="{StaticResource TextMutedBrush}" />
+                                <Setter TargetName="GlyphIcon" Property="StrokeThickness" Value="1.5" />
                             </Trigger>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="Glyph" Property="Text" Value="▾" />
+                                <Setter TargetName="GlyphIcon" Property="Data" Value="M2 10 L8 4 L14 10" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
@@ -548,8 +553,8 @@
                             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
                             <DockPanel Margin="{StaticResource MarginSectionTitle}">
                                 <TextBlock DockPanel.Dock="Left" Text="Verify" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}">
-                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
+                                <Border x:Name="PreflightStateBadge" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" Margin="8,0,0,0">
+                                    <TextBlock x:Name="PreflightStateText" Text="Not Run" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="SemiBold" />
                                 </Border>
                             </DockPanel>
                             <TextBlock x:Name="PreflightSummaryText" Margin="{StaticResource MarginSectionTitle}" Text="Verify connection and remote environment." Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" TextWrapping="Wrap" />
@@ -680,10 +685,10 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="not connected" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
                     <Border Grid.Column="1" Width="1" Height="14" Background="#2c3038" Margin="10,0" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingPill}" VerticalAlignment="Center">
+                    <Border x:Name="RunStateBorder" Grid.Column="2" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
                     <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
