@@ -78,11 +78,6 @@ function Test-NcsRemotePreflight {
             Message = if ([string]::IsNullOrWhiteSpace($Settings.RemoteRepoPath)) { "Enter the remote repo path." } else { $Settings.RemoteRepoPath }
         },
         @{
-            Name = "Remote vault path configured"
-            Passed = -not [string]::IsNullOrWhiteSpace($Settings.RemoteVaultPath)
-            Message = if ([string]::IsNullOrWhiteSpace($Settings.RemoteVaultPath)) { "Enter the remote vault path." } else { $Settings.RemoteVaultPath }
-        },
-        @{
             Name = "Local SSH client"
             Passed = $null -ne (Get-Command -Name "ssh.exe" -ErrorAction SilentlyContinue)
             Message = if ($null -eq (Get-Command -Name "ssh.exe" -ErrorAction SilentlyContinue)) { "OpenSSH client is not available in PATH." } else { "ssh.exe found." }
@@ -103,13 +98,11 @@ function Test-NcsRemotePreflight {
     }
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
-    $vault = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteVaultPath
 
     $script = @(
         "echo CHECK:ssh:ok"
         "test -d $repo && echo CHECK:repo:ok || echo CHECK:repo:fail"
         "test -d $repo/inventory/production && echo CHECK:inventory:ok || echo CHECK:inventory:fail"
-        "(cd $repo && test -f $vault) && echo CHECK:vault:ok || echo CHECK:vault:fail"
         "(cd $repo && test -f .venv/bin/ansible-playbook && echo CHECK:ansible:ok) || (command -v ansible-playbook >/dev/null 2>&1 && echo CHECK:ansible:ok) || echo CHECK:ansible:fail"
     ) -join "; "
 
@@ -117,7 +110,6 @@ function Test-NcsRemotePreflight {
         ssh        = @{ Name = "SSH connectivity";            FailMsg = "Could not connect to the remote host." }
         repo       = @{ Name = "Repo path exists";            FailMsg = "Remote repo path does not exist." }
         inventory  = @{ Name = "Inventory directory exists";  FailMsg = "Missing inventory/production/ on the remote repo." }
-        vault      = @{ Name = "Vault file exists";           FailMsg = "Configured vault file was not found on the remote repo." }
         ansible    = @{ Name = "ansible-playbook available";  FailMsg = "ansible-playbook not found in .venv or PATH." }
     }
 

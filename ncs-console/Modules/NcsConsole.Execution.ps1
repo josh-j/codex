@@ -184,8 +184,7 @@ function Resolve-NcsPlaybookCommand {
     )
 
     $inventory = "inventory/production"
-    $vault = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteVaultPath
-    $command = "ansible-playbook -i $inventory playbooks/$($Request.Playbook) --vault-password-file $vault"
+    $command = "ansible-playbook -i $inventory playbooks/$($Request.Playbook) --vault-password-file .vaultpass"
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Limit)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Limit)
