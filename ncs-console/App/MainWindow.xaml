@@ -520,7 +520,8 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
                         <Button x:Name="OperateToggleButton" Content="▶ Playbooks" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
-                        <Button x:Name="ConsoleShowButton" Content="⌨ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle console panel" />
+                        <Button x:Name="ConsoleShowButton" Content="⌨ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle console panel" />
+                        <Button x:Name="ReportsToggleButton" Content="📊 Reports" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle reports panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -544,6 +545,8 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="ConsoleColumn" Width="0" MinWidth="0" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="ReportsColumn" Width="0" MinWidth="0" />
                 </Grid.ColumnDefinitions>
 
                 <ScrollViewer x:Name="SettingsPanel" Grid.Column="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -705,6 +708,40 @@
                                 </Expander.Header>
                                 <ListBox x:Name="DetectedPathsListBox" Margin="{StaticResource MarginGapSm}" MaxHeight="100" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PathItemTemplate}" />
                             </Expander>
+                        </Border>
+                    </Grid>
+
+                    <GridSplitter x:Name="ReportsSplitter" Grid.Column="5" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+
+                    <Grid x:Name="ReportsPane" Grid.Column="6" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Reports" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="ReportBackButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Back" IsEnabled="False">
+                                        <Path Width="8" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M8 0 L0 5 L8 10" VerticalAlignment="Center" />
+                                    </Button>
+                                    <Button x:Name="ReportHomeButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Site report">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M5 0 L10 5 L10 10 L0 10 L0 5 Z" VerticalAlignment="Center" />
+                                    </Button>
+                                    <Button x:Name="ReportRefreshButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Refresh">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M12 2 A8 8 0 1 0 14 8 M12 2 L16 2 L12 6" VerticalAlignment="Center" />
+                                    </Button>
+                                    <Button x:Name="ReportsCloseButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse reports" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" ClipToBounds="True">
+                            <Grid>
+                                <TextBlock x:Name="ReportPlaceholder" Text="Connect to load reports" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <WebBrowser x:Name="ReportBrowser" Visibility="Collapsed" />
+                            </Grid>
                         </Border>
                     </Grid>
                 </Grid>
