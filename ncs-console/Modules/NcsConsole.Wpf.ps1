@@ -676,6 +676,17 @@ function Show-NcsConsoleApp {
     $limitContextMenu.Items.Add((& $newMenuItem "Clear all" { $controls.ActionLimitTextBox.Text = "" })) | Out-Null
 
     $limitContextMenu.Add_Opened({
+        $pos = [System.Windows.Input.Mouse]::GetPosition($controls.ActionLimitTree)
+        $hit = [System.Windows.Media.VisualTreeHelper]::HitTest($controls.ActionLimitTree, $pos)
+        if ($null -ne $hit -and $null -ne $hit.VisualHit) {
+            $element = $hit.VisualHit
+            while ($null -ne $element -and $element -isnot [System.Windows.Controls.TreeViewItem]) {
+                $element = [System.Windows.Media.VisualTreeHelper]::GetParent($element)
+            }
+            if ($null -ne $element) {
+                $element.IsSelected = $true
+            }
+        }
         $tag = & $getSelectedTag
         $inLimit = if ($tag) { & $isInLimit $tag } else { $false }
         $removeItem.IsEnabled = $inLimit
