@@ -183,7 +183,7 @@ function Resolve-NcsPlaybookCommand {
         [NcsActionRequest] $Request
     )
 
-    $inventory = "inventory/production/hosts.yml"
+    $inventory = "inventory/production"
     $vault = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteVaultPath
     $command = "ansible-playbook -i $inventory playbooks/$($Request.Playbook) --vault-password-file $vault"
 
@@ -227,7 +227,7 @@ function Get-NcsRemoteShellCommand {
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $actionCommand = Resolve-NcsPlaybookCommand -Settings $Settings -Request $Request
-    return "cd $repo && $actionCommand"
+    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && $actionCommand"
 }
 
 function Find-NcsDetectedPaths {
