@@ -285,21 +285,24 @@ function Start-NcsRemoteCommand {
         }
     }
 
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $psi
-    $lines = [System.Collections.Generic.List[string]]::new()
-    $pendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
-    $startedAt = Get-Date
-    $stdoutState = [pscustomobject]@{
-        Reader = $null
-        Task   = $null
-        Closed = $false
+    $executionState = [pscustomobject]@{
+        Process      = [System.Diagnostics.Process]::new()
+        Lines        = [System.Collections.Generic.List[string]]::new()
+        PendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+        StartedAt    = Get-Date
+        StdoutState  = [pscustomobject]@{
+            Reader = $null
+            Task   = $null
+            Closed = $false
+        }
+        StderrState  = [pscustomobject]@{
+            Reader = $null
+            Task   = $null
+            Closed = $false
+        }
+        DrainTimer   = [System.Windows.Threading.DispatcherTimer]::new()
     }
-    $stderrState = [pscustomobject]@{
-        Reader = $null
-        Task   = $null
-        Closed = $false
-    }
+    $executionState.Process.StartInfo = $psi
 
     $startRead = {
         param($state)
@@ -320,88 +323,83 @@ function Start-NcsRemoteCommand {
             }
 
             $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $lineText
-            $lines.Add($timestamped)
-            $pendingLines.Enqueue($timestamped)
+            $executionState.Lines.Add($timestamped)
+            $executionState.PendingLines.Enqueue($timestamped)
             & $startRead $state
         }
     }
 
-    # Keep timer state on a shared object so event handlers do not depend on
-    # a local variable surviving strict-mode closure semantics.
-    $executionState = [pscustomobject]@{
-        DrainTimer = [System.Windows.Threading.DispatcherTimer]::new()
-    }
     $executionState.DrainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
     $tickHandler = {
         param($sender, $eventArgs)
         try {
-            & $drainRead $stdoutState
-            & $drainRead $stderrState
+            & $drainRead $executionState.StdoutState
+            & $drainRead $executionState.StderrState
 
             $line = $null
-            while ($pendingLines.TryDequeue([ref]$line)) {
+            while ($executionState.PendingLines.TryDequeue([ref]$line)) {
                 if ($OnOutput) { & $OnOutput $line }
             }
 
-            if (-not ($process.HasExited -and $stdoutState.Closed -and $stderrState.Closed)) {
+            if (-not ($executionState.Process.HasExited -and $executionState.StdoutState.Closed -and $executionState.StderrState.Closed)) {
                 return
             }
 
             $sender.Stop()
             # Drain any remaining lines after process exit
-            while ($pendingLines.TryDequeue([ref]$line)) {
+            while ($executionState.PendingLines.TryDequeue([ref]$line)) {
                 if ($OnOutput) { & $OnOutput $line }
             }
-            $process.WaitForExit()
-            if ($lines.Count -gt $script:MaxOutputLines) {
-                $lines.RemoveRange(0, $lines.Count - $script:MaxOutputLines)
+            $executionState.Process.WaitForExit()
+            if ($executionState.Lines.Count -gt $script:MaxOutputLines) {
+                $executionState.Lines.RemoveRange(0, $executionState.Lines.Count - $script:MaxOutputLines)
             }
             $result = [NcsRunResult]::new()
             $result.Action = $Request.Playbook
             $result.Command = $remoteCommand
-            $result.ExitCode = $process.ExitCode
-            $result.Succeeded = $process.ExitCode -eq 0
-            $result.StartedAt = $startedAt
+            $result.ExitCode = $executionState.Process.ExitCode
+            $result.Succeeded = $executionState.Process.ExitCode -eq 0
+            $result.StartedAt = $executionState.StartedAt
             $result.EndedAt = Get-Date
-            $result.Duration = $result.EndedAt.Value - $startedAt
-            $result.OutputLines = $lines.ToArray()
+            $result.Duration = $result.EndedAt.Value - $executionState.StartedAt
+            $result.OutputLines = $executionState.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
 
-            $process.Dispose()
+            $executionState.Process.Dispose()
 
             if ($OnCompleted) { & $OnCompleted $result }
         } catch {
             $sender.Stop()
-            $process.Dispose()
+            $executionState.Process.Dispose()
             throw
         }
     }.GetNewClosure()
     $executionState.DrainTimer.Add_Tick($tickHandler)
 
     try {
-        [void] $process.Start()
-        $stdoutState.Reader = $process.StandardOutput
-        $stderrState.Reader = $process.StandardError
+        [void] $executionState.Process.Start()
+        $executionState.StdoutState.Reader = $executionState.Process.StandardOutput
+        $executionState.StderrState.Reader = $executionState.Process.StandardError
         if ($null -ne $askPassSecret) {
-            $process.StandardInput.WriteLine($askPassSecret)
+            $executionState.Process.StandardInput.WriteLine($askPassSecret)
         } else {
-            $process.StandardInput.WriteLine("")
+            $executionState.Process.StandardInput.WriteLine("")
         }
-        $process.StandardInput.Close()
-        & $startRead $stdoutState
-        & $startRead $stderrState
+        $executionState.Process.StandardInput.Close()
+        & $startRead $executionState.StdoutState
+        & $startRead $executionState.StderrState
         $executionState.DrainTimer.Start()
     } catch {
         $executionState.DrainTimer.Stop()
-        $process.Dispose()
+        $executionState.Process.Dispose()
         throw
     }
 
     return [pscustomobject]@{
-        Process       = $process
+        Process       = $executionState.Process
         DrainTimer    = $executionState.DrainTimer
         RemoteCommand = $remoteCommand
-        StartedAt     = $startedAt
+        StartedAt     = $executionState.StartedAt
     }
 }
 
