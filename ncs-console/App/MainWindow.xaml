@@ -608,31 +608,19 @@
                                 </DockPanel>
                                 <Grid Grid.Row="1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MaxWidth="220" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" MinWidth="120" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="2*" MinWidth="180" />
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,4,0">
+                                    <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,0">
                                         <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
                                             <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                         </ScrollViewer>
                                     </Border>
-                                    <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0" Visibility="Collapsed">
+                                    <GridSplitter Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" />
+                                    <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
-                                            <StackPanel Orientation="Horizontal" Margin="{StaticResource MarginSectionTitle}">
-                                                <Button x:Name="RunButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0,0,4,0" ToolTip="Run selected action">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Path Width="8" Height="10" Stretch="Uniform" Fill="White" Data="M0 0 L8 5 L0 10 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                                        <TextBlock Text="Run" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Path Width="8" Height="8" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L8 0 L8 8 L0 8 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                                        <TextBlock Text="Stop" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </StackPanel>
                                             <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;)" />
                                             <Border x:Name="ActionLimitTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
@@ -649,6 +637,21 @@
                                             <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
                                             <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
                                             <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="40" VerticalScrollBarVisibility="Auto" ToolTip="Additional ansible-playbook arguments" />
+                                            <TextBlock x:Name="MutatingWarning" Text="⚠ This action makes changes to remote hosts" Foreground="{StaticResource DangerBrush}" FontSize="{StaticResource FontSizeSm}" Margin="0,8,0,0" Visibility="Collapsed" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                <Button x:Name="RunButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0,0,4,0" ToolTip="Run selected action">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Width="8" Height="10" Stretch="Uniform" Fill="White" Data="M0 0 L8 5 L0 10 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                        <TextBlock Text="Run" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Width="8" Height="8" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L8 0 L8 8 L0 8 Z" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                                        <TextBlock Text="Stop" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
                                         </StackPanel>
                                     </ScrollViewer>
                                 </Grid>
