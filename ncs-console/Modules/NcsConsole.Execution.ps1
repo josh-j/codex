@@ -85,6 +85,8 @@ function Invoke-NcsToolCommand {
         [void] $process.Start()
         if ($Environment -and $Environment.ContainsKey('NCS_UI_PASS')) {
             $process.StandardInput.WriteLine($Environment['NCS_UI_PASS'])
+        } else {
+            $process.StandardInput.WriteLine("")
         }
         $process.StandardInput.Close()
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -340,6 +342,8 @@ function Start-NcsRemoteCommand {
         [void] $process.Start()
         if ($null -ne $askPassSecret) {
             $process.StandardInput.WriteLine($askPassSecret)
+        } else {
+            $process.StandardInput.WriteLine("")
         }
         $process.StandardInput.Close()
         $process.BeginOutputReadLine()
