@@ -24,9 +24,6 @@
 #   _ncs_stig_phase2_loop_var   — Loop variable name for Phase 2
 #   _ncs_stig_telemetry         — Dict with telemetry config (platform, name, payload var)
 
-# =============================================================================
-# Phase 0 | Preconditions
-# =============================================================================
 - name: "{{ _ncs_stig_label }} | Phase 0 | Backward-compat aliases"
   ansible.builtin.set_fact: "{{ _ncs_stig_compat_facts }}"
   when: _ncs_stig_compat_facts is defined and _ncs_stig_compat_facts
@@ -34,7 +31,7 @@
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Resolve canonical action"
   ansible.builtin.set_fact:
-    _ncs_stig_action: "{{ _ncs_requested_action | default(ncs_action | default('audit')) }}"
+    _ncs_stig_action: "{{ _ncs_requested_action }}"
   changed_when: false
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Determine run mode"
@@ -61,9 +58,6 @@
     that: "{{ _ncs_stig_pre_validations }}"
   when: _ncs_stig_pre_validations is defined and _ncs_stig_pre_validations
 
-# =============================================================================
-# Phase 1 | Evaluate / Remediate
-# =============================================================================
 - name: "{{ _ncs_stig_label }} | Phase 1 | Evaluate and/or remediate"
   when:
     - _ncs_stig_action in ['audit', 'remediate']
@@ -115,9 +109,6 @@
           {{ _ncs_stig_label }} {{ 'audit' if (_stig_audit_only | bool) else 'remediation' }}
           completed on {{ inventory_hostname }}. Results emitted via ncs_collector.
 
-# =============================================================================
-# Phase 2 | Post-remediation verification
-# =============================================================================
 - name: "{{ _ncs_stig_label }} | Phase 2 | Set phase hint to audit"
   ansible.builtin.set_fact:
     _stig_phase_hint: "audit"
@@ -159,9 +150,6 @@
       ansible.builtin.debug:
         msg: "Post-remediation STIG audit failed on {{ inventory_hostname }}. Exporting partial results."
 
-# =============================================================================
-# Telemetry (optional)
-# =============================================================================
 - name: "{{ _ncs_stig_label }} | Emit telemetry"
   ansible.builtin.set_stats:
     data:
