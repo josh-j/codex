@@ -490,31 +490,6 @@
                 </Popup>
             </Grid>
         </ControlTemplate>
-        <DataTemplate x:Key="PreflightItemTemplate">
-            <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingSm}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border x:Name="StatusBadge" Width="40" Height="18" CornerRadius="9" Background="{StaticResource DangerSoftBrush}" VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusBadgeText" Text="FAIL" Foreground="{StaticResource DangerBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <StackPanel Grid.Column="1" Margin="{StaticResource MarginInlineMd}">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeLg}" Foreground="{StaticResource TextBrush}" />
-                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="{StaticResource FontSizeMd}" Foreground="{StaticResource TextMutedBrush}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Passed}" Value="True">
-                    <Setter TargetName="StatusBadge" Property="Background" Value="{StaticResource AccentSoftBrush}" />
-                    <Setter TargetName="StatusBadgeText" Property="Text" Value="PASS" />
-                    <Setter TargetName="StatusBadgeText" Property="Foreground" Value="{StaticResource AccentBrush}" />
-                </DataTrigger>
-            </DataTemplate.Triggers>
-        </DataTemplate>
-
         <DataTemplate x:Key="PathItemTemplate">
             <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusLg}" Padding="{StaticResource PaddingLg}">
                 <TextBlock Text="{Binding}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />

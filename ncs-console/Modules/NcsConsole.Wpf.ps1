@@ -926,11 +926,7 @@ function Show-NcsConsoleApp {
             $preflight = Test-NcsRemotePreflight -Settings $state.Settings
             $state.PreflightResult = $preflight
             if ($preflight.IsReady) {
-                $controls.StatusTextBlock.Text = "Preflight passed. Loading inventory..."
-                
-                $controls.StatusTextBlock.Text = "Preflight passed."
                 Set-NcsPreflightState -Controls $controls -State "Connected"
-
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
@@ -938,19 +934,16 @@ function Show-NcsConsoleApp {
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
                         $controls.StatusTextBlock.Text = "Connected. $(@($inventoryTree).Length) groups available."
                     } else {
-                        $controls.StatusTextBlock.Text = "Connected. Enter limit manually."
+                        $controls.StatusTextBlock.Text = "Connected."
                     }
                 } catch {
-                    $controls.StatusTextBlock.Text = "Connected. Inventory fetch failed — enter limit manually."
+                    $controls.StatusTextBlock.Text = "Connected. Inventory fetch failed."
                 }
             } else {
-                $controls.StatusTextBlock.Text = "Preflight failed. Resolve the blocking issues before running."
-                
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
                 Set-NcsPreflightState -Controls $controls -State "Failed"
             }
         } catch {
-            $controls.StatusTextBlock.Text = "Preflight errored."
             $controls.StatusTextBlock.Text = $_.Exception.Message
             Set-NcsPreflightState -Controls $controls -State "Failed"
         }
