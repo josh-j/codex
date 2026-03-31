@@ -615,39 +615,29 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
-                                    <TextBlock DockPanel.Dock="Left" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}">
-                                    <ScrollViewer x:Name="TargetScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                        <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                <TextBlock Grid.Row="0" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,4,0">
+                                        <ScrollViewer x:Name="TargetScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                            <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                        </ScrollViewer>
+                                    </Border>
+                                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="SiteTextBox" />
+                                            <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="HostTextBox" />
+                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
+                                        </StackPanel>
                                     </ScrollViewer>
-                                </Border>
-                                <Expander Grid.Row="2" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
-                                    <Expander.Header>
-                                        <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
-                                    </Expander.Header>
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                                <TextBlock Text="Site" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                                <TextBox x:Name="SiteTextBox" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                                <TextBlock Text="Host" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                                <TextBox x:Name="HostTextBox" />
-                                            </StackPanel>
-                                        </Grid>
-                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" />
-                                        <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="50" VerticalScrollBarVisibility="Auto" />
-                                    </StackPanel>
-                                </Expander>
+                                </Grid>
                             </Grid>
                         </Border>
 
@@ -656,26 +646,34 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
                                     <TextBlock DockPanel.Dock="Left" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <Button x:Name="RunButton" DockPanel.Dock="Right" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Run selected action" HorizontalAlignment="Right">
-                                        <Path Width="12" Height="12" Stretch="Uniform" Fill="{StaticResource AccentBrush}" Data="M8 5V19L19 12L8 5Z" />
-                                    </Button>
-                                    <Button x:Name="CancelButton" DockPanel.Dock="Right" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed" HorizontalAlignment="Right">
-                                        <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 10 M10 0 L0 10" Stroke="{StaticResource DangerBrush}" StrokeThickness="1.5" />
-                                    </Button>
                                 </DockPanel>
-
-                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}">
-                                    <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                        <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,4,0">
+                                        <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                            <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                        </ScrollViewer>
+                                    </Border>
+                                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="4,0,0,0">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="{StaticResource MarginSectionTitle}">
+                                                <Button x:Name="RunButton" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0,0,4,0" ToolTip="Run selected action">
+                                                    <Path Width="12" Height="12" Stretch="Uniform" Fill="{StaticResource AccentBrush}" Data="M8 5V19L19 12L8 5Z" />
+                                                </Button>
+                                                <Button x:Name="CancelButton" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed">
+                                                    <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 10 M10 0 L0 10" Stroke="{StaticResource DangerBrush}" StrokeThickness="1.5" />
+                                                </Button>
+                                            </StackPanel>
+                                            <StackPanel x:Name="ActionOptionsPanel" Visibility="Collapsed" />
+                                        </StackPanel>
                                     </ScrollViewer>
-                                </Border>
-
-                                <StackPanel x:Name="ActionOptionsPanel" Grid.Row="2" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
+                                </Grid>
                             </Grid>
                         </Border>
                     </Grid>
