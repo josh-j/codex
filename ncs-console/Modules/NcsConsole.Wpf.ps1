@@ -970,27 +970,31 @@ function Show-NcsConsoleApp {
     $loadReport = {
         param([string] $RelativePath)
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
-        $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
-        if ($mirror.ExitCode -eq 0) {
-            $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
-            if (-not (Test-Path -LiteralPath $localReportPath)) {
-                $controls.ReportPlaceholder.Text = "Report not found after sync: $RelativePath"
+        try {
+            $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
+            if ($mirror.ExitCode -eq 0) {
+                $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+                if (-not (Test-Path -LiteralPath $localReportPath)) {
+                    $controls.ReportPlaceholder.Text = "Report not found after sync: $RelativePath"
+                    return
+                }
+
+                if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $RelativePath) {
+                    $script:ReportHistory.Add($script:CurrentReportPath)
+                }
+                $script:CurrentReportPath = $RelativePath
+                $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
+                $controls.ReportPlaceholder.Text = "Opened report in default browser: $RelativePath"
+                Start-Process -FilePath $localReportPath | Out-Null
                 return
             }
 
-            if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $RelativePath) {
-                $script:ReportHistory.Add($script:CurrentReportPath)
-            }
-            $script:CurrentReportPath = $RelativePath
-            $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
-            $controls.ReportPlaceholder.Text = "Opened report in default browser: $RelativePath"
-            Start-Process -FilePath $localReportPath | Out-Null
-            return
+            $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+            if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
+            $controls.ReportPlaceholder.Text = $message.Trim()
+        } catch {
+            $controls.ReportPlaceholder.Text = $_.Exception.Message
         }
-
-        $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
-        if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
-        $controls.ReportPlaceholder.Text = $message.Trim()
     }
 
     $openReports = {
@@ -1054,7 +1058,7 @@ function Show-NcsConsoleApp {
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
-                $controls.ReportPlaceholder.Text = "Connect to load reports"
+                $controls.ReportPlaceholder.Text = "Connect to sync reports and open them in your browser"
                 $script:ReportHistory.Clear()
                 $script:CurrentReportPath = ""
                 $controls.ReportBackButton.IsEnabled = $false
