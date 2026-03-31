@@ -727,40 +727,45 @@
                     </Grid>
                 </Grid>
 
-            <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Padding="10,0" VerticalAlignment="Stretch" ToolTip="Connect to remote host" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0,1,1,0" BorderBrush="#22262d">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="12" Height="10" Stretch="Uniform" Fill="White" Data="M0 1 L4 5 L0 9 M12 1 L8 5 L12 9" VerticalAlignment="Center" Margin="0,0,5,0" />
+                        <TextBlock x:Name="PreflightButtonText" Text="Connect" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" />
+                    </StackPanel>
+                </Button>
+                <Border Grid.Column="1" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
                 <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Padding="8,0" Height="22" Margin="0,0,6,0" ToolTip="Connect to remote host" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Width="12" Height="10" Stretch="Uniform" Fill="White" Data="M0 1 L4 5 L0 9 M12 1 L8 5 L12 9" VerticalAlignment="Center" Margin="0,0,4,0" />
-                            <TextBlock x:Name="PreflightButtonText" Text="Connect" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" />
-                        </StackPanel>
-                    </Button>
-                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="1" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="2" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
+                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
+                    <Border x:Name="RunStateBorder" Grid.Column="1" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="{StaticResource MarginStatusItem}" />
-                    <StackPanel x:Name="ExitCodePanel" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="2" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="{StaticResource MarginStatusItem}" />
+                    <StackPanel x:Name="ExitCodePanel" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
-                    <StackPanel x:Name="DurationPanel" Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
+                    <StackPanel x:Name="DurationPanel" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
                 </Grid>
-            </Border>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </Window>
