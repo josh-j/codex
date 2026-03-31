@@ -991,12 +991,19 @@ function Show-NcsConsoleApp {
                     $statusParts += "Inventory fetch failed."
                 }
                 try {
+                    $localConfig = @()
+                    try { $localConfig = Import-NcsGroupedConfig -Path $actionConfigPath } catch {}
                     $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
-                    if (@($remotePlaybooks).Length -gt 0) {
+                    if (@($localConfig).Length -gt 0 -and @($remotePlaybooks).Length -gt 0) {
+                        $script:ActionGroups = Merge-NcsActionGroups -ConfigGroups $localConfig -RemoteGroups $remotePlaybooks
+                    } elseif (@($remotePlaybooks).Length -gt 0) {
                         $script:ActionGroups = $remotePlaybooks
-                    } else {
-                        $script:ActionGroups = Import-NcsGroupedConfig -Path $actionConfigPath
+                    } elseif (@($localConfig).Length -gt 0) {
+                        $script:ActionGroups = $localConfig
                         $statusParts += "Playbook scan empty, using local config."
+                    } else {
+                        $script:ActionGroups = @()
+                        $statusParts += "No playbooks found."
                     }
                 } catch {
                     try {
@@ -1038,9 +1045,15 @@ function Show-NcsConsoleApp {
                 Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
             }
             try {
+                $localConfig = @()
+                try { $localConfig = Import-NcsGroupedConfig -Path $actionConfigPath } catch {}
                 $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
-                if (@($remotePlaybooks).Length -gt 0) {
+                if (@($localConfig).Length -gt 0 -and @($remotePlaybooks).Length -gt 0) {
+                    $script:ActionGroups = Merge-NcsActionGroups -ConfigGroups $localConfig -RemoteGroups $remotePlaybooks
+                } elseif (@($remotePlaybooks).Length -gt 0) {
                     $script:ActionGroups = $remotePlaybooks
+                } elseif (@($localConfig).Length -gt 0) {
+                    $script:ActionGroups = $localConfig
                 }
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
