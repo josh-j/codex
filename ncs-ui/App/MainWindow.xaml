@@ -284,7 +284,7 @@
                                         <ColumnDefinition Width="20" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="Glyph" Grid.Column="0" FontFamily="Segoe UI Symbol" FontSize="{StaticResource FontSizeSm}" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
                                     <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
@@ -292,15 +292,15 @@
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="Glyph" Property="Text" Value=" ▶" />
-                                <Setter TargetName="Glyph" Property="FontSize" Value="8" />
+                                <Setter TargetName="Glyph" Property="Text" Value="▶" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource AccentBrush}" />
                             </Trigger>
                             <Trigger Property="HasItems" Value="True">
-                                <Setter TargetName="Glyph" Property="Text" Value="[+]" />
+                                <Setter TargetName="Glyph" Property="Text" Value="▸" />
                             </Trigger>
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="Glyph" Property="Text" Value="[-]" />
+                                <Setter TargetName="Glyph" Property="Text" Value="▾" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="ItemBorder" Property="Background" Value="#182742" />
@@ -513,9 +513,9 @@
                                 <TextBlock DockPanel.Dock="Left" Text="Settings" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
                                 <Button x:Name="SettingsCloseButton" DockPanel.Dock="Right" Content="✕" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingPill}" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Right" ToolTip="Close settings" />
                             </DockPanel>
-                            <TextBlock Text="SSH Host" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="SSH Ansible Host" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="SshHostTextBox" />
-                            <TextBlock Text="SSH User" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="SSH Ansible Host User" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="SshUserTextBox" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -544,10 +544,6 @@
                             <TextBox x:Name="RemoteRepoPathTextBox" />
                             <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="RemoteVaultPathTextBox" />
-                            <TextBlock Text="Default Site" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="DefaultSiteTextBox" />
-                            <TextBlock Text="Default Host" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="DefaultHostTextBox" />
                             <Button x:Name="SaveSettingsButton" Content="Save Settings" Margin="{StaticResource MarginGapLg}" />
                             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
                             <DockPanel Margin="{StaticResource MarginSectionTitle}">
