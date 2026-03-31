@@ -2,8 +2,7 @@
 param(
     [Parameter(Mandatory)]
     [string] $Playbook,
-    [string] $Site = "",
-    [string] $AnsibleHost = "",
+    [string] $Limit = "",
     [string] $ExtraArgs = "",
     [string] $SettingsPath = ""
 )
@@ -25,8 +24,7 @@ $settings = if ([string]::IsNullOrWhiteSpace($SettingsPath)) {
 }
 
 $request = [NcsActionRequest]::new($Playbook)
-$request.Site = $Site
-$request.Host = $AnsibleHost
+$request.Limit = $Limit
 $request.ExtraArgs = $ExtraArgs
 
 $done = $false
