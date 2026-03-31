@@ -83,75 +83,47 @@ function Get-NcsXamlControlMap {
     return $map
 }
 
-function Get-NcsSelectedPlaybook {
+function Get-NcsTreeViewSelection {
     param(
         [Parameter(Mandatory)]
-        [hashtable] $Controls
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [string] $TreeViewName
     )
 
-    $selectedItem = $Controls.ActionTreeView.SelectedItem
+    $selectedItem = $Controls[$TreeViewName].SelectedItem
     if ($null -eq $selectedItem -or [string]::IsNullOrWhiteSpace($selectedItem.Tag)) {
         return ""
     }
     return [string] $selectedItem.Tag
 }
 
-function Get-NcsSelectedTarget {
-    param(
-        [Parameter(Mandatory)]
-        [hashtable] $Controls
-    )
-
-    $selectedItem = $Controls.TargetTreeView.SelectedItem
-    if ($null -ne $selectedItem -and -not [string]::IsNullOrWhiteSpace($selectedItem.Tag)) {
-        return [string] $selectedItem.Tag
-    }
-    return ""
-}
-
-function Build-NcsTargetTree {
+function Build-NcsTreeView {
     param(
         [Parameter(Mandatory)]
         [hashtable] $Controls,
         [Parameter(Mandatory)]
-        $TargetGroups
+        [string] $TreeViewName,
+        [Parameter(Mandatory)]
+        $Groups,
+        [Parameter(Mandatory)]
+        [string] $TagProperty,
+        [bool] $Expanded = $true
     )
 
-    $Controls.TargetTreeView.Items.Clear()
-    foreach ($group in $TargetGroups) {
+    $tree = $Controls[$TreeViewName]
+    $tree.Items.Clear()
+    foreach ($group in $Groups) {
         $groupItem = [System.Windows.Controls.TreeViewItem]::new()
         $groupItem.Header = $group.Group
-        $groupItem.IsExpanded = $false
-        foreach ($target in $group.Targets) {
+        $groupItem.IsExpanded = $Expanded
+        foreach ($item in $group.Items) {
             $leafItem = [System.Windows.Controls.TreeViewItem]::new()
-            $leafItem.Header = $target.Label
-            $leafItem.Tag = $target.Limit
+            $leafItem.Header = $item.Label
+            $leafItem.Tag = $item[$TagProperty]
             $groupItem.Items.Add($leafItem) | Out-Null
         }
-        $Controls.TargetTreeView.Items.Add($groupItem) | Out-Null
-    }
-}
-
-function Build-NcsActionTree {
-    param(
-        [Parameter(Mandatory)]
-        [hashtable] $Controls,
-        [Parameter(Mandatory)]
-        $ActionGroups
-    )
-
-    $Controls.ActionTreeView.Items.Clear()
-    foreach ($group in $ActionGroups) {
-        $groupItem = [System.Windows.Controls.TreeViewItem]::new()
-        $groupItem.Header = $group.Group
-        $groupItem.IsExpanded = $true
-        foreach ($action in $group.Actions) {
-            $leafItem = [System.Windows.Controls.TreeViewItem]::new()
-            $leafItem.Header = $action.Label
-            $leafItem.Tag = $action.Playbook
-            $groupItem.Items.Add($leafItem) | Out-Null
-        }
-        $Controls.ActionTreeView.Items.Add($groupItem) | Out-Null
+        $tree.Items.Add($groupItem) | Out-Null
     }
 }
 
@@ -269,7 +241,7 @@ function Sync-NcsSettingsFromControls {
     $Settings.RemoteVaultPath = $Controls.RemoteVaultPathTextBox.Text.Trim()
     $Settings.DefaultSite = $Controls.DefaultSiteTextBox.Text.Trim()
     $Settings.DefaultAnsibleHost = $Controls.DefaultHostTextBox.Text.Trim()
-    $Settings.LastAction = Get-NcsSelectedPlaybook -Controls $Controls
+    $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 }
 
 function Sync-NcsControlsFromSettings {
@@ -372,14 +344,14 @@ function Update-NcsCommandPreview {
         [NcsUiSettings] $Settings
     )
 
-    $playbook = Get-NcsSelectedPlaybook -Controls $Controls
+    $playbook = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 
     if ([string]::IsNullOrWhiteSpace($playbook)) {
         $Controls.CommandPreviewTextBox.Text = "Select an action"
     } else {
         try {
             $request = [NcsActionRequest]::new($playbook)
-            $targetLimit = Get-NcsSelectedTarget -Controls $Controls
+            $targetLimit = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "TargetTreeView"
             if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
                 $request.Site = $targetLimit
             } else {
@@ -428,13 +400,11 @@ function Show-NcsUiApp {
         LastRunResult   = $null
     }
 
-    $targetsConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/targets.yml"
-    $targetGroups = Import-NcsTargetsConfig -Path $targetsConfigPath
-    Build-NcsTargetTree -Controls $controls -TargetGroups $targetGroups
+    $targetGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/targets.yml")
+    Build-NcsTreeView -Controls $controls -TreeViewName "TargetTreeView" -Groups $targetGroups -TagProperty "limit" -Expanded $false
 
-    $actionsConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
-    $actionGroups = Import-NcsActionsConfig -Path $actionsConfigPath
-    Build-NcsActionTree -Controls $controls -ActionGroups $actionGroups
+    $actionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
+    Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $actionGroups -TagProperty "playbook" -Expanded $true
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
     Set-NcsIdleUiState -Controls $controls
@@ -643,7 +613,7 @@ function Show-NcsUiApp {
             $controls.ExitCodeTextBlock.Text = "-"
             $controls.DurationTextBlock.Text = "-"
             Set-NcsRunStateBadge -Controls $controls -State "Running"
-            $selectedPlaybook = Get-NcsSelectedPlaybook -Controls $controls
+            $selectedPlaybook = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
             if ([string]::IsNullOrWhiteSpace($selectedPlaybook)) {
                 throw "Select an action before running."
             }
@@ -655,7 +625,7 @@ function Show-NcsUiApp {
             }
 
             $request = [NcsActionRequest]::new($selectedPlaybook)
-            $targetLimit = Get-NcsSelectedTarget -Controls $controls
+            $targetLimit = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "TargetTreeView"
             if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
                 $request.Site = $targetLimit
             } else {
