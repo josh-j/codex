@@ -164,12 +164,21 @@ function Update-NcsWindowChromeState {
         [hashtable] $Controls
     )
 
+    $path = [System.Windows.Shapes.Path]::new()
+    $path.Width = 10
+    $path.Height = 10
+    $path.Stretch = [System.Windows.Media.Stretch]::Fill
+    $path.Stroke = Get-NcsBrush -Color "#8e939c"
+    $path.StrokeThickness = 1.5
+    $path.Fill = [System.Windows.Media.Brushes]::Transparent
+
     if ($Window.WindowState -eq [System.Windows.WindowState]::Maximized) {
-        $Controls.MaximizeWindowButton.Content = "❐"
+        $path.Data = [System.Windows.Media.Geometry]::Parse("M2 0 L10 0 L10 8 L8 8 L8 10 L0 10 L0 2 L2 2 Z")
     }
     else {
-        $Controls.MaximizeWindowButton.Content = "□"
+        $path.Data = [System.Windows.Media.Geometry]::Parse("M0 0 L10 0 L10 10 L0 10 Z")
     }
+    $Controls.MaximizeWindowButton.Content = $path
 }
 
 function Update-NcsTopTabState {
