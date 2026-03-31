@@ -3,7 +3,7 @@
 # Pre-phase1 setup for VCSA STIG: load profile vars + optional Photon baseline.
 
 - name: "VCSA STIG | Load VCSA profile vars"
-  ansible.builtin.include_vars: "vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
+  ansible.builtin.include_vars: "stig/vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
 
 - name: "VCSA STIG | Optional Photon baseline"
   ansible.builtin.include_role:
