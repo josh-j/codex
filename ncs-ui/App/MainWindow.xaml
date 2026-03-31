@@ -592,7 +592,8 @@
                 </Grid>
             </Border>
 
-            <Grid x:Name="OperatePanel" Grid.Row="1" Margin="{StaticResource ContentMargin}">
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="{StaticResource ContentMargin}">
+            <Grid x:Name="OperatePanel" MinWidth="600">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="SettingsColumn" Width="0" MinWidth="0" />
                     <ColumnDefinition Width="Auto" />
@@ -770,6 +771,7 @@
                         </Border>
                     </Grid>
                 </Grid>
+            </ScrollViewer>
 
             <Border Grid.Row="2" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
                 <Grid VerticalAlignment="Center">
