@@ -1,6 +1,6 @@
-# ncs-ui
+# ncs-console
 
-`ncs-ui` is a Windows PowerShell + WPF operator console for running common `ansible-ncs` workflows on a remote Linux host over SSH.
+`ncs-console` is a Windows PowerShell + WPF operator console for running common `ansible-ncs` workflows on a remote Linux host over SSH.
 
 ## What It Does
 
@@ -16,13 +16,13 @@ The backend target is the sibling repo at `../dev/ansible-ncs`, but the app stor
 
 ## Structure
 
-- `ncs-ui.ps1` - application entrypoint
+- `ncs-console.ps1` - application entrypoint
 - `App/MainWindow.xaml` - WPF layout
-- `Modules/NcsUi.Types.ps1` - internal typed contracts
-- `Modules/NcsUi.Settings.ps1` - settings load/save/defaults
-- `Modules/NcsUi.Execution.ps1` - remote SSH execution and action wrappers
-- `Modules/NcsUi.Preflight.ps1` - local and remote readiness checks
-- `Modules/NcsUi.Wpf.ps1` - WPF startup and event wiring
+- `Modules/NcsConsole.Types.ps1` - internal typed contracts
+- `Modules/NcsConsole.Settings.ps1` - settings load/save/defaults
+- `Modules/NcsConsole.Execution.ps1` - remote SSH execution and action wrappers
+- `Modules/NcsConsole.Preflight.ps1` - local and remote readiness checks
+- `Modules/NcsConsole.Wpf.ps1` - WPF startup and event wiring
 
 ## Requirements
 
@@ -35,7 +35,7 @@ The backend target is the sibling repo at `../dev/ansible-ncs`, but the app stor
 ## Launch
 
 ```powershell
-pwsh -File .\ncs-ui.ps1
+pwsh -File .\ncs-console.ps1
 ```
 
 If execution policy blocks unsigned scripts, set `RemoteSigned` for the current user:
@@ -63,7 +63,7 @@ If the configured vault path is not the default `.vaultpass`, the wrapper falls 
 Settings are stored per-user under:
 
 ```text
-%APPDATA%\NcsUi\settings.json
+%APPDATA%\NcsConsole\settings.json
 ```
 
 Stored values include:

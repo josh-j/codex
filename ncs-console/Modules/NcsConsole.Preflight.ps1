@@ -16,7 +16,7 @@ function New-NcsPreflightCheck {
 function Invoke-NcsSshProbe {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings,
+        [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
         [string] $RemoteCommand
     )
@@ -41,7 +41,7 @@ function Invoke-NcsSshProbe {
 function Test-NcsRemotePreflight {
     param(
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     $result = [NcsPreflightResult]::new()

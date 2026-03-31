@@ -326,7 +326,7 @@ function Sync-NcsSettingsFromControls {
         [Parameter(Mandatory)]
         [hashtable] $Controls,
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     $Settings.SshHost = $Controls.SshHostTextBox.Text.Trim()
@@ -354,7 +354,7 @@ function Sync-NcsControlsFromSettings {
         [Parameter(Mandatory)]
         [hashtable] $Controls,
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     $Controls.SshHostTextBox.Text = $Settings.SshHost
@@ -443,7 +443,7 @@ function Update-NcsCommandPreview {
         [Parameter(Mandatory)]
         [hashtable] $Controls,
         [Parameter(Mandatory)]
-        [NcsUiSettings] $Settings
+        [NcsConsoleSettings] $Settings
     )
 
     $playbook = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
@@ -473,7 +473,7 @@ function Format-NcsDuration {
     return $Duration.ToString("hh\:mm\:ss")
 }
 
-function Show-NcsUiApp {
+function Show-NcsConsoleApp {
     param(
         [Parameter(Mandatory)]
         [string] $ProjectRoot
@@ -487,7 +487,7 @@ function Show-NcsUiApp {
     $window = [Windows.Markup.XamlReader]::Load($reader)
     $controls = Get-NcsXamlControlMap -Window $window
 
-    $settings = Import-NcsUiSettings
+    $settings = Import-NcsConsoleSettings
     $state = [pscustomobject]@{
         Settings        = $settings
         PreflightResult = $null
@@ -575,8 +575,8 @@ function Show-NcsUiApp {
     $controls.SaveSettingsButton.Add_Click({
         try {
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
-            Save-NcsUiSettings -Settings $state.Settings
-            $controls.StatusTextBlock.Text = "Settings saved to $(Get-NcsUiSettingsPath)."
+            Save-NcsConsoleSettings -Settings $state.Settings
+            $controls.StatusTextBlock.Text = "Settings saved to $(Get-NcsConsoleSettingsPath)."
             & $refreshPreview
         } catch {
             $controls.StatusTextBlock.Text = "Failed to save settings: $($_.Exception.Message)"
@@ -842,7 +842,7 @@ function Show-NcsUiApp {
         $dialog.Filter = "Text files (*.txt)|*.txt|Log files (*.log)|*.log|All files (*.*)|*.*"
         $actionTag = if ($state.LastRunResult) { $state.LastRunResult.Action } else { "output" }
         $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        $dialog.FileName = "ncs-ui-$actionTag-$timestamp.txt"
+        $dialog.FileName = "ncs-console-$actionTag-$timestamp.txt"
         if ($dialog.ShowDialog()) {
             Set-Content -LiteralPath $dialog.FileName -Value $controls.ConsoleTextBox.Text -Encoding UTF8
             $controls.StatusTextBlock.Text = "Output exported to $($dialog.FileName)."
