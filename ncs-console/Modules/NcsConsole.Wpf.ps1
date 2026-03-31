@@ -158,6 +158,33 @@ function Build-NcsTreeView {
     }
 }
 
+function Select-NcsTreeViewItem {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Controls.TreeView] $TreeView,
+        [string] $Tag,
+        [switch] $FallbackToFirst
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($Tag)) {
+        foreach ($category in @($TreeView.Items)) {
+            foreach ($leaf in @($category.Items)) {
+                if ($leaf.Tag -eq $Tag) {
+                    $leaf.IsSelected = $true
+                    return
+                }
+            }
+        }
+    }
+
+    if ($FallbackToFirst -and $TreeView.Items.Count -gt 0) {
+        $firstCategory = $TreeView.Items[0]
+        if ($null -ne $firstCategory -and $firstCategory.Items.Count -gt 0) {
+            $firstCategory.Items[0].IsSelected = $true
+        }
+    }
+}
+
 function Update-NcsActionOptions {
     param(
         [Parameter(Mandatory)]
@@ -404,27 +431,7 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshKeyPassphraseBox.Password = $Settings.SshKeyPassphrase
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
-    $targetPlaybook = $Settings.LastAction
-    $found = $false
-    if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {
-        foreach ($category in @($Controls.ActionTreeView.Items)) {
-            foreach ($leaf in @($category.Items)) {
-                if ($leaf.Tag -eq $targetPlaybook) {
-                    $leaf.IsSelected = $true
-                    $found = $true
-                    break
-                }
-            }
-            if ($found) { break }
-        }
-    }
-    if (-not $found) {
-        $firstCategory = @($Controls.ActionTreeView.Items)[0]
-        if ($null -ne $firstCategory) {
-            $firstLeaf = @($firstCategory.Items)[0]
-            if ($null -ne $firstLeaf) { $firstLeaf.IsSelected = $true }
-        }
-    }
+    Select-NcsTreeViewItem -TreeView $Controls.ActionTreeView -Tag $Settings.LastAction -FallbackToFirst
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
 }
@@ -531,7 +538,7 @@ function Show-NcsConsoleApp {
     }
 
     $script:ActionGroups = @()
-    $script:ActionConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
+    $actionConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
 
     $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
@@ -964,14 +971,20 @@ function Show-NcsConsoleApp {
                     if (@($remotePlaybooks).Length -gt 0) {
                         $script:ActionGroups = $remotePlaybooks
                     } else {
-                        $script:ActionGroups = Import-NcsGroupedConfig -Path $script:ActionConfigPath
+                        $script:ActionGroups = Import-NcsGroupedConfig -Path $actionConfigPath
                         $statusParts += "Playbook scan empty, using local config."
                     }
                 } catch {
-                    $script:ActionGroups = Import-NcsGroupedConfig -Path $script:ActionConfigPath
-                    $statusParts += "Playbook scan failed, using local config."
+                    try {
+                        $script:ActionGroups = Import-NcsGroupedConfig -Path $actionConfigPath
+                        $statusParts += "Playbook scan failed, using local config."
+                    } catch {
+                        $script:ActionGroups = @()
+                        $statusParts += "Playbook scan failed, no local config available."
+                    }
                 }
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+                Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $state.Settings.LastAction -FallbackToFirst
                 $controls.StatusTextBlock.Text = $statusParts -join " "
             } else {
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
