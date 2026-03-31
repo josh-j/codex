@@ -26,12 +26,6 @@ vmware_datastore_free_critical_pct: 10.0
 vmware_datastore_free_warning_pct: 15.0
 
 # =============================================================================
-# Simulation Settings (used by ncs_action: collect)
-# =============================================================================
-simulation_esxi_fixture_root: "{{ playbook_dir }}/../tests/reports/mock_production_run/platform/vmware/vcenter"
-simulation_esxi_fixture_file: "{{ simulation_esxi_fixture_root }}/{{ inventory_hostname }}/raw_esxi.yaml"
-
-# =============================================================================
 # Site-specific values (MUST be set in group_vars for hardening mode)
 # =============================================================================
 esxi_stig_syslog_host: ""

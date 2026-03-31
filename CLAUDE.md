@@ -30,10 +30,6 @@ just test                   # pytest tests (all ncs-reporter tests)
 just lint                   # ruff check
 just check                  # mypy + basedpyright on src/
 just test-all               # lint + check + test
-
-# End-to-end simulation (repo root)
-just simulate-production-stig-run    # Generate mock data → render → verify
-just simulate-production-ansible-run # Full Ansible-driven simulation
 ```
 
 ## Architecture

@@ -612,10 +612,8 @@
                                 <PasswordBox x:Name="SshPasswordBox" />
                             </StackPanel>
                             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="{StaticResource MarginDivider}" />
-                            <TextBlock Text="Repo Path" Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Text="Remote Ansible Project Path" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="RemoteRepoPathTextBox" />
-                            <TextBlock Text="Vault Path" Foreground="{StaticResource TextMutedBrush}" />
-                            <TextBox x:Name="RemoteVaultPathTextBox" />
                             <Button x:Name="SaveSettingsButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="{StaticResource MarginGapLg}" HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L3 15 M1 13 L3 15 L5 13 M13 15 L13 1 M11 3 L13 1 L15 3" VerticalAlignment="Center" Margin="0,0,4,0" />

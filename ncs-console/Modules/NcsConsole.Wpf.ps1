@@ -45,7 +45,6 @@ function Get-NcsXamlControlMap {
         "SshKeyPathTextBox",
         "SshPasswordBox",
         "RemoteRepoPathTextBox",
-        "RemoteVaultPathTextBox",
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightStateBadge",
@@ -354,7 +353,6 @@ function Sync-NcsSettingsFromControls {
     $Settings.SshKeyPassphrase = $Controls.SshKeyPassphraseBox.Password
     $Settings.SshPassword = $Controls.SshPasswordBox.Password
     $Settings.RemoteRepoPath = $Controls.RemoteRepoPathTextBox.Text.Trim()
-    $Settings.RemoteVaultPath = $Controls.RemoteVaultPathTextBox.Text.Trim()
     $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 }
 
@@ -380,7 +378,6 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshKeyPassphraseBox.Password = $Settings.SshKeyPassphrase
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
-    $Controls.RemoteVaultPathTextBox.Text = $Settings.RemoteVaultPath
     $targetPlaybook = $Settings.LastAction
     $found = $false
     if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {

@@ -12,7 +12,6 @@ ncs_reporter     := if path_exists(".venv/bin/ncs-reporter") == "true" { ".venv/
 vcsa_playbook    := "ANSIBLE_CONFIG=ansible-vcsa.cfg " + (if path_exists(".venv-vcsa/bin/ansible-playbook") == "true" { ".venv-vcsa/bin/ansible-playbook" } else { ansible_playbook })
 reporter_config_dir := "files/ncs-reporter_configs"
 inventory_file   := "inventory/production/"
-simulation_inventory_file := "inventory/simulation/hosts.yaml"
 reports_dir      := "/srv/samba/reports"
 platform_root    := reports_dir + "/platform"
 groups_json      := platform_root + "/inventory_groups.json"
@@ -560,70 +559,6 @@ verify-stig-emission report_root=reports_dir required_targets="vcsa,esxi,vm,wind
 # Simulation & Testing
 # =============================================================================
 
-# Build and validate a full deterministic production STIG simulation run
-simulate-production-stig-run out_root="tests/reports/mock_production_run":
-    {{ python }} scripts/generate_mock_production_stig_run.py \
-        --inventory {{ inventory_file }} \
-        --out-root {{ out_root }}
-    {{ ncs_reporter }} all \
-        --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ out_root }}/platform \
-        --reports-root {{ out_root }} \
-        --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
-    {{ python }} scripts/verify_report_artifacts.py \
-        --report-root {{ out_root }} \
-        --require-targets "vcsa,esxi,vm,windows,ubuntu,photon,vami,eam,lookup_svc,perfcharts,vcsa_photon_os,postgresql,rhttpproxy,sts,ui" \
-        --min-hosts-per-target 1
-
-# Build and validate a production simulation with Ansible-driven artifact emission
-simulate-production-ansible-run out_root="tests/reports/mock_production_ansible_run":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    rm -rf "{{ out_root }}/platform" "{{ out_root }}/cklb" "{{ out_root }}/site_health_report.html" "{{ out_root }}/stig_fleet_report.html" "{{ out_root }}/search_index.js"
-    mkdir -p "{{ out_root }}/_fixtures" "{{ out_root }}"
-    {{ python }} scripts/generate_mock_production_stig_run.py \
-        --inventory {{ inventory_file }} \
-        --out-root "{{ out_root }}/_fixtures"
-    fixture_root="{{ out_root }}/_fixtures"
-    case "$fixture_root" in /*) ;; *) fixture_root="$(pwd)/$fixture_root";; esac
-    {{ python }} scripts/replay_mock_artifacts_via_ansible.py \
-        --inventory {{ inventory_file }} \
-        --fixture-root "{{ out_root }}/_fixtures" \
-        --out-root "{{ out_root }}" \
-        --ansible-playbook {{ ansible_playbook }}
-    mkdir -p "{{ out_root }}/platform"
-    cp "{{ out_root }}/_fixtures/platform/inventory_groups.json" "{{ out_root }}/platform/inventory_groups.json"
-    {{ ncs_reporter }} all \
-        --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ out_root }}/platform \
-        --reports-root {{ out_root }} \
-        --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
-    {{ python }} scripts/verify_report_artifacts.py \
-        --report-root {{ out_root }} \
-        --require-targets "vcsa,esxi,vm,windows,ubuntu,photon,vami,eam,lookup_svc,perfcharts,vcsa_photon_os,postgresql,rhttpproxy,sts,ui" \
-        --min-hosts-per-target 1
-
-# Run VMware audit in simulation mode
-simulate-vmware-playbook out_root="tests/reports/simulated_playbook_run":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    {{ python }} scripts/generate_mock_production_stig_run.py \
-        --inventory {{ inventory_file }} \
-        --out-root {{ out_root }}
-    fixture_root="{{ out_root }}"
-    case "$fixture_root" in /*) ;; *) fixture_root="$(pwd)/$fixture_root";; esac
-    {{ ansible_playbook }} -i {{ simulation_inventory_file }} playbooks/vmware/audit.yml \
-        -e "ncs_report_directory={{ out_root }}" \
-        -e "simulation_mode=true" \
-        -e "simulation_vcsa_fixture_root=$fixture_root/platform/vmware/vcenter/vcsa"
-    {{ ncs_reporter }} all \
-        --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ out_root }}/platform \
-        --reports-root {{ out_root }} \
-        --groups {{ out_root }}/platform/inventory_groups.json
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ out_root }}
 
 # =============================================================================
 # Maintenance

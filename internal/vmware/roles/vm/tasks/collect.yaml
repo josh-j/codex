@@ -19,15 +19,9 @@
           _raw_vms: {}
           _raw_snapshots: {}
 
-    - name: VM Collect | Simulated State
-      ansible.builtin.include_tasks: collect/simulated.yaml
-      tags: [collect, simulation]
-      when: simulation_mode | default(false) | bool
-
     - name: VM Collect | Inventory State
       ansible.builtin.include_tasks: collect/inventory.yaml
       tags: [collect, inventory]
-      when: not (simulation_mode | default(false) | bool)
 
   always:
     - name: Finalize VM collection state

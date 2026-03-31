@@ -32,12 +32,9 @@
   changed_when: false
   no_log: true
   tags: [always]
-  when:
-    - not (simulation_mode | default(false) | bool)
 
 - name: Handle reachability failure
   when:
-    - not (simulation_mode | default(false) | bool)
     - (_vc_reachability.status | default(0)) not in [200, 503]
   block:
     - name: Stage connectivity failure
