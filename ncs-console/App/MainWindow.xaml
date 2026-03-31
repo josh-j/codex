@@ -733,6 +733,21 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Padding="10,0" VerticalAlignment="Stretch" ToolTip="Connect to remote host" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0,1,1,0" BorderBrush="#22262d">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.7" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
                     <StackPanel Orientation="Horizontal">
                         <Path Width="12" Height="10" Stretch="Uniform" Fill="White" Data="M0 1 L4 5 L0 9 M12 1 L8 5 L12 9" VerticalAlignment="Center" Margin="0,0,5,0" />
                         <TextBlock x:Name="PreflightButtonText" Text="Connect" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" />
