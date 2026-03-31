@@ -88,9 +88,6 @@
     - label: STIG Remediate
       playbook: ubuntu/stig_remediate.yml
       mutating: true
-    - label: Patch
-      playbook: ubuntu/patch.yml
-      mutating: true
     - label: Update
       playbook: ubuntu/update.yml
       mutating: true
@@ -118,11 +115,9 @@
       mutating: true
     - label: Health
       playbook: windows/health.yml
-    - label: Update
-      playbook: windows/update.yml
+    - label: Patch
+      playbook: windows/patch.yml
       mutating: true
-    - label: Post-Patch Audit
-      playbook: windows/post_patch_audit.yml
     - label: Cleanup
       playbook: windows/cleanup.yml
       mutating: true

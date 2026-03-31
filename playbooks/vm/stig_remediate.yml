@@ -37,7 +37,7 @@
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
-      ansible.builtin.include_tasks: _discover_cached.yml
+      ansible.builtin.include_tasks: _discover.yml
 
   tasks:
     - name: "Execute VM STIG Hardening"
@@ -59,7 +59,7 @@
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
-      ansible.builtin.include_tasks: _discover_cached.yml
+      ansible.builtin.include_tasks: _discover.yml
 
   tasks:
     - name: "Execute Post-Remediation VM STIG Audit"
