@@ -55,6 +55,11 @@ function Get-NcsXamlControlMap {
         "TargetTreeView",
         "TargetScrollViewer",
         "ActionTreeView",
+        "ActionLimitTextBox",
+        "ActionTagsTextBox",
+        "ActionCheckModeCheckBox",
+        "ActionDiffCheckBox",
+        "ActionVerbosityComboBox",
         "ActionOptionsPanel",
         "ActionScrollViewer",
         "SiteTextBox",
@@ -191,6 +196,25 @@ function Get-NcsActionOptionValues {
         }
     }
     return $values
+}
+
+function Set-NcsRequestFromControls {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [NcsActionRequest] $Request
+    )
+
+    Resolve-NcsTargetLimit -Controls $Controls -Request $Request
+    $Request.Limit = $Controls.ActionLimitTextBox.Text.Trim()
+    $Request.Tags = $Controls.ActionTagsTextBox.Text.Trim()
+    $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
+    $Request.Diff = $Controls.ActionDiffCheckBox.IsChecked
+    $verbosity = [string] $Controls.ActionVerbosityComboBox.SelectedItem
+    $Request.Verbosity = if ($verbosity -eq "Normal") { "" } else { $verbosity }
+    $Request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
+    $Request.Options = Get-NcsActionOptionValues -Controls $Controls
 }
 
 function Resolve-NcsTargetLimit {
@@ -452,9 +476,7 @@ function Update-NcsCommandPreview {
     } else {
         try {
             $request = [NcsActionRequest]::new($playbook)
-            Resolve-NcsTargetLimit -Controls $Controls -Request $request
-            $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
-            $request.Options = Get-NcsActionOptionValues -Controls $Controls
+            Set-NcsRequestFromControls -Controls $Controls -Request $request
             $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
             $Controls.CommandPreviewTextBox.Text = $preview
         } catch {
@@ -501,6 +523,9 @@ function Show-NcsUiApp {
 
     $script:ActionGroups = Import-NcsGroupedConfig -Path (Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml")
     Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true
+
+    $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "-v", "-vv", "-vvv", "-vvvv")
+    $controls.ActionVerbosityComboBox.SelectedIndex = 0
 
     Sync-NcsControlsFromSettings -Controls $controls -Settings $settings
     Set-NcsIdleUiState -Controls $controls
@@ -565,6 +590,13 @@ function Show-NcsUiApp {
     })
 
     $controls.SiteTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
+    $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
+    $controls.ActionDiffCheckBox.Add_Checked({ & $refreshPreview })
+    $controls.ActionDiffCheckBox.Add_Unchecked({ & $refreshPreview })
+    $controls.ActionVerbosityComboBox.Add_SelectionChanged({ & $refreshPreview })
     $controls.HostTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ExtraArgsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.SshHostTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
@@ -776,9 +808,7 @@ function Show-NcsUiApp {
             }
 
             $request = [NcsActionRequest]::new($selectedPlaybook)
-            Resolve-NcsTargetLimit -Controls $controls -Request $request
-            $request.ExtraArgs = $controls.ExtraArgsTextBox.Text.Trim()
-            $request.Options = Get-NcsActionOptionValues -Controls $controls
+            Set-NcsRequestFromControls -Controls $controls -Request $request
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)

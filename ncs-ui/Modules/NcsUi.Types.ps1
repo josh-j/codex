@@ -26,6 +26,11 @@ class NcsActionRequest {
     [string] $Playbook
     [string] $Site = ""
     [string] $Host = ""
+    [string] $Limit = ""
+    [string] $Tags = ""
+    [bool] $CheckMode = $false
+    [bool] $Diff = $false
+    [string] $Verbosity = ""
     [string] $ExtraArgs = ""
     [hashtable] $Options = @{}
     [datetime] $RequestedAt = [datetime]::UtcNow

@@ -670,7 +670,15 @@
                                                     <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 10 M10 0 L0 10" Stroke="{StaticResource DangerBrush}" StrokeThickness="1.5" />
                                                 </Button>
                                             </StackPanel>
-                                            <StackPanel x:Name="ActionOptionsPanel" Visibility="Collapsed" />
+                                            <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit pattern (overrides target selection)" />
+                                            <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
+                                            <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                            <CheckBox x:Name="ActionDiffCheckBox" Content="Show diff" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBlock Text="Verbosity" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                            <ComboBox x:Name="ActionVerbosityComboBox" ToolTip="Ansible verbosity level" />
+                                            <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
                                         </StackPanel>
                                     </ScrollViewer>
                                 </Grid>
