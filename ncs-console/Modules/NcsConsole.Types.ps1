@@ -25,7 +25,6 @@ class NcsActionRequest {
     [string] $Playbook
     [string] $Limit = ""
     [string] $Tags = ""
-    [string] $Filter = ""
     [bool] $CheckMode = $false
     [bool] $Diff = $false
     [string] $Verbosity = ""

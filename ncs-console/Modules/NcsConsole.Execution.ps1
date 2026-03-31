@@ -196,10 +196,6 @@ function Resolve-NcsPlaybookCommand {
         $command += " --tags " + (ConvertTo-NcsBashLiteral -Value $Request.Tags)
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($Request.Filter)) {
-        $command += " --filter " + (ConvertTo-NcsBashLiteral -Value $Request.Filter)
-    }
-
     if ($Request.CheckMode) { $command += " --check" }
     if ($Request.Diff) { $command += " --diff" }
 
