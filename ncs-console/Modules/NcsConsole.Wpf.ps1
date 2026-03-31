@@ -660,6 +660,7 @@ function Show-NcsConsoleApp {
     $limitContextMenu.BorderBrush = Get-NcsBrush -Color "#2c3038"
     $limitContextMenu.Foreground = Get-NcsBrush -Color "#d8dce2"
     $limitContextMenu.Padding = [System.Windows.Thickness]::new(0)
+    $limitContextMenu.MinWidth = 140
     $limitContextMenu.HasDropShadow = $false
 
     $addItem = & $newMenuItem "Add" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }
