@@ -674,7 +674,9 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="{StaticResource MarginSectionTitle}" />
+                                <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
+                                    <TextBlock DockPanel.Dock="Left" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
+                                </DockPanel>
                                 <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="180">
                                     <ScrollViewer x:Name="TargetScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
                                         <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
@@ -715,14 +717,12 @@
 
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
                                     <TextBlock DockPanel.Dock="Left" Text="Action" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="RunButton" MinWidth="0" Padding="6,4" ToolTip="Run selected action">
-                                            <Path Width="10" Height="12" Stretch="Uniform" Fill="{StaticResource AccentBrush}" Data="M0 0 L10 6 L0 12 Z" />
-                                        </Button>
-                                        <Button x:Name="CancelButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="6,4" ToolTip="Cancel running action" Visibility="Collapsed">
-                                            <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 0 L10 10 L0 10 Z" />
-                                        </Button>
-                                    </StackPanel>
+                                    <Button x:Name="RunButton" DockPanel.Dock="Right" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Run selected action" HorizontalAlignment="Right">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource AccentBrush}" Data="M0 0 L10 6 L0 12 Z" />
+                                    </Button>
+                                    <Button x:Name="CancelButton" DockPanel.Dock="Right" Style="{StaticResource TitleBarButtonStyle}" Width="28" Height="24" Margin="0" ToolTip="Cancel running action" Visibility="Collapsed" HorizontalAlignment="Right">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Fill="{StaticResource DangerBrush}" Data="M0 0 L10 10 M10 0 L0 10" Stroke="{StaticResource DangerBrush}" StrokeThickness="1.5" />
+                                    </Button>
                                 </DockPanel>
 
                                 <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="240">
