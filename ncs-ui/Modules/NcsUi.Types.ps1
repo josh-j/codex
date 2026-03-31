@@ -132,21 +132,16 @@ function Get-NcsRemoteInventory {
     $inventory = $probe.StdOut | ConvertFrom-Json
     $groups = [System.Collections.Generic.List[hashtable]]::new()
 
-    foreach ($key in ($inventory.PSObject.Properties.Name | Sort-Object)) {
+    foreach ($key in @($inventory.PSObject.Properties.Name | Sort-Object)) {
         if ($key -eq '_meta' -or $key -eq 'all') { continue }
 
         $groupData = $inventory.$key
-        $hosts = @()
-        if ($groupData.PSObject.Properties.Name -contains 'hosts') {
-            $hosts = @($groupData.hosts)
-        }
+        if ($null -eq $groupData -or $null -eq $groupData.PSObject) { continue }
 
-        $children = @()
-        if ($groupData.PSObject.Properties.Name -contains 'children') {
-            $children = @($groupData.children)
-        }
+        $hosts = if ($groupData.PSObject.Properties.Name -contains 'hosts') { @($groupData.hosts) } else { @() }
+        $children = if ($groupData.PSObject.Properties.Name -contains 'children') { @($groupData.children) } else { @() }
 
-        if ($hosts.Count -eq 0 -and $children.Count -eq 0) { continue }
+        if (($hosts.Length + $children.Length) -eq 0) { continue }
 
         $group = @{ Group = $key; Items = [System.Collections.Generic.List[hashtable]]::new() }
 
