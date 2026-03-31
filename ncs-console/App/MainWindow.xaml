@@ -735,7 +735,6 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -746,22 +745,19 @@
                             <TextBlock Text="Connect" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Border x:Name="PreflightStateBadge" Grid.Column="1" Background="{StaticResource WarnSoftBrush}" CornerRadius="{StaticResource RadiusSm}" Padding="6,1" VerticalAlignment="Center" Margin="0,0,8,0">
-                        <TextBlock x:Name="PreflightStateText" Text="Not Connected" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="SemiBold" />
-                    </Border>
-                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="2" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="3" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
+                    <TextBlock x:Name="ConnectionInfoText" Grid.Column="1" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
+                    <Border x:Name="RunStateBorder" Grid.Column="2" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="4" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
-                    <StackPanel x:Name="ExitCodePanel" Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
+                    <StackPanel x:Name="ExitCodePanel" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
-                    <StackPanel x:Name="DurationPanel" Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
+                    <StackPanel x:Name="DurationPanel" Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>

@@ -1,5 +1,5 @@
 ---
-# internal.vmware.vcsa : tasks/stig/stig_service.yaml
+# internal.vmware.vcsa : tasks/stig_v1r4/stig_service.yaml
 # Included once per service from the stig orchestrator loop.
 
 - name: "VCSA STIG | Register target for callback ({{ _vcsa_service.name }})"
@@ -11,16 +11,16 @@
 
 - name: "VCSA STIG | Load {{ _vcsa_service.name }} defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/defaults/{{ _vcsa_service.name }}.yaml"
+    file: "{{ role_path }}/tasks/stig_v1r4/defaults/{{ _vcsa_service.name }}.yaml"
 
 - name: "VCSA STIG | Load {{ _vcsa_service.name }} vars"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/vars/{{ _vcsa_service.name }}.yaml"
+    file: "{{ role_path }}/tasks/stig_v1r4/vars/{{ _vcsa_service.name }}.yaml"
 
 - name: "VCSA STIG | Load {{ _vcsa_service.name }} STIG rules"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/vars/{{ _vcsa_service.name }}_stig_rules.yaml"
-  when: lookup('ansible.builtin.fileglob', role_path ~ '/vars/' ~ _vcsa_service.name ~ '_stig_rules.yaml') | length > 0
+    file: "{{ role_path }}/tasks/stig_v1r4/vars/{{ _vcsa_service.name }}_stig_rules.yaml"
+  when: lookup('ansible.builtin.fileglob', role_path ~ '/tasks/stig_v1r4/vars/' ~ _vcsa_service.name ~ '_stig_rules.yaml') | length > 0
 
 - name: "VCSA STIG | Run {{ _vcsa_service.name }}"
   ansible.builtin.include_tasks:

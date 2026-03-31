@@ -358,7 +358,7 @@
 
 - name: "VCLU-70-000011/000018/000029 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: lookup_catalina.properties
+    src: "{{ role_path }}/tasks/stig_v1r4/templates/lookup_catalina.properties"
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root
@@ -738,7 +738,7 @@
 
 - name: "VCLU-70-000028 | Deploy vmware-services-lookupsvc.conf"
   ansible.builtin.template:
-    src: vmware-services-lookupsvc.conf
+    src: "{{ role_path }}/tasks/stig_v1r4/templates/vmware-services-lookupsvc.conf"
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root

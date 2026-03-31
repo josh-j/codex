@@ -181,7 +181,7 @@
 
 - name: "VCLD-70-000008 | Deploy vmware-services-applmgmt.conf"
   ansible.builtin.template:
-    src: vmware-services-applmgmt.conf
+    src: "{{ role_path }}/tasks/stig_v1r4/templates/vmware-services-applmgmt.conf"
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root

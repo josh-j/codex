@@ -47,8 +47,6 @@ function Get-NcsXamlControlMap {
         "RemoteRepoPathTextBox",
         "SaveSettingsButton",
         "PreflightButton",
-        "PreflightStateBadge",
-        "PreflightStateText",
         "PreflightSummaryText",
         "PreflightListBox",
         "ActionTreeView",
@@ -325,16 +323,12 @@ function Set-NcsPreflightState {
         [string] $State
     )
 
-    $controls.PreflightStateText.Text = $State
-    $palette = switch ($State) {
-        "Connected" { @{ Background = "#182742"; Foreground = "#6e9fff" } }
-        "Passed"    { @{ Background = "#182742"; Foreground = "#6e9fff" } }
-        "Failed"    { @{ Background = "#381e24"; Foreground = "#f06478" } }
-        "Stale"     { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
-        default     { @{ Background = "#352a19"; Foreground = "#d6a24a" } }
+    $btnContent = $Controls.PreflightButton.Content
+    foreach ($child in @($btnContent.Children)) {
+        if ($child -is [System.Windows.Controls.TextBlock]) {
+            $child.Text = if ($State -eq "Connected") { "Disconnect" } else { "Connect" }
+        }
     }
-    $controls.PreflightStateBadge.Background = Get-NcsBrush -Color $palette.Background
-    $controls.PreflightStateText.Foreground = Get-NcsBrush -Color $palette.Foreground
 }
 
 function Update-NcsConnectionInfo {
@@ -567,9 +561,7 @@ function Show-NcsConsoleApp {
 
     $invalidatePreflight = {
         $state.PreflightResult = $null
-        $controls.PreflightSummaryText.Text = "Settings changed. Run preflight again."
-        $controls.PreflightSummaryText.Foreground = $neutralBrush
-        Set-NcsPreflightState -Controls $controls -State "Stale"
+        Set-NcsPreflightState -Controls $controls -State "Not Connected"
     }
 
     & $refreshPreview
@@ -827,6 +819,15 @@ function Show-NcsConsoleApp {
 
     $controls.PreflightButton.Add_Click({
         try {
+            if ($null -ne $state.PreflightResult -and $state.PreflightResult.IsReady) {
+                $state.PreflightResult = $null
+                Set-NcsPreflightState -Controls $controls -State "Not Connected"
+                $controls.ConnectionInfoText.Text = ""
+                $controls.StatusTextBlock.Text = "Disconnected."
+                $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
+                return
+            }
+
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
 
             if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) {
