@@ -244,19 +244,16 @@
                             <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Focusable="False" Cursor="Hand" OverridesDefaultStyle="True">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Padding="{StaticResource PaddingMd}">
+                                        <Border Background="Transparent" Padding="0,4">
                                             <ContentPresenter />
                                         </Border>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Path x:Name="ExpanderIcon" Grid.Column="0" Width="8" Height="8" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L10 8 L3 15" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" />
-                                </Grid>
+                                <DockPanel>
+                                    <Path x:Name="ExpanderIcon" DockPanel.Dock="Left" Width="6" Height="6" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M3 1 L10 8 L3 15" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <ContentPresenter DockPanel.Dock="Left" ContentSource="Header" VerticalAlignment="Center" />
+                                    <Border DockPanel.Dock="Right" Height="1" Background="{StaticResource BorderBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                </DockPanel>
                             </ToggleButton>
                             <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed" Margin="{StaticResource MarginGapSm}" />
                         </StackPanel>
