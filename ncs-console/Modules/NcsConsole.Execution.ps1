@@ -289,35 +289,60 @@ function Start-NcsRemoteCommand {
     $process.StartInfo = $psi
     $lines = [System.Collections.Generic.List[string]]::new()
     $pendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
-    $completed = [System.Threading.ManualResetEventSlim]::new($false)
     $startedAt = Get-Date
+    $stdoutState = [pscustomobject]@{
+        Reader = $null
+        Task   = $null
+        Closed = $false
+    }
+    $stderrState = [pscustomobject]@{
+        Reader = $null
+        Task   = $null
+        Closed = $false
+    }
 
-    # Use .NET Action delegates to avoid needing a PowerShell runspace on threadpool threads.
-    $outputAction = [System.Action[object, System.Diagnostics.DataReceivedEventArgs]]{
-        param($s, $e)
-        if ($null -ne $e.Data) {
-            $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $e.Data
-            $lines.Add($timestamped)
-            $pendingLines.Enqueue($timestamped)
+    $startRead = {
+        param($state)
+        if (-not $state.Closed -and $null -eq $state.Task) {
+            $state.Task = $state.Reader.ReadLineAsync()
         }
     }
-    $outputHandler = [System.Diagnostics.DataReceivedEventHandler]$outputAction
 
-    $exitAction = [System.Action[object, System.EventArgs]]{
-        param($s, $e)
-        $completed.Set()
+    $drainRead = {
+        param($state)
+        while ($null -ne $state.Task -and $state.Task.IsCompleted) {
+            $lineText = $state.Task.GetAwaiter().GetResult()
+            $state.Task = $null
+
+            if ($null -eq $lineText) {
+                $state.Closed = $true
+                break
+            }
+
+            $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $lineText
+            $lines.Add($timestamped)
+            $pendingLines.Enqueue($timestamped)
+            & $startRead $state
+        }
     }
-    $exitHandler = [System.EventHandler]$exitAction
 
     # DispatcherTimer drains pending output on the UI thread (no runspace needed).
     $drainTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $drainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
     $drainTimer.Add_Tick({
-        $line = $null
-        while ($pendingLines.TryDequeue([ref]$line)) {
-            if ($OnOutput) { & $OnOutput $line }
-        }
-        if ($completed.IsSet) {
+        try {
+            & $drainRead $stdoutState
+            & $drainRead $stderrState
+
+            $line = $null
+            while ($pendingLines.TryDequeue([ref]$line)) {
+                if ($OnOutput) { & $OnOutput $line }
+            }
+
+            if (-not ($process.HasExited -and $stdoutState.Closed -and $stderrState.Closed)) {
+                return
+            }
+
             $drainTimer.Stop()
             # Drain any remaining lines after process exit
             while ($pendingLines.TryDequeue([ref]$line)) {
@@ -338,35 +363,31 @@ function Start-NcsRemoteCommand {
             $result.OutputLines = $lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
 
-            $process.remove_OutputDataReceived($outputHandler)
-            $process.remove_ErrorDataReceived($outputHandler)
-            $process.remove_Exited($exitHandler)
             $process.Dispose()
-            $completed.Dispose()
 
             if ($OnCompleted) { & $OnCompleted $result }
+        } catch {
+            $drainTimer.Stop()
+            $process.Dispose()
+            throw
         }
     })
 
-    $process.EnableRaisingEvents = $true
-    $process.add_OutputDataReceived($outputHandler)
-    $process.add_ErrorDataReceived($outputHandler)
-    $process.add_Exited($exitHandler)
-
     try {
         [void] $process.Start()
+        $stdoutState.Reader = $process.StandardOutput
+        $stderrState.Reader = $process.StandardError
         if ($null -ne $askPassSecret) {
             $process.StandardInput.WriteLine($askPassSecret)
         } else {
             $process.StandardInput.WriteLine("")
         }
         $process.StandardInput.Close()
-        $process.BeginOutputReadLine()
-        $process.BeginErrorReadLine()
+        & $startRead $stdoutState
+        & $startRead $stderrState
         $drainTimer.Start()
     } catch {
         $drainTimer.Stop()
-        $completed.Dispose()
         $process.Dispose()
         throw
     }
@@ -388,5 +409,4 @@ function Stop-NcsRemoteCommand {
         $Handle.Process.Kill($true)
     }
 }
-
 
