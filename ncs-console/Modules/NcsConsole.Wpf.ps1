@@ -62,6 +62,7 @@ function Get-NcsXamlControlMap {
         "ActionOptionsPanel",
         "ActionScrollViewer",
         "ExtraArgsTextBox",
+        "MutatingWarning",
         "RunButton",
         "CancelButton",
         "CommandPreviewTextBox",
@@ -601,6 +602,19 @@ function Show-NcsConsoleApp {
         }
         $controls.ActionSelectionTitle.Text = $label
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
+        $isMutating = $false
+        if (-not [string]::IsNullOrWhiteSpace($playbook)) {
+            foreach ($group in $script:ActionGroups) {
+                foreach ($actionItem in $group.Items) {
+                    if ($actionItem['playbook'] -eq $playbook -and $actionItem.ContainsKey('mutating') -and $actionItem['mutating'] -eq $true) {
+                        $isMutating = $true
+                        break
+                    }
+                }
+                if ($isMutating) { break }
+            }
+        }
+        $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
         Update-NcsActionOptions -Controls $controls -ActionGroups $script:ActionGroups -Playbook $playbook
         & $refreshPreview
     })
