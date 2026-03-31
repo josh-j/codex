@@ -59,6 +59,7 @@ function Get-NcsXamlControlMap {
         "ActionLimitTreeBorder",
         "ActionLimitTreeScroll",
         "ActionTagsTextBox",
+        "ActionFilterTextBox",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
         "ActionVerbosityComboBox",
@@ -233,6 +234,7 @@ function Set-NcsRequestFromControls {
 
     $Request.Limit = $Controls.ActionLimitTextBox.Text.Trim()
     $Request.Tags = $Controls.ActionTagsTextBox.Text.Trim()
+    $Request.Filter = $Controls.ActionFilterTextBox.Text.Trim()
     $Request.CheckMode = $Controls.ActionCheckModeCheckBox.IsChecked
     $Request.Diff = $Controls.ActionDiffCheckBox.IsChecked
     $verbosity = [string] $Controls.ActionVerbosityComboBox.SelectedItem
@@ -644,6 +646,7 @@ function Show-NcsConsoleApp {
         $e.Handled = $true
     })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
+    $controls.ActionFilterTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
     $controls.ActionDiffCheckBox.Add_Checked({ & $refreshPreview })

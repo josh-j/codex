@@ -682,6 +682,8 @@
                                             </Border>
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
+                                            <TextBlock Text="Filter" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBox x:Name="ActionFilterTextBox" ToolTip="--filter task/role/host filter expression" />
                                             <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
                                             <CheckBox x:Name="ActionDiffCheckBox" Content="Show diff" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBlock Text="Verbosity" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
