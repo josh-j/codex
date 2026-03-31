@@ -40,7 +40,7 @@ Targeted STIG entrypoints:
 ## Supported Interface
 
 - `internal.vmware.vcsa`: `ncs_action: collect`; STIG via `ncs_profile: stig`
-- `internal.vmware.esxi`: `ncs_action: collect`; STIG via `ncs_profile: stig`; maintenance via `ncs_operation: rotate_password|password_status`
+- `internal.vmware.esxi`: `ncs_action: collect`; STIG via `ncs_profile: stig`; maintenance via `ncs_operation: password_rotate|password_status`
 - `internal.vmware.vm`: `ncs_action: collect`; STIG via `ncs_profile: stig`; snapshot via `ncs_operation: snapshot`
 
 Unsupported interface combinations fail early with an explicit assertion instead of a task-file lookup error.

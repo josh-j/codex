@@ -31,12 +31,12 @@
           - collect
         _ncs_allowed_operations:
           - password_status
-          - rotate_password
+          - password_rotate
         _ncs_extra_validations:
-          - (_ncs_requested_operation != 'rotate_password') or (_ncs_requested_action == 'remediate')
+          - (_ncs_requested_operation != 'password_rotate') or (_ncs_requested_action == 'remediate')
           - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
         _dispatch_map:
           collect: collect
           password_status: password_status
-          rotate_password: rotate_password
+          password_rotate: password_rotate
           _default_: stig
