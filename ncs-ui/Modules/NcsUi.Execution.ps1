@@ -223,7 +223,7 @@ function Find-NcsDetectedPaths {
         [string[]] $Lines
     )
 
-    $matches = foreach ($line in $Lines) {
+    $pathMatches = foreach ($line in $Lines) {
         if ([string]::IsNullOrWhiteSpace($line)) {
             continue
         }
@@ -233,7 +233,7 @@ function Find-NcsDetectedPaths {
         }
     }
 
-    return $matches | Sort-Object -Unique
+    return $pathMatches | Sort-Object -Unique
 }
 
 function Start-NcsRemoteCommand {
@@ -278,12 +278,12 @@ function Start-NcsRemoteCommand {
     $startedAt = Get-Date
 
     $outputHandler = [System.Diagnostics.DataReceivedEventHandler]{
-        param($sender, $eventArgs)
-        if ($null -eq $eventArgs.Data) {
+        param($s, $e)
+        if ($null -eq $e.Data) {
             return
         }
 
-        $timestamped = "[{0}] {1}" -f (Get-Date -Format "HH:mm:ss"), $eventArgs.Data
+        $timestamped = "[{0}] {1}" -f (Get-Date -Format "HH:mm:ss"), $e.Data
         $lines.Add($timestamped)
         if ($OnOutput) {
             & $OnOutput $timestamped
@@ -291,7 +291,7 @@ function Start-NcsRemoteCommand {
     }
 
     $completedHandler = [System.EventHandler]{
-        param($sender, $eventArgs)
+        param($s, $e)
         $process.WaitForExit()
         if ($lines.Count -gt $script:MaxOutputLines) {
             $lines.RemoveRange(0, $lines.Count - $script:MaxOutputLines)
