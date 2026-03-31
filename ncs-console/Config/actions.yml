@@ -107,7 +107,7 @@
 - group: Windows
   actions:
     - label: Audit
-      playbook: windows/audit.yml
+      playbook: windows/collect.yml
     - label: STIG Audit
       playbook: windows/stig_audit.yml
     - label: STIG Remediate

@@ -21,7 +21,7 @@
 
 # Phase 3b: Windows Fleet Audit
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/audit.yml
+  ansible.builtin.import_playbook: windows/collect.yml
 
 # Phase 3c: Windows Health Check
 - name: "Phase 3c: Windows System Health Check"

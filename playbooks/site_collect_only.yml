@@ -12,7 +12,7 @@
   ansible.builtin.import_playbook: ubuntu/collect.yml
 
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/audit.yml
+  ansible.builtin.import_playbook: windows/collect.yml
 
 - name: "Phase 3c: Windows System Health Check"
   ansible.builtin.import_playbook: windows/health.yml
