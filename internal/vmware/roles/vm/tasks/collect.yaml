@@ -2,12 +2,7 @@
 # internal.vmware.vm : tasks/collect.yaml
 # Collects VM workload data: datacenters, VMs, snapshots.
 
-- name: VM Collect | Save caller role path
-  ansible.builtin.set_fact:
-    _caller_role_path: "{{ role_path }}"
-  changed_when: false
-
-- name: VM Collect | Initialize Collection State
+- name: VM Collect
   block:
     - name: VM Collect | Bootstrap shared collection state
       ansible.builtin.include_role:
@@ -19,15 +14,82 @@
           _raw_vms: {}
           _raw_snapshots: {}
 
-    - name: VM Collect | Inventory State
-      ansible.builtin.include_tasks: collect/inventory.yaml
-      tags: [collect, inventory]
+    - name: Inventory | Query Datacenters
+      community.vmware.vmware_datacenter_info:
+      register: _raw_datacenters
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+
+    - name: Inventory | Extract Datacenter list
+      ansible.builtin.set_fact:
+        _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
+      changed_when: false
+
+    - name: Inventory | Query Workload (VMs)
+      community.vmware.vmware_vm_info:
+        vm_type: vm
+        show_attribute: true
+        show_tag: true
+      register: _raw_vms
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vm_collect_workload | default(true) | bool
+
+    - name: Inventory | Query Snapshots
+      community.vmware.vmware_all_snapshots_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_snapshots
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vm_collect_snapshots | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
 
   always:
-    - name: Finalize VM collection state
-      ansible.builtin.include_role:
-        name: internal.vmware.common
-        tasks_from: finalize_collection
-      vars:
-        vmware_collection_assemble_task: "{{ _caller_role_path }}/tasks/collect/assemble.yaml"
-        vmware_collection_export_task: "{{ _caller_role_path }}/tasks/collect/export.yaml"
+    - name: Assemble flat VM workload payload
+      ansible.builtin.set_fact:
+        vmware_raw_vm:
+          datacenters: "{{ (_raw_datacenters | default({})).datacenter_info | default([]) }}"
+          vms_info_raw: "{{ _raw_vms | default({}) }}"
+          virtual_machines: "{{ (_raw_vms | default({})).virtual_machines | default([]) }}"
+          vm_count: "{{ ((_raw_vms | default({})).virtual_machines | default([])) | length }}"
+          snapshots_raw: >-
+            {{
+              _raw_snapshots.results | default([])
+              | selectattr('vmware_all_snapshots_info', 'defined')
+              | map(attribute='vmware_all_snapshots_info')
+              | flatten | list
+            }}
+          snapshot_count: >-
+            {{
+              _raw_snapshots.results | default([])
+              | selectattr('vmware_all_snapshots_info', 'defined')
+              | map(attribute='vmware_all_snapshots_info')
+              | flatten | list | length
+            }}
+          infra_patterns: "{{ (vcenter | default({})).config.infrastructure_vm_patterns | default([]) }}"
+          config: "{{ vcenter.config | default({}) }}"
+      changed_when: false
+      no_log: true
+
+    - name: "VM | Emit collection telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect_vm:
+            platform_dir: "vmware/vm"
+            report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
+            payload: "{{ vmware_raw_vm }}"
+            config:
+              vmware_snapshot_age_warning_days: "{{ vmware_snapshot_age_warning_days | default(7) }}"
+              vmware_snapshot_size_warning_gb: "{{ vmware_snapshot_size_warning_gb | default(100) }}"
+        per_host: true
+      when: vmware_raw_vm is defined
+      changed_when: false
+      no_log: true
