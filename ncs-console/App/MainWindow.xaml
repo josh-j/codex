@@ -750,18 +750,18 @@
                         <TextBlock x:Name="PreflightStateText" Text="Not Connected" Foreground="{StaticResource WarnBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="SemiBold" />
                     </Border>
                     <TextBlock x:Name="ConnectionInfoText" Grid.Column="2" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="3" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
+                    <Border x:Name="RunStateBorder" Grid.Column="3" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
                     <TextBlock x:Name="StatusTextBlock" Grid.Column="4" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
-                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                    <StackPanel x:Name="ExitCodePanel" Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>
-                    <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                    <StackPanel x:Name="DurationPanel" Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Duration:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="DurationTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
                     </StackPanel>

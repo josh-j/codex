@@ -77,7 +77,9 @@ function Get-NcsXamlControlMap {
         "ConsoleToggleButton",
         "ConsoleShowButton",
         "StatusTextBlock",
+        "ExitCodePanel",
         "ExitCodeTextBlock",
+        "DurationPanel",
         "DurationTextBlock",
         "RunStateBorder",
         "SshKeyPathPanel",
@@ -823,6 +825,50 @@ function Show-NcsConsoleApp {
     $controls.PreflightButton.Add_Click({
         try {
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
+
+            if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and [string]::IsNullOrWhiteSpace($state.Settings.SshKeyPassphrase)) {
+                $inputBox = [System.Windows.Window]::new()
+                $inputBox.Title = "SSH Key Passphrase"
+                $inputBox.Width = 350
+                $inputBox.Height = 140
+                $inputBox.WindowStartupLocation = "CenterOwner"
+                $inputBox.Owner = $window
+                $inputBox.WindowStyle = "ToolWindow"
+                $inputBox.ResizeMode = "NoResize"
+                $inputBox.Background = Get-NcsBrush -Color "#181b1f"
+                $sp = [System.Windows.Controls.StackPanel]::new()
+                $sp.Margin = [System.Windows.Thickness]::new(12)
+                $label = [System.Windows.Controls.TextBlock]::new()
+                $label.Text = "Enter passphrase for SSH key:"
+                $label.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
+                $sp.Children.Add($label) | Out-Null
+                $pwBox = [System.Windows.Controls.PasswordBox]::new()
+                $pwBox.Background = Get-NcsBrush -Color "#1e2228"
+                $pwBox.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $pwBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $pwBox.Padding = [System.Windows.Thickness]::new(6,4,6,4)
+                $sp.Children.Add($pwBox) | Out-Null
+                $okBtn = [System.Windows.Controls.Button]::new()
+                $okBtn.Content = "OK"
+                $okBtn.Width = 70
+                $okBtn.Margin = [System.Windows.Thickness]::new(0,8,0,0)
+                $okBtn.HorizontalAlignment = "Right"
+                $okBtn.Add_Click({ $inputBox.DialogResult = $true })
+                $sp.Children.Add($okBtn) | Out-Null
+                $inputBox.Content = $sp
+                $pwBox.Focus() | Out-Null
+
+                $result = $inputBox.ShowDialog()
+                if ($result -eq $true -and -not [string]::IsNullOrWhiteSpace($pwBox.Password)) {
+                    $state.Settings.SshKeyPassphrase = $pwBox.Password
+                    $controls.SshKeyPassphraseBox.Password = $pwBox.Password
+                } else {
+                    $controls.StatusTextBlock.Text = "Passphrase required for SSH key."
+                    return
+                }
+            }
+
             $controls.PreflightListBox.ItemsSource = $null
             $controls.PreflightListBox.Visibility = "Collapsed"
             $controls.PreflightSummaryText.Text = "Running preflight..."
