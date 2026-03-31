@@ -617,7 +617,7 @@
 
                     <Grid x:Name="OperateContent" Grid.Column="2">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
@@ -625,13 +625,13 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
                                     <TextBlock DockPanel.Dock="Left" Text="Target" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
                                 </DockPanel>
-                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="180">
+                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}">
                                     <ScrollViewer x:Name="TargetScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
                                         <TreeView x:Name="TargetTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
@@ -679,7 +679,7 @@
                                     </Button>
                                 </DockPanel>
 
-                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Height="240">
+                                <Border Grid.Row="1" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}">
                                     <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
                                         <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                     </ScrollViewer>
