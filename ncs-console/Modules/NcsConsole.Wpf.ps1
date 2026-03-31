@@ -47,6 +47,7 @@ function Get-NcsXamlControlMap {
         "RemoteRepoPathTextBox",
         "SaveSettingsButton",
         "PreflightButton",
+        "PreflightButtonText",
         "ActionTreeView",
         "ActionPropertiesPanel",
         "ActionSelectionTitle",
@@ -321,11 +322,14 @@ function Set-NcsPreflightState {
         [string] $State
     )
 
-    $btnContent = $Controls.PreflightButton.Content
-    foreach ($child in @($btnContent.Children)) {
-        if ($child -is [System.Windows.Controls.TextBlock]) {
-            $child.Text = if ($State -eq "Connected") { "Disconnect" } else { "Connect" }
-        }
+    if ($State -eq "Connected") {
+        $Controls.PreflightButtonText.Text = "Disconnect"
+        $Controls.PreflightButton.Background = Get-NcsBrush -Color "#16825d"
+        $Controls.PreflightButton.ToolTip = "Disconnect from remote host"
+    } else {
+        $Controls.PreflightButtonText.Text = "Connect"
+        $Controls.PreflightButton.Background = Get-NcsBrush -Color "#6e9fff"
+        $Controls.PreflightButton.ToolTip = "Connect to remote host"
     }
 }
 
