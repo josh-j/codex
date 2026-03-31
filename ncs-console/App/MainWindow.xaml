@@ -615,7 +615,6 @@
                                     <TextBlock Text="Save" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <ListBox x:Name="PreflightListBox" Visibility="Collapsed" BorderThickness="0" Background="{StaticResource PanelBrush}" Foreground="{StaticResource TextBrush}" ItemTemplate="{StaticResource PreflightItemTemplate}" />
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
