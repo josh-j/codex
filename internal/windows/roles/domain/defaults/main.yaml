@@ -1,0 +1,19 @@
+---
+# internal.windows.domain : defaults/main.yaml
+
+# Domain controller to query (required)
+domain_dc_hostname: ""
+domain_username: ""
+domain_password: ""
+
+# AD query defaults
+domain_search_base: ""
+domain_search_scope: subtree
+
+# Stale account thresholds
+domain_stale_computer_days: 90
+domain_stale_user_days: 90
+
+# DNS/DHCP
+domain_dns_zones: []
+domain_dhcp_server: ""

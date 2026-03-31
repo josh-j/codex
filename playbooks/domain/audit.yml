@@ -1,0 +1,18 @@
+---
+# playbooks/domain/audit.yml
+# Run AD summary audit against domain controllers.
+#
+# Usage:
+#   ansible-playbook playbooks/domain/audit.yml -l domain_controllers
+
+- name: "Domain | AD Audit"
+  hosts: "{{ domain_target_hosts | default('domain_controllers') }}"
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  roles:
+    - role: internal.windows.domain
+      vars:
+        ncs_action: audit
