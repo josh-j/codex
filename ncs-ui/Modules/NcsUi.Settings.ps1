@@ -41,7 +41,7 @@ function ConvertTo-NcsUiSettings {
 
     $settings = [NcsUiSettings]::new()
 
-    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "RemoteVaultPath", "DefaultSite", "DefaultAnsibleHost", "LastAction")) {
+    foreach ($property in @("SshHost", "SshPort", "SshUser", "SshAuthMode", "SshKeyPath", "RemoteRepoPath", "RemoteVaultPath", "LastAction")) {
         if ($InputObject.PSObject.Properties.Name -contains $property) {
             $settings.$property = $InputObject.$property
         }
@@ -101,8 +101,6 @@ function Save-NcsUiSettings {
         SshKeyPath      = $Settings.SshKeyPath
         RemoteRepoPath  = $Settings.RemoteRepoPath
         RemoteVaultPath = $Settings.RemoteVaultPath
-        DefaultSite     = $Settings.DefaultSite
-        DefaultAnsibleHost = $Settings.DefaultAnsibleHost
         LastAction      = $Settings.LastAction
     } | ConvertTo-Json -Depth 4
 

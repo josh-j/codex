@@ -25,7 +25,6 @@ function Get-NcsXamlControlMap {
     foreach ($name in @(
         "TitleBarDragRegion",
         "TitleBarTitleText",
-        "TitleBarSubtitleText",
         "SettingsToggleButton",
         "SettingsCloseButton",
         "SettingsPanel",
@@ -67,7 +66,6 @@ function Get-NcsXamlControlMap {
         "CopyOutputButton",
         "ExportOutputButton",
         "ConsoleTextBox",
-        "ConsoleHintText",
         "ConsolePane",
         "ConsoleSplitter",
         "ConsoleToggleButton",
@@ -126,6 +124,23 @@ function Build-NcsTreeView {
             $groupItem.Items.Add($leafItem) | Out-Null
         }
         $tree.Items.Add($groupItem) | Out-Null
+    }
+}
+
+function Resolve-NcsTargetLimit {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [NcsActionRequest] $Request
+    )
+
+    $targetLimit = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "TargetTreeView"
+    if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
+        $Request.Site = $targetLimit
+    } else {
+        $Request.Site = $Controls.SiteTextBox.Text.Trim()
+        $Request.Host = $Controls.HostTextBox.Text.Trim()
     }
 }
 
@@ -286,8 +301,8 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     $Controls.RemoteVaultPathTextBox.Text = $Settings.RemoteVaultPath
-    if ($Controls.SiteTextBox) { $Controls.SiteTextBox.Text = "" }
-    if ($Controls.HostTextBox) { $Controls.HostTextBox.Text = "" }
+    $Controls.SiteTextBox.Text = ""
+    $Controls.HostTextBox.Text = ""
     $targetPlaybook = $Settings.LastAction
     $found = $false
     if (-not [string]::IsNullOrWhiteSpace($targetPlaybook)) {
@@ -369,13 +384,7 @@ function Update-NcsCommandPreview {
     } else {
         try {
             $request = [NcsActionRequest]::new($playbook)
-            $targetLimit = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "TargetTreeView"
-            if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
-                $request.Site = $targetLimit
-            } else {
-                $request.Site = $Controls.SiteTextBox.Text.Trim()
-                $request.Host = $Controls.HostTextBox.Text.Trim()
-            }
+            Resolve-NcsTargetLimit -Controls $Controls -Request $request
             $request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
             $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
             $Controls.CommandPreviewTextBox.Text = $preview
@@ -682,15 +691,9 @@ function Show-NcsUiApp {
             }
 
             $request = [NcsActionRequest]::new($selectedPlaybook)
-            $targetLimit = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "TargetTreeView"
-            if (-not [string]::IsNullOrWhiteSpace($targetLimit)) {
-                $request.Site = $targetLimit
-            } else {
-                $request.Site = $controls.SiteTextBox.Text.Trim()
-                $request.Host = $controls.HostTextBox.Text.Trim()
-            }
+            Resolve-NcsTargetLimit -Controls $controls -Request $request
             $request.ExtraArgs = $controls.ExtraArgsTextBox.Text.Trim()
-            $handle = Invoke-NcsAction -Settings $state.Settings -Request $request `
+            $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)
                     $window.Dispatcher.Invoke([action]{

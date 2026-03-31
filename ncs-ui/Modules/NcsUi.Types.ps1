@@ -15,8 +15,6 @@ class NcsUiSettings {
     [string] $SshPassword = ""
     [string] $RemoteRepoPath = "~/ansible-ncs"
     [string] $RemoteVaultPath = ".vaultpass"
-    [string] $DefaultSite = ""
-    [string] $DefaultAnsibleHost = ""
     [string] $LastAction = ""
 
     NcsUiSettings() {

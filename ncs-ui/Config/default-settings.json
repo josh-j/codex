@@ -6,7 +6,5 @@
   "SshKeyPath": "",
   "RemoteRepoPath": "~/ansible-ncs",
   "RemoteVaultPath": ".vaultpass",
-  "DefaultSite": "",
-  "DefaultAnsibleHost": "",
-  "LastAction": "RunAll"
+  "LastAction": ""
 }
