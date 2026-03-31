@@ -125,17 +125,14 @@
         msg: "Discovery failed on {{ inventory_hostname }}. State will reflect defaults only."
 
 - name: Ubuntu | Emit discovery telemetry
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform_dir: "{{ _ncs_platform_dir | default('linux/ubuntu') }}"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload: "{{ ubuntu_raw_discovery | default({}) }}"
-        config:
-          ubuntu_memory_warning_pct: "{{ ubuntu_memory_warning_pct | default(95) }}"
-          ubuntu_storage_warning_pct: "{{ ubuntu_storage_warning_pct | default(90) }}"
-          ubuntu_load_warning_threshold: "{{ ubuntu_load_warning_threshold | default(15) }}"
-          ubuntu_updates_critical_threshold: "{{ ubuntu_updates_critical_threshold | default(50) }}"
-    per_host: true
-  when: not (ubuntu_skip_export | default(false) | bool)
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "{{ _ncs_platform_dir | default('linux/ubuntu') }}"
+    _ncs_emit_payload: "{{ ubuntu_raw_discovery | default({}) }}"
+    _ncs_emit_skip: "{{ ubuntu_skip_export | default(false) }}"
+    _ncs_emit_config:
+      ubuntu_memory_warning_pct: "{{ ubuntu_memory_warning_pct | default(95) }}"
+      ubuntu_storage_warning_pct: "{{ ubuntu_storage_warning_pct | default(90) }}"
+      ubuntu_load_warning_threshold: "{{ ubuntu_load_warning_threshold | default(15) }}"
+      ubuntu_updates_critical_threshold: "{{ ubuntu_updates_critical_threshold | default(50) }}"
