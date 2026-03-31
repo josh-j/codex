@@ -911,9 +911,17 @@ function Show-NcsConsoleApp {
             }
             $script:CurrentReportPath = $RelativePath
             $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
+            $reportDir = [System.IO.Path]::GetDirectoryName($RelativePath) -replace '\\', '/'
+            $baseUrl = "ncsreport://host/$reportDir/"
+            if ([string]::IsNullOrWhiteSpace($reportDir)) { $baseUrl = "ncsreport://host/" }
+            if ($probe.StdOut -match '(?i)<head(?:\s[^>]*)?>') {
+                $html = $probe.StdOut -replace '(?i)<head([^>]*)>', "<head`$1><base href=`"$baseUrl`" />"
+            } else {
+                $html = "<head><base href=`"$baseUrl`" /></head>$($probe.StdOut)"
+            }
             $controls.ReportPlaceholder.Visibility = "Collapsed"
             $controls.ReportBrowser.Visibility = "Visible"
-            $controls.ReportBrowser.NavigateToString($probe.StdOut)
+            $controls.ReportBrowser.NavigateToString($html)
         } else {
             $controls.ReportPlaceholder.Text = "Report not found: $RelativePath"
             $controls.ReportPlaceholder.Visibility = "Visible"
@@ -977,20 +985,11 @@ function Show-NcsConsoleApp {
         if ($null -eq $uri) { return }
         if ($uri.Scheme -eq "about") { return }
         $e.Cancel = $true
-        $path = $uri.LocalPath
-        if ($path.StartsWith("/srv/samba/reports/")) {
-            $relative = $path.Substring("/srv/samba/reports/".Length)
-        } elseif (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath)) {
-            $currentDir = [System.IO.Path]::GetDirectoryName($script:CurrentReportPath) -replace '\\', '/'
-            if ([string]::IsNullOrWhiteSpace($currentDir)) {
-                $relative = $path.TrimStart('/')
-            } else {
-                $relative = "$currentDir/$($path.TrimStart('/'))"
-            }
-        } else {
-            $relative = $path.TrimStart('/')
+        if ($uri.Scheme -eq "ncsreport") {
+            $relative = [System.Uri]::UnescapeDataString($uri.AbsolutePath.TrimStart('/'))
+            if ($relative.EndsWith('/')) { return }
+            & $loadReport $relative
         }
-        & $loadReport $relative
     })
 
     $controls.PreflightButton.Add_Click({
