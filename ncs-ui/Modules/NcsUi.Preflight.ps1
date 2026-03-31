@@ -153,7 +153,7 @@ function Test-NcsRemotePreflight {
         $check = New-NcsPreflightCheck -Name $meta.Name -Passed $passed -Message $message
         $result.Checks.Add($check)
         if (-not $passed) {
-            $result.BlockingIssues.Add("{0}: {1}" -f $meta.Name, $message)
+            $result.BlockingIssues.Add("$($meta.Name): $message")
         }
     }
 

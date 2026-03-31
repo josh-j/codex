@@ -48,7 +48,7 @@ class NcsPreflightCheck {
 
     [string] ToString() {
         $prefix = if ($this.Passed) { "[OK]" } else { "[FAIL]" }
-        return "{0} {1} - {2}" -f $prefix, $this.Name, $this.Message
+        return "$prefix $($this.Name) - $($this.Message)"
     }
 }
 
