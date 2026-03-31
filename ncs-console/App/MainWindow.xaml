@@ -751,7 +751,7 @@
                             <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" />
+                    <TextBlock x:Name="StatusTextBlock" Grid.Column="3" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="{StaticResource MarginStatusItem}" />
                     <StackPanel x:Name="ExitCodePanel" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />
