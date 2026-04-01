@@ -166,6 +166,60 @@ INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_be
 MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uninstall",
     "patch", "fix", "enable", "service", "remove", "delete"}
 NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
+
+def parse_ncs_frontmatter(path):
+    ncs_lines = []
+    with open(path) as fh:
+        for raw in fh:
+            s = raw.rstrip()
+            if s.strip().startswith("# ncs:") or (ncs_lines and s.strip().startswith("#")):
+                txt = s.strip()
+                ncs_lines.append(txt[2:] if txt.startswith("# ") else txt[1:])
+            elif s.strip() == "#" and ncs_lines:
+                ncs_lines.append("")
+            elif not s.strip().startswith("#"):
+                break
+    if not ncs_lines:
+        return None
+    try:
+        data = yaml.safe_load("\n".join(ncs_lines))
+        return data.get("ncs") if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+def build_item(playbook, label, mutating=False, options=None):
+    item = {"Label": label, "playbook": playbook}
+    if mutating:
+        item["mutating"] = True
+    if options:
+        item["options"] = options
+    return item
+
+def fallback_label(f, play=None):
+    if play and isinstance(play, dict):
+        name = play.get("name", "")
+        label = re.sub(r"^[^|]+\|\s*", "", name).strip() if name else ""
+        label = re.sub(r"^Phase\s+\d+\w*:\s*", "", label).strip()
+        if label and "{{" not in label:
+            return label
+    return f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
+
+def fallback_options(play):
+    if not play or not isinstance(play, dict):
+        return []
+    pvars = play.get("vars", {})
+    if not isinstance(pvars, dict):
+        return []
+    opts = []
+    for k, v in pvars.items():
+        if k in INTERNAL_VARS or k.startswith(("ansible_", "ncs_", "_")):
+            continue
+        dv = str(v) if v is not None else ""
+        if "{{" in dv:
+            continue
+        opts.append({"name": k, "label": k.replace("_", " ").title(), "default": dv})
+    return opts
+
 base = "playbooks"
 groups = {}
 for root, dirs, files in os.walk(base):
@@ -177,7 +231,7 @@ for root, dirs, files in os.walk(base):
         if not f.endswith((".yml", ".yaml")) or f.startswith("_"):
             continue
         path = os.path.join(root, f)
-        playbook = os.path.relpath(path, base)
+        playbook = os.path.relpath(path, base).replace(os.sep, "/")
         try:
             with open(path) as fh:
                 docs = yaml.safe_load(fh)
@@ -189,32 +243,27 @@ for root, dirs, files in os.walk(base):
             is_import = any(k.endswith("import_playbook") for k in play)
         except Exception:
             continue
-        if is_import:
-            label = f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
+        ncs = parse_ncs_frontmatter(path)
+        if ncs and "profiles" in ncs:
+            for prof in ncs["profiles"]:
+                lbl = prof.get("label", fallback_label(f, play))
+                mut = prof.get("mutating", False)
+                opts = prof.get("options", [])
+                op = prof.get("operation")
+                if op:
+                    opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
+                groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
+        elif ncs:
+            lbl = ncs.get("label", fallback_label(f, None if is_import else play))
+            mut = ncs.get("mutating", False)
+            opts = ncs.get("options", [])
+            groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
         else:
-            name = play.get("name", "")
-            label = re.sub(r"^[^|]+\|\s*", "", name).strip() if name else ""
-            label = re.sub(r"^Phase\s+\d+\w*:\s*", "", label).strip()
-            if not label or "{{" in label:
-                label = f.replace(".yml", "").replace(".yaml", "").replace("_", " ").title()
-        stem = os.path.splitext(f)[0]
-        mutating = any(k in stem for k in MUTATING_KEYWORDS)
-        options = []
-        pvars = play.get("vars", {}) if not is_import else {}
-        if isinstance(pvars, dict):
-            for k, v in pvars.items():
-                if k in INTERNAL_VARS or k.startswith(("ansible_", "ncs_", "_")):
-                    continue
-                dv = str(v) if v is not None else ""
-                if "{{" in dv:
-                    continue
-                options.append({"name": k, "label": k.replace("_", " ").title(), "default": dv})
-        item = {"Label": label, "playbook": playbook.replace(os.sep, "/")}
-        if mutating:
-            item["mutating"] = True
-        if options:
-            item["options"] = options
-        groups.setdefault(grp, []).append(item)
+            lbl = fallback_label(f, None if is_import else play)
+            stem = os.path.splitext(f)[0]
+            mut = any(k in stem for k in MUTATING_KEYWORDS)
+            opts = fallback_options(play) if not is_import else []
+            groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
 order = ["Fleet"] + sorted(k for k in groups if k != "Fleet")
 print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups]))
 '@
@@ -245,80 +294,35 @@ function Merge-NcsActionGroups {
         $RemoteGroups
     )
 
-    # Build a lookup from actions.yml keyed by playbook path
-    $configLookup = @{}
-    foreach ($group in $ConfigGroups) {
+    # Remote-first: use the remote scan as-is.
+    # Config is only used to add entries whose playbook wasn't found remotely.
+    $remotePlaybooks = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($group in $RemoteGroups) {
         foreach ($item in $group.Items) {
-            $pb = $item['playbook']
-            if (-not $configLookup.ContainsKey($pb)) {
-                $configLookup[$pb] = $item
-            }
+            [void] $remotePlaybooks.Add($item['playbook'])
         }
     }
 
-    # Collect all config entries, keyed by playbook+operation for run.yml variants
-    $configEntries = [System.Collections.Generic.List[hashtable]]::new()
-    $multiOpPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
-    $opCount = @{}
-    foreach ($group in $ConfigGroups) {
-        foreach ($item in $group.Items) {
-            $pb = $item['playbook']
-            if (-not $opCount.ContainsKey($pb)) { $opCount[$pb] = 0 }
-            $opCount[$pb]++
-            $configEntries.Add(@{ Item = $item; Group = $group.Group; Playbook = $pb })
-        }
-    }
-    foreach ($pb in $opCount.Keys) {
-        if ($opCount[$pb] -gt 1) { [void] $multiOpPlaybooks.Add($pb) }
-    }
-    $seenPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
-
-    # Start from remote scan, enrich with config
     $merged = [System.Collections.Generic.List[hashtable]]::new()
     $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
-
     foreach ($group in $RemoteGroups) {
-        $items = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($remoteItem in $group.Items) {
-            $pb = $remoteItem['playbook']
-            [void] $seenPlaybooks.Add($pb)
-            if ($multiOpPlaybooks.Contains($pb)) {
-                # Skip bare remote entry; config variants will be added below
-                continue
-            }
-            if ($configLookup.ContainsKey($pb)) {
-                $cfg = $configLookup[$pb]
-                if ($cfg.ContainsKey('Label')) { $remoteItem['Label'] = $cfg['Label'] }
-                if ($cfg.ContainsKey('mutating') -and $cfg['mutating'] -eq $true) { $remoteItem['mutating'] = $true }
-                if ($cfg.ContainsKey('options')) { $remoteItem['options'] = $cfg['options'] }
-            }
-            $items.Add($remoteItem)
-        }
-        if ($items.Count -gt 0) {
-            $merged.Add(@{ Group = $group.Group; Items = $items })
-            [void] $mergedGroupNames.Add($group.Group)
-        }
+        $merged.Add($group)
+        [void] $mergedGroupNames.Add($group.Group)
     }
 
-    # Add config entries whose playbook was seen remotely but has multiple operations,
-    # or whose playbook wasn't found remotely at all
-    foreach ($entry in $configEntries) {
-        $pb = $entry.Playbook
-        if (-not $multiOpPlaybooks.Contains($pb) -and $seenPlaybooks.Contains($pb)) { continue }
-        $groupName = $entry.Group
-        $item = $entry.Item
-        if ($mergedGroupNames.Contains($groupName)) {
-            foreach ($g in $merged) {
-                if ($g.Group -eq $groupName) {
-                    $g.Items.Add($item)
-                    break
+    foreach ($group in $ConfigGroups) {
+        foreach ($item in $group.Items) {
+            if ($remotePlaybooks.Contains($item['playbook'])) { continue }
+            if ($mergedGroupNames.Contains($group.Group)) {
+                foreach ($g in $merged) {
+                    if ($g.Group -eq $group.Group) { $g.Items.Add($item); break }
                 }
+            } else {
+                $newItems = [System.Collections.Generic.List[hashtable]]::new()
+                $newItems.Add($item)
+                $merged.Add(@{ Group = $group.Group; Items = $newItems })
+                [void] $mergedGroupNames.Add($group.Group)
             }
-        } else {
-            $newItems = [System.Collections.Generic.List[hashtable]]::new()
-            $newItems.Add($item)
-            $merged.Add(@{ Group = $groupName; Items = $newItems })
-            [void] $mergedGroupNames.Add($groupName)
         }
     }
 

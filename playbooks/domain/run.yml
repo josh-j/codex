@@ -1,10 +1,61 @@
+# ncs:
+#   profiles:
+#     - label: AD Summary
+#       operation: collect
+#     - label: User Search
+#       operation: user_search
+#       options:
+#         - name: domain_search_filter
+#           label: Filter
+#           default: "*"
+#     - label: Group Search
+#       operation: group_search
+#       options:
+#         - name: domain_search_filter
+#           label: Filter
+#           default: "*"
+#     - label: Computer Search
+#       operation: computer_search
+#       options:
+#         - name: domain_search_filter
+#           label: Filter
+#           default: "*"
+#     - label: OU Search
+#       operation: ou_search
+#       options:
+#         - name: domain_search_filter
+#           label: Filter
+#           default: "*"
+#     - label: Group Membership
+#       operation: group_membership
+#       options:
+#         - name: domain_group_name
+#           label: Group Name
+#     - label: Privileged Groups
+#       operation: privileged_groups
+#     - label: Stale Accounts
+#       operation: stale_accounts
+#       options:
+#         - name: domain_stale_computer_days
+#           label: Computer Days
+#           default: "90"
+#         - name: domain_stale_user_days
+#           label: User Days
+#           default: "90"
+#     - label: Password Policy
+#       operation: password_policy
+#     - label: GPO Audit
+#       operation: gpo_audit
+#     - label: DNS Zones
+#       operation: dns_zones
+#     - label: DHCP Scopes
+#       operation: dhcp_scopes
+#       options:
+#         - name: domain_dhcp_server
+#           label: DHCP Server
+#     - label: Domain Trusts
+#       operation: domain_trusts
 ---
-# playbooks/domain/run.yml
-# Generic domain role runner — driven by ncs_action and ncs_operation.
-#
-# Usage:
-#   ansible-playbook playbooks/domain/run.yml -e 'ncs_operation=privileged_groups'
-#   ansible-playbook playbooks/domain/run.yml -e 'ncs_operation=stale_accounts'
 
 - name: "Domain | {{ ncs_operation | default('collect') }}"
   hosts: "{{ domain_target_hosts | default('windows_servers') }}"
