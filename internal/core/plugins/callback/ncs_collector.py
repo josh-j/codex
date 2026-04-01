@@ -225,13 +225,16 @@ def _load_platforms_from_schema_dir(schema_dir: str) -> list[dict[str, Any]]:
         if "schema_name" not in platform_block:
             platform_block["schema_name"] = schema.get("name", filename.replace(".yaml", "").replace(".yml", ""))
 
-        # Extract STIG target_types from rule_prefix_to_platform if not already set
+        # Extract STIG target_types from config if not already set
         if "target_types" not in platform_block:
             stig_cfg = schema.get("stig", {})
             if isinstance(stig_cfg, dict):
                 r2p = stig_cfg.get("rule_prefix_to_platform", {})
+                p2c = stig_cfg.get("platform_to_checklist", {})
                 if isinstance(r2p, dict) and r2p:
                     platform_block["target_types"] = sorted(set(r2p.values()))
+                elif isinstance(p2c, dict) and p2c:
+                    platform_block["target_types"] = sorted(p2c.keys())
 
         platforms.append(platform_block)
 
