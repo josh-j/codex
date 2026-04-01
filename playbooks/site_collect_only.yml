@@ -9,10 +9,10 @@
   ansible.builtin.import_playbook: vmware/collect.yml
 
 - name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: ubuntu/collect.yml
+  ansible.builtin.import_playbook: linux/ubuntu/collect.yml
 
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/collect.yml
+  ansible.builtin.import_playbook: windows/server/collect.yml
 
 - name: "Phase 3c: Windows System Health Check"
-  ansible.builtin.import_playbook: windows/health.yml
+  ansible.builtin.import_playbook: windows/server/health.yml

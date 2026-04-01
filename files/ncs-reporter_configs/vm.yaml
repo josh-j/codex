@@ -4,7 +4,7 @@ config:
   platform: vmware/vm
   stig:
     ansible_playbook:
-      path: "playbooks/vm/stig_remediate.yml"
+      path: "playbooks/vmware/vm/stig_remediate.yml"
       target_var: "vm_stig_target_vms"
     platform_to_checklist:
       vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
