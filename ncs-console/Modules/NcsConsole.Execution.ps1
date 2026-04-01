@@ -342,6 +342,7 @@ function Start-NcsRemoteCommand {
         StartedAt    = $startedAt
     }
 
+    $script:NcsTickCount = 0
     $tickHandler = {
         param($sender, $eventArgs)
         try {
@@ -349,6 +350,16 @@ function Start-NcsRemoteCommand {
             if ($null -eq $execState) {
                 $sender.Stop()
                 return
+            }
+
+            $script:NcsTickCount++
+            if ($script:NcsTickCount -eq 1) {
+                $dbg = "[ncs-debug] Tick #1: HasExited=$($execState.Process.HasExited) StdoutClosed=$($execState.StdoutClosed.IsSet) StderrClosed=$($execState.StderrClosed.IsSet) QueueCount=$($execState.PendingLines.Count)"
+                $execState.PendingLines.Enqueue($dbg)
+            }
+            if ($script:NcsTickCount -eq 50) {
+                $dbg = "[ncs-debug] Tick #50: HasExited=$($execState.Process.HasExited) StdoutClosed=$($execState.StdoutClosed.IsSet) StderrClosed=$($execState.StderrClosed.IsSet) QueueCount=$($execState.PendingLines.Count) LinesCollected=$($execState.Lines.Count)"
+                $execState.PendingLines.Enqueue($dbg)
             }
 
             $line = $null

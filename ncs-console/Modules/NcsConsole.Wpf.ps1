@@ -1260,6 +1260,9 @@ function Show-NcsConsoleApp {
 
             $request = [NcsActionRequest]::new($selectedPlaybook)
             Set-NcsRequestFromControls -Controls $controls -Request $request
+            $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
+            Add-NcsConsoleLine -Controls $controls -Line "[ncs] > $playCmd"
+            Add-NcsConsoleLine -Controls $controls -Line "[ncs] Starting SSH process..."
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)
@@ -1279,7 +1282,7 @@ function Show-NcsConsoleApp {
                         $state.CurrentHandle = $null
                         Set-NcsIdleUiState -Controls $controls
                         Set-NcsRunStateBadge -Controls $controls -State $(if ($runResult.Succeeded) { "Succeeded" } else { "Failed" })
-                        Add-NcsConsoleLine -Controls $controls -Line ("--- Exit code: $($runResult.ExitCode) | Lines: $($runResult.OutputLines.Length) | Duration: $(Format-NcsDuration -Duration $runResult.Duration) ---")
+                        Add-NcsConsoleLine -Controls $controls -Line "[ncs] --- Exit code: $($runResult.ExitCode) | Lines: $($runResult.OutputLines.Length) | Duration: $(Format-NcsDuration -Duration $runResult.Duration) ---"
                         $controls.RunMetaText.Text = $runResult.Action
                         $controls.StatusTextBlock.Text = if ($runResult.Succeeded) { "Run completed successfully." } else { "Run failed." }
                         $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
@@ -1295,13 +1298,14 @@ function Show-NcsConsoleApp {
                         [void] $window.Dispatcher.BeginInvoke($updateUi)
                     }
                 }
+            Add-NcsConsoleLine -Controls $controls -Line "[ncs] SSH process started (PID: $($handle.Process.Id), HasExited: $($handle.Process.HasExited))"
+            Add-NcsConsoleLine -Controls $controls -Line "[ncs] Timer started, waiting for output..."
             $state.CurrentHandle = $handle
-            $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
-            Add-NcsConsoleLine -Controls $controls -Line ("> $playCmd")
             $controls.CommandPreviewTextBox.Text = $playCmd
             $controls.CommandPreviewTextBox.Visibility = "Visible"
             $durationTimer.Start()
         } catch {
+            Add-NcsConsoleLine -Controls $controls -Line "[ncs] ERROR: $($_.Exception.Message)"
             Set-NcsIdleUiState -Controls $controls
             Set-NcsRunStateBadge -Controls $controls -State "Blocked"
             $controls.StatusTextBlock.Text = $_.Exception.Message
