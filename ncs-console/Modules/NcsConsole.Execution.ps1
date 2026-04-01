@@ -429,7 +429,9 @@ function Stop-NcsRemoteCommand {
         $script:NcsActiveExecutionState = $null
     }
 
-    if ($Handle.Process -and -not $Handle.Process.HasExited) {
-        $Handle.Process.Kill($true)
-    }
+    try {
+        if ($Handle.Process -and -not $Handle.Process.HasExited) {
+            $Handle.Process.Kill($true)
+        }
+    } catch {}
 }
