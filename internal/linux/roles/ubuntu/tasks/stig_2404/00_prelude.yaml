@@ -7,7 +7,7 @@
 
 - name: "Ubuntu STIG | Load STIG defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_2404/default.yaml"
+    file: "{{ _ncs_task_root }}/stig_2404/default.yaml"
   tags:
     - always
 

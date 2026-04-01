@@ -5,8 +5,8 @@
   ansible.builtin.include_vars:
     file: "{{ item }}"
   loop:
-    - "{{ role_path }}/tasks/stig_photon3/stig.yaml"
-    - "{{ role_path }}/tasks/stig_photon3/vars.yaml"
+    - "{{ _ncs_task_root }}/stig_photon3/stig.yaml"
+    - "{{ _ncs_task_root }}/stig_photon3/vars.yaml"
 
 - name: "Set NCS STIG target type to photon"
   ansible.builtin.set_fact:

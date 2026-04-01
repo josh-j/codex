@@ -54,7 +54,7 @@
 
 - name: "VCST-70-000011/000018/000028/000029 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: "{{ role_path }}/tasks/stig_v1r4/templates/sts_catalina.properties"
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/sts_catalina.properties"
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root
@@ -318,7 +318,7 @@
 
 - name: "VCST-70-000050 | Deploy vmware-services-sso-services.conf"
   ansible.builtin.template:
-    src: "{{ role_path }}/tasks/stig_v1r4/templates/vmware-services-sso-services.conf"
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/vmware-services-sso-services.conf"
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root

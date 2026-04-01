@@ -198,7 +198,7 @@
 # --- 270662 skeleton config (must precede sssd service start) ---
 - name: "stigrule_270662_sssd_conf_skeleton"
   ansible.builtin.template:
-    src: "{{ role_path }}/tasks/stig_2404/templates/sssd.conf.j2"
+    src: "{{ _ncs_task_root }}/stig_2404/templates/sssd.conf.j2"
     dest: /etc/sssd/sssd.conf
     owner: root
     group: root
