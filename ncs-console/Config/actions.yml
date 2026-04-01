@@ -85,6 +85,12 @@
         - name: rotate_user
           label: Username
           default: root
+        - name: rotate_password
+          label: New Password (blank = use vault)
+        - name: rotate_force_change
+          label: Force Password Change at Login
+          type: bool
+          default: "false"
     - label: Password Status
       playbook: vcsa/password_status.yml
 
@@ -144,6 +150,12 @@
         - name: rotate_user
           label: Username
           default: root
+        - name: rotate_password
+          label: New Password (blank = use vault)
+        - name: rotate_force_change
+          label: Force Password Change at Login
+          type: bool
+          default: "true"
     - label: Rotate Passwords (Bulk)
       playbook: ubuntu/rotate_passwords.yml
       mutating: true
@@ -151,6 +163,8 @@
         - name: user_name
           label: Username
           default: admin
+        - name: new_password
+          label: New Password
     - label: Password Status
       playbook: ubuntu/password_status.yml
 
@@ -472,6 +486,12 @@
         - name: rotate_user
           label: Username
           default: root
+        - name: rotate_password
+          label: New Password (blank = use vault)
+        - name: rotate_force_change
+          label: Force Password Change at Login
+          type: bool
+          default: "true"
     - label: Password Status
       playbook: photon/password_status.yml
 
