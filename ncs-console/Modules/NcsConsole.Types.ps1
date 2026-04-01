@@ -167,28 +167,74 @@ MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uni
     "patch", "fix", "enable", "service", "remove", "delete"}
 NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
 
-def parse_ncs_frontmatter(path):
-    ncs_lines = []
-    found = False
+def parse_option_line(key, value):
+    """Parse compact option: 'name: type[choices] = default | label'"""
+    opt = {"name": key}
+    m = re.match(r'^(text|bool|select)(?:\[([^\]]+)\])?\s*(?:=\s*([^|]+))?\s*(?:\|\s*(.+))?$', value.strip())
+    if m:
+        typ, choices, default, label = m.groups()
+        if typ and typ != "text":
+            opt["type"] = typ
+        if choices:
+            opt["choices"] = [c.strip() for c in choices.split(",")]
+        if default:
+            opt["default"] = default.strip()
+        if label:
+            opt["label"] = label.strip()
+        else:
+            opt["label"] = key.replace("_", " ").title()
+    else:
+        parts = value.split("|", 1)
+        if len(parts) == 2:
+            opt["default"] = parts[0].strip()
+            opt["label"] = parts[1].strip()
+        elif value.strip():
+            opt["default"] = value.strip()
+            opt["label"] = key.replace("_", " ").title()
+        else:
+            opt["label"] = key.replace("_", " ").title()
+    return opt
+
+def parse_ncs_blocks(path):
+    """Parse all # >>> / # <<< blocks from comment header."""
+    blocks = []
+    current = None
     with open(path) as fh:
         for raw in fh:
             s = raw.rstrip()
-            if not found and s.strip() == "# ncs:":
-                found = True
+            stripped = s.strip()
+            if stripped == "# >>>":
+                current = []
                 continue
-            if found and s.strip().startswith("#"):
-                txt = s.strip()
-                ncs_lines.append(txt[2:] if txt.startswith("# ") else txt[1:])
-            elif found:
+            if stripped == "# <<<":
+                if current is not None:
+                    blocks.append(current)
+                current = None
+                continue
+            if current is not None and stripped.startswith("#"):
+                txt = stripped[2:] if stripped.startswith("# ") else stripped[1:]
+                current.append(txt)
+            elif current is None and not stripped.startswith("#") and stripped != "":
                 break
-            elif not s.strip().startswith("#") and s.strip() != "":
-                break
-    if not ncs_lines:
-        return None
-    try:
-        return yaml.safe_load("\n".join(ncs_lines))
-    except Exception:
-        return None
+    result = []
+    for lines in blocks:
+        try:
+            data = yaml.safe_load("\n".join(lines))
+            if not isinstance(data, dict):
+                continue
+            block = {}
+            if "label" in data:
+                block["label"] = data["label"]
+            if data.get("mutating"):
+                block["mutating"] = True
+            if "operation" in data:
+                block["operation"] = data["operation"]
+            if "options" in data and isinstance(data["options"], dict):
+                block["options"] = [parse_option_line(k, str(v) if v is not None else "") for k, v in data["options"].items()]
+            result.append(block)
+        except Exception:
+            continue
+    return result if result else None
 
 def build_item(playbook, label, mutating=False, options=None):
     item = {"Label": label, "playbook": playbook}
@@ -246,21 +292,16 @@ for root, dirs, files in os.walk(base):
             is_import = any(k.endswith("import_playbook") for k in play)
         except Exception:
             continue
-        ncs = parse_ncs_frontmatter(path)
-        if ncs and "profiles" in ncs:
-            for prof in ncs["profiles"]:
-                lbl = prof.get("label", fallback_label(f, play))
-                mut = prof.get("mutating", False)
-                opts = prof.get("options", [])
-                op = prof.get("operation")
+        blocks = parse_ncs_blocks(path)
+        if blocks:
+            for blk in blocks:
+                lbl = blk.get("label", fallback_label(f, None if is_import else play))
+                mut = blk.get("mutating", False)
+                opts = blk.get("options", [])
+                op = blk.get("operation")
                 if op:
                     opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
                 groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
-        elif ncs:
-            lbl = ncs.get("label", fallback_label(f, None if is_import else play))
-            mut = ncs.get("mutating", False)
-            opts = ncs.get("options", [])
-            groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
         else:
             lbl = fallback_label(f, None if is_import else play)
             stem = os.path.splitext(f)[0]

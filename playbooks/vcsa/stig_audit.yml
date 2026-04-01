@@ -1,9 +1,7 @@
-# ncs:
+# >>>
 # options:
-#   - name: vcsa_stig_include_photon
-#     label: Include Photon Baseline
-#     type: bool
-#     default: "false"
+#   vcsa_stig_include_photon: bool = false | Include Photon Baseline
+# <<<
 ---
 # playbooks/vcsa/stig_audit.yml
 - name: "Phase 2a: VCSA STIG Audit"
