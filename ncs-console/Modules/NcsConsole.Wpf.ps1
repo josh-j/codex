@@ -325,7 +325,8 @@ function Update-NcsActionOptions {
                 $checkBox.FontSize = 11
                 $checkBox.Margin = [System.Windows.Thickness]::new(0, 4, 0, 0)
                 if ($opt.ContainsKey('default')) {
-                    $checkBox.IsChecked = ($opt['default'] -eq 'true')
+                    $dv = $opt['default']
+                    $checkBox.IsChecked = ($dv -eq $true -or $dv -eq 'true' -or $dv -eq 'yes')
                 }
                 $Controls.ActionOptionsPanel.Children.Add($checkBox) | Out-Null
             }
