@@ -327,7 +327,7 @@ stig-audit-esxi-site site:
     tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 14
 
@@ -338,7 +338,7 @@ stig-audit-esxi-site-inv site inv:
     tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inv }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 10
 
@@ -419,7 +419,7 @@ stig-harden-esxi-site site:
     tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/esxi/stig_remediate.yml \
         -l vcsa-{{ site }} -e "@$tmpfile"
 
@@ -430,7 +430,7 @@ stig-harden-esxi-site-inv site inv:
     tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inv }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hosts=d.get(g,{}).get("hosts",[]); hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_remediate.yml \
         -l vcsa-{{ site }} -e "@$tmpfile"
 
