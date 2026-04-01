@@ -1,5 +1,5 @@
 # >>>
-# read_only: true
+# is_read_only: true
 # label: Collect
 # options:
 #   esxi_collect_per_host: bool = true | Per-Host Health
