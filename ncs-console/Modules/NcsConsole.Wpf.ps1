@@ -848,6 +848,16 @@ function Show-NcsConsoleApp {
 
         try {
             $reportViewState.IsInitializing = $true
+
+            # Verify the runtime is actually detectable
+            try {
+                $rtVersion = [Microsoft.Web.WebView2.Core.CoreWebView2Environment]::GetAvailableBrowserVersionString()
+            } catch {
+                $reportViewState.IsInitializing = $false
+                $script:NcsWebView2Status = "WebView2 Runtime not detected. Run: winget install Microsoft.EdgeWebView2Runtime --scope user"
+                return $false
+            }
+
             if (-not (Test-Path -LiteralPath $state.WebViewUserDataRoot)) {
                 [System.IO.Directory]::CreateDirectory($state.WebViewUserDataRoot) | Out-Null
             }
@@ -855,7 +865,7 @@ function Show-NcsConsoleApp {
             $null = $reportViewState.Control.EnsureCoreWebView2Async($environment)
         } catch {
             $reportViewState.IsInitializing = $false
-            $script:NcsWebView2Status = "WebView2 Evergreen Runtime not installed. Run: winget install Microsoft.EdgeWebView2Runtime"
+            $script:NcsWebView2Status = "WebView2 init failed (runtime $rtVersion): $($_.Exception.Message)"
         }
 
         return $false
