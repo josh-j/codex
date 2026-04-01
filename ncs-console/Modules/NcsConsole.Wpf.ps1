@@ -511,7 +511,36 @@ function Sync-NcsControlsFromSettings {
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
 }
 
-$script:ConsoleCharCount = 0
+$script:ConsoleLineCount = 0
+
+function Get-NcsLineColor {
+    param([string] $Line)
+
+    $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*', ''
+
+    if ($text -match '^\s*(fatal|FAILED|ERROR)' -or $text -match '\bFAILED\b' -or $text -match '\bunreachable=\d*[1-9]') {
+        return "#f47067"
+    }
+    if ($text -match '^\s*(changed):|changed=\d*[1-9]') {
+        return "#d4a72c"
+    }
+    if ($text -match '^\s*(skipping):|skipped=\d*[1-9]' -or $text -match '\[WARNING\]') {
+        return "#d4a72c"
+    }
+    if ($text -match '^(PLAY|TASK) \[') {
+        return "#6cb6ff"
+    }
+    if ($text -match '^PLAY RECAP') {
+        return "#6cb6ff"
+    }
+    if ($text -match '^\s*ok:' -or $text -match '\bok=\d*[1-9]') {
+        return "#57ab5a"
+    }
+    if ($text -match '^>' -or $text -match '^---') {
+        return "#8e939c"
+    }
+    return $null
+}
 
 function Add-NcsConsoleLine {
     param(
@@ -521,14 +550,34 @@ function Add-NcsConsoleLine {
         [string] $Line
     )
 
-    $appendText = $Line + [Environment]::NewLine
-    $Controls.ConsoleTextBox.AppendText($appendText)
-    $script:ConsoleCharCount += $appendText.Length
-    if ($script:ConsoleCharCount -gt 2000000) {
-        $text = $Controls.ConsoleTextBox.Text
-        $Controls.ConsoleTextBox.Text = $text.Substring($text.Length - 1600000)
-        $script:ConsoleCharCount = 1600000
+    $doc = $Controls.ConsoleTextBox.Document
+    $para = [System.Windows.Documents.Paragraph]::new()
+
+    if ($Line -match '^(\[\d{2}:\d{2}:\d{2}\])\s*(.*)$') {
+        $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
+        $tsRun.Foreground = Get-NcsBrush -Color "#555b66"
+        $para.Inlines.Add($tsRun)
+        $bodyText = $Matches[2]
+    } else {
+        $bodyText = $Line
     }
+
+    $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
+    $color = Get-NcsLineColor -Line $Line
+    if ($null -ne $color) {
+        $bodyRun.Foreground = Get-NcsBrush -Color $color
+    }
+    $para.Inlines.Add($bodyRun)
+    $doc.Blocks.Add($para)
+
+    $script:ConsoleLineCount++
+    if ($script:ConsoleLineCount -gt 10000) {
+        while ($doc.Blocks.Count -gt 8000) {
+            $doc.Blocks.Remove($doc.Blocks.FirstBlock)
+        }
+        $script:ConsoleLineCount = $doc.Blocks.Count
+    }
+
     $Controls.ConsoleTextBox.ScrollToEnd()
 }
 
@@ -1144,7 +1193,9 @@ function Show-NcsConsoleApp {
             if ($preflight.IsReady) {
                 Set-NcsPreflightState -Controls $controls -State "Connected"
                 if (-not [string]::IsNullOrWhiteSpace($preflight.Banner)) {
-                    $controls.ConsoleTextBox.AppendText($preflight.Banner + [Environment]::NewLine + [Environment]::NewLine)
+                    foreach ($bannerLine in ($preflight.Banner -split "`n")) {
+                        Add-NcsConsoleLine -Controls $controls -Line $bannerLine.TrimEnd()
+                    }
                 }
                 $statusParts = @("Connected.")
                 try {
@@ -1240,8 +1291,8 @@ function Show-NcsConsoleApp {
                 throw "Run preflight successfully before starting a remote action."
             }
 
-            $controls.ConsoleTextBox.Clear()
-            $script:ConsoleCharCount = 0
+            $controls.ConsoleTextBox.Document.Blocks.Clear()
+            $script:ConsoleLineCount = 0
             $controls.DetectedPathsListBox.ItemsSource = $null
             $controls.DetectedPathsPanel.Visibility = "Collapsed"
             $controls.ExitCodeTextBlock.Text = "-"
@@ -1325,9 +1376,15 @@ function Show-NcsConsoleApp {
         }
     })
 
+    $getConsoleText = {
+        $doc = $controls.ConsoleTextBox.Document
+        $range = [System.Windows.Documents.TextRange]::new($doc.ContentStart, $doc.ContentEnd)
+        return $range.Text
+    }
+
     $controls.CopyOutputButton.Add_Click({
         try {
-            $text = $controls.ConsoleTextBox.Text
+            $text = & $getConsoleText
             if ([string]::IsNullOrWhiteSpace($text)) {
                 $controls.StatusTextBlock.Text = "Nothing to copy."
                 return
@@ -1346,7 +1403,7 @@ function Show-NcsConsoleApp {
         $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
         $dialog.FileName = "ncs-console-$actionTag-$timestamp.txt"
         if ($dialog.ShowDialog()) {
-            Set-Content -LiteralPath $dialog.FileName -Value $controls.ConsoleTextBox.Text -Encoding UTF8
+            Set-Content -LiteralPath $dialog.FileName -Value (& $getConsoleText) -Encoding UTF8
             $controls.StatusTextBlock.Text = "Output exported to $($dialog.FileName)."
         }
     })
