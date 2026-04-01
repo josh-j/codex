@@ -127,7 +127,13 @@ function Import-NcsGroupedConfig {
         }
 
         if ($inOptions -and $null -ne $currentOption -and $line -match '^\s{8,12}(\w+):\s*(.+)$') {
-            $currentOption[$Matches[1].Trim()] = $Matches[2].Trim()
+            $key = $Matches[1].Trim()
+            $rawVal = $Matches[2].Trim()
+            if ($key -eq 'choices' -and $rawVal -match '^\[(.+)\]$') {
+                $currentOption[$key] = @($Matches[1] -split ',' | ForEach-Object { $_.Trim() })
+            } else {
+                $currentOption[$key] = $rawVal
+            }
             continue
         }
 
