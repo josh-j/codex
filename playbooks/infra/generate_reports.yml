@@ -15,8 +15,7 @@
   vars:
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
-    _groups_json: "{{ _platform_root }}/inventory_groups.json"
-    _platforms_config: "{{ playbook_dir }}/../../files/ncs-reporter_configs/platforms.yaml"
+    _config_dir: "{{ playbook_dir }}/../../files/ncs-reporter_configs"
 
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
 
@@ -27,12 +26,6 @@
         state: directory
         mode: "0755"
 
-    - name: Dump inventory groups for reporter
-      ansible.builtin.copy:
-        content: "{{ groups | to_json }}"
-        dest: "{{ _groups_json }}"
-        mode: "0644"
-
     - name: Run Unified Reporting Engine (ncs-reporter all)
       block:
         - name: Execute NCS reporter CLI
@@ -41,11 +34,8 @@
               ncs-reporter all
               --platform-root "{{ _platform_root }}"
               --reports-root "{{ _reports_root }}"
-              --groups "{{ _groups_json }}"
               --report-stamp "{{ report_stamp }}"
-              --config-dir "{{ playbook_dir }}/../../files/ncs-reporter_configs"
-          environment:
-            NCS_PLATFORMS_CONFIG: "{{ _platforms_config }}"
+              --config-dir "{{ _config_dir }}"
           register: _reporter_result
           changed_when: _reporter_result.rc == 0
 
