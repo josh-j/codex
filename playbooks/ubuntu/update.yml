@@ -1,5 +1,4 @@
 # >>>
-# mutating: true
 # options:
 #   ubuntu_enable_upgrade_reboots: bool = true | Allow Reboot
 # <<<

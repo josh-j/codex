@@ -163,8 +163,8 @@ SKIP_DIRS = {"templates", "test", "roles", "__pycache__"}
 INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_become",
     "ansible_become_method", "ansible_user", "ansible_host", "ansible_port",
     "gather_facts", "connection", "become", "become_method", "become_user"}
-MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uninstall",
-    "patch", "fix", "enable", "service", "remove", "delete"}
+READ_ONLY_KEYWORDS = {"collect", "audit", "health", "status", "search", "scan", "report",
+    "verify", "discover", "summary"}
 NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
 
 def auto_label(key):
@@ -204,19 +204,18 @@ def parse_option_line(key, value):
     return opt
 
 def parse_ncs_blocks(path):
-    """Parse all # >>> / # <<< blocks from comment header."""
-    blocks = []
+    """Parse # >>> / # <<< blocks. Entries within a block separated by # ---."""
+    raw_blocks = []
     current = None
     with open(path) as fh:
         for raw in fh:
-            s = raw.rstrip()
-            stripped = s.strip()
+            stripped = raw.strip()
             if stripped == "# >>>":
                 current = []
                 continue
             if stripped == "# <<<":
                 if current is not None:
-                    blocks.append(current)
+                    raw_blocks.append(current)
                 current = None
                 continue
             if current is not None and stripped.startswith("#"):
@@ -224,8 +223,20 @@ def parse_ncs_blocks(path):
                 current.append(txt)
             elif current is None and not stripped.startswith("#") and stripped != "":
                 break
+    segments = []
+    for lines in raw_blocks:
+        segment = []
+        for line in lines:
+            if line.strip() == "---":
+                if segment:
+                    segments.append(segment)
+                segment = []
+            else:
+                segment.append(line)
+        if segment:
+            segments.append(segment)
     result = []
-    for lines in blocks:
+    for lines in segments:
         try:
             data = yaml.safe_load("\n".join(lines))
             if not isinstance(data, dict):
@@ -233,7 +244,7 @@ def parse_ncs_blocks(path):
             block = {}
             if "label" in data:
                 block["label"] = data["label"]
-            if data.get("mutating"):
+            if not data.get("read_only"):
                 block["mutating"] = True
             if "operation" in data:
                 block["operation"] = data["operation"]
@@ -313,7 +324,7 @@ for root, dirs, files in os.walk(base):
         else:
             lbl = fallback_label(f, None if is_import else play)
             stem = os.path.splitext(f)[0]
-            mut = any(k in stem for k in MUTATING_KEYWORDS)
+            mut = not any(k in stem for k in READ_ONLY_KEYWORDS)
             opts = fallback_options(play) if not is_import else []
             groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
 order = ["Fleet"] + sorted(k for k in groups if k != "Fleet")

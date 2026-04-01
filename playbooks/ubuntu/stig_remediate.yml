@@ -1,5 +1,4 @@
 # >>>
-# mutating: true
 # options:
 #   ubuntu_stig_enable_hardening: bool = false | Enable Hardening
 # <<<

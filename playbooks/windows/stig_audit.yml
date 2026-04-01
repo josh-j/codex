@@ -1,4 +1,5 @@
 # >>>
+# read_only: true
 # options:
 #   windows_stig_native_checks_only: bool = false | Native Checks Only
 # <<<

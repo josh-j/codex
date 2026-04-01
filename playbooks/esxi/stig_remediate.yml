@@ -1,5 +1,4 @@
 # >>>
-# mutating: true
 # options:
 #   esxi_stig_enable_ssh_checks: bool = true | SSH Checks
 # <<<

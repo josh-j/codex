@@ -1,5 +1,4 @@
 # >>>
-# mutating: true
 # options:
 #   vcsa_stig_include_photon: bool = false | Include Photon Baseline
 #   vcsa_stig_create_backups: bool = true | Create Backups
