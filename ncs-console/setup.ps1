@@ -32,17 +32,12 @@ $tempDir = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "ncs-con
 try {
     New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
 
-    # Use Register-PackageSource + Install-Package (standard NuGet provider)
-    $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
-    if ($null -eq $nugetProvider) {
-        Write-Host "Installing NuGet package provider..."
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
-    }
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
 
     Write-Host "Downloading $PackageName $WebView2Version..."
     Install-Package -Name $PackageName -RequiredVersion $WebView2Version `
         -Source "https://www.nuget.org/api/v2" -ProviderName NuGet `
-        -Destination $tempDir -Force -SkipDependencies | Out-Null
+        -Destination $tempDir -Force -ForceBootstrap -SkipDependencies | Out-Null
 
     $pkgDir = Join-Path -Path $tempDir -ChildPath "$PackageName.$WebView2Version"
 
