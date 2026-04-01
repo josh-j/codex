@@ -79,7 +79,7 @@
 
 - name: "{{ _ncs_role_label }} | Set pre-dispatch facts"
   ansible.builtin.set_fact: "{{ _ncs_pre_dispatch_facts }}"
-  when: _ncs_pre_dispatch_facts is defined and _ncs_pre_dispatch_facts
+  when: _ncs_pre_dispatch_facts is defined and (_ncs_pre_dispatch_facts | length > 0)
   changed_when: false
 
 - name: "{{ _ncs_role_label }} | Resolve dispatch key"
