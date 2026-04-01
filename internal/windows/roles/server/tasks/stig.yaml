@@ -7,7 +7,7 @@
   vars:
     _ncs_stig_label: "Windows STIG"
     _ncs_stig_target_type: "windows"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_ws2022/main.yaml"
+    _ncs_stig_task_file: "{{ _ncs_task_root }}/stig_ws2022/main.yaml"
     _ncs_stig_compat_facts:
       windows_stig_enable_audit: "{{ windows_enable_stig_audit | default(windows_stig_enable_audit) | default(true) }}"
       windows_stig_enable_hardening: "{{ windows_enable_stig_hardening | default(windows_stig_enable_hardening) | default(false) }}"
