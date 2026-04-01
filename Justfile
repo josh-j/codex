@@ -592,10 +592,10 @@ vault-view:
 init-samba:
     {{ ansible_playbook }} playbooks/infra/setup_samba.yml
 
-# Clean up all temporary build/cache artifacts
+# Clean up all temporary build/cache artifacts (including symlinked collections)
 clean:
     rm -rf .mypy_cache .ruff_cache .pytest_cache .coverage
-    find . -type d -name "__pycache__" -exec rm -rf {} +
+    bash scripts/clean_pycache.sh
     find . -type d -name ".artifacts" -exec rm -rf {} +
 
 # Deep clean including venvs and vcsa collections
