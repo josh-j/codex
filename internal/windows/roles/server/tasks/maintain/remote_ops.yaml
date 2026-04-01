@@ -84,17 +84,13 @@
   changed_when: false
 
 - name: "Remote Ops | Emit telemetry"
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "remote_ops"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          operation: "{{ windows_remote_op }}"
-          logoff: "{{ _logoff_result.output[0] | default('[]') | from_json }}"
-          gpupdate: "{{ _gpupdate_result.output[0] | default('{}') | from_json }}"
-          message: "{{ _message_result.output[0] | default('{}') | from_json }}"
-          uptime: "{{ _uptime_result.output[0] | default('{}') | from_json }}"
-    per_host: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/remote_ops"
+    _ncs_emit_payload:
+      operation: "{{ windows_remote_op }}"
+      logoff: "{{ _logoff_result.output[0] | default('[]') | from_json }}"
+      gpupdate: "{{ _gpupdate_result.output[0] | default('{}') | from_json }}"
+      message: "{{ _message_result.output[0] | default('{}') | from_json }}"
+      uptime: "{{ _uptime_result.output[0] | default('{}') | from_json }}"

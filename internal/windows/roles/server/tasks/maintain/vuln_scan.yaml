@@ -85,15 +85,11 @@
 
   always:
     - name: "Vuln Scan | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "windows"
-            name: "vuln_scan"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              results: "{{ _vuln_scan_result.output[0] | default('{}') | from_json }}"
-              scan_file: "{{ windows_vuln_scan_file }}"
-              scan_failed: "{{ _vuln_scan_failed | bool }}"
-        per_host: true
-      changed_when: false
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/vuln_scan"
+        _ncs_emit_payload:
+          results: "{{ _vuln_scan_result.output[0] | default('{}') | from_json }}"
+          scan_file: "{{ windows_vuln_scan_file }}"
+          scan_failed: "{{ _vuln_scan_failed | bool }}"

@@ -6,7 +6,7 @@ readme: README.md
 authors:
   - ncs
 description: Windows auditing and reporting roles.
-license: ["GPL-3.0-or-later"]
+license: ["proprietary"]
 tags:
   - windows
   - security

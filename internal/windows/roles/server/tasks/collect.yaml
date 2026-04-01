@@ -1,14 +1,13 @@
 ---
-# internal.windows.server : tasks/audit.yaml
-# Full Windows audit: applications, health, and telemetry in one pass.
+# internal.windows.server : tasks/collect.yaml
 
-- name: Windows Audit Orchestrator
+- name: Windows Collection Orchestrator
   vars:
-    _windows_audit_failed: false
+    _discover_failed: false
   block:
     - name: Run Application Checks
       ansible.builtin.include_tasks: checks/applications.yaml
-      tags: ["audit", "applications"]
+      tags: [audit, applications]
 
     - name: Run Health Checks
       ansible.builtin.include_tasks: checks/health/os_info.yaml
@@ -60,13 +59,13 @@
       when: windows_audit_force_update | default(false) | bool
       tags: ["update", "configmgr"]
   rescue:
-    - name: Mark Windows audit as failed
+    - name: Mark discovery as failed
       ansible.builtin.set_fact:
-        _windows_audit_failed: true
+        _discover_failed: true
       changed_when: false
 
   always:
-    - name: Assemble flat audit payload
+    - name: Assemble flat discovery payload
       ansible.builtin.set_fact:
         _win_raw_payload:
           # CCMExec service
@@ -99,17 +98,19 @@
           # KB status
           kb_detection: "{{ _kb_detection | default([]) }}"
           kb_install_results: "{{ _kb_install_results | default([]) }}"
-          audit_failed: "{{ _windows_audit_failed | bool }}"
+          audit_failed: "{{ _discover_failed | bool }}"
       changed_when: false
 
-    - name: Windows | Emit audit telemetry
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform_dir: "windows"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload: "{{ _win_raw_payload }}"
-            config:
-              windows_audit_force_update: "{{ windows_audit_force_update | default(false) }}"
-        per_host: true
-      changed_when: false
+    - name: "Windows | Emit discovery telemetry"
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows"
+        _ncs_emit_payload: "{{ _win_raw_payload | default({}) }}"
+        _ncs_emit_skip: "{{ windows_skip_export | default(false) }}"
+        _ncs_emit_config:
+          windows_audit_force_update: "{{ windows_audit_force_update | default(false) }}"
+          windows_health_disk_warning_pct: "{{ windows_health_disk_warning_pct | default(80) }}"
+          windows_health_disk_critical_pct: "{{ windows_health_disk_critical_pct | default(90) }}"
+          windows_health_memory_warning_pct: "{{ windows_health_memory_warning_pct | default(85) }}"
+          windows_health_memory_critical_pct: "{{ windows_health_memory_critical_pct | default(95) }}"
