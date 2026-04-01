@@ -16,4 +16,4 @@
       vm_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
       vm_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
     _ncs_stig_pre_validations:
-      - vm_stig_target_vms | default([]) | length > 0
+      - "{{ vm_stig_target_vms | default([]) | length > 0 }}"

@@ -267,18 +267,7 @@ def _load_platforms_contract(
         else:
             platforms = path_contract.load_platforms_config_file(explicit_cfg)
     else:
-        # Try multiple candidate locations for ncs-reporter configs
         candidates = [repo_root]
-        # Also try the bundled configs inside the ncs-reporter package
-        try:
-            import ncs_reporter  # noqa: F811
-
-            pkg_configs = os.path.join(os.path.dirname(ncs_reporter.__file__), "configs")
-            if os.path.isdir(pkg_configs):
-                candidates.append(os.path.dirname(os.path.dirname(os.path.dirname(ncs_reporter.__file__))))
-        except ImportError:
-            pass
-
         platforms: list[dict[str, Any]] = []
         searched: list[str] = []
         for root in candidates:
