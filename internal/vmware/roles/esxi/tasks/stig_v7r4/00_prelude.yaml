@@ -33,8 +33,8 @@
   ansible.builtin.include_vars:
     file: "{{ item }}"
   loop:
-    - "{{ role_path }}/tasks/stig_v7r4/stig.yaml"
-    - "{{ role_path }}/tasks/stig_v7r4/default.yaml"
+    - "{{ _ncs_task_root }}/stig_v7r4/stig.yaml"
+    - "{{ _ncs_task_root }}/stig_v7r4/default.yaml"
   tags:
     - always
 
@@ -49,8 +49,8 @@
 # Pre-flight: unlock → bulk gather
 # =========================================================================
 - name: "ESXi STIG | Pre-flight unlock"
-  ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/pre_stig.yaml"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/pre_stig.yaml"
   when: esxi_stig_pre_unlock | default(true) | bool
 
 - name: "ESXi STIG | Bulk PowerCLI gather"
-  ansible.builtin.include_tasks: "{{ role_path }}/tasks/stig_v7r4/pwsh_bulk_gather.yaml"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/pwsh_bulk_gather.yaml"

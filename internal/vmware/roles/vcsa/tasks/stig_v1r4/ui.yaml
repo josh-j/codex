@@ -31,7 +31,7 @@
 
 - name: "VCUI-70-000011/000019/000030 | Deploy compliant catalina.properties"
   ansible.builtin.template:
-    src: "{{ role_path }}/tasks/stig_v1r4/templates/ui_catalina.properties"
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/ui_catalina.properties"
     dest: "{{ var_catalina_props_path }}"
     owner: root
     group: root
@@ -45,7 +45,7 @@
 
 - name: "VCUI-70-000029 | Deploy vmware-services-vsphere-ui.conf"
   ansible.builtin.template:
-    src: "{{ role_path }}/tasks/stig_v1r4/templates/vmware-services-vsphere-ui.conf"
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/vmware-services-vsphere-ui.conf"
     dest: "{{ var_syslog_conf_path }}"
     owner: root
     group: root

@@ -4,7 +4,7 @@
 
 - name: "Windows STIG | Load STIG defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_ws2022/default.yaml"
+    file: "{{ _ncs_task_root }}/stig_ws2022/default.yaml"
   tags: [always]
 
 - name: "Windows STIG | Set manage prefix"

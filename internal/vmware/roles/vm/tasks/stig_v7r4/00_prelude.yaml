@@ -3,7 +3,7 @@
 
 - name: "VM STIG | Load STIG defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_v7r4/stig.yaml"
+    file: "{{ _ncs_task_root }}/stig_v7r4/stig.yaml"
   tags: [always]
 
 - name: "VM STIG | Register target VM for callback"
@@ -33,7 +33,7 @@
 # =========================================================================
 - name: "VM STIG | Load STIG defaults"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_v7r4/default.yaml"
+    file: "{{ _ncs_task_root }}/stig_v7r4/default.yaml"
   tags:
     - always
 

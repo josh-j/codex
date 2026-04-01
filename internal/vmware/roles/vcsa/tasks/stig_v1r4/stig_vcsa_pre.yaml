@@ -4,7 +4,7 @@
 
 - name: "VCSA STIG | Load VCSA profile vars"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_v1r4/vars/vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
+    file: "{{ _ncs_task_root }}/stig_v1r4/vars/vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
 
 - name: "VCSA STIG | Optional Photon baseline"
   ansible.builtin.include_role:
