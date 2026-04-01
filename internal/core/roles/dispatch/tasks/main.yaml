@@ -12,7 +12,7 @@
 # Optional vars:
 #   _ncs_allowed_profiles        — List of valid profiles (default: ['stig'])
 #   _ncs_allowed_operations      — List of valid operations (default: [])
-#   _ncs_extra_validations       — List of additional fail-when conditions (must be fail-when, i.e. true = invalid)
+#   _ncs_extra_validations       — List of boolean conditions (true = valid, fails when false)
 #   _ncs_action_routes           — Actions that route directly (e.g. ['collect'] for VMware)
 #   _ncs_dynamic_dispatch        — If true, unmapped keys use the key itself as filename
 #   _ncs_dynamic_dispatch_prefix — Prefix for dynamic dispatch filenames (e.g. "maintain/")

@@ -14,7 +14,7 @@
       esxi_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
       esxi_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
     _ncs_stig_pre_validations:
-      - esxi_stig_target_hosts | default([]) | length > 0
+      - "{{ esxi_stig_target_hosts | default([]) | length > 0 }}"
     _ncs_stig_phase1_loop: "{{ esxi_stig_target_hosts | unique | list }}"
     _ncs_stig_phase1_loop_var: _current_esxi_host
     _ncs_stig_phase2_loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
