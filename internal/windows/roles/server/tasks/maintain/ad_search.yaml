@@ -108,16 +108,12 @@
   delegate_to: "{{ groups['domain_controllers'] | default([inventory_hostname]) | first }}"
 
 - name: "AD Search | Emit telemetry"
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "ad_search"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          search_type: "{{ windows_ad_search_type }}"
-          search_term: "{{ windows_ad_search_term }}"
-          user_results: "{{ _ad_user_result.output[0] | default('{}') | from_json }}"
-          computer_results: "{{ _ad_computer_result.output[0] | default('{}') | from_json }}"
-    per_host: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/ad_search"
+    _ncs_emit_payload:
+      search_type: "{{ windows_ad_search_type }}"
+      search_term: "{{ windows_ad_search_term }}"
+      user_results: "{{ _ad_user_result.output[0] | default('{}') | from_json }}"
+      computer_results: "{{ _ad_computer_result.output[0] | default('{}') | from_json }}"

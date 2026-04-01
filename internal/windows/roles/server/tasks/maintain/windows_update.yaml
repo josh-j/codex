@@ -100,14 +100,10 @@
 
   always:
     - name: "Windows Update | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "windows"
-            name: "windows_update"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              results: "{{ _wu_result.output[0] | default('{}') | from_json }}"
-              failed: "{{ _wu_failed | bool }}"
-        per_host: true
-      changed_when: false
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/windows_update"
+        _ncs_emit_payload:
+          results: "{{ _wu_result.output[0] | default('{}') | from_json }}"
+          failed: "{{ _wu_failed | bool }}"

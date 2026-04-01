@@ -76,12 +76,13 @@
       changed_when: false
 
     - name: "Health | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "windows"
-            name: "health"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload: "{{ _health_payload }}"
-        per_host: true
-      changed_when: false
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/health"
+        _ncs_emit_payload: "{{ _health_payload | default({}) }}"
+        _ncs_emit_config:
+          windows_health_disk_warning_pct: "{{ windows_health_disk_warning_pct | default(80) }}"
+          windows_health_disk_critical_pct: "{{ windows_health_disk_critical_pct | default(90) }}"
+          windows_health_memory_warning_pct: "{{ windows_health_memory_warning_pct | default(85) }}"
+          windows_health_memory_critical_pct: "{{ windows_health_memory_critical_pct | default(95) }}"

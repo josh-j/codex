@@ -126,15 +126,11 @@
   register: _kb_install_results
 
 - name: "KB Install | Emit telemetry"
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "kb_install"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          detection: "{{ _kb_detection }}"
-          install_results: "{{ _kb_install_results.results | default([]) | map(attribute='output') | list }}"
-          install_attempted: "{{ windows_kb_install | bool }}"
-    per_host: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/kb_install"
+    _ncs_emit_payload:
+      detection: "{{ _kb_detection }}"
+      install_results: "{{ _kb_install_results.results | default([]) | map(attribute='output') | list }}"
+      install_attempted: "{{ windows_kb_install | bool }}"

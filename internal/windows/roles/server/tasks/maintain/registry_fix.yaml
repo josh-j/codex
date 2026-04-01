@@ -4,7 +4,7 @@
 
 - name: "Registry Fix | Load fix catalog"
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/tasks/stig_ws2022/registry_fixes.yaml"
+    file: "{{ role_path }}/vars/registry_fixes.yaml"
   tags: [registry_fix]
 
 - name: "Registry Fix | Determine fixes to apply"
@@ -98,15 +98,11 @@
   changed_when: false
 
 - name: "Registry Fix | Emit telemetry"
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "registry_fix"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          before: "{{ _registry_check_results }}"
-          after: "{{ _registry_verify_result.output[0] | default('[]') | from_json }}"
-          applied: "{{ windows_registry_fix_apply | bool }}"
-    per_host: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/registry_fix"
+    _ncs_emit_payload:
+      before: "{{ _registry_check_results }}"
+      after: "{{ _registry_verify_result.output[0] | default('[]') | from_json }}"
+      applied: "{{ windows_registry_fix_apply | bool }}"

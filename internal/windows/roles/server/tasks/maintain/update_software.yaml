@@ -40,15 +40,11 @@
 
   always:
     - name: "Update Software | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "windows"
-            name: "update_software"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              targets: "{{ windows_update_software_targets }}"
-              results: "{{ _update_software_results | default([]) }}"
-              failed: "{{ _update_software_failed | bool }}"
-        per_host: true
-      changed_when: false
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/update_software"
+        _ncs_emit_payload:
+          targets: "{{ windows_update_software_targets }}"
+          results: "{{ _update_software_results | default([]) }}"
+          failed: "{{ _update_software_failed | bool }}"

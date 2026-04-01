@@ -146,17 +146,13 @@
 
   always:
     - name: "Uninstall Software | Emit telemetry"
-      ansible.builtin.set_stats:
-        data:
-          ncs_collect:
-            platform: "windows"
-            name: "uninstall_software"
-            report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-            payload:
-              win32: "{{ _uninstall_win32_result.output[0] | default('[]') | from_json }}"
-              appx: "{{ _uninstall_appx_result.output[0] | default('[]') | from_json }}"
-              vcredist: "{{ _uninstall_vcredist_result.output[0] | default('[]') | from_json }}"
-              winget: "{{ _uninstall_winget_result.output[0] | default('[]') | from_json }}"
-              failed: "{{ _uninstall_failed | bool }}"
-        per_host: true
-      changed_when: false
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/uninstall_software"
+        _ncs_emit_payload:
+          win32: "{{ _uninstall_win32_result.output[0] | default('[]') | from_json }}"
+          appx: "{{ _uninstall_appx_result.output[0] | default('[]') | from_json }}"
+          vcredist: "{{ _uninstall_vcredist_result.output[0] | default('[]') | from_json }}"
+          winget: "{{ _uninstall_winget_result.output[0] | default('[]') | from_json }}"
+          failed: "{{ _uninstall_failed | bool }}"

@@ -69,15 +69,11 @@
   when: windows_task_action == 'delete'
 
 - name: "Scheduled Task | Emit telemetry"
-  ansible.builtin.set_stats:
-    data:
-      ncs_collect:
-        platform: "windows"
-        name: "scheduled_task"
-        report_directory: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
-        payload:
-          action: "{{ windows_task_action }}"
-          task_name: "{{ windows_task_name }}"
-          list: "{{ _task_list_result.output[0] | default('[]') | from_json }}"
-    per_host: true
-  changed_when: false
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/scheduled_task"
+    _ncs_emit_payload:
+      action: "{{ windows_task_action }}"
+      task_name: "{{ windows_task_name }}"
+      list: "{{ _task_list_result.output[0] | default('[]') | from_json }}"
