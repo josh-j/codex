@@ -6,7 +6,7 @@ config:
     render: false
   stig:
     ansible_playbook:
-      path: "playbooks/photon_stig_remediate.yml"
+      path: "playbooks/linux/photon/stig_remediate.yml"
       target_var: "photon_target_hosts"
     platform_to_checklist:
       photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
