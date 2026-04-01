@@ -287,59 +287,46 @@ function Start-NcsRemoteCommand {
         }
     }
 
-    $lines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
-    $done = [System.Threading.ManualResetEventSlim]::new($false)
+    $pendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+    $stdoutClosed = [System.Threading.ManualResetEventSlim]::new($false)
+    $stderrClosed = [System.Threading.ManualResetEventSlim]::new($false)
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $psi
+    $process.EnableRaisingEvents = $true
     $startedAt = Get-Date
 
+    $stdoutData = [pscustomobject]@{ Queue = $pendingLines; Closed = $stdoutClosed }
+    Register-ObjectEvent -InputObject $process -EventName 'OutputDataReceived' -Action {
+        $data = $Event.SourceEventArgs.Data
+        if ($null -ne $data) {
+            $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $data
+            $Event.MessageData.Queue.Enqueue($stamped)
+        } else {
+            $Event.MessageData.Closed.Set()
+        }
+    } -MessageData $stdoutData -SupportEvent | Out-Null
+
+    $stderrData = [pscustomobject]@{ Queue = $pendingLines; Closed = $stderrClosed }
+    Register-ObjectEvent -InputObject $process -EventName 'ErrorDataReceived' -Action {
+        $data = $Event.SourceEventArgs.Data
+        if ($null -ne $data) {
+            $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $data
+            $Event.MessageData.Queue.Enqueue($stamped)
+        } else {
+            $Event.MessageData.Closed.Set()
+        }
+    } -MessageData $stderrData -SupportEvent | Out-Null
+
     [void] $process.Start()
+    $process.BeginOutputReadLine()
+    $process.BeginErrorReadLine()
+
     if ($null -ne $askPassSecret) {
         $process.StandardInput.WriteLine($askPassSecret)
     } else {
         $process.StandardInput.WriteLine("")
     }
     $process.StandardInput.Close()
-
-    $readerThread = {
-        param([System.IO.StreamReader] $reader, [System.Collections.Concurrent.ConcurrentQueue[string]] $queue)
-        try {
-            while ($null -ne ($line = $reader.ReadLine())) {
-                $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
-                $queue.Enqueue($stamped)
-            }
-        } catch {}
-    }
-
-    $stdoutThread = [System.Threading.Thread]::new(
-        [System.Threading.ParameterizedThreadStart]{
-            param($args)
-            $reader = $args[0]
-            $queue = $args[1]
-            try {
-                while ($null -ne ($line = $reader.ReadLine())) {
-                    $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
-                    $queue.Enqueue($stamped)
-                }
-            } catch {}
-        })
-    $stdoutThread.IsBackground = $true
-    $stdoutThread.Start(@($process.StandardOutput, $lines))
-
-    $stderrThread = [System.Threading.Thread]::new(
-        [System.Threading.ParameterizedThreadStart]{
-            param($args)
-            $reader = $args[0]
-            $queue = $args[1]
-            try {
-                while ($null -ne ($line = $reader.ReadLine())) {
-                    $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
-                    $queue.Enqueue($stamped)
-                }
-            } catch {}
-        })
-    $stderrThread.IsBackground = $true
-    $stderrThread.Start(@($process.StandardError, $lines))
 
     $allLines = [System.Collections.Generic.List[string]]::new()
     $drainTimer = [System.Windows.Threading.DispatcherTimer]::new()
@@ -348,10 +335,10 @@ function Start-NcsRemoteCommand {
     $script:NcsActiveExecutionState = [pscustomobject]@{
         Process      = $process
         DrainTimer   = $drainTimer
-        StdoutThread = $stdoutThread
-        StderrThread = $stderrThread
+        StdoutClosed = $stdoutClosed
+        StderrClosed = $stderrClosed
         Lines        = $allLines
-        PendingLines = $lines
+        PendingLines = $pendingLines
         StartedAt    = $startedAt
     }
 
@@ -370,8 +357,8 @@ function Start-NcsRemoteCommand {
                 if ($OnOutput) { & $OnOutput $line }
             }
 
-            $threadsAlive = $execState.StdoutThread.IsAlive -or $execState.StderrThread.IsAlive
-            if ($threadsAlive -or -not $execState.Process.HasExited) {
+            $streamsDone = $execState.StdoutClosed.IsSet -and $execState.StderrClosed.IsSet
+            if (-not $streamsDone -or -not $execState.Process.HasExited) {
                 return
             }
 
@@ -399,6 +386,8 @@ function Start-NcsRemoteCommand {
             $result.OutputLines = $execState.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
 
+            $execState.StdoutClosed.Dispose()
+            $execState.StderrClosed.Dispose()
             $execState.Process.Dispose()
             $script:NcsActiveExecutionState = $null
 
