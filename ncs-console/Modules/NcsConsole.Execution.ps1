@@ -293,14 +293,18 @@ function Start-NcsRemoteCommand {
         PendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
         StartedAt    = Get-Date
         StdoutState  = [pscustomobject]@{
-            Reader = $null
-            Task   = $null
-            Closed = $false
+            Reader  = $null
+            Task    = $null
+            Buffer  = $null
+            Partial = ""
+            Closed  = $false
         }
         StderrState  = [pscustomobject]@{
-            Reader = $null
-            Task   = $null
-            Closed = $false
+            Reader  = $null
+            Task    = $null
+            Buffer  = $null
+            Partial = ""
+            Closed  = $false
         }
         DrainTimer   = [System.Windows.Threading.DispatcherTimer]::new()
     }
@@ -309,24 +313,39 @@ function Start-NcsRemoteCommand {
     $startRead = {
         param($state)
         if (-not $state.Closed -and $null -eq $state.Task) {
-            $state.Task = $state.Reader.ReadLineAsync()
+            $buf = [char[]]::new(4096)
+            $state.Task = $state.Reader.ReadAsync($buf, 0, $buf.Length)
+            $state.Buffer = $buf
         }
     }
 
     $drainRead = {
         param($state)
         while ($null -ne $state.Task -and $state.Task.IsCompleted) {
-            $lineText = $state.Task.GetAwaiter().GetResult()
+            $count = $state.Task.GetAwaiter().GetResult()
             $state.Task = $null
 
-            if ($null -eq $lineText) {
+            if ($count -eq 0) {
+                if ($state.Partial.Length -gt 0) {
+                    $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $state.Partial
+                    $script:NcsActiveExecutionState.Lines.Add($timestamped)
+                    $script:NcsActiveExecutionState.PendingLines.Enqueue($timestamped)
+                    $state.Partial = ""
+                }
                 $state.Closed = $true
                 break
             }
 
-            $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $lineText
-            $script:NcsActiveExecutionState.Lines.Add($timestamped)
-            $script:NcsActiveExecutionState.PendingLines.Enqueue($timestamped)
+            $chunk = [string]::new($state.Buffer, 0, $count)
+            $text = $state.Partial + $chunk
+            $lines = $text -split "`n"
+            $state.Partial = $lines[$lines.Length - 1]
+            for ($i = 0; $i -lt $lines.Length - 1; $i++) {
+                $lineText = $lines[$i].TrimEnd("`r")
+                $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $lineText
+                $script:NcsActiveExecutionState.Lines.Add($timestamped)
+                $script:NcsActiveExecutionState.PendingLines.Enqueue($timestamped)
+            }
             & $startRead $state
         }
     }
