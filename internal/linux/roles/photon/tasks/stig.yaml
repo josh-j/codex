@@ -7,7 +7,7 @@
   vars:
     _ncs_stig_label: "Photon STIG"
     _ncs_stig_target_type: "photon"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_photon3/main.yaml"
+    _ncs_stig_task_file: "{{ _ncs_task_root }}/stig_photon3/main.yaml"
     _ncs_stig_mode_facts:
       photon_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
       photon_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"

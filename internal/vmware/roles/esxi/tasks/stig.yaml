@@ -7,7 +7,7 @@
   vars:
     _ncs_stig_label: "ESXi STIG"
     _ncs_stig_target_type: "esxi"
-    _ncs_stig_task_file: "{{ role_path }}/tasks/stig_v7r4/main.yaml"
+    _ncs_stig_task_file: "{{ _ncs_task_root }}/stig_v7r4/main.yaml"
     _ncs_stig_compat_facts:
       esxi_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(esxi_stig_enable_hardening) | default(false) }}"
     _ncs_stig_mode_facts:
