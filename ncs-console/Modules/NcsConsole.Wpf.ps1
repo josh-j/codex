@@ -193,7 +193,6 @@ function Get-NcsXamlControlMap {
         "DurationTextBlock",
         "RunStateBorder",
         "SshKeyPathPanel",
-        "SshKeyPassphraseBox",
         "SshPasswordPanel"
     )) {
         $map[$name] = $Window.FindName($name)
@@ -560,7 +559,6 @@ function Sync-NcsSettingsFromControls {
     $Settings.SshUser = $Controls.SshUserTextBox.Text.Trim()
     $Settings.SshAuthMode = [string] $Controls.SshAuthModeComboBox.SelectedItem
     $Settings.SshKeyPath = $Controls.SshKeyPathTextBox.Text.Trim()
-    $Settings.SshKeyPassphrase = $Controls.SshKeyPassphraseBox.Password
     $Settings.SshPassword = $Controls.SshPasswordBox.Password
     $Settings.RemoteRepoPath = $Controls.RemoteRepoPathTextBox.Text.Trim()
     $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
@@ -585,7 +583,6 @@ function Sync-NcsControlsFromSettings {
         $Controls.SshAuthModeComboBox.SelectedItem = [NcsSshAuthMode]::Agent.ToString()
     }
     $Controls.SshKeyPathTextBox.Text = $Settings.SshKeyPath
-    $Controls.SshKeyPassphraseBox.Password = $Settings.SshKeyPassphrase
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     Select-NcsTreeViewItem -TreeView $Controls.ActionTreeView -Tag $Settings.LastAction -FallbackToFirst
@@ -1133,7 +1130,6 @@ function Show-NcsConsoleApp {
     $controls.SshUserTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.SshAuthModeComboBox.Add_SelectionChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.SshKeyPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
-    $controls.SshKeyPassphraseBox.Add_PasswordChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.SshPasswordBox.Add_PasswordChanged({ & $invalidatePreflight; & $refreshPreview })
     $controls.RemoteRepoPathTextBox.Add_TextChanged({ & $invalidatePreflight; & $refreshPreview })
 
@@ -1478,7 +1474,6 @@ function Show-NcsConsoleApp {
                     return
                 }
                 $state.Settings.SshKeyPassphrase = $pwBox.Password
-                $controls.SshKeyPassphraseBox.Password = $pwBox.Password
             }
 
             $controls.StatusTextBlock.Text = "Connecting..."
