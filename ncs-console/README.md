@@ -9,6 +9,7 @@ V1 focuses on execution, not editing or reporting. The app can:
 - run the main `ansible-ncs` workflows
 - limit runs to a site or a specific Ansible host when the selected action supports it
 - stream stdout/stderr into a live console pane
+- sync and display generated HTML reports in the reports pane
 - validate SSH/repo/vault prerequisites before allowing a run
 - persist operator settings locally
 
@@ -28,6 +29,7 @@ The backend target is the sibling repo at `../dev/ansible-ncs`, but the app stor
 
 - Windows with PowerShell and WPF support
 - `ssh.exe` available on the Windows host
+- Microsoft Edge WebView2 Runtime available on the Windows host for inline report viewing
 - network access to the remote Linux execution host
 - remote host has the `ansible-ncs` repo checked out and configured
 - remote repo has inventory and vault files present
@@ -65,6 +67,10 @@ Stored values include:
 - last selected action
 
 Passwords are never stored to disk. If `Password` SSH mode is selected, the password must be re-entered each session.
+
+## Reports
+
+The reports pane mirrors `/srv/samba/reports` from the remote host into a local cache and loads the HTML reports inline with WebView2. The repo ships the required WebView2 app assemblies under `App/lib/WebView2`; if the machine runtime is unavailable, the app falls back to opening the report in the default browser.
 
 ## Enterprise Deployment Notes
 
