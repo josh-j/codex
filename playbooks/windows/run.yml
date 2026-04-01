@@ -1,11 +1,113 @@
+# ncs:
+#   profiles:
+#     - label: AD Search
+#       operation: ad_search
+#       options:
+#         - name: windows_ad_search_term
+#           label: Search Term
+#         - name: windows_ad_search_type
+#           label: Type
+#           type: select
+#           choices: [computer, user, group]
+#           default: computer
+#         - name: windows_ad_bitlocker_recovery
+#           label: BitLocker Recovery
+#           type: bool
+#           default: "false"
+#     - label: Vuln Scan
+#       operation: vuln_scan
+#       options:
+#         - name: windows_vuln_scan_file
+#           label: Scan File Path
+#     - label: Cleanup
+#       mutating: true
+#       operation: cleanup
+#       options:
+#         - name: windows_cleanup_profiles
+#           label: Clean Profiles
+#           type: bool
+#           default: "false"
+#         - name: windows_cleanup_profile_days
+#           label: Profile Age (days)
+#           default: "30"
+#     - label: KB Install
+#       mutating: true
+#       operation: kb_install
+#       options:
+#         - name: windows_kb_list
+#           label: KB Numbers
+#     - label: Windows Update
+#       mutating: true
+#       operation: windows_update
+#     - label: Install Software
+#       mutating: true
+#       operation: update_software
+#       options:
+#         - name: windows_update_software_targets
+#           label: Software Targets
+#           default: chrome,edge
+#     - label: Uninstall Software
+#       mutating: true
+#       operation: uninstall_software
+#       options:
+#         - name: windows_uninstall_names
+#           label: Software Names
+#     - label: Service Management
+#       mutating: true
+#       operation: service
+#       options:
+#         - name: windows_service_name
+#           label: Service Name
+#         - name: windows_service_action
+#           label: Action
+#           type: select
+#           choices: [list, start, stop, restart]
+#           default: restart
+#     - label: Scheduled Task
+#       mutating: true
+#       operation: scheduled_task
+#       options:
+#         - name: windows_task_name
+#           label: Task Name
+#         - name: windows_task_action
+#           label: Task Action
+#           type: select
+#           choices: [list, run, enable, disable, delete]
+#           default: list
+#     - label: Registry Fix
+#       mutating: true
+#       operation: registry_fix
+#     - label: OpenSSH Setup
+#       mutating: true
+#       operation: openssh
+#       options:
+#         - name: windows_openssh_default_shell
+#           label: Default Shell
+#           type: select
+#           choices: [powershell, cmd]
+#           default: powershell
+#         - name: windows_openssh_allow_password
+#           label: Allow Password Auth
+#           type: bool
+#           default: "false"
+#         - name: windows_openssh_allow_pubkey
+#           label: Allow Pubkey Auth
+#           type: bool
+#           default: "false"
+#     - label: WinRM Enable
+#       mutating: true
+#       operation: winrm_enable
+#     - label: Remote Ops
+#       operation: remote_ops
+#       options:
+#         - name: windows_remote_op
+#           label: Command
+#           type: select
+#           choices: [uptime, reboot, shutdown, logoff, gpupdate, message]
+#           default: uptime
+#         - name: windows_remote_message
+#           label: Message
 ---
-# playbooks/windows/run.yml
-# Generic Windows role runner — driven by ncs_action and ncs_operation.
-# Used by ncs-console to run any operation without a dedicated playbook.
-#
-# Usage:
-#   ansible-playbook playbooks/windows/run.yml -e 'ncs_action=audit ncs_operation=ad_search'
-#   ansible-playbook playbooks/windows/run.yml -e 'ncs_action=remediate ncs_operation=cleanup'
 
 - name: "Windows | {{ ncs_operation | default('collect') }}"
   hosts: "{{ windows_target_hosts | default('windows_servers') }}"

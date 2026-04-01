@@ -1,3 +1,14 @@
+# ncs:
+#   mutating: true
+#   options:
+#     - name: vcsa_stig_include_photon
+#       label: Include Photon Baseline
+#       type: bool
+#       default: "false"
+#     - name: vcsa_stig_create_backups
+#       label: Create Backups
+#       type: bool
+#       default: "true"
 ---
 # playbooks/vcsa/stig_remediate.yml
 # STIG hardening + verification for vCenter Server Appliance (VCSA).
