@@ -17,12 +17,4 @@
       - esxi_stig_target_hosts | default([]) | length > 0
     _ncs_stig_phase1_loop: "{{ esxi_stig_target_hosts | unique | list }}"
     _ncs_stig_phase1_loop_var: _current_esxi_host
-    _ncs_stig_phase1_vars:
-      stig_target_host: "{{ _current_esxi_host }}"
-      stig_target_type: "esxi"
-      stig_platform: "vmware/esxi"
     _ncs_stig_phase2_loop: "{{ esxi_stig_target_hosts | difference([_vcenter_hostname]) | unique | list }}"
-    _ncs_stig_phase2_vars:
-      stig_target_host: "{{ _current_esxi_host }}"
-      stig_target_type: "esxi"
-      stig_platform: "vmware/esxi"

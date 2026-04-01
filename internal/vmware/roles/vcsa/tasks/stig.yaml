@@ -37,8 +37,6 @@
     _ncs_stig_pre_phase1: "{{ _ncs_task_root }}/stig_v1r4/stig_vcsa_pre.yaml"
     _ncs_stig_phase1_loop: "{{ vcsa_stig_services | default(_vcsa_stig_default_services) }}"
     _ncs_stig_phase1_loop_var: _vcsa_service
-    _ncs_stig_phase2_vars:
-      _stig_phase2_verify: true
   vars:
     _vcsa_stig_default_services:
       - { name: eam, target_type: eam }
