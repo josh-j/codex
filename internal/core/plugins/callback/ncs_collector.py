@@ -344,6 +344,16 @@ class CallbackModule(CallbackBase):
         try:
             self._platforms_config, self._target_type_index, resolve_fn = _load_platforms_contract(self.repo_root)
             self._resolve_platform_for_target: Callable[[list[dict[str, Any]], str], dict[str, Any]] = resolve_fn
+            if self._target_type_index:
+                self._display.v(
+                    f"[ncs_collector] Loaded platform configs. "
+                    f"target_types={sorted(self._target_type_index.keys())}"
+                )
+            else:
+                self._display.warning(
+                    f"[ncs_collector] Platform configs loaded but no target_types found. "
+                    f"STIG telemetry may not persist. repo_root={self.repo_root!r}"
+                )
         except Exception as exc:
             self._display.warning(
                 f"[ncs_collector] Failed to load platforms config: {exc}. "
