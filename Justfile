@@ -595,7 +595,8 @@ init-samba:
 # Clean up all temporary build/cache artifacts (including symlinked collections)
 clean:
     rm -rf .mypy_cache .ruff_cache .pytest_cache .coverage
-    bash scripts/clean_pycache.sh
+    find . -path './.venv*' -prune -o \( -name '__pycache__' -type d -exec rm -rf {} + \) -o \( -name '*.pyc' -delete \) 2>/dev/null || true
+    find collections/ansible_collections/internal -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
     find . -type d -name ".artifacts" -exec rm -rf {} +
 
 # Deep clean including venvs and vcsa collections
