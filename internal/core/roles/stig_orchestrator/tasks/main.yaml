@@ -41,6 +41,14 @@
     _stig_active_phase: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
   changed_when: false
 
+- name: "{{ _ncs_stig_label }} | Phase 0 | Resolve apply dicts"
+  ansible.builtin.set_fact:
+    _ncs_stig_resolved_phase1_apply: >-
+      {{ _ncs_stig_phase1_apply | default({"check_mode": _stig_audit_only | bool, "tags": ["stig_task"]}) }}
+    _ncs_stig_resolved_phase2_apply: >-
+      {{ _ncs_stig_phase2_apply | default({"check_mode": true, "tags": ["stig_task"]}) }}
+  changed_when: false
+
 - name: "{{ _ncs_stig_label }} | Phase 0 | Set role-specific mode facts"
   ansible.builtin.set_fact: "{{ _ncs_stig_mode_facts }}"
   when: _ncs_stig_mode_facts is defined and _ncs_stig_mode_facts
@@ -54,9 +62,12 @@
     - always
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Pre-run validations"
-  ansible.builtin.assert:
-    that: "{{ _ncs_stig_pre_validations }}"
-  when: _ncs_stig_pre_validations is defined and _ncs_stig_pre_validations
+  ansible.builtin.fail:
+    msg: "Pre-run validation failed for {{ _ncs_stig_label }}"
+  when: not item
+  loop: "{{ _ncs_stig_pre_validations | default([]) }}"
+  loop_control:
+    label: "validation"
 
 - name: "{{ _ncs_stig_label }} | Phase 1 | Evaluate and/or remediate"
   when:
@@ -69,14 +80,14 @@
     - name: "{{ _ncs_stig_label }} | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_task_file }}"
-        apply: "{{ _ncs_stig_phase1_apply | default({'check_mode': _stig_audit_only | bool, 'tags': ['stig_task']}) }}"
+        apply: "{{ _ncs_stig_resolved_phase1_apply }}"
       when: _ncs_stig_phase1_loop is not defined
       tags: [stig, security]
 
     - name: "{{ _ncs_stig_label }} | Phase 1a | Run STIG tasks (loop)"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_task_file }}"
-        apply: "{{ _ncs_stig_phase1_apply | default({'check_mode': _stig_audit_only | bool, 'tags': ['stig_task']}) }}"
+        apply: "{{ _ncs_stig_resolved_phase1_apply }}"
       loop: "{{ _ncs_stig_phase1_loop }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase1_loop_var | default('_current_item') }}"
@@ -122,14 +133,14 @@
     - name: "{{ _ncs_stig_label }} | Phase 2a | Verify remediation"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_verify_file | default(_ncs_stig_task_file) }}"
-        apply: "{{ _ncs_stig_phase2_apply | default({'check_mode': true, 'tags': ['stig_task']}) }}"
+        apply: "{{ _ncs_stig_resolved_phase2_apply }}"
       when: _ncs_stig_phase2_loop is not defined and _ncs_stig_phase1_loop is not defined
       tags: [stig, security, verify]
 
     - name: "{{ _ncs_stig_label }} | Phase 2a | Verify remediation (loop)"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_verify_file | default(_ncs_stig_task_file) }}"
-        apply: "{{ _ncs_stig_phase2_apply | default({'check_mode': true, 'tags': ['stig_task']}) }}"
+        apply: "{{ _ncs_stig_resolved_phase2_apply }}"
       loop: "{{ _ncs_stig_phase2_loop | default(_ncs_stig_phase1_loop) }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase2_loop_var | default(_ncs_stig_phase1_loop_var | default('_current_item')) }}"
