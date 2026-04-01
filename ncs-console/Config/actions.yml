@@ -52,6 +52,8 @@
         - name: rotate_user
           label: Username
           default: root
+        - name: rotate_password
+          label: New Password (blank = use vault)
     - label: Password Status
       playbook: esxi/password_status.yml
 
