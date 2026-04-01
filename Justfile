@@ -312,17 +312,27 @@ windows-openssh-bootstrap target transport="kerberos":
 # STIG Audits (read-only compliance checks)
 # =============================================================================
 
+# Generate STIG HTML reports + CKLB artifacts from collected raw data
+[no-exit-message]
+_stig-report:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo ""
+    echo "Generating STIG reports and CKLB artifacts..."
+    {{ ansible_playbook }} playbooks/infra/generate_reports.yml
+    echo "✓ Reports written to {{ reports_dir }}"
+
 # --- ESXi STIG ---
 
 # Audit a single ESXi host
-stig-audit-esxi vcenter host:
+stig-audit-esxi vcenter host: && _stig-report
     {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
 
 # Audit all ESXi hosts at a site
 stig-audit-esxi-site site:
-   #!/usr/bin/env bash
+    #!/usr/bin/env bash
     set -euo pipefail
     tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
     trap 'rm -f "$tmpfile"' EXIT
@@ -330,6 +340,7 @@ stig-audit-esxi-site site:
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 14
+    just _stig-report
 
 # Audit all ESXi hosts at a site with custom inventory
 stig-audit-esxi-site-inv site inv:
@@ -341,17 +352,18 @@ stig-audit-esxi-site-inv site inv:
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 10
+    just _stig-report
 
 # --- VM STIG ---
 
 # Audit a single VM
-stig-audit-vm vcenter vm_name:
+stig-audit-vm vcenter vm_name: && _stig-report
     {{ ansible_playbook }} playbooks/vm/stig_audit.yml \
         -l {{ vcenter }} \
         -e '{"vm_stig_target_vms": ["{{ vm_name }}"]}'
 
 # Audit all VMs at a site (auto-discovers from vCenter)
-stig-audit-vm-site site:
+stig-audit-vm-site site: && _stig-report
     {{ ansible_playbook }} playbooks/vm/stig_audit.yml \
         -l vcsa-{{ site }} \
         -f 14
@@ -369,11 +381,11 @@ audit-vcsa-site site:
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 
 # Audit all VCSA components
-stig-audit-vcsa target="vcsa":
+stig-audit-vcsa target="vcsa": && _stig-report
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ target }}
 
 # Audit VCSA for a single site
-stig-audit-vcsa-site site:
+stig-audit-vcsa-site site: && _stig-report
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l vcsa-{{ site }}
 
 # Audit specific VCSA roles only (for incremental testing)
@@ -385,19 +397,20 @@ stig-audit-vcsa-roles site +components:
     {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml \
         -l vcsa-{{ site }} \
         -e "$roles"
+    just _stig-report
 
 # Audit VCSA with custom inventory
-stig-audit-vcsa-inv target inv:
+stig-audit-vcsa-inv target inv: && _stig-report
     {{ vcsa_playbook }} -i {{ inv }} playbooks/vcsa/stig_audit.yml -l {{ target }}
 
 # --- Photon STIG ---
 
 # Audit Photon OS servers
-stig-audit-photon target="photon_servers":
+stig-audit-photon target="photon_servers": && _stig-report
     {{ ansible_playbook }} playbooks/photon/stig_audit.yml -l {{ target }}
 
 # Audit Photon with custom inventory
-stig-audit-photon-inv target inv:
+stig-audit-photon-inv target inv: && _stig-report
     {{ ansible_playbook }} -i {{ inv }} playbooks/photon/stig_audit.yml -l {{ target }}
 
 # =============================================================================
