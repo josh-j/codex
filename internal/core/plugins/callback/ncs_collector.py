@@ -306,7 +306,7 @@ class CallbackModule(CallbackBase):
 
     def __init__(self):
         super().__init__()
-        self.repo_root = _find_repo_root(os.path.dirname(__file__))
+        self.repo_root = os.environ.get("NCS_REPO_ROOT", "").strip() or _find_repo_root(os.path.dirname(__file__))
 
         # STIG rules keyed by (host, target_type) so each STIG component
         # on the same inventory host gets its own bucket and artifact file.
@@ -328,6 +328,7 @@ class CallbackModule(CallbackBase):
         except Exception as exc:
             self._display.warning(
                 f"[ncs_collector] Failed to load platforms config: {exc}. "
+                f"repo_root={self.repo_root!r}. Set NCS_REPO_ROOT env var to override. "
                 f"STIG task telemetry will not be persisted. "
                 f"ncs_collect payloads from set_stats will still be written."
             )
