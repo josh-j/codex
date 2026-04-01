@@ -1,5 +1,4 @@
 # >>>
-# mutating: true
 # options:
 #   windows_update_allow_reboot: bool = false | Allow Reboot
 # <<<

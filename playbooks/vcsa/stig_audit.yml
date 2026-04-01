@@ -1,4 +1,5 @@
 # >>>
+# read_only: true
 # options:
 #   vcsa_stig_include_photon: bool = false | Include Photon Baseline
 # <<<
