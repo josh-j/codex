@@ -1279,6 +1279,7 @@ function Show-NcsConsoleApp {
                         $state.CurrentHandle = $null
                         Set-NcsIdleUiState -Controls $controls
                         Set-NcsRunStateBadge -Controls $controls -State $(if ($runResult.Succeeded) { "Succeeded" } else { "Failed" })
+                        Add-NcsConsoleLine -Controls $controls -Line ("--- Exit code: $($runResult.ExitCode) | Lines: $($runResult.OutputLines.Length) | Duration: $(Format-NcsDuration -Duration $runResult.Duration) ---")
                         $controls.RunMetaText.Text = $runResult.Action
                         $controls.StatusTextBlock.Text = if ($runResult.Succeeded) { "Run completed successfully." } else { "Run failed." }
                         $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
@@ -1295,7 +1296,9 @@ function Show-NcsConsoleApp {
                     }
                 }
             $state.CurrentHandle = $handle
-            $controls.CommandPreviewTextBox.Text = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
+            $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
+            Add-NcsConsoleLine -Controls $controls -Line ("> $playCmd")
+            $controls.CommandPreviewTextBox.Text = $playCmd
             $controls.CommandPreviewTextBox.Visibility = "Visible"
             $durationTimer.Start()
         } catch {
