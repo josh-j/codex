@@ -1,6 +1,6 @@
 # >>>
 # label: AD Search
-# read_only: true
+# is_read_only: true
 # operation: ad_search
 # options:
 #   windows_ad_search_term: text | Search Term
@@ -8,7 +8,7 @@
 #   windows_ad_bitlocker_recovery: bool = false | BitLocker Recovery
 # ---
 # label: Vuln Scan
-# read_only: true
+# is_read_only: true
 # operation: vuln_scan
 # options:
 #   windows_vuln_scan_file: text | Scan File Path
@@ -63,7 +63,7 @@
 # operation: winrm_enable
 # ---
 # label: Remote Ops
-# read_only: true
+# is_read_only: true
 # operation: remote_ops
 # options:
 #   windows_remote_op: select[uptime, reboot, shutdown, logoff, gpupdate, message] = uptime | Command

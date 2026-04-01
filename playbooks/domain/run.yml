@@ -1,69 +1,69 @@
 # >>>
 # label: AD Summary
-# read_only: true
+# is_read_only: true
 # operation: collect
 # ---
 # label: User Search
-# read_only: true
+# is_read_only: true
 # operation: user_search
 # options:
 #   domain_search_filter: text = * | Filter
 # ---
 # label: Group Search
-# read_only: true
+# is_read_only: true
 # operation: group_search
 # options:
 #   domain_search_filter: text = * | Filter
 # ---
 # label: Computer Search
-# read_only: true
+# is_read_only: true
 # operation: computer_search
 # options:
 #   domain_search_filter: text = * | Filter
 # ---
 # label: OU Search
-# read_only: true
+# is_read_only: true
 # operation: ou_search
 # options:
 #   domain_search_filter: text = * | Filter
 # ---
 # label: Group Membership
-# read_only: true
+# is_read_only: true
 # operation: group_membership
 # options:
 #   domain_group_name: text | Group Name
 # ---
 # label: Privileged Groups
-# read_only: true
+# is_read_only: true
 # operation: privileged_groups
 # ---
 # label: Stale Accounts
-# read_only: true
+# is_read_only: true
 # operation: stale_accounts
 # options:
 #   domain_stale_computer_days: text = 90 | Computer Days
 #   domain_stale_user_days: text = 90 | User Days
 # ---
 # label: Password Policy
-# read_only: true
+# is_read_only: true
 # operation: password_policy
 # ---
 # label: GPO Audit
-# read_only: true
+# is_read_only: true
 # operation: gpo_audit
 # ---
 # label: DNS Zones
-# read_only: true
+# is_read_only: true
 # operation: dns_zones
 # ---
 # label: DHCP Scopes
-# read_only: true
+# is_read_only: true
 # operation: dhcp_scopes
 # options:
 #   domain_dhcp_server: text | DHCP Server
 # ---
 # label: Domain Trusts
-# read_only: true
+# is_read_only: true
 # operation: domain_trusts
 # <<<
 ---

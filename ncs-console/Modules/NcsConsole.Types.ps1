@@ -244,7 +244,7 @@ def parse_ncs_blocks(path):
             block = {}
             if "label" in data:
                 block["label"] = data["label"]
-            if not data.get("read_only"):
+            if not data.get("is_read_only"):
                 block["mutating"] = True
             if "operation" in data:
                 block["operation"] = data["operation"]

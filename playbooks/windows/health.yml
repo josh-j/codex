@@ -1,5 +1,5 @@
 # >>>
-# read_only: true
+# is_read_only: true
 # options:
 #   windows_health_check_disk: bool = true | Disk Check
 #   windows_health_check_memory_cpu: bool = true | Memory/CPU Check
