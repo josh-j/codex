@@ -169,21 +169,26 @@ NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad"
 
 def parse_ncs_frontmatter(path):
     ncs_lines = []
+    found = False
     with open(path) as fh:
         for raw in fh:
             s = raw.rstrip()
-            if s.strip().startswith("# ncs:") or (ncs_lines and s.strip().startswith("#")):
+            if not found and s.strip() == "# ncs:":
+                found = True
+                continue
+            if found and s.strip().startswith("#"):
                 txt = s.strip()
                 ncs_lines.append(txt[2:] if txt.startswith("# ") else txt[1:])
-            elif s.strip() == "#" and ncs_lines:
-                ncs_lines.append("")
+            elif found and s.strip() == "":
+                continue
+            elif found:
+                break
             elif not s.strip().startswith("#"):
                 break
     if not ncs_lines:
         return None
     try:
-        data = yaml.safe_load("\n".join(ncs_lines))
-        return data.get("ncs") if isinstance(data, dict) else None
+        return yaml.safe_load("\n".join(ncs_lines))
     except Exception:
         return None
 
