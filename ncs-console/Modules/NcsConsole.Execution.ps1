@@ -344,7 +344,6 @@ function Start-NcsRemoteCommand {
         OnCompleted  = $OnCompleted
         Request      = $Request
         RemoteCmd    = $remoteCommand
-        TickCount    = 0
     }
 
     $drainTimer.Add_Tick({
@@ -354,16 +353,6 @@ function Start-NcsRemoteCommand {
             if ($null -eq $es) {
                 $sender.Stop()
                 return
-            }
-
-            $es.TickCount++
-            if ($es.TickCount -eq 1) {
-                $dbg = "[ncs-debug] Tick #1: HasExited=$($es.Process.HasExited) StdoutClosed=$($es.StdoutClosed.IsSet) StderrClosed=$($es.StderrClosed.IsSet) QueueCount=$($es.PendingLines.Count)"
-                $es.PendingLines.Enqueue($dbg)
-            }
-            if ($es.TickCount -eq 50) {
-                $dbg = "[ncs-debug] Tick #50: HasExited=$($es.Process.HasExited) StdoutClosed=$($es.StdoutClosed.IsSet) StderrClosed=$($es.StderrClosed.IsSet) QueueCount=$($es.PendingLines.Count) LinesCollected=$($es.Lines.Count)"
-                $es.PendingLines.Enqueue($dbg)
             }
 
             $line = $null
