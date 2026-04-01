@@ -245,42 +245,80 @@ function Merge-NcsActionGroups {
         $RemoteGroups
     )
 
-    $configPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
+    # Build a lookup from actions.yml keyed by playbook path
+    $configLookup = @{}
     foreach ($group in $ConfigGroups) {
         foreach ($item in $group.Items) {
-            [void] $configPlaybooks.Add($item['playbook'])
+            $pb = $item['playbook']
+            if (-not $configLookup.ContainsKey($pb)) {
+                $configLookup[$pb] = $item
+            }
         }
     }
 
+    # Collect all config entries, keyed by playbook+operation for run.yml variants
+    $configEntries = [System.Collections.Generic.List[hashtable]]::new()
+    $multiOpPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
+    $opCount = @{}
+    foreach ($group in $ConfigGroups) {
+        foreach ($item in $group.Items) {
+            $pb = $item['playbook']
+            if (-not $opCount.ContainsKey($pb)) { $opCount[$pb] = 0 }
+            $opCount[$pb]++
+            $configEntries.Add(@{ Item = $item; Group = $group.Group; Playbook = $pb })
+        }
+    }
+    foreach ($pb in $opCount.Keys) {
+        if ($opCount[$pb] -gt 1) { [void] $multiOpPlaybooks.Add($pb) }
+    }
+    $seenPlaybooks = [System.Collections.Generic.HashSet[string]]::new()
+
+    # Start from remote scan, enrich with config
     $merged = [System.Collections.Generic.List[hashtable]]::new()
     $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
 
-    foreach ($group in $ConfigGroups) {
-        $merged.Add($group)
-        [void] $mergedGroupNames.Add($group.Group)
+    foreach ($group in $RemoteGroups) {
+        $items = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($remoteItem in $group.Items) {
+            $pb = $remoteItem['playbook']
+            [void] $seenPlaybooks.Add($pb)
+            if ($multiOpPlaybooks.Contains($pb)) {
+                # Skip bare remote entry; config variants will be added below
+                continue
+            }
+            if ($configLookup.ContainsKey($pb)) {
+                $cfg = $configLookup[$pb]
+                if ($cfg.ContainsKey('Label')) { $remoteItem['Label'] = $cfg['Label'] }
+                if ($cfg.ContainsKey('mutating') -and $cfg['mutating'] -eq $true) { $remoteItem['mutating'] = $true }
+                if ($cfg.ContainsKey('options')) { $remoteItem['options'] = $cfg['options'] }
+            }
+            $items.Add($remoteItem)
+        }
+        if ($items.Count -gt 0) {
+            $merged.Add(@{ Group = $group.Group; Items = $items })
+            [void] $mergedGroupNames.Add($group.Group)
+        }
     }
 
-    foreach ($group in $RemoteGroups) {
-        $newItems = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($item in $group.Items) {
-            if (-not $configPlaybooks.Contains($item['playbook'])) {
-                $newItems.Add($item)
-            }
-        }
-        if ($newItems.Count -gt 0) {
-            if ($mergedGroupNames.Contains($group.Group)) {
-                foreach ($existing in $merged) {
-                    if ($existing.Group -eq $group.Group) {
-                        foreach ($newItem in $newItems) {
-                            $existing.Items.Add($newItem)
-                        }
-                        break
-                    }
+    # Add config entries whose playbook was seen remotely but has multiple operations,
+    # or whose playbook wasn't found remotely at all
+    foreach ($entry in $configEntries) {
+        $pb = $entry.Playbook
+        if (-not $multiOpPlaybooks.Contains($pb) -and $seenPlaybooks.Contains($pb)) { continue }
+        $groupName = $entry.Group
+        $item = $entry.Item
+        if ($mergedGroupNames.Contains($groupName)) {
+            foreach ($g in $merged) {
+                if ($g.Group -eq $groupName) {
+                    $g.Items.Add($item)
+                    break
                 }
-            } else {
-                $merged.Add(@{ Group = $group.Group; Items = $newItems })
-                [void] $mergedGroupNames.Add($group.Group)
             }
+        } else {
+            $newItems = [System.Collections.Generic.List[hashtable]]::new()
+            $newItems.Add($item)
+            $merged.Add(@{ Group = $groupName; Items = $newItems })
+            [void] $mergedGroupNames.Add($groupName)
         }
     }
 
