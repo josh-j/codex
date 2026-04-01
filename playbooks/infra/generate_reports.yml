@@ -13,7 +13,7 @@
   gather_facts: false
   become: false
   vars:
-    _reports_root: "{{ ncs_config.report_directory }}"
+    _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
     _groups_json: "{{ _platform_root }}/inventory_groups.json"
     _platforms_config: "{{ playbook_dir }}/../../files/ncs-reporter_configs/platforms.yaml"
