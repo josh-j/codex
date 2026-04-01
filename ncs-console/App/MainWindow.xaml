@@ -163,13 +163,20 @@
                                             </Border>
                                             <TextBlock Text="Tags" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionTagsTextBox" ToolTip="--tags filter (comma-separated)" />
-                                            <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
-                                            <CheckBox x:Name="ActionDiffCheckBox" Content="Show diff" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                            <TextBlock Text="Verbosity" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
-                                            <ComboBox x:Name="ActionVerbosityComboBox" ToolTip="Ansible verbosity level" />
                                             <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
-                                            <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
-                                            <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="40" VerticalScrollBarVisibility="Auto" ToolTip="Additional ansible-playbook arguments" />
+                                            <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
+                                                <Expander.Header>
+                                                    <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                                </Expander.Header>
+                                                <StackPanel Margin="0,4,0,0">
+                                                    <CheckBox x:Name="ActionCheckModeCheckBox" Content="Check mode (dry run)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <CheckBox x:Name="ActionDiffCheckBox" Content="Show diff" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                                    <TextBlock Text="Verbosity" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <ComboBox x:Name="ActionVerbosityComboBox" ToolTip="Ansible verbosity level" />
+                                                    <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="ExtraArgsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="40" VerticalScrollBarVisibility="Auto" ToolTip="Additional ansible-playbook arguments" />
+                                                </StackPanel>
+                                            </Expander>
                                             <TextBlock x:Name="MutatingWarning" Text="⚠ This action makes changes to remote hosts" Foreground="{StaticResource DangerBrush}" FontSize="{StaticResource FontSizeSm}" Margin="0,8,0,0" Visibility="Collapsed" />
                                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                                 <Button x:Name="RunButton" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" Margin="0,0,4,0" ToolTip="Run selected action">
