@@ -26,7 +26,7 @@
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Backward-compat aliases"
   ansible.builtin.set_fact: "{{ _ncs_stig_compat_facts }}"
-  when: _ncs_stig_compat_facts is defined and _ncs_stig_compat_facts
+  when: _ncs_stig_compat_facts is defined and (_ncs_stig_compat_facts | length > 0)
   changed_when: false
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Resolve canonical action"
@@ -43,7 +43,7 @@
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Set role-specific mode facts"
   ansible.builtin.set_fact: "{{ _ncs_stig_mode_facts }}"
-  when: _ncs_stig_mode_facts is defined and _ncs_stig_mode_facts
+  when: _ncs_stig_mode_facts is defined and (_ncs_stig_mode_facts | length > 0)
   changed_when: false
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Register target context for ncs_collector"
