@@ -21,7 +21,7 @@ function Invoke-NcsSshProbe {
         [string] $RemoteCommand
     )
 
-    $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand -NoTty
+    $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand
     $environment = $null
 
     $authMode = $Settings.SshAuthMode
