@@ -186,63 +186,63 @@ audit-vmware-site site:
 
 # Run ESXi health audit (all sites or limited)
 audit-esxi target="vcsa":
-    {{ ansible_playbook }} playbooks/esxi/collect.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vmware/esxi/collect.yml -l {{ target }} -v
 
 # Run ESXi health audit for a single site
 audit-esxi-site site:
-    {{ ansible_playbook }} playbooks/esxi/collect.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vmware/esxi/collect.yml -l vcsa-{{ site }}
 
 # Run VM workload audit (all sites or limited)
 audit-vm target="vcsa":
-    {{ ansible_playbook }} playbooks/vm/collect.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vmware/vm/collect.yml -l {{ target }} -v
 
 # Run VM workload audit for a single site
 audit-vm-site site:
-    {{ ansible_playbook }} playbooks/vm/collect.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vmware/vm/collect.yml -l vcsa-{{ site }}
 
 # Run Ubuntu audit
 audit-ubuntu target="ubuntu_servers":
-    {{ ansible_playbook }} playbooks/ubuntu/collect.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/linux/ubuntu/collect.yml -l {{ target }}
 
 # Run Ubuntu apt update + dist-upgrade
 update-ubuntu target="ubuntu_servers":
-    {{ ansible_playbook }} playbooks/ubuntu/update.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/linux/ubuntu/update.yml -l {{ target }}
 
 # Run Ubuntu update (apply only, skip discover)
 update-ubuntu-apply target="ubuntu_servers":
-    {{ ansible_playbook }} playbooks/ubuntu/update_apply.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/linux/ubuntu/update_apply.yml -l {{ target }}
 
 # Run Ubuntu discovery phase only
 audit-ubuntu-discover:
-    {{ ansible_playbook }} playbooks/ubuntu/collect.yml
+    {{ ansible_playbook }} playbooks/linux/ubuntu/collect.yml
 
 # Run Windows audit
 audit-windows target="windows_servers":
-    {{ ansible_playbook }} playbooks/windows/collect.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/collect.yml -l {{ target }}
 
 # Run Windows update apply phase
 update-windows:
-    {{ ansible_playbook }} playbooks/windows/patch.yml
+    {{ ansible_playbook }} playbooks/windows/server/patch.yml
 
 # Run Windows health check
 health-windows target="windows_servers":
-    {{ ansible_playbook }} playbooks/windows/health.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/health.yml -l {{ target }}
 
 # Run Windows cleanup
 cleanup-windows target="windows_servers":
-    {{ ansible_playbook }} playbooks/windows/cleanup.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/cleanup.yml -l {{ target }}
 
 # Run Windows post-patch audit phase
 audit-windows-post-patch:
-    {{ ansible_playbook }} playbooks/windows/post_patch_audit.yml
+    {{ ansible_playbook }} playbooks/windows/server/post_patch_audit.yml
 
 # Audit a specific Linux host
 audit-linux-host hostname:
-    {{ ansible_playbook }} playbooks/ubuntu/collect.yml -l {{ hostname }}
+    {{ ansible_playbook }} playbooks/linux/ubuntu/collect.yml -l {{ hostname }}
 
 # Audit a specific Windows host
 audit-windows-host hostname:
-    {{ ansible_playbook }} playbooks/windows/collect.yml -l {{ hostname }}
+    {{ ansible_playbook }} playbooks/windows/server/collect.yml -l {{ hostname }}
 
 # =============================================================================
 # Windows Administration (targeted single-host actions)
@@ -250,63 +250,63 @@ audit-windows-host hostname:
 
 # Run Windows health check on a target
 windows-health target:
-    {{ ansible_playbook }} playbooks/windows/health.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/health.yml -l {{ target }}
 
 # Run Windows vulnerability scan on a target
 windows-vuln-scan target:
-    {{ ansible_playbook }} playbooks/windows/vuln_scan.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/vuln_scan.yml -l {{ target }}
 
 # Apply Windows registry fixes on a target
 windows-registry-fix target:
-    {{ ansible_playbook }} playbooks/windows/registry_fix.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/registry_fix.yml -l {{ target }}
 
 # Install a Windows KB update on a target
 windows-kb-install target:
-    {{ ansible_playbook }} playbooks/windows/kb_install.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/kb_install.yml -l {{ target }}
 
 # Update software on a Windows target
 windows-update-software target:
-    {{ ansible_playbook }} playbooks/windows/update_software.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/update_software.yml -l {{ target }}
 
 # Uninstall software from a Windows target
 windows-uninstall-software target:
-    {{ ansible_playbook }} playbooks/windows/uninstall_software.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/uninstall_software.yml -l {{ target }}
 
 # Run disk/temp cleanup on a Windows target
 windows-cleanup target:
-    {{ ansible_playbook }} playbooks/windows/cleanup.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/cleanup.yml -l {{ target }}
 
 # Run Windows Update on a target
 windows-update target:
-    {{ ansible_playbook }} playbooks/windows/windows_update.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/windows_update.yml -l {{ target }}
 
 # Manage a Windows service (action: start|stop|restart, name: service name)
 windows-service target action name:
-    {{ ansible_playbook }} playbooks/windows/service.yml -l {{ target }} -e 'service_action={{ action }} service_name={{ name }}'
+    {{ ansible_playbook }} playbooks/windows/server/service.yml -l {{ target }} -e 'service_action={{ action }} service_name={{ name }}'
 
 # Manage a Windows scheduled task (action: create|delete|enable|disable, name: task name)
 windows-scheduled-task target action name:
-    {{ ansible_playbook }} playbooks/windows/scheduled_task.yml -l {{ target }} -e 'task_action={{ action }} task_name={{ name }}'
+    {{ ansible_playbook }} playbooks/windows/server/scheduled_task.yml -l {{ target }} -e 'task_action={{ action }} task_name={{ name }}'
 
 # Enable WinRM on a Windows target
 windows-winrm-enable target:
-    {{ ansible_playbook }} playbooks/windows/winrm_enable.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/winrm_enable.yml -l {{ target }}
 
 # Run remote operations on a Windows target (op: operation name)
 windows-remote-ops target op:
-    {{ ansible_playbook }} playbooks/windows/remote_ops.yml -l {{ target }} -e 'remote_op={{ op }}'
+    {{ ansible_playbook }} playbooks/windows/server/remote_ops.yml -l {{ target }} -e 'remote_op={{ op }}'
 
 # Search Active Directory (type: user|group|computer, term: search term)
 windows-ad-search type term:
-    {{ ansible_playbook }} playbooks/windows/ad_search.yml -e 'ad_search_type={{ type }} ad_search_term={{ term }}'
+    {{ ansible_playbook }} playbooks/windows/server/ad_search.yml -e 'ad_search_type={{ type }} ad_search_term={{ term }}'
 
 # Install/configure OpenSSH on a Windows target
 windows-openssh target:
-    {{ ansible_playbook }} playbooks/windows/openssh.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/windows/server/openssh.yml -l {{ target }}
 
 # Bootstrap OpenSSH on Windows targets via WinRM (first-time setup)
 windows-openssh-bootstrap target transport="kerberos":
-    {{ ansible_playbook }} playbooks/windows/openssh.yml -l {{ target }} -e 'ansible_connection=winrm ansible_winrm_transport={{ transport }} ansible_port=5985'
+    {{ ansible_playbook }} playbooks/windows/server/openssh.yml -l {{ target }} -e 'ansible_connection=winrm ansible_winrm_transport={{ transport }} ansible_port=5985'
 
 # =============================================================================
 # STIG Audits (read-only compliance checks)
@@ -326,7 +326,7 @@ _stig-report:
 
 # Audit a single ESXi host
 stig-audit-esxi vcenter host: && _stig-report
-    {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_audit.yml \
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
 
@@ -338,7 +338,7 @@ stig-audit-esxi-site site:
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
-    {{ ansible_playbook }} playbooks/esxi/stig_audit.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 14
     just _stig-report
 
@@ -350,7 +350,7 @@ stig-audit-esxi-site-inv site inv:
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inv }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
-    {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_audit.yml \
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware/esxi/stig_audit.yml \
         -l vcsa-{{ site }} -e "@$tmpfile" -f 10
     just _stig-report
 
@@ -358,13 +358,13 @@ stig-audit-esxi-site-inv site inv:
 
 # Audit a single VM
 stig-audit-vm vcenter vm_name: && _stig-report
-    {{ ansible_playbook }} playbooks/vm/stig_audit.yml \
+    {{ ansible_playbook }} playbooks/vmware/vm/stig_audit.yml \
         -l {{ vcenter }} \
         -e '{"vm_stig_target_vms": ["{{ vm_name }}"]}'
 
 # Audit all VMs at a site (auto-discovers from vCenter)
 stig-audit-vm-site site: && _stig-report
-    {{ ansible_playbook }} playbooks/vm/stig_audit.yml \
+    {{ ansible_playbook }} playbooks/vmware/vm/stig_audit.yml \
         -l vcsa-{{ site }} \
         -f 14
 
@@ -372,21 +372,21 @@ stig-audit-vm-site site: && _stig-report
 
 # Run VCSA health audit (all sites or limited)
 audit-vcsa target="vcsa":
-    {{ ansible_playbook }} playbooks/vcsa/collect.yml -l {{ target }} -v
+    {{ ansible_playbook }} playbooks/vmware/vcsa/collect.yml -l {{ target }} -v
 
 # Run VCSA health audit for a single site
 audit-vcsa-site site:
-    {{ ansible_playbook }} playbooks/vcsa/collect.yml -l vcsa-{{ site }}
+    {{ ansible_playbook }} playbooks/vmware/vcsa/collect.yml -l vcsa-{{ site }}
 
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---
 
 # Audit all VCSA components
 stig-audit-vcsa target="vcsa": && _stig-report
-    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l {{ target }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/stig_audit.yml -l {{ target }}
 
 # Audit VCSA for a single site
 stig-audit-vcsa-site site: && _stig-report
-    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml -l vcsa-{{ site }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/stig_audit.yml -l vcsa-{{ site }}
 
 # Audit specific VCSA roles only (for incremental testing)
 # Example: just stig-audit-vcsa-roles sdhm vami eam postgresql
@@ -394,24 +394,24 @@ stig-audit-vcsa-roles site +components:
     #!/usr/bin/env bash
     set -euo pipefail
     roles=$(echo "{{ components }}" | tr ' ' '\n' | sed 's/^vcsa_//' | sed 's/^/internal.vmware.vcsa_/' | jq -R . | jq -s '{"vcsa_stig_roles": .}')
-    {{ vcsa_playbook }} playbooks/vcsa/stig_audit.yml \
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/stig_audit.yml \
         -l vcsa-{{ site }} \
         -e "$roles"
     just _stig-report
 
 # Audit VCSA with custom inventory
 stig-audit-vcsa-inv target inv: && _stig-report
-    {{ vcsa_playbook }} -i {{ inv }} playbooks/vcsa/stig_audit.yml -l {{ target }}
+    {{ vcsa_playbook }} -i {{ inv }} playbooks/vmware/vcsa/stig_audit.yml -l {{ target }}
 
 # --- Photon STIG ---
 
 # Audit Photon OS servers
 stig-audit-photon target="photon_servers": && _stig-report
-    {{ ansible_playbook }} playbooks/photon/stig_audit.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/linux/photon/stig_audit.yml -l {{ target }}
 
 # Audit Photon with custom inventory
 stig-audit-photon-inv target inv: && _stig-report
-    {{ ansible_playbook }} -i {{ inv }} playbooks/photon/stig_audit.yml -l {{ target }}
+    {{ ansible_playbook }} -i {{ inv }} playbooks/linux/photon/stig_audit.yml -l {{ target }}
 
 # =============================================================================
 # STIG Remediation (MUTATING — changes systems)
@@ -421,7 +421,7 @@ stig-audit-photon-inv target inv: && _stig-report
 
 # Harden a single ESXi host
 stig-harden-esxi vcenter host:
-    {{ ansible_playbook }} playbooks/esxi/stig_remediate.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_remediate.yml \
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
 
@@ -433,7 +433,7 @@ stig-harden-esxi-site site:
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inventory_file }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
-    {{ ansible_playbook }} playbooks/esxi/stig_remediate.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_remediate.yml \
         -l vcsa-{{ site }} -e "@$tmpfile"
 
 # Harden all ESXi hosts at a site with custom inventory
@@ -444,14 +444,14 @@ stig-harden-esxi-site-inv site inv:
     trap 'rm -f "$tmpfile"' EXIT
     {{ ansible_inventory }} -i {{ inv }} --list | \
         {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
-    {{ ansible_playbook }} -i {{ inv }} playbooks/esxi/stig_remediate.yml \
+    {{ ansible_playbook }} -i {{ inv }} playbooks/vmware/esxi/stig_remediate.yml \
         -l vcsa-{{ site }} -e "@$tmpfile"
 
 # --- VM Hardening ---
 
 # Harden a single VM
 stig-harden-vm vcenter vm_name:
-    {{ ansible_playbook }} playbooks/vm/stig_remediate.yml \
+    {{ ansible_playbook }} playbooks/vmware/vm/stig_remediate.yml \
         -l {{ vcenter }} \
         -e '{"vm_stig_target_vms": ["{{ vm_name }}"]}'
 
@@ -459,17 +459,17 @@ stig-harden-vm vcenter vm_name:
 
 # Harden VCSA (MUTATING)
 stig-remediate-vcsa target="vcsa":
-    {{ vcsa_playbook }} playbooks/vcsa/stig_remediate.yml -l {{ target }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/stig_remediate.yml -l {{ target }}
 
 # Harden VCSA for a single site (MUTATING)
 stig-remediate-vcsa-site site:
-    {{ vcsa_playbook }} playbooks/vcsa/stig_remediate.yml -l vcsa-{{ site }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/stig_remediate.yml -l vcsa-{{ site }}
 
 # --- Photon Hardening ---
 
 # Harden Photon servers (MUTATING)
 stig-remediate-photon target="photon_servers":
-    {{ ansible_playbook }} playbooks/photon/stig_remediate.yml -l {{ target }}
+    {{ ansible_playbook }} playbooks/linux/photon/stig_remediate.yml -l {{ target }}
 
 # --- Interactive Apply ---
 
@@ -483,41 +483,41 @@ stig-apply-esxi artifact vcenter esxi_host:
 
 # Rotate a local user password on Ubuntu servers
 rotate-password-ubuntu target="ubuntu_servers" user="admin":
-    {{ ansible_playbook }} playbooks/ubuntu/rotate_password.yml -l {{ target }} -e 'rotate_user={{ user }}'
+    {{ ansible_playbook }} playbooks/linux/ubuntu/rotate_password.yml -l {{ target }} -e 'rotate_user={{ user }}'
 
 # Rotate a local user password on ESXi hosts via vCenter
 rotate-password-esxi vcenter +hosts:
-    {{ ansible_playbook }} playbooks/esxi/rotate_password.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/rotate_password.yml \
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": {{ hosts }}}'
 
 # Rotate the root password on VCSA appliances
 rotate-password-vcsa target="vcsa":
-    {{ vcsa_playbook }} playbooks/vcsa/rotate_password.yml -l {{ target }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/rotate_password.yml -l {{ target }}
 
 # Rotate a local user password on Photon OS servers
 rotate-password-photon target="photon_servers" user="root":
-    {{ ansible_playbook }} playbooks/photon/rotate_password.yml -l {{ target }} -e 'rotate_user={{ user }}'
+    {{ ansible_playbook }} playbooks/linux/photon/rotate_password.yml -l {{ target }} -e 'rotate_user={{ user }}'
 
 # --- Password Status (read-only) ---
 
 # Show password aging and account status on Ubuntu servers
 password-status-ubuntu target="ubuntu_servers" user="root":
-    {{ ansible_playbook }} playbooks/ubuntu/password_status.yml -l {{ target }} -e 'rotate_user={{ user }}'
+    {{ ansible_playbook }} playbooks/linux/ubuntu/password_status.yml -l {{ target }} -e 'rotate_user={{ user }}'
 
 # Show local user accounts and password policy on ESXi hosts
 password-status-esxi vcenter +hosts:
-    {{ ansible_playbook }} playbooks/esxi/password_status.yml \
+    {{ ansible_playbook }} playbooks/vmware/esxi/password_status.yml \
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": {{ hosts }}}'
 
 # Show password aging and account status on VCSA appliances
 password-status-vcsa target="vcsa":
-    {{ vcsa_playbook }} playbooks/vcsa/password_status.yml -l {{ target }}
+    {{ vcsa_playbook }} playbooks/vmware/vcsa/password_status.yml -l {{ target }}
 
 # Show password aging and account status on Photon OS servers
 password-status-photon target="photon_servers" user="root":
-    {{ ansible_playbook }} playbooks/photon/password_status.yml -l {{ target }} -e 'rotate_user={{ user }}'
+    {{ ansible_playbook }} playbooks/linux/photon/password_status.yml -l {{ target }} -e 'rotate_user={{ user }}'
 
 # =============================================================================
 # Reporting

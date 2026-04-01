@@ -388,7 +388,7 @@ class TestGenericTargetHelpers(unittest.TestCase):
     def test_resolve_generic_apply_plan(self) -> None:
         self.assertEqual(
             resolve_generic_apply_plan("vcsa"),
-            ("playbooks/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
+            ("playbooks/vmware/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
         )
         self.assertEqual(
             resolve_generic_apply_plan("photon"),
@@ -711,7 +711,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vm/stig_remediate.yml", result.output)
+        self.assertIn("playbooks/vmware/vm/stig_remediate.yml", result.output)
         self.assertIn("vm_stig_target_vms=['app01.example.local']", result.output)
 
     def test_vcsa_dry_run_generates_vcsa_remediation_command(self) -> None:
@@ -737,7 +737,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vcsa/stig_remediate.yml", result.output)
+        self.assertIn("playbooks/vmware/vcsa/stig_remediate.yml", result.output)
         self.assertIn("vcsa_stig_target_hosts=['vcsa01.example.local']", result.output)
 
     def test_photon_dry_run_generates_photon_remediation_command(self) -> None:

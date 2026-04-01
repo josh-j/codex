@@ -77,10 +77,10 @@ Standard execution via `ansible-playbook`:
 ansible-playbook playbooks/site.yml
 
 # Read-only VMware STIG audits
-ansible-playbook playbooks/esxi/stig_audit.yml
-ansible-playbook playbooks/vm/stig_audit.yml
-ansible-playbook playbooks/vcsa/stig_audit.yml
+ansible-playbook playbooks/vmware/esxi/stig_audit.yml
+ansible-playbook playbooks/vmware/vm/stig_audit.yml
+ansible-playbook playbooks/vmware/vcsa/stig_audit.yml
 
 # Ubuntu package patching
-ansible-playbook playbooks/ubuntu/patch.yml
+ansible-playbook playbooks/linux/ubuntu/patch.yml
 ```
