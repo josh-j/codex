@@ -140,13 +140,18 @@ function Get-NcsSshArgumentList {
         [Parameter(Mandatory)]
         [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
-        [string] $RemoteCommand
+        [string] $RemoteCommand,
+        [switch] $NoTty
     )
 
     $arguments = [System.Collections.Generic.List[string]]::new()
     $arguments.Add("-p")
     $arguments.Add([string] $Settings.SshPort)
-    $arguments.Add("-tt")
+    if ($NoTty) {
+        $arguments.Add("-T")
+    } else {
+        $arguments.Add("-tt")
+    }
     $arguments.Add("-o")
     $arguments.Add("BatchMode=no")
 

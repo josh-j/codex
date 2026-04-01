@@ -21,7 +21,7 @@ function Invoke-NcsSshProbe {
         [string] $RemoteCommand
     )
 
-    $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand
+    $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand -NoTty
     $environment = $null
 
     $authMode = $Settings.SshAuthMode
@@ -136,7 +136,7 @@ function Test-NcsRemotePreflight {
     }
     if ($null -ne $probe.StdErr) {
         foreach ($line in ($probe.StdErr -split "`n")) {
-            if (-not [string]::IsNullOrWhiteSpace($line) -and $line -notmatch '^Warning:') {
+            if (-not [string]::IsNullOrWhiteSpace($line) -and $line -notmatch '^Warning:' -and $line -notmatch 'passphrase|password' ) {
                 $bannerLines.Add($line.TrimEnd())
             }
         }
