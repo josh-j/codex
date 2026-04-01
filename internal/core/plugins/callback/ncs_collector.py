@@ -263,24 +263,54 @@ def _load_platforms_contract(
     explicit_cfg = os.environ.get("NCS_PLATFORMS_CONFIG", "").strip()
     if explicit_cfg:
         if os.path.isdir(explicit_cfg):
-            # Env var points to a directory of schema files, not a single config
             platforms = _load_platforms_from_schema_dir(explicit_cfg)
         else:
             platforms = path_contract.load_platforms_config_file(explicit_cfg)
     else:
-        cfg_path = os.path.join(repo_root, "files", "ncs-reporter_configs", "platforms.yaml")
-        if os.path.isfile(cfg_path):
-            platforms = path_contract.load_platforms_config_file(cfg_path)
-        else:
-            schema_dir = os.path.join(repo_root, "files", "ncs-reporter_configs")
-            platforms = _load_platforms_from_schema_dir(schema_dir)
-            if not platforms:
-                raise RuntimeError(
-                    f"No platform configs found. Looked for:\n"
-                    f"  1. NCS_PLATFORMS_CONFIG env var (not set)\n"
-                    f"  2. {cfg_path} (not found)\n"
-                    f"  3. Schema files in {schema_dir} (none found or no 'platform' blocks)"
-                )
+        # Try multiple candidate locations for ncs-reporter configs
+        candidates = [repo_root]
+        # Also try the bundled configs inside the ncs-reporter package
+        try:
+            import ncs_reporter  # noqa: F811
+
+            pkg_configs = os.path.join(os.path.dirname(ncs_reporter.__file__), "configs")
+            if os.path.isdir(pkg_configs):
+                candidates.append(os.path.dirname(os.path.dirname(os.path.dirname(ncs_reporter.__file__))))
+        except ImportError:
+            pass
+
+        platforms: list[dict[str, Any]] = []
+        searched: list[str] = []
+        for root in candidates:
+            cfg_path = os.path.join(root, "files", "ncs-reporter_configs", "platforms.yaml")
+            if os.path.isfile(cfg_path):
+                platforms = path_contract.load_platforms_config_file(cfg_path)
+                break
+            schema_dir = os.path.join(root, "files", "ncs-reporter_configs")
+            if os.path.isdir(schema_dir):
+                platforms = _load_platforms_from_schema_dir(schema_dir)
+                if platforms:
+                    break
+            searched.append(schema_dir)
+
+        # Last resort: try the ncs-reporter package's bundled configs directly
+        if not platforms:
+            try:
+                import ncs_reporter  # noqa: F811
+
+                pkg_configs = os.path.join(os.path.dirname(ncs_reporter.__file__), "configs")
+                if os.path.isdir(pkg_configs):
+                    platforms = _load_platforms_from_schema_dir(pkg_configs)
+                    searched.append(pkg_configs)
+            except ImportError:
+                pass
+
+        if not platforms:
+            raise RuntimeError(
+                f"No platform configs found. Searched:\n"
+                + "\n".join(f"  - {s}" for s in searched)
+                + f"\nSet NCS_REPO_ROOT or NCS_PLATFORMS_CONFIG env var."
+            )
 
     target_index = path_contract.build_target_type_index(platforms)
     return platforms, target_index, path_contract.resolve_platform_for_target_type
