@@ -323,10 +323,11 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ConnectionInfoText" Grid.Column="0" Text="" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" />
-                    <Border x:Name="RunStateBorder" Grid.Column="1" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center">
+                    <Border x:Name="RunStateBorder" Grid.Column="1" Visibility="Collapsed" Background="#1e2228" CornerRadius="{StaticResource RadiusSm}" Padding="{StaticResource PaddingBadgeSm}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="RunStateText" Text="Idle" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeXs}" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="RunMetaText" Margin="{StaticResource MarginInlineSm}" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
+                            <TextBlock Text=" · " Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RunMetaText" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
                     <TextBlock x:Name="StatusTextBlock" Grid.Column="2" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="{StaticResource MarginStatusItem}" />
