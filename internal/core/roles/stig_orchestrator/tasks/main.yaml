@@ -89,7 +89,7 @@
       loop: "{{ _ncs_stig_phase1_loop }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase1_loop_var | default('_current_item') }}"
-        label: "{{ item }}"
+        label: "{{ lookup('vars', _ncs_stig_phase1_loop_var | default('_current_item'), default='') }}"
       when: _ncs_stig_phase1_loop is defined
       ignore_errors: true
 
@@ -148,7 +148,7 @@
       loop: "{{ _ncs_stig_phase2_loop | default(_ncs_stig_phase1_loop) }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase2_loop_var | default(_ncs_stig_phase1_loop_var | default('_current_item')) }}"
-        label: "{{ item }}"
+        label: "{{ lookup('vars', _ncs_stig_phase2_loop_var | default(_ncs_stig_phase1_loop_var | default('_current_item')), default='') }}"
       when: (_ncs_stig_phase2_loop is defined) or (_ncs_stig_phase1_loop is defined)
       ignore_errors: true
 
