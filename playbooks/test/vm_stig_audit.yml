@@ -22,7 +22,7 @@
       no_log: true
 
     - name: "Discover and validate VM targets"
-      ansible.builtin.include_tasks: ../vm/_discover.yml
+      ansible.builtin.include_tasks: ../vmware/vm/_discover.yml
       vars:
         _vmware_discovery_hostname: "{{ vmware_hostname }}"
 

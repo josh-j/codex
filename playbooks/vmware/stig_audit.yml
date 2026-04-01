@@ -3,10 +3,10 @@
 # Compatibility wrapper that runs VMware STIG audit targets (ESXi, VM, VCSA).
 
 - name: "Composite VMware STIG Audit | ESXi"
-  ansible.builtin.import_playbook: ../esxi/stig_audit.yml
+  ansible.builtin.import_playbook: esxi/stig_audit.yml
 
 - name: "Composite VMware STIG Audit | VM"
-  ansible.builtin.import_playbook: ../vm/stig_audit.yml
+  ansible.builtin.import_playbook: vm/stig_audit.yml
 
 - name: "Composite VMware STIG Audit | VCSA"
-  ansible.builtin.import_playbook: ../vcsa/stig_audit.yml
+  ansible.builtin.import_playbook: vcsa/stig_audit.yml
