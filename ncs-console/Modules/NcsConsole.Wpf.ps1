@@ -1,5 +1,8 @@
 Set-StrictMode -Version Latest
 
+$script:NcsWebView2Available = $false
+$script:NcsWebView2Status = "WebView2 app dependencies are not installed."
+
 $script:BrushConverter = $null
 function Get-NcsBrush {
     param([string] $Color)
@@ -10,9 +13,43 @@ function Get-NcsBrush {
 }
 
 function Import-NcsWpfAssemblies {
+    param(
+        [string] $ProjectRoot
+    )
+
     Add-Type -AssemblyName PresentationCore
     Add-Type -AssemblyName PresentationFramework
     Add-Type -AssemblyName WindowsBase
+
+    $script:NcsWebView2Available = $false
+    $script:NcsWebView2Status = "WebView2 app dependencies are not installed."
+
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        return
+    }
+
+    $webViewRoot = Join-Path -Path $ProjectRoot -ChildPath "App/lib/WebView2"
+    $coreAssemblyPath = Join-Path -Path $webViewRoot -ChildPath "Microsoft.Web.WebView2.Core.dll"
+    $wpfAssemblyPath = Join-Path -Path $webViewRoot -ChildPath "Microsoft.Web.WebView2.Wpf.dll"
+    $loaderDir = Join-Path -Path $webViewRoot -ChildPath $(if ([Environment]::Is64BitProcess) { "x64" } else { "x86" })
+    $loaderPath = Join-Path -Path $loaderDir -ChildPath "WebView2Loader.dll"
+
+    if (-not (Test-Path -LiteralPath $coreAssemblyPath) -or -not (Test-Path -LiteralPath $wpfAssemblyPath) -or -not (Test-Path -LiteralPath $loaderPath)) {
+        $script:NcsWebView2Status = "WebView2 app dependencies are missing from App/lib/WebView2."
+        return
+    }
+
+    try {
+        if ($env:PATH -notlike "*$loaderDir*") {
+            $env:PATH = "{0}{1}{2}" -f $loaderDir, [IO.Path]::PathSeparator, $env:PATH
+        }
+        Add-Type -Path $coreAssemblyPath
+        Add-Type -Path $wpfAssemblyPath
+        $script:NcsWebView2Available = $true
+        $script:NcsWebView2Status = ""
+    } catch {
+        $script:NcsWebView2Status = "WebView2 app dependencies failed to load: $($_.Exception.Message)"
+    }
 }
 
 function Invoke-NcsReportMirror {
@@ -142,6 +179,8 @@ function Get-NcsXamlControlMap {
         "ReportsToggleButton",
         "ReportsPane",
         "ReportsSplitter",
+        "ReportHost",
+        "ReportPlaceholderPanel",
         "ReportPlaceholder",
         "ReportBackButton",
         "ReportHomeButton",
@@ -682,13 +721,40 @@ function Format-NcsDuration {
     return $Duration.ToString("hh\:mm\:ss")
 }
 
+function Resolve-NcsReportRelativePath {
+    param(
+        [Parameter(Mandatory)]
+        [string] $CacheRoot,
+        [uri] $Uri
+    )
+
+    if ($null -eq $Uri -or -not $Uri.IsFile) {
+        return $null
+    }
+
+    $cacheRootPath = [IO.Path]::GetFullPath($CacheRoot)
+    $targetPath = [IO.Path]::GetFullPath($Uri.LocalPath)
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    $cacheRootWithSeparator = $cacheRootPath.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+
+    if ($targetPath.StartsWith($cacheRootWithSeparator, $comparison)) {
+        return $targetPath.Substring($cacheRootWithSeparator.Length).Replace([IO.Path]::DirectorySeparatorChar, '/')
+    }
+
+    if ($targetPath.Equals($cacheRootPath, $comparison)) {
+        return ""
+    }
+
+    return $null
+}
+
 function Show-NcsConsoleApp {
     param(
         [Parameter(Mandatory)]
         [string] $ProjectRoot
     )
 
-    Import-NcsWpfAssemblies
+    Import-NcsWpfAssemblies -ProjectRoot $ProjectRoot
 
     $xamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.xaml"
     $resourceXamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.Resources.xaml"
@@ -710,6 +776,20 @@ function Show-NcsConsoleApp {
             } else {
                 Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "NcsConsole/ReportCache/reports"
             })
+        WebViewUserDataRoot = $(if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+                Join-Path -Path $env:LOCALAPPDATA -ChildPath "NcsConsole/WebView2"
+            } else {
+                Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "NcsConsole/WebView2"
+            })
+    }
+
+    $reportViewState = [pscustomobject]@{
+        Control             = $null
+        IsInitialized       = $false
+        IsInitializing      = $false
+        PendingLocalPath    = ""
+        PendingSourceUri    = $null
+        PendingRelativePath = ""
     }
 
     $script:ActionGroups = @()
@@ -728,6 +808,142 @@ function Show-NcsConsoleApp {
     Update-NcsWindowChromeState -Window $window -Controls $controls
     Update-NcsTopTabState -Controls $controls
     Update-NcsConnectionInfo -Controls $controls
+
+    $setReportStatus = {
+        param(
+            [string] $Message,
+            [bool] $ShowPlaceholder = $true
+        )
+
+        $controls.ReportPlaceholder.Text = $Message
+        $controls.ReportPlaceholderPanel.Visibility = if ($ShowPlaceholder) { "Visible" } else { "Collapsed" }
+    }
+
+    $openReportExternally = {
+        param(
+            [Parameter(Mandatory)]
+            [string] $LocalReportPath,
+            [string] $Reason
+        )
+
+        $status = if ([string]::IsNullOrWhiteSpace($Reason)) {
+            "Opened report in default browser: $script:CurrentReportPath"
+        } else {
+            "Embedded reports unavailable. Opened in default browser: $Reason"
+        }
+
+        & $setReportStatus $status $true
+        Start-Process -FilePath $LocalReportPath | Out-Null
+    }
+
+    $ensureReportBrowser = {
+        if (-not $script:NcsWebView2Available -or $null -eq $reportViewState.Control) {
+            return $false
+        }
+
+        if ($reportViewState.IsInitialized) {
+            return $true
+        }
+
+        if ($reportViewState.IsInitializing) {
+            return $false
+        }
+
+        try {
+            $reportViewState.IsInitializing = $true
+            if (-not (Test-Path -LiteralPath $state.WebViewUserDataRoot)) {
+                [System.IO.Directory]::CreateDirectory($state.WebViewUserDataRoot) | Out-Null
+            }
+            $environment = [Microsoft.Web.WebView2.Core.CoreWebView2Environment]::CreateAsync($null, $state.WebViewUserDataRoot).GetAwaiter().GetResult()
+            $null = $reportViewState.Control.EnsureCoreWebView2Async($environment)
+        } catch {
+            $reportViewState.IsInitializing = $false
+            $script:NcsWebView2Status = "WebView2 runtime unavailable: $($_.Exception.Message)"
+        }
+
+        return $false
+    }
+
+    if ($script:NcsWebView2Available) {
+        try {
+            $reportWebView = [Microsoft.Web.WebView2.Wpf.WebView2]::new()
+            $reportWebView.HorizontalAlignment = "Stretch"
+            $reportWebView.VerticalAlignment = "Stretch"
+            $reportViewState.Control = $reportWebView
+            $controls.ReportHost.Children.Add($reportWebView) | Out-Null
+
+            $reportWebView.Add_CoreWebView2InitializationCompleted({
+                param($s, $e)
+
+                $reportViewState.IsInitializing = $false
+                if ($e.IsSuccess) {
+                    $reportViewState.IsInitialized = $true
+                    if ($null -ne $reportViewState.PendingSourceUri) {
+                        $s.Source = $reportViewState.PendingSourceUri
+                        $reportViewState.PendingSourceUri = $null
+                    }
+                    return
+                }
+
+                $script:NcsWebView2Status = "WebView2 runtime unavailable: $($e.InitializationException.Message)"
+                $pendingLocalPath = $reportViewState.PendingLocalPath
+                $reportViewState.PendingSourceUri = $null
+                $reportViewState.PendingLocalPath = ""
+                $reportViewState.PendingRelativePath = ""
+                if (-not [string]::IsNullOrWhiteSpace($pendingLocalPath) -and (Test-Path -LiteralPath $pendingLocalPath)) {
+                    & $openReportExternally $pendingLocalPath $script:NcsWebView2Status
+                } else {
+                    & $setReportStatus $script:NcsWebView2Status $true
+                }
+            })
+
+            $reportWebView.Add_NavigationStarting({
+                param($s, $e)
+
+                $targetUri = $null
+                if (-not [string]::IsNullOrWhiteSpace($e.Uri)) {
+                    try {
+                        $targetUri = [uri] $e.Uri
+                    } catch {
+                        $targetUri = $null
+                    }
+                }
+
+                $relativePath = Resolve-NcsReportRelativePath -CacheRoot $state.ReportCacheRoot -Uri $targetUri
+                if ($null -ne $relativePath) {
+                    if (-not [string]::IsNullOrWhiteSpace($reportViewState.PendingRelativePath) -and $reportViewState.PendingRelativePath -eq $relativePath) {
+                        $reportViewState.PendingRelativePath = ""
+                        $reportViewState.PendingLocalPath = ""
+                        & $setReportStatus "" $false
+                        return
+                    }
+
+                    if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $relativePath) {
+                        $script:ReportHistory.Add($script:CurrentReportPath)
+                    }
+                    $script:CurrentReportPath = $relativePath
+                    $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
+                    & $setReportStatus "" $false
+                    return
+                }
+
+                if ($targetUri -and $targetUri.IsAbsoluteUri) {
+                    $e.Cancel = $true
+                    Start-Process -FilePath $targetUri.AbsoluteUri | Out-Null
+                    & $setReportStatus "Opened external link in default browser: $($targetUri.AbsoluteUri)" $true
+                }
+            })
+        } catch {
+            $script:NcsWebView2Available = $false
+            $script:NcsWebView2Status = "WebView2 control failed to initialize: $($_.Exception.Message)"
+        }
+    }
+
+    if (-not $script:NcsWebView2Available) {
+        & $setReportStatus "Connect to sync reports. Inline viewing unavailable: $script:NcsWebView2Status" $true
+    } else {
+        & $setReportStatus "Connect to sync reports to view them inline" $true
+    }
 
     $durationTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $durationTimer.Interval = [timespan]::FromSeconds(1)
@@ -1059,16 +1275,32 @@ function Show-NcsConsoleApp {
     $reportsColumn = $controls.OperatePanel.ColumnDefinitions[6]
     $script:ReportHistory = [System.Collections.Generic.List[string]]::new()
     $script:CurrentReportPath = ""
+    $script:ReportsSynced = $false
+
+    $syncReports = {
+        if ($script:ReportsSynced) { return $true }
+        if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return $false }
+        $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
+        if ($mirror.ExitCode -eq 0) {
+            $script:ReportsSynced = $true
+            return $true
+        }
+        $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+        if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
+        & $setReportStatus $message.Trim() $true
+        return $false
+    }
 
     $loadReport = {
         param([string] $RelativePath)
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
-            $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
+            if (-not (& $syncReports)) { return }
+            $mirror = @{ ExitCode = 0 }
             if ($mirror.ExitCode -eq 0) {
                 $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
                 if (-not (Test-Path -LiteralPath $localReportPath)) {
-                    $controls.ReportPlaceholder.Text = "Report not found after sync: $RelativePath"
+                    & $setReportStatus "Report not found after sync: $RelativePath" $true
                     return
                 }
 
@@ -1077,16 +1309,27 @@ function Show-NcsConsoleApp {
                 }
                 $script:CurrentReportPath = $RelativePath
                 $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
-                $controls.ReportPlaceholder.Text = "Opened report in default browser: $RelativePath"
-                Start-Process -FilePath $localReportPath | Out-Null
+
+                $browserReady = & $ensureReportBrowser
+                if ($browserReady -or $reportViewState.IsInitializing) {
+                    $reportViewState.PendingRelativePath = $RelativePath
+                    $reportViewState.PendingLocalPath = $localReportPath
+                    $reportViewState.PendingSourceUri = [uri] $localReportPath
+                    & $setReportStatus "Loading report: $RelativePath" $true
+                    if ($browserReady) {
+                        $reportViewState.Control.Source = $reportViewState.PendingSourceUri
+                    }
+                } else {
+                    & $openReportExternally $localReportPath $script:NcsWebView2Status
+                }
                 return
             }
 
             $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
             if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
-            $controls.ReportPlaceholder.Text = $message.Trim()
+            & $setReportStatus $message.Trim() $true
         } catch {
-            $controls.ReportPlaceholder.Text = $_.Exception.Message
+            & $setReportStatus $_.Exception.Message $true
         }
     }
 
@@ -1133,10 +1376,13 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ReportRefreshButton.Add_Click({
+        $script:ReportsSynced = $false
         if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath)) {
             $path = $script:CurrentReportPath
             $script:CurrentReportPath = ""
             & $loadReport $path
+        } else {
+            & $loadReport "site_health_report.html"
         }
     })
 
@@ -1151,9 +1397,14 @@ function Show-NcsConsoleApp {
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
-                $controls.ReportPlaceholder.Text = "Connect to sync reports and open them in your browser"
+                if ($script:NcsWebView2Available) {
+                    & $setReportStatus "Connect to sync reports to view them inline" $true
+                } else {
+                    & $setReportStatus "Connect to sync reports. Inline viewing unavailable: $script:NcsWebView2Status" $true
+                }
                 $script:ReportHistory.Clear()
                 $script:CurrentReportPath = ""
+                $script:ReportsSynced = $false
                 $controls.ReportBackButton.IsEnabled = $false
                 return
             }
@@ -1456,6 +1707,10 @@ function Show-NcsConsoleApp {
         if ($state.CurrentHandle) {
             Stop-NcsRemoteCommand -Handle $state.CurrentHandle
             $state.CurrentHandle = $null
+        }
+        if ($null -ne $reportViewState.Control) {
+            try { $reportViewState.Control.Dispose() } catch {}
+            $reportViewState.Control = $null
         }
     })
 
