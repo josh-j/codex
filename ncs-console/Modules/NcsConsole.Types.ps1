@@ -179,11 +179,9 @@ def parse_ncs_frontmatter(path):
             if found and s.strip().startswith("#"):
                 txt = s.strip()
                 ncs_lines.append(txt[2:] if txt.startswith("# ") else txt[1:])
-            elif found and s.strip() == "":
-                continue
             elif found:
                 break
-            elif not s.strip().startswith("#"):
+            elif not s.strip().startswith("#") and s.strip() != "":
                 break
     if not ncs_lines:
         return None
@@ -311,7 +309,9 @@ function Merge-NcsActionGroups {
     $merged = [System.Collections.Generic.List[hashtable]]::new()
     $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($group in $RemoteGroups) {
-        $merged.Add($group)
+        $mutableItems = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($i in $group.Items) { $mutableItems.Add($i) }
+        $merged.Add(@{ Group = $group.Group; Items = $mutableItems })
         [void] $mergedGroupNames.Add($group.Group)
     }
 
