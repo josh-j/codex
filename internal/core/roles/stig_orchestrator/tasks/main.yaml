@@ -12,16 +12,16 @@
 #                           (defaults to _ncs_stig_task_file)
 #
 # Optional vars:
-#   _ncs_stig_compat_facts   — Dict of backward-compat alias facts to set in Phase 0
-#   _ncs_stig_mode_facts     — Dict of role-specific mode facts (e.g. ubuntu_stig_enable_audit)
-#   _ncs_stig_pre_validations — List of assert conditions to check before running
-#   _ncs_stig_phase1_apply   — Dict of apply args for Phase 1 include (check_mode, tags, vars)
-#   _ncs_stig_phase2_apply   — Dict of apply args for Phase 2 include
-#   _ncs_stig_pre_phase1     — Task file to include before the main STIG run (e.g. prelude)
-#   _ncs_stig_phase1_loop       — List to loop over in Phase 1 (e.g. ESXi target hosts)
+#   _ncs_stig_compat_facts    — Dict of backward-compat alias facts to set in Phase 0
+#   _ncs_stig_mode_facts      — Dict of role-specific mode facts
+#   _ncs_stig_pre_validations — List of fail-when conditions (true = valid)
+#   _ncs_stig_pre_phase1      — Task file to include before the main STIG run
+#   _ncs_stig_phase1_loop       — List to loop over in Phase 1
 #   _ncs_stig_phase1_loop_var   — Loop variable name (default: _current_item)
-#   _ncs_stig_phase2_loop       — List to loop over in Phase 2 (defaults to phase1 loop)
+#   _ncs_stig_phase1_vars       — Extra vars dict to pass in Phase 1 apply block
+#   _ncs_stig_phase2_loop       — List to loop over in Phase 2
 #   _ncs_stig_phase2_loop_var   — Loop variable name for Phase 2
+#   _ncs_stig_phase2_vars       — Extra vars dict to pass in Phase 2 apply block
 #   _ncs_stig_telemetry         — Dict with telemetry config (platform, name, payload var)
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Backward-compat aliases"
@@ -39,12 +39,6 @@
     _stig_audit_only: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
     _stig_phase_hint: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
     _stig_active_phase: "{{ 'audit' if _ncs_stig_action in ['audit', 'verify'] else 'remediate' }}"
-  changed_when: false
-
-- name: "{{ _ncs_stig_label }} | Phase 0 | Resolve apply dicts"
-  ansible.builtin.set_fact:
-    _ncs_stig_resolved_phase1_apply: "{{ _ncs_stig_phase1_apply | default({'check_mode': _stig_audit_only | bool, 'tags': ['stig_task']}) }}"
-    _ncs_stig_resolved_phase2_apply: "{{ _ncs_stig_phase2_apply | default({'check_mode': true, 'tags': ['stig_task']}) }}"
   changed_when: false
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Set role-specific mode facts"
@@ -78,14 +72,20 @@
     - name: "{{ _ncs_stig_label }} | Phase 1a | Run STIG tasks"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_task_file }}"
-        apply: "{{ _ncs_stig_resolved_phase1_apply }}"
+        apply:
+          check_mode: "{{ _stig_audit_only | bool }}"
+          tags: [stig_task]
+          vars: "{{ _ncs_stig_phase1_vars | default({}) }}"
       when: _ncs_stig_phase1_loop is not defined
       tags: [stig, security]
 
     - name: "{{ _ncs_stig_label }} | Phase 1a | Run STIG tasks (loop)"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_task_file }}"
-        apply: "{{ _ncs_stig_resolved_phase1_apply }}"
+        apply:
+          check_mode: "{{ _stig_audit_only | bool }}"
+          tags: [stig_task]
+          vars: "{{ _ncs_stig_phase1_vars | default({}) }}"
       loop: "{{ _ncs_stig_phase1_loop }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase1_loop_var | default('_current_item') }}"
@@ -131,14 +131,20 @@
     - name: "{{ _ncs_stig_label }} | Phase 2a | Verify remediation"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_verify_file | default(_ncs_stig_task_file) }}"
-        apply: "{{ _ncs_stig_resolved_phase2_apply }}"
+        apply:
+          check_mode: true
+          tags: [stig_task]
+          vars: "{{ _ncs_stig_phase2_vars | default({}) }}"
       when: _ncs_stig_phase2_loop is not defined and _ncs_stig_phase1_loop is not defined
       tags: [stig, security, verify]
 
     - name: "{{ _ncs_stig_label }} | Phase 2a | Verify remediation (loop)"
       ansible.builtin.include_tasks:
         file: "{{ _ncs_stig_verify_file | default(_ncs_stig_task_file) }}"
-        apply: "{{ _ncs_stig_resolved_phase2_apply }}"
+        apply:
+          check_mode: true
+          tags: [stig_task]
+          vars: "{{ _ncs_stig_phase2_vars | default({}) }}"
       loop: "{{ _ncs_stig_phase2_loop | default(_ncs_stig_phase1_loop) }}"
       loop_control:
         loop_var: "{{ _ncs_stig_phase2_loop_var | default(_ncs_stig_phase1_loop_var | default('_current_item')) }}"
