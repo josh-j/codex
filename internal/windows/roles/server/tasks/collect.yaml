@@ -57,7 +57,7 @@
     - name: Run ConfigMgr Updates
       ansible.builtin.include_tasks: updates/configmgr.yaml
       when: windows_audit_force_update | default(false) | bool
-      tags: ["update", "configmgr"]
+      tags: [update, configmgr]
   rescue:
     - name: Mark discovery as failed
       ansible.builtin.set_fact:
