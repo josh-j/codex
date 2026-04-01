@@ -27,20 +27,24 @@
 
 - name: "{{ _ncs_role_label }} | Validate public interface"
   ansible.builtin.assert:
-    that: >-
-      {{
-        [
-          "_ncs_requested_action in ['collect', 'audit', 'remediate', 'verify']",
-          "(_ncs_requested_profile == 'none') or (_ncs_requested_profile in " ~ (_ncs_allowed_profiles | default(['stig']) | string) ~ ")",
-          "(_ncs_requested_operation == 'none') or (_ncs_requested_operation in " ~ (_ncs_allowed_operations | default([]) | string) ~ ")",
-          "not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none')",
-          "(_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify'])",
-        ]
-        + (_ncs_extra_validations | default([]))
-      }}
+    that:
+      - "{{ _ncs_requested_action in ['collect', 'audit', 'remediate', 'verify'] }}"
+      - "{{ (_ncs_requested_profile == 'none') or (_ncs_requested_profile in (_ncs_allowed_profiles | default(['stig']))) }}"
+      - "{{ (_ncs_requested_operation == 'none') or (_ncs_requested_operation in (_ncs_allowed_operations | default([]))) }}"
+      - "{{ not (_ncs_requested_profile != 'none' and _ncs_requested_operation != 'none') }}"
+      - "{{ (_ncs_requested_profile != 'stig') or (_ncs_requested_action in ['audit', 'remediate', 'verify']) }}"
     fail_msg: >-
       Unsupported {{ _ncs_role_label | lower }} role interface:
       action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
+  changed_when: false
+
+- name: "{{ _ncs_role_label }} | Extra validations"
+  ansible.builtin.assert:
+    that: "{{ _ncs_extra_validations }}"
+    fail_msg: >-
+      Extra validation failed for {{ _ncs_role_label | lower }}:
+      action={{ _ncs_requested_action }}, profile={{ _ncs_requested_profile }}, operation={{ _ncs_requested_operation }}.
+  when: _ncs_extra_validations is defined and _ncs_extra_validations | length > 0
   changed_when: false
 
 - name: "{{ _ncs_role_label }} | Set pre-dispatch facts"
@@ -67,5 +71,5 @@
            _ncs_dispatch_key,
            (_ncs_dynamic_dispatch_prefix | default('')) ~ _ncs_requested_operation
            if (_ncs_dynamic_dispatch | default(false))
-           else _dispatch_map.get('_default_', 'discover')
+           else _dispatch_map.get('_default_', 'collect')
          ) ~ '.yaml' }}

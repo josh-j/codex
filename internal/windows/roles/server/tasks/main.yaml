@@ -31,9 +31,9 @@
       - windows_update
       - winrm_enable
     _ncs_extra_validations:
-      - (_ncs_requested_profile != 'health') or (_ncs_requested_action in ['audit', 'collect', 'verify'])
-      - (_ncs_requested_operation not in ['ad_search', 'vuln_scan']) or (_ncs_requested_action in ['audit', 'verify'])
-      - (_ncs_requested_operation not in ['cleanup', 'kb_install', 'openssh', 'patch', 'registry_fix', 'remote_ops', 'scheduled_task', 'service', 'uninstall_software', 'update_software', 'windows_update', 'winrm_enable']) or (_ncs_requested_action in ['remediate', 'verify'])
+      - "{{ (_ncs_requested_profile != 'health') or (_ncs_requested_action in ['audit', 'collect', 'verify']) }}"
+      - "{{ (_ncs_requested_operation not in ['ad_search', 'vuln_scan']) or (_ncs_requested_action in ['audit', 'verify']) }}"
+      - "{{ (_ncs_requested_operation not in ['cleanup', 'kb_install', 'openssh', 'patch', 'registry_fix', 'remote_ops', 'scheduled_task', 'service', 'uninstall_software', 'update_software', 'windows_update', 'winrm_enable']) or (_ncs_requested_action in ['remediate', 'verify']) }}"
     _dispatch_map:
       stig: stig
       health: health

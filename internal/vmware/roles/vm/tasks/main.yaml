@@ -27,7 +27,7 @@
         _ncs_allowed_operations:
           - snapshot
         _ncs_extra_validations:
-          - (_ncs_requested_operation == 'none') or (_ncs_requested_action == 'remediate')
+          - "{{ (_ncs_requested_operation == 'none') or (_ncs_requested_action == 'remediate') }}"
         _dispatch_map:
           collect: collect
           snapshot: maintain/snapshot
