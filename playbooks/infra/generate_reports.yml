@@ -1,11 +1,7 @@
 ---
 # playbooks/infra/generate_reports.yml
-# Unified reporting engine execution and dashboard generation.
-# This playbook bridges the gap between raw Ansible telemetry and human-readable
-# reports. It dumps inventory group metadata to JSON and invokes the
-# 'ncs-reporter' CLI tool to normalize raw YAML data into view models.
-# The process renders rich HTML dashboards, STIG compliance summaries,
-# and platform-specific health reports based on the latest audit artifacts.
+# Invokes ncs-reporter to render HTML dashboards, STIG reports, and CKLB
+# artifacts from raw audit data collected by ncs_collector.
 
 - name: "Reporting Phase | Unified Fleet Report Generation"
   hosts: localhost
