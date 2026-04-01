@@ -130,6 +130,7 @@ function Get-NcsXamlControlMap {
         "RunButton",
         "CancelButton",
         "CommandPreviewTextBox",
+        "DetectedPathsPanel",
         "DetectedPathsListBox",
         "CopyOutputButton",
         "ExportOutputButton",
@@ -564,17 +565,17 @@ function Update-NcsCommandPreview {
 
     $playbook = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 
-    if ([string]::IsNullOrWhiteSpace($playbook)) {
-        $Controls.CommandPreviewTextBox.Text = "Select an action"
-    } else {
+    if (-not [string]::IsNullOrWhiteSpace($playbook)) {
         try {
             $request = [NcsActionRequest]::new($playbook)
             Set-NcsRequestFromControls -Controls $Controls -Request $request
-            $preview = Get-NcsRemoteShellCommand -Settings $Settings -Request $request
+            $preview = Resolve-NcsPlaybookCommand -Settings $Settings -Request $request
             $Controls.CommandPreviewTextBox.Text = $preview
         } catch {
-            $Controls.CommandPreviewTextBox.Text = $_.Exception.Message
+            $Controls.CommandPreviewTextBox.Text = ""
         }
+    } else {
+        $Controls.CommandPreviewTextBox.Text = ""
     }
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode ([string] $Controls.SshAuthModeComboBox.SelectedItem)
@@ -1242,6 +1243,7 @@ function Show-NcsConsoleApp {
             $controls.ConsoleTextBox.Clear()
             $script:ConsoleCharCount = 0
             $controls.DetectedPathsListBox.ItemsSource = $null
+            $controls.DetectedPathsPanel.Visibility = "Collapsed"
             $controls.ExitCodeTextBlock.Text = "-"
             $controls.DurationTextBlock.Text = "-"
             Set-NcsRunStateBadge -Controls $controls -State "Running"
@@ -1277,11 +1279,14 @@ function Show-NcsConsoleApp {
                         $state.CurrentHandle = $null
                         Set-NcsIdleUiState -Controls $controls
                         Set-NcsRunStateBadge -Controls $controls -State $(if ($runResult.Succeeded) { "Succeeded" } else { "Failed" })
-                        $controls.RunMetaText.Text = $runResult.Command
+                        $controls.RunMetaText.Text = $runResult.Action
                         $controls.StatusTextBlock.Text = if ($runResult.Succeeded) { "Run completed successfully." } else { "Run failed." }
                         $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
                         $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
                         $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
+                        if ($null -ne $runResult.DetectedPaths -and @($runResult.DetectedPaths).Length -gt 0) {
+                            $controls.DetectedPathsPanel.Visibility = "Visible"
+                        }
                     }
                     if ($window.Dispatcher.CheckAccess()) {
                         & $updateUi
@@ -1290,7 +1295,8 @@ function Show-NcsConsoleApp {
                     }
                 }
             $state.CurrentHandle = $handle
-            $controls.CommandPreviewTextBox.Text = $handle.RemoteCommand
+            $controls.CommandPreviewTextBox.Text = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
+            $controls.CommandPreviewTextBox.Visibility = "Visible"
             $durationTimer.Start()
         } catch {
             Set-NcsIdleUiState -Controls $controls
