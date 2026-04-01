@@ -15,11 +15,8 @@
   vars:
     esxi_stig_enable_ssh_checks: false
   pre_tasks:
-    - name: "Validate ESXi target list is provided"
-      ansible.builtin.assert:
-        that:
-          - esxi_stig_target_hosts | default([]) | length > 0
-        fail_msg: "No ESXi targets provided. Set esxi_stig_target_hosts (for example via just stig-harden-esxi-*)."
+    - name: "Discover and validate ESXi targets"
+      ansible.builtin.include_tasks: _discover.yml
 
   tasks:
     - name: "Execute ESXi STIG Hardening"
@@ -36,6 +33,9 @@
   gather_facts: false
   become: false
   tags: ["vmware", "stig", "audit", "esxi"]
+  pre_tasks:
+    - name: "Re-discover ESXi targets"
+      ansible.builtin.include_tasks: _discover.yml
   tasks:
     - name: "Execute Post-Remediation ESXi STIG Audit"
       ansible.builtin.include_role:

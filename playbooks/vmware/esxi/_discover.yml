@@ -1,0 +1,54 @@
+---
+# Shared ESXi host discovery: query vCenter for all managed ESXi hosts.
+# Skips if esxi_stig_target_hosts is already provided (manual override).
+
+- name: "Init vCenter connection"
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: init_vcenter
+  when: esxi_stig_target_hosts | default([]) | length == 0
+
+- name: "Query datacenters"
+  community.vmware.vmware_datacenter_info:
+    hostname: "{{ _vcenter_hostname | default(inventory_hostname) }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  register: _esxi_disc_datacenters
+  when: esxi_stig_target_hosts | default([]) | length == 0
+
+- name: "Query clusters per datacenter"
+  vmware.vmware.cluster_info:
+    hostname: "{{ _vcenter_hostname | default(inventory_hostname) }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    datacenter: "{{ item }}"
+  loop: "{{ _esxi_disc_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
+  register: _esxi_disc_clusters
+  when: esxi_stig_target_hosts | default([]) | length == 0
+
+- name: "Build ESXi host list from cluster data"
+  ansible.builtin.set_fact:
+    esxi_stig_target_hosts: >-
+      {{
+        _esxi_disc_clusters.results | default([])
+        | selectattr('clusters', 'defined')
+        | map(attribute='clusters')
+        | map('dict2items') | flatten
+        | map(attribute='value')
+        | selectattr('hosts', 'defined')
+        | map(attribute='hosts') | flatten
+        | map(attribute='name')
+        | reject('match', esxi_stig_exclude_pattern | default('^$'))
+        | list
+      }}
+  when: esxi_stig_target_hosts | default([]) | length == 0
+
+- name: "Validate ESXi target list"
+  ansible.builtin.assert:
+    that:
+      - esxi_stig_target_hosts | default([]) | length > 0
+    fail_msg: >-
+      No ESXi hosts discovered or provided.
+      Check vCenter connectivity or set esxi_stig_target_hosts explicitly.
