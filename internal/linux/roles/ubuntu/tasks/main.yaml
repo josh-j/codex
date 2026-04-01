@@ -1,12 +1,16 @@
 ---
 # internal.linux.ubuntu : tasks/main.yaml
 
+- name: "Ubuntu | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
 - name: "Ubuntu | Dispatch"
   ansible.builtin.include_role:
     name: internal.core.dispatch
   vars:
     _ncs_role_label: Ubuntu
-    _ncs_task_root: "{{ role_path }}/tasks"
     _ncs_default_action: collect
     _ncs_allowed_operations:
       - maintain

@@ -1,6 +1,11 @@
 ---
 # internal.vmware.vcsa : tasks/main.yaml
 
+- name: "VCSA | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
 - name: "VCSA | Dispatch"
   module_defaults:
     group/community.vmware.vmware:
@@ -40,7 +45,6 @@
         name: internal.core.dispatch
       vars:
         _ncs_role_label: VCSA
-        _ncs_task_root: "{{ role_path }}/tasks"
         _ncs_default_action: audit
         _ncs_action_routes:
           - collect

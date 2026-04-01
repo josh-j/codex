@@ -1,6 +1,11 @@
 ---
 # internal.vmware.esxi : tasks/main.yaml
 
+- name: "ESXi | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
 - name: "ESXi | Dispatch"
   module_defaults:
     group/community.vmware.vmware:
@@ -25,7 +30,6 @@
         name: internal.core.dispatch
       vars:
         _ncs_role_label: ESXi
-        _ncs_task_root: "{{ role_path }}/tasks"
         _ncs_default_action: collect
         _ncs_action_routes:
           - collect
@@ -35,6 +39,7 @@
         _ncs_extra_validations:
           - "{{ (_ncs_requested_operation != 'password_rotate') or (_ncs_requested_action == 'remediate') }}"
           - "{{ (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify']) }}"
+
         _dispatch_map:
           collect: collect
           password_status: maintain/password_status
