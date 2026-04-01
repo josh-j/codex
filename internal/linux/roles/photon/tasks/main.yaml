@@ -22,4 +22,4 @@
       stig: stig
       password_rotate: maintain/password_rotate
       password_status: maintain/password_status
-      _default_: discover
+      _default_: collect
