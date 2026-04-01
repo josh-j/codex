@@ -292,16 +292,50 @@ function Update-NcsActionOptions {
     $Controls.ActionOptionsPanel.Visibility = "Visible"
 
     foreach ($opt in @($options)) {
-        $label = [System.Windows.Controls.TextBlock]::new()
-        $label.Text = $opt['label']
-        $label.Foreground = Get-NcsBrush -Color "#8e939c"
-        $label.FontSize = 11
-        $Controls.ActionOptionsPanel.Children.Add($label) | Out-Null
+        $optType = if ($opt.ContainsKey('type')) { $opt['type'] } else { 'text' }
 
-        $textBox = [System.Windows.Controls.TextBox]::new()
-        $textBox.Tag = $opt['name']
-        if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
-        $Controls.ActionOptionsPanel.Children.Add($textBox) | Out-Null
+        if ($optType -ne 'bool') {
+            $label = [System.Windows.Controls.TextBlock]::new()
+            $label.Text = $opt['label']
+            $label.Foreground = Get-NcsBrush -Color "#8e939c"
+            $label.FontSize = 11
+            $Controls.ActionOptionsPanel.Children.Add($label) | Out-Null
+        }
+
+        switch ($optType) {
+            'select' {
+                $comboBox = [System.Windows.Controls.ComboBox]::new()
+                $comboBox.Tag = $opt['name']
+                if ($opt.ContainsKey('choices')) {
+                    $comboBox.ItemsSource = @($opt['choices'])
+                }
+                if ($opt.ContainsKey('default')) {
+                    $comboBox.SelectedItem = $opt['default']
+                }
+                if ($null -eq $comboBox.SelectedItem -and $comboBox.Items.Count -gt 0) {
+                    $comboBox.SelectedIndex = 0
+                }
+                $Controls.ActionOptionsPanel.Children.Add($comboBox) | Out-Null
+            }
+            'bool' {
+                $checkBox = [System.Windows.Controls.CheckBox]::new()
+                $checkBox.Tag = $opt['name']
+                $checkBox.Content = $opt['label']
+                $checkBox.Foreground = Get-NcsBrush -Color "#8e939c"
+                $checkBox.FontSize = 11
+                $checkBox.Margin = [System.Windows.Thickness]::new(0, 4, 0, 0)
+                if ($opt.ContainsKey('default')) {
+                    $checkBox.IsChecked = ($opt['default'] -eq 'true')
+                }
+                $Controls.ActionOptionsPanel.Children.Add($checkBox) | Out-Null
+            }
+            default {
+                $textBox = [System.Windows.Controls.TextBox]::new()
+                $textBox.Tag = $opt['name']
+                if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
+                $Controls.ActionOptionsPanel.Children.Add($textBox) | Out-Null
+            }
+        }
     }
 }
 
@@ -313,11 +347,19 @@ function Get-NcsActionOptionValues {
 
     $values = @{}
     foreach ($child in @($Controls.ActionOptionsPanel.Children)) {
-        if ($child -is [System.Windows.Controls.TextBox] -and -not [string]::IsNullOrWhiteSpace($child.Tag)) {
+        if ([string]::IsNullOrWhiteSpace($child.Tag)) { continue }
+        if ($child -is [System.Windows.Controls.TextBox]) {
             $val = $child.Text.Trim()
             if (-not [string]::IsNullOrWhiteSpace($val)) {
                 $values[$child.Tag] = $val
             }
+        } elseif ($child -is [System.Windows.Controls.ComboBox]) {
+            $val = [string] $child.SelectedItem
+            if (-not [string]::IsNullOrWhiteSpace($val)) {
+                $values[$child.Tag] = $val
+            }
+        } elseif ($child -is [System.Windows.Controls.CheckBox]) {
+            $values[$child.Tag] = if ($child.IsChecked) { "true" } else { "false" }
         }
     }
     return $values

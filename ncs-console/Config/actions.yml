@@ -33,6 +33,7 @@
       options:
         - name: esxi_collect_per_host
           label: Per-Host Health
+          type: bool
           default: "true"
     - label: STIG Audit
       playbook: esxi/stig_audit.yml
@@ -42,6 +43,7 @@
       options:
         - name: esxi_stig_enable_ssh_checks
           label: SSH Checks
+          type: bool
           default: "true"
     - label: Rotate Password
       playbook: esxi/rotate_password.yml
@@ -62,6 +64,7 @@
       options:
         - name: vcsa_stig_include_photon
           label: Include Photon Baseline
+          type: bool
           default: "false"
     - label: STIG Remediate
       playbook: vcsa/stig_remediate.yml
@@ -69,9 +72,11 @@
       options:
         - name: vcsa_stig_include_photon
           label: Include Photon Baseline
+          type: bool
           default: "false"
         - name: vcsa_stig_create_backups
           label: Create Backups
+          type: bool
           default: "true"
     - label: Rotate Password
       playbook: vcsa/rotate_password.yml
@@ -119,12 +124,18 @@
     - label: STIG Remediate
       playbook: ubuntu/stig_remediate.yml
       mutating: true
+      options:
+        - name: ubuntu_stig_enable_hardening
+          label: Enable Hardening
+          type: bool
+          default: "false"
     - label: Update
       playbook: ubuntu/update.yml
       mutating: true
       options:
         - name: ubuntu_enable_upgrade_reboots
           label: Allow Reboot
+          type: bool
           default: "true"
     - label: Rotate Password
       playbook: ubuntu/rotate_password.yml
@@ -136,6 +147,10 @@
     - label: Rotate Passwords (Bulk)
       playbook: ubuntu/rotate_passwords.yml
       mutating: true
+      options:
+        - name: user_name
+          label: Username
+          default: admin
     - label: Password Status
       playbook: ubuntu/password_status.yml
 
@@ -145,26 +160,41 @@
       playbook: windows/collect.yml
     - label: STIG Audit
       playbook: windows/stig_audit.yml
+      options:
+        - name: windows_stig_native_checks_only
+          label: Native Checks Only
+          type: bool
+          default: "false"
     - label: STIG Remediate
       playbook: windows/stig_remediate.yml
       mutating: true
+      options:
+        - name: windows_stig_enable_hardening
+          label: Enable Hardening
+          type: bool
+          default: "false"
     - label: Health
       playbook: windows/health.yml
       options:
         - name: windows_health_check_disk
           label: Disk Check
+          type: bool
           default: "true"
         - name: windows_health_check_memory_cpu
           label: Memory/CPU Check
+          type: bool
           default: "true"
         - name: windows_health_check_services
           label: Services Check
+          type: bool
           default: "true"
         - name: windows_health_check_event_logs
           label: Event Logs Check
+          type: bool
           default: "true"
         - name: windows_health_check_secure_channel
           label: Secure Channel Check
+          type: bool
           default: "true"
     - label: Patch
       playbook: windows/patch.yml
@@ -172,6 +202,7 @@
       options:
         - name: windows_update_allow_reboot
           label: Allow Reboot
+          type: bool
           default: "false"
     - label: AD Search
       playbook: windows/run.yml
@@ -183,9 +214,12 @@
           label: Search Term
         - name: windows_ad_search_type
           label: Type
+          type: select
+          choices: [computer, user, group]
           default: computer
         - name: windows_ad_bitlocker_recovery
           label: BitLocker Recovery
+          type: bool
           default: "false"
     - label: Vuln Scan
       playbook: windows/run.yml
@@ -204,6 +238,7 @@
           default: cleanup
         - name: windows_cleanup_profiles
           label: Clean Profiles
+          type: bool
           default: "false"
         - name: windows_cleanup_profile_days
           label: Profile Age (days)
@@ -231,6 +266,9 @@
         - name: ncs_operation
           label: Operation
           default: update_software
+        - name: windows_update_software_targets
+          label: Software Targets
+          default: chrome,edge
     - label: Uninstall Software
       playbook: windows/run.yml
       mutating: true
@@ -251,6 +289,8 @@
           label: Service Name
         - name: windows_service_action
           label: Action
+          type: select
+          choices: [list, start, stop, restart]
           default: restart
     - label: Scheduled Task
       playbook: windows/run.yml
@@ -261,6 +301,11 @@
           default: scheduled_task
         - name: windows_task_name
           label: Task Name
+        - name: windows_task_action
+          label: Task Action
+          type: select
+          choices: [list, run, enable, disable, delete]
+          default: list
     - label: Registry Fix
       playbook: windows/run.yml
       mutating: true
@@ -275,6 +320,19 @@
         - name: ncs_operation
           label: Operation
           default: openssh
+        - name: windows_openssh_default_shell
+          label: Default Shell
+          type: select
+          choices: [powershell, cmd]
+          default: powershell
+        - name: windows_openssh_allow_password
+          label: Allow Password Auth
+          type: bool
+          default: "false"
+        - name: windows_openssh_allow_pubkey
+          label: Allow Pubkey Auth
+          type: bool
+          default: "false"
     - label: WinRM Enable
       playbook: windows/run.yml
       mutating: true
@@ -290,6 +348,8 @@
           default: remote_ops
         - name: windows_remote_op
           label: Command
+          type: select
+          choices: [uptime, reboot, shutdown, logoff, gpupdate, message]
           default: uptime
         - name: windows_remote_message
           label: Message
@@ -400,6 +460,11 @@
     - label: STIG Remediate
       playbook: photon/stig_remediate.yml
       mutating: true
+      options:
+        - name: photon_stig_enable_hardening
+          label: Enable Hardening
+          type: bool
+          default: "false"
     - label: Rotate Password
       playbook: photon/rotate_password.yml
       mutating: true
