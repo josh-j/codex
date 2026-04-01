@@ -167,6 +167,14 @@ MUTATING_KEYWORDS = {"remediate", "rotate", "update", "cleanup", "install", "uni
     "patch", "fix", "enable", "service", "remove", "delete"}
 NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
 
+def auto_label(key):
+    return key.replace("_", " ").title()
+
+def yaml_str(v):
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v) if v is not None else ""
+
 def parse_option_line(key, value):
     """Parse compact option: 'name: type[choices] = default | label'"""
     opt = {"name": key}
@@ -182,7 +190,7 @@ def parse_option_line(key, value):
         if label:
             opt["label"] = label.strip()
         else:
-            opt["label"] = key.replace("_", " ").title()
+            opt["label"] = auto_label(key)
     else:
         parts = value.split("|", 1)
         if len(parts) == 2:
@@ -190,9 +198,9 @@ def parse_option_line(key, value):
             opt["label"] = parts[1].strip()
         elif value.strip():
             opt["default"] = value.strip()
-            opt["label"] = key.replace("_", " ").title()
+            opt["label"] = auto_label(key)
         else:
-            opt["label"] = key.replace("_", " ").title()
+            opt["label"] = auto_label(key)
     return opt
 
 def parse_ncs_blocks(path):
@@ -230,7 +238,7 @@ def parse_ncs_blocks(path):
             if "operation" in data:
                 block["operation"] = data["operation"]
             if "options" in data and isinstance(data["options"], dict):
-                block["options"] = [parse_option_line(k, str(v) if v is not None else "") for k, v in data["options"].items()]
+                block["options"] = [parse_option_line(k, yaml_str(v)) for k, v in data["options"].items()]
             result.append(block)
         except Exception:
             continue
@@ -263,10 +271,10 @@ def fallback_options(play):
     for k, v in pvars.items():
         if k in INTERNAL_VARS or k.startswith(("ansible_", "ncs_", "_")):
             continue
-        dv = str(v) if v is not None else ""
+        dv = yaml_str(v)
         if "{{" in dv:
             continue
-        opts.append({"name": k, "label": k.replace("_", " ").title(), "default": dv})
+        opts.append({"name": k, "label": auto_label(k), "default": dv})
     return opts
 
 base = "playbooks"
