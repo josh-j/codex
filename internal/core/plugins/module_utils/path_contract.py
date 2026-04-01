@@ -95,7 +95,7 @@ def build_target_type_index(platforms: list[dict[str, Any]]) -> dict[str, dict[s
             if not key:
                 continue
             if key in index:
-                raise ValueError(f"duplicate target_type mapping for '{key}'")
+                continue
             index[key] = p
     return index
 
