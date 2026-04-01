@@ -1,10 +1,10 @@
 # ncs:
-#   mutating: true
-#   options:
-#     - name: ubuntu_stig_enable_hardening
-#       label: Enable Hardening
-#       type: bool
-#       default: "false"
+# mutating: true
+# options:
+#   - name: ubuntu_stig_enable_hardening
+#     label: Enable Hardening
+#     type: bool
+#     default: "false"
 ---
 # playbooks/ubuntu/stig_remediate.yml
 # Compatibility wrapper for Ubuntu STIG remediation workflow.

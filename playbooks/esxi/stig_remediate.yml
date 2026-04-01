@@ -1,10 +1,10 @@
 # ncs:
-#   mutating: true
-#   options:
-#     - name: esxi_stig_enable_ssh_checks
-#       label: SSH Checks
-#       type: bool
-#       default: "true"
+# mutating: true
+# options:
+#   - name: esxi_stig_enable_ssh_checks
+#     label: SSH Checks
+#     type: bool
+#     default: "true"
 ---
 # playbooks/esxi/stig_remediate.yml
 # Automated security hardening remediation for VMware ESXi hosts.

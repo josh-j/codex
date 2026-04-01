@@ -1,10 +1,10 @@
 # ncs:
-#   mutating: true
-#   options:
-#     - name: ubuntu_enable_upgrade_reboots
-#       label: Allow Reboot
-#       type: bool
-#       default: "true"
+# mutating: true
+# options:
+#   - name: ubuntu_enable_upgrade_reboots
+#     label: Allow Reboot
+#     type: bool
+#     default: "true"
 ---
 # playbooks/ubuntu/update.yml
 # Composite Ubuntu update workflow: discover → update → discover.
