@@ -26,4 +26,4 @@
       patch: maintain/package_update
       password_status: maintain/password_status
       password_rotate: maintain/password_rotate
-      _default_: discover
+      _default_: collect
