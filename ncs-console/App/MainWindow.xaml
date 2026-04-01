@@ -152,7 +152,7 @@
                                     <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="Limit" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                            <TextBlock Text="Target Host/Group (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <TextBox x:Name="ActionLimitTextBox" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;)" />
                                             <Border x:Name="ActionLimitTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
                                                 <ScrollViewer x:Name="ActionLimitTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
