@@ -6,5 +6,8 @@ dist/
 build/
 .venv/
 
+# ncs-console dependencies (pulled by ncs-console/setup.ps1)
+ncs-console/App/lib/
+
 # Claude Code
 .claude/
