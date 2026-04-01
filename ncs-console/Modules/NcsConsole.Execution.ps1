@@ -287,152 +287,140 @@ function Start-NcsRemoteCommand {
         }
     }
 
-    $executionState = [pscustomobject]@{
-        Process      = [System.Diagnostics.Process]::new()
-        Lines        = [System.Collections.Generic.List[string]]::new()
-        PendingLines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
-        StartedAt    = Get-Date
-        StdoutState  = [pscustomobject]@{
-            Reader  = $null
-            Task    = $null
-            Buffer  = $null
-            Partial = ""
-            Closed  = $false
-        }
-        StderrState  = [pscustomobject]@{
-            Reader  = $null
-            Task    = $null
-            Buffer  = $null
-            Partial = ""
-            Closed  = $false
-        }
-        DrainTimer   = [System.Windows.Threading.DispatcherTimer]::new()
-    }
-    $executionState.Process.StartInfo = $psi
+    $lines = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+    $done = [System.Threading.ManualResetEventSlim]::new($false)
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $psi
+    $startedAt = Get-Date
 
-    $startRead = {
-        param($state)
-        if (-not $state.Closed -and $null -eq $state.Task) {
-            $buf = [char[]]::new(4096)
-            $state.Task = $state.Reader.ReadAsync($buf, 0, $buf.Length)
-            $state.Buffer = $buf
-        }
+    [void] $process.Start()
+    if ($null -ne $askPassSecret) {
+        $process.StandardInput.WriteLine($askPassSecret)
+    } else {
+        $process.StandardInput.WriteLine("")
+    }
+    $process.StandardInput.Close()
+
+    $readerThread = {
+        param([System.IO.StreamReader] $reader, [System.Collections.Concurrent.ConcurrentQueue[string]] $queue)
+        try {
+            while ($null -ne ($line = $reader.ReadLine())) {
+                $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
+                $queue.Enqueue($stamped)
+            }
+        } catch {}
     }
 
-    $drainRead = {
-        param($state)
-        while ($null -ne $state.Task -and $state.Task.IsCompleted) {
-            $count = $state.Task.GetAwaiter().GetResult()
-            $state.Task = $null
-
-            if ($count -eq 0) {
-                if ($state.Partial.Length -gt 0) {
-                    $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $state.Partial
-                    $script:NcsActiveExecutionState.Lines.Add($timestamped)
-                    $script:NcsActiveExecutionState.PendingLines.Enqueue($timestamped)
-                    $state.Partial = ""
+    $stdoutThread = [System.Threading.Thread]::new(
+        [System.Threading.ParameterizedThreadStart]{
+            param($args)
+            $reader = $args[0]
+            $queue = $args[1]
+            try {
+                while ($null -ne ($line = $reader.ReadLine())) {
+                    $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
+                    $queue.Enqueue($stamped)
                 }
-                $state.Closed = $true
-                break
-            }
+            } catch {}
+        })
+    $stdoutThread.IsBackground = $true
+    $stdoutThread.Start(@($process.StandardOutput, $lines))
 
-            $chunk = [string]::new($state.Buffer, 0, $count)
-            $text = $state.Partial + $chunk
-            $lines = $text -split "`n"
-            $state.Partial = $lines[$lines.Length - 1]
-            for ($i = 0; $i -lt $lines.Length - 1; $i++) {
-                $lineText = $lines[$i].TrimEnd("`r")
-                $timestamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $lineText
-                $script:NcsActiveExecutionState.Lines.Add($timestamped)
-                $script:NcsActiveExecutionState.PendingLines.Enqueue($timestamped)
-            }
-            & $startRead $state
-        }
+    $stderrThread = [System.Threading.Thread]::new(
+        [System.Threading.ParameterizedThreadStart]{
+            param($args)
+            $reader = $args[0]
+            $queue = $args[1]
+            try {
+                while ($null -ne ($line = $reader.ReadLine())) {
+                    $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $line
+                    $queue.Enqueue($stamped)
+                }
+            } catch {}
+        })
+    $stderrThread.IsBackground = $true
+    $stderrThread.Start(@($process.StandardError, $lines))
+
+    $allLines = [System.Collections.Generic.List[string]]::new()
+    $drainTimer = [System.Windows.Threading.DispatcherTimer]::new()
+    $drainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
+
+    $script:NcsActiveExecutionState = [pscustomobject]@{
+        Process      = $process
+        DrainTimer   = $drainTimer
+        StdoutThread = $stdoutThread
+        StderrThread = $stderrThread
+        Lines        = $allLines
+        PendingLines = $lines
+        StartedAt    = $startedAt
     }
 
-    $executionState.DrainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
     $tickHandler = {
         param($sender, $eventArgs)
         try {
-            $state = $script:NcsActiveExecutionState
-            if ($null -eq $state) {
+            $execState = $script:NcsActiveExecutionState
+            if ($null -eq $execState) {
                 $sender.Stop()
                 return
             }
 
-            & $drainRead $state.StdoutState
-            & $drainRead $state.StderrState
-
             $line = $null
-            while ($state.PendingLines.TryDequeue([ref]$line)) {
+            while ($execState.PendingLines.TryDequeue([ref]$line)) {
+                $execState.Lines.Add($line)
                 if ($OnOutput) { & $OnOutput $line }
             }
 
-            if (-not ($state.Process.HasExited -and $state.StdoutState.Closed -and $state.StderrState.Closed)) {
+            $threadsAlive = $execState.StdoutThread.IsAlive -or $execState.StderrThread.IsAlive
+            if ($threadsAlive -or -not $execState.Process.HasExited) {
                 return
             }
 
-            $sender.Stop()
-            # Drain any remaining lines after process exit
-            while ($state.PendingLines.TryDequeue([ref]$line)) {
+            # Final drain
+            while ($execState.PendingLines.TryDequeue([ref]$line)) {
+                $execState.Lines.Add($line)
                 if ($OnOutput) { & $OnOutput $line }
             }
-            $state.Process.WaitForExit()
-            if ($state.Lines.Count -gt $script:MaxOutputLines) {
-                $state.Lines.RemoveRange(0, $state.Lines.Count - $script:MaxOutputLines)
+
+            $sender.Stop()
+            $execState.Process.WaitForExit()
+
+            if ($execState.Lines.Count -gt $script:MaxOutputLines) {
+                $execState.Lines.RemoveRange(0, $execState.Lines.Count - $script:MaxOutputLines)
             }
+
             $result = [NcsRunResult]::new()
             $result.Action = $Request.Playbook
             $result.Command = $remoteCommand
-            $result.ExitCode = $state.Process.ExitCode
-            $result.Succeeded = $state.Process.ExitCode -eq 0
-            $result.StartedAt = $state.StartedAt
+            $result.ExitCode = $execState.Process.ExitCode
+            $result.Succeeded = $execState.Process.ExitCode -eq 0
+            $result.StartedAt = $execState.StartedAt
             $result.EndedAt = Get-Date
-            $result.Duration = $result.EndedAt.Value - $state.StartedAt
-            $result.OutputLines = $state.Lines.ToArray()
+            $result.Duration = $result.EndedAt.Value - $execState.StartedAt
+            $result.OutputLines = $execState.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
 
-            $state.Process.Dispose()
+            $execState.Process.Dispose()
             $script:NcsActiveExecutionState = $null
 
             if ($OnCompleted) { & $OnCompleted $result }
         } catch {
             $sender.Stop()
             if ($null -ne $script:NcsActiveExecutionState) {
+                try { $script:NcsActiveExecutionState.Process.Kill() } catch {}
                 $script:NcsActiveExecutionState.Process.Dispose()
                 $script:NcsActiveExecutionState = $null
             }
-            throw
         }
     }.GetNewClosure()
-    $executionState.DrainTimer.Add_Tick($tickHandler)
 
-    try {
-        $script:NcsActiveExecutionState = $executionState
-        [void] $executionState.Process.Start()
-        $executionState.StdoutState.Reader = $executionState.Process.StandardOutput
-        $executionState.StderrState.Reader = $executionState.Process.StandardError
-        if ($null -ne $askPassSecret) {
-            $executionState.Process.StandardInput.WriteLine($askPassSecret)
-        } else {
-            $executionState.Process.StandardInput.WriteLine("")
-        }
-        $executionState.Process.StandardInput.Close()
-        & $startRead $executionState.StdoutState
-        & $startRead $executionState.StderrState
-        $executionState.DrainTimer.Start()
-    } catch {
-        $executionState.DrainTimer.Stop()
-        $executionState.Process.Dispose()
-        $script:NcsActiveExecutionState = $null
-        throw
-    }
+    $drainTimer.Add_Tick($tickHandler)
+    $drainTimer.Start()
 
     return [pscustomobject]@{
-        Process       = $executionState.Process
-        DrainTimer    = $executionState.DrainTimer
+        Process       = $process
+        DrainTimer    = $drainTimer
         RemoteCommand = $remoteCommand
-        StartedAt     = $executionState.StartedAt
+        StartedAt     = $startedAt
     }
 }
 
