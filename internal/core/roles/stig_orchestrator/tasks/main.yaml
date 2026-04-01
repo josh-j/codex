@@ -43,10 +43,8 @@
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Resolve apply dicts"
   ansible.builtin.set_fact:
-    _ncs_stig_resolved_phase1_apply: >-
-      {{ _ncs_stig_phase1_apply | default({"check_mode": _stig_audit_only | bool, "tags": ["stig_task"]}) }}
-    _ncs_stig_resolved_phase2_apply: >-
-      {{ _ncs_stig_phase2_apply | default({"check_mode": true, "tags": ["stig_task"]}) }}
+    _ncs_stig_resolved_phase1_apply: "{{ _ncs_stig_phase1_apply | default({'check_mode': _stig_audit_only | bool, 'tags': ['stig_task']}) }}"
+    _ncs_stig_resolved_phase2_apply: "{{ _ncs_stig_phase2_apply | default({'check_mode': true, 'tags': ['stig_task']}) }}"
   changed_when: false
 
 - name: "{{ _ncs_stig_label }} | Phase 0 | Set role-specific mode facts"
