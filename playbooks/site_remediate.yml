@@ -17,14 +17,14 @@
 
 # Phase 3: Linux Fleet Hardening
 - name: "Phase 3: Linux System Hardening"
-  ansible.builtin.import_playbook: ubuntu/stig_remediate.yml
+  ansible.builtin.import_playbook: linux/ubuntu/stig_remediate.yml
 
 - name: "Phase 3b: Photon OS Hardening"
-  ansible.builtin.import_playbook: photon/stig_remediate.yml
+  ansible.builtin.import_playbook: linux/photon/stig_remediate.yml
 
 # Phase 4: Windows Fleet Hardening
 - name: "Phase 4: Windows System Hardening"
-  ansible.builtin.import_playbook: windows/stig_remediate.yml
+  ansible.builtin.import_playbook: windows/server/stig_remediate.yml
 
 # Phase 5: Verification & Unified Reporting
 - name: "Phase 5: Final Compliance Assessment"

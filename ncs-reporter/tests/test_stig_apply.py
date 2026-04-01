@@ -388,16 +388,16 @@ class TestGenericTargetHelpers(unittest.TestCase):
     def test_resolve_generic_apply_plan(self) -> None:
         self.assertEqual(
             resolve_generic_apply_plan("vcsa"),
-            ("playbooks/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
+            ("playbooks/vmware/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
         )
         self.assertEqual(
             resolve_generic_apply_plan("photon"),
-            ("playbooks/photon_stig_remediate.yml", "photon_target_hosts"),
+            ("playbooks/linux/photon/stig_remediate.yml", "photon_target_hosts"),
         )
 
     def test_build_generic_apply_args_includes_target_var(self) -> None:
         args = build_generic_apply_args(
-            playbook="playbooks/photon_stig_remediate.yml",
+            playbook="playbooks/linux/photon/stig_remediate.yml",
             inventory="inventory/production/",
             limit="linux",
             target_var="photon_target_hosts",
@@ -711,7 +711,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vm/stig_remediate.yml", result.output)
+        self.assertIn("playbooks/vmware/vm/stig_remediate.yml", result.output)
         self.assertIn("vm_stig_target_vms=['app01.example.local']", result.output)
 
     def test_vcsa_dry_run_generates_vcsa_remediation_command(self) -> None:
@@ -737,7 +737,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vcsa/stig_remediate.yml", result.output)
+        self.assertIn("playbooks/vmware/vcsa/stig_remediate.yml", result.output)
         self.assertIn("vcsa_stig_target_hosts=['vcsa01.example.local']", result.output)
 
     def test_photon_dry_run_generates_photon_remediation_command(self) -> None:
@@ -763,7 +763,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/photon_stig_remediate.yml", result.output)
+        self.assertIn("playbooks/linux/photon/stig_remediate.yml", result.output)
         self.assertIn("photon_target_hosts=['photon01.example.local']", result.output)
 
     def test_ubuntu_dry_run_generates_ubuntu_remediation_command(self) -> None:
@@ -789,5 +789,5 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/ubuntu_stig_remediate.yml", result.output)
+        self.assertIn("playbooks/linux/ubuntu/stig_remediate.yml", result.output)
         self.assertIn("ubuntu_target_hosts=['ubuntu01.example.local']", result.output)
