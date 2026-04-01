@@ -330,29 +330,15 @@ stig-audit-esxi vcenter host: && _stig-report
         -l {{ vcenter }} \
         -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
 
-# Audit all ESXi hosts at a site
-stig-audit-esxi-site site:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
-    trap 'rm -f "$tmpfile"' EXIT
-    {{ ansible_inventory }} -i {{ inventory_file }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+# Audit all ESXi hosts at a site (auto-discovers from vCenter)
+stig-audit-esxi-site site: && _stig-report
     {{ ansible_playbook }} playbooks/vmware/esxi/stig_audit.yml \
-        -l vcsa-{{ site }} -e "@$tmpfile" -f 14
-    just _stig-report
+        -l vcsa-{{ site }} -f 14
 
 # Audit all ESXi hosts at a site with custom inventory
-stig-audit-esxi-site-inv site inv:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
-    trap 'rm -f "$tmpfile"' EXIT
-    {{ ansible_inventory }} -i {{ inv }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
+stig-audit-esxi-site-inv site inv: && _stig-report
     {{ ansible_playbook }} -i {{ inv }} playbooks/vmware/esxi/stig_audit.yml \
-        -l vcsa-{{ site }} -e "@$tmpfile" -f 10
-    just _stig-report
+        -l vcsa-{{ site }} -f 10
 
 # --- VM STIG ---
 
@@ -427,25 +413,13 @@ stig-harden-esxi vcenter host:
 
 # Harden all ESXi hosts at a site
 stig-harden-esxi-site site:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
-    trap 'rm -f "$tmpfile"' EXIT
-    {{ ansible_inventory }} -i {{ inventory_file }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} playbooks/vmware/esxi/stig_remediate.yml \
-        -l vcsa-{{ site }} -e "@$tmpfile"
+        -l vcsa-{{ site }}
 
 # Harden all ESXi hosts at a site with custom inventory
 stig-harden-esxi-site-inv site inv:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    tmpfile=$(mktemp /tmp/ncs_esxi_site_XXXXXX.json)
-    trap 'rm -f "$tmpfile"' EXIT
-    {{ ansible_inventory }} -i {{ inv }} --list | \
-        {{ python }} -c 'import json,sys; d=json.load(sys.stdin); g="{{ site }}_esxi_hosts"; hv=d.get("_meta",{}).get("hostvars",{}); hosts=[hv.get(h,{}).get("ansible_host",h) for h in d.get(g,{}).get("hosts",[])]; hosts or sys.exit("no hosts in group "+g); print(json.dumps({"esxi_stig_target_hosts":hosts}))' > "$tmpfile"
     {{ ansible_playbook }} -i {{ inv }} playbooks/vmware/esxi/stig_remediate.yml \
-        -l vcsa-{{ site }} -e "@$tmpfile"
+        -l vcsa-{{ site }}
 
 # --- VM Hardening ---
 
