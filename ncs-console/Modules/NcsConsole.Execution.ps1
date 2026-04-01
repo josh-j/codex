@@ -340,69 +340,73 @@ function Start-NcsRemoteCommand {
         Lines        = $allLines
         PendingLines = $pendingLines
         StartedAt    = $startedAt
+        OnOutput     = $OnOutput
+        OnCompleted  = $OnCompleted
+        Request      = $Request
+        RemoteCmd    = $remoteCommand
+        TickCount    = 0
     }
 
-    $script:NcsTickCount = 0
-    $tickHandler = {
+    $drainTimer.Add_Tick({
         param($sender, $eventArgs)
         try {
-            $execState = $script:NcsActiveExecutionState
-            if ($null -eq $execState) {
+            $es = $script:NcsActiveExecutionState
+            if ($null -eq $es) {
                 $sender.Stop()
                 return
             }
 
-            $script:NcsTickCount++
-            if ($script:NcsTickCount -eq 1) {
-                $dbg = "[ncs-debug] Tick #1: HasExited=$($execState.Process.HasExited) StdoutClosed=$($execState.StdoutClosed.IsSet) StderrClosed=$($execState.StderrClosed.IsSet) QueueCount=$($execState.PendingLines.Count)"
-                $execState.PendingLines.Enqueue($dbg)
+            $es.TickCount++
+            if ($es.TickCount -eq 1) {
+                $dbg = "[ncs-debug] Tick #1: HasExited=$($es.Process.HasExited) StdoutClosed=$($es.StdoutClosed.IsSet) StderrClosed=$($es.StderrClosed.IsSet) QueueCount=$($es.PendingLines.Count)"
+                $es.PendingLines.Enqueue($dbg)
             }
-            if ($script:NcsTickCount -eq 50) {
-                $dbg = "[ncs-debug] Tick #50: HasExited=$($execState.Process.HasExited) StdoutClosed=$($execState.StdoutClosed.IsSet) StderrClosed=$($execState.StderrClosed.IsSet) QueueCount=$($execState.PendingLines.Count) LinesCollected=$($execState.Lines.Count)"
-                $execState.PendingLines.Enqueue($dbg)
+            if ($es.TickCount -eq 50) {
+                $dbg = "[ncs-debug] Tick #50: HasExited=$($es.Process.HasExited) StdoutClosed=$($es.StdoutClosed.IsSet) StderrClosed=$($es.StderrClosed.IsSet) QueueCount=$($es.PendingLines.Count) LinesCollected=$($es.Lines.Count)"
+                $es.PendingLines.Enqueue($dbg)
             }
 
             $line = $null
-            while ($execState.PendingLines.TryDequeue([ref]$line)) {
-                $execState.Lines.Add($line)
-                if ($OnOutput) { & $OnOutput $line }
+            while ($es.PendingLines.TryDequeue([ref]$line)) {
+                $es.Lines.Add($line)
+                if ($es.OnOutput) { & $es.OnOutput $line }
             }
 
-            $streamsDone = $execState.StdoutClosed.IsSet -and $execState.StderrClosed.IsSet
-            if (-not $streamsDone -or -not $execState.Process.HasExited) {
+            $streamsDone = $es.StdoutClosed.IsSet -and $es.StderrClosed.IsSet
+            if (-not $streamsDone -or -not $es.Process.HasExited) {
                 return
             }
 
-            # Final drain
-            while ($execState.PendingLines.TryDequeue([ref]$line)) {
-                $execState.Lines.Add($line)
-                if ($OnOutput) { & $OnOutput $line }
+            while ($es.PendingLines.TryDequeue([ref]$line)) {
+                $es.Lines.Add($line)
+                if ($es.OnOutput) { & $es.OnOutput $line }
             }
 
             $sender.Stop()
-            $execState.Process.WaitForExit()
+            $es.Process.WaitForExit()
 
-            if ($execState.Lines.Count -gt $script:MaxOutputLines) {
-                $execState.Lines.RemoveRange(0, $execState.Lines.Count - $script:MaxOutputLines)
+            if ($es.Lines.Count -gt $script:MaxOutputLines) {
+                $es.Lines.RemoveRange(0, $es.Lines.Count - $script:MaxOutputLines)
             }
 
             $result = [NcsRunResult]::new()
-            $result.Action = $Request.Playbook
-            $result.Command = $remoteCommand
-            $result.ExitCode = $execState.Process.ExitCode
-            $result.Succeeded = $execState.Process.ExitCode -eq 0
-            $result.StartedAt = $execState.StartedAt
+            $result.Action = $es.Request.Playbook
+            $result.Command = $es.RemoteCmd
+            $result.ExitCode = $es.Process.ExitCode
+            $result.Succeeded = $es.Process.ExitCode -eq 0
+            $result.StartedAt = $es.StartedAt
             $result.EndedAt = Get-Date
-            $result.Duration = $result.EndedAt.Value - $execState.StartedAt
-            $result.OutputLines = $execState.Lines.ToArray()
+            $result.Duration = $result.EndedAt.Value - $es.StartedAt
+            $result.OutputLines = $es.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
 
-            $execState.StdoutClosed.Dispose()
-            $execState.StderrClosed.Dispose()
-            $execState.Process.Dispose()
+            $completedCb = $es.OnCompleted
+            $es.StdoutClosed.Dispose()
+            $es.StderrClosed.Dispose()
+            $es.Process.Dispose()
             $script:NcsActiveExecutionState = $null
 
-            if ($OnCompleted) { & $OnCompleted $result }
+            if ($completedCb) { & $completedCb $result }
         } catch {
             $sender.Stop()
             if ($null -ne $script:NcsActiveExecutionState) {
@@ -411,9 +415,7 @@ function Start-NcsRemoteCommand {
                 $script:NcsActiveExecutionState = $null
             }
         }
-    }.GetNewClosure()
-
-    $drainTimer.Add_Tick($tickHandler)
+    })
     $drainTimer.Start()
 
     return [pscustomobject]@{
