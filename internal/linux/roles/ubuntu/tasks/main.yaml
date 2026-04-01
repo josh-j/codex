@@ -14,8 +14,8 @@
       - password_status
       - password_rotate
     _ncs_extra_validations:
-      - (_ncs_requested_operation not in ['patch', 'maintain', 'password_rotate']) or (_ncs_requested_action == 'remediate')
-      - (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify'])
+      - "{{ (_ncs_requested_operation not in ['patch', 'maintain', 'password_rotate']) or (_ncs_requested_action == 'remediate') }}"
+      - "{{ (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify']) }}"
     _dispatch_map:
       stig: stig
       maintain: maintain/package_upgrade
