@@ -103,11 +103,19 @@ try {
         }
     }
     if (-not $runtimeFound) {
-        Write-Host "WARNING: WebView2 Evergreen Runtime is NOT installed." -ForegroundColor Red
-        Write-Host "  The SDK assemblies are in place, but embedded reports require the runtime."
-        Write-Host "  Install from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
-        Write-Host "  Or run:  winget install Microsoft.EdgeWebView2Runtime"
-        Write-Host ""
+        Write-Host "WebView2 Evergreen Runtime not found. Installing..." -ForegroundColor Yellow
+        $winget = Get-Command winget -ErrorAction SilentlyContinue
+        if ($winget) {
+            winget install Microsoft.EdgeWebView2Runtime --scope user --silent --accept-source-agreements --accept-package-agreements
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "WebView2 Runtime installed." -ForegroundColor Green
+            } else {
+                Write-Warning "winget install failed (exit $LASTEXITCODE). Install manually: winget install Microsoft.EdgeWebView2Runtime --scope user"
+            }
+        } else {
+            Write-Warning "winget not available. Install WebView2 Runtime manually:"
+            Write-Host "  https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
+        }
     }
 } finally {
     if (Test-Path -LiteralPath $tempDir) {
