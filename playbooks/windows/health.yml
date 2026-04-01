@@ -1,25 +1,11 @@
-# ncs:
+# >>>
 # options:
-#   - name: windows_health_check_disk
-#     label: Disk Check
-#     type: bool
-#     default: "true"
-#   - name: windows_health_check_memory_cpu
-#     label: Memory/CPU Check
-#     type: bool
-#     default: "true"
-#   - name: windows_health_check_services
-#     label: Services Check
-#     type: bool
-#     default: "true"
-#   - name: windows_health_check_event_logs
-#     label: Event Logs Check
-#     type: bool
-#     default: "true"
-#   - name: windows_health_check_secure_channel
-#     label: Secure Channel Check
-#     type: bool
-#     default: "true"
+#   windows_health_check_disk: bool = true | Disk Check
+#   windows_health_check_memory_cpu: bool = true | Memory/CPU Check
+#   windows_health_check_services: bool = true | Services Check
+#   windows_health_check_event_logs: bool = true | Event Logs Check
+#   windows_health_check_secure_channel: bool = true | Secure Channel Check
+# <<<
 ---
 # playbooks/windows/health.yml
 # Comprehensive system health check for Windows fleet.

@@ -1,9 +1,7 @@
-# ncs:
+# >>>
 # options:
-#   - name: windows_stig_native_checks_only
-#     label: Native Checks Only
-#     type: bool
-#     default: "false"
+#   windows_stig_native_checks_only: bool = false | Native Checks Only
+# <<<
 ---
 # playbooks/windows/stig_audit.yml
 # Security Technical Implementation Guide (STIG) audit for Windows Server.

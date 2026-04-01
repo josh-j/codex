@@ -1,9 +1,8 @@
-# ncs:
+# >>>
+# label: Collect
 # options:
-#   - name: esxi_collect_per_host
-#     label: Per-Host Health
-#     type: bool
-#     default: "true"
+#   esxi_collect_per_host: bool = true | Per-Host Health
+# <<<
 ---
 # playbooks/esxi/collect.yml
 # Read-only audit focused on ESXi host and datastore inventory/health data.

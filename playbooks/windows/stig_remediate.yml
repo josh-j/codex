@@ -1,10 +1,8 @@
-# ncs:
+# >>>
 # mutating: true
 # options:
-#   - name: windows_stig_enable_hardening
-#     label: Enable Hardening
-#     type: bool
-#     default: "false"
+#   windows_stig_enable_hardening: bool = false | Enable Hardening
+# <<<
 ---
 # playbooks/windows/stig_remediate.yml
 # Automated security hardening remediation for Windows Server.

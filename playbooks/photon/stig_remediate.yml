@@ -1,10 +1,8 @@
-# ncs:
+# >>>
 # mutating: true
 # options:
-#   - name: photon_stig_enable_hardening
-#     label: Enable Hardening
-#     type: bool
-#     default: "false"
+#   photon_stig_enable_hardening: bool = false | Enable Hardening
+# <<<
 ---
 # playbooks/photon/stig_remediate.yml
 # Automated STIG hardening and remediation for VMware Photon OS 3.0.

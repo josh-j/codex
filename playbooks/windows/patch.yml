@@ -1,10 +1,8 @@
-# ncs:
+# >>>
 # mutating: true
 # options:
-#   - name: windows_update_allow_reboot
-#     label: Allow Reboot
-#     type: bool
-#     default: "false"
+#   windows_update_allow_reboot: bool = false | Allow Reboot
+# <<<
 ---
 # playbooks/windows/patch.yml
 # Apply Windows updates via ConfigMgr + post-patch verification audit.

@@ -1,5 +1,6 @@
-# ncs:
+# >>>
 # mutating: true
+# <<<
 ---
 # playbooks/site_remediate.yml
 # Primary orchestrator for the NCS automated remediation and hardening pipeline.
