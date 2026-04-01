@@ -3,7 +3,7 @@ config:
   platform: linux/ubuntu
   stig:
     ansible_playbook:
-      path: "playbooks/ubuntu_stig_remediate.yml"
+      path: "playbooks/linux/ubuntu/stig_remediate.yml"
       target_var: "ubuntu_target_hosts"
     rule_prefix_to_platform:
       UBTU: ubuntu
