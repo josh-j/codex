@@ -2,6 +2,9 @@
 
 set dotenv-load := true
 
+# Ensure ncs_collector callback can find platform configs
+export NCS_REPO_ROOT := justfile_directory()
+
 # --- Variables ---
 python           := if path_exists(".venv/bin/python3") == "true" { ".venv/bin/python3" } else { "python3" }
 ansible_playbook := if path_exists(".venv/bin/ansible-playbook") == "true" { ".venv/bin/ansible-playbook" } else { "ansible-playbook" }
