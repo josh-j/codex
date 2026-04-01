@@ -271,7 +271,10 @@
 
                         <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" ClipToBounds="True">
                             <Grid>
-                                <TextBlock x:Name="ReportPlaceholder" Text="Connect to sync reports and open them in your browser" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="20" />
+                                <Grid x:Name="ReportHost" Background="#0f1117" />
+                                <Border x:Name="ReportPlaceholderPanel" Background="#0f1117">
+                                    <TextBlock x:Name="ReportPlaceholder" Text="Connect to sync reports to view them inline" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="20" />
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
