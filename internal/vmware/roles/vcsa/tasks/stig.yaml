@@ -37,14 +37,8 @@
     _ncs_stig_pre_phase1: "{{ role_path }}/tasks/stig_v1r4/stig_vcsa_pre.yaml"
     _ncs_stig_phase1_loop: "{{ vcsa_stig_services | default(_vcsa_stig_default_services) }}"
     _ncs_stig_phase1_loop_var: _vcsa_service
-    _ncs_stig_phase1_apply:
-      check_mode: "{{ (_stig_phase2_verify | default(false) | bool) or (not (vcsa_stig_enable_hardening | default(false) | bool)) }}"
-      tags: [stig_task]
-    _ncs_stig_phase2_apply:
-      check_mode: true
-      tags: [stig_task]
-      vars:
-        _stig_phase2_verify: true
+    _ncs_stig_phase2_vars:
+      _stig_phase2_verify: true
   vars:
     _vcsa_stig_default_services:
       - { name: eam, target_type: eam }
