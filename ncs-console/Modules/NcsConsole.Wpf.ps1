@@ -855,7 +855,7 @@ function Show-NcsConsoleApp {
             $null = $reportViewState.Control.EnsureCoreWebView2Async($environment)
         } catch {
             $reportViewState.IsInitializing = $false
-            $script:NcsWebView2Status = "WebView2 runtime unavailable: $($_.Exception.Message)"
+            $script:NcsWebView2Status = "WebView2 Evergreen Runtime not installed. Run: winget install Microsoft.EdgeWebView2Runtime"
         }
 
         return $false

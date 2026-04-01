@@ -81,9 +81,33 @@ try {
     }
 
     Write-Host ""
-    Write-Host "Setup complete." -ForegroundColor Green
+    Write-Host "SDK setup complete." -ForegroundColor Green
     Get-ChildItem -Path $LibRoot -Recurse -File | ForEach-Object {
         Write-Host "  $($_.FullName.Substring($LibRoot.Length + 1))"
+    }
+
+    # Check for WebView2 Evergreen Runtime (required at runtime, separate from SDK)
+    Write-Host ""
+    $runtimeFound = $false
+    $regPaths = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        "HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    )
+    foreach ($rp in $regPaths) {
+        $ver = Get-ItemProperty -Path $rp -Name pv -ErrorAction SilentlyContinue
+        if ($ver -and $ver.pv -and $ver.pv -ne "0.0.0.0") {
+            Write-Host "WebView2 Runtime: $($ver.pv)" -ForegroundColor Green
+            $runtimeFound = $true
+            break
+        }
+    }
+    if (-not $runtimeFound) {
+        Write-Host "WARNING: WebView2 Evergreen Runtime is NOT installed." -ForegroundColor Red
+        Write-Host "  The SDK assemblies are in place, but embedded reports require the runtime."
+        Write-Host "  Install from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
+        Write-Host "  Or run:  winget install Microsoft.EdgeWebView2Runtime"
+        Write-Host ""
     }
 } finally {
     if (Test-Path -LiteralPath $tempDir) {
