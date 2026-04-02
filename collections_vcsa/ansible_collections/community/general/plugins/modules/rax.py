@@ -304,7 +304,7 @@ def create(module, names=None, flavor=None, image=None, meta=None, key_name=None
             f = open(user_data)
             user_data = f.read()
             f.close()
-        except Exception as e:
+        except Exception:
             module.fail_json(msg='Failed to load %s' % user_data)
 
     # Handle the file contents
@@ -314,7 +314,7 @@ def create(module, names=None, flavor=None, image=None, meta=None, key_name=None
             fileobj = open(lpath, 'r')
             files[rpath] = fileobj.read()
             fileobj.close()
-        except Exception as e:
+        except Exception:
             module.fail_json(msg='Failed to load %s' % lpath)
     try:
         servers = []

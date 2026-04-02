@@ -237,7 +237,7 @@ class VmwareTagAssociationsModule(ModuleRestBase):
             self.object_tag_ids = self.tag_association_service.list_attached_tags(
                 self.dynamic_object
             )
-        except Unauthorized as e:
+        except Unauthorized:
             self.module.fail_json(
                 msg="Unauthorized to get tags attached on object MOID %s. If the MOID looks correct, check the user has the correct permissions."
                 % self.dynamic_object.id

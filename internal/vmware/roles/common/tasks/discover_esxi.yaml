@@ -1,6 +1,9 @@
 ---
-# Shared ESXi host discovery: query vCenter for all managed ESXi hosts.
-# Skips if esxi_stig_target_hosts is already provided (manual override).
+# Query vCenter for all managed ESXi hosts.
+#
+# Input:  ansible_host (vCenter endpoint), vmware_username, vmware_password
+#         esxi_stig_target_hosts (optional — skips discovery if pre-populated)
+# Output: esxi_stig_target_hosts (list of ESXi hostnames)
 
 - name: "Init vCenter connection"
   ansible.builtin.include_role:
@@ -10,7 +13,7 @@
 
 - name: "Query datacenters"
   community.vmware.vmware_datacenter_info:
-    hostname: "{{ _vcenter_hostname | default(inventory_hostname) }}"
+    hostname: "{{ ansible_host | default(inventory_hostname) }}"
     username: "{{ vmware_username }}"
     password: "{{ vmware_password }}"
     validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
@@ -19,7 +22,7 @@
 
 - name: "Query clusters per datacenter"
   vmware.vmware.cluster_info:
-    hostname: "{{ _vcenter_hostname | default(inventory_hostname) }}"
+    hostname: "{{ ansible_host | default(inventory_hostname) }}"
     username: "{{ vmware_username }}"
     password: "{{ vmware_password }}"
     validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"

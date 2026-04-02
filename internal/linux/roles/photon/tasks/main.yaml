@@ -1,6 +1,16 @@
 ---
 # internal.linux.photon : tasks/main.yaml
 
+- name: "Photon | Verify SSH connectivity"
+  block:
+    - ansible.builtin.wait_for_connection:
+        timeout: 10
+  rescue:
+    - ansible.builtin.fail:
+        msg: >-
+          SSH connection to {{ inventory_hostname }} failed.
+          Verify the host is reachable and SSH is enabled.
+
 - name: "Photon | Capture task root"
   ansible.builtin.set_fact:
     _ncs_task_root: "{{ role_path }}/tasks"

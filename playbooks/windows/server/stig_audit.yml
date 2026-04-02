@@ -2,6 +2,7 @@
 # is_read_only: true
 # options:
 #   windows_stig_native_checks_only: bool = false | Native Checks Only
+#   windows_stig_target_type: select[windows_server_2022, windows_server_2019] = windows_server_2022 | STIG Profile
 # <<<
 ---
 # playbooks/windows/stig_audit.yml

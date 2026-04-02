@@ -22,7 +22,7 @@
     _pwsh_preamble: >-
       Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:\$false | Out-Null;
       Set-PowerCLIConfiguration -ParticipateInCeip:\$false -Confirm:\$false | Out-Null;
-      Connect-VIServer -Server '{{ _vcenter_hostname }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force -WarningAction SilentlyContinue | Out-Null;
+      Connect-VIServer -Server '{{ ansible_host }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force -WarningAction SilentlyContinue | Out-Null;
   check_mode: false
   changed_when: false
 

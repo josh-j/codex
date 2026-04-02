@@ -462,7 +462,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 uncommitted=0,
             ),
         ]
-        vms: list[dict] = [
+        _vms: list[dict] = [  # noqa: F841 — placeholder for future vms_info wiring
             # clean
             _make_vm(
                 "web-prod-01",
@@ -525,7 +525,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
             ),
         ]
         # All 3 snapshots > 7 days old → aged_snapshot_count = 3
-        snapshots: list[dict] = [
+        _snapshots: list[dict] = [  # noqa: F841 — placeholder for future snapshots_info wiring
             {
                 "vm_name": "test-vm-01",
                 "folder": "/DC-Production/vm",
@@ -613,7 +613,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 "PROD-VMFS-SSD-01", 10995116277760, 5497558138880, maintenanceMode="normal", multipleHostAccess=True
             ),
         ]
-        vms = [
+        _vms = [  # noqa: F841 — placeholder for future vms_info wiring
             _make_vm(
                 "web-prod-01",
                 "poweredOn",
@@ -626,7 +626,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 esxi_hostname="esxi01.corp.local",
             ),
         ]
-        snapshots = []
+        _snapshots = []  # noqa: F841 — placeholder for future snapshots_info wiring
         alarms = []
 
     # Build appliance_health_info from module RETURN sample, overriding scenario values.

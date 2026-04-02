@@ -9,7 +9,6 @@ import click
 import yaml
 
 from ._report_context import (
-    ReportContext,
     generate_timestamps,
     get_jinja_env,
     report_context,
@@ -45,13 +44,9 @@ def _validate_config_references(
     # Unused fields
     referenced: set[str] = set()
     for rule in s.alerts:
-        cond = rule.condition
-        if hasattr(cond, "field"):
-            referenced.add(cond.field)
-        for f in rule.detail_fields:
-            referenced.add(f)
-        if rule.affected_items_field:
-            referenced.add(rule.affected_items_field)
+        for ref in re.findall(r"\b(\w+)\b", rule.when):
+            if ref in s.fields:
+                referenced.add(ref)
     for widget in s.widgets:
         from .models.report_schema import KeyValueWidget, ProgressBarWidget, TableWidget
         if isinstance(widget, KeyValueWidget):

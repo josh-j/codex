@@ -5,5 +5,11 @@
   "SshAuthMode": "Agent",
   "SshKeyPath": "",
   "RemoteRepoPath": "~/ansible-ncs",
+  "RemoteReportsPath": "/srv/samba/reports",
+  "StrictHostKeyChecking": "accept-new",
+  "ConnectTimeoutSeconds": 10,
+  "ServerAliveIntervalSeconds": 15,
+  "ServerAliveCountMax": 3,
+  "SettingsVersion": 2,
   "LastAction": ""
 }

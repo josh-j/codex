@@ -196,7 +196,7 @@ class VMwareInventory(object):
                     obj_info = self._get_obj_info(val, depth - 1, seen)
                     if obj_info != ():
                         d[attr] = obj_info
-                except Exception as e:
+                except Exception:
                     pass
             return d
         elif isinstance(obj, SudsObject):

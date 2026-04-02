@@ -629,7 +629,6 @@ def _apply_fleet_delta(acc: FleetAccumulator, delta: FleetRowDelta) -> None:
     row["targets"].append(delta.target_entry)
 
     # Update link to most specific target type
-    known_types = set()  # re-derive cheaply from the target entry
     t_type = delta.target_entry["target_type"]
     if t_type:
         row["links"]["node_report_latest"] = delta.target_link

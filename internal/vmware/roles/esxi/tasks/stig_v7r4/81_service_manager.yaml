@@ -34,7 +34,7 @@
     internal.core.stig:
       _stig_apply: community.vmware.vmware_host_service_manager
       esxi_hostname: "{{ _current_esxi_host }}"
-      hostname: "{{ _vcenter_hostname }}"
+      hostname: "{{ ansible_host }}"
       username: "{{ vmware_username }}"
       password: "{{ vmware_password }}"
       validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"

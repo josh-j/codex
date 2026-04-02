@@ -1,16 +1,6 @@
 ---
-# playbooks/vars/ncs_global_config.yaml
-# Truly global configuration for the NCS fleet.
-
-ncs_config:
-  debug_mode: true
-  dry_run_mode: false
-  report_directory: /srv/samba/reports
-  logging:
-    export_to_file: true
-    file_path: "/var/log/ncs/ncs.log"
-    max_size_mb: 100
-    backup_count: 5
+# Playbook-scoped variables (only loaded when entry point is in playbooks/).
+# Host/group variables belong in inventory/production/group_vars/ instead.
 
 # SMTP alert email configuration (used by playbooks/core/send_alert_email.yml)
 # ncs_smtp_host: smtp.example.com

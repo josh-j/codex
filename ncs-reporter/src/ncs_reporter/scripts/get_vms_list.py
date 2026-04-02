@@ -15,6 +15,7 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
         return []
 
     exclude_re = None
+    patterns: list[str] = []
     if exclude_patterns:
         # If it's a string (e.g. from YAML formatting), try to parse it as a list
         if isinstance(exclude_patterns, str):
@@ -23,17 +24,20 @@ def get_vms_list(vms_info: dict[str, Any], exclude_patterns: list[str] | None = 
                 if exclude_patterns.startswith("[") and exclude_patterns.endswith("]"):
                     import ast
 
-                    exclude_patterns = ast.literal_eval(exclude_patterns)
+                    parsed = ast.literal_eval(exclude_patterns)
+                    patterns = [str(p) for p in parsed] if isinstance(parsed, list) else [exclude_patterns]
                 else:
                     # Single pattern string
-                    exclude_patterns = [exclude_patterns]
+                    patterns = [exclude_patterns]
             except Exception:
-                exclude_patterns = [exclude_patterns]
+                patterns = [exclude_patterns]
+        elif isinstance(exclude_patterns, list):
+            patterns = [str(p) for p in exclude_patterns]
 
-        if isinstance(exclude_patterns, list):
+        if patterns:
             # Join patterns into a single OR regex for performance
             try:
-                pattern_str = "|".join(f"({p})" for p in exclude_patterns if p)
+                pattern_str = "|".join(f"({p})" for p in patterns if p)
                 if pattern_str:
                     exclude_re = re.compile(pattern_str, re.IGNORECASE)
             except re.error:

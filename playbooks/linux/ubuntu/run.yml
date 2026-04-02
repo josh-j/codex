@@ -1,3 +1,14 @@
+# >>>
+# label: System Audit
+# is_read_only: true
+# operation: collect
+# ---
+# label: Password Status
+# is_read_only: true
+# operation: password_status
+# options:
+#   rotate_user: text = root | User
+# <<<
 ---
 # playbooks/linux/ubuntu/run.yml
 # Generic Ubuntu role runner — driven by ncs_action, ncs_profile, ncs_operation.
@@ -10,8 +21,5 @@
 - name: "Ubuntu | {{ ncs_operation | default(ncs_profile | default('collect')) }}"
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
-  pre_tasks:
-    - name: Prepare SSH key
-      ansible.builtin.include_tasks: _pre_ssh_key.yml
   roles:
     - role: internal.linux.ubuntu

@@ -180,7 +180,7 @@ def report(raw_path: str, cklb_path: str, use_color: bool = True):
 
     # Print report
     print()
-    print(bold(f"  STIG Compliance Report"))
+    print(bold("  STIG Compliance Report"))
     print(bold(f"  {'=' * 60}"))
     print(f"  Host:        {host}")
     print(f"  Target Type: {target_type}")
@@ -289,7 +289,7 @@ def main():
         cklb_path = find_cklb_skeleton(target_type)
         if not cklb_path:
             print(f"Error: Could not find CKLB skeleton for target_type '{target_type}'", file=sys.stderr)
-            print(f"Provide the path as the second argument.", file=sys.stderr)
+            print("Provide the path as the second argument.", file=sys.stderr)
             sys.exit(1)
 
     use_color = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None

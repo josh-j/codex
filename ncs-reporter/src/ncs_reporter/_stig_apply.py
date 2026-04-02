@@ -37,7 +37,7 @@ RULE_REQUIRED_VARS: dict[str, str] = {
     "ESXI-70-000046": "esxi_stig_ntp_servers",
 }
 
-SUPPORTED_TARGET_TYPES: set[str] = default_registry().all_target_types()
+SUPPORTED_TARGET_TYPES: frozenset[str] = default_registry().all_target_types()
 
 
 class RuleMetadata:

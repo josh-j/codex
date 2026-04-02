@@ -1,19 +1,17 @@
 ---
-# collections/ansible_collections/internal/vmware/roles/common/tasks/init_vcenter.yaml
+# Resolve VMware connection parameters from vault or explicit variables.
+# Safe to call multiple times — set_fact is idempotent.
 #
-# Sets _vcenter_hostname from the best available source.
-# Called by any vmware role that needs to make API calls.
-# Safe to call multiple times - set_fact is idempotent.
+# Input:  vmware_hostname (optional override → sets ansible_host)
+#         vmware_username, vmware_password (optional, fall back to vault_vcenter_*)
+# Output: ansible_host (if vmware_hostname provided)
+#         vmware_username, vmware_password, vmware_validate_certs (resolved)
 
-- name: Set vCenter target hostname
+- name: Apply vmware_hostname override
   ansible.builtin.set_fact:
-    _vcenter_hostname: >-
-      {{
-        (vmware_hostname | default(ansible_host) | default(inventory_hostname))
-        | regex_replace('^https?://', '')
-        | regex_replace('/.*$', '')
-      }}
-  when: _vcenter_hostname is not defined
+    ansible_host: "{{ vmware_hostname | regex_replace('^https?://', '') | regex_replace('/.*$', '') }}"
+  when: vmware_hostname is defined
+  changed_when: false
 
 - name: Resolve VMware connection parameters
   ansible.builtin.set_fact:

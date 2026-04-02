@@ -261,7 +261,7 @@ class VmwareFolder(ModulePyvmomiBase):
                 continue
             try:
                 last_known_folder = last_known_folder.CreateFolder(path_part)
-            except vim.fault.InvalidName as e:
+            except vim.fault.InvalidName:
                 self.module.fail_json(msg="Failed to create folder %s because it has an invalid name." % path_part)
             except Exception as e:
                 self.module.fail_json(msg=("Failed to create folder due to unexpected error %s " % to_native(e)))

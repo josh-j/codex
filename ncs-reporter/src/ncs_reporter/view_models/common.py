@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .._report_context import ReportContext
 
 from ..constants import (
-    HEALTH_OK, HEALTH_UNKNOWN, SEVERITY_CRITICAL, SEVERITY_WARNING,
+    HEALTH_OK, SEVERITY_CRITICAL, SEVERITY_WARNING,
 )
 from ..platform_registry import default_registry
 from ..primitives import (
@@ -35,18 +35,18 @@ class GenericNavContext:
 
 
 def _status_from_health(value: Any) -> str:
+    from ..constants import (
+        CRITICAL_STATUS_ALIASES, HEALTH_CRITICAL, HEALTH_OK, HEALTH_UNKNOWN,
+        HEALTH_WARNING, OK_STATUS_ALIASES, UNKNOWN_STATUS_ALIASES,
+        WARNING_STATUS_ALIASES,
+    )
+
     if isinstance(value, dict):
         for key in ("overall", "status", "health"):
             v = value.get(key)
             if v is not None:
                 return _status_from_health(v)
         return HEALTH_UNKNOWN
-
-    from ..constants import (
-        CRITICAL_STATUS_ALIASES, HEALTH_CRITICAL, HEALTH_OK, HEALTH_UNKNOWN,
-        HEALTH_WARNING, OK_STATUS_ALIASES, UNKNOWN_STATUS_ALIASES,
-        WARNING_STATUS_ALIASES,
-    )
     text = str(value or HEALTH_UNKNOWN).strip()
     low = text.lower()
     if low in OK_STATUS_ALIASES:

@@ -206,7 +206,7 @@ class OpenTelemetrySource(object):
         self.host = socket.gethostname()
         try:
             self.ip_address = socket.gethostbyname(socket.gethostname())
-        except Exception as e:
+        except Exception:
             self.ip_address = None
         self.user = getpass.getuser()
 

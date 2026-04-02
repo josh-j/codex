@@ -1,8 +1,11 @@
 ---
-# Shared VM discovery: discover VMs, filter, build datacenter map, validate.
-# Optional variables:
-#   _vmware_discovery_hostname  — override for vCenter/ESXi hostname (default: inventory_hostname)
-#   vm_stig_exclude_pattern     — regex to exclude VMs (default: '^$' = exclude nothing)
+# Query vCenter for VMs, filter, and build datacenter map.
+#
+# Input:  ansible_host (vCenter endpoint), vmware_username, vmware_password
+#         _vmware_discovery_hostname (optional override for hostname)
+#         vm_stig_exclude_pattern (optional regex, default '^$')
+#         vm_stig_target_vms (optional — skips discovery if pre-populated)
+# Output: vm_stig_target_vms (list of VM names), vm_datacenter_map (dict)
 
 - name: "Discover all VMs on vCenter"
   community.vmware.vmware_vm_info:

@@ -1,0 +1,67 @@
+---
+argument_specs:
+  main:
+    short_description: Ubuntu system audit, collection, STIG, and maintenance
+    description:
+      - Collects system facts, security settings, and update status.
+      - Performs STIG compliance evaluation and optional hardening.
+      - Manages patching, package upgrades, and password rotation.
+      - Optionally uses vault SSH key for key-based authentication.
+    options:
+      ncs_action:
+        type: str
+        required: false
+        default: collect
+        choices: [collect, audit, remediate, verify]
+        description: Primary action to perform.
+      ncs_profile:
+        type: str
+        required: false
+        choices: [stig]
+        description: Compliance profile. Mutually exclusive with ncs_operation.
+      ncs_operation:
+        type: str
+        required: false
+        choices: [maintain, patch, password_status, password_rotate]
+        description: Named operation. Mutually exclusive with ncs_profile.
+      ubuntu_skip_discovery:
+        type: bool
+        required: false
+        default: false
+        description: Skip system discovery phase.
+      ubuntu_skip_export:
+        type: bool
+        required: false
+        default: false
+        description: Skip telemetry export.
+      ubuntu_stig_enable_audit:
+        type: bool
+        required: false
+        default: true
+        description: Enable STIG audit checks.
+      ubuntu_stig_enable_hardening:
+        type: bool
+        required: false
+        default: false
+        description: Enable STIG remediation (mutating).
+      ubuntu_enable_maintenance:
+        type: bool
+        required: false
+        default: false
+        description: Enable maintenance operations.
+      ubuntu_enable_password_rotation:
+        type: bool
+        required: false
+        default: false
+        description: Enable password rotation operations.
+      ubuntu_enable_upgrade_reboots:
+        type: bool
+        required: false
+        default: true
+        description: Allow reboots after upgrades.
+      vault_logservers_private_key:
+        type: str
+        required: false
+        description: >-
+          SSH private key from vault. If set, written to /tmp/logservers_key
+          and activated as ansible_ssh_private_key_file for role tasks.

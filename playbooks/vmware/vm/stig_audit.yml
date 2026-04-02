@@ -1,3 +1,9 @@
+# >>>
+# label: VM STIG Audit
+# is_read_only: true
+# options:
+#   vm_stig_target_hosts: text = vcsa | Target vCenter
+# <<<
 ---
 # playbooks/vmware/vm/stig_audit.yml
 - name: "Phase 2b | VM STIG Audit (per vCenter)"
@@ -10,7 +16,9 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   pre_tasks:
     - name: "Discover and validate VM targets"
-      ansible.builtin.include_tasks: _discover.yml
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
   roles:
     - role: internal.vmware.vm
       vars:

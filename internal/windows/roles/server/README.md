@@ -1,6 +1,6 @@
 # internal.windows.server
 
-Unified role for managing and auditing Windows systems.
+Windows Server audit, health check, STIG compliance, and maintenance operations.
 
 ## Interface
 
@@ -8,27 +8,30 @@ Specify behavior via `ncs_action`, plus optional `ncs_profile` or `ncs_operation
 
 ### `ncs_action: audit` (Default)
 Collects system info, installed applications, and ConfigMgr status.
-- **Handoff:** Emits raw telemetry via `ansible.builtin.set_stats`.
 
 ### `ncs_action: audit`, `ncs_profile: stig`
-Performs native Windows STIG compliance checks.
-- **Handoff:** Emits raw findings via `ansible.builtin.set_stats`.
+Performs Windows Server STIG compliance checks.
 
 ### `ncs_action: audit`, `ncs_profile: health`
-Runs the Windows health-check workflow.
+Runs health checks: disk, memory/CPU, services, event logs, secure channel, reboot pending.
 
-### `ncs_action: remediate`, `ncs_operation: ...`
-Runs targeted admin and maintenance workflows such as `patch`, `registry_fix`,
-`kb_install`, `windows_update`, `remote_ops`, `service`, and `scheduled_task`.
+### `ncs_action: remediate`, `ncs_operation: <operation>`
+Available operations: `patch`, `registry_fix`, `kb_install`, `windows_update`,
+`update_software`, `uninstall_software`, `service`, `scheduled_task`, `cleanup`,
+`ad_search`, `vuln_scan`, `openssh`, `winrm_enable`, `remote_ops`.
 
+## Prerequisites
+
+- WinRM credentials from inventory (`ansible_connection: winrm` in `group_vars/windows_servers`)
+- Hosts in `windows_servers` inventory group
 
 ## Usage
 
 ```yaml
-- name: Audit Windows Fleet
-  hosts: windows_servers
+- hosts: windows_servers
   roles:
     - role: internal.windows.server
       vars:
         ncs_action: audit
+        ncs_profile: stig
 ```

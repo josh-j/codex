@@ -1,14 +1,35 @@
 # internal.linux.photon
 
-Photon OS role that provides discovery and STIG audit/remediation actions for VMware Photon OS 5.0.
+Photon OS audit, collection, and STIG orchestration.
 
-## Actions
+## Interface
 
-- `discover`: Validate Photon host and emit discovery telemetry.
-- `stig`: Run Photon STIG checks in check mode.
-- `remediate`: Apply Photon STIG hardening controls.
+Specify behavior via `ncs_action`, plus optional `ncs_profile` or `ncs_operation`.
 
-## Notes
+### `ncs_action: collect` (Default)
+Collects Photon OS system state and security configuration.
 
-- STIG controls are sourced from VMware's Photon 5.0 V3R1 readiness guide content in this repository.
-- Set `photon_stig_enable_hardening: true` to enforce controls.
+### `ncs_action: audit|remediate|verify`, `ncs_profile: stig`
+Performs STIG compliance evaluation or hardening.
+
+### `ncs_action: remediate`, `ncs_operation: password_rotate`
+Rotates local user passwords.
+
+### `ncs_action: audit`, `ncs_operation: password_status`
+Reports password aging and account status.
+
+## Prerequisites
+
+- SSH credentials from inventory (`ansible_user`, `ansible_password` in `group_vars/photon_servers`)
+- Hosts in `photon_servers` inventory group
+
+## Usage
+
+```yaml
+- hosts: photon_servers
+  roles:
+    - role: internal.linux.photon
+      vars:
+        ncs_action: audit
+        ncs_profile: stig
+```

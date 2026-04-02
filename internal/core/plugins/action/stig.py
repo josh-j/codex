@@ -469,7 +469,7 @@ class ActionModule(ActionBase):
         if manage_prefix:
             set_fact_args["_stig_manage_prefix"] = manage_prefix
 
-        set_fact_result = self._run_module(
+        self._run_module(
             module_name="ansible.builtin.set_fact",
             module_args=set_fact_args,
             task_vars=task_vars,
@@ -775,7 +775,7 @@ class ActionModule(ActionBase):
                         "task_name": task_name,
                         "phase": "filter",
                         "status": "skipped",
-                        "reason": f"Excluded by stig_skip filter",
+                        "reason": "Excluded by stig_skip filter",
                     },
                 }
 

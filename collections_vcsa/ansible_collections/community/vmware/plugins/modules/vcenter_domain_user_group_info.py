@@ -138,7 +138,7 @@ class VcenterDomainUserGroupInfo(PyVmomi):
     def execute(self):
         user_directory_manager = self.content.userDirectory
 
-        if not self.domain.upper() in user_directory_manager.domainList:
+        if self.domain.upper() not in user_directory_manager.domainList:
             self.module.fail_json(msg="domain not found: %s" % self.domain)
 
         try:

@@ -10,8 +10,14 @@
   ansible.builtin.import_playbook: infra/setup_env.yml
 
 # Phase 2: VMware STIG Audit
-- name: "Phase 2: VMware Infrastructure STIG Audit"
-  ansible.builtin.import_playbook: vmware/stig_audit.yml
+- name: "Phase 2a: ESXi STIG Audit"
+  ansible.builtin.import_playbook: vmware/esxi/stig_audit.yml
+
+- name: "Phase 2b: VM STIG Audit"
+  ansible.builtin.import_playbook: vmware/vm/stig_audit.yml
+
+- name: "Phase 2c: VCSA STIG Audit"
+  ansible.builtin.import_playbook: vmware/vcsa/stig_audit.yml
 
 # Phase 3: Linux Fleet STIG Audit
 - name: "Phase 3: Ubuntu STIG Audit"

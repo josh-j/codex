@@ -1,0 +1,25 @@
+---
+# Discover VMs and register each as a dynamic host for parallel execution.
+#
+# Input:  site, vmware_username, vmware_password, vmware_validate_certs
+# Output: _stig_vm_targets host group (each host gets ansible_host, vcenter,
+#         site, vm_datacenter, vmware credentials)
+
+- name: "Discover and validate VM targets"
+  ansible.builtin.include_role:
+    name: internal.vmware.common
+    tasks_from: discover_vms
+
+- name: "Register dynamic VM host group"
+  ansible.builtin.add_host:
+    name: "{{ item }}"
+    groups: _stig_vm_targets
+    ansible_host: "{{ inventory_hostname }}"
+    vcenter: "{{ inventory_hostname }}"
+    site: "{{ site }}"
+    vm_datacenter: "{{ vm_datacenter_map[item] | default('') }}"
+    vmware_username: "{{ vmware_username }}"
+    vmware_password: "{{ vmware_password }}"
+    vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
+  loop: "{{ vm_stig_target_vms | reject('match', '^vCLS-') | list }}"
+  changed_when: false

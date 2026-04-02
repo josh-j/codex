@@ -328,7 +328,8 @@ class TestIncludeAlerts:
         """$local items with matching id replace included items."""
         from ncs_reporter.schema_loader import _resolve_includes
         from pathlib import Path
-        import tempfile, os
+        import tempfile
+        import os
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Write included alerts file

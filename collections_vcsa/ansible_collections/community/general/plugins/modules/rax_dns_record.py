@@ -233,9 +233,9 @@ def rax_dns_record(module, comment=None, data=None, domain=None, name=None,
                 record = domain.find_record(record_type, name=name)
             else:
                 record = domain.find_record(record_type, name=name, data=data)
-        except pyrax.exceptions.DomainRecordNotUnique as e:
+        except pyrax.exceptions.DomainRecordNotUnique:
             module.fail_json(msg='overwrite=true and there are multiple matching records')
-        except pyrax.exceptions.DomainRecordNotFound as e:
+        except pyrax.exceptions.DomainRecordNotFound:
             try:
                 record_data = {
                     'type': record_type,
@@ -279,7 +279,7 @@ def rax_dns_record(module, comment=None, data=None, domain=None, name=None,
 
         try:
             record = domain.find_record(record_type, name=name, data=data)
-        except pyrax.exceptions.DomainRecordNotFound as e:
+        except pyrax.exceptions.DomainRecordNotFound:
             record = {}
         except pyrax.exceptions.DomainRecordNotUnique as e:
             module.fail_json(msg='%s' % e.message)

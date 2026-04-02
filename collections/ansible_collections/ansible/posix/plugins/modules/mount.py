@@ -862,7 +862,7 @@ def main():
                 os.makedirs(os.path.dirname(args['fstab']))
             try:
                 open(args['fstab'], 'a').close()
-            except PermissionError as e:
+            except PermissionError:
                 module.fail_json(msg="Failed to open %s due to permission issue" % args['fstab'])
             except Exception as e:
                 module.fail_json(msg="Failed to open %s due to %s" % (args['fstab'], to_native(e)))

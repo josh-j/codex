@@ -58,7 +58,7 @@ EXAMPLES = r"""
       $args = $esxcli.system.security.fips140.rhttpproxy.set.CreateArgs()
       $args.enable = $true
       $esxcli.system.security.fips140.rhttpproxy.set.Invoke($args) | Out-Null
-    vcenter_hostname: "{{ _vcenter_hostname }}"
+    vcenter_hostname: "{{ ansible_host }}"
     vcenter_username: "{{ vmware_username }}"
     vcenter_password: "{{ vmware_password }}"
     esxi_hostname: "{{ _current_esxi_host }}"

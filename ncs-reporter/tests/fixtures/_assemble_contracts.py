@@ -20,7 +20,7 @@ def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
             continue
         fact_payload = payload[fact_name]
         if isinstance(fact_payload, dict):
-            return set(fact_payload.keys())
+            return {str(k) for k in fact_payload}
     return set()
 
 

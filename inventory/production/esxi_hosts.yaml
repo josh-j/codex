@@ -1,6 +1,6 @@
 ---
 # ESXi hosts grouped by managing vCenter.
-# _ncs_vcenter links each group to its vCenter for API routing.
+# ansible_host on each ESXi entry points to its managing vCenter.
 # These are "phantom" inventory entries for --limit targeting only —
 # playbooks connect to the vCenter API, never SSH to ESXi directly.
 #
@@ -14,25 +14,25 @@ all:
       children:
         esxi_aedw:
           vars:
-            _ncs_vcenter: vcsa-aedw
+            ansible_host: vcsa-aedw
           hosts: {}
         esxi_ashe:
           vars:
-            _ncs_vcenter: vcsa-ashe
+            ansible_host: vcsa-ashe
           hosts: {}
         esxi_gfpy:
           vars:
-            _ncs_vcenter: vcsa-gfpy
+            ansible_host: vcsa-gfpy
           hosts: {}
         esxi_mqna:
           vars:
-            _ncs_vcenter: vcsa-mqna
+            ansible_host: vcsa-mqna
           hosts: {}
         esxi_sdhm:
           vars:
-            _ncs_vcenter: vcsa-sdhm
+            ansible_host: vcsa-sdhm
           hosts: {}
         esxi_tyfq:
           vars:
-            _ncs_vcenter: vcsa-tyfq
+            ansible_host: vcsa-tyfq
           hosts: {}

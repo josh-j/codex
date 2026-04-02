@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .models.report_schema import ReportSchema
 
 from ._cklb import resolve_cklb_lookup
-from ._report_context import ReportContext, get_jinja_env, report_context, write_report
+from ._report_context import get_jinja_env, report_context, write_report
 from ._config import default_paths
 from .pathing import rel_href, render_template
 from .platform_registry import PlatformRegistry, default_registry

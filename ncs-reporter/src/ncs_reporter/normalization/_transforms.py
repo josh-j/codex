@@ -72,7 +72,7 @@ def _join_lines(value: Any) -> str:
 def _keys(value: Any) -> list[str]:
     """Return the keys of a dict as a list."""
     if isinstance(value, dict):
-        return list(value.keys())
+        return [str(k) for k in value]
     return []
 
 

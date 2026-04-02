@@ -1,3 +1,8 @@
+# >>>
+# label: VM STIG Remediation
+# options:
+#   vm_stig_target_vms: text | Target VMs (JSON array)
+# <<<
 ---
 # playbooks/vmware/vm/stig_remediate.yml
 # Automated security hardening remediation for VMware virtual machines.
@@ -12,7 +17,9 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   pre_tasks:
     - name: "Discover and validate VM targets"
-      ansible.builtin.include_tasks: _discover.yml
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
 
   tasks:
     - name: Create safety snapshots
@@ -37,7 +44,9 @@
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
-      ansible.builtin.include_tasks: _discover.yml
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
 
   tasks:
     - name: "Execute VM STIG Hardening"
@@ -59,7 +68,9 @@
 
   pre_tasks:
     - name: "Re-discover VM targets (if not cached)"
-      ansible.builtin.include_tasks: _discover.yml
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
 
   tasks:
     - name: "Execute Post-Remediation VM STIG Audit"

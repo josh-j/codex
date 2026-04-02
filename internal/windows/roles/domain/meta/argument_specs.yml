@@ -1,0 +1,59 @@
+---
+argument_specs:
+  main:
+    short_description: Active Directory domain audit and query operations
+    description:
+      - Queries Active Directory for users, groups, computers, OUs, GPOs.
+      - Reports on stale accounts, privileged groups, password policies.
+      - Audits DNS zones, DHCP scopes, and domain trusts.
+      - Connects via WinRM to a domain controller.
+    options:
+      ncs_action:
+        type: str
+        required: false
+        default: audit
+        choices: [collect, audit, remediate, verify]
+        description: Primary action to perform.
+      ncs_operation:
+        type: str
+        required: false
+        choices:
+          - collect
+          - user_search
+          - group_search
+          - computer_search
+          - ou_search
+          - group_membership
+          - privileged_groups
+          - stale_accounts
+          - password_policy
+          - gpo_audit
+          - dns_zones
+          - dhcp_scopes
+          - domain_trusts
+        description: AD query operation to perform.
+      domain_search_filter:
+        type: str
+        required: false
+        default: "*"
+        description: LDAP search filter for query operations.
+      domain_search_base:
+        type: str
+        required: false
+        default: ""
+        description: AD search base DN. Required for most query operations.
+      domain_stale_computer_days:
+        type: int
+        required: false
+        default: 90
+        description: Days since last logon to consider a computer stale.
+      domain_stale_user_days:
+        type: int
+        required: false
+        default: 90
+        description: Days since last logon to consider a user stale.
+      domain_dhcp_server:
+        type: str
+        required: false
+        default: ""
+        description: DHCP server hostname. Required for dhcp_scopes operation.

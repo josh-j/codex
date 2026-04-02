@@ -3,6 +3,10 @@ Set-StrictMode -Version Latest
 function New-NcsPreflightCheck {
     param(
         [Parameter(Mandatory)]
+        [string] $Id,
+        [Parameter(Mandatory)]
+        [string] $Stage,
+        [Parameter(Mandatory)]
         [string] $Name,
         [Parameter(Mandatory)]
         [bool] $Passed,
@@ -10,7 +14,7 @@ function New-NcsPreflightCheck {
         [string] $Message
     )
 
-    return [NcsPreflightCheck]::new($Name, $Passed, $Message)
+    return [NcsPreflightCheck]::new($Id, $Stage, $Name, $Passed, $Message)
 }
 
 function Invoke-NcsSshProbe {
@@ -22,20 +26,7 @@ function Invoke-NcsSshProbe {
     )
 
     $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $RemoteCommand
-    $environment = $null
-
-    $authMode = $Settings.SshAuthMode
-    $askPassSecret = $null
-    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-        $askPassSecret = $Settings.SshPassword
-    } elseif ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
-        $askPassSecret = $Settings.SshKeyPassphrase
-    }
-    if ($null -ne $askPassSecret) {
-        $environment = New-NcsSshAskPassEnvironment -Secret $askPassSecret
-    }
-
-    return Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment $environment
+    return Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment (Get-NcsSshEnvironment -Settings $Settings)
 }
 
 function Test-NcsRemotePreflight {
@@ -48,44 +39,72 @@ function Test-NcsRemotePreflight {
 
     $localChecks = @(
         @{
+            Id = "ssh-host"
+            Stage = "local"
             Name = "SSH host configured"
             Passed = -not [string]::IsNullOrWhiteSpace($Settings.SshHost)
             Message = if ([string]::IsNullOrWhiteSpace($Settings.SshHost)) { "Enter the remote SSH host." } else { $Settings.SshHost }
         },
         @{
+            Id = "ssh-user"
+            Stage = "local"
             Name = "SSH user configured"
             Passed = -not [string]::IsNullOrWhiteSpace($Settings.SshUser)
             Message = if ([string]::IsNullOrWhiteSpace($Settings.SshUser)) { "Enter the remote SSH username." } else { $Settings.SshUser }
         },
         @{
+            Id = "ssh-auth"
+            Stage = "local"
             Name = "SSH auth mode configured"
             Passed = -not [string]::IsNullOrWhiteSpace($Settings.SshAuthMode)
             Message = if ([string]::IsNullOrWhiteSpace($Settings.SshAuthMode)) { "Select the SSH authentication mode." } else { $Settings.SshAuthMode }
         },
         @{
+            Id = "ssh-key-path"
+            Stage = "local"
             Name = "SSH key path configured"
             Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::KeyFile.ToString()) -or -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)
             Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) -and [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) { "Enter the SSH key path for KeyFile authentication." } else { "OK" }
         },
         @{
+            Id = "ssh-password"
+            Stage = "local"
             Name = "SSH password configured"
             Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::Password.ToString()) -or -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)
             Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) -and [string]::IsNullOrWhiteSpace($Settings.SshPassword)) { "Enter the SSH password for Password authentication." } else { "OK" }
         },
         @{
+            Id = "remote-repo-path"
+            Stage = "local"
             Name = "Remote repo path configured"
             Passed = -not [string]::IsNullOrWhiteSpace($Settings.RemoteRepoPath)
             Message = if ([string]::IsNullOrWhiteSpace($Settings.RemoteRepoPath)) { "Enter the remote repo path." } else { $Settings.RemoteRepoPath }
         },
         @{
+            Id = "remote-reports-path"
+            Stage = "local"
+            Name = "Remote reports path configured"
+            Passed = -not [string]::IsNullOrWhiteSpace($Settings.RemoteReportsPath)
+            Message = if ([string]::IsNullOrWhiteSpace($Settings.RemoteReportsPath)) { "Enter the remote reports path." } else { $Settings.RemoteReportsPath }
+        },
+        @{
+            Id = "ssh-client"
+            Stage = "local"
             Name = "Local SSH client"
             Passed = $null -ne (Get-Command -Name "ssh.exe" -ErrorAction SilentlyContinue)
             Message = if ($null -eq (Get-Command -Name "ssh.exe" -ErrorAction SilentlyContinue)) { "OpenSSH client is not available in PATH." } else { "ssh.exe found." }
+        },
+        @{
+            Id = "scp-client"
+            Stage = "local"
+            Name = "Local SCP client"
+            Passed = $null -ne (Get-Command -Name "scp.exe" -ErrorAction SilentlyContinue)
+            Message = if ($null -eq (Get-Command -Name "scp.exe" -ErrorAction SilentlyContinue)) { "OpenSSH scp.exe is not available in PATH." } else { "scp.exe found." }
         }
     )
 
     foreach ($checkData in $localChecks) {
-        $check = New-NcsPreflightCheck -Name $checkData.Name -Passed $checkData.Passed -Message $checkData.Message
+        $check = New-NcsPreflightCheck -Id $checkData.Id -Stage $checkData.Stage -Name $checkData.Name -Passed $checkData.Passed -Message $checkData.Message
         $result.Checks.Add($check)
         if (-not $check.Passed) {
             $result.BlockingIssues.Add($check.Message)
@@ -99,18 +118,25 @@ function Test-NcsRemotePreflight {
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
 
+    $reports = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteReportsPath
     $script = @(
         "echo CHECK:ssh:ok"
         "test -d $repo && echo CHECK:repo:ok || echo CHECK:repo:fail"
         "test -d $repo/inventory/production && echo CHECK:inventory:ok || echo CHECK:inventory:fail"
+        "test -f $repo/.vaultpass && echo CHECK:vault:ok || echo CHECK:vault:fail"
         "(cd $repo && test -f .venv/bin/ansible-playbook && echo CHECK:ansible:ok) || (command -v ansible-playbook >/dev/null 2>&1 && echo CHECK:ansible:ok) || echo CHECK:ansible:fail"
+        "test -d $reports && echo CHECK:reports:ok || echo CHECK:reports:fail"
+        "(mkdir -p $($script:NcsRemoteRunRoot) >/dev/null 2>&1 && touch $($script:NcsRemoteRunRoot)/preflight.write && rm -f $($script:NcsRemoteRunRoot)/preflight.write && echo CHECK:writable:ok) || echo CHECK:writable:fail"
     ) -join "; "
 
     $checkMeta = [ordered]@{
-        ssh        = @{ Name = "SSH connectivity";            FailMsg = "Could not connect to the remote host." }
-        repo       = @{ Name = "Repo path exists";            FailMsg = "Remote repo path does not exist." }
-        inventory  = @{ Name = "Inventory directory exists";  FailMsg = "Missing inventory/production/ on the remote repo." }
-        ansible    = @{ Name = "ansible-playbook available";  FailMsg = "ansible-playbook not found in .venv or PATH." }
+        ssh        = @{ Id = "ssh-connectivity"; Stage = "ssh"; Name = "SSH connectivity"; FailMsg = "Could not connect to the remote host." }
+        repo       = @{ Id = "repo-path"; Stage = "remote"; Name = "Repo path exists"; FailMsg = "Remote repo path does not exist." }
+        inventory  = @{ Id = "inventory-path"; Stage = "remote"; Name = "Inventory directory exists"; FailMsg = "Missing inventory/production/ on the remote repo." }
+        vault      = @{ Id = "vault-path"; Stage = "remote"; Name = "Vault password file exists"; FailMsg = "Missing .vaultpass in the remote repo." }
+        ansible    = @{ Id = "ansible-path"; Stage = "remote"; Name = "ansible-playbook available"; FailMsg = "ansible-playbook not found in .venv or PATH." }
+        reports    = @{ Id = "reports-path"; Stage = "remote"; Name = "Reports path exists"; FailMsg = "Remote reports path does not exist." }
+        writable   = @{ Id = "remote-cache"; Stage = "remote"; Name = "Remote cache writable"; FailMsg = "Remote $($script:NcsRemoteRunRoot) is not writable." }
     }
 
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $script
@@ -118,7 +144,7 @@ function Test-NcsRemotePreflight {
     if ($probe.ExitCode -ne 0 -and [string]::IsNullOrWhiteSpace($probe.StdOut)) {
         $sshMessage = @($probe.StdErr, $probe.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
         if ([string]::IsNullOrWhiteSpace($sshMessage)) { $sshMessage = "SSH connection failed." }
-        $check = New-NcsPreflightCheck -Name "SSH connectivity" -Passed $false -Message $sshMessage.Trim()
+        $check = New-NcsPreflightCheck -Id "ssh-connectivity" -Stage "ssh" -Name "SSH connectivity" -Passed $false -Message $sshMessage.Trim()
         $result.Checks.Add($check)
         $result.BlockingIssues.Add("SSH connectivity: $($sshMessage.Trim())")
         $result.IsReady = $false
@@ -147,7 +173,7 @@ function Test-NcsRemotePreflight {
         $meta = $checkMeta[$key]
         $passed = $checkResults.ContainsKey($key) -and $checkResults[$key]
         $message = if ($passed) { "OK" } else { $meta.FailMsg }
-        $check = New-NcsPreflightCheck -Name $meta.Name -Passed $passed -Message $message
+        $check = New-NcsPreflightCheck -Id $meta.Id -Stage $meta.Stage -Name $meta.Name -Passed $passed -Message $message
         $result.Checks.Add($check)
         if (-not $passed) {
             $result.BlockingIssues.Add("$($meta.Name): $message")

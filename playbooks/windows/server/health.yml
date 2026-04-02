@@ -6,6 +6,14 @@
 #   windows_health_check_services: bool = true | Services Check
 #   windows_health_check_event_logs: bool = true | Event Logs Check
 #   windows_health_check_secure_channel: bool = true | Secure Channel Check
+#   windows_health_check_os: bool = true | OS Info
+#   windows_health_check_network: bool = true | Network Config
+#   windows_health_check_updates: bool = true | Update Status
+#   windows_health_check_reboot_pending: bool = true | Reboot Pending
+#   windows_health_check_software_inventory: bool = true | Software Inventory
+#   windows_health_event_log_hours: text = 24 | Event Log Lookback (hours)
+#   windows_health_disk_warning_pct: text = 80 | Disk Warning %
+#   windows_health_disk_critical_pct: text = 90 | Disk Critical %
 # <<<
 ---
 # playbooks/windows/health.yml
