@@ -1,0 +1,191 @@
+<mxfile host="app.diagrams.net" modified="2026-04-02T00:00:00.000Z" agent="NCS" version="24.0.0" type="device">
+  <diagram id="ncs-arch" name="NCS Architecture">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- NCS outer container -->
+        <mxCell id="ncs" value="NCS — Network Control System" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 4;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=8;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1520" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- ============ ncs-console ============ -->
+        <mxCell id="console" value="ncs-console (PowerShell / WPF GUI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="80" y="70" width="300" height="280" as="geometry"/>
+        </mxCell>
+        <mxCell id="wpf" value="WPF MainWindow&#xa;(WebView2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="110" y="110" width="240" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="actions" value="actions.yml&#xa;(Playbook Launcher)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="110" y="165" width="240" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="settings" value="Settings &amp; Preflight" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="110" y="220" width="110" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="execution" value="Execution Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="240" y="220" width="110" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_wpf_act" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="wpf" target="actions" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_act_exec" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="actions" target="execution" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_set_exec" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="settings" target="execution" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="console_note" value="PowerShell + WPF/WebView2" style="text;html=1;fontSize=10;fontColor=#999999;align=center;" vertex="1" parent="1">
+          <mxGeometry x="110" y="270" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ============ ncs-ansible ============ -->
+        <mxCell id="ansible" value="ncs-ansible (Ansible Collections + Playbooks)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="70" width="540" height="510" as="geometry"/>
+        </mxCell>
+
+        <!-- Playbooks sub-group -->
+        <mxCell id="playbooks" value="Playbooks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f7ef;strokeColor=#82b366;fontSize=11;fontStyle=1;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="470" y="105" width="480" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="site" value="site.yml&#xa;(Orchestrator)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="135" width="130" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="vmplay" value="vmware/&#xa;audit · stig · remediate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="195" width="100" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="linplay" value="linux/&#xa;audit · stig · remediate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="615" y="195" width="100" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="winplay" value="windows/&#xa;audit · stig · remediate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="730" y="195" width="100" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="infraplay" value="infra/&#xa;setup · networking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="845" y="195" width="90" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_site_vm" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="site" target="vmplay" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_site_lin" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="site" target="linplay" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_site_win" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="site" target="winplay" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_site_infra" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="site" target="infraplay" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Collections sub-group -->
+        <mxCell id="collections" value="Internal Collections" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f7ef;strokeColor=#82b366;fontSize=11;fontStyle=1;verticalAlign=top;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="470" y="295" width="480" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="core" value="internal.core&#xa;─ ncs_collector callback&#xa;─ stig action plugin&#xa;─ pwsh action plugin&#xa;─ filter plugins" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="490" y="325" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="vmcoll" value="internal.vmware&#xa;─ common, esxi,&#xa;  vcsa, vm roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="645" y="325" width="100" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="lincoll" value="internal.linux&#xa;─ ubuntu, photon&#xa;  roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="760" y="325" width="90" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="wincoll" value="internal.windows&#xa;─ windows role" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="865" y="325" width="70" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Telemetry Lake -->
+        <mxCell id="artifacts" value="Telemetry Lake&#xa;(raw_*.yaml artifacts)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;size=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="460" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_pb_coll" value="uses roles" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" source="playbooks" target="collections" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_core_art" value="emits raw_*.yaml" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" source="core" target="artifacts" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============ ncs-reporter ============ -->
+        <mxCell id="reporter" value="ncs-reporter (Python CLI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="70" width="480" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="cli" value="cli.py (Click entry point)&#xa;all · site · linux · vmware · windows · node · stig · cklb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="110" width="420" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="configs" value="configs/&#xa;(YAML schemas)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="170" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="norm" value="normalization/&#xa;─ schema-driven transforms&#xa;─ STIG normalization&#xa;─ alert evaluation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="170" width="160" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="agg" value="aggregation.py&#xa;(multi-host rollup)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="170" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="viewmodels" value="view_models/&#xa;(Pydantic contracts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="265" width="130" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="render" value="renderers + templates&#xa;(HTML dashboards)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="265" width="130" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="cklb" value="cklb_export.py&#xa;(STIG CKLB artifacts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="265" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Reporter internal edges -->
+        <mxCell id="e_cli_norm" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cli" target="norm" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_conf_norm" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="configs" target="norm" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_norm_agg" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="norm" target="agg" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_agg_vm" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="agg" target="viewmodels" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_vm_render" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="viewmodels" target="render" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_cli_cklb" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cli" target="cklb" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="reporter_note" value="Python CLI (Click + Pydantic)" style="text;html=1;fontSize=10;fontColor=#999999;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="340" width="200" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Reports output -->
+        <mxCell id="reports" value="Reports&#xa;(/srv/samba/reports/)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;size=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="390" width="160" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_render_rep" value="outputs" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" edge="1" source="render" target="reports" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_cklb_rep" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="cklb" target="reports" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============ Cross-component edges ============ -->
+        <mxCell id="e_console_ansible" value="launches playbooks" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;strokeWidth=2;strokeColor=#333333;" edge="1" source="execution" target="site" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_art_reporter" value="consumed by" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;strokeWidth=2;strokeColor=#333333;" edge="1" source="artifacts" target="norm" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============ Managed Fleet (external) ============ -->
+        <mxCell id="targets" value="Managed Fleet&#xa;vCenter · ESXi · VMs · Ubuntu · Photon · Windows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="630" width="540" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_ansible_targets" value="SSH / WinRM / vSphere API" style="fontSize=10;strokeWidth=2;strokeColor=#333333;" edge="1" source="artifacts" target="targets" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="540" as="sourcePoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_targets_ansible" value="" style="fontSize=10;strokeWidth=2;strokeColor=#333333;" edge="1" source="targets" target="artifacts" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
