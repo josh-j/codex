@@ -271,6 +271,70 @@ function New-NcsGroupTreeItem {
     return $groupItem
 }
 
+function Get-NcsTreeViewItemStyle {
+    # Custom TreeViewItem style: only highlight on direct hover (not when children are hovered).
+    # Uses a minimal ControlTemplate with IsMouseDirectlyOver trigger instead of IsMouseOver.
+    if ($null -eq $script:_NcsTreeViewItemStyle) {
+        $xaml = @'
+<Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       TargetType="TreeViewItem">
+  <Setter Property="Foreground" Value="#d8dce2" />
+  <Setter Property="Background" Value="Transparent" />
+  <Setter Property="Padding" Value="2,1,4,1" />
+  <Setter Property="Template">
+    <Setter.Value>
+      <ControlTemplate TargetType="TreeViewItem">
+        <StackPanel>
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <DockPanel>
+              <ToggleButton x:Name="Expander" DockPanel.Dock="Left" ClickMode="Press"
+                            IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                            Width="14" Margin="0,0,2,0" Focusable="False">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="Transparent" Width="14" Height="14">
+                      <Path x:Name="Arrow" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Data="M0,0 L4,4 L0,8" Stroke="#6e737c" StrokeThickness="1.2"
+                            Width="8" Height="8" Stretch="Uniform" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsChecked" Value="True">
+                        <Setter TargetName="Arrow" Property="Data" Value="M0,0 L4,4 L8,0" />
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter x:Name="PART_Header" ContentSource="Header" VerticalAlignment="Center" />
+            </DockPanel>
+          </Border>
+          <ItemsPresenter x:Name="ItemsHost" Margin="14,0,0,0" Visibility="Collapsed" />
+        </StackPanel>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsExpanded" Value="True">
+            <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+          </Trigger>
+          <Trigger Property="HasItems" Value="False">
+            <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+          </Trigger>
+          <Trigger SourceName="Bd" Property="IsMouseDirectlyOver" Value="True">
+            <Setter TargetName="Bd" Property="Background" Value="#1a1e26" />
+          </Trigger>
+          <Trigger Property="IsSelected" Value="True">
+            <Setter TargetName="Bd" Property="Background" Value="#242932" />
+          </Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate>
+    </Setter.Value>
+  </Setter>
+</Style>
+'@
+        $script:_NcsTreeViewItemStyle = [System.Windows.Markup.XamlReader]::Parse($xaml)
+    }
+    return $script:_NcsTreeViewItemStyle
+}
+
 function Build-NcsTreeView {
     param(
         [Parameter(Mandatory)]
@@ -287,6 +351,7 @@ function Build-NcsTreeView {
 
     $tree = $Controls[$TreeViewName]
     $tree.Items.Clear()
+    $tree.ItemContainerStyle = Get-NcsTreeViewItemStyle
     foreach ($group in $Groups) {
         $groupItem = New-NcsGroupTreeItem -Group $group -TagProperty $TagProperty -Expanded $Expanded -LeafIcon $LeafIcon
         $tree.Items.Add($groupItem) | Out-Null
@@ -573,7 +638,12 @@ function Set-NcsRunStateBadge {
         "Blocked"   { "#f2495c" }
         default     { "#1e2228" }
     }
+    $textColor = switch ($State) {
+        "Canceled"  { "#1e2228" }
+        default     { "#ffffff" }
+    }
     $Controls.RunStateBorder.Background = Get-NcsBrush -Color $color
+    $Controls.RunStateText.Foreground = Get-NcsBrush -Color $textColor
 }
 
 function Update-NcsWindowChromeState {
