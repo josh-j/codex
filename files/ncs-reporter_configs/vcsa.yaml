@@ -117,11 +117,12 @@ widgets:
     title: "Active vCenter Alarms"
     rows: "{{ active_alarms }}"
     columns:
-      'Alarm': "{{ alarm_name }}"
-      'Entity': "{{ entity }}"
-      'Severity [badge]': "{{ severity }}"
-      'Time': "{{ time }}"
-      'Description': "{{ description }}"
+      - 'Alarm': "{{ alarm_name }}"
+      - 'Entity': "{{ entity }}"
+      - 'Severity': "{{ severity }}"
+        badge: true
+      - 'Time': "{{ time }}"
+      - 'Description': "{{ description }}"
 
   - type: stat-cards
     id: inventory_kpis
@@ -140,33 +141,41 @@ widgets:
     title: "Appliance Overview"
     layout: half
     fields:
-      'Version': "{{ appliance_version }}"
-      'Build': "{{ appliance_build }}"
-      'Health Overall [badge]': "{{ appliance_health_overall }}"
-      'Health CPU [badge]': "{{ appliance_health_cpu }}"
-      'Health Memory [badge]': "{{ appliance_health_memory }}"
-      'Health DB [badge]': "{{ appliance_health_database }}"
-      'Health Storage [badge]': "{{ appliance_health_storage }}"
-      'Uptime (days)': "{{ appliance_uptime_days }}"
-      'SSH Enabled [badge]': "{{ ssh_enabled }}"
-      'NTP Mode': "{{ ntp_mode }}"
-      'Backup Schedules': "{{ backup_schedule_count }}"
-      'Extensions': "{{ extension_count }}"
-      'Content Libraries': "{{ content_library_count }}"
-      'Tag Categories': "{{ tag_category_count }}"
+      - 'Version': "{{ appliance_version }}"
+      - 'Build': "{{ appliance_build }}"
+      - 'Health Overall': "{{ appliance_health_overall }}"
+        badge: true
+      - 'Health CPU': "{{ appliance_health_cpu }}"
+        badge: true
+      - 'Health Memory': "{{ appliance_health_memory }}"
+        badge: true
+      - 'Health DB': "{{ appliance_health_database }}"
+        badge: true
+      - 'Health Storage': "{{ appliance_health_storage }}"
+        badge: true
+      - 'Uptime (days)': "{{ appliance_uptime_days }}"
+      - 'SSH Enabled': "{{ ssh_enabled }}"
+        badge: true
+      - 'NTP Mode': "{{ ntp_mode }}"
+      - 'Backup Schedules': "{{ backup_schedule_count }}"
+      - 'Extensions': "{{ extension_count }}"
+      - 'Content Libraries': "{{ content_library_count }}"
+      - 'Tag Categories': "{{ tag_category_count }}"
 
   - type: table
     title: "Clusters"
     when: cluster_count > 0
     rows: "{{ clusters }}"
     columns:
-      'Cluster': "{{ name }}"
-      'Datacenter': "{{ datacenter }}"
-      'Hosts': "{{ host_count }}"
-      'HA [badge]': "{{ ha_enabled }}"
-      'DRS [badge]': "{{ drs_enabled }}"
-      'CPU %': "{{ cpu_usage_pct }}"
-      'Mem %': "{{ mem_usage_pct }}"
+      - 'Cluster': "{{ name }}"
+      - 'Datacenter': "{{ datacenter }}"
+      - 'Hosts': "{{ host_count }}"
+      - 'HA': "{{ ha_enabled }}"
+        badge: true
+      - 'DRS': "{{ drs_enabled }}"
+        badge: true
+      - 'CPU %': "{{ cpu_usage_pct }}"
+      - 'Mem %': "{{ mem_usage_pct }}"
 
   - type: table
     title: "Datastores"
