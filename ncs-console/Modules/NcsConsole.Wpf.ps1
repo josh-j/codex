@@ -43,6 +43,9 @@ function Import-NcsWpfAssemblies {
         if ($env:PATH -notlike "*$loaderDir*") {
             $env:PATH = "{0}{1}{2}" -f $loaderDir, [IO.Path]::PathSeparator, $env:PATH
         }
+        # Pre-load the native DLL so the managed assemblies can find it via P/Invoke
+        Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class NcsNativeLoader { [DllImport("kernel32")] public static extern System.IntPtr LoadLibrary(string path); }' -ErrorAction SilentlyContinue
+        [void][NcsNativeLoader]::LoadLibrary($loaderPath)
         Add-Type -Path $coreAssemblyPath
         Add-Type -Path $wpfAssemblyPath
         $script:NcsWebView2Available = $true
