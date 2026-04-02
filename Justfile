@@ -324,11 +324,9 @@ _stig-report:
 
 # --- ESXi STIG ---
 
-# Audit a single ESXi host
-stig-audit-esxi vcenter host: && _stig-report
-    {{ ansible_playbook }} playbooks/vmware/esxi/stig_audit.yml \
-        -l {{ vcenter }} \
-        -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
+# Audit ESXi hosts (accepts host, group, or vCenter as target)
+stig-audit-esxi target: && _stig-report
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_audit.yml -l {{ target }}
 
 # Audit all ESXi hosts at a site (auto-discovers from vCenter)
 stig-audit-esxi-site site: && _stig-report
@@ -405,11 +403,9 @@ stig-audit-photon-inv target inv: && _stig-report
 
 # --- ESXi Hardening ---
 
-# Harden a single ESXi host
-stig-harden-esxi vcenter host:
-    {{ ansible_playbook }} playbooks/vmware/esxi/stig_remediate.yml \
-        -l {{ vcenter }} \
-        -e '{"esxi_stig_target_hosts": ["{{ host }}"]}'
+# Harden ESXi hosts (accepts host, group, or vCenter as target)
+stig-harden-esxi target:
+    {{ ansible_playbook }} playbooks/vmware/esxi/stig_remediate.yml -l {{ target }}
 
 # Harden all ESXi hosts at a site
 stig-harden-esxi-site site:
@@ -496,6 +492,10 @@ password-status-photon target="photon_servers" user="root":
 # =============================================================================
 # Reporting
 # =============================================================================
+
+# Refresh ESXi host inventory from all vCenters
+refresh-esxi-inventory:
+    {{ ansible_playbook }} playbooks/vmware/esxi/refresh_inventory.yml
 
 # Dump inventory groups JSON to disk
 dump-inventory:

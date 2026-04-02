@@ -45,10 +45,9 @@
       }}
   when: esxi_stig_target_hosts | default([]) | length == 0
 
-- name: "Validate ESXi target list"
-  ansible.builtin.assert:
-    that:
-      - esxi_stig_target_hosts | default([]) | length > 0
-    fail_msg: >-
-      No ESXi hosts discovered or provided.
+- name: "Warn if no ESXi targets found"
+  ansible.builtin.debug:
+    msg: >-
+      No ESXi hosts discovered or provided for {{ inventory_hostname }}.
       Check vCenter connectivity or set esxi_stig_target_hosts explicitly.
+  when: esxi_stig_target_hosts | default([]) | length == 0

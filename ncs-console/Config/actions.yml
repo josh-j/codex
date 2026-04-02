@@ -35,17 +35,14 @@
           label: Per-Host Health
           type: bool
           default: "true"
+    - label: Refresh Inventory
+      playbook: vmware/esxi/refresh_inventory.yml
     - label: STIG Audit
       playbook: vmware/esxi/stig_audit.yml
-      options:
-        - name: esxi_stig_target_hosts
-          label: Target Hosts (comma-separated, empty=auto)
     - label: STIG Remediate
       playbook: vmware/esxi/stig_remediate.yml
       mutating: true
       options:
-        - name: esxi_stig_target_hosts
-          label: Target Hosts (comma-separated, empty=auto)
         - name: esxi_stig_enable_ssh_checks
           label: SSH Checks
           type: bool
