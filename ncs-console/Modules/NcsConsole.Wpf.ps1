@@ -4,6 +4,7 @@ $script:NcsWebView2Available = $false
 $script:NcsWebView2Status = "WebView2 app dependencies are not installed."
 
 $script:BrushConverter = $null
+$script:_NcsTreeViewItemStyle = $null
 function Get-NcsBrush {
     param([string] $Color)
     if ($null -eq $script:BrushConverter) {
