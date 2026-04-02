@@ -352,27 +352,16 @@ function Find-NcsActionItem {
     return $null
 }
 
-function Update-NcsActionOptions {
+function Add-NcsOptionControls {
     param(
         [Parameter(Mandatory)]
-        [hashtable] $Controls,
-        $ActionItem
+        [System.Windows.Controls.Panel] $Panel,
+        $Options
     )
 
-    $Controls.ActionOptionsPanel.Children.Clear()
-    $Controls.ActionOptionsPanel.Visibility = "Collapsed"
+    if ($null -eq $Options -or @($Options).Length -eq 0) { return }
 
-    $actionItem = $ActionItem
-    if ($null -ne $actionItem -and -not $actionItem.ContainsKey('options')) { $actionItem = $null }
-
-    if ($null -eq $actionItem) { return }
-
-    $options = $actionItem['options']
-    if ($null -eq $options -or @($options).Length -eq 0) { return }
-
-    $Controls.ActionOptionsPanel.Visibility = "Visible"
-
-    foreach ($opt in @($options)) {
+    foreach ($opt in @($Options)) {
         $optType = if ($opt.ContainsKey('type')) { $opt['type'] } else { 'text' }
 
         if ($optType -ne 'bool') {
@@ -380,7 +369,7 @@ function Update-NcsActionOptions {
             $label.Text = $opt['label']
             $label.Foreground = Get-NcsBrush -Color "#8e939c"
             $label.FontSize = 11
-            $Controls.ActionOptionsPanel.Children.Add($label) | Out-Null
+            $Panel.Children.Add($label) | Out-Null
         }
 
         switch ($optType) {
@@ -396,7 +385,7 @@ function Update-NcsActionOptions {
                 if ($null -eq $comboBox.SelectedItem -and $comboBox.Items.Count -gt 0) {
                     $comboBox.SelectedIndex = 0
                 }
-                $Controls.ActionOptionsPanel.Children.Add($comboBox) | Out-Null
+                $Panel.Children.Add($comboBox) | Out-Null
             }
             'bool' {
                 $checkBox = [System.Windows.Controls.CheckBox]::new()
@@ -409,27 +398,103 @@ function Update-NcsActionOptions {
                     $dv = $opt['default']
                     $checkBox.IsChecked = ($dv -eq $true -or $dv -eq 'true' -or $dv -eq 'yes')
                 }
-                $Controls.ActionOptionsPanel.Children.Add($checkBox) | Out-Null
+                $Panel.Children.Add($checkBox) | Out-Null
             }
             default {
                 $textBox = [System.Windows.Controls.TextBox]::new()
                 $textBox.Tag = $opt['name']
                 if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
-                $Controls.ActionOptionsPanel.Children.Add($textBox) | Out-Null
+                $Panel.Children.Add($textBox) | Out-Null
             }
         }
     }
 }
 
-function Get-NcsActionOptionValues {
+function Update-NcsActionOptions {
     param(
         [Parameter(Mandatory)]
-        [hashtable] $Controls
+        [hashtable] $Controls,
+        $ActionItem
     )
 
+    $Controls.ActionOptionsPanel.Children.Clear()
+    $Controls.ActionOptionsPanel.Visibility = "Collapsed"
+
+    if ($null -eq $ActionItem) { return }
+
+    $hasProfiles = $ActionItem.ContainsKey('profiles') -and @($ActionItem['profiles']).Length -gt 0
+    $hasOptions = $ActionItem.ContainsKey('options') -and @($ActionItem['options']).Length -gt 0
+
+    if (-not $hasProfiles -and -not $hasOptions) { return }
+
+    $Controls.ActionOptionsPanel.Visibility = "Visible"
+
+    if ($hasProfiles) {
+        $profiles = @($ActionItem['profiles'])
+
+        # Profile selector label
+        $profileLabel = [System.Windows.Controls.TextBlock]::new()
+        $profileLabel.Text = "Operation"
+        $profileLabel.Foreground = Get-NcsBrush -Color "#8e939c"
+        $profileLabel.FontSize = 11
+        $Controls.ActionOptionsPanel.Children.Add($profileLabel) | Out-Null
+
+        # Profile dropdown
+        $profileCombo = [System.Windows.Controls.ComboBox]::new()
+        $profileCombo.Tag = "_ncs_profile_selector"
+        $profileCombo.ItemsSource = @($profiles | ForEach-Object { $_.label })
+        $profileCombo.SelectedIndex = 0
+
+        # Container for profile-specific options (below the dropdown)
+        $profileOptionsPanel = [System.Windows.Controls.StackPanel]::new()
+        $profileOptionsPanel.Tag = "_ncs_profile_options"
+
+        # Populate options for selected profile
+        $updateProfileOptions = {
+            param($Panel, $Profiles, $Index)
+            $Panel.Children.Clear()
+            if ($Index -lt 0 -or $Index -ge $Profiles.Length) { return }
+            $p = $Profiles[$Index]
+            # Hidden field for ncs_operation
+            if ($p.ContainsKey('operation')) {
+                $opField = [System.Windows.Controls.TextBox]::new()
+                $opField.Tag = "ncs_operation"
+                $opField.Text = $p['operation']
+                $opField.Visibility = "Collapsed"
+                $Panel.Children.Add($opField) | Out-Null
+            }
+            if ($p.ContainsKey('options')) {
+                Add-NcsOptionControls -Panel $Panel -Options $p['options']
+            }
+        }
+
+        & $updateProfileOptions $profileOptionsPanel $profiles 0
+
+        $pnl = $profileOptionsPanel
+        $profs = $profiles
+        $updater = $updateProfileOptions
+        $profileCombo.Add_SelectionChanged({
+            & $updater $pnl $profs $profileCombo.SelectedIndex
+        }.GetNewClosure())
+
+        $Controls.ActionOptionsPanel.Children.Add($profileCombo) | Out-Null
+        $Controls.ActionOptionsPanel.Children.Add($profileOptionsPanel) | Out-Null
+    } else {
+        Add-NcsOptionControls -Panel $Controls.ActionOptionsPanel -Options $ActionItem['options']
+    }
+}
+
+function Get-NcsControlValues {
+    param([System.Windows.Controls.Panel] $Panel)
     $values = @{}
-    foreach ($child in @($Controls.ActionOptionsPanel.Children)) {
-        if ([string]::IsNullOrWhiteSpace($child.Tag)) { continue }
+    foreach ($child in @($Panel.Children)) {
+        if ($child -is [System.Windows.Controls.Panel]) {
+            foreach ($kv in (Get-NcsControlValues -Panel $child).GetEnumerator()) {
+                $values[$kv.Key] = $kv.Value
+            }
+            continue
+        }
+        if ([string]::IsNullOrWhiteSpace($child.Tag) -or $child.Tag.StartsWith('_ncs_')) { continue }
         if ($child -is [System.Windows.Controls.TextBox]) {
             $val = $child.Text.Trim()
             if (-not [string]::IsNullOrWhiteSpace($val)) {
@@ -445,6 +510,14 @@ function Get-NcsActionOptionValues {
         }
     }
     return $values
+}
+
+function Get-NcsActionOptionValues {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+    return Get-NcsControlValues -Panel $Controls.ActionOptionsPanel
 }
 
 function Set-NcsRequestFromControls {
