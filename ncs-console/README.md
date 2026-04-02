@@ -48,7 +48,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ## Actions
 
-Actions are defined in `Config/actions.yml` and map directly to Ansible playbooks. The app runs `ansible-playbook` directly (activating `.venv` if present) — no Makefile, Justfile, or make targets are involved.
+Actions are auto-discovered from the `playbooks/` directory on the remote host. The tree hierarchy mirrors the directory structure. Labels, options, and mutating flags are extracted from playbook YAML and `# >>> / # <<<` metadata blocks. The app runs `ansible-playbook` directly (activating `.venv` if present) — no Makefile, Justfile, or make targets are involved.
 
 ## Settings Storage
 

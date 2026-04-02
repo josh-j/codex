@@ -80,63 +80,6 @@ function Get-NcsSshAuthModeNames {
     [NcsSshAuthMode].GetEnumNames()
 }
 
-function Import-NcsGroupedConfig {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path
-    )
-
-    # Parse YAML config using PowerShell-native YAML-subset parser.
-    # Supports nested children: groups can contain actions: and children: keys.
-    $content = Get-Content -LiteralPath $Path -Raw
-    # Use Python for reliable YAML parsing of the nested structure
-    $pyParse = @'
-import sys, json, yaml
-
-def convert_group(raw):
-    g = {"Group": raw.get("group", ""), "Items": []}
-    for action in raw.get("actions", []):
-        if not isinstance(action, dict) or "label" not in action:
-            continue
-        item = {}
-        for k, v in action.items():
-            if k == "options" and isinstance(v, list):
-                item["options"] = v
-            elif k == "label":
-                item["Label"] = v
-            elif isinstance(v, bool):
-                item[k] = v
-            else:
-                item[k] = v
-            # Normalize booleans stored as strings
-            if k == "mutating" and isinstance(v, bool):
-                item[k] = v
-        g["Items"].append(item)
-    children_raw = raw.get("children", [])
-    if children_raw:
-        g["Children"] = [convert_group(c) for c in children_raw if isinstance(c, dict)]
-    return g
-
-data = yaml.safe_load(sys.stdin.read())
-if not isinstance(data, list):
-    data = []
-result = [convert_group(g) for g in data if isinstance(g, dict)]
-print(json.dumps(result))
-'@
-    try {
-        $jsonOut = $content | & python3 -c $pyParse 2>$null
-        if ([string]::IsNullOrWhiteSpace($jsonOut)) { return @() }
-        $parsed = $jsonOut | ConvertFrom-Json -AsHashtable
-        $groups = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($entry in @($parsed)) {
-            $groups.Add($entry)
-        }
-        return $groups
-    } catch {
-        return @()
-    }
-}
-
 function Get-NcsRemotePlaybookTree {
     param(
         [Parameter(Mandatory)]
@@ -380,66 +323,6 @@ print(json.dumps(fleet + rest))
     }
 
     return $groups
-}
-
-function Get-NcsAllPlaybooks {
-    param($Groups)
-    $set = [System.Collections.Generic.HashSet[string]]::new()
-    foreach ($group in $Groups) {
-        foreach ($item in $group.Items) {
-            [void] $set.Add($item['playbook'])
-        }
-        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
-            foreach ($pb in (Get-NcsAllPlaybooks -Groups $group['Children'])) {
-                [void] $set.Add($pb)
-            }
-        }
-    }
-    return $set
-}
-
-function Merge-NcsActionGroups {
-    param(
-        [Parameter(Mandatory)]
-        $ConfigGroups,
-        [Parameter(Mandatory)]
-        $RemoteGroups
-    )
-
-    # Remote-first: use the remote scan as authoritative structure.
-    # Config adds entries whose playbook wasn't found remotely.
-    $remotePlaybooks = Get-NcsAllPlaybooks -Groups $RemoteGroups
-
-    $merged = [System.Collections.Generic.List[hashtable]]::new()
-    $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
-    foreach ($group in $RemoteGroups) {
-        $mutableItems = [System.Collections.Generic.List[hashtable]]::new()
-        foreach ($i in $group.Items) { $mutableItems.Add($i) }
-        $entry = @{ Group = $group.Group; Items = $mutableItems }
-        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
-            $entry['Children'] = $group['Children']
-        }
-        $merged.Add($entry)
-        [void] $mergedGroupNames.Add($group.Group)
-    }
-
-    foreach ($group in $ConfigGroups) {
-        foreach ($item in $group.Items) {
-            if ($remotePlaybooks.Contains($item['playbook'])) { continue }
-            if ($mergedGroupNames.Contains($group.Group)) {
-                foreach ($g in $merged) {
-                    if ($g.Group -eq $group.Group) { $g.Items.Add($item); break }
-                }
-            } else {
-                $newItems = [System.Collections.Generic.List[hashtable]]::new()
-                $newItems.Add($item)
-                $merged.Add(@{ Group = $group.Group; Items = $newItems })
-                [void] $mergedGroupNames.Add($group.Group)
-            }
-        }
-    }
-
-    return $merged
 }
 
 function Get-NcsRemoteInventoryTree {
