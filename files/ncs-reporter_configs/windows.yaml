@@ -97,10 +97,11 @@ widgets:
     title: "Disk Usage"
     rows: "{{ health_disk }}"
     columns:
-      'Drive': "{{ DeviceID }}"
-      'Size (GB)': "{{ SizeGB }}"
-      'Free (GB)': "{{ FreeGB }}"
-      'Used % [badge]': "{{ UsedPct }}"
+      - 'Drive': "{{ DeviceID }}"
+      - 'Size (GB)': "{{ SizeGB }}"
+      - 'Free (GB)': "{{ FreeGB }}"
+      - 'Used %': "{{ UsedPct }}"
+        badge: true
 
   - type: key-value
     title: "Memory & CPU"
@@ -112,20 +113,22 @@ widgets:
     title: "Critical Services"
     rows: "{{ health_services }}"
     columns:
-      'Service': "{{ display_name }}"
-      'Status [badge]': "{{ status }}"
-      'Start Type': "{{ start_type }}"
+      - 'Service': "{{ display_name }}"
+      - 'Status': "{{ status }}"
+        badge: true
+      - 'Start Type': "{{ start_type }}"
 
   - type: table
     title: "Recent Critical/Error Events"
     rows: "{{ health_events }}"
     columns:
-      'Time': "{{ time }}"
-      'Log': "{{ log }}"
-      'Level [badge]': "{{ level }}"
-      'Source': "{{ source }}"
-      'ID': "{{ id }}"
-      'Message': "{{ message }}"
+      - 'Time': "{{ time }}"
+      - 'Log': "{{ log }}"
+      - 'Level': "{{ level }}"
+        badge: true
+      - 'Source': "{{ source }}"
+      - 'ID': "{{ id }}"
+      - 'Message': "{{ message }}"
 
   - type: key-value
     title: "Vulnerability Summary"
@@ -138,10 +141,12 @@ widgets:
     title: "Vulnerability Findings"
     rows: "{{ vuln_findings }}"
     columns:
-      'Plugin ID': "{{ plugin_id }}"
-      'Severity [badge]': "{{ severity }}"
-      'Title': "{{ title }}"
-      'Remediated [badge]': "{{ remediated }}"
+      - 'Plugin ID': "{{ plugin_id }}"
+      - 'Severity': "{{ severity }}"
+        badge: true
+      - 'Title': "{{ title }}"
+      - 'Remediated': "{{ remediated }}"
+        badge: true
 
   - type: table
     title: "ConfigMgr Applications"
@@ -162,17 +167,20 @@ widgets:
     title: "Update Results"
     rows: "{{ update_results }}"
     columns:
-      'Application': "{{ application }}"
-      'Status [badge]': "{{ status }}"
-      'Failed [badge]': "{{ failed }}"
+      - 'Application': "{{ application }}"
+      - 'Status': "{{ status }}"
+        badge: true
+      - 'Failed': "{{ failed }}"
+        badge: true
 
   - type: table
     title: "KB Detection Status"
     rows: "{{ kb_detection }}"
     columns:
-      'KB': "{{ kb }}"
-      'Installed [badge]': "{{ installed }}"
-      'Detection Method': "{{ method }}"
+      - 'KB': "{{ kb }}"
+      - 'Installed': "{{ installed }}"
+        badge: true
+      - 'Detection Method': "{{ method }}"
 
   - type: table
     title: "Installed Software"

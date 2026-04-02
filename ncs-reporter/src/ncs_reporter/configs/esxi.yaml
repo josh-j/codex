@@ -91,14 +91,17 @@ widgets:
     title: "Host Overview"
     layout: half
     fields:
-      'Connection State [badge]': "{{ connection_state }}"
-      'Overall Status [badge]': "{{ overall_status }}"
-      'Cluster': "{{ cluster }}"
-      'Datacenter': "{{ datacenter }}"
-      'Version': "{{ version }}"
-      'Build': "{{ build }}"
-      'Maintenance Mode [badge]': "{{ in_maintenance_mode }}"
-      'Lockdown Mode': "{{ lockdown_mode }}"
+      - 'Connection State': "{{ connection_state }}"
+        badge: true
+      - 'Overall Status': "{{ overall_status }}"
+        badge: true
+      - 'Cluster': "{{ cluster }}"
+      - 'Datacenter': "{{ datacenter }}"
+      - 'Version': "{{ version }}"
+      - 'Build': "{{ build }}"
+      - 'Maintenance Mode': "{{ in_maintenance_mode }}"
+        badge: true
+      - 'Lockdown Mode': "{{ lockdown_mode }}"
 
   - type: stat-cards
     id: resource_kpis
@@ -114,9 +117,12 @@ widgets:
     title: "Security & Services"
     layout: half
     fields:
-      'SSH Enabled [badge]': "{{ ssh_enabled }}"
-      'Shell Enabled [badge]': "{{ shell_enabled }}"
-      'NTP Running [badge]': "{{ ntp_running }}"
+      - 'SSH Enabled': "{{ ssh_enabled }}"
+        badge: true
+      - 'Shell Enabled': "{{ shell_enabled }}"
+        badge: true
+      - 'NTP Running': "{{ ntp_running }}"
+        badge: true
 
   - type: table
     title: "Datastores"
@@ -130,8 +136,9 @@ widgets:
     title: "Physical NICs"
     rows: "{{ nics }}"
     columns:
-      'Device': "{{ device }}"
-      'Status [badge]': "{{ link_status }}"
-      'Speed (Mbps)': "{{ speed_mbps }}"
-      'Driver': "{{ driver }}"
-      'Switch': "{{ switch }}"
+      - 'Device': "{{ device }}"
+      - 'Status': "{{ link_status }}"
+        badge: true
+      - 'Speed (Mbps)': "{{ speed_mbps }}"
+      - 'Driver': "{{ driver }}"
+      - 'Switch': "{{ switch }}"

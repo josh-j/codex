@@ -42,9 +42,10 @@
   title: "Filesystems"
   rows: "{{ disks }}"
   columns:
-    'Mount': "{{ mount }}"
-    'Device': "{{ device }}"
-    'FS Type': "{{ fstype }}"
-    'Total (GB)': "{{ total_gb }}"
-    'Free (GB)': "{{ free_gb }}"
-    'Used % [badge]': "{{ used_pct }}"
+    - 'Mount': "{{ mount }}"
+    - 'Device': "{{ device }}"
+    - 'FS Type': "{{ fstype }}"
+    - 'Total (GB)': "{{ total_gb }}"
+    - 'Free (GB)': "{{ free_gb }}"
+    - 'Used %': "{{ used_pct }}"
+      badge: true
