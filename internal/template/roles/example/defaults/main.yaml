@@ -1,0 +1,22 @@
+---
+# internal.template.example : defaults/main.yaml
+# TEMPLATE: Rename all "example_" prefixes to your role name.
+# =============================================================================
+# ROLE BEHAVIOR — actions, feature flags, thresholds
+# =============================================================================
+
+# Pipeline control
+example_skip_discovery: false
+example_skip_export: false
+
+# Thresholds (used in emit config, evaluated by ncs-reporter)
+# TEMPLATE: Adjust thresholds to match your platform's metrics.
+example_storage_warning_pct: 90.0
+example_memory_warning_pct: 95.0
+example_cpu_critical_pct: 90.0
+
+# Feature flags
+example_enable_maintenance: false
+example_stig_enable_audit: true
+example_stig_enable_hardening: false
+example_enable_password_rotation: false

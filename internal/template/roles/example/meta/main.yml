@@ -1,0 +1,14 @@
+---
+# TEMPLATE: Update author, description, platforms, and dependencies.
+galaxy_info:
+  author: NCS
+  description: Example platform role — copy and customize for your platform.
+  company: NCS
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Generic
+      versions:
+        - all
+
+dependencies: []

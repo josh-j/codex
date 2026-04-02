@@ -1,0 +1,8 @@
+---
+# internal.template.example : handlers/main.yaml
+# TEMPLATE: Add handlers for services that need restart after STIG remediation.
+
+# - name: example_service_restart
+#   ansible.builtin.service:
+#     name: example-service
+#     state: restarted
