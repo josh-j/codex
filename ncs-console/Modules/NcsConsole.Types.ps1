@@ -267,15 +267,36 @@ for root, dirs, files in os.walk(base):
         except Exception:
             continue
         blocks = parse_ncs_blocks(text)
-        if blocks:
+        if blocks and len(blocks) > 1:
+            # Multi-profile playbook (e.g. run.yml): single tree item with profile selector
+            profiles = []
+            any_mutating = False
             for blk in blocks:
                 lbl = blk.get("label", fallback_label(f, None if is_import else play))
                 mut = blk.get("mutating", False)
-                opts = blk.get("options", [])
+                if mut:
+                    any_mutating = True
+                profile = {"label": lbl}
+                if mut:
+                    profile["mutating"] = True
                 op = blk.get("operation")
                 if op:
-                    opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
-                add_item(tree, segments, build_item(playbook, lbl, mut, opts))
+                    profile["operation"] = op
+                if blk.get("options"):
+                    profile["options"] = blk["options"]
+                profiles.append(profile)
+            item = build_item(playbook, fallback_label(f, None if is_import else play), any_mutating)
+            item["profiles"] = profiles
+            add_item(tree, segments, item)
+        elif blocks:
+            blk = blocks[0]
+            lbl = blk.get("label", fallback_label(f, None if is_import else play))
+            mut = blk.get("mutating", False)
+            opts = blk.get("options", [])
+            op = blk.get("operation")
+            if op:
+                opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
+            add_item(tree, segments, build_item(playbook, lbl, mut, opts))
         else:
             lbl = fallback_label(f, None if is_import else play)
             stem = os.path.splitext(f)[0]
