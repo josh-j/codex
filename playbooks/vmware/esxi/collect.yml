@@ -9,10 +9,15 @@
 # Read-only audit focused on ESXi host and datastore inventory/health data.
 
 - name: Phase 2b | ESXi Infrastructure Audit
-  hosts: vcsa
+  hosts: "vcsa:esxi_hosts"
   connection: local
   gather_facts: false
   become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    _vcenter_hostname: "{{ _ncs_vcenter | default(inventory_hostname) }}"
+  pre_tasks:
+    - ansible.builtin.include_tasks: _route_esxi.yml
   roles:
     - role: internal.vmware.esxi
       vars:
