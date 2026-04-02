@@ -362,8 +362,12 @@ function Start-NcsRemoteCommand {
             }
 
             $streamsDone = $es.StdoutClosed.IsSet -and $es.StderrClosed.IsSet
-            if (-not $streamsDone -or -not $es.Process.HasExited) {
+            if (-not $es.Process.HasExited) {
                 return
+            }
+            # Process exited — give streams a moment to deliver final data
+            if (-not $streamsDone) {
+                [System.Threading.Thread]::Sleep(200)
             }
 
             while ($es.PendingLines.TryDequeue([ref]$line)) {

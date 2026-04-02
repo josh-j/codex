@@ -12,27 +12,27 @@ all:
       vars:
         vmware_validate_certs: false
       children:
-        aedw_esxi_hosts:
+        esxi_aedw:
           vars:
             _ncs_vcenter: vcsa-aedw
           hosts: {}
-        ashe_esxi_hosts:
+        esxi_ashe:
           vars:
             _ncs_vcenter: vcsa-ashe
           hosts: {}
-        gfpy_esxi_hosts:
+        esxi_gfpy:
           vars:
             _ncs_vcenter: vcsa-gfpy
           hosts: {}
-        mqna_esxi_hosts:
+        esxi_mqna:
           vars:
             _ncs_vcenter: vcsa-mqna
           hosts: {}
-        sdhm_esxi_hosts:
+        esxi_sdhm:
           vars:
             _ncs_vcenter: vcsa-sdhm
           hosts: {}
-        tyfq_esxi_hosts:
+        esxi_tyfq:
           vars:
             _ncs_vcenter: vcsa-tyfq
           hosts: {}

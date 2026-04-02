@@ -151,6 +151,7 @@ function Get-NcsXamlControlMap {
         "PreflightButton",
         "PreflightButtonText",
         "RefreshPlaybooksButton",
+        "PlaybooksCloseButton",
         "PlaybookPlaceholder",
         "PlaybookSplitPane",
         "ActionTreeView",
@@ -190,6 +191,7 @@ function Get-NcsXamlControlMap {
         "ReportHomeButton",
         "ReportRefreshButton",
         "ReportsCloseButton",
+        "ReportsMaximizeButton",
         "StatusTextBlock",
         "ExitCodePanel",
         "ExitCodeTextBlock",
@@ -643,8 +645,13 @@ function Set-NcsRunStateBadge {
         "Canceled"  { "#1e2228" }
         default     { "#ffffff" }
     }
+    $metaColor = switch ($State) {
+        "Canceled"  { "#3d3020" }
+        default     { "#8e939c" }
+    }
     $Controls.RunStateBorder.Background = Get-NcsBrush -Color $color
     $Controls.RunStateText.Foreground = Get-NcsBrush -Color $textColor
+    $Controls.RunMetaText.Foreground = Get-NcsBrush -Color $metaColor
 }
 
 function Update-NcsWindowChromeState {
@@ -1422,6 +1429,8 @@ function Show-NcsConsoleApp {
         Update-NcsTopTabState -Controls $controls
     }
 
+    $controls.PlaybooksCloseButton.Add_Click({ & $closeOperate })
+
     $controls.OperateToggleButton.Add_Click({
         if ($controls.OperateContent.Visibility -eq "Visible") {
             & $closeOperate
@@ -1539,6 +1548,48 @@ function Show-NcsConsoleApp {
     }
 
     $controls.ReportsCloseButton.Add_Click({ & $closeReports })
+
+    $script:ReportsMaximized = $false
+    $script:PreMaximizeState = $null
+
+    $controls.ReportsMaximizeButton.Add_Click({
+        if ($script:ReportsMaximized) {
+            # Restore previous panel visibility
+            $prev = $script:PreMaximizeState
+            if ($prev.OperateVisible) {
+                $operateColumn.Width = $prev.OperateWidth
+                $controls.OperateContent.Visibility = "Visible"
+            }
+            if ($prev.ConsoleVisible) {
+                $consoleColumn.Width = $prev.ConsoleWidth
+                $controls.ConsolePane.Visibility = "Visible"
+                $controls.ConsoleSplitter.Visibility = "Visible"
+            }
+            if ($prev.SettingsVisible) {
+                $settingsColumn.Width = $prev.SettingsWidth
+                $controls.SettingsPanel.Visibility = "Visible"
+                $controls.SettingsSplitter.Visibility = "Visible"
+            }
+            $script:ReportsMaximized = $false
+            $controls.ReportsMaximizeButton.ToolTip = "Maximize reports"
+        } else {
+            # Save current state and hide other panels
+            $script:PreMaximizeState = @{
+                OperateVisible  = $controls.OperateContent.Visibility -eq "Visible"
+                OperateWidth    = $operateColumn.Width
+                ConsoleVisible  = $controls.ConsolePane.Visibility -eq "Visible"
+                ConsoleWidth    = $consoleColumn.Width
+                SettingsVisible = $controls.SettingsPanel.Visibility -eq "Visible"
+                SettingsWidth   = $settingsColumn.Width
+            }
+            & $closeOperate
+            & $closeConsole
+            & $closeSettings
+            $script:ReportsMaximized = $true
+            $controls.ReportsMaximizeButton.ToolTip = "Restore panels"
+        }
+        Update-NcsTopTabState -Controls $controls
+    })
 
     $controls.ReportsToggleButton.Add_Click({
         if ($controls.ReportsPane.Visibility -eq "Visible") {

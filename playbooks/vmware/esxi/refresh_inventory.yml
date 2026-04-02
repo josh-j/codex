@@ -78,7 +78,7 @@
           {% set result = hostvars[vc]['_refresh_result'] | default(none) %}
           {% if result is not none %}
           {% set site_code = result.vcenter | regex_replace('^vcsa-', '') %}
-                  {{ site_code }}_esxi_hosts:
+                  esxi_{{ site_code }}:
                     vars:
                       _ncs_vcenter: "{{ result.vcenter }}"
           {% if result.hosts | length > 0 %}

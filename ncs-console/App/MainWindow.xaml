@@ -132,9 +132,12 @@
                                 </Grid.RowDefinitions>
                                 <DockPanel Grid.Row="0" Margin="{StaticResource MarginSectionTitle}">
                                     <TextBlock DockPanel.Dock="Left" Text="Playbooks" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" />
-                                    <Button x:Name="RefreshPlaybooksButton" DockPanel.Dock="Right" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="4,2" FontSize="{StaticResource FontSizeSm}" ToolTip="Refresh playbooks and inventory" HorizontalAlignment="Right" Visibility="Collapsed">
-                                        <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M12 2 A8 8 0 1 0 14 8 M12 2 L16 2 L12 6" />
-                                    </Button>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="RefreshPlaybooksButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="4,2" FontSize="{StaticResource FontSizeSm}" ToolTip="Refresh playbooks and inventory" Visibility="Collapsed">
+                                            <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M12 2 A8 8 0 1 0 14 8 M12 2 L16 2 L12 6" />
+                                        </Button>
+                                        <Button x:Name="PlaybooksCloseButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Close playbooks" />
+                                    </StackPanel>
                                 </DockPanel>
                                 <TextBlock x:Name="PlaybookPlaceholder" Grid.Row="1" Text="Connect to load playbooks" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 <Grid x:Name="PlaybookSplitPane" Grid.Row="1" Visibility="Collapsed">
@@ -268,6 +271,9 @@
                                     </Button>
                                     <Button x:Name="ReportRefreshButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Refresh">
                                         <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M12 2 A8 8 0 1 0 14 8 M12 2 L16 2 L12 6" VerticalAlignment="Center" />
+                                    </Button>
+                                    <Button x:Name="ReportsMaximizeButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Maximize reports" Margin="4,0,0,0">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M0 0 L10 0 L10 10 L0 10 Z" VerticalAlignment="Center" />
                                     </Button>
                                     <Button x:Name="ReportsCloseButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Collapse reports" />
                                 </StackPanel>
