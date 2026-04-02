@@ -1,16 +1,31 @@
 ---
 # playbooks/vmware/esxi/stig_audit.yml
-- name: "Phase 2a | ESXi STIG Audit (per vCenter)"
-  hosts: vcsa
+- name: "Phase 2a | ESXi STIG Audit"
+  hosts: "vcsa:esxi_hosts"
   connection: local
   gather_facts: false
   become: false
   tags: ["vmware", "stig", "audit", "esxi"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    _vcenter_hostname: "{{ _ncs_vcenter | default(inventory_hostname) }}"
   pre_tasks:
+    # ESXi inventory hosts without --limit defer to vCenter discovery
+    - meta: end_host
+      when: _ncs_vcenter is defined and ansible_limit is not defined
+
+    # ESXi inventory hosts with --limit target themselves directly
+    - name: "Set ESXi target from inventory"
+      ansible.builtin.set_fact:
+        esxi_stig_target_hosts: ["{{ inventory_hostname }}"]
+      when:
+        - _ncs_vcenter is defined
+        - esxi_stig_target_hosts | default([]) | length == 0
+
+    # vCenter hosts discover targets from the API (unchanged)
     - name: "Discover and validate ESXi targets"
       ansible.builtin.include_tasks: _discover.yml
+      when: _ncs_vcenter is not defined
   roles:
     - role: internal.vmware.esxi
       vars:

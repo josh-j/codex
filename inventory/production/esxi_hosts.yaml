@@ -1,0 +1,38 @@
+---
+# ESXi hosts grouped by managing vCenter.
+# _ncs_vcenter links each group to its vCenter for API routing.
+# These are "phantom" inventory entries for --limit targeting only —
+# playbooks connect to the vCenter API, never SSH to ESXi directly.
+#
+# Populate hosts by running discovery or adding them manually:
+#   just refresh-esxi-inventory
+all:
+  children:
+    esxi_hosts:
+      vars:
+        vmware_validate_certs: false
+      children:
+        aedw_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-aedw
+          hosts: {}
+        ashe_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-ashe
+          hosts: {}
+        gfpy_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-gfpy
+          hosts: {}
+        mqna_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-mqna
+          hosts: {}
+        sdhm_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-sdhm
+          hosts: {}
+        tyfq_esxi_hosts:
+          vars:
+            _ncs_vcenter: vcsa-tyfq
+          hosts: {}

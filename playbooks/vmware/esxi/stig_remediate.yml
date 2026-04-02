@@ -6,17 +6,29 @@
 # playbooks/vmware/esxi/stig_remediate.yml
 # Automated security hardening remediation for VMware ESXi hosts.
 
-- name: "Phase 2c | ESXi STIG Hardening (per vCenter)"
-  hosts: vcsa
+- name: "Phase 2c | ESXi STIG Hardening"
+  hosts: "vcsa:esxi_hosts"
   connection: local
   gather_facts: false
   become: false
   tags: ["vmware", "stig", "remediate", "esxi"]
   vars:
     esxi_stig_enable_ssh_checks: false
+    _vcenter_hostname: "{{ _ncs_vcenter | default(inventory_hostname) }}"
   pre_tasks:
+    - meta: end_host
+      when: _ncs_vcenter is defined and ansible_limit is not defined
+
+    - name: "Set ESXi target from inventory"
+      ansible.builtin.set_fact:
+        esxi_stig_target_hosts: ["{{ inventory_hostname }}"]
+      when:
+        - _ncs_vcenter is defined
+        - esxi_stig_target_hosts | default([]) | length == 0
+
     - name: "Discover and validate ESXi targets"
       ansible.builtin.include_tasks: _discover.yml
+      when: _ncs_vcenter is not defined
 
   tasks:
     - name: "Execute ESXi STIG Hardening"
@@ -28,14 +40,27 @@
       when: esxi_stig_target_hosts | default([]) | length > 0
 
 - name: "Phase 2e | Post-Remediation ESXi STIG Audit"
-  hosts: vcsa
+  hosts: "vcsa:esxi_hosts"
   connection: local
   gather_facts: false
   become: false
   tags: ["vmware", "stig", "audit", "esxi"]
+  vars:
+    _vcenter_hostname: "{{ _ncs_vcenter | default(inventory_hostname) }}"
   pre_tasks:
+    - meta: end_host
+      when: _ncs_vcenter is defined and ansible_limit is not defined
+
+    - name: "Set ESXi target from inventory"
+      ansible.builtin.set_fact:
+        esxi_stig_target_hosts: ["{{ inventory_hostname }}"]
+      when:
+        - _ncs_vcenter is defined
+        - esxi_stig_target_hosts | default([]) | length == 0
+
     - name: "Re-discover ESXi targets"
       ansible.builtin.include_tasks: _discover.yml
+      when: _ncs_vcenter is not defined
   tasks:
     - name: "Execute Post-Remediation ESXi STIG Audit"
       ansible.builtin.include_role:
