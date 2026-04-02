@@ -500,30 +500,25 @@ function Update-NcsActionOptions {
     if ($hasProfiles) {
         $profiles = @($ActionItem['profiles'])
 
-        # Profile selector label
         $profileLabel = [System.Windows.Controls.TextBlock]::new()
         $profileLabel.Text = "Operation"
         $profileLabel.Foreground = Get-NcsBrush -Color "#8e939c"
         $profileLabel.FontSize = 11
         $Controls.ActionOptionsPanel.Children.Add($profileLabel) | Out-Null
 
-        # Profile dropdown
         $profileCombo = [System.Windows.Controls.ComboBox]::new()
         $profileCombo.Tag = "_ncs_profile_selector"
         $profileCombo.ItemsSource = @($profiles | ForEach-Object { $_.label })
         $profileCombo.SelectedIndex = 0
 
-        # Container for profile-specific options (below the dropdown)
         $profileOptionsPanel = [System.Windows.Controls.StackPanel]::new()
         $profileOptionsPanel.Tag = "_ncs_profile_options"
 
-        # Populate options for selected profile
         $updateProfileOptions = {
             param($Panel, $Profiles, $Index)
             $Panel.Children.Clear()
             if ($Index -lt 0 -or $Index -ge $Profiles.Length) { return }
             $p = $Profiles[$Index]
-            # Hidden field for ncs_operation
             if ($p.ContainsKey('operation')) {
                 $opField = [System.Windows.Controls.TextBox]::new()
                 $opField.Tag = "ncs_operation"
@@ -538,11 +533,8 @@ function Update-NcsActionOptions {
 
         & $updateProfileOptions $profileOptionsPanel $profiles 0
 
-        $pnl = $profileOptionsPanel
-        $profs = $profiles
-        $updater = $updateProfileOptions
         $profileCombo.Add_SelectionChanged({
-            & $updater $pnl $profs $profileCombo.SelectedIndex
+            & $updateProfileOptions $profileOptionsPanel $profiles $profileCombo.SelectedIndex
         }.GetNewClosure())
 
         $Controls.ActionOptionsPanel.Children.Add($profileCombo) | Out-Null
@@ -634,24 +626,16 @@ function Set-NcsRunStateBadge {
     )
 
     $Controls.RunStateText.Text = $State
-    $color = switch ($State) {
-        "Succeeded" { "#6e9fff" }
-        "Failed"    { "#f2495c" }
-        "Canceled"  { "#ff9830" }
-        "Blocked"   { "#f2495c" }
-        default     { "#1e2228" }
+    $styles = @{
+        Succeeded = @{ bg = "#6e9fff"; fg = "#ffffff"; meta = "#8e939c" }
+        Failed    = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#8e939c" }
+        Canceled  = @{ bg = "#ff9830"; fg = "#1e2228"; meta = "#3d3020" }
+        Blocked   = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#8e939c" }
     }
-    $textColor = switch ($State) {
-        "Canceled"  { "#1e2228" }
-        default     { "#ffffff" }
-    }
-    $metaColor = switch ($State) {
-        "Canceled"  { "#3d3020" }
-        default     { "#8e939c" }
-    }
-    $Controls.RunStateBorder.Background = Get-NcsBrush -Color $color
-    $Controls.RunStateText.Foreground = Get-NcsBrush -Color $textColor
-    $Controls.RunMetaText.Foreground = Get-NcsBrush -Color $metaColor
+    $s = if ($styles.ContainsKey($State)) { $styles[$State] } else { @{ bg = "#1e2228"; fg = "#ffffff"; meta = "#8e939c" } }
+    $Controls.RunStateBorder.Background = Get-NcsBrush -Color $s.bg
+    $Controls.RunStateText.Foreground = Get-NcsBrush -Color $s.fg
+    $Controls.RunMetaText.Foreground = Get-NcsBrush -Color $s.meta
 }
 
 function Update-NcsWindowChromeState {
