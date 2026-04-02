@@ -344,6 +344,7 @@ function Start-NcsRemoteCommand {
         OnCompleted  = $OnCompleted
         Request      = $Request
         RemoteCmd    = $remoteCommand
+        DrainCountdown = -1
     }
 
     $drainTimer.Add_Tick({
@@ -361,13 +362,16 @@ function Start-NcsRemoteCommand {
                 if ($es.OnOutput) { & $es.OnOutput $line }
             }
 
-            $streamsDone = $es.StdoutClosed.IsSet -and $es.StderrClosed.IsSet
             if (-not $es.Process.HasExited) {
                 return
             }
-            # Process exited — give streams a moment to deliver final data
-            if (-not $streamsDone) {
-                [System.Threading.Thread]::Sleep(200)
+            # Process exited — drain a few more ticks to collect final output
+            if ($es.DrainCountdown -lt 0) {
+                $es.DrainCountdown = 3
+            }
+            if ($es.DrainCountdown -gt 0) {
+                $es.DrainCountdown--
+                return
             }
 
             while ($es.PendingLines.TryDequeue([ref]$line)) {
