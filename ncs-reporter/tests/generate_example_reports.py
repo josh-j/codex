@@ -58,7 +58,8 @@ from fixtures.example_data import (
 )
 from ncs_reporter._report_context import generate_timestamps, get_jinja_env, report_context
 from ncs_reporter.aggregation import deep_merge, load_all_reports, normalize_host_bundle
-from ncs_reporter.cli import _default_paths, _render_platform, _render_stig
+from ncs_reporter._config import default_paths
+from ncs_reporter._renderers import PlatformRenderConfig, render_platform, render_stig
 from ncs_reporter.view_models.site import build_site_dashboard_view
 
 OUT_ROOT = Path(__file__).parent / "ncs_example_reports"
@@ -75,7 +76,7 @@ _PLATFORMS = [
         "platform": "linux",
         "render": True,
         "target_types": ["linux", "ubuntu"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
     {
         "input_dir": "linux/photon",
@@ -83,7 +84,7 @@ _PLATFORMS = [
         "platform": "linux",
         "render": False,
         "target_types": ["photon"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
     {
         "input_dir": "vmware/vcenter",
@@ -91,7 +92,7 @@ _PLATFORMS = [
         "platform": "vmware",
         "render": True,
         "target_types": ["vcsa", "vcenter"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
     {
         "input_dir": "vmware/esxi",
@@ -99,7 +100,7 @@ _PLATFORMS = [
         "platform": "vmware",
         "render": False,
         "target_types": ["esxi"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
     {
         "input_dir": "vmware/vm",
@@ -107,7 +108,7 @@ _PLATFORMS = [
         "platform": "vmware",
         "render": False,
         "target_types": ["vm"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
     {
         "input_dir": "windows",
@@ -115,7 +116,7 @@ _PLATFORMS = [
         "platform": "windows",
         "render": True,
         "target_types": ["windows"],
-        "paths": _default_paths(),
+        "paths": default_paths(),
     },
 ]
 _GENERATED_FLEET_DIRS = {p["report_dir"] for p in _PLATFORMS if p.get("render", True)}
@@ -284,15 +285,17 @@ def main() -> None:
 
         output_dir = OUT_ROOT / "platform" / p["report_dir"]
         output_dir.mkdir(parents=True, exist_ok=True)
-        _render_platform(
+        render_platform(
             p["platform"],
             p_hosts,
             output_dir,
             common_vars,
-            global_inventory_index=global_inventory_index,
-            generated_fleet_dirs=_GENERATED_FLEET_DIRS,
-            report_dir=p["report_dir"],
-            platform_paths=p["paths"],
+            config=PlatformRenderConfig(
+                global_inventory_index=global_inventory_index,
+                generated_fleet_dirs=_GENERATED_FLEET_DIRS,
+                report_dir=p["report_dir"],
+                platform_paths=p["paths"],
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -302,19 +305,6 @@ def main() -> None:
     rc = report_context(common_vars)
     site_view = build_site_dashboard_view(
         {"metadata": {}, "hosts": all_hosts},
-        inventory_groups={
-            "ubuntu_servers": ["web-prod-01", "web-prod-02"],
-            "vcenters": [
-                "vcenter-prod",
-                "vcenter-us-east.corp.local",
-                "vcenter-us-west.corp.local",
-                "vcenter-eu-de.corp.local",
-                "vcenter-eu-uk.corp.local",
-                "vcenter-apac-sg.corp.local",
-                "vcenter-apac-au.corp.local",
-            ],
-            "windows_servers": ["win-srv-01"],
-        },
         ctx=rc,
     )
     tpl = env.get_template("site_health_report.html.j2")
@@ -395,14 +385,13 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 5. STIG reports — same as all_cmd step 5
     # ------------------------------------------------------------------
-    _render_stig(
+    render_stig(
         all_hosts,
         OUT_ROOT,
         common_vars,
         global_inventory_index=global_inventory_index,
         cklb_dir=cklb_root,
         generated_fleet_dirs=_GENERATED_FLEET_DIRS,
-        stig_platforms_by_target={t: p for p in _PLATFORMS for t in p.get("target_types", [])},
     )
 
     # ------------------------------------------------------------------

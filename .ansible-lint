@@ -1,0 +1,34 @@
+---
+profile: shared
+
+exclude_paths:
+  - collections_vcsa/
+  - collections/
+  - .venv/
+  - .venv-vcsa/
+
+skip_list:
+  # Codebase uses camelCase and mixed-case task names throughout — not changing 700+ tasks
+  - name[casing]
+  # STIG block/rescue structures are self-documenting via their contained task names
+  - name[missing]
+  # Codebase uses short var names without role prefix in many places — convention is established
+  - var-naming[no-role-prefix]
+  - var-naming[pattern]
+  # YAML style (truthy, line-length, etc.) — enforced by yamllint separately if needed
+  - yaml
+  # Template variable naming (Jinja vars in task names)
+  - name[template]
+  # Task key ordering is a style preference, not a bug
+  - key-order[task]
+  # Schema validation produces false positives on large vars dicts in STIG defaults
+  - schema
+  # STIG orchestrator uses ignore_errors intentionally for fault-tolerant loops
+  - ignore-errors
+  # Template collection doesn't need galaxy tags
+  - galaxy[tags]
+
+warn_list:
+  - no-changed-when
+  - risky-shell-pipe
+  - fqcn[action-core]

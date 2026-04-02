@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import os
 import subprocess
 from typing import Any
@@ -83,7 +82,7 @@ $view = $vmhost | Get-View
         # Also check what the parent already parsed (module_defaults are popped
         # early, so check original task args via a fallback chain).
         vcenter = (md.get("hostname") or md.get("vcenter_hostname")
-                   or task_vars.get("_vcenter_hostname", ""))
+                   or task_vars.get("ansible_host", ""))
         username = (md.get("username") or md.get("vcenter_username")
                     or task_vars.get("vmware_username", ""))
         password = (md.get("password") or md.get("vcenter_password")
@@ -95,7 +94,7 @@ $view = $vmhost | Get-View
                 "failed": True,
                 "msg": ("stig_pwsh: missing connection params. Provide them via "
                         "module_defaults (_stig_module_defaults) or task vars "
-                        "(_vcenter_hostname, vmware_username, vmware_password)."),
+                        "(ansible_host, vmware_username, vmware_password)."),
             }
 
         full_script = self._PREAMBLE + "\n" + self._pwsh_script

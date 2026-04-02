@@ -49,7 +49,7 @@ from ansible.parsing.splitter import parse_kv
 try:
     import chef
     HAS_CHEF = True
-except ImportError as missing_module:
+except ImportError:
     HAS_CHEF = False
 
 

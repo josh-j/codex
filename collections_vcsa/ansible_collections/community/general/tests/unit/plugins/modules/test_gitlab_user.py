@@ -24,7 +24,7 @@ try:
                          python_version_match_requirement,
                          resp_find_user, resp_get_user, resp_get_user_keys,
                          resp_create_user_keys, resp_create_user, resp_delete_user,
-                         resp_get_member, resp_get_group, resp_add_member,
+                         resp_get_group, resp_add_member,
                          resp_update_member, resp_get_member)
 
     # GitLab module requirements

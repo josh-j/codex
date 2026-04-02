@@ -1,3 +1,12 @@
+# >>>
+# is_read_only: true
+# label: Collect
+# options:
+#   vm_collect_workload: bool = true | Workload Metrics
+#   vm_collect_snapshots: bool = true | Snapshot Audit
+#   vmware_snapshot_age_warning_days: text = 7 | Snapshot Age Warning (days)
+#   vmware_snapshot_size_warning_gb: text = 100 | Snapshot Size Warning (GB)
+# <<<
 ---
 # playbooks/vmware/vm/collect.yml
 # Read-only audit focused on VM inventory and snapshot state.

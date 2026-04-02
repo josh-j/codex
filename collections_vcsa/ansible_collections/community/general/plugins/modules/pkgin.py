@@ -290,7 +290,7 @@ def install_packages(module, packages):
         rc, out, err = module.run_command(
             format_pkgin_command(module, "install", package))
 
-        if not module.check_mode and not query_package(module, package) in [PackageState.PRESENT, PackageState.OUTDATED]:
+        if not module.check_mode and query_package(module, package) not in [PackageState.PRESENT, PackageState.OUTDATED]:
             module.fail_json(msg="failed to install %s: %s" % (package, out), stdout=out, stderr=err)
 
         install_c += 1

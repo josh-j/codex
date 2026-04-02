@@ -80,7 +80,7 @@ def get_blade(module):
             versions = blade.api_version.list_versions().versions
             if API_AGENT_VERSION in versions:
                 blade._api_client.user_agent = user_agent
-        except rest.ApiException as e:
+        except rest.ApiException:
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
     elif environ.get('PUREFB_URL') and environ.get('PUREFB_API'):
         blade = PurityFb(environ.get('PUREFB_URL'))
@@ -90,7 +90,7 @@ def get_blade(module):
             versions = blade.api_version.list_versions().versions
             if API_AGENT_VERSION in versions:
                 blade._api_client.user_agent = user_agent
-        except rest.ApiException as e:
+        except rest.ApiException:
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
     else:
         module.fail_json(msg="You must set PUREFB_URL and PUREFB_API environment variables or the fb_url and api_token module arguments")

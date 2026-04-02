@@ -17,12 +17,14 @@
   pre_tasks:
     - name: "Set vCenter hostname (ESXi standalone)"
       ansible.builtin.set_fact:
-        _vcenter_hostname: "{{ vmware_hostname }}"
+        ansible_host: "{{ vmware_hostname }}"
       changed_when: false
       no_log: true
 
     - name: "Discover and validate VM targets"
-      ansible.builtin.include_tasks: ../vmware/vm/_discover.yml
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
       vars:
         _vmware_discovery_hostname: "{{ vmware_hostname }}"
 

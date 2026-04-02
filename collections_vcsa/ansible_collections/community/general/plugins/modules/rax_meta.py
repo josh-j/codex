@@ -115,7 +115,7 @@ def rax_meta(module, address, name, server_id, meta):
         servers = []
         try:
             servers.append(cs.servers.get(server_id))
-        except Exception as e:
+        except Exception:
             pass
 
     if len(servers) > 1:

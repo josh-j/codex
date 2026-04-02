@@ -11,7 +11,7 @@
   vars:
     _reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     _platform_root: "{{ _reports_root }}/platform"
-    _config_dir: "{{ playbook_dir }}/../../files/ncs-reporter_configs"
+    _config_dir: "{{ ncs_repo_root }}/files/ncs-reporter_configs"
 
     report_stamp: "{{ now(utc=true, fmt='%Y%m%d') }}"
 

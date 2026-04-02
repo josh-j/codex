@@ -3,6 +3,8 @@ Set-StrictMode -Version Latest
 $script:NcsProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $script:MaxOutputLines = 50000
 $script:NcsActiveExecutionState = $null
+$script:NcsRemotePidPattern = '^\[\d{2}:\d{2}:\d{2}\]\s+NCS_REMOTE_PID:(\d+)$'
+$script:NcsRemoteRunRoot = '${HOME}/.cache/ncs-console'
 
 function ConvertTo-NcsBashLiteral {
     param(
@@ -135,6 +137,79 @@ function New-NcsSshAskPassEnvironment {
     }
 }
 
+function Get-NcsSshEnvironment {
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings
+    )
+
+    $authMode = $Settings.SshAuthMode
+    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
+        return New-NcsSshAskPassEnvironment -Secret $Settings.SshPassword
+    }
+
+    if ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
+        return New-NcsSshAskPassEnvironment -Secret $Settings.SshKeyPassphrase
+    }
+
+    return $null
+}
+
+function Add-NcsSshCommonOptions {
+    param(
+        [Parameter(Mandatory)]
+        [System.Collections.Generic.List[string]] $Arguments,
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings
+    )
+
+    $Arguments.Add("-o")
+    $Arguments.Add("BatchMode=no")
+    $Arguments.Add("-o")
+    $Arguments.Add("ConnectTimeout=$($Settings.ConnectTimeoutSeconds)")
+    $Arguments.Add("-o")
+    $Arguments.Add("ServerAliveInterval=$($Settings.ServerAliveIntervalSeconds)")
+    $Arguments.Add("-o")
+    $Arguments.Add("ServerAliveCountMax=$($Settings.ServerAliveCountMax)")
+    $Arguments.Add("-o")
+    $Arguments.Add("StrictHostKeyChecking=$($Settings.StrictHostKeyChecking)")
+    $Arguments.Add("-o")
+    $Arguments.Add("LogLevel=ERROR")
+}
+
+function Add-NcsSshAuthOptions {
+    param(
+        [Parameter(Mandatory)]
+        [System.Collections.Generic.List[string]] $Arguments,
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings
+    )
+
+    $authMode = [System.Enum]::Parse([NcsSshAuthMode], $Settings.SshAuthMode)
+    switch ($authMode) {
+        ([NcsSshAuthMode]::Agent) {
+            $Arguments.Add("-o")
+            $Arguments.Add("PreferredAuthentications=publickey")
+        }
+        ([NcsSshAuthMode]::KeyFile) {
+            if ([string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) {
+                throw "KeyFile authentication requires an SSH key path."
+            }
+
+            $Arguments.Add("-i")
+            $Arguments.Add($Settings.SshKeyPath)
+            $Arguments.Add("-o")
+            $Arguments.Add("IdentitiesOnly=yes")
+        }
+        ([NcsSshAuthMode]::Password) {
+            $Arguments.Add("-o")
+            $Arguments.Add("PreferredAuthentications=password,keyboard-interactive")
+            $Arguments.Add("-o")
+            $Arguments.Add("PubkeyAuthentication=no")
+        }
+    }
+}
+
 function Get-NcsSshArgumentList {
     param(
         [Parameter(Mandatory)]
@@ -147,36 +222,65 @@ function Get-NcsSshArgumentList {
     $arguments.Add("-p")
     $arguments.Add([string] $Settings.SshPort)
     $arguments.Add("-T")
-    $arguments.Add("-o")
-    $arguments.Add("BatchMode=no")
-
-    $authMode = [System.Enum]::Parse([NcsSshAuthMode], $Settings.SshAuthMode)
-    switch ($authMode) {
-        ([NcsSshAuthMode]::Agent) {
-            $arguments.Add("-o")
-            $arguments.Add("PreferredAuthentications=publickey")
-        }
-        ([NcsSshAuthMode]::KeyFile) {
-            if ([string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) {
-                throw "KeyFile authentication requires an SSH key path."
-            }
-
-            $arguments.Add("-i")
-            $arguments.Add($Settings.SshKeyPath)
-            $arguments.Add("-o")
-            $arguments.Add("IdentitiesOnly=yes")
-        }
-        ([NcsSshAuthMode]::Password) {
-            $arguments.Add("-o")
-            $arguments.Add("PreferredAuthentications=password,keyboard-interactive")
-            $arguments.Add("-o")
-            $arguments.Add("PubkeyAuthentication=no")
-        }
-    }
+    Add-NcsSshCommonOptions -Arguments $arguments -Settings $Settings
+    Add-NcsSshAuthOptions -Arguments $arguments -Settings $Settings
 
     $arguments.Add((Get-NcsSshTarget -Settings $Settings))
     $arguments.Add($RemoteCommand)
     return $arguments
+}
+
+function Get-NcsSessionLogPath {
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)]
+        [NcsActionRequest] $Request,
+        [Parameter(Mandatory)]
+        [datetime] $StartedAt
+    )
+
+    $dir = $Settings.LogDirectory
+    if ([string]::IsNullOrWhiteSpace($dir)) {
+        $dir = Join-Path -Path $HOME -ChildPath ".ncs-console-logs"
+    }
+
+    if (-not (Test-Path -LiteralPath $dir)) {
+        [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+    }
+
+    $safeAction = ($Request.Playbook -replace '[^A-Za-z0-9_.-]+', '_').Trim('_')
+    if ([string]::IsNullOrWhiteSpace($safeAction)) {
+        $safeAction = "run"
+    }
+
+    return Join-Path -Path $dir -ChildPath ("{0}_{1}.log" -f $StartedAt.ToString("yyyyMMdd_HHmmss"), $safeAction)
+}
+
+function Write-NcsSessionLog {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path,
+        [Parameter(Mandatory)]
+        [NcsRunResult] $Result
+    )
+
+    $header = @(
+        "action=$($Result.Action)"
+        "exit_code=$($Result.ExitCode)"
+        "succeeded=$($Result.Succeeded)"
+        "was_cancelled=$($Result.WasCancelled)"
+        "failure_stage=$($Result.FailureStage)"
+        "failure_reason=$($Result.FailureReason)"
+        "started_at=$($Result.StartedAt.ToString('o'))"
+        "ended_at=$(if ($Result.EndedAt) { $Result.EndedAt.Value.ToString('o') } else { '' })"
+        "duration=$($Result.Duration)"
+        "remote_pid=$($Result.RemotePid)"
+        "command=$($Result.Command)"
+        ""
+    )
+    $content = @($header + $Result.OutputLines) -join [Environment]::NewLine
+    Set-Content -LiteralPath $Path -Value $content -Encoding UTF8
 }
 
 function Resolve-NcsPlaybookCommand {
@@ -225,12 +329,82 @@ function Get-NcsRemoteShellCommand {
         [Parameter(Mandatory)]
         [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)]
-        [NcsActionRequest] $Request
+        [NcsActionRequest] $Request,
+        [Parameter(Mandatory)]
+        [string] $RunId
     )
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $actionCommand = Resolve-NcsPlaybookCommand -Settings $Settings -Request $Request
-    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && export PYTHONUNBUFFERED=1 && if command -v stdbuf >/dev/null 2>&1; then stdbuf -oL -eL $actionCommand; else $actionCommand; fi"
+    $actionScript = @(
+        "set -e"
+        "test -d $repo || { echo 'Remote repo path does not exist.' >&2; exit 21; }"
+        "cd $repo"
+        "test -d inventory/production || { echo 'Missing inventory/production/ on the remote repo.' >&2; exit 22; }"
+        "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
+        "if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi"
+        "command -v ansible-playbook >/dev/null 2>&1 || { echo 'ansible-playbook not found in .venv or PATH.' >&2; exit 24; }"
+        "export PYTHONUNBUFFERED=1"
+        "if command -v stdbuf >/dev/null 2>&1; then"
+        "  stdbuf -oL -eL $actionCommand"
+        "else"
+        "  $actionCommand"
+        "fi"
+    ) -join "`n"
+
+    $runScript = @"
+set -u
+RUN_ID=$(ConvertTo-NcsBashLiteral -Value $RunId)
+RUN_ROOT="$($script:NcsRemoteRunRoot)"
+PID_FILE="\${RUN_ROOT}/\${RUN_ID}.pid"
+ACTION_FILE="\${RUN_ROOT}/\${RUN_ID}.sh"
+mkdir -p "\${RUN_ROOT}"
+cat > "\${ACTION_FILE}" <<'NCSACTION'
+$actionScript
+NCSACTION
+chmod 700 "\${ACTION_FILE}"
+cleanup() {
+  rm -f "\${PID_FILE}" "\${ACTION_FILE}"
+}
+trap cleanup EXIT
+trap 'if [ -f "\${PID_FILE}" ]; then kill -TERM "$(cat "\${PID_FILE}")" >/dev/null 2>&1 || true; fi; exit 130' INT TERM HUP
+bash "\${ACTION_FILE}" &
+child=\$!
+printf '%s\n' "\$child" > "\${PID_FILE}"
+echo "NCS_REMOTE_PID:\$child"
+wait "\$child"
+exit \$?
+"@
+
+    return "bash -lc " + (ConvertTo-NcsBashLiteral -Value $runScript)
+}
+
+function Resolve-NcsFailureStage {
+    param(
+        [int] $ExitCode,
+        [string[]] $Lines
+    )
+
+    # Exit codes 21-24 are set by the remote wrapper before ansible runs,
+    # so they're reliable even when output hasn't fully flushed.
+    switch ($ExitCode) {
+        130 { return "cancel" }
+        255 { return "ssh" }
+        21  { return "remote-setup" }
+        22  { return "remote-setup" }
+        23  { return "remote-setup" }
+        24  { return "remote-setup" }
+    }
+
+    # Fallback: infer from tail of output when exit code is ambiguous
+    $joined = ($Lines | Select-Object -Last 30) -join "`n"
+    if ($joined -match 'Permission denied|Host key verification failed|Authentication failed|Could not resolve hostname|Connection timed out|No route to host') {
+        return "ssh"
+    }
+    if ($joined -match 'Remote repo path does not exist|Missing inventory/production|Missing \.vaultpass|ansible-playbook not found') {
+        return "remote-setup"
+    }
+    return "ansible"
 }
 
 function Find-NcsDetectedPaths {
@@ -258,10 +432,14 @@ function Start-NcsRemoteCommand {
         [Parameter(Mandatory)]
         [NcsActionRequest] $Request,
         [scriptblock] $OnOutput,
-        [scriptblock] $OnCompleted
+        [scriptblock] $OnOutputBatch,
+        [scriptblock] $OnCompleted,
+        [scriptblock] $OnStale,
+        [int] $StaleSeconds = 120
     )
 
-    $remoteCommand = Get-NcsRemoteShellCommand -Settings $Settings -Request $Request
+    $runId = [guid]::NewGuid().ToString("N")
+    $remoteCommand = Get-NcsRemoteShellCommand -Settings $Settings -Request $Request -RunId $runId
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = "ssh.exe"
@@ -273,17 +451,10 @@ function Start-NcsRemoteCommand {
         $psi.ArgumentList.Add($argument)
     }
 
-    $authMode = $Settings.SshAuthMode
-    $askPassSecret = $null
-    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-        $askPassSecret = $Settings.SshPassword
-    } elseif ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
-        $askPassSecret = $Settings.SshKeyPassphrase
-    }
-    if ($null -ne $askPassSecret) {
-        $askEnv = New-NcsSshAskPassEnvironment -Secret $askPassSecret
-        foreach ($key in $askEnv.Keys) {
-            $psi.Environment[$key] = $askEnv[$key]
+    $sshEnvironment = Get-NcsSshEnvironment -Settings $Settings
+    if ($null -ne $sshEnvironment) {
+        foreach ($key in $sshEnvironment.Keys) {
+            $psi.Environment[$key] = $sshEnvironment[$key]
         }
     }
 
@@ -294,6 +465,7 @@ function Start-NcsRemoteCommand {
     $process.StartInfo = $psi
     $process.EnableRaisingEvents = $true
     $startedAt = Get-Date
+    $sessionLogPath = Get-NcsSessionLogPath -Settings $Settings -Request $Request -StartedAt $startedAt
 
     $stdoutData = [pscustomobject]@{ Queue = $pendingLines; Closed = $stdoutClosed }
     Register-ObjectEvent -InputObject $process -EventName 'OutputDataReceived' -Action {
@@ -310,7 +482,7 @@ function Start-NcsRemoteCommand {
     Register-ObjectEvent -InputObject $process -EventName 'ErrorDataReceived' -Action {
         $data = $Event.SourceEventArgs.Data
         if ($null -ne $data) {
-            $stamped = "[{0}] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $data
+            $stamped = "[{0}] [stderr] {1}" -f ([System.DateTime]::Now.ToString("HH:mm:ss")), $data
             $Event.MessageData.Queue.Enqueue($stamped)
         } else {
             $Event.MessageData.Closed.Set()
@@ -321,8 +493,8 @@ function Start-NcsRemoteCommand {
     $process.BeginOutputReadLine()
     $process.BeginErrorReadLine()
 
-    if ($null -ne $askPassSecret) {
-        $process.StandardInput.WriteLine($askPassSecret)
+    if ($null -ne $sshEnvironment -and $sshEnvironment.ContainsKey('NCS_UI_PASS')) {
+        $process.StandardInput.WriteLine($sshEnvironment['NCS_UI_PASS'])
     } else {
         $process.StandardInput.WriteLine("")
     }
@@ -333,18 +505,28 @@ function Start-NcsRemoteCommand {
     $drainTimer.Interval = [System.TimeSpan]::FromMilliseconds(100)
 
     $script:NcsActiveExecutionState = [pscustomobject]@{
-        Process      = $process
-        DrainTimer   = $drainTimer
-        StdoutClosed = $stdoutClosed
-        StderrClosed = $stderrClosed
-        Lines        = $allLines
-        PendingLines = $pendingLines
-        StartedAt    = $startedAt
-        OnOutput     = $OnOutput
-        OnCompleted  = $OnCompleted
-        Request      = $Request
-        RemoteCmd    = $remoteCommand
+        Process        = $process
+        DrainTimer     = $drainTimer
+        StdoutClosed   = $stdoutClosed
+        StderrClosed   = $stderrClosed
+        Lines          = $allLines
+        PendingLines   = $pendingLines
+        StartedAt      = $startedAt
+        OnOutput       = $OnOutput
+        OnOutputBatch  = $OnOutputBatch
+        OnCompleted    = $OnCompleted
+        OnStale        = $OnStale
+        StaleSeconds   = $StaleSeconds
+        Request        = $Request
+        RemoteCmd      = $remoteCommand
+        RunId          = $runId
+        Settings       = $Settings
+        SessionLogPath = $sessionLogPath
         DrainCountdown = -1
+        LastOutputAt   = $startedAt
+        StaleNotified  = $false
+        RemotePid      = 0
+        State         = "Running"
     }
 
     $drainTimer.Add_Tick({
@@ -356,27 +538,42 @@ function Start-NcsRemoteCommand {
                 return
             }
 
+            $now = Get-Date
             $line = $null
+            $gotOutput = $false
             while ($es.PendingLines.TryDequeue([ref]$line)) {
-                $es.Lines.Add($line)
-                if ($es.OnOutput) { & $es.OnOutput $line }
+                if ($line -match $script:NcsRemotePidPattern) {
+                    $es.RemotePid = [int] $Matches[1]
+                } else {
+                    $es.Lines.Add($line)
+                    $gotOutput = $true
+                    if ($es.OnOutput) { & $es.OnOutput $line }
+                }
+            }
+            if ($gotOutput) {
+                $es.LastOutputAt = $now
+                $es.StaleNotified = $false
+                if ($es.OnOutputBatch) { & $es.OnOutputBatch }
             }
 
             if (-not $es.Process.HasExited) {
+                if (-not $es.StaleNotified -and $es.OnStale) {
+                    $idle = ($now - $es.LastOutputAt).TotalSeconds
+                    if ($idle -ge $es.StaleSeconds) {
+                        $es.StaleNotified = $true
+                        & $es.OnStale ([int]$idle)
+                    }
+                }
                 return
             }
             # Process exited — drain a few more ticks to collect final output
             if ($es.DrainCountdown -lt 0) {
                 $es.DrainCountdown = 3
+                return
             }
             if ($es.DrainCountdown -gt 0) {
                 $es.DrainCountdown--
                 return
-            }
-
-            while ($es.PendingLines.TryDequeue([ref]$line)) {
-                $es.Lines.Add($line)
-                if ($es.OnOutput) { & $es.OnOutput $line }
             }
 
             $sender.Stop()
@@ -396,6 +593,15 @@ function Start-NcsRemoteCommand {
             $result.Duration = $result.EndedAt.Value - $es.StartedAt
             $result.OutputLines = $es.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
+            $result.RemotePid = $es.RemotePid
+            $result.SessionLogPath = $es.SessionLogPath
+            $result.PreflightCheckedAt = $null
+            $result.WasCancelled = $es.State -eq "Cancelling" -or $es.Process.ExitCode -eq 130
+            if (-not $result.Succeeded) {
+                $result.FailureStage = Resolve-NcsFailureStage -ExitCode $result.ExitCode -Lines $result.OutputLines
+                $result.FailureReason = ($result.OutputLines | Select-Object -Last 10) -join " | "
+            }
+            Write-NcsSessionLog -Path $es.SessionLogPath -Result $result
 
             $completedCb = $es.OnCompleted
             $es.StdoutClosed.Dispose()
@@ -407,7 +613,9 @@ function Start-NcsRemoteCommand {
         } catch {
             $sender.Stop()
             if ($null -ne $script:NcsActiveExecutionState) {
-                try { $script:NcsActiveExecutionState.Process.Kill() } catch {}
+                try { $script:NcsActiveExecutionState.Process.Kill() } catch [System.InvalidOperationException] {
+                    $null = $_ # Process already exited
+                }
                 $script:NcsActiveExecutionState.Process.Dispose()
                 $script:NcsActiveExecutionState = $null
             }
@@ -420,6 +628,8 @@ function Start-NcsRemoteCommand {
         DrainTimer    = $drainTimer
         RemoteCommand = $remoteCommand
         StartedAt     = $startedAt
+        RunId         = $runId
+        Settings      = $Settings
     }
 }
 
@@ -429,17 +639,25 @@ function Stop-NcsRemoteCommand {
         $Handle
     )
 
-    if ($Handle.PSObject.Properties.Match('DrainTimer').Count -gt 0 -and $null -ne $Handle.DrainTimer) {
-        $Handle.DrainTimer.Stop()
-    }
-
     if ($null -ne $script:NcsActiveExecutionState -and $Handle.Process -eq $script:NcsActiveExecutionState.Process) {
-        $script:NcsActiveExecutionState = $null
+        $script:NcsActiveExecutionState.State = "Cancelling"
     }
 
     try {
+        if ($Handle.PSObject.Properties.Match('RunId').Count -gt 0 -and $Handle.PSObject.Properties.Match('Settings').Count -gt 0) {
+            $remoteCommand = "bash -lc " + (ConvertTo-NcsBashLiteral -Value @"
+RUN_ROOT="$($script:NcsRemoteRunRoot)"
+PID_FILE="\${RUN_ROOT}/$($Handle.RunId).pid"
+if [ -f "\${PID_FILE}" ]; then
+  kill -TERM "\$(cat "\${PID_FILE}")" >/dev/null 2>&1 || true
+fi
+"@)
+            $null = Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments (Get-NcsSshArgumentList -Settings $Handle.Settings -RemoteCommand $remoteCommand) -Environment (Get-NcsSshEnvironment -Settings $Handle.Settings) -TimeoutMs 10000
+        }
         if ($Handle.Process -and -not $Handle.Process.HasExited) {
             $Handle.Process.Kill($true)
         }
-    } catch {}
+    } catch [System.InvalidOperationException] {
+        $null = $_ # Process already exited between check and kill
+    }
 }

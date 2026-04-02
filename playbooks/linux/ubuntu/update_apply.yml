@@ -6,12 +6,8 @@
   hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
   gather_facts: false
   tags: ["ubuntu", "update", "patching", "apply"]
-  pre_tasks:
-    - name: Prepare SSH key
-      ansible.builtin.include_tasks: _pre_ssh_key.yml
   roles:
     - role: internal.linux.ubuntu
       vars:
         ncs_action: remediate
         ncs_operation: patch
-        ansible_ssh_private_key_file: "{{ '/tmp/logservers_key' if (vault_logservers_private_key | default('') | trim | length > 0) else omit }}"

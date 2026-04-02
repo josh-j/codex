@@ -345,10 +345,10 @@ def main():
         if etype or entity or permissions:
             module.fail_json(msg="'entry' MUST NOT be set when 'entity', 'etype' or 'permissions' are set.")
 
-        if state == 'present' and not entry.count(":") in [2, 3]:
+        if state == 'present' and entry.count(":") not in [2, 3]:
             module.fail_json(msg="'entry' MUST have 3 or 4 sections divided by ':' when 'state=present'.")
 
-        if state == 'absent' and not entry.count(":") in [1, 2]:
+        if state == 'absent' and entry.count(":") not in [1, 2]:
             module.fail_json(msg="'entry' MUST have 2 or 3 sections divided by ':' when 'state=absent'.")
 
         if state == 'query':

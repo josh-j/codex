@@ -297,7 +297,7 @@ def _did_you_mean(invalid: str, allowed: list[str]) -> str:
 # Compact syntax expansion
 # ---------------------------------------------------------------------------
 
-from ncs_reporter.normalization._fields import _TYPE_COERCERS
+from ncs_reporter.normalization._fields import _TYPE_COERCERS  # noqa: E402
 
 _KNOWN_FIELD_TYPES = frozenset({
     *_TYPE_COERCERS.keys(),

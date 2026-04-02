@@ -15,6 +15,13 @@ class NcsConsoleSettings {
     [string] $SshKeyPassphrase = ""
     [string] $SshPassword = ""
     [string] $RemoteRepoPath = "~/ansible-ncs"
+    [string] $RemoteReportsPath = "/srv/samba/reports"
+    [string] $StrictHostKeyChecking = "accept-new"
+    [int] $ConnectTimeoutSeconds = 10
+    [int] $ServerAliveIntervalSeconds = 15
+    [int] $ServerAliveCountMax = 3
+    [string] $LogDirectory = ""
+    [int] $SettingsVersion = 2
     [string] $LastAction = ""
 
     NcsConsoleSettings() {
@@ -38,11 +45,15 @@ class NcsActionRequest {
 }
 
 class NcsPreflightCheck {
+    [string] $Id
+    [string] $Stage
     [string] $Name
     [bool] $Passed
     [string] $Message
 
-    NcsPreflightCheck([string] $Name, [bool] $Passed, [string] $Message) {
+    NcsPreflightCheck([string] $Id, [string] $Stage, [string] $Name, [bool] $Passed, [string] $Message) {
+        $this.Id = $Id
+        $this.Stage = $Stage
         $this.Name = $Name
         $this.Passed = $Passed
         $this.Message = $Message
@@ -59,6 +70,7 @@ class NcsPreflightResult {
     [System.Collections.Generic.List[NcsPreflightCheck]] $Checks = [System.Collections.Generic.List[NcsPreflightCheck]]::new()
     [System.Collections.Generic.List[string]] $BlockingIssues = [System.Collections.Generic.List[string]]::new()
     [string] $Banner = ""
+    [datetime] $CheckedAt = [datetime]::UtcNow
 }
 
 class NcsRunResult {
@@ -71,6 +83,12 @@ class NcsRunResult {
     [timespan] $Duration = [timespan]::Zero
     [string[]] $OutputLines = @()
     [string[]] $DetectedPaths = @()
+    [string] $FailureStage = ""
+    [string] $FailureReason = ""
+    [bool] $WasCancelled = $false
+    [string] $SessionLogPath = ""
+    [int] $RemotePid = 0
+    [Nullable[datetime]] $PreflightCheckedAt
 
     NcsRunResult() {
     }
@@ -256,7 +274,7 @@ for root, dirs, files in os.walk(base):
         path = os.path.join(root, f)
         playbook = os.path.relpath(path, base).replace(os.sep, "/")
         try:
-            text = open(path).read()
+            with open(path) as fh: text = fh.read()
             docs = yaml.safe_load(text)
             if not isinstance(docs, list) or len(docs) == 0:
                 continue
@@ -388,4 +406,3 @@ function Get-NcsRemoteInventoryTree {
 
     return $groups
 }
-

@@ -133,7 +133,7 @@ def save_instance(module, name, flavor, volume, cdb_type, cdb_version, wait,
     for item in cdb.list_flavors():
         flavors.append(item.id)
 
-    if not (flavor in flavors):
+    if flavor not in flavors:
         module.fail_json(msg='unexisting flavor reference "%s"' % str(flavor))
 
     changed = False

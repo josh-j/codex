@@ -1,5 +1,5 @@
 ---
-# Shared pre-task: write vault SSH key to temp file for key-based auth.
+# Write vault SSH key to temp file and activate key-based auth.
 - name: Write SSH key to temp file
   ansible.builtin.copy:
     content: "{{ vault_logservers_private_key }}"
@@ -7,4 +7,9 @@
     mode: "0600"
   delegate_to: localhost
   run_once: true
+  when: vault_logservers_private_key | default('') | trim | length > 0
+
+- name: Activate SSH key auth
+  ansible.builtin.set_fact:
+    ansible_ssh_private_key_file: /tmp/logservers_key
   when: vault_logservers_private_key | default('') | trim | length > 0

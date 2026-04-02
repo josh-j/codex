@@ -16,7 +16,7 @@
 
 - name: Check vCenter reachability
   ansible.builtin.uri:
-    url: "https://{{ _vcenter_hostname }}/rest/com/vmware/cis/session"
+    url: "https://{{ ansible_host }}/rest/com/vmware/cis/session"
     method: POST
     user: "{{ vmware_username }}"
     password: "{{ vmware_password }}"
@@ -40,7 +40,7 @@
     - name: Stage connectivity failure
       ansible.builtin.set_fact:
         vcsa_collect_failed: true
-        vcsa_connectivity_error: "vCenter {{ _vcenter_hostname }} is unreachable (HTTP {{ _vc_reachability.status | default('Timeout') }})"
+        vcsa_connectivity_error: "vCenter {{ ansible_host }} is unreachable (HTTP {{ _vc_reachability.status | default('Timeout') }})"
         vmware_raw_vcenter: {}
       changed_when: false
     - name: Export failure state

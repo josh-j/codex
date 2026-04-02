@@ -3,3 +3,4 @@
 ansible_user: root
 ansible_become: false
 ansible_password: "{{ vault_vcenter_ssh_password }}"
+ansible_python_interpreter: /usr/bin/python3

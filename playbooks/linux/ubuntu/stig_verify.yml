@@ -11,7 +11,7 @@
 
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    stig_report_dir: "{{ ncs_report_directory | default('/srv/samba/reports') }}"
+    stig_report_dir: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
     stig_report_platform_dir: "linux/ubuntu"
     stig_report_target_type: "ubuntu"
 
@@ -19,7 +19,7 @@
     - name: "STIG Report | Resolve paths"
       ansible.builtin.set_fact:
         _stig_raw_path: "{{ stig_report_dir }}/platform/{{ stig_report_platform_dir }}/{{ inventory_hostname }}/raw_stig_{{ stig_report_target_type }}.yaml"
-        _stig_report_script: "{{ playbook_dir }}/../../../scripts/stig_report.py"
+        _stig_report_script: "{{ ncs_repo_root }}/scripts/stig_report.py"
 
     - name: "STIG Report | Check for raw STIG data"
       ansible.builtin.stat:

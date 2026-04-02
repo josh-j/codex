@@ -27,23 +27,22 @@ $request = [NcsActionRequest]::new($Playbook)
 $request.Limit = $Limit
 $request.ExtraArgs = $ExtraArgs
 
-$done = $false
-$resultRef = $null
-$handle = Start-NcsRemoteCommand -Settings $settings -Request $request `
-    -OnOutput {
-        param($line)
-        Write-Host $line
-    } `
-    -OnCompleted {
-        param($runResult)
-        $script:done = $true
-        $script:resultRef = $runResult
+# Build the SSH command and run it directly (no WPF dispatcher needed)
+$remoteCommand = Get-NcsRemoteShellCommand -Settings $settings -Request $request -RunId ([guid]::NewGuid().ToString("N"))
+$arguments = Get-NcsSshArgumentList -Settings $settings -RemoteCommand $remoteCommand
+$environment = Get-NcsSshEnvironment -Settings $settings
+
+Write-Host "REMOTE COMMAND: $(Resolve-NcsPlaybookCommand -Settings $settings -Request $request)"
+
+$result = Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments $arguments -Environment $environment -TimeoutMs 600000
+
+foreach ($line in ($result.StdOut -split "`n")) {
+    Write-Host $line
+}
+if (-not [string]::IsNullOrWhiteSpace($result.StdErr)) {
+    foreach ($line in ($result.StdErr -split "`n")) {
+        Write-Host $line -ForegroundColor Red
     }
-
-Write-Host "REMOTE COMMAND: $($handle.RemoteCommand)"
-
-while (-not $done) {
-    Start-Sleep -Milliseconds 200
 }
 
-$resultRef | ConvertTo-Json -Depth 6
+exit $result.ExitCode

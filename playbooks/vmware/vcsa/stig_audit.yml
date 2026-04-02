@@ -2,18 +2,14 @@
 # is_read_only: true
 # options:
 #   vcsa_stig_include_photon: bool = false | Include Photon Baseline
+#   vmware_stig_export_cklb: bool = true | Export STIG Checklist (CKLB)
 # <<<
 ---
 # playbooks/vmware/vcsa/stig_audit.yml
 - name: "Phase 2a: VCSA STIG Audit"
-  hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcsa')) }}"
+  hosts: "{{ vcsa_target_hosts | default('vcsa') }}"
   gather_facts: false
   tags: ["vmware", "stig", "audit", "vcsa"]
-  vars:
-    ansible_connection: ssh
-    ansible_user: root
-    ansible_password: "{{ vault_vcenter_ssh_password }}"
-    ansible_python_interpreter: /usr/bin/python3
   roles:
     - role: internal.vmware.vcsa
       vars:

@@ -1,3 +1,10 @@
+# >>>
+# label: VM STIG Remediation (Parallel)
+# options:
+#   site: text | Site Code (required, e.g. tyfq)
+#   vm_stig_exclude_pattern: text | VM Exclusion Regex
+#   vm_stig_target_vms: text | Target VMs (JSON array)
+# <<<
 ---
 # playbooks/vmware/vm/stig_remediate_parallel.yml
 # VM STIG Remediation — parallel per-VM execution.
@@ -26,27 +33,16 @@
         fail_msg: "Please specify a site (e.g., -e 'site=tyfq')"
 
   tasks:
-    - name: "Discover and validate VM targets"
-      ansible.builtin.include_tasks: _discover.yml
+    - name: "Discover VMs and register parallel targets"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: register_vm_targets
 
     - name: "Display target summary"
       ansible.builtin.debug:
         msg: >-
           Discovered {{ vm_stig_target_vms | length }} VMs on {{ inventory_hostname }}.
           Exclude pattern: {{ vm_stig_exclude_pattern | default('none') }}.
-
-    - name: "Register dynamic VM host group"
-      ansible.builtin.add_host:
-        name: "{{ item }}"
-        groups: _stig_vm_targets
-        vcenter: "{{ inventory_hostname }}"
-        site: "{{ site }}"
-        vm_datacenter: "{{ vm_datacenter_map[item] | default('') }}"
-        vmware_username: "{{ vmware_username }}"
-        vmware_password: "{{ vmware_password }}"
-        vmware_validate_certs: "{{ vmware_validate_certs | default(false) }}"
-      loop: "{{ vm_stig_target_vms | reject('match', '^vCLS-') | list }}"
-      changed_when: false
 
 - name: "Phase 2b | VM STIG Hardening (parallel per VM)"
   hosts: _stig_vm_targets
@@ -58,7 +54,6 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     _current_vm_name: "{{ inventory_hostname }}"
-    _vcenter_hostname: "{{ vcenter }}"
     _current_vm_datacenter: "{{ vm_datacenter | default(omit) }}"
     vm_datacenter_map: "{{ { inventory_hostname: vm_datacenter | default('') } }}"
     vm_stig_target_vms:
@@ -80,7 +75,6 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     _current_vm_name: "{{ inventory_hostname }}"
-    _vcenter_hostname: "{{ vcenter }}"
     _current_vm_datacenter: "{{ vm_datacenter | default(omit) }}"
     vm_datacenter_map: "{{ { inventory_hostname: vm_datacenter | default('') } }}"
     vm_stig_target_vms:

@@ -175,7 +175,7 @@ class GitLabProjectMembers(object):
         try:
             project_exists = self._gitlab.projects.get(project_name)
             return project_exists.id
-        except gitlab.exceptions.GitlabGetError as e:
+        except gitlab.exceptions.GitlabGetError:
             project_exists = self._gitlab.projects.list(search=project_name, all=False)
             if project_exists:
                 return project_exists[0].id
@@ -198,7 +198,7 @@ class GitLabProjectMembers(object):
             member = project.members.get(gitlab_user_id)
             if member:
                 return member
-        except gitlab.exceptions.GitlabGetError as e:
+        except gitlab.exceptions.GitlabGetError:
             return None
 
     # check if the user is a member of the project

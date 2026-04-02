@@ -662,14 +662,14 @@ class VMWareInventory(object):
         methods = dir(vobj)
         methods = [str(x) for x in methods if not x.startswith('_')]
         methods = [x for x in methods if x not in self.bad_types]
-        methods = [x for x in methods if not x.lower() in self.skip_keys]
+        methods = [x for x in methods if x.lower() not in self.skip_keys]
         methods = sorted(methods)
 
         for method in methods:
             # Attempt to get the method, skip on fail
             try:
                 methodToCall = getattr(vobj, method)
-            except Exception as e:
+            except Exception:
                 continue
 
             # Skip callable methods
@@ -741,14 +741,14 @@ class VMWareInventory(object):
             methods = dir(vobj)
             methods = [str(x) for x in methods if not x.startswith('_')]
             methods = [x for x in methods if x not in self.bad_types]
-            methods = [x for x in methods if not inkey + '.' + x.lower() in self.skip_keys]
+            methods = [x for x in methods if inkey + '.' + x.lower() not in self.skip_keys]
             methods = sorted(methods)
 
             for method in methods:
                 # Attempt to get the method, skip on fail
                 try:
                     methodToCall = getattr(vobj, method)
-                except Exception as e:
+                except Exception:
                     continue
 
                 if callable(methodToCall):

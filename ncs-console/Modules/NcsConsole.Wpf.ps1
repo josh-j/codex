@@ -4,13 +4,22 @@ $script:NcsWebView2Available = $false
 $script:NcsWebView2Status = "WebView2 app dependencies are not installed."
 
 $script:BrushConverter = $null
+$script:BrushCache = @{}
 $script:_NcsTreeViewItemStyle = $null
+$script:IconFolder = "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
+$script:IconFile = "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+$script:DefaultReportPath = "site_health_report.html"
 function Get-NcsBrush {
     param([string] $Color)
+    $cached = $script:BrushCache[$Color]
+    if ($null -ne $cached) { return $cached }
     if ($null -eq $script:BrushConverter) {
         $script:BrushConverter = [System.Windows.Media.BrushConverter]::new()
     }
-    return $script:BrushConverter.ConvertFromString($Color)
+    $brush = $script:BrushConverter.ConvertFromString($Color)
+    $brush.Freeze()
+    $script:BrushCache[$Color] = $brush
+    return $brush
 }
 
 function Import-NcsWpfAssemblies {
@@ -68,53 +77,45 @@ function Invoke-NcsReportMirror {
     if (-not (Test-Path -LiteralPath $cacheParent)) {
         [System.IO.Directory]::CreateDirectory($cacheParent) | Out-Null
     }
-    if (Test-Path -LiteralPath $LocalRoot) {
-        Remove-Item -LiteralPath $LocalRoot -Recurse -Force
+    $stagingRoot = "{0}.staging" -f $LocalRoot
+    if (Test-Path -LiteralPath $stagingRoot) {
+        Remove-Item -LiteralPath $stagingRoot -Recurse -Force
     }
-    [System.IO.Directory]::CreateDirectory($LocalRoot) | Out-Null
+    [System.IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
 
     $arguments = [System.Collections.Generic.List[string]]::new()
     $arguments.Add("-r")
     $arguments.Add("-P")
     $arguments.Add([string] $Settings.SshPort)
-    $arguments.Add("-o")
-    $arguments.Add("BatchMode=no")
+    Add-NcsSshCommonOptions -Arguments $arguments -Settings $Settings
+    Add-NcsSshAuthOptions -Arguments $arguments -Settings $Settings
 
-    $authMode = [System.Enum]::Parse([NcsSshAuthMode], $Settings.SshAuthMode)
-    switch ($authMode) {
-        ([NcsSshAuthMode]::Agent) {
-            $arguments.Add("-o")
-            $arguments.Add("PreferredAuthentications=publickey")
-        }
-        ([NcsSshAuthMode]::KeyFile) {
-            if ([string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) {
-                throw "KeyFile authentication requires an SSH key path."
-            }
-            $arguments.Add("-i")
-            $arguments.Add($Settings.SshKeyPath)
-            $arguments.Add("-o")
-            $arguments.Add("IdentitiesOnly=yes")
-        }
-        ([NcsSshAuthMode]::Password) {
-            $arguments.Add("-o")
-            $arguments.Add("PreferredAuthentications=password,keyboard-interactive")
-            $arguments.Add("-o")
-            $arguments.Add("PubkeyAuthentication=no")
-        }
-    }
+    $environment = Get-NcsSshEnvironment -Settings $Settings
 
-    $environment = $null
-    if ($authMode -eq [NcsSshAuthMode]::Password -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
-        $environment = New-NcsSshAskPassEnvironment -Secret $Settings.SshPassword
-    } elseif ($authMode -eq [NcsSshAuthMode]::KeyFile -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
-        $environment = New-NcsSshAskPassEnvironment -Secret $Settings.SshKeyPassphrase
-    }
-
-    $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), "/srv/samba/reports"
+    $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $Settings.RemoteReportsPath
     $arguments.Add($remoteSpec)
     $arguments.Add($cacheParent)
 
-    return Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $arguments -Environment $environment -TimeoutMs 180000
+    $mirror = Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $arguments -Environment $environment -TimeoutMs 180000
+    if ($mirror.ExitCode -eq 0) {
+        $incomingRoot = Join-Path -Path $cacheParent -ChildPath ([IO.Path]::GetFileName($Settings.RemoteReportsPath))
+        if (-not (Test-Path -LiteralPath $incomingRoot)) {
+            $incomingRoot = $stagingRoot
+        } elseif ($incomingRoot -ne $stagingRoot) {
+            if (Test-Path -LiteralPath $stagingRoot) {
+                Remove-Item -LiteralPath $stagingRoot -Recurse -Force
+            }
+            Move-Item -LiteralPath $incomingRoot -Destination $stagingRoot
+        }
+        if (Test-Path -LiteralPath $LocalRoot) {
+            Remove-Item -LiteralPath $LocalRoot -Recurse -Force
+        }
+        Move-Item -LiteralPath $stagingRoot -Destination $LocalRoot
+    } elseif (Test-Path -LiteralPath $stagingRoot) {
+        Remove-Item -LiteralPath $stagingRoot -Recurse -Force
+    }
+
+    return $mirror
 }
 
 function Get-NcsXamlControlMap {
@@ -786,25 +787,25 @@ $script:ConsoleLineCount = 0
 function Get-NcsLineColor {
     param([string] $Line)
 
-    $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*', ''
+    $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*(\[stderr\]\s*)?', ''
 
-    if ($text -match '^\s*(fatal|FAILED|ERROR)' -or $text -match '\bFAILED\b' -or $text -match '\bunreachable=\d*[1-9]') {
+    if ($text -match '^\s*(fatal|FAILED|ERROR)' -or $text -match '\bFAILED\b' -or $text -match '\bunreachable=\d*[1-9]' -or $text -match '\bignored=\d*[1-9]') {
         return "#f47067"
     }
     if ($text -match '^\s*(changed):|changed=\d*[1-9]') {
         return "#d4a72c"
     }
-    if ($text -match '^\s*(skipping):|skipped=\d*[1-9]' -or $text -match '\[WARNING\]') {
+    if ($text -match '^\s*(skipping|rescued):|skipped=\d*[1-9]' -or $text -match '\[(WARNING|DEPRECATION WARNING)\]') {
         return "#d4a72c"
     }
-    if ($text -match '^(PLAY|TASK) \[') {
+    if ($text -match '^(PLAY|TASK|RUNNING HANDLER) \[' -or $text -match '^PLAY RECAP') {
         return "#6cb6ff"
     }
-    if ($text -match '^PLAY RECAP') {
-        return "#6cb6ff"
-    }
-    if ($text -match '^\s*ok:' -or $text -match '\bok=\d*[1-9]') {
+    if ($text -match '^\s*(ok|included):' -or $text -match '\bok=\d*[1-9]') {
         return "#57ab5a"
+    }
+    if ($Line -match '\[stderr\]') {
+        return "#f47067"
     }
     if ($text -match '^>' -or $text -match '^---') {
         return "#8e939c"
@@ -823,11 +824,16 @@ function Add-NcsConsoleLine {
     $doc = $Controls.ConsoleTextBox.Document
     $para = [System.Windows.Documents.Paragraph]::new()
 
-    if ($Line -match '^(\[\d{2}:\d{2}:\d{2}\])\s*(.*)$') {
+    if ($Line -match '^(\[\d{2}:\d{2}:\d{2}\])\s*(\[stderr\]\s*)?(.*)$') {
         $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
         $tsRun.Foreground = Get-NcsBrush -Color "#555b66"
         $para.Inlines.Add($tsRun)
-        $bodyText = $Matches[2]
+        if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
+            $stderrTag = [System.Windows.Documents.Run]::new("[stderr] ")
+            $stderrTag.Foreground = Get-NcsBrush -Color "#f47067"
+            $para.Inlines.Add($stderrTag)
+        }
+        $bodyText = $Matches[3]
     } else {
         $bodyText = $Line
     }
@@ -841,14 +847,39 @@ function Add-NcsConsoleLine {
     $doc.Blocks.Add($para)
 
     $script:ConsoleLineCount++
-    if ($script:ConsoleLineCount -gt 10000) {
+    if ($script:ConsoleLineCount -gt 8500) {
         while ($doc.Blocks.Count -gt 8000) {
             $doc.Blocks.Remove($doc.Blocks.FirstBlock)
         }
         $script:ConsoleLineCount = $doc.Blocks.Count
     }
+}
 
-    $Controls.ConsoleTextBox.ScrollToEnd()
+$script:_CachedConsoleScrollViewer = $null
+
+function Sync-NcsConsoleScroll {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+
+    $sv = $script:_CachedConsoleScrollViewer
+    if ($null -eq $sv) {
+        $rtb = $Controls.ConsoleTextBox
+        $sv = [System.Windows.Media.VisualTreeHelper]::GetChild($rtb, 0)
+        while ($null -ne $sv -and $sv -isnot [System.Windows.Controls.ScrollViewer]) {
+            $sv = [System.Windows.Media.VisualTreeHelper]::GetChild($sv, 0)
+        }
+        if ($null -eq $sv) {
+            $rtb.ScrollToEnd()
+            return
+        }
+        $script:_CachedConsoleScrollViewer = $sv
+    }
+    $atBottom = ($sv.VerticalOffset + $sv.ViewportHeight) -ge ($sv.ExtentHeight - 50)
+    if ($atBottom) {
+        $Controls.ConsoleTextBox.ScrollToEnd()
+    }
 }
 
 function Set-NcsIdleUiState {
@@ -1096,7 +1127,7 @@ function Show-NcsConsoleApp {
             })
 
             $reportWebView.Add_NavigationStarting({
-                param($s, $e)
+                param($_sender, $e)
 
                 $targetUri = $null
                 if (-not [string]::IsNullOrWhiteSpace($e.Uri)) {
@@ -1164,13 +1195,13 @@ function Show-NcsConsoleApp {
     & $refreshPreview
 
     $controls.ActionTreeView.Add_PreviewMouseWheel({
-        param($s, $e)
+        param($_sender, $e)
         $controls.ActionScrollViewer.ScrollToVerticalOffset($controls.ActionScrollViewer.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
     })
 
     $controls.ActionTreeView.Add_SelectedItemChanged({
-        param($s, $e)
+        param($_sender, $e)
         $item = $e.NewValue
         $playbook = ""
         $label = "Select a playbook"
@@ -1296,7 +1327,7 @@ function Show-NcsConsoleApp {
     $controls.ActionLimitTree.ContextMenu = $limitContextMenu
 
     $controls.ActionLimitTree.Add_MouseDoubleClick({
-        param($s, $e)
+        param($_sender, $e)
         $selected = $controls.ActionLimitTree.SelectedItem
         if ($null -eq $selected) { return }
         # Only toggle limit on leaf items (no children = host, not group)
@@ -1308,7 +1339,7 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTree.Add_PreviewMouseWheel({
-        param($s, $e)
+        param($_sender, $e)
         $controls.ActionLimitTreeScroll.ScrollToVerticalOffset($controls.ActionLimitTreeScroll.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
     })
@@ -1357,7 +1388,7 @@ function Show-NcsConsoleApp {
     })
 
     $controls.TitleBarDragRegion.Add_MouseLeftButtonDown({
-        param($s, $e)
+        param($_sender, $e)
 
         if ($e.ClickCount -eq 2) {
             if ($window.ResizeMode -ne [System.Windows.ResizeMode]::NoResize) {
@@ -1374,7 +1405,8 @@ function Show-NcsConsoleApp {
 
         try {
             $window.DragMove()
-        } catch {
+        } catch [System.InvalidOperationException] {
+            $null = $_ # DragMove throws if mouse released during call
         }
     })
 
@@ -1488,38 +1520,31 @@ function Show-NcsConsoleApp {
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
             if (-not (& $syncReports)) { return }
-            $mirror = @{ ExitCode = 0 }
-            if ($mirror.ExitCode -eq 0) {
-                $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
-                if (-not (Test-Path -LiteralPath $localReportPath)) {
-                    & $setReportStatus "Report not found after sync: $RelativePath" $true
-                    return
-                }
 
-                if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $RelativePath) {
-                    $script:ReportHistory.Add($script:CurrentReportPath)
-                }
-                $script:CurrentReportPath = $RelativePath
-                $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
-
-                $browserReady = & $ensureReportBrowser
-                if ($browserReady -or $reportViewState.IsInitializing) {
-                    $reportViewState.PendingRelativePath = $RelativePath
-                    $reportViewState.PendingLocalPath = $localReportPath
-                    $reportViewState.PendingSourceUri = [uri] $localReportPath
-                    & $setReportStatus "Loading report: $RelativePath" $true
-                    if ($browserReady) {
-                        $reportViewState.Control.Source = $reportViewState.PendingSourceUri
-                    }
-                } else {
-                    & $openReportExternally $localReportPath $script:NcsWebView2Status
-                }
+            $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+            if (-not (Test-Path -LiteralPath $localReportPath)) {
+                & $setReportStatus "Report not found after sync: $RelativePath" $true
                 return
             }
 
-            $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
-            if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
-            & $setReportStatus $message.Trim() $true
+            if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $script:CurrentReportPath -ne $RelativePath) {
+                $script:ReportHistory.Add($script:CurrentReportPath)
+            }
+            $script:CurrentReportPath = $RelativePath
+            $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
+
+            $browserReady = & $ensureReportBrowser
+            if ($browserReady -or $reportViewState.IsInitializing) {
+                $reportViewState.PendingRelativePath = $RelativePath
+                $reportViewState.PendingLocalPath = $localReportPath
+                $reportViewState.PendingSourceUri = [uri] $localReportPath
+                & $setReportStatus "Loading report: $RelativePath" $true
+                if ($browserReady) {
+                    $reportViewState.Control.Source = $reportViewState.PendingSourceUri
+                }
+            } else {
+                & $openReportExternally $localReportPath $script:NcsWebView2Status
+            }
         } catch {
             & $setReportStatus $_.Exception.Message $true
         }
@@ -1532,7 +1557,7 @@ function Show-NcsConsoleApp {
         $controls.ReportsSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
         if ([string]::IsNullOrWhiteSpace($script:CurrentReportPath) -and $state.PreflightResult -and $state.PreflightResult.IsReady) {
-            & $loadReport "site_health_report.html"
+            & $loadReport $script:DefaultReportPath
         }
     }
 
@@ -1597,7 +1622,7 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ReportHomeButton.Add_Click({
-        & $loadReport "site_health_report.html"
+        & $loadReport $script:DefaultReportPath
     })
 
     $controls.ReportBackButton.Add_Click({
@@ -1616,7 +1641,7 @@ function Show-NcsConsoleApp {
             $script:CurrentReportPath = ""
             & $loadReport $path
         } else {
-            & $loadReport "site_health_report.html"
+            & $loadReport $script:DefaultReportPath
         }
     })
 
@@ -1728,7 +1753,7 @@ function Show-NcsConsoleApp {
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
-                        Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
+                        Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
                         $statusParts += "$(@($inventoryTree).Length) inventory groups."
                     }
@@ -1744,7 +1769,7 @@ function Show-NcsConsoleApp {
                     $script:ActionGroups = @()
                     $statusParts += "Playbook scan failed."
                 }
-                Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+                Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
                 $controls.PlaybookPlaceholder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Visible"
@@ -1768,7 +1793,7 @@ function Show-NcsConsoleApp {
             try {
                 $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                 if (@($inventoryTree).Length -gt 0) {
-                    Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
+                    Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                     $controls.ActionLimitTreeBorder.Visibility = "Visible"
                 }
             } catch {
@@ -1779,7 +1804,7 @@ function Show-NcsConsoleApp {
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
-            Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
+            Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
             Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedPlaybook -FallbackToFirst
             $controls.StatusTextBlock.Text = "Refreshed."
         } catch {
@@ -1816,16 +1841,23 @@ function Show-NcsConsoleApp {
             Set-NcsRequestFromControls -Controls $controls -Request $request
             $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request $request
             Add-NcsConsoleLine -Controls $controls -Line "> $playCmd"
+            Sync-NcsConsoleScroll -Controls $controls
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
                 -OnOutput {
                     param($line)
-                    if ($window.Dispatcher.CheckAccess()) {
-                        Add-NcsConsoleLine -Controls $controls -Line $line
-                    } else {
-                        [void] $window.Dispatcher.BeginInvoke([action]{
-                            Add-NcsConsoleLine -Controls $controls -Line $line
-                        })
-                    }
+                    Add-NcsConsoleLine -Controls $controls -Line $line
+                } `
+                -OnOutputBatch {
+                    Sync-NcsConsoleScroll -Controls $controls
+                } `
+                -OnStale {
+                    param($idleSeconds)
+                    $msg = "[WARNING] No output for ${idleSeconds}s — task may be stuck. Use Stop to cancel."
+                    [void] $window.Dispatcher.BeginInvoke([action]{
+                        Add-NcsConsoleLine -Controls $controls -Line $msg
+                        $controls.StatusTextBlock.Text = "No output for ${idleSeconds}s — may be stuck"
+                        Set-NcsRunStateBadge -Controls $controls -State "Blocked"
+                    })
                 } `
                 -OnCompleted {
                     param($runResult)
@@ -1834,16 +1866,29 @@ function Show-NcsConsoleApp {
                         $state.LastRunResult = $runResult
                         $state.CurrentHandle = $null
                         Set-NcsIdleUiState -Controls $controls
-                        Set-NcsRunStateBadge -Controls $controls -State $(if ($runResult.Succeeded) { "Succeeded" } else { "Failed" })
+                        $badgeState = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
+                        Set-NcsRunStateBadge -Controls $controls -State $badgeState
                         Add-NcsConsoleLine -Controls $controls -Line "--- exit: $($runResult.ExitCode) | $($runResult.OutputLines.Length) lines | $(Format-NcsDuration -Duration $runResult.Duration) ---"
+                        if (-not [string]::IsNullOrWhiteSpace($runResult.SessionLogPath)) {
+                            Add-NcsConsoleLine -Controls $controls -Line "Session log: $($runResult.SessionLogPath)"
+                        }
                         $controls.RunMetaText.Text = $runResult.Action
-                        $controls.StatusTextBlock.Text = if ($runResult.Succeeded) { "Run completed successfully." } else { "Run failed." }
+                        if ($runResult.WasCancelled) {
+                            $controls.StatusTextBlock.Text = "Run cancelled."
+                        } elseif ($runResult.Succeeded) {
+                            $controls.StatusTextBlock.Text = "Run completed successfully."
+                        } elseif (-not [string]::IsNullOrWhiteSpace($runResult.FailureStage)) {
+                            $controls.StatusTextBlock.Text = "Run failed during $($runResult.FailureStage)."
+                        } else {
+                            $controls.StatusTextBlock.Text = "Run failed."
+                        }
                         $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
                         $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
                         $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
                         if ($null -ne $runResult.DetectedPaths -and @($runResult.DetectedPaths).Length -gt 0) {
                             $controls.DetectedPathsPanel.Visibility = "Visible"
                         }
+                        Sync-NcsConsoleScroll -Controls $controls
                     }
                     if ($window.Dispatcher.CheckAccess()) {
                         & $updateUi
@@ -1870,10 +1915,7 @@ function Show-NcsConsoleApp {
         try {
             $durationTimer.Stop()
             Stop-NcsRemoteCommand -Handle $state.CurrentHandle
-            $state.CurrentHandle = $null
-            Set-NcsIdleUiState -Controls $controls
-            Set-NcsRunStateBadge -Controls $controls -State "Canceled"
-            $controls.StatusTextBlock.Text = "The local SSH process was terminated."
+            $controls.StatusTextBlock.Text = "Cancellation requested. Waiting for remote process to stop."
         } catch {
             $controls.StatusTextBlock.Text = "Failed to cancel run: $($_.Exception.Message)"
         }
@@ -1899,15 +1941,44 @@ function Show-NcsConsoleApp {
         }
     })
 
+    $getConsoleHtml = {
+        $doc = $controls.ConsoleTextBox.Document
+        $lines = [System.Collections.Generic.List[string]]::new()
+        $lines.Add('<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#0d1015;color:#d8dce2;font-family:Consolas,monospace;font-size:13px;padding:16px;white-space:pre-wrap}span.ts{color:#555b66}span.stderr{color:#f47067}</style></head><body>')
+        foreach ($block in $doc.Blocks) {
+            if ($block -isnot [System.Windows.Documents.Paragraph]) { continue }
+            $sb = [System.Text.StringBuilder]::new()
+            foreach ($inline in $block.Inlines) {
+                if ($inline -isnot [System.Windows.Documents.Run]) { continue }
+                $escaped = [System.Net.WebUtility]::HtmlEncode($inline.Text)
+                $fg = $inline.Foreground
+                if ($null -ne $fg -and $fg -is [System.Windows.Media.SolidColorBrush]) {
+                    $hex = "#{0:x2}{1:x2}{2:x2}" -f $fg.Color.R, $fg.Color.G, $fg.Color.B
+                    [void] $sb.Append("<span style=`"color:$hex`">$escaped</span>")
+                } else {
+                    [void] $sb.Append($escaped)
+                }
+            }
+            $lines.Add($sb.ToString())
+        }
+        $lines.Add('</body></html>')
+        return $lines -join "`n"
+    }
+
     $controls.ExportOutputButton.Add_Click({
         $dialog = [Microsoft.Win32.SaveFileDialog]::new()
-        $dialog.Filter = "Text files (*.txt)|*.txt|Log files (*.log)|*.log|All files (*.*)|*.*"
+        $dialog.Filter = "HTML files (*.html)|*.html|Text files (*.txt)|*.txt|Log files (*.log)|*.log|All files (*.*)|*.*"
         $actionTag = if ($state.LastRunResult) { $state.LastRunResult.Action } else { "output" }
         $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        $dialog.FileName = "ncs-console-$actionTag-$timestamp.txt"
+        $dialog.FileName = "ncs-console-$actionTag-$timestamp.html"
         if ($dialog.ShowDialog()) {
-            Set-Content -LiteralPath $dialog.FileName -Value (& $getConsoleText) -Encoding UTF8
-            $controls.StatusTextBlock.Text = "Output exported to $($dialog.FileName)."
+            $path = $dialog.FileName
+            if ($path -match '\.html?$') {
+                Set-Content -LiteralPath $path -Value (& $getConsoleHtml) -Encoding UTF8
+            } else {
+                Set-Content -LiteralPath $path -Value (& $getConsoleText) -Encoding UTF8
+            }
+            $controls.StatusTextBlock.Text = "Output exported to $path."
         }
     })
 
@@ -1918,7 +1989,9 @@ function Show-NcsConsoleApp {
             $state.CurrentHandle = $null
         }
         if ($null -ne $reportViewState.Control) {
-            try { $reportViewState.Control.Dispose() } catch {}
+            try { $reportViewState.Control.Dispose() } catch {
+                $null = $_ # WebView2 disposal can throw during shutdown
+            }
             $reportViewState.Control = $null
         }
     })

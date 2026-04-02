@@ -62,11 +62,11 @@ def auth_argument_spec(spec=None):
 def find_project(gitlab_instance, identifier):
     try:
         project = gitlab_instance.projects.get(identifier)
-    except Exception as e:
+    except Exception:
         current_user = gitlab_instance.user
         try:
             project = gitlab_instance.projects.get(current_user.username + '/' + identifier)
-        except Exception as e:
+        except Exception:
             return None
 
     return project
@@ -75,7 +75,7 @@ def find_project(gitlab_instance, identifier):
 def find_group(gitlab_instance, identifier):
     try:
         group = gitlab_instance.groups.get(identifier)
-    except Exception as e:
+    except Exception:
         return None
 
     return group

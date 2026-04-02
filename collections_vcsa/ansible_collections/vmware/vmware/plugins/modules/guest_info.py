@@ -243,7 +243,7 @@ class VmwareGuestInfo(ModuleRestBase):
         try:
             identity = guest_svc.Identity.get(vm=str(vm._GetMoId()))
 
-        except Exception as e:
+        except Exception:
             return {}
 
         return extract_object_attributes_to_dict(identity)

@@ -8,15 +8,10 @@
 # STIG hardening + verification for vCenter Server Appliance (VCSA).
 
 - name: "Phase 2a: VCSA STIG Remediation"
-  hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcsa')) }}"
+  hosts: "{{ vcsa_target_hosts | default('vcsa') }}"
   gather_facts: false
   become: true
   tags: ["vmware", "stig", "remediate", "vcsa"]
-  vars:
-    ansible_connection: ssh
-    ansible_user: root
-    ansible_password: "{{ vault_vcenter_ssh_password }}"
-    ansible_python_interpreter: /usr/bin/python3
   roles:
     - role: internal.vmware.vcsa
       vars:
@@ -24,15 +19,10 @@
         ncs_profile: stig
 
 - name: "Phase 2b: VCSA STIG Post-Remediation Audit"
-  hosts: "{{ vcsa_stig_target_hosts | default(vcenter_stig_target_hosts | default('vcsa')) }}"
+  hosts: "{{ vcsa_target_hosts | default('vcsa') }}"
   gather_facts: false
   become: true
   tags: ["vmware", "stig", "audit", "vcsa"]
-  vars:
-    ansible_connection: ssh
-    ansible_user: root
-    ansible_password: "{{ vault_vcenter_ssh_password }}"
-    ansible_python_interpreter: /usr/bin/python3
   roles:
     - role: internal.vmware.vcsa
       vars:

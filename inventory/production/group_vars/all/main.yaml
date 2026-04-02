@@ -1,5 +1,20 @@
 ---
 # Shared variables applied to all hosts.
+
+# Repository root — derived from inventory location (always loaded).
+ncs_repo_root: "{{ inventory_dir | dirname | dirname }}"
+
+# --- NCS Platform Config ---
+ncs_config:
+  debug_mode: true
+  dry_run_mode: false
+  report_directory: /srv/samba/reports
+  logging:
+    export_to_file: true
+    file_path: "/var/log/ncs/ncs.log"
+    max_size_mb: 100
+    backup_count: 5
+
 # Uncomment and set values for your environment.
 
 # --- DNS / NTP / Domain ---

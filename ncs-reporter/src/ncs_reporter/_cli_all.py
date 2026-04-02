@@ -17,7 +17,6 @@ from ._config import (
     load_config_yaml,
     load_platforms,
     resolve_config_dir,
-    resolve_path_from_config_root,
 )
 from ._renderers import PlatformRenderConfig, build_stig_host_views, render_platform, render_stig
 from ._report_context import (

@@ -12,7 +12,6 @@ try:
         Folder,
         Datacenter,
         ResourcePool,
-        VM,
         Cluster,
         Host,
         VM

@@ -296,9 +296,9 @@ def _load_platforms_contract(
 
         if not platforms:
             raise RuntimeError(
-                f"No platform configs found. Searched:\n"
+                "No platform configs found. Searched:\n"
                 + "\n".join(f"  - {s}" for s in searched)
-                + f"\nSet NCS_REPO_ROOT or NCS_PLATFORMS_CONFIG env var."
+                + "\nSet NCS_REPO_ROOT or NCS_PLATFORMS_CONFIG env var."
             )
 
     target_index = path_contract.build_target_type_index(platforms)

@@ -255,7 +255,7 @@ class AnsibleGalaxyInstall(ModuleHelper):
             runner = self._make_runner("C.UTF-8")
             with runner("version", check_rc=False, output_process=process) as ctx:
                 return runner, ctx.run(version=True)
-        except UnsupportedLocale as e:
+        except UnsupportedLocale:
             runner = self._make_runner("en_US.UTF-8")
             with runner("version", check_rc=True, output_process=process) as ctx:
                 return runner, ctx.run(version=True)

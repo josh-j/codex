@@ -162,7 +162,7 @@ class NetworkAdapterParameterHandler(AbstractDeviceLinkedParameterHandler):
                     resource_allocation=resource_allocation,
                     portgroup=network_portgroup,
                 )
-            except KeyError as e:
+            except KeyError:
                 self.error_handler.fail_with_parameter_error(
                     parameter_name=self.HANDLER_NAME,
                     message="Unsupported adapter type %s"

@@ -339,7 +339,7 @@ def main():
         # defined resource does not include all those scopes.
         for scope in scopes:
             s = kc.get_authz_authorization_scope_by_name(scope, cid, realm)
-            if r and not s['id'] in resource_scopes:
+            if r and s['id'] not in resource_scopes:
                 module.fail_json(msg='Resource %s does not include scope %s for client %s in realm %s' % (resources[0], scope, client_id, realm))
             else:
                 payload['scopes'].append(s['id'])

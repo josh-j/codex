@@ -135,7 +135,7 @@ class InventoryModule(BaseInventoryPlugin):
     def _fetch_information(self, url):
         try:
             response = open_url(url, headers=self.headers)
-        except Exception as e:
+        except Exception:
             self.display.warning("An error happened while fetching: %s" % url)
             return None
 

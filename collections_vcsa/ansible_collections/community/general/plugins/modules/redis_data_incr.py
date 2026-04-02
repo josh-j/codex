@@ -130,7 +130,7 @@ def main():
             res = redis.connection.get(key)
             if res is not None:
                 value = float(res)
-        except ValueError as e:
+        except ValueError:
             msg = 'Value: {0} of key: {1} is not incrementable(int or float)'.format(
                 res, key)
             result['msg'] = msg

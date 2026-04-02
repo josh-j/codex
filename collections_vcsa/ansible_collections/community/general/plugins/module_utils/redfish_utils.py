@@ -155,7 +155,7 @@ class RedfishUtils(object):
                     data = json.loads(to_native(gzip.open(BytesIO(resp.read()), 'rt', encoding='utf-8').read()))
                 else:
                     data = json.loads(to_native(resp.read()))
-            except Exception as e:
+            except Exception:
                 # No response data; this is okay in certain cases
                 data = None
                 if not allow_no_resp:
@@ -199,7 +199,7 @@ class RedfishUtils(object):
                             use_proxy=True, timeout=self.timeout)
             try:
                 data = json.loads(to_native(resp.read()))
-            except Exception as e:
+            except Exception:
                 # No response data; this is okay in many cases
                 data = None
             headers = dict((k.lower(), v) for (k, v) in resp.info().items())
@@ -1827,7 +1827,7 @@ class RedfishUtils(object):
         try:
             with open(image_file, 'rb') as f:
                 image_payload = f.read()
-        except Exception as e:
+        except Exception:
             return {'ret': False, 'msg':
                     'Could not read file %s' % image_file}
 
@@ -3460,7 +3460,7 @@ class RedfishUtils(object):
         response = self.get_request(self.root_uri + '/redfish/v1/Managers/' + manager, override_headers=None)
         try:
             result['service_identification'] = response['data']['ServiceIdentification']
-        except Exception as e:
+        except Exception:
             self.module.fail_json(msg="Service ID not found for manager %s" % manager)
         result['ret'] = True
         return result

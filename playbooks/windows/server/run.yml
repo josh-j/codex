@@ -12,6 +12,7 @@
 # operation: vuln_scan
 # options:
 #   windows_vuln_scan_file: text | Scan File Path
+#   windows_vuln_scan_format: select[csv, json] = csv | Output Format
 # ---
 # label: Cleanup
 # operation: cleanup
@@ -23,9 +24,14 @@
 # operation: kb_install
 # options:
 #   windows_kb_list: text | KB Numbers
+#   windows_kb_source_path: text | Source Path (offline/network)
 # ---
 # label: Windows Update
 # operation: windows_update
+# options:
+#   windows_update_allow_reboot: bool = false | Allow Reboot
+#   windows_update_categories: text = SecurityUpdates,CriticalUpdates | Update Categories
+#   windows_update_timeout_minutes: text = 60 | Timeout (minutes)
 # ---
 # label: Install Software
 # operation: update_software
@@ -36,6 +42,8 @@
 # operation: uninstall_software
 # options:
 #   windows_uninstall_names: text | Software Names
+#   windows_uninstall_appx: bool = false | Remove AppX Packages
+#   windows_uninstall_winget_remove: bool = false | Use Winget
 # ---
 # label: Service Management
 # operation: service
@@ -58,6 +66,8 @@
 #   windows_openssh_default_shell: select[powershell, cmd] = powershell | Default Shell
 #   windows_openssh_allow_password: bool = false | Allow Password Auth
 #   windows_openssh_allow_pubkey: bool = false | Allow Pubkey Auth
+#   windows_openssh_allow_gssapi: bool = true | Allow Kerberos/GSSAPI
+#   windows_openssh_max_auth_tries: text = 3 | Max Auth Attempts
 # ---
 # label: WinRM Enable
 # operation: winrm_enable

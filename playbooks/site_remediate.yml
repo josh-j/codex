@@ -12,8 +12,14 @@
   ansible.builtin.import_playbook: infra/setup_env.yml
 
 # Phase 2: VMware STIG Hardening
-- name: "Phase 2: VMware Infrastructure Hardening"
-  ansible.builtin.import_playbook: vmware/stig_remediate.yml
+- name: "Phase 2a: ESXi STIG Hardening"
+  ansible.builtin.import_playbook: vmware/esxi/stig_remediate.yml
+
+- name: "Phase 2b: VM STIG Hardening"
+  ansible.builtin.import_playbook: vmware/vm/stig_remediate.yml
+
+- name: "Phase 2c: VCSA STIG Hardening"
+  ansible.builtin.import_playbook: vmware/vcsa/stig_remediate.yml
 
 # Phase 3: Linux Fleet Hardening
 - name: "Phase 3: Linux System Hardening"

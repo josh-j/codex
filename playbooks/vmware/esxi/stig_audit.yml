@@ -8,9 +8,11 @@
   tags: ["vmware", "stig", "audit", "esxi"]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    _vcenter_hostname: "{{ _ncs_vcenter | default(inventory_hostname) }}"
   pre_tasks:
-    - ansible.builtin.include_tasks: _route_esxi.yml
+    - name: Route ESXi targets
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: route_esxi
   roles:
     - role: internal.vmware.esxi
       vars:

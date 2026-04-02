@@ -66,7 +66,7 @@ Security-focused playbooks for baseline verification and automated enforcement.
 - **`**/patch.yml`**: Software lifecycle management. Orchestrates OS-level package updates and reboots for Linux and Windows.
 - **`ubuntu/patch_apply.yml`**: Phase playbook that applies Ubuntu patching actions.
 - **`windows/update.yml`**: Phase playbook that applies Windows updates.
-- **`ubuntu/rotate_passwords.yml`**: Security utility for automated rotation and management of local system passwords.
+- **`ubuntu/password_rotate_bulk.yml`**: Security utility for automated rotation and management of local system passwords.
 
 ## Usage
 
