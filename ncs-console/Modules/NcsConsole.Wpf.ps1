@@ -354,17 +354,13 @@ function Update-NcsActionOptions {
     param(
         [Parameter(Mandatory)]
         [hashtable] $Controls,
-        [Parameter(Mandatory)]
-        $ActionGroups,
-        [string] $Playbook
+        $ActionItem
     )
 
     $Controls.ActionOptionsPanel.Children.Clear()
     $Controls.ActionOptionsPanel.Visibility = "Collapsed"
 
-    if ([string]::IsNullOrWhiteSpace($Playbook)) { return }
-
-    $actionItem = Find-NcsActionItem -Groups $ActionGroups -Playbook $Playbook
+    $actionItem = $ActionItem
     if ($null -ne $actionItem -and -not $actionItem.ContainsKey('options')) { $actionItem = $null }
 
     if ($null -eq $actionItem) { return }
@@ -1044,15 +1040,10 @@ function Show-NcsConsoleApp {
         }
         $controls.ActionSelectionTitle.Text = $label
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
-        $isMutating = $false
-        if (-not [string]::IsNullOrWhiteSpace($playbook)) {
-            $matchedAction = Find-NcsActionItem -Groups $script:ActionGroups -Playbook $playbook
-            if ($null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true) {
-                $isMutating = $true
-            }
-        }
+        $matchedAction = if (-not [string]::IsNullOrWhiteSpace($playbook)) { Find-NcsActionItem -Groups $script:ActionGroups -Playbook $playbook } else { $null }
+        $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
-        Update-NcsActionOptions -Controls $controls -ActionGroups $script:ActionGroups -Playbook $playbook
+        Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
         & $refreshPreview
     })
 

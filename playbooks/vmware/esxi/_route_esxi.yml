@@ -1,0 +1,21 @@
+---
+# Shared ESXi target routing for --limit support.
+# Included as pre_tasks in ESXi playbooks that use hosts: "vcsa:esxi_hosts".
+#
+# ESXi inventory hosts with --limit: set themselves as the sole target.
+# ESXi inventory hosts without --limit: end immediately (vCenter handles it).
+# vCenter hosts: discover targets from the API.
+
+- meta: end_host
+  when: _ncs_vcenter is defined and ansible_limit is not defined
+
+- name: "Set ESXi target from inventory"
+  ansible.builtin.set_fact:
+    esxi_stig_target_hosts: ["{{ inventory_hostname }}"]
+  when:
+    - _ncs_vcenter is defined
+    - esxi_stig_target_hosts | default([]) | length == 0
+
+- name: "Discover and validate ESXi targets"
+  ansible.builtin.include_tasks: _discover.yml
+  when: _ncs_vcenter is not defined
