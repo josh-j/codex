@@ -835,7 +835,6 @@ function Show-NcsConsoleApp {
     }
 
     $script:ActionGroups = @()
-    $actionConfigPath = Join-Path -Path $ProjectRoot -ChildPath "Config/actions.yml"
 
     $controls.ActionVerbosityComboBox.ItemsSource = @("Normal", "Verbose", "More Verbose", "Debug", "Connection Debug")
     $controls.ActionVerbosityComboBox.SelectedIndex = 0
@@ -1549,28 +1548,13 @@ function Show-NcsConsoleApp {
                     $statusParts += "Inventory fetch failed."
                 }
                 try {
-                    $localConfig = @()
-                    try { $localConfig = Import-NcsGroupedConfig -Path $actionConfigPath } catch {}
-                    $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
-                    if (@($localConfig).Length -gt 0 -and @($remotePlaybooks).Length -gt 0) {
-                        $script:ActionGroups = Merge-NcsActionGroups -ConfigGroups $localConfig -RemoteGroups $remotePlaybooks
-                    } elseif (@($remotePlaybooks).Length -gt 0) {
-                        $script:ActionGroups = $remotePlaybooks
-                    } elseif (@($localConfig).Length -gt 0) {
-                        $script:ActionGroups = $localConfig
-                        $statusParts += "Playbook scan empty, using local config."
-                    } else {
-                        $script:ActionGroups = @()
+                    $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
+                    if (@($script:ActionGroups).Length -eq 0) {
                         $statusParts += "No playbooks found."
                     }
                 } catch {
-                    try {
-                        $script:ActionGroups = Import-NcsGroupedConfig -Path $actionConfigPath
-                        $statusParts += "Playbook scan failed, using local config."
-                    } catch {
-                        $script:ActionGroups = @()
-                        $statusParts += "Playbook scan failed, no local config available."
-                    }
+                    $script:ActionGroups = @()
+                    $statusParts += "Playbook scan failed."
                 }
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
                 $controls.PlaybookPlaceholder.Visibility = "Collapsed"
@@ -1603,16 +1587,7 @@ function Show-NcsConsoleApp {
                 Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
             }
             try {
-                $localConfig = @()
-                try { $localConfig = Import-NcsGroupedConfig -Path $actionConfigPath } catch {}
-                $remotePlaybooks = Get-NcsRemotePlaybookTree -Settings $state.Settings
-                if (@($localConfig).Length -gt 0 -and @($remotePlaybooks).Length -gt 0) {
-                    $script:ActionGroups = Merge-NcsActionGroups -ConfigGroups $localConfig -RemoteGroups $remotePlaybooks
-                } elseif (@($remotePlaybooks).Length -gt 0) {
-                    $script:ActionGroups = $remotePlaybooks
-                } elseif (@($localConfig).Length -gt 0) {
-                    $script:ActionGroups = $localConfig
-                }
+                $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
