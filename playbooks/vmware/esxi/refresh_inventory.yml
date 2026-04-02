@@ -64,6 +64,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   vars:
     _inventory_path: "{{ playbook_dir }}/../../../inventory/production/esxi_hosts.yaml"
   tasks:
