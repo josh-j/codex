@@ -219,6 +219,56 @@ function Get-NcsTreeViewSelection {
     return [string] $selectedItem.Tag
 }
 
+function New-NcsLeafTreeItem {
+    param($Item, [string] $TagProperty, [string] $LeafIcon)
+    $leafItem = [System.Windows.Controls.TreeViewItem]::new()
+    $leafItem.Tag = $Item[$TagProperty]
+    if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
+        $sp = [System.Windows.Controls.StackPanel]::new()
+        $sp.Orientation = "Horizontal"
+        $icon = [System.Windows.Shapes.Path]::new()
+        $icon.Data = [System.Windows.Media.Geometry]::Parse($LeafIcon)
+        $icon.Stroke = Get-NcsBrush -Color "#8e939c"
+        $icon.StrokeThickness = 1
+        $icon.Fill = [System.Windows.Media.Brushes]::Transparent
+        $icon.Width = 10
+        $icon.Height = 10
+        $icon.Stretch = [System.Windows.Media.Stretch]::Uniform
+        $icon.VerticalAlignment = "Center"
+        $icon.Margin = [System.Windows.Thickness]::new(0,0,5,0)
+        $sp.Children.Add($icon) | Out-Null
+        $tb = [System.Windows.Controls.TextBlock]::new()
+        $tb.Text = $Item.Label
+        $tb.VerticalAlignment = "Center"
+        $sp.Children.Add($tb) | Out-Null
+        $leafItem.Header = $sp
+    } else {
+        $leafItem.Header = $Item.Label
+    }
+    return $leafItem
+}
+
+function New-NcsGroupTreeItem {
+    param($Group, [string] $TagProperty, [bool] $Expanded, [string] $LeafIcon)
+    $groupItem = [System.Windows.Controls.TreeViewItem]::new()
+    $groupItem.Header = $Group.Group
+    $groupItem.Tag = $Group.Group
+    $groupItem.IsExpanded = $Expanded
+    # Child groups first (subdirectories)
+    if ($Group.ContainsKey('Children') -and $null -ne $Group['Children']) {
+        foreach ($child in @($Group['Children'])) {
+            $childItem = New-NcsGroupTreeItem -Group $child -TagProperty $TagProperty -Expanded $Expanded -LeafIcon $LeafIcon
+            $groupItem.Items.Add($childItem) | Out-Null
+        }
+    }
+    # Leaf items (playbooks in this directory)
+    foreach ($item in @($Group.Items)) {
+        $leafItem = New-NcsLeafTreeItem -Item $item -TagProperty $TagProperty -LeafIcon $LeafIcon
+        $groupItem.Items.Add($leafItem) | Out-Null
+    }
+    return $groupItem
+}
+
 function Build-NcsTreeView {
     param(
         [Parameter(Mandatory)]
@@ -236,41 +286,30 @@ function Build-NcsTreeView {
     $tree = $Controls[$TreeViewName]
     $tree.Items.Clear()
     foreach ($group in $Groups) {
-        $groupItem = [System.Windows.Controls.TreeViewItem]::new()
-        $groupItem.Header = $group.Group
-        $groupItem.Tag = $group.Group
-        $groupItem.IsExpanded = $Expanded
-        foreach ($item in $group.Items) {
-            $leafItem = [System.Windows.Controls.TreeViewItem]::new()
-            $leafItem.Tag = $item[$TagProperty]
-
-            if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
-                $sp = [System.Windows.Controls.StackPanel]::new()
-                $sp.Orientation = "Horizontal"
-                $icon = [System.Windows.Shapes.Path]::new()
-                $icon.Data = [System.Windows.Media.Geometry]::Parse($LeafIcon)
-                $icon.Stroke = Get-NcsBrush -Color "#8e939c"
-                $icon.StrokeThickness = 1
-                $icon.Fill = [System.Windows.Media.Brushes]::Transparent
-                $icon.Width = 10
-                $icon.Height = 10
-                $icon.Stretch = [System.Windows.Media.Stretch]::Uniform
-                $icon.VerticalAlignment = "Center"
-                $icon.Margin = [System.Windows.Thickness]::new(0,0,5,0)
-                $sp.Children.Add($icon) | Out-Null
-                $tb = [System.Windows.Controls.TextBlock]::new()
-                $tb.Text = $item.Label
-                $tb.VerticalAlignment = "Center"
-                $sp.Children.Add($tb) | Out-Null
-                $leafItem.Header = $sp
-            } else {
-                $leafItem.Header = $item.Label
-            }
-
-            $groupItem.Items.Add($leafItem) | Out-Null
-        }
+        $groupItem = New-NcsGroupTreeItem -Group $group -TagProperty $TagProperty -Expanded $Expanded -LeafIcon $LeafIcon
         $tree.Items.Add($groupItem) | Out-Null
     }
+}
+
+function Find-NcsTreeViewItemByTag {
+    param($Parent, [string] $Tag)
+    foreach ($child in @($Parent.Items)) {
+        if ($child.Tag -eq $Tag) { return $child }
+        $found = Find-NcsTreeViewItemByTag -Parent $child -Tag $Tag
+        if ($null -ne $found) { return $found }
+    }
+    return $null
+}
+
+function Find-NcsFirstLeafItem {
+    param($Parent)
+    foreach ($child in @($Parent.Items)) {
+        # A leaf has a Tag that looks like a playbook path (contains '.')
+        if ($null -ne $child.Tag -and $child.Tag -match '\.ya?ml$') { return $child }
+        $found = Find-NcsFirstLeafItem -Parent $child
+        if ($null -ne $found) { return $found }
+    }
+    return $null
 }
 
 function Select-NcsTreeViewItem {
@@ -282,22 +321,33 @@ function Select-NcsTreeViewItem {
     )
 
     if (-not [string]::IsNullOrWhiteSpace($Tag)) {
-        foreach ($category in @($TreeView.Items)) {
-            foreach ($leaf in @($category.Items)) {
-                if ($leaf.Tag -eq $Tag) {
-                    $leaf.IsSelected = $true
-                    return
-                }
-            }
+        $found = Find-NcsTreeViewItemByTag -Parent $TreeView -Tag $Tag
+        if ($null -ne $found) {
+            $found.IsSelected = $true
+            return
         }
     }
 
     if ($FallbackToFirst -and $TreeView.Items.Count -gt 0) {
-        $firstCategory = $TreeView.Items[0]
-        if ($null -ne $firstCategory -and $firstCategory.Items.Count -gt 0) {
-            $firstCategory.Items[0].IsSelected = $true
+        $first = Find-NcsFirstLeafItem -Parent $TreeView
+        if ($null -ne $first) {
+            $first.IsSelected = $true
         }
     }
+}
+
+function Find-NcsActionItem {
+    param($Groups, [string] $Playbook)
+    foreach ($group in $Groups) {
+        foreach ($item in @($group.Items)) {
+            if ($item['playbook'] -eq $Playbook) { return $item }
+        }
+        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
+            $found = Find-NcsActionItem -Groups $group['Children'] -Playbook $Playbook
+            if ($null -ne $found) { return $found }
+        }
+    }
+    return $null
 }
 
 function Update-NcsActionOptions {
@@ -314,16 +364,8 @@ function Update-NcsActionOptions {
 
     if ([string]::IsNullOrWhiteSpace($Playbook)) { return }
 
-    $actionItem = $null
-    foreach ($group in $ActionGroups) {
-        foreach ($item in $group.Items) {
-            if ($item['playbook'] -eq $Playbook -and $item.ContainsKey('options')) {
-                $actionItem = $item
-                break
-            }
-        }
-        if ($null -ne $actionItem) { break }
-    }
+    $actionItem = Find-NcsActionItem -Groups $ActionGroups -Playbook $Playbook
+    if ($null -ne $actionItem -and -not $actionItem.ContainsKey('options')) { $actionItem = $null }
 
     if ($null -eq $actionItem) { return }
 
@@ -1005,14 +1047,9 @@ function Show-NcsConsoleApp {
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
         $isMutating = $false
         if (-not [string]::IsNullOrWhiteSpace($playbook)) {
-            foreach ($group in $script:ActionGroups) {
-                foreach ($actionItem in $group.Items) {
-                    if ($actionItem['playbook'] -eq $playbook -and $actionItem.ContainsKey('mutating') -and $actionItem['mutating'] -eq $true) {
-                        $isMutating = $true
-                        break
-                    }
-                }
-                if ($isMutating) { break }
+            $matchedAction = Find-NcsActionItem -Groups $script:ActionGroups -Playbook $playbook
+            if ($null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true) {
+                $isMutating = $true
             }
         }
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }

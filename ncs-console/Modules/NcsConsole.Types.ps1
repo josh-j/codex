@@ -86,68 +86,55 @@ function Import-NcsGroupedConfig {
         [string] $Path
     )
 
-    $lines = Get-Content -LiteralPath $Path
-    $groups = [System.Collections.Generic.List[hashtable]]::new()
-    $currentGroup = $null
-    $currentItem = $null
-    $currentOption = $null
-    $inOptions = $false
+    # Parse YAML config using PowerShell-native YAML-subset parser.
+    # Supports nested children: groups can contain actions: and children: keys.
+    $content = Get-Content -LiteralPath $Path -Raw
+    # Use Python for reliable YAML parsing of the nested structure
+    $pyParse = @'
+import sys, json, yaml
 
-    foreach ($line in $lines) {
-        if ([string]::IsNullOrWhiteSpace($line) -or $line -match '^\s*#') { continue }
-
-        if ($line -match '^- group:\s*(.+)$') {
-            $currentGroup = @{ Group = $Matches[1].Trim(); Items = [System.Collections.Generic.List[hashtable]]::new() }
-            $groups.Add($currentGroup)
-            $currentItem = $null
-            $currentOption = $null
-            $inOptions = $false
+def convert_group(raw):
+    g = {"Group": raw.get("group", ""), "Items": []}
+    for action in raw.get("actions", []):
+        if not isinstance(action, dict) or "label" not in action:
             continue
-        }
+        item = {}
+        for k, v in action.items():
+            if k == "options" and isinstance(v, list):
+                item["options"] = v
+            elif k == "label":
+                item["Label"] = v
+            elif isinstance(v, bool):
+                item[k] = v
+            else:
+                item[k] = v
+            # Normalize booleans stored as strings
+            if k == "mutating" and isinstance(v, bool):
+                item[k] = v
+        g["Items"].append(item)
+    children_raw = raw.get("children", [])
+    if children_raw:
+        g["Children"] = [convert_group(c) for c in children_raw if isinstance(c, dict)]
+    return g
 
-        if ($line -match '^\s{2,4}- label:\s*(.+)$' -and $null -ne $currentGroup) {
-            $currentItem = @{ Label = $Matches[1].Trim() }
-            $currentGroup.Items.Add($currentItem)
-            $currentOption = $null
-            $inOptions = $false
-            continue
+data = yaml.safe_load(sys.stdin.read())
+if not isinstance(data, list):
+    data = []
+result = [convert_group(g) for g in data if isinstance(g, dict)]
+print(json.dumps(result))
+'@
+    try {
+        $jsonOut = $content | & python3 -c $pyParse 2>$null
+        if ([string]::IsNullOrWhiteSpace($jsonOut)) { return @() }
+        $parsed = $jsonOut | ConvertFrom-Json -AsHashtable
+        $groups = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($entry in @($parsed)) {
+            $groups.Add($entry)
         }
-
-        if ($line -match '^\s+options:\s*$' -and $null -ne $currentItem) {
-            $currentItem['options'] = [System.Collections.Generic.List[hashtable]]::new()
-            $inOptions = $true
-            $currentOption = $null
-            continue
-        }
-
-        if ($inOptions -and $line -match '^\s{6,10}- name:\s*(.+)$') {
-            $currentOption = @{ name = $Matches[1].Trim() }
-            $currentItem['options'].Add($currentOption)
-            continue
-        }
-
-        if ($inOptions -and $null -ne $currentOption -and $line -match '^\s{8,12}(\w+):\s*(.+)$') {
-            $key = $Matches[1].Trim()
-            $rawVal = $Matches[2].Trim()
-            if ($key -eq 'choices' -and $rawVal -match '^\[(.+)\]$') {
-                $currentOption[$key] = @($Matches[1] -split ',' | ForEach-Object { $_.Trim() })
-            } else {
-                $currentOption[$key] = $rawVal
-            }
-            continue
-        }
-
-        if (-not $inOptions -and $line -match '^\s+(\w+):\s*(.+)$' -and $null -ne $currentItem) {
-            $key = $Matches[1].Trim()
-            $value = $Matches[2].Trim()
-            if ($value -eq 'true') { $value = $true }
-            elseif ($value -eq 'false') { $value = $false }
-            $currentItem[$key] = $value
-            continue
-        }
+        return $groups
+    } catch {
+        return @()
     }
-
-    return $groups
 }
 
 function Get-NcsRemotePlaybookTree {
@@ -159,7 +146,7 @@ function Get-NcsRemotePlaybookTree {
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $pyScript = @'
 import os, json, yaml, re
-SKIP_DIRS = {"templates", "test", "roles", "__pycache__"}
+SKIP_DIRS = {"templates", "test", "roles", "__pycache__", "core", "group_vars"}
 INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_become",
     "ansible_become_method", "ansible_user", "ansible_host", "ansible_port",
     "gather_facts", "connection", "become", "become_method", "become_user"}
@@ -288,13 +275,39 @@ def fallback_options(play):
         opts.append({"name": k, "label": auto_label(k), "default": dv})
     return opts
 
+def get_node(tree, segments):
+    cur = tree
+    for i, seg in enumerate(segments):
+        if seg not in cur:
+            return None
+        if i < len(segments) - 1:
+            cur = cur[seg]["children"]
+        else:
+            return cur[seg]
+    return None
+
+def add_item(tree, segments, item):
+    """Add item to the node at segments path, creating nodes as needed."""
+    # Ensure all nodes exist
+    cur = tree
+    for seg in segments:
+        if seg not in cur:
+            cur[seg] = {"items": [], "children": {}}
+        cur = cur[seg]["children"]
+    # Now add item to the target node
+    node = get_node(tree, segments)
+    node["items"].append(item)
+
 base = "playbooks"
-groups = {}
+tree = {}  # nested: {"vmware": {"items": [...], "children": {"esxi": {"items": [...], "children": {}}}}}
+
 for root, dirs, files in os.walk(base):
-    dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+    dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
     rel = os.path.relpath(root, base)
-    raw_grp = "Fleet" if rel == "." else rel.replace(os.sep, "/").split("/")[0]
-    grp = NAME_MAP.get(raw_grp, raw_grp.title())
+    if rel == ".":
+        segments = ["Fleet"]
+    else:
+        segments = [p for p in rel.replace(os.sep, "/").split("/")]
     for f in sorted(files):
         if not f.endswith((".yml", ".yaml")) or f.startswith("_"):
             continue
@@ -320,15 +333,33 @@ for root, dirs, files in os.walk(base):
                 op = blk.get("operation")
                 if op:
                     opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
-                groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
+                add_item(tree, segments, build_item(playbook, lbl, mut, opts))
         else:
             lbl = fallback_label(f, None if is_import else play)
             stem = os.path.splitext(f)[0]
             mut = not any(k in stem for k in READ_ONLY_KEYWORDS)
             opts = fallback_options(play) if not is_import else []
-            groups.setdefault(grp, []).append(build_item(playbook, lbl, mut, opts))
-order = ["Fleet"] + sorted(k for k in groups if k != "Fleet")
-print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups]))
+            add_item(tree, segments, build_item(playbook, lbl, mut, opts))
+
+def to_output(tree):
+    """Convert nested tree dict to output format with Group/Items/Children."""
+    result = []
+    for key in sorted(tree.keys()):
+        node = tree[key]
+        display = NAME_MAP.get(key, key.title())
+        entry = {"Group": display, "Items": node["items"]}
+        children = to_output(node["children"])
+        if children:
+            entry["Children"] = children
+        if node["items"] or children:
+            result.append(entry)
+    return result
+
+output = to_output(tree)
+# Move Fleet to front if present
+fleet = [g for g in output if g["Group"] == "Fleet"]
+rest = [g for g in output if g["Group"] != "Fleet"]
+print(json.dumps(fleet + rest))
 '@
     $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && python3 << 'NCSPLAYBOOKS'" + "`n" + $pyScript + "`n" + "NCSPLAYBOOKS"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
@@ -341,12 +372,30 @@ print(json.dumps([{"Group": g, "Items": groups[g]} for g in order if g in groups
     $groups = [System.Collections.Generic.List[hashtable]]::new()
 
     foreach ($entry in @($data)) {
-        if ($entry.ContainsKey('Items') -and @($entry['Items']).Length -gt 0) {
+        $hasItems = $entry.ContainsKey('Items') -and @($entry['Items']).Length -gt 0
+        $hasChildren = $entry.ContainsKey('Children') -and @($entry['Children']).Length -gt 0
+        if ($hasItems -or $hasChildren) {
             $groups.Add($entry)
         }
     }
 
     return $groups
+}
+
+function Get-NcsAllPlaybooks {
+    param($Groups)
+    $set = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($group in $Groups) {
+        foreach ($item in $group.Items) {
+            [void] $set.Add($item['playbook'])
+        }
+        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
+            foreach ($pb in (Get-NcsAllPlaybooks -Groups $group['Children'])) {
+                [void] $set.Add($pb)
+            }
+        }
+    }
+    return $set
 }
 
 function Merge-NcsActionGroups {
@@ -357,21 +406,20 @@ function Merge-NcsActionGroups {
         $RemoteGroups
     )
 
-    # Remote-first: use the remote scan as-is.
-    # Config is only used to add entries whose playbook wasn't found remotely.
-    $remotePlaybooks = [System.Collections.Generic.HashSet[string]]::new()
-    foreach ($group in $RemoteGroups) {
-        foreach ($item in $group.Items) {
-            [void] $remotePlaybooks.Add($item['playbook'])
-        }
-    }
+    # Remote-first: use the remote scan as authoritative structure.
+    # Config adds entries whose playbook wasn't found remotely.
+    $remotePlaybooks = Get-NcsAllPlaybooks -Groups $RemoteGroups
 
     $merged = [System.Collections.Generic.List[hashtable]]::new()
     $mergedGroupNames = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($group in $RemoteGroups) {
         $mutableItems = [System.Collections.Generic.List[hashtable]]::new()
         foreach ($i in $group.Items) { $mutableItems.Add($i) }
-        $merged.Add(@{ Group = $group.Group; Items = $mutableItems })
+        $entry = @{ Group = $group.Group; Items = $mutableItems }
+        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
+            $entry['Children'] = $group['Children']
+        }
+        $merged.Add($entry)
         [void] $mergedGroupNames.Add($group.Group)
     }
 
