@@ -223,6 +223,8 @@ function New-NcsLeafTreeItem {
     param($Item, [string] $TagProperty, [string] $LeafIcon)
     $leafItem = [System.Windows.Controls.TreeViewItem]::new()
     $leafItem.Tag = $Item[$TagProperty]
+    $leafItem.ToolTip = $Item.Label
+    $displayText = if ($Item[$TagProperty]) { [System.IO.Path]::GetFileName($Item[$TagProperty]) } else { $Item.Label }
     if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
         $sp = [System.Windows.Controls.StackPanel]::new()
         $sp.Orientation = "Horizontal"
@@ -238,12 +240,12 @@ function New-NcsLeafTreeItem {
         $icon.Margin = [System.Windows.Thickness]::new(0,0,5,0)
         $sp.Children.Add($icon) | Out-Null
         $tb = [System.Windows.Controls.TextBlock]::new()
-        $tb.Text = $Item.Label
+        $tb.Text = $displayText
         $tb.VerticalAlignment = "Center"
         $sp.Children.Add($tb) | Out-Null
         $leafItem.Header = $sp
     } else {
-        $leafItem.Header = $Item.Label
+        $leafItem.Header = $displayText
     }
     return $leafItem
 }
@@ -1027,16 +1029,7 @@ function Show-NcsConsoleApp {
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
             $state.Settings.LastAction = $item.Tag
             $playbook = $item.Tag
-            if ($item.Header -is [System.Windows.Controls.StackPanel]) {
-                foreach ($child in @($item.Header.Children)) {
-                    if ($child -is [System.Windows.Controls.TextBlock]) {
-                        $label = $child.Text
-                        break
-                    }
-                }
-            } else {
-                $label = [string] $item.Header
-            }
+            $label = if ($item.ToolTip) { [string] $item.ToolTip } else { [string] $item.Tag }
         }
         $controls.ActionSelectionTitle.Text = $label
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
@@ -1153,6 +1146,18 @@ function Show-NcsConsoleApp {
     })
 
     $controls.ActionLimitTree.ContextMenu = $limitContextMenu
+
+    $controls.ActionLimitTree.Add_MouseDoubleClick({
+        param($s, $e)
+        $selected = $controls.ActionLimitTree.SelectedItem
+        if ($null -eq $selected) { return }
+        # Only toggle limit on leaf items (no children = host, not group)
+        if ($selected.Items.Count -gt 0) { return }
+        $tag = & $getSelectedTag
+        if (-not $tag) { return }
+        if (& $isInLimit $tag) { & $removeFromLimit } else { & $appendToLimit $tag }
+        $e.Handled = $true
+    })
 
     $controls.ActionLimitTree.Add_PreviewMouseWheel({
         param($s, $e)
