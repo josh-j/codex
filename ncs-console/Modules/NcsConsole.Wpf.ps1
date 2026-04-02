@@ -469,10 +469,18 @@ function Add-NcsOptionControls {
                 $Panel.Children.Add($checkBox) | Out-Null
             }
             default {
-                $textBox = [System.Windows.Controls.TextBox]::new()
-                $textBox.Tag = $opt['name']
-                if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
-                $Panel.Children.Add($textBox) | Out-Null
+                $isPassword = $opt['name'] -match 'password|secret|passphrase'
+                if ($isPassword) {
+                    $pwBox = [System.Windows.Controls.PasswordBox]::new()
+                    $pwBox.Tag = $opt['name']
+                    if ($opt.ContainsKey('default')) { $pwBox.Password = $opt['default'] }
+                    $Panel.Children.Add($pwBox) | Out-Null
+                } else {
+                    $textBox = [System.Windows.Controls.TextBox]::new()
+                    $textBox.Tag = $opt['name']
+                    if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
+                    $Panel.Children.Add($textBox) | Out-Null
+                }
             }
         }
     }
@@ -562,6 +570,11 @@ function Get-NcsControlValues {
             }
         } elseif ($child -is [System.Windows.Controls.ComboBox]) {
             $val = [string] $child.SelectedItem
+            if (-not [string]::IsNullOrWhiteSpace($val)) {
+                $values[$child.Tag] = $val
+            }
+        } elseif ($child -is [System.Windows.Controls.PasswordBox]) {
+            $val = $child.Password
             if (-not [string]::IsNullOrWhiteSpace($val)) {
                 $values[$child.Tag] = $val
             }
