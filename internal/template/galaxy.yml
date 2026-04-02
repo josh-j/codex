@@ -1,0 +1,13 @@
+---
+# TEMPLATE: Replace name, description, tags, and license for your collection.
+namespace: internal
+name: template
+version: 1.0.0
+readme: README.md
+authors:
+  - NCS
+description: Gold-standard scaffold — copy and rename to create a new platform collection.
+license: ["GPL-3.0-or-later"]
+tags:
+  - template
+repository: https://web.git.mil/dct/ansible-ncs
