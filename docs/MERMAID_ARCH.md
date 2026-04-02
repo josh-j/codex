@@ -4,9 +4,9 @@
 graph TB
     subgraph NCS["NCS — Network Control System"]
 
-        subgraph Console["ncs-console &lpar;PowerShell/WPF GUI&rpar;"]
+        subgraph Console["ncs-console &lpar;Operator GUI&rpar;"]
             WPF["WPF MainWindow<br/>&lpar;WebView2&rpar;"]
-            Actions["actions.yml<br/>&lpar;Playbook Launcher&rpar;"]
+            Actions["actions.yml<br/>&lpar;Action Registry&rpar;"]
             Settings["Settings &amp; Preflight"]
             Execution["Execution Module"]
             WPF --> Actions
@@ -14,48 +14,47 @@ graph TB
             Settings --> Execution
         end
 
-        subgraph Ansible["ncs-ansible &lpar;Ansible Collections + Playbooks&rpar;"]
+        subgraph Ansible["ncs-ansible &lpar;Collection &amp; Playbook Engine&rpar;"]
             subgraph Playbooks["Playbooks"]
                 Site["site.yml &lpar;Orchestrator&rpar;"]
-                VMPlay["vmware/ &lpar;audit, stig, remediate&rpar;"]
-                LinPlay["linux/ &lpar;audit, stig, remediate&rpar;"]
-                WinPlay["windows/ &lpar;audit, stig, remediate&rpar;"]
-                InfraPlay["infra/ &lpar;setup, networking&rpar;"]
-                Site --> VMPlay & LinPlay & WinPlay & InfraPlay
+                PlatA["platform-a/ playbooks"]
+                PlatB["platform-b/ playbooks"]
+                PlatN["platform-n/ playbooks"]
+                Site --> PlatA & PlatB & PlatN
             end
 
             subgraph Collections["Internal Collections"]
-                Core["internal.core<br/>─ ncs_collector callback<br/>─ stig action plugin<br/>─ pwsh action plugin<br/>─ filter plugins"]
-                VMColl["internal.vmware<br/>─ common, esxi, vcsa, vm roles"]
-                LinColl["internal.linux<br/>─ ubuntu, photon roles"]
-                WinColl["internal.windows<br/>─ windows role"]
-                TplColl["internal.template<br/>─ scaffold collection"]
+                Core["internal.core<br/>─ ncs_collector callback<br/>─ action plugins<br/>─ filter plugins"]
+                CollA["internal.&lt;platform-a&gt;<br/>─ platform roles"]
+                CollB["internal.&lt;platform-b&gt;<br/>─ platform roles"]
+                CollN["internal.&lt;platform-n&gt;<br/>─ platform roles"]
+                TplColl["internal.template<br/>─ scaffold for new collections"]
             end
 
             Playbooks -->|"uses roles"| Collections
             Core -->|"emits raw_*.yaml"| Artifacts["Telemetry Lake<br/>&lpar;raw_*.yaml artifacts&rpar;"]
         end
 
-        subgraph Reporter["ncs-reporter &lpar;Python CLI&rpar;"]
-            CLI["cli.py<br/>&lpar;Click entry point&rpar;"]
-            Norm["normalization/<br/>─ schema-driven transforms<br/>─ STIG normalization<br/>─ alert evaluation"]
-            Agg["aggregation.py<br/>&lpar;multi-host rollup&rpar;"]
-            VM_["view_models/<br/>&lpar;Pydantic contracts&rpar;"]
-            Render["renderers + templates<br/>&lpar;HTML dashboards&rpar;"]
-            CKLB["cklb_export.py<br/>&lpar;STIG CKLB artifacts&rpar;"]
-            Configs["configs/<br/>&lpar;YAML schemas&rpar;"]
+        subgraph Reporter["ncs-reporter &lpar;Reporting Engine&rpar;"]
+            CLI["CLI &lpar;Click entry point&rpar;"]
+            Configs["configs/<br/>&lpar;YAML report schemas&rpar;"]
+            Norm["normalization/<br/>─ schema-driven transforms<br/>─ alert evaluation"]
+            Agg["aggregation<br/>&lpar;multi-host rollup&rpar;"]
+            VM_["view models<br/>&lpar;Pydantic contracts&rpar;"]
+            Render["renderers + templates<br/>&lpar;HTML / custom formats&rpar;"]
+            Export["export modules<br/>&lpar;pluggable output formats&rpar;"]
 
             CLI --> Norm --> Agg --> VM_ --> Render
-            CLI --> CKLB
+            CLI --> Export
             Configs --> Norm
         end
 
         Console -->|"launches playbooks"| Ansible
         Artifacts -->|"consumed by"| Reporter
-        Reporter -->|"outputs"| Reports["Reports<br/>&lpar;/srv/samba/reports/&rpar;"]
+        Reporter -->|"outputs"| Reports["Reports &amp; Artifacts"]
     end
 
-    Targets["Managed Fleet<br/>vCenter · ESXi · VMs<br/>Ubuntu · Photon · Windows"]
+    Targets["Managed Infrastructure<br/>&lpar;any platform reachable by Ansible&rpar;"]
     Ansible <-->|"SSH / WinRM / API"| Targets
 ```
 
@@ -63,14 +62,14 @@ graph TB
 
 | Component | Role | Tech |
 |---|---|---|
-| **ncs-console** | Operator GUI — launches playbooks, shows results | PowerShell + WPF/WebView2 |
-| **ncs-ansible** | Stage 1 — Collect. Runs audit/STIG/remediate roles, emits `raw_*.yaml` telemetry | Ansible collections + playbooks |
-| **ncs-reporter** | Stage 2 — Report. Normalizes raw data, evaluates alerts, renders HTML dashboards & CKLB | Python CLI (Click + Pydantic) |
+| **ncs-console** | Operator GUI — action launcher and preflight checks | PowerShell + WPF/WebView2 |
+| **ncs-ansible** | Stage 1 — Collect. Runs platform roles via playbooks, emits structured `raw_*.yaml` telemetry via the `ncs_collector` callback | Ansible collections + playbooks |
+| **ncs-reporter** | Stage 2 — Report. Schema-driven normalization, alerting, aggregation, and rendering into dashboards and export artifacts | Python CLI (Click + Pydantic) |
 
 ## Data Flow
 
-1. **Console** triggers Ansible playbooks via `actions.yml`
-2. **Ansible** connects to managed fleet over SSH / WinRM / vSphere API
-3. **`ncs_collector`** callback writes `raw_*.yaml` artifacts to the telemetry lake
-4. **Reporter** reads artifacts → normalizes → aggregates → renders HTML reports and CKLB files
-5. Reports are written to `/srv/samba/reports/`
+1. **Console** selects an action from the registry and launches the corresponding Ansible playbook
+2. **Ansible** connects to managed infrastructure over SSH / WinRM / platform APIs
+3. Platform roles collect data; the **`ncs_collector`** callback persists results as `raw_*.yaml` artifacts
+4. **Reporter** reads artifacts → normalizes via config-driven schemas → aggregates across hosts → renders reports and export artifacts
+5. Output is written to a configurable report destination
