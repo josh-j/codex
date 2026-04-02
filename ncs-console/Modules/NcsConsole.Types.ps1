@@ -133,26 +133,25 @@ def parse_option_line(key, value):
             opt["label"] = auto_label(key)
     return opt
 
-def parse_ncs_blocks(path):
-    """Parse # >>> / # <<< blocks. Entries within a block separated by # ---."""
+def parse_ncs_blocks(text):
+    """Parse # >>> / # <<< blocks from file text. Entries within a block separated by # ---."""
     raw_blocks = []
     current = None
-    with open(path) as fh:
-        for raw in fh:
-            stripped = raw.strip()
-            if stripped == "# >>>":
-                current = []
-                continue
-            if stripped == "# <<<":
-                if current is not None:
-                    raw_blocks.append(current)
-                current = None
-                continue
-            if current is not None and stripped.startswith("#"):
-                txt = stripped[2:] if stripped.startswith("# ") else stripped[1:]
-                current.append(txt)
-            elif current is None and not stripped.startswith("#") and stripped != "":
-                break
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if stripped == "# >>>":
+            current = []
+            continue
+        if stripped == "# <<<":
+            if current is not None:
+                raw_blocks.append(current)
+            current = None
+            continue
+        if current is not None and stripped.startswith("#"):
+            txt = stripped[2:] if stripped.startswith("# ") else stripped[1:]
+            current.append(txt)
+        elif current is None and not stripped.startswith("#") and stripped != "":
+            break
     segments = []
     for lines in raw_blocks:
         segment = []
@@ -257,8 +256,8 @@ for root, dirs, files in os.walk(base):
         path = os.path.join(root, f)
         playbook = os.path.relpath(path, base).replace(os.sep, "/")
         try:
-            with open(path) as fh:
-                docs = yaml.safe_load(fh)
+            text = open(path).read()
+            docs = yaml.safe_load(text)
             if not isinstance(docs, list) or len(docs) == 0:
                 continue
             play = docs[0]
@@ -267,7 +266,7 @@ for root, dirs, files in os.walk(base):
             is_import = any(k.endswith("import_playbook") for k in play)
         except Exception:
             continue
-        blocks = parse_ncs_blocks(path)
+        blocks = parse_ncs_blocks(text)
         if blocks:
             for blk in blocks:
                 lbl = blk.get("label", fallback_label(f, None if is_import else play))

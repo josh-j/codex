@@ -93,7 +93,7 @@
           {% set site_code = site.vcenter | regex_replace('^vcsa-', '') %}
                   {{ site_code }}_esxi_hosts:
                     vars:
-                      _ncs_vcenter: {{ site.vcenter }}
+                      _ncs_vcenter: "{{ site.vcenter }}"
           {% if site.hosts | length > 0 %}
                     hosts:
           {% for host in site.hosts | sort %}
