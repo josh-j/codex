@@ -854,7 +854,8 @@ function Show-NcsConsoleApp {
                 $rtVersion = [Microsoft.Web.WebView2.Core.CoreWebView2Environment]::GetAvailableBrowserVersionString()
             } catch {
                 $reportViewState.IsInitializing = $false
-                $script:NcsWebView2Status = "WebView2 Runtime not detected. Run: winget install Microsoft.EdgeWebView2Runtime --scope user"
+                $innerMsg = $_.Exception.InnerException.Message ?? $_.Exception.Message
+                $script:NcsWebView2Status = "WebView2 Runtime not detected ($innerMsg). If already installed, try: winget install Microsoft.EdgeWebView2Runtime --scope machine (as admin)"
                 return $false
             }
 
