@@ -1860,6 +1860,9 @@ function Show-NcsConsoleApp {
                 } `
                 -OnOutputBatch {
                     Sync-NcsConsoleScroll -Controls $controls
+                    if ($controls.StatusTextBlock.Text -eq "Starting remote command.") {
+                        $controls.StatusTextBlock.Text = "Running."
+                    }
                 } `
                 -OnStale {
                     param($idleSeconds)
