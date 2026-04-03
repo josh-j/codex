@@ -25,6 +25,7 @@
           _raw_dvs_portgroups: {}
           _raw_licenses: {}
           _raw_extensions: {}
+          _raw_content_library_ids: {}
           _raw_content_libraries: {}
           _raw_tag_categories: {}
           _raw_tags: {}
@@ -124,14 +125,27 @@
       changed_when: false
       when: vcsa_collect_extensions | default(true) | bool
 
-    - name: Inventory | Query Content Libraries
+    - name: Inventory | Query Content Library IDs
       community.vmware.vmware_content_library_info:
-      register: _raw_content_libraries
+      register: _raw_content_library_ids
       delegate_to: localhost
       no_log: true
       failed_when: false
       changed_when: false
       when: vcsa_collect_content_libraries | default(true) | bool
+
+    - name: Inventory | Query Content Library Details
+      community.vmware.vmware_content_library_info:
+        library_id: "{{ item }}"
+      loop: "{{ (_raw_content_library_ids | default({})).content_libs | default([]) }}"
+      register: _raw_content_libraries
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_content_libraries | default(true) | bool
+        - (_raw_content_library_ids | default({})).content_libs | default([]) | length > 0
 
     - name: Inventory | Query Tag Categories
       community.vmware.vmware_category_info:
@@ -186,13 +200,30 @@
   always:
     # --- Assemble ---
 
-    - name: Flatten datastores from per-datacenter results
+    - name: Flatten and normalize datastores from per-datacenter results
       ansible.builtin.set_fact:
         _flat_datastores: >-
-          {{ _raw_datastores.results | default([])
-             | selectattr('datastores', 'defined')
-             | map(attribute='datastores')
-             | flatten | list }}
+          {% set ds_list = [] %}
+          {% for raw_ds in (_raw_datastores.results | default([])
+               | selectattr('datastores', 'defined')
+               | map(attribute='datastores')
+               | flatten) %}
+            {% set cap = (raw_ds.capacity | default(0) | float) %}
+            {% set free = (raw_ds.freeSpace | default(0) | float) %}
+            {% set cap_gb = (cap / 1073741824) | round(1) %}
+            {% set free_gb = (free / 1073741824) | round(1) %}
+            {% set used_pct = (((cap - free) / cap) * 100) | round(1) if cap > 0 else 0.0 %}
+            {% set _ = ds_list.append({
+              "name": raw_ds.name | default(""),
+              "type": raw_ds.type | default(""),
+              "capacity_gb": cap_gb,
+              "free_gb": free_gb,
+              "used_pct": used_pct,
+              "accessible": raw_ds.accessible | default(false),
+              "maintenance_mode": raw_ds.maintenanceMode | default("normal"),
+            }) %}
+          {% endfor %}
+          {{ ds_list }}
       changed_when: false
 
     - name: Flatten distributed portgroups from per-datacenter results
@@ -276,19 +307,58 @@
           dvswitch_count: "{{ ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) | length }}"
           dvs_portgroup_count: "{{ _flat_dvs_portgroups | length }}"
           license_count: "{{ ((_raw_licenses | default({})).licenses | default([])) | length }}"
-          extension_count: "{{ ((_raw_extensions | default({})).ext_facts | default([])) | length }}"
-          content_library_count: "{{ ((_raw_content_libraries | default({})).content_libs | default([])) | length }}"
+          extension_count: "{{ ((_raw_extensions | default({})).extension_info | default([])) | length }}"
+          content_library_count: "{{ (_raw_content_library_ids | default({})).content_libs | default([]) | length }}"
           tag_category_count: "{{ ((_raw_tag_categories | default({})).tag_category_info | default([])) | length }}"
           tag_count: "{{ ((_raw_tags | default({})).tag_info | default([])) | length }}"
           alarm_count: "{{ ((_raw_alarms | default({})).alarms | default([])) | length }}"
           clusters: "{{ _flat_clusters }}"
           datastores: "{{ _flat_datastores }}"
           resource_pools: "{{ (_raw_resource_pools | default({})).resource_pool_info | default([]) }}"
-          dvswitches: "{{ (_raw_dvswitches | default({})).distributed_virtual_switches | default([]) }}"
+          dvswitches: >-
+            {% set sw_list = [] %}
+            {% for sw in ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) %}
+              {% set props = ((sw.configure | default({})).settings | default({})).properties | default({}) %}
+              {% set general = props.general | default({}) %}
+              {% set advanced = props.advanced | default({}) %}
+              {% set _ = sw_list.append({
+                "name": general.name | default(sw.configure.name | default("")),
+                "num_ports": general.numPorts | default(0),
+                "num_uplinks": general.numUplinks | default(0),
+                "mtu": advanced.maxMtu | default(0),
+                "uuid": sw.uuid | default(""),
+                "vendor": general.vendor | default(""),
+                "version": general.version | default(""),
+              }) %}
+            {% endfor %}
+            {{ sw_list }}
           dvs_portgroups: "{{ _flat_dvs_portgroups }}"
           licenses: "{{ (_raw_licenses | default({})).licenses | default([]) }}"
-          extensions: "{{ (_raw_extensions | default({})).ext_facts | default([]) }}"
-          content_libraries: "{{ (_raw_content_libraries | default({})).content_libs | default([]) }}"
+          extensions: >-
+            {% set ext_list = [] %}
+            {% for e in ((_raw_extensions | default({})).extension_info | default([])) %}
+              {% set _ = ext_list.append({
+                "ext_label": e.extension_label | default(""),
+                "ext_company": e.extension_company | default(""),
+                "ext_version": e.extension_version | default(""),
+                "ext_key": e.extension_key | default(""),
+                "ext_last_heartbeat_time": e.extension_last_heartbeat_time | default(""),
+              }) %}
+            {% endfor %}
+            {{ ext_list }}
+          content_libraries: >-
+            {% set libs = [] %}
+            {% for result in (_raw_content_libraries.results | default([])) %}
+              {% for lib in (result.content_lib_details | default([])) %}
+                {% set _ = libs.append({
+                  "lib_name": lib.library_name | default(""),
+                  "lib_type": lib.library_type | default(""),
+                  "lib_description": lib.library_description | default(""),
+                  "lib_id": lib.library_id | default(""),
+                }) %}
+              {% endfor %}
+            {% endfor %}
+            {{ libs }}
           tag_categories: "{{ (_raw_tag_categories | default({})).tag_category_info | default([]) }}"
           tags: "{{ (_raw_tags | default({})).tag_info | default([]) }}"
           active_alarms: "{{ (_raw_alarms | default({})).alarms | default([]) }}"
