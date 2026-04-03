@@ -1005,6 +1005,18 @@ class CallbackModule(CallbackBase):
         for entry in items:
             if not isinstance(entry, dict):
                 continue
+            # Unwrap Ansible retry wrapper — when retries/until are used on a
+            # loop task, each result entry has an 'attempts' list containing the
+            # actual task result(s).  Use the last successful attempt.
+            if "attempts" in entry and isinstance(entry["attempts"], list):
+                for attempt in reversed(entry["attempts"]):
+                    if isinstance(attempt, dict) and not attempt.get("failed"):
+                        # Merge attempt data into entry (item, ansible_facts, etc.)
+                        merged = dict(entry)
+                        merged.update(attempt)
+                        merged.pop("attempts", None)
+                        entry = merged
+                        break
             if entry.get("failed") or entry.get("skipped"):
                 continue
             entry_host = str(entry.get(name_key, "")).strip()
