@@ -202,7 +202,7 @@
 
     - name: Flatten and normalize datastores from per-datacenter results
       ansible.builtin.set_fact:
-        _flat_datastores: >-
+        _flat_datastores_raw: >-
           {% set ds_list = [] %}
           {% for raw_ds in (_raw_datastores.results | default([])
                | selectattr('datastores', 'defined')
@@ -226,18 +226,19 @@
           {{ ds_list }}
       changed_when: false
 
+    - name: Parse flattened datastores
+      ansible.builtin.set_fact:
+        _flat_datastores: "{{ _flat_datastores_raw | from_yaml | default([]) }}"
+      changed_when: false
+
     - name: Flatten distributed portgroups from per-datacenter results
       ansible.builtin.set_fact:
-        _flat_dvs_portgroups: >-
-          {{ _raw_dvs_portgroups.results | default([])
-             | selectattr('dvs_portgroup_info', 'defined')
-             | map(attribute='dvs_portgroup_info')
-             | flatten | list }}
+        _flat_dvs_portgroups: "{{ _raw_dvs_portgroups.results | default([]) | selectattr('dvs_portgroup_info', 'defined') | map(attribute='dvs_portgroup_info') | flatten | list }}"
       changed_when: false
 
     - name: Flatten clusters and compute counts
       ansible.builtin.set_fact:
-        _flat_clusters: >-
+        _flat_clusters_raw: >-
           {% set clusters = [] %}
           {% for dc in (_raw_clusters.results | default([])) %}
             {% if dc.clusters is defined and dc.clusters is mapping %}
@@ -259,7 +260,7 @@
             {% endif %}
           {% endfor %}
           {{ clusters }}
-        _cluster_count: >-
+        _cluster_count_raw: >-
           {% set count = [] %}
           {% for dc in (_raw_clusters.results | default([])) %}
             {% if dc.clusters is defined and dc.clusters is mapping %}
@@ -267,7 +268,7 @@
             {% endif %}
           {% endfor %}
           {{ count | length }}
-        _esxi_host_count: >-
+        _esxi_host_count_raw: >-
           {% set count = [0] %}
           {% for dc in (_raw_clusters.results | default([])) %}
             {% if dc.clusters is defined and dc.clusters is mapping %}
@@ -279,6 +280,66 @@
             {% endif %}
           {% endfor %}
           {{ count | sum }}
+      changed_when: false
+
+    - name: Parse flattened clusters and counts
+      ansible.builtin.set_fact:
+        _flat_clusters: "{{ _flat_clusters_raw | from_yaml | default([]) }}"
+        _cluster_count: "{{ _cluster_count_raw | int }}"
+        _esxi_host_count: "{{ _esxi_host_count_raw | int }}"
+      changed_when: false
+
+    - name: Flatten dvswitches, extensions, and content libraries
+      ansible.builtin.set_fact:
+        _flat_dvswitches_raw: >-
+          {% set sw_list = [] %}
+          {% for sw in ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) %}
+            {% set props = ((sw.configure | default({})).settings | default({})).properties | default({}) %}
+            {% set general = props.general | default({}) %}
+            {% set advanced = props.advanced | default({}) %}
+            {% set _ = sw_list.append({
+              "name": general.name | default(sw.configure.name | default("")),
+              "num_ports": general.numPorts | default(0),
+              "num_uplinks": general.numUplinks | default(0),
+              "mtu": advanced.maxMtu | default(0),
+              "uuid": sw.uuid | default(""),
+              "vendor": general.vendor | default(""),
+              "version": general.version | default(""),
+            }) %}
+          {% endfor %}
+          {{ sw_list }}
+        _flat_extensions_raw: >-
+          {% set ext_list = [] %}
+          {% for e in ((_raw_extensions | default({})).extension_info | default([])) %}
+            {% set _ = ext_list.append({
+              "ext_label": e.extension_label | default(""),
+              "ext_company": e.extension_company | default(""),
+              "ext_version": e.extension_version | default(""),
+              "ext_key": e.extension_key | default(""),
+              "ext_last_heartbeat_time": e.extension_last_heartbeat_time | default(""),
+            }) %}
+          {% endfor %}
+          {{ ext_list }}
+        _flat_content_libraries_raw: >-
+          {% set libs = [] %}
+          {% for result in (_raw_content_libraries.results | default([])) %}
+            {% for lib in (result.content_lib_details | default([])) %}
+              {% set _ = libs.append({
+                "lib_name": lib.library_name | default(""),
+                "lib_type": lib.library_type | default(""),
+                "lib_description": lib.library_description | default(""),
+                "lib_id": lib.library_id | default(""),
+              }) %}
+            {% endfor %}
+          {% endfor %}
+          {{ libs }}
+      changed_when: false
+
+    - name: Parse flattened dvswitches, extensions, and content libraries
+      ansible.builtin.set_fact:
+        _flat_dvswitches: "{{ _flat_dvswitches_raw | from_yaml | default([]) }}"
+        _flat_extensions: "{{ _flat_extensions_raw | from_yaml | default([]) }}"
+        _flat_content_libraries: "{{ _flat_content_libraries_raw | from_yaml | default([]) }}"
       changed_when: false
 
     - name: Assemble flat vCenter payload
@@ -315,50 +376,11 @@
           clusters: "{{ _flat_clusters }}"
           datastores: "{{ _flat_datastores }}"
           resource_pools: "{{ (_raw_resource_pools | default({})).resource_pool_info | default([]) }}"
-          dvswitches: >-
-            {% set sw_list = [] %}
-            {% for sw in ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) %}
-              {% set props = ((sw.configure | default({})).settings | default({})).properties | default({}) %}
-              {% set general = props.general | default({}) %}
-              {% set advanced = props.advanced | default({}) %}
-              {% set _ = sw_list.append({
-                "name": general.name | default(sw.configure.name | default("")),
-                "num_ports": general.numPorts | default(0),
-                "num_uplinks": general.numUplinks | default(0),
-                "mtu": advanced.maxMtu | default(0),
-                "uuid": sw.uuid | default(""),
-                "vendor": general.vendor | default(""),
-                "version": general.version | default(""),
-              }) %}
-            {% endfor %}
-            {{ sw_list }}
+          dvswitches: "{{ _flat_dvswitches }}"
           dvs_portgroups: "{{ _flat_dvs_portgroups }}"
           licenses: "{{ (_raw_licenses | default({})).licenses | default([]) }}"
-          extensions: >-
-            {% set ext_list = [] %}
-            {% for e in ((_raw_extensions | default({})).extension_info | default([])) %}
-              {% set _ = ext_list.append({
-                "ext_label": e.extension_label | default(""),
-                "ext_company": e.extension_company | default(""),
-                "ext_version": e.extension_version | default(""),
-                "ext_key": e.extension_key | default(""),
-                "ext_last_heartbeat_time": e.extension_last_heartbeat_time | default(""),
-              }) %}
-            {% endfor %}
-            {{ ext_list }}
-          content_libraries: >-
-            {% set libs = [] %}
-            {% for result in (_raw_content_libraries.results | default([])) %}
-              {% for lib in (result.content_lib_details | default([])) %}
-                {% set _ = libs.append({
-                  "lib_name": lib.library_name | default(""),
-                  "lib_type": lib.library_type | default(""),
-                  "lib_description": lib.library_description | default(""),
-                  "lib_id": lib.library_id | default(""),
-                }) %}
-              {% endfor %}
-            {% endfor %}
-            {{ libs }}
+          extensions: "{{ _flat_extensions }}"
+          content_libraries: "{{ _flat_content_libraries }}"
           tag_categories: "{{ (_raw_tag_categories | default({})).tag_category_info | default([]) }}"
           tags: "{{ (_raw_tags | default({})).tag_info | default([]) }}"
           active_alarms: "{{ (_raw_alarms | default({})).alarms | default([]) }}"
