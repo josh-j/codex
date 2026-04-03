@@ -83,13 +83,13 @@ alerts:
   - id: snapshots_present
     category: "Snapshots"
     severity: INFO
-    when: recent_snapshot_count > 0
-    msg: "VM snapshots present: {{ snapshot_count }} snapshot(s) found"
+    when: snapshots | length > 0
+    msg: "VM snapshots present: {{ snapshots | length }} snapshot(s) found"
 
   - id: aged_snapshots
     category: "Snapshots"
     severity: WARNING
-    when: aged_snapshot_count > 0
+    when: aged_snapshot_count > 0 and snapshots | length > 0
     msg: "{{ aged_snapshot_count }} snapshot(s) older than 7 days — review for removal"
 
 # ---------------------------------------------------------------------------
