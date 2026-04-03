@@ -376,6 +376,7 @@ wait "`$child"
 exit `$?
 "@
 
+    $runScript = $runScript -replace "`r", ""
     return "bash -lc " + (ConvertTo-NcsBashLiteral -Value $runScript)
 }
 
@@ -645,13 +646,14 @@ function Stop-NcsRemoteCommand {
 
     try {
         if ($Handle.PSObject.Properties.Match('RunId').Count -gt 0 -and $Handle.PSObject.Properties.Match('Settings').Count -gt 0) {
-            $remoteCommand = "bash -lc " + (ConvertTo-NcsBashLiteral -Value @"
+            $killScript = (@"
 RUN_ROOT="`${HOME}/$($script:NcsRemoteRunRoot)"
 PID_FILE="`${RUN_ROOT}/$($Handle.RunId).pid"
 if [ -f "`${PID_FILE}" ]; then
   kill -TERM "`$(cat "`${PID_FILE}")" >/dev/null 2>&1 || true
 fi
-"@)
+"@) -replace "`r", ""
+            $remoteCommand = "bash -lc " + (ConvertTo-NcsBashLiteral -Value $killScript)
             $null = Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments (Get-NcsSshArgumentList -Settings $Handle.Settings -RemoteCommand $remoteCommand) -Environment (Get-NcsSshEnvironment -Settings $Handle.Settings) -TimeoutMs 10000
         }
         if ($Handle.Process -and -not $Handle.Process.HasExited) {
