@@ -151,7 +151,6 @@ function Get-NcsXamlControlMap {
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightButtonText",
-        "PreflightButtonIcon",
         "RefreshPlaybooksButton",
         "PlaybooksCloseButton",
         "PlaybookPlaceholder",
@@ -705,17 +704,13 @@ function Set-NcsPreflightState {
     )
 
     if ($State -eq "Connected") {
-        $Controls.PreflightButtonText.Text = "Disconnect"
+        $Controls.PreflightButtonText.Text = "⚡ Disconnect"
         $Controls.PreflightButton.Background = Get-NcsBrush -Color "#16825d"
         $Controls.PreflightButton.ToolTip = "Disconnect from remote host"
-        $Controls.PreflightButtonIcon.Fill = Get-NcsBrush -Color "White"
-        $Controls.PreflightButtonIcon.Stroke = Get-NcsBrush -Color "White"
     } else {
-        $Controls.PreflightButtonText.Text = "Connect"
+        $Controls.PreflightButtonText.Text = "⚡ Connect"
         $Controls.PreflightButton.Background = Get-NcsBrush -Color "#6e9fff"
         $Controls.PreflightButton.ToolTip = "Connect to remote host"
-        $Controls.PreflightButtonIcon.Fill = [System.Windows.Media.Brushes]::Transparent
-        $Controls.PreflightButtonIcon.Stroke = Get-NcsBrush -Color "White"
     }
 }
 

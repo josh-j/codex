@@ -312,10 +312,7 @@
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Button.Template>
-                    <StackPanel Orientation="Horizontal">
-                        <Path x:Name="PreflightButtonIcon" Width="10" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="1.5" Fill="Transparent" Data="M9 0 L3 7 L7 7 L5 14 L11 7 L7 7" VerticalAlignment="Center" Margin="0,0,5,0" />
-                        <TextBlock x:Name="PreflightButtonText" Text="Connect" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" />
-                    </StackPanel>
+                    <TextBlock x:Name="PreflightButtonText" Text="⚡ Connect" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" />
                 </Button>
                 <Border Grid.Column="1" Background="#0d1015" BorderBrush="#22262d" BorderThickness="0,1,0,0" Padding="{StaticResource PaddingBar}">
                 <Grid VerticalAlignment="Center">
