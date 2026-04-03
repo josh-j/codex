@@ -3,9 +3,15 @@ all:
   children:
     vcsa:
       hosts:
-        vcsa-aedw: {}
-        vcsa-ashe: {}
-        vcsa-gfpy: {}
-        vcsa-mqna: {}
-        vcsa-sdhm: {}
-        vcsa-tyfq: {}
+        vcsa-aedw:
+          ansible_host: vcsa-aedw.area52.afnoapps.usaf.mil
+        vcsa-ashe:
+          ansible_host: vcsa-ashe.area52.afnoapps.usaf.mil
+        vcsa-gfpy:
+          ansible_host: vcsa-gfpy.area52.afnoapps.usaf.mil
+        vcsa-mqna:
+          ansible_host: vcsa-mqna.area52.afnoapps.usaf.mil
+        vcsa-sdhm:
+          ansible_host: vcsa-sdhm.area52.afnoapps.usaf.mil
+        vcsa-tyfq:
+          ansible_host: vcsa-tyfq.area52.afnoapps.usaf.mil
