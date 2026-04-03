@@ -60,7 +60,7 @@ alerts:
   - id: powered_off_vms
     category: "Workload Inventory"
     severity: WARNING
-    when: powered_off_vm_count > 0
+    when: powered_off_vm_count > 0 and virtual_machines | length > 0
     msg: "{{ powered_off_vm_count }} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
