@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .._report_context import ReportContext
+from ..constants import FLEET_ALERT_SEVERITIES
 from ..platform_registry import PlatformRegistry, default_registry
 from .common import (
     _count_alerts,
@@ -82,7 +83,7 @@ def build_site_dashboard_view(
             all_alerts.extend(
                 extract_platform_alerts(alerts_list, hostname, audit_type_key, category, platform_label=display)
             )
-            if not alerts_list and status in ("CRITICAL", "WARNING"):
+            if not alerts_list and status in FLEET_ALERT_SEVERITIES:
                 all_alerts.append(
                     {
                         "severity": status,

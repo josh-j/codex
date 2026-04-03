@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .._report_context import ReportContext
 
 from ..constants import (
-    HEALTH_OK, SEVERITY_CRITICAL, SEVERITY_WARNING,
+    FLEET_ALERT_SEVERITIES, HEALTH_OK, SEVERITY_CRITICAL, SEVERITY_WARNING,
 )
 from ..platform_registry import default_registry
 from ..primitives import (
@@ -137,13 +137,13 @@ def extract_platform_alerts(
     *,
     platform_label: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Extract CRITICAL/WARNING alerts from a list into site-dashboard format."""
+    """Extract fleet-reportable alerts from a list into site-dashboard format."""
     result: list[dict[str, Any]] = []
     for alert in safe_list(alerts_list):
         if not isinstance(alert, dict):
             continue
         sev = canonical_severity(alert.get("severity"))
-        if sev in (SEVERITY_CRITICAL, SEVERITY_WARNING):
+        if sev in FLEET_ALERT_SEVERITIES:
             result.append(
                 {
                     "severity": sev,

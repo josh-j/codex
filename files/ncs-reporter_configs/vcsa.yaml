@@ -81,7 +81,7 @@ alerts:
 
   - id: appliance_uptime_recent_reboot
     category: "Appliance Lifecycle"
-    severity: INFO
+    severity: WARNING
     suppress_if: appliance_uptime_excessive
     when: appliance_uptime_days < 1.0
     msg: "VCSA was rebooted less than 24 hours ago — verify this was planned"

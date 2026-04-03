@@ -17,6 +17,7 @@ from ncs_reporter.models.report_schema import (
     StatCardsWidget,
     TableWidget,
 )
+from ncs_reporter.constants import FLEET_ALERT_SEVERITIES
 from ncs_reporter.normalization._when import evaluate_when
 from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.view_models.common import GenericNavContext, _count_alerts, _iter_hosts, status_badge_meta
@@ -505,8 +506,7 @@ def build_generic_fleet_view(
     _host_order: list[str] = []
     _host_groups: dict[str, dict[str, Any]] = {}
 
-    # Only process WARNING/CRITICAL
-    queued_alerts = [a for a in fleet_alerts if a.get("severity") in ("CRITICAL", "WARNING")]
+    queued_alerts = [a for a in fleet_alerts if a.get("severity") in FLEET_ALERT_SEVERITIES]
 
     for alert in sorted(queued_alerts, key=lambda a: (a.get("severity") != "CRITICAL", str(a.get("host", "")))):
         host = str(alert.get("host", ""))
