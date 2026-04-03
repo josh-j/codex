@@ -644,30 +644,13 @@ function Stop-NcsRemoteCommand {
         $script:NcsActiveExecutionState.State = "Cancelling"
     }
 
-    # Kill local SSH process first so the UI unblocks immediately
+    # Kill local SSH process — the dropped connection triggers the remote
+    # wrapper's trap (INT TERM HUP) which kills the ansible-playbook child.
     try {
         if ($Handle.Process -and -not $Handle.Process.HasExited) {
             $Handle.Process.Kill($true)
         }
     } catch [System.InvalidOperationException] {
         $null = $_ # Process already exited
-    }
-
-    # Send remote kill asynchronously — the remote wrapper's trap handler
-    # will also clean up if SSH drops, but this is a best-effort backstop.
-    if ($Handle.PSObject.Properties.Match('RunId').Count -gt 0 -and $Handle.PSObject.Properties.Match('Settings').Count -gt 0) {
-        $killScript = (@"
-RUN_ROOT="`${HOME}/$($script:NcsRemoteRunRoot)"
-PID_FILE="`${RUN_ROOT}/$($Handle.RunId).pid"
-if [ -f "`${PID_FILE}" ]; then
-  kill -TERM "`$(cat "`${PID_FILE}")" >/dev/null 2>&1 || true
-fi
-"@) -replace "`r", ""
-        $remoteCommand = "bash -lc " + (ConvertTo-NcsBashLiteral -Value $killScript)
-        try {
-            $null = Invoke-NcsToolCommand -FilePath "ssh.exe" -Arguments (Get-NcsSshArgumentList -Settings $Handle.Settings -RemoteCommand $remoteCommand) -Environment (Get-NcsSshEnvironment -Settings $Handle.Settings) -TimeoutMs 10000
-        } catch {
-            $null = $_ # Best effort — remote process will also be cleaned up by trap
-        }
     }
 }
