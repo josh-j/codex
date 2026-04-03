@@ -1867,48 +1867,39 @@ function Show-NcsConsoleApp {
                 -OnStale {
                     param($idleSeconds)
                     $msg = "[WARNING] No output for ${idleSeconds}s — task may be stuck. Use Stop to cancel."
-                    [void] $window.Dispatcher.BeginInvoke([action]{
-                        Add-NcsConsoleLine -Controls $controls -Line $msg
-                        $controls.StatusTextBlock.Text = "No output for ${idleSeconds}s — may be stuck"
-                        Set-NcsRunStateBadge -Controls $controls -State "Blocked"
-                    })
+                    Add-NcsConsoleLine -Controls $controls -Line $msg
+                    $controls.StatusTextBlock.Text = "No output for ${idleSeconds}s — may be stuck"
+                    Set-NcsRunStateBadge -Controls $controls -State "Blocked"
                 } `
                 -OnCompleted {
                     param($runResult)
-                    $updateUi = [action]{
-                        $durationTimer.Stop()
-                        $state.LastRunResult = $runResult
-                        $state.CurrentHandle = $null
-                        Set-NcsIdleUiState -Controls $controls
-                        $badgeState = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
-                        Set-NcsRunStateBadge -Controls $controls -State $badgeState
-                        Add-NcsConsoleLine -Controls $controls -Line "--- exit: $($runResult.ExitCode) | $($runResult.OutputLines.Length) lines | $(Format-NcsDuration -Duration $runResult.Duration) ---"
-                        if (-not [string]::IsNullOrWhiteSpace($runResult.SessionLogPath)) {
-                            Add-NcsConsoleLine -Controls $controls -Line "Session log: $($runResult.SessionLogPath)"
-                        }
-                        $controls.RunMetaText.Text = $runResult.Action
-                        if ($runResult.WasCancelled) {
-                            $controls.StatusTextBlock.Text = "Run cancelled."
-                        } elseif ($runResult.Succeeded) {
-                            $controls.StatusTextBlock.Text = "Run completed successfully."
-                        } elseif (-not [string]::IsNullOrWhiteSpace($runResult.FailureStage)) {
-                            $controls.StatusTextBlock.Text = "Run failed during $($runResult.FailureStage)."
-                        } else {
-                            $controls.StatusTextBlock.Text = "Run failed."
-                        }
-                        $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
-                        $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
-                        $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
-                        if ($null -ne $runResult.DetectedPaths -and @($runResult.DetectedPaths).Length -gt 0) {
-                            $controls.DetectedPathsPanel.Visibility = "Visible"
-                        }
-                        Sync-NcsConsoleScroll -Controls $controls
+                    $durationTimer.Stop()
+                    $state.LastRunResult = $runResult
+                    $state.CurrentHandle = $null
+                    Set-NcsIdleUiState -Controls $controls
+                    $badgeState = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
+                    Set-NcsRunStateBadge -Controls $controls -State $badgeState
+                    Add-NcsConsoleLine -Controls $controls -Line "--- exit: $($runResult.ExitCode) | $($runResult.OutputLines.Length) lines | $(Format-NcsDuration -Duration $runResult.Duration) ---"
+                    if (-not [string]::IsNullOrWhiteSpace($runResult.SessionLogPath)) {
+                        Add-NcsConsoleLine -Controls $controls -Line "Session log: $($runResult.SessionLogPath)"
                     }
-                    if ($window.Dispatcher.CheckAccess()) {
-                        & $updateUi
+                    $controls.RunMetaText.Text = $runResult.Action
+                    if ($runResult.WasCancelled) {
+                        $controls.StatusTextBlock.Text = "Run cancelled."
+                    } elseif ($runResult.Succeeded) {
+                        $controls.StatusTextBlock.Text = "Run completed successfully."
+                    } elseif (-not [string]::IsNullOrWhiteSpace($runResult.FailureStage)) {
+                        $controls.StatusTextBlock.Text = "Run failed during $($runResult.FailureStage)."
                     } else {
-                        [void] $window.Dispatcher.BeginInvoke($updateUi)
+                        $controls.StatusTextBlock.Text = "Run failed."
                     }
+                    $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
+                    $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
+                    $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
+                    if ($null -ne $runResult.DetectedPaths -and @($runResult.DetectedPaths).Length -gt 0) {
+                        $controls.DetectedPathsPanel.Visibility = "Visible"
+                    }
+                    Sync-NcsConsoleScroll -Controls $controls
                 }
             $state.CurrentHandle = $handle
             $controls.CommandPreviewTextBox.Text = $playCmd
