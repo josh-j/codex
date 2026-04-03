@@ -4,7 +4,7 @@ $script:NcsProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.My
 $script:MaxOutputLines = 50000
 $script:NcsActiveExecutionState = $null
 $script:NcsRemotePidPattern = '^\[\d{2}:\d{2}:\d{2}\]\s+NCS_REMOTE_PID:(\d+)$'
-$script:NcsRemoteRunRoot = '${HOME}/.cache/ncs-console'
+$script:NcsRemoteRunRoot = '.cache/ncs-console'
 
 function ConvertTo-NcsBashLiteral {
     param(
@@ -355,7 +355,7 @@ function Get-NcsRemoteShellCommand {
     $runScript = @"
 set -u
 RUN_ID=$(ConvertTo-NcsBashLiteral -Value $RunId)
-RUN_ROOT="$($script:NcsRemoteRunRoot)"
+RUN_ROOT="\${HOME}/$($script:NcsRemoteRunRoot)"
 PID_FILE="\${RUN_ROOT}/\${RUN_ID}.pid"
 ACTION_FILE="\${RUN_ROOT}/\${RUN_ID}.sh"
 mkdir -p "\${RUN_ROOT}"
@@ -646,7 +646,7 @@ function Stop-NcsRemoteCommand {
     try {
         if ($Handle.PSObject.Properties.Match('RunId').Count -gt 0 -and $Handle.PSObject.Properties.Match('Settings').Count -gt 0) {
             $remoteCommand = "bash -lc " + (ConvertTo-NcsBashLiteral -Value @"
-RUN_ROOT="$($script:NcsRemoteRunRoot)"
+RUN_ROOT="\${HOME}/$($script:NcsRemoteRunRoot)"
 PID_FILE="\${RUN_ROOT}/$($Handle.RunId).pid"
 if [ -f "\${PID_FILE}" ]; then
   kill -TERM "\$(cat "\${PID_FILE}")" >/dev/null 2>&1 || true
