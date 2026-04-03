@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   windows_update_allow_reboot: bool = false | Allow Reboot
+#   windows_update_allow_reboot: bool = false | Allow Reboot | Permit automatic reboot after patch installation
 # <<<
 ---
 # playbooks/windows/patch.yml

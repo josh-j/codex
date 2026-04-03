@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   photon_stig_enable_hardening: bool = false | Enable Hardening
+#   photon_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
 # <<<
 ---
 # playbooks/linux/photon/stig_remediate.yml

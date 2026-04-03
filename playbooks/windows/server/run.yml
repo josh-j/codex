@@ -3,59 +3,59 @@
 # is_read_only: true
 # operation: ad_search
 # options:
-#   windows_ad_search_term: text | Search Term
-#   windows_ad_search_type: select[computer, user, group] = computer | Type
-#   windows_ad_bitlocker_recovery: bool = false | BitLocker Recovery
+#   windows_ad_search_term: text | Search Term | Computer name, username, or group to search for
+#   windows_ad_search_type: select[computer, user, group] = computer | Type | AD object type to search
+#   windows_ad_bitlocker_recovery: bool = false | BitLocker Recovery | Also retrieve BitLocker recovery keys for matched computers
 # ---
 # label: Vuln Scan
 # is_read_only: true
 # operation: vuln_scan
 # options:
-#   windows_vuln_scan_file: text | Scan File Path
-#   windows_vuln_scan_format: select[csv, json] = csv | Output Format
+#   windows_vuln_scan_file: text | Scan File Path | Path to vulnerability scan input file on remote host
+#   windows_vuln_scan_format: select[csv, json] = csv | Output Format | Format for scan results output
 # ---
 # label: Cleanup
 # operation: cleanup
 # options:
-#   windows_cleanup_profiles: bool = false | Clean Profiles
-#   windows_cleanup_profile_days: text = 30 | Profile Age (days)
+#   windows_cleanup_profiles: bool = false | Clean Profiles | Remove stale user profiles older than threshold
+#   windows_cleanup_profile_days: text = 30 | Profile Age (days) | Minimum age in days before a profile is removed
 # ---
 # label: KB Install
 # operation: kb_install
 # options:
-#   windows_kb_list: text | KB Numbers
-#   windows_kb_source_path: text | Source Path (offline/network)
+#   windows_kb_list: text | KB Numbers | Comma-separated KB numbers to install (e.g. KB5034441,KB5034439)
+#   windows_kb_source_path: text | Source Path (offline/network) | UNC or local path containing .msu/.cab files for offline install
 # ---
 # label: Windows Update
 # operation: windows_update
 # options:
-#   windows_update_allow_reboot: bool = false | Allow Reboot
-#   windows_update_categories: text = SecurityUpdates,CriticalUpdates | Update Categories
-#   windows_update_timeout_minutes: text = 60 | Timeout (minutes)
+#   windows_update_allow_reboot: bool = false | Allow Reboot | Permit automatic reboot after update installation
+#   windows_update_categories: text = SecurityUpdates,CriticalUpdates | Update Categories | Comma-separated Windows Update categories to install
+#   windows_update_timeout_minutes: text = 60 | Timeout (minutes) | Maximum minutes to wait for update installation
 # ---
 # label: Install Software
 # operation: update_software
 # options:
-#   windows_update_software_targets: text = chrome,edge | Software Targets
+#   windows_update_software_targets: text = chrome,edge | Software Targets | Comma-separated app names to update via winget
 # ---
 # label: Uninstall Software
 # operation: uninstall_software
 # options:
-#   windows_uninstall_names: text | Software Names
-#   windows_uninstall_appx: bool = false | Remove AppX Packages
-#   windows_uninstall_winget_remove: bool = false | Use Winget
+#   windows_uninstall_names: text | Software Names | Comma-separated display names to uninstall
+#   windows_uninstall_appx: bool = false | Remove AppX Packages | Also remove matching AppX/UWP packages
+#   windows_uninstall_winget_remove: bool = false | Use Winget | Use winget for removal instead of native uninstall
 # ---
 # label: Service Management
 # operation: service
 # options:
-#   windows_service_name: text | Service Name
-#   windows_service_action: select[list, start, stop, restart] = restart | Action
+#   windows_service_name: text | Service Name | Service name or wildcard pattern (e.g. wuauserv, Tanium*)
+#   windows_service_action: select[list, start, stop, restart] = restart | Action | Operation to perform on the service
 # ---
 # label: Scheduled Task
 # operation: scheduled_task
 # options:
-#   windows_task_name: text | Task Name
-#   windows_task_action: select[list, run, enable, disable, delete] = list | Task Action
+#   windows_task_name: text | Task Name | Scheduled task name or path (e.g. \Microsoft\Windows\UpdateOrchestrator\Reboot)
+#   windows_task_action: select[list, run, enable, disable, delete] = list | Task Action | Operation to perform on the task
 # ---
 # label: Registry Fix
 # operation: registry_fix
@@ -63,11 +63,11 @@
 # label: OpenSSH Setup
 # operation: openssh
 # options:
-#   windows_openssh_default_shell: select[powershell, cmd] = powershell | Default Shell
-#   windows_openssh_allow_password: bool = false | Allow Password Auth
-#   windows_openssh_allow_pubkey: bool = false | Allow Pubkey Auth
-#   windows_openssh_allow_gssapi: bool = true | Allow Kerberos/GSSAPI
-#   windows_openssh_max_auth_tries: text = 3 | Max Auth Attempts
+#   windows_openssh_default_shell: select[powershell, cmd] = powershell | Default Shell | Shell launched on SSH login
+#   windows_openssh_allow_password: bool = false | Allow Password Auth | Enable password authentication in sshd_config
+#   windows_openssh_allow_pubkey: bool = false | Allow Pubkey Auth | Enable public key authentication in sshd_config
+#   windows_openssh_allow_gssapi: bool = true | Allow Kerberos/GSSAPI | Enable Kerberos/GSSAPI authentication for domain SSO
+#   windows_openssh_max_auth_tries: text = 3 | Max Auth Attempts | Maximum authentication attempts before disconnect
 # ---
 # label: WinRM Enable
 # operation: winrm_enable
@@ -76,8 +76,8 @@
 # is_read_only: true
 # operation: remote_ops
 # options:
-#   windows_remote_op: select[uptime, reboot, shutdown, logoff, gpupdate, message] = uptime | Command
-#   windows_remote_message: text | Message
+#   windows_remote_op: select[uptime, reboot, shutdown, logoff, gpupdate, message] = uptime | Command | Remote operation to execute
+#   windows_remote_message: text | Message | Message text to display on remote desktops (for message command)
 # <<<
 ---
 

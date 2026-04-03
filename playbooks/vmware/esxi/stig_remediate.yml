@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   esxi_stig_enable_ssh_checks: bool = true | SSH Checks
+#   esxi_stig_enable_ssh_checks: bool = true | SSH Checks | Run SSH-based STIG checks (disable for lockdown mode hosts)
 # <<<
 ---
 # playbooks/vmware/esxi/stig_remediate.yml

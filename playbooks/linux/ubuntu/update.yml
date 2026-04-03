@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   ubuntu_enable_upgrade_reboots: bool = true | Allow Reboot
+#   ubuntu_enable_upgrade_reboots: bool = true | Allow Reboot | Permit automatic reboot after package upgrades if required
 # <<<
 ---
 # playbooks/linux/ubuntu/update.yml

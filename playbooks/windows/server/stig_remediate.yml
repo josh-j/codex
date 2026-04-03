@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   windows_stig_enable_hardening: bool = false | Enable Hardening
+#   windows_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
 # <<<
 ---
 # playbooks/windows/stig_remediate.yml

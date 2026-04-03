@@ -1,6 +1,6 @@
 # >>>
 # options:
-#   ubuntu_stig_enable_hardening: bool = false | Enable Hardening
+#   ubuntu_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
 # <<<
 ---
 # playbooks/linux/ubuntu/stig_remediate.yml
