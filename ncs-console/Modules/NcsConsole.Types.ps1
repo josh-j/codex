@@ -124,9 +124,18 @@ def yaml_str(v):
     return str(v) if v is not None else ""
 
 def parse_option_line(key, value):
-    """Parse compact option: 'name: type[choices] = default | label'"""
+    """Parse compact option: 'name: type[choices] = default | label | tooltip'"""
     opt = {"name": key}
-    m = re.match(r'^(text|bool|select)(?:\[([^\]]+)\])?\s*(?:=\s*([^|]+))?\s*(?:\|\s*(.+))?$', value.strip())
+    # Split off tooltip (after second |) before parsing type/default/label
+    segments = value.split("|")
+    main_part = segments[0].strip()
+    label_part = segments[1].strip() if len(segments) > 1 else ""
+    tooltip_part = segments[2].strip() if len(segments) > 2 else ""
+    if tooltip_part:
+        opt["tooltip"] = tooltip_part
+    # Recombine main + label for the type regex (first two segments only)
+    combined = main_part + (" | " + label_part if label_part else "")
+    m = re.match(r'^(text|bool|select)(?:\[([^\]]+)\])?\s*(?:=\s*([^|]+))?\s*(?:\|\s*(.+))?$', combined.strip())
     if m:
         typ, choices, default, label = m.groups()
         if typ and typ != "text":
@@ -140,12 +149,11 @@ def parse_option_line(key, value):
         else:
             opt["label"] = auto_label(key)
     else:
-        parts = value.split("|", 1)
-        if len(parts) == 2:
-            opt["default"] = parts[0].strip()
-            opt["label"] = parts[1].strip()
-        elif value.strip():
-            opt["default"] = value.strip()
+        if label_part:
+            opt["default"] = main_part
+            opt["label"] = label_part
+        elif main_part:
+            opt["default"] = main_part
             opt["label"] = auto_label(key)
         else:
             opt["label"] = auto_label(key)

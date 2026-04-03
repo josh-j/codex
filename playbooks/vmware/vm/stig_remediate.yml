@@ -1,7 +1,7 @@
 # >>>
 # label: VM STIG Remediation
 # options:
-#   vm_stig_target_vms: text | Target VMs (JSON array)
+#   vm_stig_target_vms: text | Target VMs (JSON array) | JSON array of specific VM names to harden (blank = all discovered VMs)
 # <<<
 ---
 # playbooks/vmware/vm/stig_remediate.yml

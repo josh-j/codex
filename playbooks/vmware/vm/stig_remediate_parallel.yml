@@ -1,9 +1,9 @@
 # >>>
 # label: VM STIG Remediation (Parallel)
 # options:
-#   site: text | Site Code (required, e.g. tyfq)
-#   vm_stig_exclude_pattern: text | VM Exclusion Regex
-#   vm_stig_target_vms: text | Target VMs (JSON array)
+#   site: text | Site Code (required, e.g. tyfq) | vCenter site code used to target vcsa-<site>
+#   vm_stig_exclude_pattern: text | VM Exclusion Regex | Regex pattern to exclude VMs by name (e.g. (?i).*(ise|wave).*)
+#   vm_stig_target_vms: text | Target VMs (JSON array) | JSON array of specific VM names to target (overrides discovery)
 # <<<
 ---
 # playbooks/vmware/vm/stig_remediate_parallel.yml

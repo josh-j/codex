@@ -7,7 +7,7 @@
 # is_read_only: true
 # operation: password_status
 # options:
-#   rotate_user: text = root | User
+#   rotate_user: text = root | User | Local account to check password status for
 # <<<
 ---
 # playbooks/linux/ubuntu/run.yml

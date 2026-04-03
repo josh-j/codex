@@ -2,7 +2,7 @@
 # label: VM STIG Audit
 # is_read_only: true
 # options:
-#   vm_stig_target_hosts: text = vcsa | Target vCenter
+#   vm_stig_target_hosts: text = vcsa | Target vCenter | Inventory host or group targeting the vCenter to query
 # <<<
 ---
 # playbooks/vmware/vm/stig_audit.yml

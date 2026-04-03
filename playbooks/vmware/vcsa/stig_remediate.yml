@@ -1,7 +1,7 @@
 # >>>
 # options:
-#   vcsa_stig_include_photon: bool = false | Include Photon Baseline
-#   vcsa_stig_create_backups: bool = true | Create Backups
+#   vcsa_stig_include_photon: bool = false | Include Photon Baseline | Also remediate the underlying Photon OS STIG controls
+#   vcsa_stig_create_backups: bool = true | Create Backups | Back up config files before applying STIG changes
 # <<<
 ---
 # playbooks/vmware/vcsa/stig_remediate.yml

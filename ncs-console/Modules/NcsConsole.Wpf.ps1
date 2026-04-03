@@ -432,12 +432,14 @@ function Add-NcsOptionControls {
 
     foreach ($opt in @($Options)) {
         $optType = if ($opt.ContainsKey('type')) { $opt['type'] } else { 'text' }
+        $tip = if ($opt.ContainsKey('tooltip')) { $opt['tooltip'] } else { $null }
 
         if ($optType -ne 'bool') {
             $label = [System.Windows.Controls.TextBlock]::new()
             $label.Text = $opt['label']
             $label.Foreground = Get-NcsBrush -Color "#8e939c"
             $label.FontSize = 11
+            if ($tip) { $label.ToolTip = $tip }
             $Panel.Children.Add($label) | Out-Null
         }
 
@@ -445,6 +447,7 @@ function Add-NcsOptionControls {
             'select' {
                 $comboBox = [System.Windows.Controls.ComboBox]::new()
                 $comboBox.Tag = $opt['name']
+                if ($tip) { $comboBox.ToolTip = $tip }
                 if ($opt.ContainsKey('choices')) {
                     $comboBox.ItemsSource = @($opt['choices'])
                 }
@@ -463,6 +466,7 @@ function Add-NcsOptionControls {
                 $checkBox.Foreground = Get-NcsBrush -Color "#8e939c"
                 $checkBox.FontSize = 11
                 $checkBox.Margin = [System.Windows.Thickness]::new(0, 4, 0, 0)
+                if ($tip) { $checkBox.ToolTip = $tip }
                 if ($opt.ContainsKey('default')) {
                     $dv = $opt['default']
                     $checkBox.IsChecked = ($dv -eq $true -or $dv -eq 'true' -or $dv -eq 'yes')
@@ -474,11 +478,13 @@ function Add-NcsOptionControls {
                 if ($isPassword) {
                     $pwBox = [System.Windows.Controls.PasswordBox]::new()
                     $pwBox.Tag = $opt['name']
+                    if ($tip) { $pwBox.ToolTip = $tip }
                     if ($opt.ContainsKey('default')) { $pwBox.Password = $opt['default'] }
                     $Panel.Children.Add($pwBox) | Out-Null
                 } else {
                     $textBox = [System.Windows.Controls.TextBox]::new()
                     $textBox.Tag = $opt['name']
+                    if ($tip) { $textBox.ToolTip = $tip }
                     if ($opt.ContainsKey('default')) { $textBox.Text = $opt['default'] }
                     $Panel.Children.Add($textBox) | Out-Null
                 }

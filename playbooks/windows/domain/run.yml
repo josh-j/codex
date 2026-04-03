@@ -7,31 +7,31 @@
 # is_read_only: true
 # operation: user_search
 # options:
-#   domain_search_filter: text = * | Filter
+#   domain_search_filter: text = * | Filter | LDAP filter or wildcard pattern for user search
 # ---
 # label: Group Search
 # is_read_only: true
 # operation: group_search
 # options:
-#   domain_search_filter: text = * | Filter
+#   domain_search_filter: text = * | Filter | LDAP filter or wildcard pattern for group search
 # ---
 # label: Computer Search
 # is_read_only: true
 # operation: computer_search
 # options:
-#   domain_search_filter: text = * | Filter
+#   domain_search_filter: text = * | Filter | LDAP filter or wildcard pattern for computer search
 # ---
 # label: OU Search
 # is_read_only: true
 # operation: ou_search
 # options:
-#   domain_search_filter: text = * | Filter
+#   domain_search_filter: text = * | Filter | LDAP filter or wildcard pattern for OU search
 # ---
 # label: Group Membership
 # is_read_only: true
 # operation: group_membership
 # options:
-#   domain_group_name: text | Group Name
+#   domain_group_name: text | Group Name | AD group name to list members of
 # ---
 # label: Privileged Groups
 # is_read_only: true
@@ -41,8 +41,8 @@
 # is_read_only: true
 # operation: stale_accounts
 # options:
-#   domain_stale_computer_days: text = 90 | Computer Days
-#   domain_stale_user_days: text = 90 | User Days
+#   domain_stale_computer_days: text = 90 | Computer Days | Days of inactivity before a computer is flagged as stale
+#   domain_stale_user_days: text = 90 | User Days | Days of inactivity before a user is flagged as stale
 # ---
 # label: Password Policy
 # is_read_only: true
@@ -60,7 +60,7 @@
 # is_read_only: true
 # operation: dhcp_scopes
 # options:
-#   domain_dhcp_server: text | DHCP Server
+#   domain_dhcp_server: text | DHCP Server | Hostname or IP of the DHCP server to query
 # ---
 # label: Domain Trusts
 # is_read_only: true

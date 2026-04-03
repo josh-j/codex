@@ -2,10 +2,10 @@
 # is_read_only: true
 # label: Collect
 # options:
-#   esxi_collect_per_host: bool = true | Per-Host Health
-#   esxi_collect_datacenters: bool = true | Datacenter Scan
-#   esxi_collect_compute: bool = true | Compute/Cluster Data
-#   esxi_collect_storage: bool = true | Datastore Scan
+#   esxi_collect_per_host: bool = true | Per-Host Health | Collect metrics per ESXi host instead of cluster-level aggregates
+#   esxi_collect_datacenters: bool = true | Datacenter Scan | Query datacenter topology and folder structure
+#   esxi_collect_compute: bool = true | Compute/Cluster Data | Query cluster, host CPU/memory, and HA/DRS status
+#   esxi_collect_storage: bool = true | Datastore Scan | Query datastore capacity, usage, and connectivity
 # <<<
 ---
 # playbooks/vmware/esxi/collect.yml
