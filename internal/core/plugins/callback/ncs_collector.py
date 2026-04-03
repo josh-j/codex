@@ -977,10 +977,17 @@ class CallbackModule(CallbackBase):
 
         # Navigate into the payload to find the list
         obj: Any = payload
+        path_resolved = True
         for part in list_path.split("."):
             if isinstance(obj, dict):
-                obj = obj.get(part, {})
+                if part in obj:
+                    obj = obj[part]
+                else:
+                    path_resolved = False
+                    obj = {}
+                    break
             else:
+                path_resolved = False
                 obj = {}
                 break
 
@@ -994,9 +1001,14 @@ class CallbackModule(CallbackBase):
             items = list(obj.values()) if obj else []
 
         if not items:
-            self._display.warning(
-                f"[ncs_collector] per_host_split found no items at '{list_path}' for '{ansible_host}'"
-            )
+            if not path_resolved:
+                self._display.warning(
+                    f"[ncs_collector] per_host_split could not resolve path '{list_path}' for '{ansible_host}'"
+                )
+            else:
+                self._display.v(
+                    f"[ncs_collector] per_host_split found no items at '{list_path}' for '{ansible_host}' (empty collection)"
+                )
             self._persist_single_host(ansible_host, collect_data)
             return
 
