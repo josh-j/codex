@@ -795,7 +795,7 @@ function Get-NcsLineColor {
 
     $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*(\[stderr\]\s*)?', ''
 
-    if ($text -match '^\s*(fatal|FAILED|ERROR)' -or $text -match '\bFAILED\b' -or $text -match '\bunreachable=\d*[1-9]' -or $text -match '\bignored=\d*[1-9]') {
+    if ($text -match '^\s*(fatal|ERROR)' -or $text -match '\bfailed=\d*[1-9]' -or $text -match '\bunreachable=\d*[1-9]' -or $text -match '\bignored=\d*[1-9]') {
         return "#f47067"
     }
     if ($text -match '^\s*(changed):|changed=\d*[1-9]') {
