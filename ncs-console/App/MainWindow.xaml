@@ -296,7 +296,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Padding="10,0" VerticalAlignment="Stretch" ToolTip="Connect to remote host" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0,1,1,0" BorderBrush="#22262d">
+                <Button x:Name="PreflightButton" Grid.Column="0" MinWidth="0" Margin="0" Padding="12,0" VerticalAlignment="Stretch" ToolTip="Connect to remote host" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0,1,1,0" BorderBrush="#22262d">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
