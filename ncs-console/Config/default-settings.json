@@ -6,10 +6,13 @@
   "SshKeyPath": "",
   "RemoteRepoPath": "~/ansible-ncs",
   "RemoteReportsPath": "/srv/samba/reports",
+  "SmbShareName": "reports",
+  "ReportDeliveryMode": "Auto",
+  "AutoRefreshIntervalSeconds": 5,
   "StrictHostKeyChecking": "accept-new",
   "ConnectTimeoutSeconds": 10,
   "ServerAliveIntervalSeconds": 15,
   "ServerAliveCountMax": 3,
-  "SettingsVersion": 2,
+  "SettingsVersion": 3,
   "LastAction": ""
 }

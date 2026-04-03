@@ -16,12 +16,15 @@ class NcsConsoleSettings {
     [string] $SshPassword = ""
     [string] $RemoteRepoPath = "~/ansible-ncs"
     [string] $RemoteReportsPath = "/srv/samba/reports"
+    [string] $SmbShareName = "reports"
+    [string] $ReportDeliveryMode = "Auto"
+    [int]    $AutoRefreshIntervalSeconds = 5
     [string] $StrictHostKeyChecking = "accept-new"
     [int] $ConnectTimeoutSeconds = 10
     [int] $ServerAliveIntervalSeconds = 15
     [int] $ServerAliveCountMax = 3
     [string] $LogDirectory = ""
-    [int] $SettingsVersion = 2
+    [int] $SettingsVersion = 3
     [string] $LastAction = ""
 
     NcsConsoleSettings() {

@@ -181,5 +181,18 @@ function Test-NcsRemotePreflight {
     }
 
     $result.IsReady = $result.BlockingIssues.Count -eq 0
+
+    # Informational SMB check (non-blocking)
+    if ($result.IsReady -and $Settings.ReportDeliveryMode -ne "Scp") {
+        try {
+            $smb = Test-NcsSmbAccess -Settings $Settings
+            $smbMessage = if ($smb.Accessible) { "SMB share accessible: $($smb.UncRoot)" } else { "SMB unavailable, will use SCP: $($smb.Error)" }
+            $smbCheck = New-NcsPreflightCheck -Id "smb-access" -Stage "network" -Name "SMB share" -Passed $smb.Accessible -Message $smbMessage
+            $result.Checks.Add($smbCheck)
+        } catch {
+            # SMB check failure should never block connection
+        }
+    }
+
     return $result
 }
