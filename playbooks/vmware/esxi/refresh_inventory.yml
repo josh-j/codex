@@ -80,7 +80,7 @@
           {% set site_code = result.vcenter | regex_replace('^vcsa-', '') %}
                   esxi_{{ site_code }}:
                     vars:
-                      ansible_host: "{{ result.vcenter }}"
+                      ansible_host: "{{ hostvars[result.vcenter]['ansible_host'] | default(result.vcenter) }}"
           {% if result.hosts | length > 0 %}
                     hosts:
           {% for host in result.hosts | sort %}

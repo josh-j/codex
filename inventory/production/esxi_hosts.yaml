@@ -14,25 +14,25 @@ all:
       children:
         esxi_aedw:
           vars:
-            ansible_host: vcsa-aedw
+            ansible_host: vcsa-aedw.area52.afnoapps.usaf.mil
           hosts: {}
         esxi_ashe:
           vars:
-            ansible_host: vcsa-ashe
+            ansible_host: vcsa-ashe.area52.afnoapps.usaf.mil
           hosts: {}
         esxi_gfpy:
           vars:
-            ansible_host: vcsa-gfpy
+            ansible_host: vcsa-gfpy.area52.afnoapps.usaf.mil
           hosts: {}
         esxi_mqna:
           vars:
-            ansible_host: vcsa-mqna
+            ansible_host: vcsa-mqna.area52.afnoapps.usaf.mil
           hosts: {}
         esxi_sdhm:
           vars:
-            ansible_host: vcsa-sdhm
+            ansible_host: vcsa-sdhm.area52.afnoapps.usaf.mil
           hosts: {}
         esxi_tyfq:
           vars:
-            ansible_host: vcsa-tyfq
+            ansible_host: vcsa-tyfq.area52.afnoapps.usaf.mil
           hosts: {}
