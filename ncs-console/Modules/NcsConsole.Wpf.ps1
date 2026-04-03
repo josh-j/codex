@@ -866,11 +866,16 @@ function Sync-NcsConsoleScroll {
     $sv = $script:_CachedConsoleScrollViewer
     if ($null -eq $sv) {
         $rtb = $Controls.ConsoleTextBox
+        if ([System.Windows.Media.VisualTreeHelper]::GetChildrenCount($rtb) -eq 0) {
+            $rtb.ScrollToEnd()
+            return
+        }
         $sv = [System.Windows.Media.VisualTreeHelper]::GetChild($rtb, 0)
         while ($null -ne $sv -and $sv -isnot [System.Windows.Controls.ScrollViewer]) {
+            if ([System.Windows.Media.VisualTreeHelper]::GetChildrenCount($sv) -eq 0) { break }
             $sv = [System.Windows.Media.VisualTreeHelper]::GetChild($sv, 0)
         }
-        if ($null -eq $sv) {
+        if ($null -eq $sv -or $sv -isnot [System.Windows.Controls.ScrollViewer]) {
             $rtb.ScrollToEnd()
             return
         }
