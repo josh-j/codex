@@ -87,7 +87,7 @@ def main() -> None:
             if diff_seconds > threshold_seconds:
                 aged_count += 1
         else:
-            item["days_old"] = "Unknown"
+            item["days_old"] = -1
 
         enriched_snapshots.append(item)
 

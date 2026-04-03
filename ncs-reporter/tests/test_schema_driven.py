@@ -881,18 +881,19 @@ class TestScriptFields:
         mountpoints = {m["mountpoint"] for m in fields["real_mounts"]}
         assert mountpoints == {"/", "/data"}
 
-    def test_vm_schema_aged_snapshot_field_exists(self) -> None:
+    def test_vm_schema_snapshot_alerts_reference_list(self) -> None:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
         schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
         s = load_schema_from_file(schema_path)
-        assert "aged_snapshot_count" in s.fields
-        spec = s.fields["aged_snapshot_count"]
+        assert "snapshots" in s.fields
+        spec = s.fields["snapshots"]
         assert spec.script is not None
         assert spec.script.path == "normalize_snapshots.py"
-        assert spec.script.args.get("age_days") == 7
-        assert any(a.id == "aged_snapshots" for a in s.alerts)
+        aged_alert = next((a for a in s.alerts if a.id == "aged_snapshots"), None)
+        assert aged_alert is not None
+        assert "snapshots" in aged_alert.when
 
 
 # ---------------------------------------------------------------------------

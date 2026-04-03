@@ -28,6 +28,9 @@ vars:
         exclude_patterns: "{{ infra_patterns }}"
     type: list
 
+  snapshot_age_days:
+    compute: "{{ 7 }}"
+
   snapshots:
     script:
       run: "normalize_snapshots.py"
@@ -40,15 +43,7 @@ vars:
     thresholds: { 1: yellow, 10: red }
 
   aged_snapshot_count:
-    script:
-      run: "normalize_snapshots.py"
-      args:
-        mode: count
-        age_days: 7
-    type: int
-
-  recent_snapshot_count:
-    compute: "{{ snapshot_count - aged_snapshot_count }}"
+    compute: "{{ snapshots | selectattr('days_old', 'ge', snapshot_age_days) | list | length }}"
 
   powered_off_vm_count:
     path: ".virtual_machines"
@@ -82,15 +77,15 @@ alerts:
 
   - id: snapshots_present
     category: "Snapshots"
-    severity: INFO
+    severity: WARNING
     when: snapshots | length > 0
-    msg: "VM snapshots present: {{ snapshots | length }} snapshot(s) found"
+    msg: "{{ snapshots | length }} VM snapshot(s) present — review for removal"
 
   - id: aged_snapshots
     category: "Snapshots"
-    severity: WARNING
+    severity: CRITICAL
     when: aged_snapshot_count > 0 and snapshots | length > 0
-    msg: "{{ aged_snapshot_count }} snapshot(s) older than 7 days — review for removal"
+    msg: "{{ aged_snapshot_count }} snapshot(s) older than {{ snapshot_age_days }} days"
 
 # ---------------------------------------------------------------------------
 # Widgets
@@ -137,4 +132,4 @@ widgets:
       'Snapshot': "{{ name }}"
       'Created': "{{ creation_time }}"
       'State': "{{ state }}"
-      'Days Old': "{{ days_old }}"
+      'Days Old': "{{ 'Unknown' if days_old == -1 else days_old }}"
