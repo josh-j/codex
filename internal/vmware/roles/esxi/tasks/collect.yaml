@@ -88,9 +88,6 @@
           no_log: true
           failed_when: false
           changed_when: false
-          retries: 1
-          delay: 3
-          until: _raw_host_facts is succeeded
           when: _all_esxi_hosts | length > 0
 
         - name: Per-Host | Query physical NIC info
@@ -102,9 +99,6 @@
           no_log: true
           failed_when: false
           changed_when: false
-          retries: 1
-          delay: 3
-          until: _raw_host_nics is succeeded
           when: _all_esxi_hosts | length > 0
 
         - name: Per-Host | Query service status (SSH, NTP, syslog)
@@ -116,9 +110,6 @@
           no_log: true
           failed_when: false
           changed_when: false
-          retries: 1
-          delay: 3
-          until: _raw_host_services is succeeded
           when: _all_esxi_hosts | length > 0
 
   always:
