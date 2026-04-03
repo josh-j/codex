@@ -65,6 +65,32 @@ function Import-NcsWpfAssemblies {
     }
 }
 
+function Test-NcsSmbAccess {
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings
+    )
+
+    $uncRoot = "\\$($Settings.SshHost)\$($Settings.SmbShareName)"
+    try {
+        $tcp = [System.Net.Sockets.TcpClient]::new()
+        try {
+            $task = $tcp.ConnectAsync($Settings.SshHost, 445)
+            $connected = $task.Wait(2000)
+            if (-not $connected -or -not $tcp.Connected) {
+                return [pscustomobject]@{ Accessible = $false; UncRoot = $uncRoot; Error = "SMB port 445 unreachable" }
+            }
+        } finally {
+            $tcp.Dispose()
+        }
+
+        $accessible = Test-Path -LiteralPath $uncRoot -ErrorAction Stop
+        return [pscustomobject]@{ Accessible = $accessible; UncRoot = $uncRoot; Error = "" }
+    } catch {
+        return [pscustomobject]@{ Accessible = $false; UncRoot = $uncRoot; Error = $_.Exception.Message }
+    }
+}
+
 function Invoke-NcsReportMirror {
     param(
         [Parameter(Mandatory)]
@@ -148,6 +174,9 @@ function Get-NcsXamlControlMap {
         "SshKeyPathTextBox",
         "SshPasswordBox",
         "RemoteRepoPathTextBox",
+        "SmbShareNameTextBox",
+        "ReportDeliveryModeComboBox",
+        "AutoRefreshIntervalTextBox",
         "SaveSettingsButton",
         "PreflightButton",
         "PreflightButtonText",
@@ -759,6 +788,15 @@ function Sync-NcsSettingsFromControls {
     $Settings.SshKeyPath = $Controls.SshKeyPathTextBox.Text.Trim()
     $Settings.SshPassword = $Controls.SshPasswordBox.Password
     $Settings.RemoteRepoPath = $Controls.RemoteRepoPathTextBox.Text.Trim()
+    $Settings.SmbShareName = $Controls.SmbShareNameTextBox.Text.Trim()
+    $Settings.ReportDeliveryMode = [string] $Controls.ReportDeliveryModeComboBox.SelectedItem
+    $refreshText = $Controls.AutoRefreshIntervalTextBox.Text.Trim()
+    $parsedRefresh = 0
+    if ([string]::IsNullOrWhiteSpace($refreshText) -or -not [int]::TryParse($refreshText, [ref] $parsedRefresh)) {
+        $parsedRefresh = 5
+    }
+    if ($parsedRefresh -lt 0) { $parsedRefresh = 0 }
+    $Settings.AutoRefreshIntervalSeconds = $parsedRefresh
     $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 }
 
@@ -783,6 +821,15 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshKeyPathTextBox.Text = $Settings.SshKeyPath
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
+    $Controls.SmbShareNameTextBox.Text = $Settings.SmbShareName
+    $deliveryModes = @("Auto", "Smb", "Scp")
+    $Controls.ReportDeliveryModeComboBox.ItemsSource = $deliveryModes
+    if ($deliveryModes -contains $Settings.ReportDeliveryMode) {
+        $Controls.ReportDeliveryModeComboBox.SelectedItem = $Settings.ReportDeliveryMode
+    } else {
+        $Controls.ReportDeliveryModeComboBox.SelectedItem = "Auto"
+    }
+    $Controls.AutoRefreshIntervalTextBox.Text = [string] $Settings.AutoRefreshIntervalSeconds
     Select-NcsTreeViewItem -TreeView $Controls.ActionTreeView -Tag $Settings.LastAction -FallbackToFirst
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
@@ -955,16 +1002,31 @@ function Resolve-NcsReportRelativePath {
     param(
         [Parameter(Mandatory)]
         [string] $CacheRoot,
-        [uri] $Uri
+        [uri] $Uri,
+        [string] $UncRoot = ""
     )
 
     if ($null -eq $Uri -or -not $Uri.IsFile) {
         return $null
     }
 
-    $cacheRootPath = [IO.Path]::GetFullPath($CacheRoot)
     $targetPath = [IO.Path]::GetFullPath($Uri.LocalPath)
     $comparison = [System.StringComparison]::OrdinalIgnoreCase
+
+    # Check UNC root first (SMB mode)
+    if (-not [string]::IsNullOrWhiteSpace($UncRoot)) {
+        $uncRootPath = [IO.Path]::GetFullPath($UncRoot)
+        $uncRootWithSeparator = $uncRootPath.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+        if ($targetPath.StartsWith($uncRootWithSeparator, $comparison)) {
+            return $targetPath.Substring($uncRootWithSeparator.Length).Replace([IO.Path]::DirectorySeparatorChar, '/')
+        }
+        if ($targetPath.Equals($uncRootPath, $comparison)) {
+            return ""
+        }
+    }
+
+    # Check local cache root (SCP mode)
+    $cacheRootPath = [IO.Path]::GetFullPath($CacheRoot)
     $cacheRootWithSeparator = $cacheRootPath.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
 
     if ($targetPath.StartsWith($cacheRootWithSeparator, $comparison)) {
@@ -1011,6 +1073,10 @@ function Show-NcsConsoleApp {
             } else {
                 Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "NcsConsole/WebView2"
             })
+        ReportUncRoot       = $null
+        ReportSource        = "None"
+        AutoRefreshTimer    = $null
+        LastReportWriteTime = [datetime]::MinValue
     }
 
     $reportViewState = [pscustomobject]@{
@@ -1149,7 +1215,7 @@ function Show-NcsConsoleApp {
                     }
                 }
 
-                $relativePath = Resolve-NcsReportRelativePath -CacheRoot $state.ReportCacheRoot -Uri $targetUri
+                $relativePath = Resolve-NcsReportRelativePath -CacheRoot $state.ReportCacheRoot -Uri $targetUri -UncRoot ($state.ReportUncRoot ?? "")
                 if ($null -ne $relativePath) {
                     if (-not [string]::IsNullOrWhiteSpace($reportViewState.PendingRelativePath) -and $reportViewState.PendingRelativePath -eq $relativePath) {
                         $reportViewState.PendingRelativePath = ""
@@ -1193,6 +1259,45 @@ function Show-NcsConsoleApp {
             $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $elapsed
         }
     })
+
+    $autoRefreshTimer = [System.Windows.Threading.DispatcherTimer]::new()
+    $autoRefreshInterval = [Math]::Max($state.Settings.AutoRefreshIntervalSeconds, 1)
+    if ($state.Settings.ReportDeliveryMode -eq "Scp" -or ($state.Settings.ReportDeliveryMode -eq "Auto" -and $state.ReportSource -eq "Scp")) {
+        $autoRefreshInterval = [Math]::Max($autoRefreshInterval, 30)
+    }
+    $autoRefreshTimer.Interval = [TimeSpan]::FromSeconds($autoRefreshInterval)
+    $autoRefreshTimer.Add_Tick({
+        if ([string]::IsNullOrWhiteSpace($script:CurrentReportPath)) { return }
+        if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
+
+        try {
+            if ($state.ReportSource -eq "Smb" -and -not [string]::IsNullOrWhiteSpace($state.ReportUncRoot)) {
+                $filePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($script:CurrentReportPath -replace '/', '\')
+            } elseif ($state.ReportSource -eq "Scp") {
+                # Re-sync via SCP before checking
+                $script:ReportsSynced = $false
+                $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
+                if ($mirror.ExitCode -ne 0) { return }
+                $script:ReportsSynced = $true
+                $filePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($script:CurrentReportPath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+            } else {
+                return
+            }
+
+            if (-not (Test-Path -LiteralPath $filePath)) { return }
+
+            $currentWriteTime = (Get-Item -LiteralPath $filePath).LastWriteTimeUtc
+            if ($currentWriteTime -gt $state.LastReportWriteTime) {
+                $state.LastReportWriteTime = $currentWriteTime
+                if ($null -ne $reportViewState.Control -and $null -ne $reportViewState.Control.Source) {
+                    $reportViewState.Control.Reload()
+                }
+            }
+        } catch {
+            # Silently ignore — file may be mid-write
+        }
+    })
+    $state.AutoRefreshTimer = $autoRefreshTimer
 
     $refreshPreview = {
         Update-NcsCommandPreview -Controls $controls -Settings $state.Settings
@@ -1512,9 +1617,49 @@ function Show-NcsConsoleApp {
     $script:CurrentReportPath = ""
     $script:ReportsSynced = $false
 
+    $resolveReportSource = {
+        $mode = $state.Settings.ReportDeliveryMode
+        if ($mode -eq "Scp") {
+            $state.ReportSource = "Scp"
+            $state.ReportUncRoot = $null
+            return
+        }
+
+        $smb = Test-NcsSmbAccess -Settings $state.Settings
+        if ($smb.Accessible) {
+            $state.ReportSource = "Smb"
+            $state.ReportUncRoot = $smb.UncRoot
+            return
+        }
+
+        if ($mode -eq "Smb") {
+            $state.ReportSource = "None"
+            $state.ReportUncRoot = $null
+            & $setReportStatus "SMB share unreachable: $($smb.Error)" $true
+            return
+        }
+
+        # Auto mode: SMB failed, fall back to SCP
+        $state.ReportSource = "Scp"
+        $state.ReportUncRoot = $null
+    }
+
     $syncReports = {
         if ($script:ReportsSynced) { return $true }
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return $false }
+
+        & $resolveReportSource
+
+        if ($state.ReportSource -eq "Smb") {
+            $script:ReportsSynced = $true
+            return $true
+        }
+
+        if ($state.ReportSource -eq "None") {
+            return $false
+        }
+
+        # SCP fallback
         $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
         if ($mirror.ExitCode -eq 0) {
             $script:ReportsSynced = $true
@@ -1532,9 +1677,14 @@ function Show-NcsConsoleApp {
         try {
             if (-not (& $syncReports)) { return }
 
-            $localReportPath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
-            if (-not (Test-Path -LiteralPath $localReportPath)) {
-                & $setReportStatus "Report not found after sync: $RelativePath" $true
+            if ($state.ReportSource -eq "Smb") {
+                $reportFilePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($RelativePath -replace '/', '\')
+            } else {
+                $reportFilePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+            }
+
+            if (-not (Test-Path -LiteralPath $reportFilePath)) {
+                & $setReportStatus "Report not found: $RelativePath" $true
                 return
             }
 
@@ -1542,19 +1692,20 @@ function Show-NcsConsoleApp {
                 $script:ReportHistory.Add($script:CurrentReportPath)
             }
             $script:CurrentReportPath = $RelativePath
+            $state.LastReportWriteTime = (Get-Item -LiteralPath $reportFilePath).LastWriteTimeUtc
             $controls.ReportBackButton.IsEnabled = $script:ReportHistory.Count -gt 0
 
             $browserReady = & $ensureReportBrowser
             if ($browserReady -or $reportViewState.IsInitializing) {
                 $reportViewState.PendingRelativePath = $RelativePath
-                $reportViewState.PendingLocalPath = $localReportPath
-                $reportViewState.PendingSourceUri = [uri] $localReportPath
+                $reportViewState.PendingLocalPath = $reportFilePath
+                $reportViewState.PendingSourceUri = [uri] $reportFilePath
                 & $setReportStatus "Loading report: $RelativePath" $true
                 if ($browserReady) {
                     $reportViewState.Control.Source = $reportViewState.PendingSourceUri
                 }
             } else {
-                & $openReportExternally $localReportPath $script:NcsWebView2Status
+                & $openReportExternally $reportFilePath $script:NcsWebView2Status
             }
         } catch {
             & $setReportStatus $_.Exception.Message $true
@@ -1647,6 +1798,7 @@ function Show-NcsConsoleApp {
 
     $controls.ReportRefreshButton.Add_Click({
         $script:ReportsSynced = $false
+        $state.LastReportWriteTime = [datetime]::MinValue
         if (-not [string]::IsNullOrWhiteSpace($script:CurrentReportPath)) {
             $path = $script:CurrentReportPath
             $script:CurrentReportPath = ""
@@ -1676,6 +1828,10 @@ function Show-NcsConsoleApp {
                 $script:CurrentReportPath = ""
                 $script:ReportsSynced = $false
                 $controls.ReportBackButton.IsEnabled = $false
+                if ($null -ne $state.AutoRefreshTimer) { $state.AutoRefreshTimer.Stop() }
+                $state.ReportUncRoot = $null
+                $state.ReportSource = "None"
+                $state.LastReportWriteTime = [datetime]::MinValue
                 return
             }
 
@@ -1786,6 +1942,16 @@ function Show-NcsConsoleApp {
                 $controls.RefreshPlaybooksButton.Visibility = "Visible"
                 Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $state.Settings.LastAction -FallbackToFirst
                 $controls.StatusTextBlock.Text = $statusParts -join " "
+
+                # Start auto-refresh timer if enabled
+                if ($state.Settings.AutoRefreshIntervalSeconds -gt 0 -and $null -ne $state.AutoRefreshTimer) {
+                    $interval = [Math]::Max($state.Settings.AutoRefreshIntervalSeconds, 1)
+                    if ($state.ReportSource -eq "Scp") {
+                        $interval = [Math]::Max($interval, 30)
+                    }
+                    $state.AutoRefreshTimer.Interval = [TimeSpan]::FromSeconds($interval)
+                    $state.AutoRefreshTimer.Start()
+                }
             } else {
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
                 Set-NcsPreflightState -Controls $controls -State "Failed"
@@ -2062,6 +2228,7 @@ function Show-NcsConsoleApp {
 
     $window.Add_Closing({
         $durationTimer.Stop()
+        if ($null -ne $state.AutoRefreshTimer) { $state.AutoRefreshTimer.Stop() }
         if ($state.CurrentHandle) {
             Stop-NcsRemoteCommand -Handle $state.CurrentHandle
             $state.CurrentHandle = $null

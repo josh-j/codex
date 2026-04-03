@@ -47,6 +47,9 @@ function ConvertTo-NcsConsoleSettings {
         "SshKeyPath",
         "RemoteRepoPath",
         "RemoteReportsPath",
+        "SmbShareName",
+        "ReportDeliveryMode",
+        "AutoRefreshIntervalSeconds",
         "StrictHostKeyChecking",
         "ConnectTimeoutSeconds",
         "ServerAliveIntervalSeconds",
@@ -65,6 +68,9 @@ function ConvertTo-NcsConsoleSettings {
     if (-not $settings.SshPort) { $settings.SshPort = $defaults.SshPort }
     if ([string]::IsNullOrWhiteSpace($settings.SshAuthMode)) { $settings.SshAuthMode = $defaults.SshAuthMode }
     if ([string]::IsNullOrWhiteSpace($settings.RemoteReportsPath)) { $settings.RemoteReportsPath = $defaults.RemoteReportsPath }
+    if ([string]::IsNullOrWhiteSpace($settings.SmbShareName)) { $settings.SmbShareName = $defaults.SmbShareName }
+    if ($settings.ReportDeliveryMode -notin @("Auto", "Smb", "Scp")) { $settings.ReportDeliveryMode = $defaults.ReportDeliveryMode }
+    if ($settings.AutoRefreshIntervalSeconds -lt 0) { $settings.AutoRefreshIntervalSeconds = $defaults.AutoRefreshIntervalSeconds }
     if ([string]::IsNullOrWhiteSpace($settings.StrictHostKeyChecking)) { $settings.StrictHostKeyChecking = $defaults.StrictHostKeyChecking }
     if ($settings.ConnectTimeoutSeconds -lt 1) { $settings.ConnectTimeoutSeconds = $defaults.ConnectTimeoutSeconds }
     if ($settings.ServerAliveIntervalSeconds -lt 0) { $settings.ServerAliveIntervalSeconds = $defaults.ServerAliveIntervalSeconds }
@@ -114,6 +120,9 @@ function Save-NcsConsoleSettings {
         SshKeyPath               = $Settings.SshKeyPath
         RemoteRepoPath           = $Settings.RemoteRepoPath
         RemoteReportsPath        = $Settings.RemoteReportsPath
+        SmbShareName             = $Settings.SmbShareName
+        ReportDeliveryMode       = $Settings.ReportDeliveryMode
+        AutoRefreshIntervalSeconds = $Settings.AutoRefreshIntervalSeconds
         StrictHostKeyChecking    = $Settings.StrictHostKeyChecking
         ConnectTimeoutSeconds    = $Settings.ConnectTimeoutSeconds
         ServerAliveIntervalSeconds = $Settings.ServerAliveIntervalSeconds
