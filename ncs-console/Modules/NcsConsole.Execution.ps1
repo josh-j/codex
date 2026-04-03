@@ -273,7 +273,7 @@ function Write-NcsSessionLog {
         "failure_stage=$($Result.FailureStage)"
         "failure_reason=$($Result.FailureReason)"
         "started_at=$($Result.StartedAt.ToString('o'))"
-        "ended_at=$(if ($Result.EndedAt) { $Result.EndedAt.Value.ToString('o') } else { '' })"
+        "ended_at=$(if ($Result.EndedAt) { $Result.EndedAt.ToString('o') } else { '' })"
         "duration=$($Result.Duration)"
         "remote_pid=$($Result.RemotePid)"
         "command=$($Result.Command)"
@@ -609,7 +609,7 @@ function Start-NcsRemoteCommand {
             $result.Succeeded = $es.Process.ExitCode -eq 0
             $result.StartedAt = $es.StartedAt
             $result.EndedAt = Get-Date
-            $result.Duration = $result.EndedAt.Value - $es.StartedAt
+            $result.Duration = $result.EndedAt - $es.StartedAt
             $result.OutputLines = $es.Lines.ToArray()
             $result.DetectedPaths = Find-NcsDetectedPaths -Lines $result.OutputLines
             $result.RemotePid = $es.RemotePid
@@ -642,7 +642,7 @@ function Start-NcsRemoteCommand {
                 $failedResult.ExitCode = -1
                 $failedResult.StartedAt = $failedEs.StartedAt
                 $failedResult.EndedAt = Get-Date
-                $failedResult.Duration = $failedResult.EndedAt.Value - $failedEs.StartedAt
+                $failedResult.Duration = $failedResult.EndedAt - $failedEs.StartedAt
                 $failedResult.OutputLines = $failedEs.Lines.ToArray()
                 $failedResult.WasCancelled = $failedEs.State -eq "Cancelling"
                 $failedResult.FailureStage = "execution"
