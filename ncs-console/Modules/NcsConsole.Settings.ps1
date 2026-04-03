@@ -48,6 +48,7 @@ function ConvertTo-NcsConsoleSettings {
         "RemoteRepoPath",
         "RemoteReportsPath",
         "SmbShareName",
+        "SmbUser",
         "ReportDeliveryMode",
         "AutoRefreshIntervalSeconds",
         "StrictHostKeyChecking",
@@ -121,6 +122,7 @@ function Save-NcsConsoleSettings {
         RemoteRepoPath           = $Settings.RemoteRepoPath
         RemoteReportsPath        = $Settings.RemoteReportsPath
         SmbShareName             = $Settings.SmbShareName
+        SmbUser                  = $Settings.SmbUser
         ReportDeliveryMode       = $Settings.ReportDeliveryMode
         AutoRefreshIntervalSeconds = $Settings.AutoRefreshIntervalSeconds
         StrictHostKeyChecking    = $Settings.StrictHostKeyChecking

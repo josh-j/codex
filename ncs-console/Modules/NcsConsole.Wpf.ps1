@@ -84,6 +84,22 @@ function Test-NcsSmbAccess {
             $tcp.Dispose()
         }
 
+        # Authenticate with explicit SMB credentials via a transient PSDrive
+        if (-not [string]::IsNullOrWhiteSpace($Settings.SmbUser)) {
+            $secPass = if (-not [string]::IsNullOrWhiteSpace($Settings.SmbPassword)) {
+                ConvertTo-SecureString $Settings.SmbPassword -AsPlainText -Force
+            } else {
+                [System.Security.SecureString]::new()
+            }
+            $cred = [PSCredential]::new($Settings.SmbUser, $secPass)
+            try {
+                New-PSDrive -Name "NcsSmbProbe" -PSProvider FileSystem -Root $uncRoot -Credential $cred -ErrorAction Stop | Out-Null
+                Remove-PSDrive -Name "NcsSmbProbe" -Force -ErrorAction SilentlyContinue
+            } catch {
+                return [pscustomobject]@{ Accessible = $false; UncRoot = $uncRoot; Error = "SMB authentication failed: $($_.Exception.Message)" }
+            }
+        }
+
         $accessible = Test-Path -LiteralPath $uncRoot -ErrorAction Stop
         return [pscustomobject]@{ Accessible = $accessible; UncRoot = $uncRoot; Error = "" }
     } catch {
@@ -175,6 +191,8 @@ function Get-NcsXamlControlMap {
         "SshPasswordBox",
         "RemoteRepoPathTextBox",
         "SmbShareNameTextBox",
+        "SmbUserTextBox",
+        "SmbPasswordBox",
         "ReportDeliveryModeComboBox",
         "AutoRefreshIntervalTextBox",
         "SaveSettingsButton",
@@ -789,6 +807,8 @@ function Sync-NcsSettingsFromControls {
     $Settings.SshPassword = $Controls.SshPasswordBox.Password
     $Settings.RemoteRepoPath = $Controls.RemoteRepoPathTextBox.Text.Trim()
     $Settings.SmbShareName = $Controls.SmbShareNameTextBox.Text.Trim()
+    $Settings.SmbUser = $Controls.SmbUserTextBox.Text.Trim()
+    $Settings.SmbPassword = $Controls.SmbPasswordBox.Password
     $Settings.ReportDeliveryMode = [string] $Controls.ReportDeliveryModeComboBox.SelectedItem
     $refreshText = $Controls.AutoRefreshIntervalTextBox.Text.Trim()
     $parsedRefresh = 0
@@ -822,6 +842,8 @@ function Sync-NcsControlsFromSettings {
     $Controls.SshPasswordBox.Password = $Settings.SshPassword
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     $Controls.SmbShareNameTextBox.Text = $Settings.SmbShareName
+    $Controls.SmbUserTextBox.Text = $Settings.SmbUser
+    $Controls.SmbPasswordBox.Password = $Settings.SmbPassword
     $deliveryModes = @("Auto", "Smb", "Scp")
     $Controls.ReportDeliveryModeComboBox.ItemsSource = $deliveryModes
     if ($deliveryModes -contains $Settings.ReportDeliveryMode) {
