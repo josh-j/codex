@@ -523,7 +523,8 @@ function Start-NcsRemoteCommand {
         RunId          = $runId
         Settings       = $Settings
         SessionLogPath = $sessionLogPath
-        DrainCountdown = -1
+        DrainCountdown = 3
+        ExitDetected   = $false
         LastOutputAt   = $startedAt
         StaleNotified  = $false
         RemotePid      = 0
@@ -567,23 +568,24 @@ function Start-NcsRemoteCommand {
                 }
                 return
             }
-            # Process exited — drain a few more ticks to collect final output
-            if ($es.DrainCountdown -lt 0) {
+
+            if (-not $es.ExitDetected) {
+                $es.ExitDetected = $true
                 $es.DrainCountdown = 3
-                return
             }
+
             if ($es.DrainCountdown -gt 0) {
                 $es.DrainCountdown--
                 return
             }
 
-            # Wait for async readers to close (non-blocking: check each tick)
+            # All done — async readers either closed or we timed out
             if (-not $es.StdoutClosed.IsSet -or -not $es.StderrClosed.IsSet) {
+                # Give async readers a few more ticks, then give up
                 if ($es.DrainCountdown -gt -10) {
                     $es.DrainCountdown--
                     return
                 }
-                # Timeout after ~1s of extra ticks — proceed anyway
             }
 
             $sender.Stop()
