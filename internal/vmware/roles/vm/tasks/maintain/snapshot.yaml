@@ -17,6 +17,7 @@
     - name: "VM Snapshot | Create pre-action snapshot for each VM"
       community.vmware.vmware_guest_snapshot:
         name: "{{ item }}"
+        datacenter: "{{ vm_snapshot_datacenter }}"
         state: present
         snapshot_name: "{{ vm_snapshot_name | default('Ansible_Safety_Snapshot_' ~ now(utc=true, fmt='%Y%m%d_%H%M%S')) }}"
         description: "{{ vm_snapshot_desc | default('Safety snapshot created by Ansible') }}"

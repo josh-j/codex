@@ -11,7 +11,8 @@
         _stig_validate_expr:
           - var: _vm_attr_vmotion_encryption
             equals: "required"
-        vmotion_encryption: required
+        encryption:
+          encrypted_vmotion: required
 
     # --- V-256473 / VMCH-70-000025: Logging enabled ---
     - name: "stigrule_256473"
@@ -29,7 +30,8 @@
         _stig_validate_expr:
           - var: _vm_attr_ft_encryption
             matches: "(?i)^(required|ftencryptionrequired)$"
-        ft_encryption: required
+        encryption:
+          encrypted_ft: required
 
   module_defaults:
     internal.core.stig:
