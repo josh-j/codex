@@ -578,7 +578,19 @@ function Start-NcsRemoteCommand {
             }
 
             $sender.Stop()
-            $es.Process.WaitForExit()
+            # Wait for async stdout/stderr readers to finish (with timeout to avoid UI hang)
+            [void] $es.StdoutClosed.Wait(2000)
+            [void] $es.StderrClosed.Wait(2000)
+            # Drain any final lines queued after the countdown
+            while ($es.PendingLines.TryDequeue([ref]$line)) {
+                if ($line -match $script:NcsRemotePidPattern) {
+                    $es.RemotePid = [int] $Matches[1]
+                } else {
+                    $es.Lines.Add($line)
+                    if ($es.OnOutput) { & $es.OnOutput $line }
+                }
+            }
+            if ($es.OnOutputBatch) { & $es.OnOutputBatch }
 
             if ($es.Lines.Count -gt $script:MaxOutputLines) {
                 $es.Lines.RemoveRange(0, $es.Lines.Count - $script:MaxOutputLines)
