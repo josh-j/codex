@@ -14,7 +14,7 @@
   become: false
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    _inventory_path: "{{ ncs_repo_root }}/inventory/production/esxi_hosts.yaml"
+    _inventory_path: "{{ playbook_dir }}/../../../inventory/production/esxi_hosts.yaml"
   tasks:
     - name: "Init vCenter connection"
       ansible.builtin.include_role:
