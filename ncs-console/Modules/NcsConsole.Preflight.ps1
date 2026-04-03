@@ -126,7 +126,7 @@ function Test-NcsRemotePreflight {
         "test -f $repo/.vaultpass && echo CHECK:vault:ok || echo CHECK:vault:fail"
         "(cd $repo && test -f .venv/bin/ansible-playbook && echo CHECK:ansible:ok) || (command -v ansible-playbook >/dev/null 2>&1 && echo CHECK:ansible:ok) || echo CHECK:ansible:fail"
         "test -d $reports && echo CHECK:reports:ok || echo CHECK:reports:fail"
-        "(mkdir -p $($script:NcsRemoteRunRoot) >/dev/null 2>&1 && touch $($script:NcsRemoteRunRoot)/preflight.write && rm -f $($script:NcsRemoteRunRoot)/preflight.write && echo CHECK:writable:ok) || echo CHECK:writable:fail"
+        "(mkdir -p `$HOME/$($script:NcsRemoteRunRoot) >/dev/null 2>&1 && touch `$HOME/$($script:NcsRemoteRunRoot)/preflight.write && rm -f `$HOME/$($script:NcsRemoteRunRoot)/preflight.write && echo CHECK:writable:ok) || echo CHECK:writable:fail"
     ) -join "; "
 
     $checkMeta = [ordered]@{
