@@ -577,11 +577,17 @@ function Start-NcsRemoteCommand {
                 return
             }
 
+            # Wait for async readers to close (non-blocking: check each tick)
+            if (-not $es.StdoutClosed.IsSet -or -not $es.StderrClosed.IsSet) {
+                if ($es.DrainCountdown -gt -10) {
+                    $es.DrainCountdown--
+                    return
+                }
+                # Timeout after ~1s of extra ticks — proceed anyway
+            }
+
             $sender.Stop()
-            # Wait for async stdout/stderr readers to finish (with timeout to avoid UI hang)
-            [void] $es.StdoutClosed.Wait(2000)
-            [void] $es.StderrClosed.Wait(2000)
-            # Drain any final lines queued after the countdown
+            # Final drain of any remaining queued lines
             while ($es.PendingLines.TryDequeue([ref]$line)) {
                 if ($line -match $script:NcsRemotePidPattern) {
                     $es.RemotePid = [int] $Matches[1]
@@ -625,12 +631,28 @@ function Start-NcsRemoteCommand {
             if ($completedCb) { & $completedCb $result }
         } catch {
             $sender.Stop()
-            if ($null -ne $script:NcsActiveExecutionState) {
-                try { $script:NcsActiveExecutionState.Process.Kill() } catch [System.InvalidOperationException] {
+            $failedEs = $script:NcsActiveExecutionState
+            if ($null -ne $failedEs) {
+                try { $failedEs.Process.Kill() } catch [System.InvalidOperationException] {
                     $null = $_ # Process already exited
                 }
-                $script:NcsActiveExecutionState.Process.Dispose()
+                $failedResult = [NcsRunResult]::new()
+                $failedResult.Action = $failedEs.Request.Playbook
+                $failedResult.Command = $failedEs.RemoteCmd
+                $failedResult.ExitCode = -1
+                $failedResult.StartedAt = $failedEs.StartedAt
+                $failedResult.EndedAt = Get-Date
+                $failedResult.Duration = $failedResult.EndedAt.Value - $failedEs.StartedAt
+                $failedResult.OutputLines = $failedEs.Lines.ToArray()
+                $failedResult.WasCancelled = $failedEs.State -eq "Cancelling"
+                $failedResult.FailureStage = "execution"
+                $failedResult.SessionLogPath = $failedEs.SessionLogPath
+                $failedCb = $failedEs.OnCompleted
+                $failedEs.StdoutClosed.Dispose()
+                $failedEs.StderrClosed.Dispose()
+                $failedEs.Process.Dispose()
                 $script:NcsActiveExecutionState = $null
+                if ($failedCb) { & $failedCb $failedResult }
             }
         }
     })
