@@ -523,8 +523,7 @@ function Start-NcsRemoteCommand {
         RunId          = $runId
         Settings       = $Settings
         SessionLogPath = $sessionLogPath
-        DrainCountdown = 3
-        ExitDetected   = $false
+        TicksSinceExit = 0
         LastOutputAt   = $startedAt
         StaleNotified  = $false
         RemotePid      = 0
@@ -540,6 +539,7 @@ function Start-NcsRemoteCommand {
                 return
             }
 
+            # Drain all pending output
             $now = Get-Date
             $line = $null
             $gotOutput = $false
@@ -558,6 +558,7 @@ function Start-NcsRemoteCommand {
                 if ($es.OnOutputBatch) { & $es.OnOutputBatch }
             }
 
+            # Still running — check for stale output
             if (-not $es.Process.HasExited) {
                 if (-not $es.StaleNotified -and $es.OnStale) {
                     $idle = ($now - $es.LastOutputAt).TotalSeconds
@@ -569,36 +570,14 @@ function Start-NcsRemoteCommand {
                 return
             }
 
-            if (-not $es.ExitDetected) {
-                $es.ExitDetected = $true
-                $es.DrainCountdown = 3
-            }
-
-            if ($es.DrainCountdown -gt 0) {
-                $es.DrainCountdown--
+            # Process exited — give a few ticks for async readers to flush
+            $es.TicksSinceExit++
+            if ($es.TicksSinceExit -lt 5 -and $gotOutput) {
                 return
             }
 
-            # All done — async readers either closed or we timed out
-            if (-not $es.StdoutClosed.IsSet -or -not $es.StderrClosed.IsSet) {
-                # Give async readers a few more ticks, then give up
-                if ($es.DrainCountdown -gt -10) {
-                    $es.DrainCountdown--
-                    return
-                }
-            }
-
+            # Complete
             $sender.Stop()
-            # Final drain of any remaining queued lines
-            while ($es.PendingLines.TryDequeue([ref]$line)) {
-                if ($line -match $script:NcsRemotePidPattern) {
-                    $es.RemotePid = [int] $Matches[1]
-                } else {
-                    $es.Lines.Add($line)
-                    if ($es.OnOutput) { & $es.OnOutput $line }
-                }
-            }
-            if ($es.OnOutputBatch) { & $es.OnOutputBatch }
 
             if ($es.Lines.Count -gt $script:MaxOutputLines) {
                 $es.Lines.RemoveRange(0, $es.Lines.Count - $script:MaxOutputLines)
