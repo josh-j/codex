@@ -16,6 +16,7 @@
           _raw_host_facts: {}
           _raw_host_nics: {}
           _raw_host_services: {}
+          _raw_host_extended: {}
 
     - name: Inventory | Query Datacenters
       community.vmware.vmware_datacenter_info:
@@ -112,6 +113,25 @@
           changed_when: false
           when: _all_esxi_hosts | length > 0
 
+        - name: Per-Host | Query extended host properties (lockdown, status, CPU, VMs)
+          community.vmware.vmware_host_facts:
+            esxi_hostname: "{{ item }}"
+            schema: vsphere
+            properties:
+              - summary.overallStatus
+              - summary.quickStats.overallCpuUsage
+              - summary.hardware.cpuMhz
+              - summary.hardware.numCpuCores
+              - config.lockdownMode
+              - vm
+          loop: "{{ _all_esxi_hosts }}"
+          register: _raw_host_extended
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          when: _all_esxi_hosts | length > 0
+
   always:
     - name: Assemble raw ESXi infrastructure context
       ansible.builtin.set_fact:
@@ -130,6 +150,7 @@
             host_facts: "{{ _raw_host_facts.results | default([]) }}"
             host_nics: "{{ _raw_host_nics.results | default([]) }}"
             host_services: "{{ _raw_host_services.results | default([]) }}"
+            host_extended: "{{ _raw_host_extended.results | default([]) }}"
           config: "{{ (vcenter | default({})).config | default({}) }}"
       changed_when: false
       no_log: true
