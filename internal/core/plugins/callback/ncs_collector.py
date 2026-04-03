@@ -1117,9 +1117,10 @@ class CallbackModule(CallbackBase):
                 })
 
         # Merge NIC info from full payload
+        # hosts_info values are already unwrapped .results lists from the collect play.
         hosts_info = _safe_dict(full_payload.get("hosts_info"))
         if hosts_info:
-            for nic_result in _safe_list(_safe_dict(hosts_info.get("host_nics")).get("results")):
+            for nic_result in _safe_list(hosts_info.get("host_nics")):
                 if not isinstance(nic_result, dict):
                     continue
                 host_nics = _safe_dict(_safe_dict(nic_result.get("hosts_vmnic_info")).get(hostname))
@@ -1134,7 +1135,7 @@ class CallbackModule(CallbackBase):
                         })
 
             # Merge service info from full payload
-            for svc_result in _safe_list(_safe_dict(hosts_info.get("host_services")).get("results")):
+            for svc_result in _safe_list(hosts_info.get("host_services")):
                 if not isinstance(svc_result, dict):
                     continue
                 host_svcs = _safe_dict(svc_result.get("host_service_info")).get(hostname, [])
@@ -1147,6 +1148,36 @@ class CallbackModule(CallbackBase):
                             assembled["shell_enabled"] = svc.get("running", False)
                         elif key == "ntpd":
                             assembled["ntp_running"] = svc.get("running", False)
+
+            # Merge extended host properties (lockdown, status, CPU usage, VM count)
+            for ext_result in _safe_list(hosts_info.get("host_extended")):
+                if not isinstance(ext_result, dict) or ext_result.get("item") != hostname:
+                    continue
+                ext_facts = _safe_dict(ext_result.get("ansible_facts"))
+                summary = _safe_dict(ext_facts.get("summary"))
+                config = _safe_dict(ext_facts.get("config"))
+                hw = _safe_dict(summary.get("hardware"))
+                qs = _safe_dict(summary.get("quickStats"))
+
+                overall = summary.get("overallStatus", "")
+                if overall:
+                    assembled["overall_status"] = overall
+
+                lockdown = config.get("lockdownMode", "")
+                if lockdown:
+                    assembled["lockdown_mode"] = lockdown
+
+                cpu_mhz_used = _safe_float(qs.get("overallCpuUsage", 0))
+                cpu_mhz_per_core = _safe_float(hw.get("cpuMhz", 0))
+                cpu_cores = _safe_int(hw.get("numCpuCores", 0))
+                cpu_total = cpu_mhz_per_core * cpu_cores
+                if cpu_total > 0:
+                    assembled["cpu_used_pct"] = round((cpu_mhz_used / cpu_total) * 100, 1)
+
+                vms = ext_facts.get("vm")
+                if isinstance(vms, list):
+                    assembled["vm_count"] = len(vms)
+                break
 
         # Merge cluster context from full payload
         for dc_result in _safe_list(_safe_dict(full_payload.get("clusters_info")).get("results")):
