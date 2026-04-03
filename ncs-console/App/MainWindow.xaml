@@ -122,6 +122,21 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
+                                    <TextBlock Text="SMB User" Foreground="{StaticResource TextMutedBrush}" />
+                                    <TextBox x:Name="SmbUserTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="SMB Password" Foreground="{StaticResource TextMutedBrush}" />
+                                    <PasswordBox x:Name="SmbPasswordBox" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
                                     <TextBlock Text="Delivery Mode" Foreground="{StaticResource TextMutedBrush}" />
                                     <ComboBox x:Name="ReportDeliveryModeComboBox" />
                                 </StackPanel>
