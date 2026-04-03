@@ -1841,6 +1841,79 @@ function Show-NcsConsoleApp {
             if ([string]::IsNullOrWhiteSpace($selectedPlaybook)) {
                 throw "Select an action before running."
             }
+
+            # Confirm before running mutating actions
+            $matchedAction = Find-NcsActionItem -Groups $script:ActionGroups -Playbook $selectedPlaybook
+            $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
+            if ($isMutating) {
+                $confirmBox = [System.Windows.Window]::new()
+                $confirmBox.Title = ""
+                $confirmBox.Width = 400
+                $confirmBox.SizeToContent = "Height"
+                $confirmBox.WindowStartupLocation = "CenterOwner"
+                $confirmBox.Owner = $window
+                $confirmBox.WindowStyle = "None"
+                $confirmBox.ResizeMode = "NoResize"
+                $confirmBox.Background = Get-NcsBrush -Color "#181b1f"
+                $confirmBox.BorderBrush = Get-NcsBrush -Color "#f06478"
+                $confirmBox.BorderThickness = [System.Windows.Thickness]::new(1)
+                $csp = [System.Windows.Controls.StackPanel]::new()
+                $csp.Margin = [System.Windows.Thickness]::new(16)
+                $cTitle = [System.Windows.Controls.TextBlock]::new()
+                $cTitle.Text = "Confirm Mutating Action"
+                $cTitle.Foreground = Get-NcsBrush -Color "#f06478"
+                $cTitle.FontSize = 14
+                $cTitle.FontWeight = "Bold"
+                $cTitle.Margin = [System.Windows.Thickness]::new(0,0,0,8)
+                $csp.Children.Add($cTitle) | Out-Null
+                $cLabel = [System.Windows.Controls.TextBlock]::new()
+                $cLabel.Text = "This action makes changes to remote hosts.`n`nPlaybook: $selectedPlaybook`n`nType 'yes' to confirm:"
+                $cLabel.Foreground = Get-NcsBrush -Color "#8e939c"
+                $cLabel.Margin = [System.Windows.Thickness]::new(0,0,0,6)
+                $cLabel.TextWrapping = "Wrap"
+                $cLabel.FontSize = 11
+                $csp.Children.Add($cLabel) | Out-Null
+                $cInput = [System.Windows.Controls.TextBox]::new()
+                $cInput.Background = Get-NcsBrush -Color "#1e2228"
+                $cInput.Foreground = Get-NcsBrush -Color "#d8dce2"
+                $cInput.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $cInput.CaretBrush = Get-NcsBrush -Color "#d8dce2"
+                $cInput.Padding = [System.Windows.Thickness]::new(8,5,8,5)
+                $cInput.FontFamily = [System.Windows.Media.FontFamily]::new("Consolas")
+                $csp.Children.Add($cInput) | Out-Null
+                $cBtnPanel = [System.Windows.Controls.StackPanel]::new()
+                $cBtnPanel.Orientation = "Horizontal"
+                $cBtnPanel.HorizontalAlignment = "Right"
+                $cBtnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
+                $cOkBtn = [System.Windows.Controls.Button]::new()
+                $cOkBtn.Content = "Run"
+                $cOkBtn.Background = Get-NcsBrush -Color "#1e2228"
+                $cOkBtn.Foreground = Get-NcsBrush -Color "#f06478"
+                $cOkBtn.BorderBrush = Get-NcsBrush -Color "#f06478"
+                $cOkBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+                $cOkBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
+                $cOkBtn.IsDefault = $true
+                $cOkBtn.Add_Click({ $confirmBox.DialogResult = $true })
+                $cCancelBtn = [System.Windows.Controls.Button]::new()
+                $cCancelBtn.Content = "Cancel"
+                $cCancelBtn.Background = Get-NcsBrush -Color "#1e2228"
+                $cCancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
+                $cCancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+                $cCancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+                $cCancelBtn.Add_Click({ $confirmBox.DialogResult = $false })
+                $cBtnPanel.Children.Add($cCancelBtn) | Out-Null
+                $cBtnPanel.Children.Add($cOkBtn) | Out-Null
+                $csp.Children.Add($cBtnPanel) | Out-Null
+                $confirmBox.Content = $csp
+                $cInput.Focus() | Out-Null
+
+                $confirmed = $confirmBox.ShowDialog()
+                if ($confirmed -ne $true -or $cInput.Text.Trim().ToLower() -ne "yes") {
+                    $controls.StatusTextBlock.Text = "Run cancelled — confirmation not provided."
+                    return
+                }
+            }
+
             $controls.RunMetaText.Text = $selectedPlaybook
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
