@@ -62,16 +62,26 @@ Aggregates all platform directories and renders every report type in one pass.
 ```bash
 ncs-reporter all \
   --platform-root /srv/reports/platform \
-  --reports-root  /srv/reports \
-  --groups        /srv/reports/platform/inventory_groups.json
+  --reports-root  /srv/reports
 ```
 
 | Option | Description |
 |---|---|
-| `--platform-root` | Root directory containing `ubuntu/`, `vmware/`, `windows/` subdirs |
+| `--platform-root` | Root directory containing platform subdirs (e.g. `ubuntu/`, `vmware/`, `windows/`) |
 | `--reports-root` | Output directory for generated HTML |
-| `--groups` | Inventory groups JSON/YAML (used for site dashboard grouping) |
 | `--report-stamp` | Override date stamp (YYYYMMDD); defaults to today |
+| `--config-dir` | Custom config directory (overrides built-in configs) |
+| `--extra-config-dir` / `-S` | Additional config directories (repeatable) |
+| `--platforms-config` / `-P` | Path to a `platforms.yaml` config file |
+| `--force` | Force re-render even if data is unchanged |
+
+---
+
+### `validate-config` — Validate platforms config
+
+```bash
+ncs-reporter validate-config --platforms-config platforms.yaml
+```
 
 ---
 
@@ -80,7 +90,6 @@ ncs-reporter all \
 ```bash
 ncs-reporter site \
   --input  /srv/reports/platform/all_hosts_state.yaml \
-  --groups /srv/reports/platform/inventory_groups.json \
   --output-dir /srv/reports
 ```
 
@@ -141,6 +150,47 @@ ncs-reporter collect \
   --report-dir /srv/reports/platform/vmware \
   --output     vmware_fleet_state.yaml
 ```
+
+---
+
+### `fire-on-alerts` — Execute actions on fired alerts
+
+Evaluates alerts against a raw bundle and executes configured actions (shell commands or playbooks) for any that fire. Tracks per-host cooldown state to prevent duplicate notifications.
+
+```bash
+ncs-reporter fire-on-alerts \
+  --input raw_vmware_discovery.yaml \
+  --state-file .alert_state.yaml \
+  --dry-run
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--input` / `-i` | *(required)* | Path to raw YAML bundle |
+| `--hostname` / `-n` | auto-detected | Hostname for state tracking |
+| `--state-file` | `.alert_state.yaml` | Cooldown state file path |
+| `--project-dir` / `-C` | cwd | Ansible project root for playbook path resolution |
+| `--dry-run` | off | Print actions without executing |
+
+---
+
+### `platform` — Manage platform configs
+
+Subcommands for working with platform config files:
+
+| Subcommand | Description |
+|---|---|
+| `platform list` | List all discovered platform configs and their source paths |
+| `platform validate <file>` | Validate a config file with comprehensive checks (field references, scripts, paths) |
+| `platform init --name <name>` | Generate a starter config template (optionally `--from-bundle` or `--annotated`) |
+| `platform run <file>` | Test-render a config against a raw YAML bundle |
+| `platform info widgets` | List available widget types |
+| `platform info conditions` | List alert condition operators |
+| `platform info transforms` | List pipe transforms for field paths |
+| `platform info types` | List field types and default fallbacks |
+| `platform info aliases` | List YAML shorthand aliases |
+
+> **Note:** The `schema` command group is a deprecated alias for `platform`.
 
 ---
 
@@ -249,6 +299,8 @@ src/ncs_reporter/
 ├── alerts.py                 # Health rollup logic
 └── cklb_export.py            # CKLB file generation
 ```
+
+See [PATH_CONVENTIONS.md](PATH_CONVENTIONS.md) for telemetry lake structure and report output paths.
 
 **Key conventions:**
 

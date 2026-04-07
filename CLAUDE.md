@@ -40,10 +40,10 @@ Four internal Ansible collections live under `internal/` and are symlinked into 
 
 | Collection | Roles | Purpose |
 |---|---|---|
-| `internal.core` | — | Shared plugins: `ncs_collector` callback, `stig`/`pwsh` action+module plugins, filter plugins |
+| `internal.core` | `dispatch`, `emit`, `stig_orchestrator` | Shared plugins: `ncs_collector` callback, `stig`/`pwsh` action+module plugins, filter plugins |
 | `internal.vmware` | `common`, `esxi`, `vcsa`, `vm` | VMware audit, STIG audit/remediate |
 | `internal.linux` | `ubuntu`, `photon` | Linux audit, STIG audit/remediate |
-| `internal.windows` | `windows` | Windows audit, STIG audit/remediate |
+| `internal.windows` | `server`, `domain` | Windows audit, STIG audit/remediate, AD operations |
 
 The `ncs_collector` callback plugin (`internal/core/plugins/callback/ncs_collector.py`) is the bridge between stages — it intercepts Ansible task results and persists them as `raw_*.yaml` files.
 
