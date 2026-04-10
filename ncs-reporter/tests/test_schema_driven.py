@@ -893,7 +893,7 @@ class TestScriptFields:
         assert spec.script.path == "normalize_snapshots.py"
         aged_alert = next((a for a in s.alerts if a.id == "aged_snapshots"), None)
         assert aged_alert is not None
-        assert "snapshots" in aged_alert.when
+        assert aged_alert.items is not None and "snapshots" in aged_alert.items
 
 
 # ---------------------------------------------------------------------------

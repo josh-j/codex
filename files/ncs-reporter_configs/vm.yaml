@@ -60,19 +60,22 @@ alerts:
   - id: powered_off_vms
     category: "Workload Inventory"
     severity: WARNING
-    when: powered_off_vm_count > 0 and virtual_machines | length > 0
+    when: powered_off_vm_count > 0
+    items: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOff') | list }}"
     msg: "{{ powered_off_vm_count }} powered-off VM(s) detected — review for cleanup or licensing"
 
   - id: vm_tools_not_running
     category: "Workload Compliance"
     severity: WARNING
     when: virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list | length > 0
+    items: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotRunning') | list }}"
     msg: "Powered-on VMs detected with VMware Tools not running"
 
   - id: vm_tools_not_installed
     category: "Workload Compliance"
     severity: WARNING
     when: virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list | length > 0
+    items: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list }}"
     msg: "Powered-on VMs detected with VMware Tools not installed"
 
   - id: snapshots_present
@@ -84,7 +87,8 @@ alerts:
   - id: aged_snapshots
     category: "Snapshots"
     severity: CRITICAL
-    when: aged_snapshot_count > 0 and snapshots | length > 0
+    when: aged_snapshot_count > 0
+    items: "{{ snapshots | selectattr('days_old', 'ge', snapshot_age_days) | list }}"
     msg: "{{ aged_snapshot_count }} snapshot(s) older than {{ snapshot_age_days }} days"
 
 # ---------------------------------------------------------------------------

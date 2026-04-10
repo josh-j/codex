@@ -211,6 +211,7 @@ class AlertRule(BaseModel):
     action: ActionSpec | None = None
     cooldown: str = "7d"  # Minimum time between re-firing (e.g., "7d", "24h", "1h")
     msg: str = Field(validation_alias=AliasChoices("msg", "message"))
+    items: str | None = None  # Jinja2 expression returning a filtered list for affected_items
     suppress_if: str | list[str] | None = None
 
     @model_validator(mode="before")
