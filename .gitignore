@@ -9,5 +9,9 @@ build/
 # ncs-console dependencies (pulled by ncs-console/setup.ps1)
 ncs-console/App/lib/
 
+# Secrets
+.env
+.vaultpass
+
 # Claude Code
 .claude/
