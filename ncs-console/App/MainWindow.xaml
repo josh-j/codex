@@ -23,7 +23,7 @@
     </shell:WindowChrome.WindowChrome>
     <!-- @@MAIN_WINDOW_RESOURCES@@ -->
 
-    <Border Background="#0f1117" BorderBrush="#2c3038" BorderThickness="1">
+    <Border x:Name="OuterChromeBorder" Background="#0f1117" BorderBrush="#2c3038" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="48" />
@@ -115,21 +115,8 @@
                             <TextBlock Text="Reports" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,4" />
                             <TextBlock Text="SMB Share Name" Foreground="{StaticResource TextMutedBrush}" />
                             <TextBox x:Name="SmbShareNameTextBox" />
-                            <Grid Margin="0,6,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="8" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="SMB User" Foreground="{StaticResource TextMutedBrush}" />
-                                    <TextBox x:Name="SmbUserTextBox" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="SMB Password" Foreground="{StaticResource TextMutedBrush}" />
-                                    <PasswordBox x:Name="SmbPasswordBox" />
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock Text="SMB User" Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" />
+                            <TextBox x:Name="SmbUserTextBox" />
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -246,7 +233,7 @@
                         <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
                             <StackPanel>
                                 <DockPanel>
-                                    <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                         <Button x:Name="CopyOutputButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Copy output to clipboard">
                                             <StackPanel Orientation="Horizontal">
@@ -295,7 +282,7 @@
 
                         <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="Reports" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock DockPanel.Dock="Left" Text="Reports" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button x:Name="ReportBackButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Back" IsEnabled="False">
                                         <Path Width="8" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M8 0 L0 5 L8 10" VerticalAlignment="Center" />
