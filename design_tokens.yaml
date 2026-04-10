@@ -1,0 +1,50 @@
+# design_tokens.yaml — Single source of truth for NCS design tokens
+# Consumed by: ncs-console (WPF/XAML) and ncs-reporter (HTML/CSS)
+# Run `just sync-tokens` after editing this file.
+
+colors:
+  # Surfaces
+  surface: "#181b1f"
+  surface-alt: "#1e2228"
+  # Brand / accent
+  brand: "#6e9fff"
+  # Status (Grafana palette)
+  ok: "#73bf69"
+  warn: "#ff9830"
+  critical: "#f2495c"
+  info: "#8e939c"
+  # Text
+  text: "#d8dce2"
+  text-muted: "#8e939c"
+  # Borders
+  line: "#2c3038"
+
+typography:
+  # Full CSS font stacks; XAML generator picks the first Windows-native font
+  font-sans: 'Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+  font-mono: '"JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace'
+  sizes:
+    micro: 9
+    tiny: 10
+    xs: 11
+    sm: 12
+    md: 13
+    base: 14
+    xl: 18
+
+radii:
+  sm: 4
+  md: 6
+  lg: 8
+
+spacing:
+  2: 2
+  4: 4
+  6: 6
+  8: 8
+  10: 10
+  12: 12
+  14: 14
+  16: 16
+  20: 20
+  22: 22
