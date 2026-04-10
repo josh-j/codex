@@ -2,98 +2,23 @@
    CSS Variables — Grafana-inspired dark theme
    ========================================================================== */
 :root {
-  /* Colors: Surface & Backgrounds */
-  --bg-top: #111217;
-  --bg-bottom: #111217;
+  /* @@GENERATED_TOKENS_START@@ — from design_tokens.yaml, do not edit */
+  /* Colors (shared) */
   --surface: #181b1f;
   --surface-alt: #1e2228;
-  --surface-muted: #1a1d23;
-  --surface-th: #1e2228;
-  --surface-row-alt: #1a1d22;
-  --surface-hover: #22262d;
-  --surface-hover-light: #1e2228;
-  --surface-active: #22262d;
-  --surface-translucent: rgba(24, 27, 31, 0.92);
-
-  /* Colors: Text */
-  --text: #d8dce2;
-  --text-muted: #8e939c;
-  --text-soft: #6c727d;
-  --text-strong: #ccccdc;
-  --text-active: #ffffff;
-  --text-details: #a7abb5;
-  --text-divider: #444950;
-  --text-icon: #6c727d;
-  --text-icon-dark: #8e939c;
-  --text-dash: #444950;
-  --text-inverse: #ffffff;
-  --text-inverse-muted: #c7d0dc;
-  --text-inverse-soft: #a0aab8;
-
-  /* Colors: Lines & Borders */
-  --line: #2c3038;
-  --line-strong: #363b44;
-  --line-subtle: #22262d;
-  --line-hover: #44495a;
-  --line-focus: #6e9fff;
-  --line-focus-muted: #4a6fa5;
-
-  /* Colors: Brand — Grafana teal accent */
   --brand: #6e9fff;
-  --brand-strong: #83b0ff;
-  --brand-soft: rgba(110, 159, 255, 0.12);
-
-  /* Colors: Health & Status — Grafana palette */
   --ok: #73bf69;
   --warn: #ff9830;
   --critical: #f2495c;
   --info: #8e939c;
-  --green: #73bf69;
-  --yellow: #ff9830;
-  --red: #f2495c;
-  --blue: #6e9fff;
-  --health-ok: #73bf69;
-  --health-warn: #ff9830;
-  --health-crit: #f2495c;
-  --health-unk: #6c727d;
-  --muted: #555a65;
+  --text: #d8dce2;
+  --text-muted: #8e939c;
+  --line: #2c3038;
 
-  /* Colors: Alerts */
-  --alert-bg: rgba(242, 73, 92, 0.06);
-  --alert-border: rgba(242, 73, 92, 0.20);
-  --alert-crit-bg: rgba(242, 73, 92, 0.06);
-  --alert-warn-bg: rgba(255, 152, 48, 0.06);
-  --alert-warn-border: rgba(255, 152, 48, 0.20);
-
-  /* Colors: Gradients — flat for Grafana */
-  --grad-header: #181b1f;
-  --grad-toc: #181b1f;
-  --grad-widget-hdr: #1e2228;
-  --grad-widget-hdr-hover: #22262d;
-  --grad-widget-alert-hdr: rgba(242, 73, 92, 0.10);
-  --grad-widget-subgroup: #1a1d22;
-
-  /* Colors: Widgets & Groups */
-  --widget-hdr-border: #2c3038;
-  --widget-alert-hdr-border: rgba(242, 73, 92, 0.25);
-  --widget-grid-hdr: #1e2228;
-  --widget-grid-title: #ccccdc;
-  --widget-grid-toggle-border: #363b44;
-  --widget-link: #6e9fff;
-
-  --text-stig: #c77dba;
-  --text-stig-hover: #d99cce;
-  --surface-stig-hover: rgba(199, 125, 186, 0.08);
-  --group-hdr-bg: #1e2228;
-
-  /* Radii — tighter for Grafana feel */
+  /* Radii */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-
-  /* Shadows — very subtle in dark theme */
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
 
   /* Typography */
   --text-micro: 9px;
@@ -117,6 +42,85 @@
   --space-16: 16px;
   --space-20: 20px;
   --space-22: 22px;
+  /* @@GENERATED_TOKENS_END@@ */
+
+  /* Colors: Surface & Backgrounds (derived) */
+  --bg-top: #111217;
+  --bg-bottom: #111217;
+  --surface-muted: #1a1d23;
+  --surface-th: #1e2228;
+  --surface-row-alt: #1a1d22;
+  --surface-hover: #22262d;
+  --surface-hover-light: #1e2228;
+  --surface-active: #22262d;
+  --surface-translucent: rgba(24, 27, 31, 0.92);
+
+  /* Colors: Text (derived) */
+  --text-soft: #6c727d;
+  --text-strong: #ccccdc;
+  --text-active: #ffffff;
+  --text-details: #a7abb5;
+  --text-divider: #444950;
+  --text-icon: #6c727d;
+  --text-icon-dark: #8e939c;
+  --text-dash: #444950;
+  --text-inverse: #ffffff;
+  --text-inverse-muted: #c7d0dc;
+  --text-inverse-soft: #a0aab8;
+
+  /* Colors: Lines & Borders (derived) */
+  --line-strong: #363b44;
+  --line-subtle: #22262d;
+  --line-hover: #44495a;
+  --line-focus: #6e9fff;
+  --line-focus-muted: #4a6fa5;
+
+  /* Colors: Brand (derived) */
+  --brand-strong: #83b0ff;
+  --brand-soft: rgba(110, 159, 255, 0.12);
+
+  /* Colors: Health & Status (aliases) */
+  --green: #73bf69;
+  --yellow: #ff9830;
+  --red: #f2495c;
+  --blue: #6e9fff;
+  --health-ok: #73bf69;
+  --health-warn: #ff9830;
+  --health-crit: #f2495c;
+  --health-unk: #6c727d;
+  --muted: #555a65;
+
+  /* Colors: Alerts */
+  --alert-bg: rgba(242, 73, 92, 0.06);
+  --alert-border: rgba(242, 73, 92, 0.20);
+  --alert-crit-bg: rgba(242, 73, 92, 0.06);
+  --alert-warn-bg: rgba(255, 152, 48, 0.06);
+  --alert-warn-border: rgba(255, 152, 48, 0.20);
+
+  /* Colors: Gradients */
+  --grad-header: #181b1f;
+  --grad-toc: #181b1f;
+  --grad-widget-hdr: #1e2228;
+  --grad-widget-hdr-hover: #22262d;
+  --grad-widget-alert-hdr: rgba(242, 73, 92, 0.10);
+  --grad-widget-subgroup: #1a1d22;
+
+  /* Colors: Widgets & Groups */
+  --widget-hdr-border: #2c3038;
+  --widget-alert-hdr-border: rgba(242, 73, 92, 0.25);
+  --widget-grid-hdr: #1e2228;
+  --widget-grid-title: #ccccdc;
+  --widget-grid-toggle-border: #363b44;
+  --widget-link: #6e9fff;
+
+  --text-stig: #c77dba;
+  --text-stig-hover: #d99cce;
+  --surface-stig-hover: rgba(199, 125, 186, 0.08);
+  --group-hdr-bg: #1e2228;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 /* ==========================================================================
