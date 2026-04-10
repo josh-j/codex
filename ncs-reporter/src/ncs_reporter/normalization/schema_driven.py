@@ -174,17 +174,22 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
         except Exception:
             message = rule.msg
 
-        # Auto-derive detail (scalars) and affected_items (lists) from when expression
-        detail: dict[str, Any] = {}
+        # Derive affected_items: explicit items expression, or auto-extract lists from when refs
         affected_items: list[Any] = []
-        for ref in _extract_when_refs(rule.when):
-            if ref not in fields or ref.startswith("_"):
-                continue
-            val = fields[ref]
-            if isinstance(val, list):
-                affected_items = val
-            else:
-                detail[ref] = val
+        if rule.items:
+            try:
+                items_result = jinja_env.from_string(rule.items).render(**fields)
+                if isinstance(items_result, list):
+                    affected_items = items_result
+            except Exception:
+                pass
+        else:
+            for ref in _extract_when_refs(rule.when):
+                if ref not in fields or ref.startswith("_"):
+                    continue
+                val = fields[ref]
+                if isinstance(val, list):
+                    affected_items = val
 
         alerts.append(
             {
@@ -192,7 +197,7 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 "severity": canonical_severity(rule.severity),
                 "category": rule.category,
                 "message": message,
-                "detail": detail,
+                "detail": {},
                 "affected_items": affected_items,
                 "action": rule.action,
                 "cooldown": rule.cooldown,
