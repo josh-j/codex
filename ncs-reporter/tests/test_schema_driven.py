@@ -244,7 +244,6 @@ class TestAlertGeneration:
             assert "severity" in alert
             assert "category" in alert
             assert "message" in alert
-            assert "detail" in alert
             assert "affected_items" in alert
 
 
@@ -697,10 +696,11 @@ class TestVmHealthSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
-        when_exprs = {a.when for a in s.alerts}
-        assert any("selectattr" in w for w in when_exprs)  # filter_multi equivalent
-        assert "virtual_machines" in s.fields  # script-based field stays declared
-        assert "snapshot_count" in s.fields  # threshold metadata stays declared
+        compute_exprs = {f.compute for f in s.fields.values() if f.compute}
+        assert any("selectattr" in c for c in compute_exprs)
+        assert "virtual_machines" in s.fields
+        assert "snapshot_count" in s.fields
+        assert "powered_off_vms" in s.fields
 
     def test_vm_schema_fires_on_synthetic_bundle(self) -> None:
         from pathlib import Path

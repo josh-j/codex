@@ -263,8 +263,7 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, proje
 
     from .models.report_schema import ActionSpec
     from .normalization.schema_driven import build_schema_alerts, extract_fields
-    from .normalization._when import _build_jinja_env
-    jinja_env = _build_jinja_env()
+    from .normalization._when import _compile_template
 
     # Auto-detect hostname from bundle metadata
     if not hostname:
@@ -336,7 +335,7 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, proje
             else:
                 raw_cmd = spec.command or ""
                 try:
-                    rendered = jinja_env.from_string(raw_cmd).render(**fields)
+                    rendered = _compile_template(raw_cmd).render(**fields)
                 except Exception:
                     rendered = raw_cmd
                 run_cmd = rendered

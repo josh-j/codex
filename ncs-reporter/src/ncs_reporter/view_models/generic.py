@@ -28,9 +28,9 @@ _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
 def _resolve_field_ref(field_ref: str, context: dict[str, Any]) -> Any:
     """Resolve a field reference — Jinja2 expression ({{ var }}) or bare field name."""
     if "{{" in field_ref:
-        from ncs_reporter.normalization._when import _build_jinja_env
+        from ncs_reporter.normalization._when import _compile_template
         try:
-            return _build_jinja_env().from_string(field_ref).render(**context)
+            return _compile_template(field_ref).render(**context)
         except Exception:
             return ""
     # Bare field name — support dot-notation for nested access

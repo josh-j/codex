@@ -8,6 +8,7 @@ colors:
   surface-alt: "#1e2228"
   # Brand / accent
   brand: "#6e9fff"
+  brand-soft: "#182742"  # XAML uses pre-composited hex; CSS overrides with rgba
   # Status (Grafana palette)
   ok: "#73bf69"
   warn: "#ff9830"

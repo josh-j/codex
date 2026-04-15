@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Wrapper for NCS scheduled playbook: {{ item.name }}
+set -euo pipefail
+
+SCHEDULE_NAME="{{ item.name }}"
+REPO_DIR="{{ ncs_repo_path }}"
+LOG_DIR="/var/log/ncs-schedules"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+LOG_FILE="${LOG_DIR}/${SCHEDULE_NAME}-${TIMESTAMP}.log"
+
+cd "$REPO_DIR"
+
+# Activate venv
+if [ -f .venv/bin/activate ]; then
+    # shellcheck disable=SC1091
+    . .venv/bin/activate
+fi
+
+# Build command
+CMD=( ansible-playbook -i inventory/production "{{ item.playbook }}" )
+{% if item.limit | default('') | length > 0 %}
+CMD+=( --limit "{{ item.limit }}" )
+{% endif %}
+{% if item.tags | default('') | length > 0 %}
+CMD+=( --tags "{{ item.tags }}" )
+{% endif %}
+{% if item.check_mode | default(false) %}
+CMD+=( --check )
+{% endif %}
+{% if item.extra_args | default('') | length > 0 %}
+CMD+=( {{ item.extra_args }} )
+{% endif %}
+
+echo "=== NCS Schedule: ${SCHEDULE_NAME} ===" | tee "$LOG_FILE"
+echo "Started: $(date -Iseconds)" | tee -a "$LOG_FILE"
+echo "Command: ${CMD[*]}" | tee -a "$LOG_FILE"
+echo "---" | tee -a "$LOG_FILE"
+
+EXIT_CODE=0
+"${CMD[@]}" 2>&1 | tee -a "$LOG_FILE" || EXIT_CODE=$?
+
+echo "---" | tee -a "$LOG_FILE"
+echo "Finished: $(date -Iseconds)" | tee -a "$LOG_FILE"
+echo "Exit code: ${EXIT_CODE}" | tee -a "$LOG_FILE"
+
+# Rotate logs (keep last 10 per schedule)
+find "$LOG_DIR" -maxdepth 1 -name "${SCHEDULE_NAME}-*.log" -type f \
+    | sort -r | tail -n +11 | xargs --no-run-if-empty rm -f
+
+{% if item.notify_on_failure | default(false) %}
+# Send failure notification — extra-vars written to a temp JSON file to avoid
+# shell injection from log output.
+if [ "$EXIT_CODE" -ne 0 ]; then
+    _alert_vars="$(mktemp --suffix=.json)"
+    _alert_host="$(hostname -f 2>/dev/null || hostname)"
+    _alert_tail="$(tail -20 "$LOG_FILE" | head -c 2000)"
+    SCHEDULE_NAME="$SCHEDULE_NAME" EXIT_CODE="$EXIT_CODE" \
+    _ALERT_HOST="$_alert_host" _ALERT_TAIL="$_alert_tail" \
+    _ALERT_VARS="$_alert_vars" \
+    python3 << 'PYALERT'
+import json, os
+json.dump({
+    "alert_id": "schedule_" + os.environ["SCHEDULE_NAME"],
+    "alert_severity": "CRITICAL",
+    "alert_host": os.environ["_ALERT_HOST"],
+    "alert_msg": "Scheduled playbook '{}' failed (exit {}). Output: {}".format(
+        os.environ["SCHEDULE_NAME"], os.environ["EXIT_CODE"], os.environ["_ALERT_TAIL"]
+    ),
+}, open(os.environ["_ALERT_VARS"], "w"))
+PYALERT
+    ansible-playbook -i inventory/production playbooks/core/send_alert_email.yml \
+        -e "@${_alert_vars}" \
+        || echo "WARNING: Failed to send alert notification" >&2
+    rm -f "$_alert_vars"
+fi
+{% endif %}
+
+exit "$EXIT_CODE"

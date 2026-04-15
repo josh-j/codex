@@ -47,7 +47,8 @@
                         <Button x:Name="SettingsToggleButton" Content="⚙ Settings" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle settings panel" />
                         <Button x:Name="OperateToggleButton" Content="▶ Playbooks" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Active" ToolTip="Toggle operate panel" />
                         <Button x:Name="ConsoleShowButton" Content="⌨ Console" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle console panel" />
-                        <Button x:Name="ReportsToggleButton" Content="📊 Reports" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle reports panel" />
+                        <Button x:Name="ReportsToggleButton" Content="📊 Reports" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" ToolTip="Toggle reports panel" />
+                        <Button x:Name="SchedulesToggleButton" Content="🕐 Schedules" Style="{StaticResource PrimaryTabButtonStyle}" Tag="Inactive" Margin="0" ToolTip="Toggle schedules panel" />
                     </StackPanel>
                     <Border Grid.Column="2" Background="Transparent" />
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
@@ -73,6 +74,8 @@
                     <ColumnDefinition x:Name="ConsoleColumn" Width="0" MinWidth="0" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="ReportsColumn" Width="0" MinWidth="0" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="SchedulesColumn" Width="0" MinWidth="0" />
                 </Grid.ColumnDefinitions>
 
                 <ScrollViewer x:Name="SettingsPanel" Grid.Column="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
@@ -308,6 +311,117 @@
                                     <TextBlock x:Name="ReportPlaceholder" Text="Connect to sync reports to view them inline" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="20" />
                                 </Border>
                             </Grid>
+                        </Border>
+                    </Grid>
+
+                    <GridSplitter x:Name="SchedulesSplitter" Grid.Column="7" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+
+                    <Grid x:Name="SchedulesPane" Grid.Column="8" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Schedules" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="ScheduleRefreshButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Refresh schedules from remote">
+                                        <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M12 2 A8 8 0 1 0 14 8 M12 2 L16 2 L12 6" />
+                                    </Button>
+                                    <Button x:Name="ScheduleAddButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Add new schedule" Margin="4,0,0,0">
+                                        <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
+                                    </Button>
+                                    <Button x:Name="SchedulesCloseButton" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="24" Height="24" MinWidth="0" Padding="0" Margin="8,0,0,0" FontSize="{StaticResource FontSizeSm}" ToolTip="Close schedules" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Background="#0f1117" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,0">
+                            <Grid>
+                                <TextBlock x:Name="SchedulePlaceholder" Text="Connect to load schedules" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <ListView x:Name="ScheduleListView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeMd}" Visibility="Collapsed">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="" Width="30" DisplayMemberBinding="{Binding EnabledIcon}" />
+                                            <GridViewColumn Header="Name" Width="130" DisplayMemberBinding="{Binding Name}" />
+                                            <GridViewColumn Header="Playbook" Width="180" DisplayMemberBinding="{Binding Playbook}" />
+                                            <GridViewColumn Header="Calendar" Width="130" DisplayMemberBinding="{Binding Calendar}" />
+                                            <GridViewColumn Header="Next Run" Width="140" DisplayMemberBinding="{Binding NextTrigger}" />
+                                            <GridViewColumn Header="Last Run" Width="140" DisplayMemberBinding="{Binding LastTrigger}" />
+                                            <GridViewColumn Header="Last Result" Width="80" DisplayMemberBinding="{Binding LastResult}" />
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+
+                        <Border x:Name="ScheduleEditPanel" Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0,0,8,8" Padding="{StaticResource PaddingLg}" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock x:Name="ScheduleEditTitle" Text="New Schedule" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" Margin="0,0,0,8" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Name" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleNameTextBox" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Calendar (systemd OnCalendar)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleCalendarTextBox" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="Description" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="0,6,0,0" />
+                                <TextBox x:Name="ScheduleDescriptionTextBox" />
+                                <TextBlock Text="Playbook" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="0,6,0,0" />
+                                <ComboBox x:Name="SchedulePlaybookComboBox" />
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Limit (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleLimitTextBox" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleTagsTextBox" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Timeout (minutes)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleTimeoutTextBox" Text="120" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Extra Args" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleExtraArgsTextBox" />
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <CheckBox x:Name="ScheduleEnabledCheckBox" Content="Enabled" Foreground="{StaticResource TextBrush}" IsChecked="True" VerticalContentAlignment="Center" />
+                                    <CheckBox x:Name="ScheduleCheckModeCheckBox" Content="Check mode" Foreground="{StaticResource TextBrush}" Margin="16,0,0,0" VerticalContentAlignment="Center" />
+                                    <CheckBox x:Name="ScheduleNotifyCheckBox" Content="Notify on failure" Foreground="{StaticResource TextBrush}" Margin="16,0,0,0" IsChecked="True" VerticalContentAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                    <Button x:Name="ScheduleDeleteButton" Content="Delete" Style="{StaticResource SecondaryButtonStyle}" Foreground="{StaticResource DangerBrush}" Padding="12,5,12,5" Visibility="Collapsed" />
+                                    <Button x:Name="ScheduleCancelButton" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Padding="12,5,12,5" Margin="6,0,0,0" />
+                                    <Button x:Name="ScheduleSaveButton" Padding="12,5,12,5" Margin="6,0,0,0">
+                                        <TextBlock Text="Save &amp; Apply" />
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
                         </Border>
                     </Grid>
                 </Grid>

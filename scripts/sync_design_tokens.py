@@ -29,6 +29,7 @@ XAML_COLOR_MAP: dict[str, str] = {
     "surface": "PanelBrush",
     "surface-alt": "SurfaceAltBrush",
     "brand": "AccentBrush",
+    "brand-soft": "AccentSoftBrush",
     "warn": "WarnBrush",
     "critical": "DangerBrush",
     "info": "InfoBrush",
@@ -76,9 +77,11 @@ def generate_xaml(tokens: dict) -> str:
         key = f"Radius{name.capitalize()}"
         lines.append(f'{indent}<CornerRadius x:Key="{key}">{value}</CornerRadius>')
 
-    for token_key, (xaml_key, wpf_name) in XAML_FONT_MAP.items():
+    lines.append("")
+    for _token_key, (xaml_key, wpf_name) in XAML_FONT_MAP.items():
         lines.append(f'{indent}<FontFamily x:Key="{xaml_key}">{wpf_name}</FontFamily>')
 
+    lines.append("")
     for token_name, xaml_key in XAML_SIZE_MAP.items():
         value = tokens["typography"]["sizes"].get(token_name)
         if value is not None:
@@ -128,12 +131,14 @@ def replace_between_markers(content: str, start_marker: str, end_marker: str, ge
     start_idx: int | None = None
     end_idx: int | None = None
     for i, line in enumerate(file_lines):
-        if start_marker in line and start_idx is None:
-            start_idx = i
-        if end_marker in line:
+        if start_idx is None:
+            if start_marker in line:
+                start_idx = i
+        elif end_marker in line:
             end_idx = i
+            break
     if start_idx is None or end_idx is None:
-        raise ValueError(f"Markers not found (start={start_marker!r})")
+        raise ValueError(f"Markers not found (start={start_marker!r}, end={end_marker!r})")
     return "\n".join(file_lines[: start_idx + 1] + generated.split("\n") + file_lines[end_idx:])
 
 

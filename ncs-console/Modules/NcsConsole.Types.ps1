@@ -6,6 +6,36 @@ enum NcsSshAuthMode {
     Password
 }
 
+enum NcsReportDeliveryMode {
+    Auto
+    Smb
+    Scp
+}
+
+enum NcsReportSource {
+    Unavailable
+    Smb
+    Scp
+}
+
+class NcsScheduleEntry {
+    [string] $Name = ""
+    [string] $Description = ""
+    [string] $Playbook = ""
+    [string] $Calendar = ""
+    [string] $Limit = ""
+    [string] $Tags = ""
+    [string] $ExtraArgs = ""
+    [bool]   $CheckMode = $false
+    [bool]   $Enabled = $true
+    [bool]   $NotifyOnFailure = $true
+    [int]    $TimeoutMinutes = 120
+    # Transient fields populated from systemctl (not serialized to YAML)
+    [string] $LastTrigger = ""
+    [string] $NextTrigger = ""
+    [string] $LastResult = ""
+}
+
 class NcsConsoleSettings {
     [string] $SshHost = ""
     [int] $SshPort = 22
@@ -19,7 +49,7 @@ class NcsConsoleSettings {
     [string] $SmbShareName = "reports"
     [string] $SmbUser = ""
     [string] $SmbPassword = ""
-    [string] $ReportDeliveryMode = "Auto"
+    [string] $ReportDeliveryMode = [NcsReportDeliveryMode]::Auto.ToString()
     [int]    $AutoRefreshIntervalSeconds = 5
     [string] $StrictHostKeyChecking = "accept-new"
     [int] $ConnectTimeoutSeconds = 10
@@ -109,7 +139,6 @@ function Get-NcsRemotePlaybookTree {
         [NcsConsoleSettings] $Settings
     )
 
-    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $pyScript = @'
 import os, json, yaml, re
 SKIP_DIRS = {"templates", "test", "roles", "__pycache__", "core", "group_vars"}
@@ -355,7 +384,9 @@ fleet = [g for g in output if g["Group"] == "Fleet"]
 rest = [g for g in output if g["Group"] != "Fleet"]
 print(json.dumps(fleet + rest))
 '@
-    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && python3 << 'NCSPLAYBOOKS'" + "`n" + $pyScript + "`n" + "NCSPLAYBOOKS"
+    $command = New-NcsRepoShellCommand -Settings $Settings -Command (
+        New-NcsRemoteHeredocCommand -Preamble 'python3' -Content $pyScript -Sentinel 'NCSPLAYBOOKS'
+    )
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
@@ -382,8 +413,7 @@ function Get-NcsRemoteInventoryTree {
         [NcsConsoleSettings] $Settings
     )
 
-    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
-    $command = "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && ansible-inventory -i inventory/production --list 2>/dev/null"
+    $command = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-inventory -i inventory/production --list 2>/dev/null"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $command
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {

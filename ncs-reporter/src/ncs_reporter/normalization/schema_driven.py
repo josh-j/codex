@@ -10,7 +10,14 @@ from ncs_reporter.alerts import compute_audit_rollups
 from ncs_reporter.models.report_schema import ReportSchema
 from ncs_reporter.primitives import canonical_severity
 
-from ._when import _build_jinja_env, eval_compute, eval_expression, evaluate_when, _parse_iso  # noqa: F401
+from ._when import (
+    _build_jinja_env,
+    _compile_template,
+    _parse_iso,  # noqa: F401
+    eval_compute,
+    eval_expression,  # noqa: F401
+    evaluate_when,
+)
 from ._fields import (
     _BUILTIN_SCRIPTS_DIR,  # noqa: F401
     _SCRIPT_ERROR_SENTINEL,
@@ -157,7 +164,6 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
     """Evaluate all alert rules and return alert dicts."""
     alerts: list[dict[str, Any]] = []
     fired_ids: set[str] = set()
-    jinja_env = _build_jinja_env()
 
     for rule in schema.alerts:
         if not evaluate_when(rule.when, fields):
@@ -170,19 +176,19 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 continue
 
         try:
-            message = jinja_env.from_string(rule.msg).render(**fields)
+            message = _compile_template(rule.msg).render(**fields)
         except Exception:
+            logger.debug("alert %s msg template failed", rule.id, exc_info=True)
             message = rule.msg
 
-        # Derive affected_items: explicit items expression, or auto-extract lists from when refs
         affected_items: list[Any] = []
         if rule.items:
             try:
-                items_result = jinja_env.from_string(rule.items).render(**fields)
+                items_result = _compile_template(rule.items).render(**fields)
                 if isinstance(items_result, list):
                     affected_items = items_result
             except Exception:
-                pass
+                logger.debug("alert %s items expression failed", rule.id, exc_info=True)
         else:
             for ref in _extract_when_refs(rule.when):
                 if ref not in fields or ref.startswith("_"):
@@ -197,7 +203,6 @@ def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[di
                 "severity": canonical_severity(rule.severity),
                 "category": rule.category,
                 "message": message,
-                "detail": {},
                 "affected_items": affected_items,
                 "action": rule.action,
                 "cooldown": rule.cooldown,

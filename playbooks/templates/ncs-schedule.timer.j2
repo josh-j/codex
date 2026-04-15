@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# Timer for NCS scheduled playbook: {{ item.name }}
+[Unit]
+Description=NCS Schedule: {{ item.description | default(item.name) }}
+
+[Timer]
+OnCalendar={{ item.calendar }}
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

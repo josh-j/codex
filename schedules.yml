@@ -1,0 +1,42 @@
+---
+# schedules.yml -- Playbook scheduling configuration
+# Each entry creates a systemd timer on the Ansible host.
+# Apply with: just apply-schedules
+#
+# Fields:
+#   name              (required) Unique identifier [a-z0-9-]+, becomes the systemd unit name
+#   playbook          (required) Path relative to repo root
+#   calendar          (required) systemd OnCalendar spec (daily, weekly, *-*-* 02:00:00, etc.)
+#   description       Human-readable purpose
+#   limit             --limit argument (hosts/groups)
+#   tags              --tags argument
+#   extra_args        Additional CLI arguments
+#   check_mode        Add --check (default: false)
+#   enabled           Whether the timer is active (default: true)
+#   notify_on_failure Send alert email on non-zero exit (default: false)
+#   timeout_minutes   Kill the run after this many minutes (default: 120)
+
+schedules:
+  - name: daily-reports
+    description: "Regenerate fleet reports from collected data"
+    playbook: playbooks/infra/generate_reports.yml
+    calendar: "daily"
+    enabled: false
+    notify_on_failure: true
+    timeout_minutes: 30
+
+  # - name: nightly-fleet-audit
+  #   description: "Full fleet audit and report pipeline"
+  #   playbook: playbooks/site.yml
+  #   calendar: "*-*-* 02:00:00"
+  #   enabled: true
+  #   notify_on_failure: true
+  #   timeout_minutes: 180
+
+  # - name: weekly-stig-audit
+  #   description: "Full STIG compliance audit across all platforms"
+  #   playbook: playbooks/site_stig_audit.yml
+  #   calendar: "Mon *-*-* 03:00:00"
+  #   enabled: true
+  #   notify_on_failure: true
+  #   timeout_minutes: 240
