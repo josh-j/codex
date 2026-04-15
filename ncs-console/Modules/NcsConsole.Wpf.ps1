@@ -22,89 +22,103 @@ function Get-NcsBrush {
     return $brush
 }
 
+$script:NcsLimitPickers = @{}
+
+function Get-NcsLimitPickerContext {
+    param([Parameter(Mandatory)] $Tree)
+    return $script:NcsLimitPickers[[System.Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($Tree)]
+}
+
+function Get-NcsLimitPickerSelectedTag {
+    param([Parameter(Mandatory)] $Tree)
+    $item = $Tree.SelectedItem
+    if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
+    return [string] $item.Tag
+}
+
+function Add-NcsLimitPickerValue {
+    param([Parameter(Mandatory)] $TextBox, [Parameter(Mandatory)] [string] $Value)
+    $current = $TextBox.Text.Trim()
+    if ([string]::IsNullOrWhiteSpace($current)) { $TextBox.Text = $Value }
+    else { $TextBox.Text = "$current,$Value" }
+}
+
+function Test-NcsLimitPickerContains {
+    param([Parameter(Mandatory)] $TextBox, [Parameter(Mandatory)] [string] $Tag)
+    $current = $TextBox.Text.Trim()
+    $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+    return ($parts -contains $Tag -or $parts -contains "!$Tag" -or $parts -contains ":&$Tag" -or $parts -contains "$Tag*")
+}
+
+function Remove-NcsLimitPickerValue {
+    param([Parameter(Mandatory)] $TextBox, [Parameter(Mandatory)] [string] $Tag)
+    $current = $TextBox.Text.Trim()
+    $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object {
+        $_ -ne '' -and $_ -ne $Tag -and $_ -ne "!$Tag" -and $_ -ne ":&$Tag" -and $_ -ne "$Tag*"
+    })
+    $TextBox.Text = $parts -join ','
+}
+
+function New-NcsLimitPickerMenuItem {
+    param([string] $Header, [scriptblock] $Action)
+    $item = [System.Windows.Controls.MenuItem]::new()
+    $item.Header = $Header
+    $item.Background = Get-NcsBrush -Color "#1e2228"
+    $item.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $item.Margin = [System.Windows.Thickness]::new(0)
+    $item.Padding = [System.Windows.Thickness]::new(10,5,10,5)
+    $item.Template = [System.Windows.Markup.XamlReader]::Parse(
+        '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="MenuItem">' +
+        '<Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">' +
+        '<ContentPresenter ContentSource="Header" />' +
+        '</Border>' +
+        '<ControlTemplate.Triggers>' +
+        '<Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#242932" /></Trigger>' +
+        '<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="#555a65" /></Trigger>' +
+        '</ControlTemplate.Triggers>' +
+        '</ControlTemplate>'
+    )
+    $a = $Action
+    $item.Add_Click({ & $a }.GetNewClosure())
+    return $item
+}
+
+function New-NcsLimitPickerSeparator {
+    $sep = [System.Windows.Controls.Separator]::new()
+    $sep.Template = [System.Windows.Markup.XamlReader]::Parse(
+        '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Separator">' +
+        '<Border Height="1" Background="#2c3038" Margin="4,2,4,2" />' +
+        '</ControlTemplate>'
+    )
+    return $sep
+}
+
 function Register-NcsLimitPicker {
     <#
     .SYNOPSIS Wire up a Target Host/Group (--limit) picker: inventory TreeView composes
               values into a TextBox via a right-click context menu and double-click toggle.
     .DESCRIPTION Used for both the Actions pane and the Schedule edit form. The caller
                  is responsible for populating the tree via Build-NcsTreeView; this
-                 function only installs the interaction layer.
+                 function only installs the interaction layer. Picker context is stored
+                 in $script:NcsLimitPickers keyed by tree identity; event handlers retrieve
+                 it via $sender/ContextMenu.PlacementTarget to avoid closure scope issues
+                 under Set-StrictMode.
     #>
     param(
         [Parameter(Mandatory)] [System.Windows.Controls.TextBox] $TextBox,
         [Parameter(Mandatory)] [System.Windows.Controls.TreeView] $Tree,
         [Parameter(Mandatory)] [System.Windows.Controls.ScrollViewer] $ScrollViewer,
         [scriptblock] $OnChanged,
-        # When set, skip Exclude/Intersect/Wildcard items — appropriate for flat
-        # pickers (tags) where Ansible doesn't support those composition ops.
+        # Skip Exclude/Intersect/Wildcard items — appropriate for flat pickers
+        # (tags) where Ansible doesn't support those composition operators.
         [switch] $Simple
     )
 
-    # Closures capture $Tree/$TextBox at this point — required because the
-    # scriptblocks are invoked later (from event handlers) after the function
-    # has returned, by which time the parameters are out of scope.
-    $getSelectedTag = {
-        $item = $Tree.SelectedItem
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
-        return [string] $item.Tag
-    }.GetNewClosure()
-
-    $appendToLimit = {
-        param([string] $Value)
-        $current = $TextBox.Text.Trim()
-        if ([string]::IsNullOrWhiteSpace($current)) { $TextBox.Text = $Value }
-        else { $TextBox.Text = "$current,$Value" }
-    }.GetNewClosure()
-
-    $removeFromLimit = {
-        $tag = & $getSelectedTag
-        if (-not $tag) { return }
-        $current = $TextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object {
-            $_ -ne '' -and $_ -ne $tag -and $_ -ne "!$tag" -and $_ -ne ":&$tag" -and $_ -ne "$tag*"
-        })
-        $TextBox.Text = $parts -join ','
-    }.GetNewClosure()
-
-    $isInLimit = {
-        param([string] $Tag)
-        $current = $TextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-        return ($parts -contains $Tag -or $parts -contains "!$Tag" -or $parts -contains ":&$Tag" -or $parts -contains "$Tag*")
-    }.GetNewClosure()
-
-    $newMenuItem = {
-        param([string] $Header, [scriptblock] $Action)
-        $item = [System.Windows.Controls.MenuItem]::new()
-        $item.Header = $Header
-        $item.Background = Get-NcsBrush -Color "#1e2228"
-        $item.Foreground = Get-NcsBrush -Color "#d8dce2"
-        $item.Margin = [System.Windows.Thickness]::new(0)
-        $item.Padding = [System.Windows.Thickness]::new(10,5,10,5)
-        $item.Template = [System.Windows.Markup.XamlReader]::Parse(
-            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="MenuItem">' +
-            '<Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">' +
-            '<ContentPresenter ContentSource="Header" />' +
-            '</Border>' +
-            '<ControlTemplate.Triggers>' +
-            '<Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#242932" /></Trigger>' +
-            '<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="#555a65" /></Trigger>' +
-            '</ControlTemplate.Triggers>' +
-            '</ControlTemplate>'
-        )
-        $a = $Action
-        $item.Add_Click({ & $a }.GetNewClosure())
-        return $item
-    }
-
-    $newSep = {
-        $sep = [System.Windows.Controls.Separator]::new()
-        $sep.Template = [System.Windows.Markup.XamlReader]::Parse(
-            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Separator">' +
-            '<Border Height="1" Background="#2c3038" Margin="4,2,4,2" />' +
-            '</ControlTemplate>'
-        )
-        return $sep
+    $treeKey = [System.Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($Tree)
+    $script:NcsLimitPickers[$treeKey] = [pscustomobject]@{
+        TextBox      = $TextBox
+        Tree         = $Tree
+        ScrollViewer = $ScrollViewer
     }
 
     $menu = [System.Windows.Controls.ContextMenu]::new()
@@ -116,22 +130,56 @@ function Register-NcsLimitPicker {
         '</ControlTemplate>'
     )
 
-    $addItem    = & $newMenuItem "Add"              { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }.GetNewClosure()
-    $removeItem = & $newMenuItem "Remove"           { & $removeFromLimit }.GetNewClosure()
-    $menu.Items.Add($addItem) | Out-Null
+    $clickAction = {
+        param([System.Windows.Controls.MenuItem] $MenuItem, [string] $Op)
+        $parent = $MenuItem.Parent
+        while ($null -ne $parent -and $parent -isnot [System.Windows.Controls.ContextMenu]) {
+            $parent = $parent.Parent
+        }
+        if ($null -eq $parent) { return }
+        $tree = $parent.PlacementTarget
+        $ctx = Get-NcsLimitPickerContext -Tree $tree
+        if ($null -eq $ctx) { return }
+        if ($Op -eq "Clear") { $ctx.TextBox.Text = ""; return }
+        if ($Op -eq "Remove") {
+            $tag = Get-NcsLimitPickerSelectedTag -Tree $ctx.Tree
+            if ($tag) { Remove-NcsLimitPickerValue -TextBox $ctx.TextBox -Tag $tag }
+            return
+        }
+        $tag = Get-NcsLimitPickerSelectedTag -Tree $ctx.Tree
+        if (-not $tag) { return }
+        switch ($Op) {
+            "Add"       { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value $tag }
+            "Exclude"   { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "!$tag" }
+            "Intersect" { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value ":&$tag" }
+            "Wildcard"  { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "$tag*" }
+        }
+    }
+
+    $addItem    = New-NcsLimitPickerMenuItem "Add"    { & $clickAction $addItem    "Add" }.GetNewClosure()
+    $removeItem = New-NcsLimitPickerMenuItem "Remove" { & $clickAction $removeItem "Remove" }.GetNewClosure()
+    $menu.Items.Add($addItem)    | Out-Null
     $menu.Items.Add($removeItem) | Out-Null
     if (-not $Simple) {
-        $menu.Items.Add((& $newSep)) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } }.GetNewClosure())) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } }.GetNewClosure())) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } }.GetNewClosure())) | Out-Null
+        $excludeItem   = New-NcsLimitPickerMenuItem "Exclude (!)"    { & $clickAction $excludeItem   "Exclude"   }.GetNewClosure()
+        $intersectItem = New-NcsLimitPickerMenuItem "Intersect (:&)" { & $clickAction $intersectItem "Intersect" }.GetNewClosure()
+        $wildcardItem  = New-NcsLimitPickerMenuItem "Wildcard (*)"   { & $clickAction $wildcardItem  "Wildcard"  }.GetNewClosure()
+        $menu.Items.Add((New-NcsLimitPickerSeparator)) | Out-Null
+        $menu.Items.Add($excludeItem)   | Out-Null
+        $menu.Items.Add($intersectItem) | Out-Null
+        $menu.Items.Add($wildcardItem)  | Out-Null
     }
-    $menu.Items.Add((& $newSep)) | Out-Null
-    $menu.Items.Add((& $newMenuItem "Clear all"       { $TextBox.Text = "" }.GetNewClosure())) | Out-Null
+    $clearItem = New-NcsLimitPickerMenuItem "Clear all" { & $clickAction $clearItem "Clear" }.GetNewClosure()
+    $menu.Items.Add((New-NcsLimitPickerSeparator)) | Out-Null
+    $menu.Items.Add($clearItem) | Out-Null
 
     $menu.Add_Opened({
-        $pos = [System.Windows.Input.Mouse]::GetPosition($Tree)
-        $hit = [System.Windows.Media.VisualTreeHelper]::HitTest($Tree, $pos)
+        param($sender, $e)
+        $tree = $sender.PlacementTarget
+        $ctx = Get-NcsLimitPickerContext -Tree $tree
+        if ($null -eq $ctx) { return }
+        $pos = [System.Windows.Input.Mouse]::GetPosition($tree)
+        $hit = [System.Windows.Media.VisualTreeHelper]::HitTest($tree, $pos)
         if ($null -ne $hit -and $null -ne $hit.VisualHit) {
             $element = $hit.VisualHit
             while ($null -ne $element -and $element -isnot [System.Windows.Controls.TreeViewItem]) {
@@ -139,28 +187,41 @@ function Register-NcsLimitPicker {
             }
             if ($null -ne $element) { $element.IsSelected = $true }
         }
-        $tag = & $getSelectedTag
-        $removeItem.IsEnabled = if ($tag) { & $isInLimit $tag } else { $false }
-    }.GetNewClosure())
+        $tag = Get-NcsLimitPickerSelectedTag -Tree $tree
+        $removeEnabled = $false
+        if ($tag) { $removeEnabled = Test-NcsLimitPickerContains -TextBox $ctx.TextBox -Tag $tag }
+        foreach ($mi in $sender.Items) {
+            if ($mi -is [System.Windows.Controls.MenuItem] -and $mi.Header -eq "Remove") {
+                $mi.IsEnabled = $removeEnabled
+            }
+        }
+    })
 
     $Tree.ContextMenu = $menu
 
     $Tree.Add_MouseDoubleClick({
-        param($_sender, $e)
-        $selected = $Tree.SelectedItem
-        if ($null -eq $selected) { return }
-        if ($selected.Items.Count -gt 0) { return }
-        $tag = & $getSelectedTag
+        param($sender, $e)
+        $ctx = Get-NcsLimitPickerContext -Tree $sender
+        if ($null -eq $ctx) { return }
+        $selected = $sender.SelectedItem
+        if ($null -eq $selected -or $selected.Items.Count -gt 0) { return }
+        $tag = Get-NcsLimitPickerSelectedTag -Tree $sender
         if (-not $tag) { return }
-        if (& $isInLimit $tag) { & $removeFromLimit } else { & $appendToLimit $tag }
+        if (Test-NcsLimitPickerContains -TextBox $ctx.TextBox -Tag $tag) {
+            Remove-NcsLimitPickerValue -TextBox $ctx.TextBox -Tag $tag
+        } else {
+            Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value $tag
+        }
         $e.Handled = $true
-    }.GetNewClosure())
+    })
 
     $Tree.Add_PreviewMouseWheel({
-        param($_sender, $e)
-        $ScrollViewer.ScrollToVerticalOffset($ScrollViewer.VerticalOffset - $e.Delta / 3)
+        param($sender, $e)
+        $ctx = Get-NcsLimitPickerContext -Tree $sender
+        if ($null -eq $ctx) { return }
+        $ctx.ScrollViewer.ScrollToVerticalOffset($ctx.ScrollViewer.VerticalOffset - $e.Delta / 3)
         $e.Handled = $true
-    }.GetNewClosure())
+    })
 
     if ($null -ne $OnChanged) {
         $TextBox.Add_TextChanged({ & $OnChanged }.GetNewClosure())
