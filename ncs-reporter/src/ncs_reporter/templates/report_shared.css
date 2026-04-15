@@ -2,7 +2,6 @@
    CSS Variables — Grafana-inspired dark theme
    ========================================================================== */
 :root {
-  /* @@GENERATED_TOKENS_START@@ — from design_tokens.yaml, do not edit */
   /* Colors (shared) */
   --surface: #181b1f;
   --surface-alt: #1e2228;
@@ -43,7 +42,6 @@
   --space-16: 16px;
   --space-20: 20px;
   --space-22: 22px;
-  /* @@GENERATED_TOKENS_END@@ */
 
   /* Colors: Surface & Backgrounds (derived) */
   --bg-top: #111217;

@@ -149,14 +149,6 @@ check:
     mypy .
     {{ if path_exists(".venv/bin/basedpyright") == "true" { ".venv/bin/basedpyright ." } else { "basedpyright . --pythonpath `which python3`" } }}
 
-# Sync design tokens from design_tokens.yaml to XAML + CSS
-sync-tokens:
-    {{ python }} scripts/sync_design_tokens.py
-
-# Check design tokens are in sync (CI / pre-commit)
-check-tokens:
-    {{ python }} scripts/sync_design_tokens.py --check
-
 # Run unit tests
 test:
     {{ python }} -m pytest tests/unit
