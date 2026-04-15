@@ -78,7 +78,7 @@ setup-collections:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Installing collections for main venv..."
-    ansible-galaxy collection install ansible.posix community.vmware community.general --force
+    .venv/bin/ansible-galaxy collection install ansible.posix community.vmware community.general --force
     echo "✓ Main collections installed"
     # Verify internal collections are symlinked into vcsa path
     if [ -d "collections_vcsa/ansible_collections" ]; then
