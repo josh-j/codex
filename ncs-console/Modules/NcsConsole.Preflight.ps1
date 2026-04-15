@@ -63,15 +63,15 @@ function Test-NcsRemotePreflight {
             Id = "ssh-key-path"
             Stage = "local"
             Name = "SSH key path configured"
-            Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::KeyFile.ToString()) -or -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)
-            Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) -and [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) { "Enter the SSH key path for KeyFile authentication." } else { "OK" }
+            Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::KeyFile) -or -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)
+            Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile) -and [string]::IsNullOrWhiteSpace($Settings.SshKeyPath)) { "Enter the SSH key path for KeyFile authentication." } else { "OK" }
         },
         @{
             Id = "ssh-password"
             Stage = "local"
             Name = "SSH password configured"
-            Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::Password.ToString()) -or -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)
-            Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password.ToString()) -and [string]::IsNullOrWhiteSpace($Settings.SshPassword)) { "Enter the SSH password for Password authentication." } else { "OK" }
+            Passed = ($Settings.SshAuthMode -ne [NcsSshAuthMode]::Password) -or -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)
+            Message = if (($Settings.SshAuthMode -eq [NcsSshAuthMode]::Password) -and [string]::IsNullOrWhiteSpace($Settings.SshPassword)) { "Enter the SSH password for Password authentication." } else { "OK" }
         },
         @{
             Id = "remote-repo-path"
@@ -183,7 +183,7 @@ function Test-NcsRemotePreflight {
     $result.IsReady = $result.BlockingIssues.Count -eq 0
 
     # Informational SMB check (non-blocking)
-    if ($result.IsReady -and $Settings.ReportDeliveryMode -ne "Scp") {
+    if ($result.IsReady -and $Settings.ReportDeliveryMode -ne [NcsReportDeliveryMode]::Scp) {
         try {
             $smb = Test-NcsSmbAccess -Settings $Settings
             $smbMessage = if ($smb.Accessible) { "SMB share accessible: $($smb.UncRoot)" } else { "SMB unavailable, will use SCP: $($smb.Error)" }

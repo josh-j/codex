@@ -1,0 +1,167 @@
+---
+# playbooks/infra/manage_schedules.yml
+# Manage systemd timers for scheduled playbook execution.
+# Reads schedules.yml from the repo root and deploys/removes timer+service
+# units on the local host. Run with: just apply-schedules
+#
+# Requires become (systemd units go in /etc/systemd/system/).
+
+- name: Manage NCS Playbook Schedules
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars:
+    ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/../..', true) }}"
+    ncs_schedule_user: "{{ lookup('env', 'SUDO_USER') | default(lookup('env', 'USER'), true) }}"
+    _schedules_file: "{{ ncs_repo_path }}/schedules.yml"
+    _unit_prefix: "ncs-"
+    _wrapper_dir: "{{ ncs_repo_path }}/.cache/ncs-schedules"
+    _log_dir: "/var/log/ncs-schedules"
+
+  pre_tasks:
+    - name: Load schedule configuration
+      ansible.builtin.include_vars:
+        file: "{{ _schedules_file }}"
+        name: _schedule_config
+
+    - name: Set schedule list (default to empty)
+      ansible.builtin.set_fact:
+        _schedules: "{{ _schedule_config.schedules | default([]) }}"
+
+    - name: Validate schedule entries
+      ansible.builtin.assert:
+        that:
+          - item.name is defined
+          - item.name is match('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')
+          - item.playbook is defined
+          - item.calendar is defined
+        fail_msg: "Invalid schedule entry: {{ item | to_json }}"
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name | default('unnamed') }}"
+
+    - name: Verify playbook paths exist
+      ansible.builtin.stat:
+        path: "{{ ncs_repo_path }}/{{ item.playbook }}"
+      register: _playbook_stats
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Fail on missing playbooks
+      ansible.builtin.fail:
+        msg: "Playbook not found: {{ item.item.playbook }}"
+      when: not item.stat.exists
+      loop: "{{ _playbook_stats.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+  tasks:
+    - name: Ensure log directory exists
+      ansible.builtin.file:
+        path: "{{ _log_dir }}"
+        state: directory
+        owner: "{{ ncs_schedule_user }}"
+        mode: "0755"
+
+    - name: Ensure wrapper script directory exists
+      ansible.builtin.file:
+        path: "{{ _wrapper_dir }}"
+        state: directory
+        owner: "{{ ncs_schedule_user }}"
+        mode: "0755"
+      become: false
+
+    - name: Deploy wrapper scripts
+      ansible.builtin.template:
+        src: templates/ncs-schedule-wrapper.sh.j2
+        dest: "{{ _wrapper_dir }}/{{ item.name }}.sh"
+        owner: "{{ ncs_schedule_user }}"
+        mode: "0755"
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name }}"
+      become: false
+
+    - name: Deploy systemd service units
+      ansible.builtin.template:
+        src: templates/ncs-schedule.service.j2
+        dest: "/etc/systemd/system/{{ _unit_prefix }}{{ item.name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name }}"
+      notify: Reload systemd daemon
+
+    - name: Deploy systemd timer units
+      ansible.builtin.template:
+        src: templates/ncs-schedule.timer.j2
+        dest: "/etc/systemd/system/{{ _unit_prefix }}{{ item.name }}.timer"
+        owner: root
+        group: root
+        mode: "0644"
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name }}"
+      notify: Reload systemd daemon
+
+    # Flush handlers so daemon is reloaded before enable/disable
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Set timer active state
+      ansible.builtin.systemd:
+        name: "{{ _unit_prefix }}{{ item.name }}.timer"
+        state: "{{ 'started' if item.enabled | default(true) else 'stopped' }}"
+        enabled: "{{ item.enabled | default(true) }}"
+      loop: "{{ _schedules }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Find existing NCS timer units
+      ansible.builtin.find:
+        paths: /etc/systemd/system
+        patterns: "{{ _unit_prefix }}*.timer"
+        file_type: file
+      register: _existing_timers
+
+    - name: Build list of expected unit names
+      ansible.builtin.set_fact:
+        _expected_timers: "{{ _schedules | map(attribute='name') | map('regex_replace', '^', _unit_prefix) | map('regex_replace', '$', '.timer') | list }}"
+
+    - name: Identify orphaned timers
+      ansible.builtin.set_fact:
+        _orphaned_timers: "{{ _existing_timers.files | map(attribute='path') | map('basename') | difference(_expected_timers) | list }}"
+
+    - name: Stop orphaned timers
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop: "{{ _orphaned_timers }}"
+      failed_when: false
+
+    - name: Build list of orphan file paths
+      ansible.builtin.set_fact:
+        _orphan_paths: "{{ _orphan_paths | default([]) + [
+            '/etc/systemd/system/' ~ item,
+            '/etc/systemd/system/' ~ (item | regex_replace('\\.timer$', '.service')),
+            _wrapper_dir ~ '/' ~ (item | regex_replace('^' ~ _unit_prefix, '') | regex_replace('\\.timer$', '.sh'))
+          ] }}"
+      loop: "{{ _orphaned_timers }}"
+
+    - name: Remove orphaned unit and wrapper files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ _orphan_paths }}"
+      notify: Reload systemd daemon
+
+  handlers:
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true

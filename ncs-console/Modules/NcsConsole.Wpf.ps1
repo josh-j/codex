@@ -22,6 +22,88 @@ function Get-NcsBrush {
     return $brush
 }
 
+function Show-NcsPasswordPrompt {
+    param(
+        [Parameter(Mandatory)] [System.Windows.Window] $Owner,
+        [Parameter(Mandatory)] [string] $Title,
+        [Parameter(Mandatory)] [string] $Prompt,
+        [string] $OkLabel = "OK"
+    )
+
+    $inputBox = [System.Windows.Window]::new()
+    $inputBox.Title = ""
+    $inputBox.Width = 350
+    $inputBox.SizeToContent = "Height"
+    $inputBox.WindowStartupLocation = "CenterOwner"
+    $inputBox.Owner = $Owner
+    $inputBox.WindowStyle = "None"
+    $inputBox.ResizeMode = "NoResize"
+    $inputBox.Background = Get-NcsBrush -Color "#181b1f"
+    $inputBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $inputBox.BorderThickness = [System.Windows.Thickness]::new(1)
+
+    $sp = [System.Windows.Controls.StackPanel]::new()
+    $sp.Margin = [System.Windows.Thickness]::new(16)
+
+    $titleBlock = [System.Windows.Controls.TextBlock]::new()
+    $titleBlock.Text = $Title
+    $titleBlock.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $titleBlock.FontSize = 14
+    $titleBlock.FontWeight = "Bold"
+    $titleBlock.Margin = [System.Windows.Thickness]::new(0,0,0,8)
+    $sp.Children.Add($titleBlock) | Out-Null
+
+    $label = [System.Windows.Controls.TextBlock]::new()
+    $label.Text = $Prompt
+    $label.Foreground = Get-NcsBrush -Color "#8e939c"
+    $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
+    $label.TextWrapping = "Wrap"
+    $label.FontSize = 11
+    $sp.Children.Add($label) | Out-Null
+
+    $pwBox = [System.Windows.Controls.PasswordBox]::new()
+    $pwBox.Background = Get-NcsBrush -Color "#1e2228"
+    $pwBox.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $pwBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $pwBox.CaretBrush = Get-NcsBrush -Color "#d8dce2"
+    $pwBox.Padding = [System.Windows.Thickness]::new(8,5,8,5)
+    $sp.Children.Add($pwBox) | Out-Null
+
+    $btnPanel = [System.Windows.Controls.StackPanel]::new()
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+    $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
+
+    $okBtn = [System.Windows.Controls.Button]::new()
+    $okBtn.Content = $OkLabel
+    $okBtn.Background = Get-NcsBrush -Color "#1e2228"
+    $okBtn.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $okBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+    $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
+    $okBtn.IsDefault = $true
+    $okBtn.Add_Click({ $inputBox.DialogResult = $true }.GetNewClosure())
+
+    $cancelBtn = [System.Windows.Controls.Button]::new()
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Background = Get-NcsBrush -Color "#1e2228"
+    $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
+    $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+    $cancelBtn.Add_Click({ $inputBox.DialogResult = $false }.GetNewClosure())
+
+    $btnPanel.Children.Add($cancelBtn) | Out-Null
+    $btnPanel.Children.Add($okBtn) | Out-Null
+    $sp.Children.Add($btnPanel) | Out-Null
+    $inputBox.Content = $sp
+    $pwBox.Focus() | Out-Null
+
+    if ($inputBox.ShowDialog() -eq $true) {
+        return $pwBox.Password
+    }
+    return $null
+}
+
 function Import-NcsWpfAssemblies {
     param(
         [string] $ProjectRoot
@@ -313,6 +395,7 @@ function Get-NcsXamlControlMap {
         "ConsoleSplitter",
         "ConsoleToggleButton",
         "ConsoleShowButton",
+        "ReportsColumn",
         "ReportsToggleButton",
         "ReportsPane",
         "ReportsSplitter",
@@ -324,6 +407,31 @@ function Get-NcsXamlControlMap {
         "ReportRefreshButton",
         "ReportsCloseButton",
         "ReportsMaximizeButton",
+        "SchedulesColumn",
+        "SchedulesToggleButton",
+        "SchedulesPane",
+        "SchedulesSplitter",
+        "SchedulesCloseButton",
+        "ScheduleRefreshButton",
+        "ScheduleAddButton",
+        "SchedulePlaceholder",
+        "ScheduleListView",
+        "ScheduleEditPanel",
+        "ScheduleEditTitle",
+        "ScheduleNameTextBox",
+        "ScheduleCalendarTextBox",
+        "ScheduleDescriptionTextBox",
+        "SchedulePlaybookComboBox",
+        "ScheduleLimitTextBox",
+        "ScheduleTagsTextBox",
+        "ScheduleTimeoutTextBox",
+        "ScheduleExtraArgsTextBox",
+        "ScheduleEnabledCheckBox",
+        "ScheduleCheckModeCheckBox",
+        "ScheduleNotifyCheckBox",
+        "ScheduleDeleteButton",
+        "ScheduleCancelButton",
+        "ScheduleSaveButton",
         "StatusTextBlock",
         "ExitCodePanel",
         "ExitCodeTextBlock",
@@ -552,6 +660,18 @@ function Find-NcsActionItem {
     return $null
 }
 
+function Get-NcsActionPlaybooks {
+    param($Groups)
+    foreach ($group in $Groups) {
+        foreach ($item in @($group.Items)) {
+            if ($item.ContainsKey('playbook') -and $item.playbook) { $item.playbook }
+        }
+        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
+            Get-NcsActionPlaybooks -Groups $group['Children']
+        }
+    }
+}
+
 function Add-NcsOptionControls {
     param(
         [Parameter(Mandatory)]
@@ -764,8 +884,8 @@ function Update-NcsSshAuthVisibility {
         [string] $AuthMode
     )
 
-    $Controls.SshKeyPathPanel.Visibility = if ($AuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) { "Visible" } else { "Collapsed" }
-    $Controls.SshPasswordPanel.Visibility = if ($AuthMode -eq [NcsSshAuthMode]::Password.ToString()) { "Visible" } else { "Collapsed" }
+    $Controls.SshKeyPathPanel.Visibility = if ($AuthMode -eq [NcsSshAuthMode]::KeyFile) { "Visible" } else { "Collapsed" }
+    $Controls.SshPasswordPanel.Visibility = if ($AuthMode -eq [NcsSshAuthMode]::Password) { "Visible" } else { "Collapsed" }
 }
 
 function Set-NcsRunStateBadge {
@@ -826,6 +946,7 @@ function Update-NcsTopTabState {
     $Controls.OperateToggleButton.Tag = if ($Controls.OperateContent.Visibility -eq "Visible") { "Active" } else { "Inactive" }
     $Controls.ConsoleShowButton.Tag = if ($Controls.ConsolePane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
     $Controls.ReportsToggleButton.Tag = if ($Controls.ReportsPane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
+    $Controls.SchedulesToggleButton.Tag = if ($Controls.SchedulesPane.Visibility -eq "Visible") { "Active" } else { "Inactive" }
 }
 
 function Set-NcsPreflightState {
@@ -928,12 +1049,12 @@ function Sync-NcsControlsFromSettings {
     $Controls.RemoteRepoPathTextBox.Text = $Settings.RemoteRepoPath
     $Controls.SmbShareNameTextBox.Text = $Settings.SmbShareName
     $Controls.SmbUserTextBox.Text = $Settings.SmbUser
-    $deliveryModes = @("Auto", "Smb", "Scp")
+    $deliveryModes = [NcsReportDeliveryMode].GetEnumNames()
     $Controls.ReportDeliveryModeComboBox.ItemsSource = $deliveryModes
     if ($deliveryModes -contains $Settings.ReportDeliveryMode) {
         $Controls.ReportDeliveryModeComboBox.SelectedItem = $Settings.ReportDeliveryMode
     } else {
-        $Controls.ReportDeliveryModeComboBox.SelectedItem = "Auto"
+        $Controls.ReportDeliveryModeComboBox.SelectedItem = [NcsReportDeliveryMode]::Auto.ToString()
     }
     $Controls.AutoRefreshIntervalTextBox.Text = [string] $Settings.AutoRefreshIntervalSeconds
     Select-NcsTreeViewItem -TreeView $Controls.ActionTreeView -Tag $Settings.LastAction -FallbackToFirst
@@ -1181,7 +1302,7 @@ function Show-NcsConsoleApp {
                 Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "NcsConsole/WebView2"
             })
         ReportUncRoot       = $null
-        ReportSource        = "None"
+        ReportSource        = [NcsReportSource]::Unavailable
         AutoRefreshTimer    = $null
         LastReportWriteTime = [datetime]::MinValue
     }
@@ -1369,7 +1490,8 @@ function Show-NcsConsoleApp {
 
     $autoRefreshTimer = [System.Windows.Threading.DispatcherTimer]::new()
     $autoRefreshInterval = [Math]::Max($state.Settings.AutoRefreshIntervalSeconds, 1)
-    if ($state.Settings.ReportDeliveryMode -eq "Scp" -or ($state.Settings.ReportDeliveryMode -eq "Auto" -and $state.ReportSource -eq "Scp")) {
+    if ($state.Settings.ReportDeliveryMode -eq [NcsReportDeliveryMode]::Scp -or
+        ($state.Settings.ReportDeliveryMode -eq [NcsReportDeliveryMode]::Auto -and $state.ReportSource -eq [NcsReportSource]::Scp)) {
         $autoRefreshInterval = [Math]::Max($autoRefreshInterval, 30)
     }
     $autoRefreshTimer.Interval = [TimeSpan]::FromSeconds($autoRefreshInterval)
@@ -1378,9 +1500,9 @@ function Show-NcsConsoleApp {
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
 
         try {
-            if ($state.ReportSource -eq "Smb" -and -not [string]::IsNullOrWhiteSpace($state.ReportUncRoot)) {
+            if ($state.ReportSource -eq [NcsReportSource]::Smb -and -not [string]::IsNullOrWhiteSpace($state.ReportUncRoot)) {
                 $filePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($script:CurrentReportPath -replace '/', '\')
-            } elseif ($state.ReportSource -eq "Scp") {
+            } elseif ($state.ReportSource -eq [NcsReportSource]::Scp) {
                 # Re-sync via SCP before checking
                 $script:ReportsSynced = $false
                 $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
@@ -1719,99 +1841,30 @@ function Show-NcsConsoleApp {
         }
     })
 
-    $reportsColumn = $controls.OperatePanel.ColumnDefinitions[6]
+    $reportsColumn = $controls.ReportsColumn
+    $schedulesColumn = $controls.SchedulesColumn
     $script:ReportHistory = [System.Collections.Generic.List[string]]::new()
     $script:CurrentReportPath = ""
     $script:ReportsSynced = $false
 
-    $promptSmbPassword = {
-        $inputBox = [System.Windows.Window]::new()
-        $inputBox.Title = ""
-        $inputBox.Width = 350
-        $inputBox.SizeToContent = "Height"
-        $inputBox.WindowStartupLocation = "CenterOwner"
-        $inputBox.Owner = $window
-        $inputBox.WindowStyle = "None"
-        $inputBox.ResizeMode = "NoResize"
-        $inputBox.Background = Get-NcsBrush -Color "#181b1f"
-        $inputBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
-        $inputBox.BorderThickness = [System.Windows.Thickness]::new(1)
-        $sp = [System.Windows.Controls.StackPanel]::new()
-        $sp.Margin = [System.Windows.Thickness]::new(16)
-        $title = [System.Windows.Controls.TextBlock]::new()
-        $title.Text = "SMB Password"
-        $title.Foreground = Get-NcsBrush -Color "#d8dce2"
-        $title.FontSize = 14
-        $title.FontWeight = "Bold"
-        $title.Margin = [System.Windows.Thickness]::new(0,0,0,8)
-        $sp.Children.Add($title) | Out-Null
-        $label = [System.Windows.Controls.TextBlock]::new()
-        $label.Text = "Enter password for SMB user '$($state.Settings.SmbUser)':"
-        $label.Foreground = Get-NcsBrush -Color "#8e939c"
-        $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
-        $label.TextWrapping = "Wrap"
-        $label.FontSize = 11
-        $sp.Children.Add($label) | Out-Null
-        $pwBox = [System.Windows.Controls.PasswordBox]::new()
-        $pwBox.Background = Get-NcsBrush -Color "#1e2228"
-        $pwBox.Foreground = Get-NcsBrush -Color "#d8dce2"
-        $pwBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
-        $pwBox.CaretBrush = Get-NcsBrush -Color "#d8dce2"
-        $pwBox.Padding = [System.Windows.Thickness]::new(8,5,8,5)
-        $sp.Children.Add($pwBox) | Out-Null
-        $btnPanel = [System.Windows.Controls.StackPanel]::new()
-        $btnPanel.Orientation = "Horizontal"
-        $btnPanel.HorizontalAlignment = "Right"
-        $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
-        $okBtn = [System.Windows.Controls.Button]::new()
-        $okBtn.Content = "OK"
-        $okBtn.Background = Get-NcsBrush -Color "#1e2228"
-        $okBtn.Foreground = Get-NcsBrush -Color "#d8dce2"
-        $okBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
-        $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-        $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
-        $okBtn.IsDefault = $true
-        $okBtn.Add_Click({ $inputBox.DialogResult = $true })
-        $cancelBtn = [System.Windows.Controls.Button]::new()
-        $cancelBtn.Content = "Cancel"
-        $cancelBtn.Background = Get-NcsBrush -Color "#1e2228"
-        $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
-        $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
-        $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-        $cancelBtn.Add_Click({ $inputBox.DialogResult = $false })
-        $btnPanel.Children.Add($cancelBtn) | Out-Null
-        $btnPanel.Children.Add($okBtn) | Out-Null
-        $sp.Children.Add($btnPanel) | Out-Null
-        $inputBox.Content = $sp
-        $pwBox.Focus() | Out-Null
-
-        $result = $inputBox.ShowDialog()
-        if ($result -eq $true) {
-            return $pwBox.Password
-        }
-        return $null
-    }
-
     $resolveReportSource = {
         $mode = $state.Settings.ReportDeliveryMode
-        if ($mode -eq "Scp") {
-            $state.ReportSource = "Scp"
+        if ($mode -eq [NcsReportDeliveryMode]::Scp) {
+            $state.ReportSource = [NcsReportSource]::Scp
             $state.ReportUncRoot = $null
             return
         }
 
-        # Prompt for SMB password if user is set but password is not yet cached
         if (-not [string]::IsNullOrWhiteSpace($state.Settings.SmbUser) -and [string]::IsNullOrWhiteSpace($state.Settings.SmbPassword)) {
-            $pw = & $promptSmbPassword
+            $pw = Show-NcsPasswordPrompt -Owner $window -Title "SMB Password" -Prompt "Enter password for SMB user '$($state.Settings.SmbUser)':"
             if ($null -eq $pw) {
-                if ($mode -eq "Smb") {
-                    $state.ReportSource = "None"
+                if ($mode -eq [NcsReportDeliveryMode]::Smb) {
+                    $state.ReportSource = [NcsReportSource]::Unavailable
                     $state.ReportUncRoot = $null
                     & $setReportStatus "SMB password required." $true
                     return
                 }
-                # Auto mode: skip SMB, fall back to SCP
-                $state.ReportSource = "Scp"
+                $state.ReportSource = [NcsReportSource]::Scp
                 $state.ReportUncRoot = $null
                 return
             }
@@ -1820,23 +1873,22 @@ function Show-NcsConsoleApp {
 
         $smb = Test-NcsSmbAccess -Settings $state.Settings
         if ($smb.Accessible) {
-            $state.ReportSource = "Smb"
+            $state.ReportSource = [NcsReportSource]::Smb
             $state.ReportUncRoot = $smb.UncRoot
             return
         }
 
-        # Auth failed — clear cached password so user is prompted again next time
+        # Force re-prompt on next attempt — stale creds are the most likely cause.
         $state.Settings.SmbPassword = ""
 
-        if ($mode -eq "Smb") {
-            $state.ReportSource = "None"
+        if ($mode -eq [NcsReportDeliveryMode]::Smb) {
+            $state.ReportSource = [NcsReportSource]::Unavailable
             $state.ReportUncRoot = $null
             & $setReportStatus "SMB share unreachable: $($smb.Error)" $true
             return
         }
 
-        # Auto mode: SMB failed, fall back to SCP
-        $state.ReportSource = "Scp"
+        $state.ReportSource = [NcsReportSource]::Scp
         $state.ReportUncRoot = $null
     }
 
@@ -1846,16 +1898,15 @@ function Show-NcsConsoleApp {
 
         & $resolveReportSource
 
-        if ($state.ReportSource -eq "Smb") {
+        if ($state.ReportSource -eq [NcsReportSource]::Smb) {
             $script:ReportsSynced = $true
             return $true
         }
 
-        if ($state.ReportSource -eq "None") {
+        if ($state.ReportSource -eq [NcsReportSource]::Unavailable) {
             return $false
         }
 
-        # SCP fallback
         $mirror = Invoke-NcsReportMirror -Settings $state.Settings -LocalRoot $state.ReportCacheRoot
         if ($mirror.ExitCode -eq 0) {
             $script:ReportsSynced = $true
@@ -1873,7 +1924,7 @@ function Show-NcsConsoleApp {
         try {
             if (-not (& $syncReports)) { return }
 
-            if ($state.ReportSource -eq "Smb") {
+            if ($state.ReportSource -eq [NcsReportSource]::Smb) {
                 $reportFilePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($RelativePath -replace '/', '\')
             } else {
                 $reportFilePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
@@ -1934,7 +1985,6 @@ function Show-NcsConsoleApp {
 
     $controls.ReportsMaximizeButton.Add_Click({
         if ($script:ReportsMaximized) {
-            # Restore previous panel visibility
             $prev = $script:PreMaximizeState
             if ($prev.OperateVisible) {
                 $operateColumn.Width = $prev.OperateWidth
@@ -1950,21 +2000,28 @@ function Show-NcsConsoleApp {
                 $controls.SettingsPanel.Visibility = "Visible"
                 $controls.SettingsSplitter.Visibility = "Visible"
             }
+            if ($prev.SchedulesVisible) {
+                $schedulesColumn.Width = $prev.SchedulesWidth
+                $controls.SchedulesPane.Visibility = "Visible"
+                $controls.SchedulesSplitter.Visibility = "Visible"
+            }
             $script:ReportsMaximized = $false
             $controls.ReportsMaximizeButton.ToolTip = "Maximize reports"
         } else {
-            # Save current state and hide other panels
             $script:PreMaximizeState = @{
-                OperateVisible  = $controls.OperateContent.Visibility -eq "Visible"
-                OperateWidth    = $operateColumn.Width
-                ConsoleVisible  = $controls.ConsolePane.Visibility -eq "Visible"
-                ConsoleWidth    = $consoleColumn.Width
-                SettingsVisible = $controls.SettingsPanel.Visibility -eq "Visible"
-                SettingsWidth   = $settingsColumn.Width
+                OperateVisible    = $controls.OperateContent.Visibility -eq "Visible"
+                OperateWidth      = $operateColumn.Width
+                ConsoleVisible    = $controls.ConsolePane.Visibility -eq "Visible"
+                ConsoleWidth      = $consoleColumn.Width
+                SettingsVisible   = $controls.SettingsPanel.Visibility -eq "Visible"
+                SettingsWidth     = $settingsColumn.Width
+                SchedulesVisible  = $controls.SchedulesPane.Visibility -eq "Visible"
+                SchedulesWidth    = $schedulesColumn.Width
             }
             & $closeOperate
             & $closeConsole
             & $closeSettings
+            & $closeSchedules
             $script:ReportsMaximized = $true
             $controls.ReportsMaximizeButton.ToolTip = "Restore panels"
         }
@@ -2004,6 +2061,246 @@ function Show-NcsConsoleApp {
         }
     })
 
+    # -------------------------------------------------------------------------
+    # Schedules panel
+    # -------------------------------------------------------------------------
+    $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
+    $script:EditingScheduleIndex = -1
+    $script:SchedulesLoaded = $false
+
+    $openSchedules = {
+        $schedulesColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        $schedulesColumn.MinWidth = 0
+        $controls.SchedulesPane.Visibility = "Visible"
+        $controls.SchedulesSplitter.Visibility = "Visible"
+        Update-NcsTopTabState -Controls $controls
+        if (-not $script:SchedulesLoaded) {
+            & $loadSchedules
+        }
+    }
+
+    $closeSchedules = {
+        $controls.SchedulesPane.Visibility = "Collapsed"
+        $controls.SchedulesSplitter.Visibility = "Collapsed"
+        $schedulesColumn.Width = [System.Windows.GridLength]::new(0)
+        $schedulesColumn.MinWidth = 0
+        Update-NcsTopTabState -Controls $controls
+    }
+
+    $controls.SchedulesToggleButton.Add_Click({
+        if ($controls.SchedulesPane.Visibility -eq "Visible") {
+            & $closeSchedules
+        } else {
+            & $openSchedules
+        }
+    })
+
+    $controls.SchedulesCloseButton.Add_Click({ & $closeSchedules })
+
+    $refreshScheduleList = {
+        param($TimerStatus)
+        $items = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($entry in $script:ScheduleEntries) {
+            if ($null -ne $TimerStatus) {
+                if ($TimerStatus.ContainsKey($entry.Name)) {
+                    $ts = $TimerStatus[$entry.Name]
+                    $entry.NextTrigger = $ts.Next
+                    $entry.LastTrigger = $ts.Last
+                    if ($ts.ContainsKey("LastResult")) { $entry.LastResult = $ts.LastResult }
+                } else {
+                    $entry.NextTrigger = ""
+                    $entry.LastTrigger = ""
+                }
+            }
+            $items.Add(@{
+                EnabledIcon = if ($entry.Enabled) { [char]0x2713 } else { "" }
+                Name        = $entry.Name
+                Playbook    = $entry.Playbook
+                Calendar    = $entry.Calendar
+                NextTrigger = $entry.NextTrigger
+                LastTrigger = $entry.LastTrigger
+                LastResult  = $entry.LastResult
+            })
+        }
+        $controls.ScheduleListView.ItemsSource = $items
+    }
+
+    $loadSchedules = {
+        if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
+
+        try {
+            $snapshot = Get-NcsRemoteScheduleSnapshot -Settings $state.Settings
+            $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new(
+                [NcsScheduleEntry[]]$snapshot.Schedules
+            )
+            & $refreshScheduleList $snapshot.TimerStatus
+            $controls.SchedulePlaceholder.Visibility = "Collapsed"
+            $controls.ScheduleListView.Visibility = "Visible"
+            $script:SchedulesLoaded = $true
+        } catch {
+            $controls.SchedulePlaceholder.Text = "Failed to load schedules: $($_.Exception.Message)"
+        }
+    }
+
+    $controls.ScheduleRefreshButton.Add_Click({ & $loadSchedules })
+
+    $populatePlaybookCombo = {
+        if ($null -ne $controls.SchedulePlaybookComboBox.ItemsSource) { return }
+        $playbooks = [System.Collections.Generic.List[string]]::new()
+        if ($null -ne $script:ActionGroups) {
+            foreach ($pb in (Get-NcsActionPlaybooks -Groups $script:ActionGroups)) {
+                $playbooks.Add($pb)
+            }
+        }
+        $controls.SchedulePlaybookComboBox.ItemsSource = $playbooks
+    }
+
+    $showScheduleEditForm = {
+        param([int] $Index)
+        $script:EditingScheduleIndex = $Index
+        $isEdit = ($Index -ge 0 -and $Index -lt $script:ScheduleEntries.Count)
+        $src = if ($isEdit) { $script:ScheduleEntries[$Index] } else { [NcsScheduleEntry]::new() }
+
+        $controls.ScheduleEditTitle.Text = if ($isEdit) { "Edit Schedule" } else { "New Schedule" }
+        $controls.ScheduleNameTextBox.Text = $src.Name
+        $controls.ScheduleNameTextBox.IsReadOnly = $isEdit
+        $controls.ScheduleCalendarTextBox.Text = $src.Calendar
+        $controls.ScheduleDescriptionTextBox.Text = $src.Description
+        $controls.ScheduleLimitTextBox.Text = $src.Limit
+        $controls.ScheduleTagsTextBox.Text = $src.Tags
+        $controls.ScheduleTimeoutTextBox.Text = [string]$src.TimeoutMinutes
+        $controls.ScheduleExtraArgsTextBox.Text = $src.ExtraArgs
+        $controls.ScheduleEnabledCheckBox.IsChecked = $src.Enabled
+        $controls.ScheduleCheckModeCheckBox.IsChecked = $src.CheckMode
+        $controls.ScheduleNotifyCheckBox.IsChecked = $src.NotifyOnFailure
+        $controls.ScheduleDeleteButton.Visibility = if ($isEdit) { "Visible" } else { "Collapsed" }
+
+        & $populatePlaybookCombo
+        if ($isEdit) {
+            $controls.SchedulePlaybookComboBox.SelectedItem = $src.Playbook
+        } else {
+            $controls.SchedulePlaybookComboBox.SelectedIndex = -1
+        }
+
+        $controls.ScheduleEditPanel.Visibility = "Visible"
+    }
+
+    $hideScheduleEditForm = {
+        $controls.ScheduleEditPanel.Visibility = "Collapsed"
+        $script:EditingScheduleIndex = -1
+    }
+
+    $controls.ScheduleAddButton.Add_Click({
+        & $showScheduleEditForm -1
+    })
+
+    $controls.ScheduleCancelButton.Add_Click({
+        & $hideScheduleEditForm
+    })
+
+    $controls.ScheduleListView.Add_SelectionChanged({
+        $idx = $controls.ScheduleListView.SelectedIndex
+        if ($idx -lt 0 -or $idx -eq $script:EditingScheduleIndex) { return }
+        & $showScheduleEditForm $idx
+    }.GetNewClosure())
+
+    $controls.ScheduleDeleteButton.Add_Click({
+        $idx = $script:EditingScheduleIndex
+        if ($idx -ge 0 -and $idx -lt $script:ScheduleEntries.Count) {
+            $script:ScheduleEntries.RemoveAt($idx)
+            & $hideScheduleEditForm
+            & $refreshScheduleList
+
+            $saved = Save-NcsRemoteSchedules -Settings $state.Settings -Schedules @($script:ScheduleEntries)
+            if ($saved) {
+                $controls.StatusTextBlock.Text = "Schedule deleted. Applying..."
+                & $applySchedules
+            } else {
+                $controls.StatusTextBlock.Text = "Failed to save schedules to remote."
+            }
+        }
+    }.GetNewClosure())
+
+    $refreshTimerStatus = {
+        & $refreshScheduleList (Get-NcsRemoteTimerStatus -Settings $state.Settings)
+    }
+
+    $applySchedules = {
+        $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "ansible-playbook playbooks/infra/manage_schedules.yml && $(Get-NcsTimerStatusQueryCommand)"
+        $probe = Invoke-NcsSshProbe -Settings $state.Settings -RemoteCommand $cmd
+        if ($probe.ExitCode -eq 0) {
+            $controls.StatusTextBlock.Text = "Schedules applied successfully."
+            & $refreshScheduleList (Read-NcsTimerStatusFromOutput -StdOut $probe.StdOut)
+        } else {
+            $errTail = if (-not [string]::IsNullOrWhiteSpace($probe.StdErr)) { " — $($probe.StdErr.Trim().Split("`n")[-1])" } else { "" }
+            $controls.StatusTextBlock.Text = "Failed to apply schedules (exit $($probe.ExitCode))$errTail"
+        }
+    }
+
+    $controls.ScheduleSaveButton.Add_Click({
+        $name = $controls.ScheduleNameTextBox.Text.Trim()
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            $controls.StatusTextBlock.Text = "Schedule name is required."
+            return
+        }
+        if ($name -notmatch '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') {
+            $controls.StatusTextBlock.Text = "Schedule name must be lowercase alphanumeric with hyphens."
+            return
+        }
+        $playbook = $controls.SchedulePlaybookComboBox.SelectedItem
+        if ([string]::IsNullOrWhiteSpace($playbook)) {
+            $controls.StatusTextBlock.Text = "Playbook selection is required."
+            return
+        }
+        $calendar = $controls.ScheduleCalendarTextBox.Text.Trim()
+        if ([string]::IsNullOrWhiteSpace($calendar)) {
+            $controls.StatusTextBlock.Text = "Calendar expression is required."
+            return
+        }
+
+        $entry = [NcsScheduleEntry]::new()
+        $entry.Name = $name
+        $entry.Description = $controls.ScheduleDescriptionTextBox.Text.Trim()
+        $entry.Playbook = $playbook
+        $entry.Calendar = $calendar
+        $entry.Limit = $controls.ScheduleLimitTextBox.Text.Trim()
+        $entry.Tags = $controls.ScheduleTagsTextBox.Text.Trim()
+        $entry.ExtraArgs = $controls.ScheduleExtraArgsTextBox.Text.Trim()
+        $entry.CheckMode = $controls.ScheduleCheckModeCheckBox.IsChecked -eq $true
+        $entry.Enabled = $controls.ScheduleEnabledCheckBox.IsChecked -eq $true
+        $entry.NotifyOnFailure = $controls.ScheduleNotifyCheckBox.IsChecked -eq $true
+
+        $timeout = [NcsScheduleEntry]::new().TimeoutMinutes
+        if ([int]::TryParse($controls.ScheduleTimeoutTextBox.Text.Trim(), [ref]$timeout)) {
+            $entry.TimeoutMinutes = $timeout
+        }
+
+        $idx = $script:EditingScheduleIndex
+
+        if ($idx -ge 0 -and $idx -lt $script:ScheduleEntries.Count) {
+            $script:ScheduleEntries[$idx] = $entry
+        } else {
+            $existing = $script:ScheduleEntries | Where-Object { $_.Name -eq $name }
+            if ($existing) {
+                $controls.StatusTextBlock.Text = "A schedule with name '$name' already exists."
+                return
+            }
+            $script:ScheduleEntries.Add($entry)
+        }
+
+        & $hideScheduleEditForm
+        & $refreshScheduleList
+
+        $controls.StatusTextBlock.Text = "Saving schedules..."
+        $saved = Save-NcsRemoteSchedules -Settings $state.Settings -Schedules @($script:ScheduleEntries)
+        if ($saved) {
+            $controls.StatusTextBlock.Text = "Schedules saved. Applying..."
+            & $applySchedules
+        } else {
+            $controls.StatusTextBlock.Text = "Failed to save schedules to remote."
+        }
+    }.GetNewClosure())
+
     $controls.PreflightButton.Add_Click({
         try {
             if ($null -ne $state.PreflightResult -and $state.PreflightResult.IsReady) {
@@ -2027,80 +2324,27 @@ function Show-NcsConsoleApp {
                 $controls.ReportBackButton.IsEnabled = $false
                 if ($null -ne $state.AutoRefreshTimer) { $state.AutoRefreshTimer.Stop() }
                 $state.ReportUncRoot = $null
-                $state.ReportSource = "None"
+                $state.ReportSource = [NcsReportSource]::Unavailable
                 $state.LastReportWriteTime = [datetime]::MinValue
+                $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
+                $controls.SchedulePlaybookComboBox.ItemsSource = $null
+                $controls.ScheduleListView.ItemsSource = $null
+                $controls.ScheduleListView.Visibility = "Collapsed"
+                $controls.SchedulePlaceholder.Text = "Connect to load schedules"
+                $controls.SchedulePlaceholder.Visibility = "Visible"
+                $controls.ScheduleEditPanel.Visibility = "Collapsed"
                 return
             }
 
             Sync-NcsSettingsFromControls -Controls $controls -Settings $state.Settings
 
-            if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile.ToString()) {
-                $inputBox = [System.Windows.Window]::new()
-                $inputBox.Title = ""
-                $inputBox.Width = 350
-                $inputBox.SizeToContent = "Height"
-                $inputBox.WindowStartupLocation = "CenterOwner"
-                $inputBox.Owner = $window
-                $inputBox.WindowStyle = "None"
-                $inputBox.ResizeMode = "NoResize"
-                $inputBox.Background = Get-NcsBrush -Color "#181b1f"
-                $inputBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $inputBox.BorderThickness = [System.Windows.Thickness]::new(1)
-                $sp = [System.Windows.Controls.StackPanel]::new()
-                $sp.Margin = [System.Windows.Thickness]::new(16)
-                $title = [System.Windows.Controls.TextBlock]::new()
-                $title.Text = "SSH Key Passphrase"
-                $title.Foreground = Get-NcsBrush -Color "#d8dce2"
-                $title.FontSize = 14
-                $title.FontWeight = "Bold"
-                $title.Margin = [System.Windows.Thickness]::new(0,0,0,8)
-                $sp.Children.Add($title) | Out-Null
-                $label = [System.Windows.Controls.TextBlock]::new()
-                $label.Text = "Enter passphrase for SSH key (leave empty if none):"
-                $label.Foreground = Get-NcsBrush -Color "#8e939c"
-                $label.Margin = [System.Windows.Thickness]::new(0,0,0,6)
-                $label.TextWrapping = "Wrap"
-                $label.FontSize = 11
-                $sp.Children.Add($label) | Out-Null
-                $pwBox = [System.Windows.Controls.PasswordBox]::new()
-                $pwBox.Background = Get-NcsBrush -Color "#1e2228"
-                $pwBox.Foreground = Get-NcsBrush -Color "#d8dce2"
-                $pwBox.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $pwBox.CaretBrush = Get-NcsBrush -Color "#d8dce2"
-                $pwBox.Padding = [System.Windows.Thickness]::new(8,5,8,5)
-                $sp.Children.Add($pwBox) | Out-Null
-                $btnPanel = [System.Windows.Controls.StackPanel]::new()
-                $btnPanel.Orientation = "Horizontal"
-                $btnPanel.HorizontalAlignment = "Right"
-                $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
-                $okBtn = [System.Windows.Controls.Button]::new()
-                $okBtn.Content = "Connect"
-                $okBtn.Background = Get-NcsBrush -Color "#1e2228"
-                $okBtn.Foreground = Get-NcsBrush -Color "#d8dce2"
-                $okBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-                $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
-                $okBtn.IsDefault = $true
-                $okBtn.Add_Click({ $inputBox.DialogResult = $true })
-                $cancelBtn = [System.Windows.Controls.Button]::new()
-                $cancelBtn.Content = "Cancel"
-                $cancelBtn.Background = Get-NcsBrush -Color "#1e2228"
-                $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
-                $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-                $cancelBtn.Add_Click({ $inputBox.DialogResult = $false })
-                $btnPanel.Children.Add($cancelBtn) | Out-Null
-                $btnPanel.Children.Add($okBtn) | Out-Null
-                $sp.Children.Add($btnPanel) | Out-Null
-                $inputBox.Content = $sp
-                $pwBox.Focus() | Out-Null
-
-                $result = $inputBox.ShowDialog()
-                if ($result -ne $true) {
+            if ($state.Settings.SshAuthMode -eq [NcsSshAuthMode]::KeyFile) {
+                $passphrase = Show-NcsPasswordPrompt -Owner $window -Title "SSH Key Passphrase" -Prompt "Enter passphrase for SSH key (leave empty if none):" -OkLabel "Connect"
+                if ($null -eq $passphrase) {
                     $controls.StatusTextBlock.Text = "Connection cancelled."
                     return
                 }
-                $state.Settings.SshKeyPassphrase = $pwBox.Password
+                $state.Settings.SshKeyPassphrase = $passphrase
             }
 
             $controls.StatusTextBlock.Text = "Connecting..."
@@ -2140,15 +2384,16 @@ function Show-NcsConsoleApp {
                 Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $state.Settings.LastAction -FallbackToFirst
                 $controls.StatusTextBlock.Text = $statusParts -join " "
 
-                # Start auto-refresh timer if enabled
                 if ($state.Settings.AutoRefreshIntervalSeconds -gt 0 -and $null -ne $state.AutoRefreshTimer) {
                     $interval = [Math]::Max($state.Settings.AutoRefreshIntervalSeconds, 1)
-                    if ($state.ReportSource -eq "Scp") {
+                    if ($state.ReportSource -eq [NcsReportSource]::Scp) {
                         $interval = [Math]::Max($interval, 30)
                     }
                     $state.AutoRefreshTimer.Interval = [TimeSpan]::FromSeconds($interval)
                     $state.AutoRefreshTimer.Start()
                 }
+
+                $script:SchedulesLoaded = $false
             } else {
                 $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
                 Set-NcsPreflightState -Controls $controls -State "Failed"

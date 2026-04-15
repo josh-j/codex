@@ -63,6 +63,12 @@ def _compile_when(expression: str) -> Any:
     return _build_jinja_env().from_string("{{ " + expression + " }}")
 
 
+@functools.lru_cache(maxsize=256)
+def _compile_template(template: str) -> Any:
+    """Compile a full Jinja template string (already containing ``{{ }}``)."""
+    return _build_jinja_env().from_string(template)
+
+
 # ---------------------------------------------------------------------------
 # Arithmetic expression evaluation (compute fields, list_map)
 # ---------------------------------------------------------------------------
@@ -120,7 +126,10 @@ def _build_arithmetic_env() -> NativeEnvironment:
 
 @functools.lru_cache(maxsize=256)
 def _compile_expr(expression: str) -> Any:
-    return _build_arithmetic_env().from_string("{{ " + expression + " }}")
+    expr = expression.strip()
+    if expr.startswith("{{") and expr.endswith("}}"):
+        return _build_arithmetic_env().from_string(expr)
+    return _build_arithmetic_env().from_string("{{ " + expr + " }}")
 
 
 def eval_expression(expression: str, context: dict[str, Any]) -> float:

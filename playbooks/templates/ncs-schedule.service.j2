@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Service for NCS scheduled playbook: {{ item.name }}
+[Unit]
+Description=NCS Schedule Run: {{ item.description | default(item.name) }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User={{ ncs_schedule_user }}
+WorkingDirectory={{ ncs_repo_path }}
+ExecStart={{ ncs_repo_path }}/.cache/ncs-schedules/{{ item.name }}.sh
+TimeoutSec={{ (item.timeout_minutes | default(120)) * 60 }}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ncs-{{ item.name }}

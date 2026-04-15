@@ -40,6 +40,34 @@ function ConvertTo-NcsRemotePathExpression {
     return ConvertTo-NcsBashLiteral -Value $Value
 }
 
+function New-NcsRepoShellCommand {
+    <#
+    .SYNOPSIS Wrap a remote command with the repo cd + optional venv activation prefix.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)]
+        [string] $Command
+    )
+
+    $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
+    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && $Command"
+}
+
+function New-NcsRemoteHeredocCommand {
+    <#
+    .SYNOPSIS Build "<Preamble> << '<Sentinel>'\n<Content>\n<Sentinel>" for piping
+    multi-line content into a remote command without shell-escaping concerns.
+    #>
+    param(
+        [Parameter(Mandatory)] [string] $Preamble,
+        [Parameter(Mandatory)] [string] $Content,
+        [string] $Sentinel = "NCSHEREDOC"
+    )
+    return "$Preamble << '$Sentinel'" + "`n" + $Content + "`n" + $Sentinel
+}
+
 function Split-NcsExtraArgs {
     param(
         [string] $ExtraArgs
@@ -144,11 +172,11 @@ function Get-NcsSshEnvironment {
     )
 
     $authMode = $Settings.SshAuthMode
-    if ($authMode -eq [NcsSshAuthMode]::Password.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
+    if ($authMode -eq [NcsSshAuthMode]::Password -and -not [string]::IsNullOrWhiteSpace($Settings.SshPassword)) {
         return New-NcsSshAskPassEnvironment -Secret $Settings.SshPassword
     }
 
-    if ($authMode -eq [NcsSshAuthMode]::KeyFile.ToString() -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
+    if ($authMode -eq [NcsSshAuthMode]::KeyFile -and -not [string]::IsNullOrWhiteSpace($Settings.SshKeyPassphrase)) {
         return New-NcsSshAskPassEnvironment -Secret $Settings.SshKeyPassphrase
     }
 

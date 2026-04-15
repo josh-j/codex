@@ -584,3 +584,23 @@ clean:
 # Deep clean including venvs and vcsa collections
 clean-all: clean
     rm -rf .venv .venv-vcsa collections_vcsa/ansible_collections/community
+
+# =============================================================================
+# Scheduling
+# =============================================================================
+
+# Apply playbook schedules (systemd timers) from schedules.yml
+apply-schedules:
+    {{ ansible_playbook }} playbooks/infra/manage_schedules.yml
+
+# Show status of all NCS scheduled timers
+schedule-status:
+    systemctl list-timers 'ncs-*' --no-pager
+
+# Show recent log output for a scheduled playbook
+schedule-log name:
+    journalctl -u ncs-{{ name }}.service --no-pager -n 100
+
+# Manually trigger a scheduled playbook immediately
+schedule-run-now name:
+    systemctl start ncs-{{ name }}.service

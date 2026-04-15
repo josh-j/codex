@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $moduleRoot = Join-Path -Path $projectRoot -ChildPath "Modules"
 
-foreach ($module in @("NcsConsole.Types.ps1", "NcsConsole.Settings.ps1", "NcsConsole.Execution.ps1", "NcsConsole.Preflight.ps1", "NcsConsole.Wpf.ps1")) {
+foreach ($module in @("NcsConsole.Types.ps1", "NcsConsole.Settings.ps1", "NcsConsole.Execution.ps1", "NcsConsole.Preflight.ps1", "NcsConsole.Schedules.ps1", "NcsConsole.Wpf.ps1")) {
     . (Join-Path -Path $moduleRoot -ChildPath $module)
 }
 
