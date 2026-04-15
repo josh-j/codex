@@ -823,6 +823,33 @@ function Get-NcsSchedulePlaybookChoices {
     return [string[]]$playbooks
 }
 
+function Initialize-NcsWorkerPool {
+    <#
+    .SYNOPSIS Build a RunspacePool preloaded with the module scripts needed for
+              background SSH/remote calls. Falls back to $null if creation fails;
+              callers run synchronously in that case.
+    #>
+    param([Parameter(Mandatory)] [string] $ModuleRoot)
+
+    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    foreach ($module in @("NcsConsole.Types.ps1", "NcsConsole.Execution.ps1", "NcsConsole.Preflight.ps1")) {
+        $path = Join-Path -Path $ModuleRoot -ChildPath $module
+        [void] $iss.StartupScripts.Add($path)
+    }
+    $pool = [runspacefactory]::CreateRunspacePool(1, 2, $iss, $Host)
+    $pool.Open()
+    return $pool
+}
+
+function ConvertTo-NcsSettingsHashtable {
+    # Cross-runspace PS class identity differs, so flatten to a plain hashtable
+    # and rehydrate on the worker side via [NcsConsoleSettings]::new().
+    param([Parameter(Mandatory)] $Settings)
+    $h = @{}
+    foreach ($prop in $Settings.PSObject.Properties) { $h[$prop.Name] = $prop.Value }
+    return $h
+}
+
 function Add-NcsOptionControls {
     param(
         [Parameter(Mandatory)]
@@ -1426,6 +1453,13 @@ function Show-NcsConsoleApp {
 
     Import-NcsWpfAssemblies -ProjectRoot $ProjectRoot
 
+    $script:NcsWorkerPool = $null
+    try {
+        $script:NcsWorkerPool = Initialize-NcsWorkerPool -ModuleRoot (Join-Path -Path $ProjectRoot -ChildPath "Modules")
+    } catch {
+        Write-Warning "Async worker pool unavailable: $($_.Exception.Message). Tag fetches will run synchronously."
+    }
+
     $xamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.xaml"
     $resourceXamlPath = Join-Path -Path $ProjectRoot -ChildPath "App/MainWindow.Resources.xaml"
     $xamlText = Get-Content -LiteralPath $xamlPath -Raw
@@ -1683,6 +1717,7 @@ function Show-NcsConsoleApp {
     }
 
     $script:TagFetchTokens = @{}
+    $script:TagFetchInFlight = @{}
 
     $populatePlaybookTags = {
         param(
@@ -1693,7 +1728,6 @@ function Show-NcsConsoleApp {
         )
         $localControls = $controls
         $localState = $state
-        $localWindow = $window
         $tree = $localControls[$TreeName]
         $emptyText = $localControls[$EmptyTextName]
         $tree.Items.Clear()
@@ -1727,34 +1761,75 @@ function Show-NcsConsoleApp {
         $script:TagFetchTokens[$TreeName] = $token
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
-        $work = [pscustomobject]@{
-            Controls      = $localControls
-            State         = $localState
-            Window        = $localWindow
-            Playbook      = $Playbook
+
+        if ($null -eq $script:NcsWorkerPool) {
+            # Worker pool unavailable — run synchronously (UI blocks briefly).
+            try {
+                $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $localState.Settings -Playbook $Playbook
+            } catch {
+                $script:PlaybookTagsCache[$Playbook] = @()
+            }
+            & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
+            return
+        }
+
+        $settingsHash = ConvertTo-NcsSettingsHashtable -Settings $localState.Settings
+        $ps = [powershell]::Create()
+        $ps.RunspacePool = $script:NcsWorkerPool
+        [void] $ps.AddScript({
+            param($settingsHash, $playbook)
+            $settings = [NcsConsoleSettings]::new()
+            foreach ($key in $settingsHash.Keys) {
+                try { $settings.$key = $settingsHash[$key] } catch { }
+            }
+            try { , (Get-NcsRemotePlaybookTags -Settings $settings -Playbook $playbook) }
+            catch { , @() }
+        })
+        [void] $ps.AddArgument($settingsHash)
+        [void] $ps.AddArgument($Playbook)
+        $asyncResult = $ps.BeginInvoke()
+
+        $pollTimer = [System.Windows.Threading.DispatcherTimer]::new()
+        $pollTimer.Interval = [TimeSpan]::FromMilliseconds(100)
+        $script:TagFetchInFlight[$token] = [pscustomobject]@{
+            PS            = $ps
+            AsyncResult   = $asyncResult
+            Token         = $token
             TreeName      = $TreeName
             EmptyTextName = $EmptyTextName
-            Token         = $token
+            Playbook      = $Playbook
+            Controls      = $localControls
             ApplyGroups   = $applyGroups
+            Timer         = $pollTimer
         }
-        [System.Threading.ThreadPool]::QueueUserWorkItem([System.Threading.WaitCallback]{
-            param($payload)
-
+        $pollTimer.Add_Tick({
+            param($sender, $_e)
+            $key = $null
+            foreach ($kv in $script:TagFetchInFlight.GetEnumerator()) {
+                if ([object]::ReferenceEquals($kv.Value.Timer, $sender)) { $key = $kv.Key; break }
+            }
+            if ($null -eq $key) { $sender.Stop(); return }
+            $entry = $script:TagFetchInFlight[$key]
+            if (-not $entry.AsyncResult.IsCompleted) { return }
+            $sender.Stop()
+            [void] $script:TagFetchInFlight.Remove($key)
             $groups = @()
             try {
-                $groups = Get-NcsRemotePlaybookTags -Settings $payload.State.Settings -Playbook $payload.Playbook
+                $result = $entry.PS.EndInvoke($entry.AsyncResult)
+                if ($null -ne $result -and $result.Count -gt 0 -and $null -ne $result[0]) {
+                    $groups = @($result[0])
+                }
             } catch {
                 $groups = @()
+            } finally {
+                try { $entry.PS.Dispose() } catch { }
             }
-
-            $payload.Window.Dispatcher.BeginInvoke([action]{
-                if (-not $script:TagFetchTokens.ContainsKey($payload.TreeName)) { return }
-                if ($script:TagFetchTokens[$payload.TreeName] -ne $payload.Token) { return }
-
-                $script:PlaybookTagsCache[$payload.Playbook] = $groups
-                & $payload.ApplyGroups $payload.Controls $payload.TreeName $payload.EmptyTextName $groups
-            }) | Out-Null
-        }, $work) | Out-Null
+            if (-not $script:TagFetchTokens.ContainsKey($entry.TreeName)) { return }
+            if ($script:TagFetchTokens[$entry.TreeName] -ne $entry.Token) { return }
+            $script:PlaybookTagsCache[$entry.Playbook] = $groups
+            & $entry.ApplyGroups $entry.Controls $entry.TreeName $entry.EmptyTextName $groups
+        })
+        $pollTimer.Start()
     }
 
     $invalidatePreflight = {
@@ -2444,6 +2519,12 @@ function Show-NcsConsoleApp {
                 $controls.ScheduleTagsTree.Items.Clear()
                 $controls.ScheduleTagsEmptyText.Visibility = "Visible"
                 $script:TagFetchTokens = @{}
+                foreach ($kv in @($script:TagFetchInFlight.GetEnumerator())) {
+                    try { $kv.Value.Timer.Stop() } catch { }
+                    try { $kv.Value.PS.Stop() } catch { }
+                    try { $kv.Value.PS.Dispose() } catch { }
+                }
+                $script:TagFetchInFlight = @{}
                 $script:ActionGroups = @()
                 $script:ActionItemMap = @{}
                 $script:PlaybookTagsCache = @{}
@@ -2827,6 +2908,17 @@ function Show-NcsConsoleApp {
                 $null = $_ # WebView2 disposal can throw during shutdown
             }
             $reportViewState.Control = $null
+        }
+        foreach ($kv in @($script:TagFetchInFlight.GetEnumerator())) {
+            try { $kv.Value.Timer.Stop() } catch { }
+            try { $kv.Value.PS.Stop() } catch { }
+            try { $kv.Value.PS.Dispose() } catch { }
+        }
+        $script:TagFetchInFlight = @{}
+        if ($null -ne $script:NcsWorkerPool) {
+            try { $script:NcsWorkerPool.Close() } catch { }
+            try { $script:NcsWorkerPool.Dispose() } catch { }
+            $script:NcsWorkerPool = $null
         }
     })
 
