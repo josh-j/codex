@@ -47,7 +47,7 @@ class NcsConsoleSettings {
     [string] $RemoteRepoPath = "~/ansible-ncs"
     [string] $RemoteReportsPath = "/srv/samba/reports"
     [string] $SmbShareName = "reports"
-    [string] $SmbUser = ""
+    [string] $SmbUser = "ansible"
     [string] $SmbPassword = ""
     [string] $ReportDeliveryMode = [NcsReportDeliveryMode]::Auto.ToString()
     [int]    $AutoRefreshIntervalSeconds = 5
