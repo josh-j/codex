@@ -436,12 +436,17 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Limit (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                        <TextBox x:Name="ScheduleLimitTextBox" />
+                                        <TextBlock Text="Target Host/Group (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
+                                        <TextBox x:Name="ScheduleLimitTextBox" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;)" />
+                                        <Border x:Name="ScheduleLimitTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
+                                            <ScrollViewer x:Name="ScheduleLimitTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                <TreeView x:Name="ScheduleLimitTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                            </ScrollViewer>
+                                        </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                        <TextBox x:Name="ScheduleTagsTextBox" />
+                                        <TextBox x:Name="ScheduleTagsTextBox" ToolTip="--tags filter (comma-separated)" />
                                     </StackPanel>
                                 </Grid>
                                 <Grid Margin="0,6,0,0">
