@@ -433,7 +433,12 @@ function Get-NcsXamlControlMap {
         "ActionLimitTree",
         "ActionLimitTreeBorder",
         "ActionLimitTreeScroll",
+        "ActionLimitEmptyText",
         "ActionTagsTextBox",
+        "ActionTagsTree",
+        "ActionTagsTreeBorder",
+        "ActionTagsTreeScroll",
+        "ActionTagsEmptyText",
         "ActionCheckModeCheckBox",
         "ActionDiffCheckBox",
         "ActionVerbosityComboBox",
@@ -1597,6 +1602,38 @@ function Show-NcsConsoleApp {
         Update-NcsCommandPreview -Controls $controls -Settings $state.Settings
     }
 
+    $populatePlaybookTags = {
+        param(
+            [string] $Playbook,
+            [string] $TreeName,
+            [string] $EmptyTextName,
+            [string] $EmptyMessage = "Select a playbook to load tags"
+        )
+        $tree = $controls[$TreeName]
+        $emptyText = $controls[$EmptyTextName]
+        $tree.Items.Clear()
+        if ([string]::IsNullOrWhiteSpace($Playbook)) {
+            $emptyText.Text = $EmptyMessage
+            $emptyText.Visibility = "Visible"
+            return
+        }
+        if (-not $script:PlaybookTagsCache.ContainsKey($Playbook)) {
+            try {
+                $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $state.Settings -Playbook $Playbook
+            } catch {
+                $script:PlaybookTagsCache[$Playbook] = @()
+            }
+        }
+        $groups = $script:PlaybookTagsCache[$Playbook]
+        if (@($groups).Length -gt 0) {
+            Build-NcsTreeView -Controls $controls -TreeViewName $TreeName -Groups $groups -TagProperty "tag" -Expanded $true -LeafIcon ""
+            $emptyText.Visibility = "Collapsed"
+        } else {
+            $emptyText.Text = "No --tags declared in this playbook"
+            $emptyText.Visibility = "Visible"
+        }
+    }
+
     $invalidatePreflight = {
         $state.PreflightResult = $null
         Set-NcsPreflightState -Controls $controls -State "Not Connected"
@@ -1626,6 +1663,7 @@ function Show-NcsConsoleApp {
         $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
         Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
+        & $populatePlaybookTags $playbook "ActionTagsTree" "ActionTagsEmptyText"
         & $refreshPreview
     })
 
@@ -1633,6 +1671,12 @@ function Show-NcsConsoleApp {
         -TextBox $controls.ActionLimitTextBox `
         -Tree $controls.ActionLimitTree `
         -ScrollViewer $controls.ActionLimitTreeScroll `
+        -OnChanged { & $refreshPreview }
+
+    Register-NcsLimitPicker -Simple `
+        -TextBox $controls.ActionTagsTextBox `
+        -Tree $controls.ActionTagsTree `
+        -ScrollViewer $controls.ActionTagsTreeScroll `
         -OnChanged { & $refreshPreview }
 
     Register-NcsLimitPicker `
@@ -1644,8 +1688,6 @@ function Show-NcsConsoleApp {
         -TextBox $controls.ScheduleTagsTextBox `
         -Tree $controls.ScheduleTagsTree `
         -ScrollViewer $controls.ScheduleTagsTreeScroll
-
-    $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
     $controls.ActionDiffCheckBox.Add_Checked({ & $refreshPreview })
@@ -2023,7 +2065,7 @@ function Show-NcsConsoleApp {
     # -------------------------------------------------------------------------
     $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
     $script:EditingScheduleIndex = -1
-    $script:ScheduleTagsCache = @{}
+    $script:PlaybookTagsCache = @{}
     $script:SchedulesLoaded = $false
 
     $openSchedules = {
@@ -2121,27 +2163,7 @@ function Show-NcsConsoleApp {
 
     $populateTagsTree = {
         param([string] $Playbook)
-        $controls.ScheduleTagsTree.Items.Clear()
-        if ([string]::IsNullOrWhiteSpace($Playbook)) {
-            $controls.ScheduleTagsEmptyText.Text = "Select a playbook to load tags"
-            $controls.ScheduleTagsEmptyText.Visibility = "Visible"
-            return
-        }
-        if (-not $script:ScheduleTagsCache.ContainsKey($Playbook)) {
-            try {
-                $script:ScheduleTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $state.Settings -Playbook $Playbook
-            } catch {
-                $script:ScheduleTagsCache[$Playbook] = @()
-            }
-        }
-        $groups = $script:ScheduleTagsCache[$Playbook]
-        if (@($groups).Length -gt 0) {
-            Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleTagsTree" -Groups $groups -TagProperty "tag" -Expanded $true -LeafIcon ""
-            $controls.ScheduleTagsEmptyText.Visibility = "Collapsed"
-        } else {
-            $controls.ScheduleTagsEmptyText.Text = "No --tags declared in this playbook"
-            $controls.ScheduleTagsEmptyText.Visibility = "Visible"
-        }
+        & $populatePlaybookTags $Playbook "ScheduleTagsTree" "ScheduleTagsEmptyText"
     }
 
     $showScheduleEditForm = {
@@ -2301,12 +2323,15 @@ function Show-NcsConsoleApp {
                 Set-NcsPreflightState -Controls $controls -State "Not Connected"
                 $controls.ConnectionInfoText.Text = ""
                 $controls.StatusTextBlock.Text = "Disconnected."
-                $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
+                $controls.ActionLimitTree.Items.Clear()
+                $controls.ActionLimitEmptyText.Visibility = "Visible"
+                $controls.ActionTagsTree.Items.Clear()
+                $controls.ActionTagsEmptyText.Visibility = "Visible"
                 $controls.ScheduleLimitTree.Items.Clear()
                 $controls.ScheduleLimitEmptyText.Visibility = "Visible"
                 $controls.ScheduleTagsTree.Items.Clear()
                 $controls.ScheduleTagsEmptyText.Visibility = "Visible"
-                $script:ScheduleTagsCache = @{}
+                $script:PlaybookTagsCache = @{}
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
@@ -2361,7 +2386,7 @@ function Show-NcsConsoleApp {
                     if (@($inventoryTree).Length -gt 0) {
                         Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                         Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
-                        $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                        $controls.ActionLimitEmptyText.Visibility = "Collapsed"
                         $controls.ScheduleLimitEmptyText.Visibility = "Collapsed"
                         $statusParts += "$(@($inventoryTree).Length) inventory groups."
                     }
@@ -2414,7 +2439,7 @@ function Show-NcsConsoleApp {
                 if (@($inventoryTree).Length -gt 0) {
                     Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                     Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
-                    $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                    $controls.ActionLimitEmptyText.Visibility = "Collapsed"
                     $controls.ScheduleLimitEmptyText.Visibility = "Collapsed"
                 }
             } catch {
