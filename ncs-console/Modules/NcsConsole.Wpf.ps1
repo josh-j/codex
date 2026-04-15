@@ -1786,11 +1786,27 @@ function Show-NcsConsoleApp {
         [void] $ps.AddScript({
             param($settingsHash, $playbook)
             $settings = [NcsConsoleSettings]::new()
+            $applied = @()
+            $failed = @()
             foreach ($key in $settingsHash.Keys) {
-                try { $settings.$key = $settingsHash[$key] } catch { }
+                try { $settings.$key = $settingsHash[$key]; $applied += $key }
+                catch { $failed += "$key=$($_.Exception.Message)" }
             }
-            try { , (Get-NcsRemotePlaybookTags -Settings $settings -Playbook $playbook) }
-            catch { , @() }
+            try {
+                $groups = @(Get-NcsRemotePlaybookTags -Settings $settings -Playbook $playbook)
+                if (@($groups).Count -eq 0) {
+                    $safe = $playbook -replace "[^A-Za-z0-9._/-]", ""
+                    $cmd = New-NcsRepoShellCommand -Settings $settings -Command "ansible-playbook --list-tags '$safe' 2>&1"
+                    $probe = Invoke-NcsSshProbe -Settings $settings -RemoteCommand $cmd
+                    $stdoutHead = if ($probe.StdOut) { $probe.StdOut.Substring(0, [Math]::Min(240, $probe.StdOut.Length)) } else { "" }
+                    $stderrHead = if ($probe.StdErr) { $probe.StdErr.Substring(0, [Math]::Min(240, $probe.StdErr.Length)) } else { "" }
+                    Write-Error ("diag host={0} user={1} auth={2} exit={3} stdout={4} stderr={5} applied={6} failed={7}" -f $settings.SshHost, $settings.SshUser, $settings.SshAuthMode, $probe.ExitCode, ($stdoutHead -replace "`r?`n", "|"), ($stderrHead -replace "`r?`n", "|"), ($applied -join ","), ($failed -join ";"))
+                }
+                , $groups
+            } catch {
+                Write-Error ("worker exception: {0}" -f $_.Exception.Message)
+                , @()
+            }
         })
         [void] $ps.AddArgument($settingsHash)
         [void] $ps.AddArgument($Playbook)
