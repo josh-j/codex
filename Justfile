@@ -58,11 +58,14 @@ setup-vcsa-venv:
     python3.12 -m venv .venv-vcsa
     .venv-vcsa/bin/pip install --upgrade pip
     .venv-vcsa/bin/pip install 'ansible-core>=2.15,<2.16' pyvmomi pykerberos
-    # Python 3.7-compatible community collections in separate path
+    # Python 3.7-compatible community collections in separate path.
+    # vmware.vmware pinned to <2.0.0: latest requires ansible-core >=2.17,
+    # but VCSA venv is locked to 2.15 for Python 3.7 managed nodes.
     mkdir -p collections_vcsa/ansible_collections
-    .venv-vcsa/bin/ansible-galaxy collection install \
+    ANSIBLE_CONFIG=ansible-vcsa.cfg .venv-vcsa/bin/ansible-galaxy collection install \
         'community.general:>=8.0.0,<9.0.0' \
         'community.vmware:>=4.0.0,<5.0.0' \
+        'vmware.vmware:<2.0.0' \
         -p collections_vcsa --force
     # Symlink internal collections so both envs share them
     ln -sfn "$(pwd)/collections/ansible_collections/internal" \
