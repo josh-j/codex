@@ -824,11 +824,8 @@ function Get-NcsSchedulePlaybookChoices {
 }
 
 function Initialize-NcsWorkerPool {
-    <#
-    .SYNOPSIS Build a RunspacePool preloaded with the module scripts needed for
-              background SSH/remote calls. Falls back to $null if creation fails;
-              callers run synchronously in that case.
-    #>
+    # Min=0 keeps startup fast — runspace parse cost is deferred to first fetch,
+    # which is already async. Only load what Get-NcsRemotePlaybookTags needs.
     param([Parameter(Mandatory)] [string] $ModuleRoot)
 
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
@@ -836,9 +833,18 @@ function Initialize-NcsWorkerPool {
         $path = Join-Path -Path $ModuleRoot -ChildPath $module
         [void] $iss.StartupScripts.Add($path)
     }
-    $pool = [runspacefactory]::CreateRunspacePool(1, 2, $iss, $Host)
+    $pool = [runspacefactory]::CreateRunspacePool(0, 2, $iss, $Host)
     $pool.Open()
     return $pool
+}
+
+function Stop-NcsTagFetches {
+    foreach ($kv in @($script:TagFetchInFlight.GetEnumerator())) {
+        try { $kv.Value.Timer.Stop() } catch { $null = $_ }
+        try { $kv.Value.PS.Stop() } catch { $null = $_ }
+        try { $kv.Value.PS.Dispose() } catch { $null = $_ }
+    }
+    $script:TagFetchInFlight = @{}
 }
 
 function ConvertTo-NcsSettingsHashtable {
@@ -1791,6 +1797,7 @@ function Show-NcsConsoleApp {
 
         $pollTimer = [System.Windows.Threading.DispatcherTimer]::new()
         $pollTimer.Interval = [TimeSpan]::FromMilliseconds(100)
+        $pollTimer.Tag = $token
         $script:TagFetchInFlight[$token] = [pscustomobject]@{
             PS            = $ps
             AsyncResult   = $asyncResult
@@ -1804,11 +1811,8 @@ function Show-NcsConsoleApp {
         }
         $pollTimer.Add_Tick({
             param($sender, $_e)
-            $key = $null
-            foreach ($kv in $script:TagFetchInFlight.GetEnumerator()) {
-                if ([object]::ReferenceEquals($kv.Value.Timer, $sender)) { $key = $kv.Key; break }
-            }
-            if ($null -eq $key) { $sender.Stop(); return }
+            $key = [string] $sender.Tag
+            if (-not $script:TagFetchInFlight.ContainsKey($key)) { $sender.Stop(); return }
             $entry = $script:TagFetchInFlight[$key]
             if (-not $entry.AsyncResult.IsCompleted) { return }
             $sender.Stop()
@@ -1822,7 +1826,7 @@ function Show-NcsConsoleApp {
             } catch {
                 $groups = @()
             } finally {
-                try { $entry.PS.Dispose() } catch { }
+                try { $entry.PS.Dispose() } catch { $null = $_ }
             }
             if (-not $script:TagFetchTokens.ContainsKey($entry.TreeName)) { return }
             if ($script:TagFetchTokens[$entry.TreeName] -ne $entry.Token) { return }
@@ -2519,12 +2523,7 @@ function Show-NcsConsoleApp {
                 $controls.ScheduleTagsTree.Items.Clear()
                 $controls.ScheduleTagsEmptyText.Visibility = "Visible"
                 $script:TagFetchTokens = @{}
-                foreach ($kv in @($script:TagFetchInFlight.GetEnumerator())) {
-                    try { $kv.Value.Timer.Stop() } catch { }
-                    try { $kv.Value.PS.Stop() } catch { }
-                    try { $kv.Value.PS.Dispose() } catch { }
-                }
-                $script:TagFetchInFlight = @{}
+                Stop-NcsTagFetches
                 $script:ActionGroups = @()
                 $script:ActionItemMap = @{}
                 $script:PlaybookTagsCache = @{}
@@ -2909,12 +2908,7 @@ function Show-NcsConsoleApp {
             }
             $reportViewState.Control = $null
         }
-        foreach ($kv in @($script:TagFetchInFlight.GetEnumerator())) {
-            try { $kv.Value.Timer.Stop() } catch { }
-            try { $kv.Value.PS.Stop() } catch { }
-            try { $kv.Value.PS.Dispose() } catch { }
-        }
-        $script:TagFetchInFlight = @{}
+        Stop-NcsTagFetches
         if ($null -ne $script:NcsWorkerPool) {
             try { $script:NcsWorkerPool.Close() } catch { }
             try { $script:NcsWorkerPool.Dispose() } catch { }
