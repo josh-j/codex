@@ -40,18 +40,21 @@ function Register-NcsLimitPicker {
         [switch] $Simple
     )
 
+    # Closures capture $Tree/$TextBox at this point — required because the
+    # scriptblocks are invoked later (from event handlers) after the function
+    # has returned, by which time the parameters are out of scope.
     $getSelectedTag = {
         $item = $Tree.SelectedItem
         if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
         return [string] $item.Tag
-    }
+    }.GetNewClosure()
 
     $appendToLimit = {
         param([string] $Value)
         $current = $TextBox.Text.Trim()
         if ([string]::IsNullOrWhiteSpace($current)) { $TextBox.Text = $Value }
         else { $TextBox.Text = "$current,$Value" }
-    }
+    }.GetNewClosure()
 
     $removeFromLimit = {
         $tag = & $getSelectedTag
@@ -61,14 +64,14 @@ function Register-NcsLimitPicker {
             $_ -ne '' -and $_ -ne $tag -and $_ -ne "!$tag" -and $_ -ne ":&$tag" -and $_ -ne "$tag*"
         })
         $TextBox.Text = $parts -join ','
-    }
+    }.GetNewClosure()
 
     $isInLimit = {
         param([string] $Tag)
         $current = $TextBox.Text.Trim()
         $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
         return ($parts -contains $Tag -or $parts -contains "!$Tag" -or $parts -contains ":&$Tag" -or $parts -contains "$Tag*")
-    }
+    }.GetNewClosure()
 
     $newMenuItem = {
         param([string] $Header, [scriptblock] $Action)
@@ -113,18 +116,18 @@ function Register-NcsLimitPicker {
         '</ControlTemplate>'
     )
 
-    $addItem    = & $newMenuItem "Add"              { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }
-    $removeItem = & $newMenuItem "Remove"           { & $removeFromLimit }
+    $addItem    = & $newMenuItem "Add"              { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }.GetNewClosure()
+    $removeItem = & $newMenuItem "Remove"           { & $removeFromLimit }.GetNewClosure()
     $menu.Items.Add($addItem) | Out-Null
     $menu.Items.Add($removeItem) | Out-Null
     if (-not $Simple) {
         $menu.Items.Add((& $newSep)) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } })) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
-        $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } })) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } }.GetNewClosure())) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } }.GetNewClosure())) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } }.GetNewClosure())) | Out-Null
     }
     $menu.Items.Add((& $newSep)) | Out-Null
-    $menu.Items.Add((& $newMenuItem "Clear all"       { $TextBox.Text = "" })) | Out-Null
+    $menu.Items.Add((& $newMenuItem "Clear all"       { $TextBox.Text = "" }.GetNewClosure())) | Out-Null
 
     $menu.Add_Opened({
         $pos = [System.Windows.Input.Mouse]::GetPosition($Tree)
