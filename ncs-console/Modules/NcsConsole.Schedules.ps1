@@ -193,6 +193,7 @@ function Get-NcsRemoteScheduleSnapshot {
             $data = $jsonOut | ConvertFrom-Json -AsHashtable
         }
     } catch {
+        Write-Warning "Get-NcsRemoteScheduleSnapshot: failed to parse schedules.yml JSON: $($_.Exception.Message)"
         $data = $null
     }
 

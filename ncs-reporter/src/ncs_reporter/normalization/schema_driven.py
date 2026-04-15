@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from datetime import datetime
 from typing import Any
@@ -150,14 +151,15 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     return result, coverage
 
 
-def _extract_when_refs(expression: str) -> list[str]:
+@functools.lru_cache(maxsize=256)
+def _extract_when_refs(expression: str) -> tuple[str, ...]:
     """Extract field names referenced in a when expression."""
     from jinja2 import meta
     try:
         ast = _build_jinja_env().parse("{{ " + expression + " }}")
-        return sorted(meta.find_undeclared_variables(ast))
+        return tuple(sorted(meta.find_undeclared_variables(ast)))
     except Exception:
-        return []
+        return ()
 
 
 def build_schema_alerts(schema: ReportSchema, fields: dict[str, Any]) -> list[dict[str, Any]]:

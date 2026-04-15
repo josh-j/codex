@@ -147,12 +147,12 @@
 
     - name: Build list of orphan file paths
       ansible.builtin.set_fact:
-        _orphan_paths: "{{ _orphan_paths | default([]) + [
-            '/etc/systemd/system/' ~ item,
-            '/etc/systemd/system/' ~ (item | regex_replace('\\.timer$', '.service')),
-            _wrapper_dir ~ '/' ~ (item | regex_replace('^' ~ _unit_prefix, '') | regex_replace('\\.timer$', '.sh'))
-          ] }}"
-      loop: "{{ _orphaned_timers }}"
+        _orphan_paths: >-
+          {{
+            (_orphaned_timers | map('regex_replace', '^', '/etc/systemd/system/') | list)
+            + (_orphaned_timers | map('regex_replace', '\.timer$', '.service') | map('regex_replace', '^', '/etc/systemd/system/') | list)
+            + (_orphaned_timers | map('regex_replace', '^' ~ _unit_prefix, '') | map('regex_replace', '\.timer$', '.sh') | map('regex_replace', '^', _wrapper_dir ~ '/') | list)
+          }}
 
     - name: Remove orphaned unit and wrapper files
       ansible.builtin.file:

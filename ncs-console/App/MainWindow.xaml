@@ -341,16 +341,66 @@
                         <Border Grid.Row="1" Background="#0f1117" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,0">
                             <Grid>
                                 <TextBlock x:Name="SchedulePlaceholder" Text="Connect to load schedules" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                <ListView x:Name="ScheduleListView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeMd}" Visibility="Collapsed">
+                                <ListView x:Name="ScheduleListView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeMd}" Visibility="Collapsed" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                    <ListView.Resources>
+                                        <Style x:Key="ScheduleCellTextStyle" TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                            <Setter Property="Padding" Value="8,6" />
+                                            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                        </Style>
+                                    </ListView.Resources>
                                     <ListView.View>
                                         <GridView>
-                                            <GridViewColumn Header="" Width="30" DisplayMemberBinding="{Binding EnabledIcon}" />
-                                            <GridViewColumn Header="Name" Width="130" DisplayMemberBinding="{Binding Name}" />
-                                            <GridViewColumn Header="Playbook" Width="180" DisplayMemberBinding="{Binding Playbook}" />
-                                            <GridViewColumn Header="Calendar" Width="130" DisplayMemberBinding="{Binding Calendar}" />
-                                            <GridViewColumn Header="Next Run" Width="140" DisplayMemberBinding="{Binding NextTrigger}" />
-                                            <GridViewColumn Header="Last Run" Width="140" DisplayMemberBinding="{Binding LastTrigger}" />
-                                            <GridViewColumn Header="Last Result" Width="80" DisplayMemberBinding="{Binding LastResult}" />
+                                            <GridViewColumn Header="" Width="30">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding EnabledIcon}" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Name" Width="140">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource ScheduleCellTextStyle}" FontWeight="SemiBold" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Playbook" Width="200">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Playbook}" Style="{StaticResource ScheduleCellTextStyle}" Foreground="{StaticResource TextMutedBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Calendar" Width="130">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Calendar}" Style="{StaticResource ScheduleCellTextStyle}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Next Run" Width="150">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding NextTrigger}" Style="{StaticResource ScheduleCellTextStyle}" Foreground="{StaticResource TextMutedBrush}" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Last Run" Width="150">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding LastTrigger}" Style="{StaticResource ScheduleCellTextStyle}" Foreground="{StaticResource TextMutedBrush}" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Last Result" Width="90">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding LastResult}" Style="{StaticResource ScheduleCellTextStyle}" />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
                                         </GridView>
                                     </ListView.View>
                                 </ListView>
