@@ -42,6 +42,7 @@ setup-main-venv:
         echo "Installing via pip..."
         python3.12 -m venv .venv
         .venv/bin/pip install --upgrade pip
+        .venv/bin/pip install ansible-core pyvmomi pykerberos
         .venv/bin/pip install -e ../ncs-reporter
         .venv/bin/pip install ruff mypy pytest basedpyright
     fi
