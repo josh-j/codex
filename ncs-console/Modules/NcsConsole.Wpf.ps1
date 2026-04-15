@@ -1707,7 +1707,11 @@ function Show-NcsConsoleApp {
         # Token lets us discard stale fetches when the user switches quickly.
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
-        $myToken = ([int]($script:TagFetchTokens[$TreeName] | ForEach-Object { $_ }) + 1)
+        $prevToken = 0
+        if ($script:TagFetchTokens.ContainsKey($TreeName)) {
+            $prevToken = [int] $script:TagFetchTokens[$TreeName]
+        }
+        $myToken = $prevToken + 1
         $script:TagFetchTokens[$TreeName] = $myToken
         $window.Dispatcher.BeginInvoke([action]{
             if ($script:TagFetchTokens[$TreeName] -ne $myToken) { return }
@@ -2797,5 +2801,16 @@ function Show-NcsConsoleApp {
         }
     })
 
-    [void] $window.ShowDialog()
+    try {
+        [void] $window.ShowDialog()
+    } catch {
+        $inner = $_.Exception
+        while ($null -ne $inner.InnerException) { $inner = $inner.InnerException }
+        Write-Host "NCS CONSOLE ERROR" -ForegroundColor Red
+        Write-Host $inner.GetType().FullName -ForegroundColor Yellow
+        Write-Host $inner.Message -ForegroundColor Yellow
+        if ($inner.StackTrace) { Write-Host $inner.StackTrace -ForegroundColor DarkGray }
+        if ($_.ScriptStackTrace) { Write-Host "`nPowerShell stack:`n$($_.ScriptStackTrace)" -ForegroundColor DarkGray }
+        throw
+    }
 }
