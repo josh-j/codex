@@ -1819,15 +1819,28 @@ function Show-NcsConsoleApp {
             $sender.Stop()
             [void] $script:TagFetchInFlight.Remove($key)
             $groups = @()
+            $endInvokeError = $null
             try {
                 $result = $entry.PS.EndInvoke($entry.AsyncResult)
                 if ($null -ne $result -and $result.Count -gt 0 -and $null -ne $result[0]) {
                     $groups = @($result[0])
                 }
             } catch {
+                $endInvokeError = $_.Exception.Message
                 $groups = @()
             } finally {
+                try {
+                    foreach ($err in $entry.PS.Streams.Error) {
+                        Add-NcsConsoleLine -Controls $entry.Controls -Line "[tag-fetch $($entry.Playbook)] $err"
+                    }
+                } catch { $null = $_ }
                 try { $entry.PS.Dispose() } catch { $null = $_ }
+            }
+            if ($null -ne $endInvokeError) {
+                Add-NcsConsoleLine -Controls $entry.Controls -Line "[tag-fetch $($entry.Playbook)] EndInvoke: $endInvokeError"
+            }
+            if (@($groups).Count -eq 0) {
+                Add-NcsConsoleLine -Controls $entry.Controls -Line "[tag-fetch $($entry.Playbook)] returned no tags"
             }
             if (-not $script:TagFetchTokens.ContainsKey($entry.TreeName)) { return }
             if ($script:TagFetchTokens[$entry.TreeName] -ne $entry.Token) { return }
