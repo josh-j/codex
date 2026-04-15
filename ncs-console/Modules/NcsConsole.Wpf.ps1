@@ -60,9 +60,10 @@ function Remove-NcsLimitPickerValue {
 }
 
 function New-NcsLimitPickerMenuItem {
-    param([string] $Header, [scriptblock] $Action)
+    param([Parameter(Mandatory)] [string] $Header, [Parameter(Mandatory)] [string] $Op)
     $item = [System.Windows.Controls.MenuItem]::new()
     $item.Header = $Header
+    $item.Tag = $Op
     $item.Background = Get-NcsBrush -Color "#1e2228"
     $item.Foreground = Get-NcsBrush -Color "#d8dce2"
     $item.Margin = [System.Windows.Thickness]::new(0)
@@ -78,9 +79,37 @@ function New-NcsLimitPickerMenuItem {
         '</ControlTemplate.Triggers>' +
         '</ControlTemplate>'
     )
-    $a = $Action
-    $item.Add_Click({ & $a }.GetNewClosure())
+    $item.Add_Click({
+        param($sender, $e)
+        Invoke-NcsLimitPickerMenuClick -MenuItem $sender
+    })
     return $item
+}
+
+function Invoke-NcsLimitPickerMenuClick {
+    param([Parameter(Mandatory)] [System.Windows.Controls.MenuItem] $MenuItem)
+    $parent = $MenuItem.Parent
+    while ($null -ne $parent -and $parent -isnot [System.Windows.Controls.ContextMenu]) {
+        $parent = $parent.Parent
+    }
+    if ($null -eq $parent) { return }
+    $tree = $parent.PlacementTarget
+    $ctx = Get-NcsLimitPickerContext -Tree $tree
+    if ($null -eq $ctx) { return }
+    $op = [string] $MenuItem.Tag
+    if ($op -eq "Clear") { $ctx.TextBox.Text = ""; return }
+    $tag = Get-NcsLimitPickerSelectedTag -Tree $ctx.Tree
+    if ($op -eq "Remove") {
+        if ($tag) { Remove-NcsLimitPickerValue -TextBox $ctx.TextBox -Tag $tag }
+        return
+    }
+    if (-not $tag) { return }
+    switch ($op) {
+        "Add"       { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value $tag }
+        "Exclude"   { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "!$tag" }
+        "Intersect" { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value ":&$tag" }
+        "Wildcard"  { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "$tag*" }
+    }
 }
 
 function New-NcsLimitPickerSeparator {
@@ -114,12 +143,14 @@ function Register-NcsLimitPicker {
         [switch] $Simple
     )
 
-    $treeKey = [System.Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($Tree)
-    $script:NcsLimitPickers[$treeKey] = [pscustomobject]@{
+    $ctx = [pscustomobject]@{
         TextBox      = $TextBox
         Tree         = $Tree
         ScrollViewer = $ScrollViewer
+        OnChanged    = $OnChanged
     }
+    $script:NcsLimitPickers[[System.Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($Tree)]    = $ctx
+    $script:NcsLimitPickers[[System.Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($TextBox)] = $ctx
 
     $menu = [System.Windows.Controls.ContextMenu]::new()
     $menu.Template = [System.Windows.Markup.XamlReader]::Parse(
@@ -130,48 +161,16 @@ function Register-NcsLimitPicker {
         '</ControlTemplate>'
     )
 
-    $clickAction = {
-        param([System.Windows.Controls.MenuItem] $MenuItem, [string] $Op)
-        $parent = $MenuItem.Parent
-        while ($null -ne $parent -and $parent -isnot [System.Windows.Controls.ContextMenu]) {
-            $parent = $parent.Parent
-        }
-        if ($null -eq $parent) { return }
-        $tree = $parent.PlacementTarget
-        $ctx = Get-NcsLimitPickerContext -Tree $tree
-        if ($null -eq $ctx) { return }
-        if ($Op -eq "Clear") { $ctx.TextBox.Text = ""; return }
-        if ($Op -eq "Remove") {
-            $tag = Get-NcsLimitPickerSelectedTag -Tree $ctx.Tree
-            if ($tag) { Remove-NcsLimitPickerValue -TextBox $ctx.TextBox -Tag $tag }
-            return
-        }
-        $tag = Get-NcsLimitPickerSelectedTag -Tree $ctx.Tree
-        if (-not $tag) { return }
-        switch ($Op) {
-            "Add"       { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value $tag }
-            "Exclude"   { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "!$tag" }
-            "Intersect" { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value ":&$tag" }
-            "Wildcard"  { Add-NcsLimitPickerValue -TextBox $ctx.TextBox -Value "$tag*" }
-        }
-    }
-
-    $addItem    = New-NcsLimitPickerMenuItem "Add"    { & $clickAction $addItem    "Add" }.GetNewClosure()
-    $removeItem = New-NcsLimitPickerMenuItem "Remove" { & $clickAction $removeItem "Remove" }.GetNewClosure()
-    $menu.Items.Add($addItem)    | Out-Null
-    $menu.Items.Add($removeItem) | Out-Null
+    $menu.Items.Add((New-NcsLimitPickerMenuItem "Add"    "Add"))    | Out-Null
+    $menu.Items.Add((New-NcsLimitPickerMenuItem "Remove" "Remove")) | Out-Null
     if (-not $Simple) {
-        $excludeItem   = New-NcsLimitPickerMenuItem "Exclude (!)"    { & $clickAction $excludeItem   "Exclude"   }.GetNewClosure()
-        $intersectItem = New-NcsLimitPickerMenuItem "Intersect (:&)" { & $clickAction $intersectItem "Intersect" }.GetNewClosure()
-        $wildcardItem  = New-NcsLimitPickerMenuItem "Wildcard (*)"   { & $clickAction $wildcardItem  "Wildcard"  }.GetNewClosure()
         $menu.Items.Add((New-NcsLimitPickerSeparator)) | Out-Null
-        $menu.Items.Add($excludeItem)   | Out-Null
-        $menu.Items.Add($intersectItem) | Out-Null
-        $menu.Items.Add($wildcardItem)  | Out-Null
+        $menu.Items.Add((New-NcsLimitPickerMenuItem "Exclude (!)"    "Exclude"))   | Out-Null
+        $menu.Items.Add((New-NcsLimitPickerMenuItem "Intersect (:&)" "Intersect")) | Out-Null
+        $menu.Items.Add((New-NcsLimitPickerMenuItem "Wildcard (*)"   "Wildcard"))  | Out-Null
     }
-    $clearItem = New-NcsLimitPickerMenuItem "Clear all" { & $clickAction $clearItem "Clear" }.GetNewClosure()
     $menu.Items.Add((New-NcsLimitPickerSeparator)) | Out-Null
-    $menu.Items.Add($clearItem) | Out-Null
+    $menu.Items.Add((New-NcsLimitPickerMenuItem "Clear all" "Clear")) | Out-Null
 
     $menu.Add_Opened({
         param($sender, $e)
@@ -224,7 +223,11 @@ function Register-NcsLimitPicker {
     })
 
     if ($null -ne $OnChanged) {
-        $TextBox.Add_TextChanged({ & $OnChanged }.GetNewClosure())
+        $TextBox.Add_TextChanged({
+            param($sender, $e)
+            $ctx = Get-NcsLimitPickerContext -Tree $sender
+            if ($null -ne $ctx -and $null -ne $ctx.OnChanged) { & $ctx.OnChanged }
+        })
     }
 }
 
