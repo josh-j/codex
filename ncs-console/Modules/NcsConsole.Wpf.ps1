@@ -170,11 +170,11 @@ public static class NcsMaximizeFix
     {
         if (msg == WM_GETMINMAXINFO)
         {
-            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
             var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (monitor != IntPtr.Zero)
             {
-                var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+                var mi = new MONITORINFO { cbSize = Marshal.SizeOf(typeof(MONITORINFO)) };
                 GetMonitorInfo(monitor, ref mi);
                 var work = mi.rcWork;
                 var mon = mi.rcMonitor;
