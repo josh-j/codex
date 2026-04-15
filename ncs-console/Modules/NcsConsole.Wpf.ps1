@@ -113,8 +113,17 @@ function Import-NcsWpfAssemblies {
     Add-Type -AssemblyName PresentationFramework
     Add-Type -AssemblyName WindowsBase
 
-    # Win32 interop: constrain maximized window to work area (avoids taskbar clipping)
-    Add-Type -ReferencedAssemblies PresentationCore, PresentationFramework, WindowsBase -TypeDefinition @'
+    if (-not ('NcsMaximizeFix' -as [type])) {
+        # Win32 interop: constrain maximized window to work area (avoids taskbar clipping).
+        # PS 7 / Roslyn needs explicit assembly paths — short names don't resolve WPF refs.
+        $wpfRefs = @(
+            [System.Windows.Window].Assembly.Location,              # PresentationFramework
+            [System.Windows.Interop.HwndSource].Assembly.Location,  # PresentationCore
+            [System.Windows.DependencyObject].Assembly.Location,    # WindowsBase
+            [System.Runtime.InteropServices.Marshal].Assembly.Location,
+            [object].Assembly.Location
+        ) | Select-Object -Unique
+        Add-Type -ReferencedAssemblies $wpfRefs -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -195,7 +204,8 @@ public static class NcsMaximizeFix
         return IntPtr.Zero;
     }
 }
-'@ -ErrorAction SilentlyContinue
+'@
+    }
 
     $script:NcsWebView2Available = $false
     $script:NcsWebView2Status = "WebView2 app dependencies are not installed."
