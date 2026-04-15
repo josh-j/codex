@@ -2014,7 +2014,7 @@ function Show-NcsConsoleApp {
 
     $refreshScheduleList = {
         param($TimerStatus)
-        $items = [System.Collections.Generic.List[hashtable]]::new()
+        $items = [System.Collections.Generic.List[object]]::new()
         foreach ($entry in $script:ScheduleEntries) {
             if ($null -ne $TimerStatus) {
                 if ($TimerStatus.ContainsKey($entry.Name)) {
@@ -2027,7 +2027,7 @@ function Show-NcsConsoleApp {
                     $entry.LastTrigger = ""
                 }
             }
-            $items.Add(@{
+            $items.Add([pscustomobject]@{
                 EnabledIcon = if ($entry.Enabled) { [char]0x2713 } else { "" }
                 Name        = $entry.Name
                 Playbook    = $entry.Playbook
@@ -2060,14 +2060,20 @@ function Show-NcsConsoleApp {
     $controls.ScheduleRefreshButton.Add_Click({ & $loadSchedules })
 
     $populatePlaybookCombo = {
-        if ($null -ne $controls.SchedulePlaybookComboBox.ItemsSource) { return }
-        $playbooks = [System.Collections.Generic.List[string]]::new()
+        param([string] $Include)
+        $playbooks = [System.Collections.Generic.SortedSet[string]]::new()
         if ($null -ne $script:ActionGroups) {
             foreach ($pb in (Get-NcsActionPlaybooks -Groups $script:ActionGroups)) {
-                $playbooks.Add($pb)
+                [void]$playbooks.Add($pb)
             }
         }
-        $controls.SchedulePlaybookComboBox.ItemsSource = $playbooks
+        foreach ($entry in $script:ScheduleEntries) {
+            if (-not [string]::IsNullOrWhiteSpace($entry.Playbook)) {
+                [void]$playbooks.Add($entry.Playbook)
+            }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($Include)) { [void]$playbooks.Add($Include) }
+        $controls.SchedulePlaybookComboBox.ItemsSource = [string[]]$playbooks
     }
 
     $showScheduleEditForm = {
@@ -2090,7 +2096,7 @@ function Show-NcsConsoleApp {
         $controls.ScheduleNotifyCheckBox.IsChecked = $src.NotifyOnFailure
         $controls.ScheduleDeleteButton.Visibility = if ($isEdit) { "Visible" } else { "Collapsed" }
 
-        & $populatePlaybookCombo
+        & $populatePlaybookCombo $src.Playbook
         if ($isEdit) {
             $controls.SchedulePlaybookComboBox.SelectedItem = $src.Playbook
         } else {
