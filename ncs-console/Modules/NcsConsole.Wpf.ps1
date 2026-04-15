@@ -1692,8 +1692,14 @@ function Show-NcsConsoleApp {
         $applyGroups = {
             param($Controls, [string] $TreeName, [string] $EmptyTextName, $Groups)
             $et = $Controls[$EmptyTextName]
-            if (@($Groups).Length -gt 0) {
-                Build-NcsTreeView -Controls $Controls -TreeViewName $TreeName -Groups $Groups -TagProperty "tag" -Expanded $true -LeafIcon ""
+            # PS unwraps empty arrays pulled out of hashtables to $null, and
+            # @($null).Length is 1, so guard explicitly.
+            $list = @()
+            if ($null -ne $Groups) { $list = @($Groups) | Where-Object { $null -ne $_ } }
+            $tree = $Controls[$TreeName]
+            $tree.Items.Clear()
+            if (@($list).Count -gt 0) {
+                Build-NcsTreeView -Controls $Controls -TreeViewName $TreeName -Groups $list -TagProperty "tag" -Expanded $true -LeafIcon ""
                 $et.Visibility = "Collapsed"
             } else {
                 $et.Text = "No --tags declared in this playbook"
