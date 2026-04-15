@@ -28,7 +28,7 @@ class NcsScheduleEntry {
     [string] $ExtraArgs = ""
     [bool]   $CheckMode = $false
     [bool]   $Enabled = $true
-    [bool]   $NotifyOnFailure = $true
+    [bool]   $NotifyOnFailure = $false
     [int]    $TimeoutMinutes = 120
     # Transient fields populated from systemctl (not serialized to YAML)
     [string] $LastTrigger = ""

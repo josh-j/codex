@@ -784,30 +784,43 @@ function Select-NcsTreeViewItem {
     }
 }
 
-function Find-NcsActionItem {
-    param($Groups, [string] $Playbook)
-    foreach ($group in $Groups) {
+function Get-NcsActionItemMap {
+    param($Groups)
+
+    $map = @{}
+    foreach ($group in @($Groups)) {
         foreach ($item in @($group.Items)) {
-            if ($item['playbook'] -eq $Playbook) { return $item }
+            if ($item.ContainsKey('playbook') -and -not [string]::IsNullOrWhiteSpace($item.playbook)) {
+                $map[[string]$item.playbook] = $item
+            }
         }
         if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
-            $found = Find-NcsActionItem -Groups $group['Children'] -Playbook $Playbook
-            if ($null -ne $found) { return $found }
+            foreach ($kv in (Get-NcsActionItemMap -Groups $group['Children']).GetEnumerator()) {
+                $map[$kv.Key] = $kv.Value
+            }
         }
     }
-    return $null
+    return $map
 }
 
-function Get-NcsActionPlaybooks {
-    param($Groups)
-    foreach ($group in $Groups) {
-        foreach ($item in @($group.Items)) {
-            if ($item.ContainsKey('playbook') -and $item.playbook) { $item.playbook }
-        }
-        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
-            Get-NcsActionPlaybooks -Groups $group['Children']
+function Get-NcsSchedulePlaybookChoices {
+    param(
+        $ScheduleEntries,
+        [string[]] $BaseChoices,
+        [string] $Include
+    )
+
+    $playbooks = [System.Collections.Generic.SortedSet[string]]::new()
+    foreach ($pb in @($BaseChoices)) {
+        if (-not [string]::IsNullOrWhiteSpace($pb)) { [void]$playbooks.Add([string]$pb) }
+    }
+    foreach ($entry in @($ScheduleEntries)) {
+        if ($null -ne $entry -and -not [string]::IsNullOrWhiteSpace($entry.Playbook)) {
+            [void]$playbooks.Add([string]$entry.Playbook)
         }
     }
+    if (-not [string]::IsNullOrWhiteSpace($Include)) { [void]$playbooks.Add($Include) }
+    return [string[]]$playbooks
 }
 
 function Add-NcsOptionControls {
@@ -1710,16 +1723,38 @@ function Show-NcsConsoleApp {
             & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
             return
         }
-        # Synchronous fetch for now — dispatcher defer was triggering a scope
-        # issue under StrictMode. Keep UX snappy with the Loading hint above.
+        $token = [guid]::NewGuid().ToString('N')
+        $script:TagFetchTokens[$TreeName] = $token
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
-        try {
-            $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $localState.Settings -Playbook $Playbook
-        } catch {
-            $script:PlaybookTagsCache[$Playbook] = @()
+        $work = [pscustomobject]@{
+            Controls      = $localControls
+            State         = $localState
+            Window        = $localWindow
+            Playbook      = $Playbook
+            TreeName      = $TreeName
+            EmptyTextName = $EmptyTextName
+            Token         = $token
+            ApplyGroups   = $applyGroups
         }
-        & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
+        [System.Threading.ThreadPool]::QueueUserWorkItem([System.Threading.WaitCallback]{
+            param($payload)
+
+            $groups = @()
+            try {
+                $groups = Get-NcsRemotePlaybookTags -Settings $payload.State.Settings -Playbook $payload.Playbook
+            } catch {
+                $groups = @()
+            }
+
+            $payload.Window.Dispatcher.BeginInvoke([action]{
+                if (-not $script:TagFetchTokens.ContainsKey($payload.TreeName)) { return }
+                if ($script:TagFetchTokens[$payload.TreeName] -ne $payload.Token) { return }
+
+                $script:PlaybookTagsCache[$payload.Playbook] = $groups
+                & $payload.ApplyGroups $payload.Controls $payload.TreeName $payload.EmptyTextName $groups
+            }) | Out-Null
+        }, $work) | Out-Null
     }
 
     $invalidatePreflight = {
@@ -1747,7 +1782,7 @@ function Show-NcsConsoleApp {
         }
         $controls.ActionSelectionTitle.Text = $label
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
-        $matchedAction = if (-not [string]::IsNullOrWhiteSpace($playbook)) { Find-NcsActionItem -Groups $script:ActionGroups -Playbook $playbook } else { $null }
+        $matchedAction = if (-not [string]::IsNullOrWhiteSpace($playbook) -and $script:ActionItemMap.ContainsKey($playbook)) { $script:ActionItemMap[$playbook] } else { $null }
         $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
         Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
@@ -2153,6 +2188,7 @@ function Show-NcsConsoleApp {
     # -------------------------------------------------------------------------
     $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
     $script:EditingScheduleIndex = -1
+    $script:ActionItemMap = @{}
     $script:PlaybookTagsCache = @{}
     $script:SchedulesLoaded = $false
 
@@ -2234,19 +2270,7 @@ function Show-NcsConsoleApp {
 
     $populatePlaybookCombo = {
         param([string] $Include)
-        $playbooks = [System.Collections.Generic.SortedSet[string]]::new()
-        if ($null -ne $script:ActionGroups) {
-            foreach ($pb in (Get-NcsActionPlaybooks -Groups $script:ActionGroups)) {
-                [void]$playbooks.Add($pb)
-            }
-        }
-        foreach ($entry in $script:ScheduleEntries) {
-            if (-not [string]::IsNullOrWhiteSpace($entry.Playbook)) {
-                [void]$playbooks.Add($entry.Playbook)
-            }
-        }
-        if (-not [string]::IsNullOrWhiteSpace($Include)) { [void]$playbooks.Add($Include) }
-        $controls.SchedulePlaybookComboBox.ItemsSource = [string[]]$playbooks
+        $controls.SchedulePlaybookComboBox.ItemsSource = @(Get-NcsSchedulePlaybookChoices -ScheduleEntries $script:ScheduleEntries -BaseChoices @($script:ActionItemMap.Keys) -Include $Include)
     }
 
     $populateTagsTree = {
@@ -2419,6 +2443,9 @@ function Show-NcsConsoleApp {
                 $controls.ScheduleLimitEmptyText.Visibility = "Visible"
                 $controls.ScheduleTagsTree.Items.Clear()
                 $controls.ScheduleTagsEmptyText.Visibility = "Visible"
+                $script:TagFetchTokens = @{}
+                $script:ActionGroups = @()
+                $script:ActionItemMap = @{}
                 $script:PlaybookTagsCache = @{}
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
@@ -2483,11 +2510,13 @@ function Show-NcsConsoleApp {
                 }
                 try {
                     $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
+                    $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
                     if (@($script:ActionGroups).Length -eq 0) {
                         $statusParts += "No playbooks found."
                     }
                 } catch {
                     $script:ActionGroups = @()
+                    $script:ActionItemMap = @{}
                     $statusParts += "Playbook scan failed."
                 }
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
@@ -2535,7 +2564,10 @@ function Show-NcsConsoleApp {
             }
             try {
                 $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
+                $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
             } catch {
+                $script:ActionGroups = @()
+                $script:ActionItemMap = @{}
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
             Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
@@ -2566,7 +2598,7 @@ function Show-NcsConsoleApp {
             }
 
             # Confirm before running mutating actions
-            $matchedAction = Find-NcsActionItem -Groups $script:ActionGroups -Playbook $selectedPlaybook
+            $matchedAction = if ($script:ActionItemMap.ContainsKey($selectedPlaybook)) { $script:ActionItemMap[$selectedPlaybook] } else { $null }
             $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
             if ($isMutating) {
                 $confirmBox = [System.Windows.Window]::new()
