@@ -824,8 +824,7 @@ function Get-NcsSchedulePlaybookChoices {
 }
 
 function Initialize-NcsWorkerPool {
-    # Min=0 keeps startup fast — runspace parse cost is deferred to first fetch,
-    # which is already async. Only load what Get-NcsRemotePlaybookTags needs.
+    # Only load what Get-NcsRemotePlaybookTags transitively needs.
     param([Parameter(Mandatory)] [string] $ModuleRoot)
 
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
@@ -833,8 +832,10 @@ function Initialize-NcsWorkerPool {
         $path = Join-Path -Path $ModuleRoot -ChildPath $module
         [void] $iss.StartupScripts.Add($path)
     }
-    $pool = [runspacefactory]::CreateRunspacePool(0, 2, $iss, $Host)
-    $pool.Open()
+    # BeginOpen returns immediately; BeginInvoke queues until the pool finishes
+    # opening, so startup isn't blocked on parsing the worker's StartupScripts.
+    $pool = [runspacefactory]::CreateRunspacePool(1, 2, $iss, $Host)
+    [void] $pool.BeginOpen($null, $null)
     return $pool
 }
 
