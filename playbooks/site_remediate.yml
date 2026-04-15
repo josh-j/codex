@@ -9,7 +9,7 @@
 
 # Phase 1: Environment Readiness
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: infra/setup_env.yml
+  ansible.builtin.import_playbook: ncs/setup_env.yml
 
 # Phase 2: VMware STIG Hardening
 - name: "Phase 2a: ESXi STIG Hardening"
@@ -34,4 +34,4 @@
 
 # Phase 5: Verification & Unified Reporting
 - name: "Phase 5: Final Compliance Assessment"
-  ansible.builtin.import_playbook: infra/generate_reports.yml
+  ansible.builtin.import_playbook: ncs/generate_reports.yml

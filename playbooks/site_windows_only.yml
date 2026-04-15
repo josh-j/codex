@@ -3,7 +3,7 @@
 # Windows-only pipeline with report generation.
 
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: infra/setup_env.yml
+  ansible.builtin.import_playbook: ncs/setup_env.yml
 
 - name: "Phase 3b: Windows System Audit"
   ansible.builtin.import_playbook: windows/server/collect.yml
@@ -12,4 +12,4 @@
   ansible.builtin.import_playbook: windows/server/health.yml
 
 - name: "Phase 4: Unified Infrastructure Reporting"
-  ansible.builtin.import_playbook: infra/generate_reports.yml
+  ansible.builtin.import_playbook: ncs/generate_reports.yml

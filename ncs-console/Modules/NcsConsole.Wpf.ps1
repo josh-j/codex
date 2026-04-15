@@ -2236,7 +2236,7 @@ function Show-NcsConsoleApp {
     }
 
     $applySchedules = {
-        $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "ansible-playbook playbooks/infra/manage_schedules.yml && $(Get-NcsTimerStatusQueryCommand)"
+        $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "ansible-playbook playbooks/ncs/manage_schedules.yml && $(Get-NcsTimerStatusQueryCommand)"
         $probe = Invoke-NcsSshProbe -Settings $state.Settings -RemoteCommand $cmd
         if ($probe.ExitCode -eq 0) {
             $controls.StatusTextBlock.Text = "Schedules applied successfully."
