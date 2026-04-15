@@ -606,8 +606,12 @@ apply-schedules:
 schedule-status:
     systemctl list-timers 'ncs-*' --no-pager
 
-# Show recent log output for a scheduled playbook
+# Show recent log output for a scheduled playbook (wrapper log + journal)
 schedule-log name:
+    @echo "=== /var/log/ncs-schedules/{{ name }}.log ==="
+    @tail -n 100 /var/log/ncs-schedules/{{ name }}.log 2>/dev/null || echo "(no wrapper log yet)"
+    @echo ""
+    @echo "=== journalctl -u ncs-{{ name }}.service ==="
     journalctl -u ncs-{{ name }}.service --no-pager -n 100
 
 # Manually trigger a scheduled playbook immediately

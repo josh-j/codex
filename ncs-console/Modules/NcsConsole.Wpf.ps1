@@ -113,100 +113,6 @@ function Import-NcsWpfAssemblies {
     Add-Type -AssemblyName PresentationFramework
     Add-Type -AssemblyName WindowsBase
 
-    if (-not ('NcsMaximizeFix' -as [type])) {
-        # Win32 interop: constrain maximized window to work area (avoids taskbar clipping).
-        # PS 7 / Roslyn needs explicit assembly paths — short names don't resolve WPF refs.
-        $wpfRefs = @(
-            [System.Windows.Window].Assembly.Location,              # PresentationFramework
-            [System.Windows.Interop.HwndSource].Assembly.Location,  # PresentationCore
-            [System.Windows.DependencyObject].Assembly.Location,    # WindowsBase
-            [System.Runtime.InteropServices.Marshal].Assembly.Location,
-            [object].Assembly.Location
-        ) | Select-Object -Unique
-        Add-Type -ReferencedAssemblies $wpfRefs -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Interop;
-
-public static class NcsMaximizeFix
-{
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT { public int X, Y; }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MINMAXINFO
-    {
-        public POINT ptReserved;
-        public POINT ptMaxSize;
-        public POINT ptMaxPosition;
-        public POINT ptMinTrackSize;
-        public POINT ptMaxTrackSize;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MONITORINFO
-    {
-        public int cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public int dwFlags;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT { public int Left, Top, Right, Bottom; }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-
-    private const int WM_GETMINMAXINFO = 0x0024;
-    private const uint MONITOR_DEFAULTTONEAREST = 2;
-
-    public static void Apply(Window window)
-    {
-        window.SourceInitialized += (s, e) =>
-        {
-            var handle = new WindowInteropHelper(window).Handle;
-            HwndSource.FromHwnd(handle).AddHook(WndProc);
-        };
-    }
-
-    private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam,
-                                   IntPtr lParam, ref bool handled)
-    {
-        if (msg == WM_GETMINMAXINFO)
-        {
-            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
-            var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (monitor != IntPtr.Zero)
-            {
-                var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-                GetMonitorInfo(monitor, ref mi);
-                var work = mi.rcWork;
-                var mon = mi.rcMonitor;
-                mmi.ptMaxPosition = new POINT
-                {
-                    X = work.Left - mon.Left,
-                    Y = work.Top - mon.Top
-                };
-                mmi.ptMaxSize = new POINT
-                {
-                    X = work.Right - work.Left,
-                    Y = work.Bottom - work.Top
-                };
-            }
-            Marshal.StructureToPtr<MINMAXINFO>(mmi, lParam, true);
-            handled = true;
-        }
-        return IntPtr.Zero;
-    }
-}
-'@
-    }
-
     $script:NcsWebView2Available = $false
     $script:NcsWebView2Status = "WebView2 app dependencies are not installed."
 
@@ -1293,7 +1199,6 @@ function Show-NcsConsoleApp {
     [xml] $xaml = $xamlText
     $reader = [System.Xml.XmlNodeReader]::new($xaml)
     $window = [Windows.Markup.XamlReader]::Load($reader)
-    [NcsMaximizeFix]::Apply($window)
     $controls = Get-NcsXamlControlMap -Window $window
 
     $state = [pscustomobject]@{
@@ -2230,10 +2135,6 @@ function Show-NcsConsoleApp {
             }
         }
     }.GetNewClosure())
-
-    $refreshTimerStatus = {
-        & $refreshScheduleList (Get-NcsRemoteTimerStatus -Settings $state.Settings)
-    }
 
     $applySchedules = {
         $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "ansible-playbook playbooks/ncs/manage_schedules.yml && $(Get-NcsTimerStatusQueryCommand)"
