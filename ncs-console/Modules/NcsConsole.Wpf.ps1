@@ -22,6 +22,143 @@ function Get-NcsBrush {
     return $brush
 }
 
+function Register-NcsLimitPicker {
+    <#
+    .SYNOPSIS Wire up a Target Host/Group (--limit) picker: inventory TreeView composes
+              values into a TextBox via a right-click context menu and double-click toggle.
+    .DESCRIPTION Used for both the Actions pane and the Schedule edit form. The caller
+                 is responsible for populating the tree via Build-NcsTreeView; this
+                 function only installs the interaction layer.
+    #>
+    param(
+        [Parameter(Mandatory)] [System.Windows.Controls.TextBox] $TextBox,
+        [Parameter(Mandatory)] [System.Windows.Controls.TreeView] $Tree,
+        [Parameter(Mandatory)] [System.Windows.Controls.ScrollViewer] $ScrollViewer,
+        [scriptblock] $OnChanged
+    )
+
+    $getSelectedTag = {
+        $item = $Tree.SelectedItem
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
+        return [string] $item.Tag
+    }
+
+    $appendToLimit = {
+        param([string] $Value)
+        $current = $TextBox.Text.Trim()
+        if ([string]::IsNullOrWhiteSpace($current)) { $TextBox.Text = $Value }
+        else { $TextBox.Text = "$current,$Value" }
+    }
+
+    $removeFromLimit = {
+        $tag = & $getSelectedTag
+        if (-not $tag) { return }
+        $current = $TextBox.Text.Trim()
+        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object {
+            $_ -ne '' -and $_ -ne $tag -and $_ -ne "!$tag" -and $_ -ne ":&$tag" -and $_ -ne "$tag*"
+        })
+        $TextBox.Text = $parts -join ','
+    }
+
+    $isInLimit = {
+        param([string] $Tag)
+        $current = $TextBox.Text.Trim()
+        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+        return ($parts -contains $Tag -or $parts -contains "!$Tag" -or $parts -contains ":&$Tag" -or $parts -contains "$Tag*")
+    }
+
+    $newMenuItem = {
+        param([string] $Header, [scriptblock] $Action)
+        $item = [System.Windows.Controls.MenuItem]::new()
+        $item.Header = $Header
+        $item.Background = Get-NcsBrush -Color "#1e2228"
+        $item.Foreground = Get-NcsBrush -Color "#d8dce2"
+        $item.Margin = [System.Windows.Thickness]::new(0)
+        $item.Padding = [System.Windows.Thickness]::new(10,5,10,5)
+        $item.Template = [System.Windows.Markup.XamlReader]::Parse(
+            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="MenuItem">' +
+            '<Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">' +
+            '<ContentPresenter ContentSource="Header" />' +
+            '</Border>' +
+            '<ControlTemplate.Triggers>' +
+            '<Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#242932" /></Trigger>' +
+            '<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="#555a65" /></Trigger>' +
+            '</ControlTemplate.Triggers>' +
+            '</ControlTemplate>'
+        )
+        $a = $Action
+        $item.Add_Click({ & $a }.GetNewClosure())
+        return $item
+    }
+
+    $newSep = {
+        $sep = [System.Windows.Controls.Separator]::new()
+        $sep.Template = [System.Windows.Markup.XamlReader]::Parse(
+            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Separator">' +
+            '<Border Height="1" Background="#2c3038" Margin="4,2,4,2" />' +
+            '</ControlTemplate>'
+        )
+        return $sep
+    }
+
+    $menu = [System.Windows.Controls.ContextMenu]::new()
+    $menu.Template = [System.Windows.Markup.XamlReader]::Parse(
+        '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ContextMenu">' +
+        '<Border Background="#1e2228" BorderBrush="#2c3038" BorderThickness="1" Padding="0" MinWidth="140">' +
+        '<StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />' +
+        '</Border>' +
+        '</ControlTemplate>'
+    )
+
+    $addItem    = & $newMenuItem "Add"              { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }
+    $removeItem = & $newMenuItem "Remove"           { & $removeFromLimit }
+    $menu.Items.Add($addItem) | Out-Null
+    $menu.Items.Add($removeItem) | Out-Null
+    $menu.Items.Add((& $newSep)) | Out-Null
+    $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } })) | Out-Null
+    $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
+    $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } })) | Out-Null
+    $menu.Items.Add((& $newSep)) | Out-Null
+    $menu.Items.Add((& $newMenuItem "Clear all"       { $TextBox.Text = "" })) | Out-Null
+
+    $menu.Add_Opened({
+        $pos = [System.Windows.Input.Mouse]::GetPosition($Tree)
+        $hit = [System.Windows.Media.VisualTreeHelper]::HitTest($Tree, $pos)
+        if ($null -ne $hit -and $null -ne $hit.VisualHit) {
+            $element = $hit.VisualHit
+            while ($null -ne $element -and $element -isnot [System.Windows.Controls.TreeViewItem]) {
+                $element = [System.Windows.Media.VisualTreeHelper]::GetParent($element)
+            }
+            if ($null -ne $element) { $element.IsSelected = $true }
+        }
+        $tag = & $getSelectedTag
+        $removeItem.IsEnabled = if ($tag) { & $isInLimit $tag } else { $false }
+    }.GetNewClosure())
+
+    $Tree.ContextMenu = $menu
+
+    $Tree.Add_MouseDoubleClick({
+        param($_sender, $e)
+        $selected = $Tree.SelectedItem
+        if ($null -eq $selected) { return }
+        if ($selected.Items.Count -gt 0) { return }
+        $tag = & $getSelectedTag
+        if (-not $tag) { return }
+        if (& $isInLimit $tag) { & $removeFromLimit } else { & $appendToLimit $tag }
+        $e.Handled = $true
+    }.GetNewClosure())
+
+    $Tree.Add_PreviewMouseWheel({
+        param($_sender, $e)
+        $ScrollViewer.ScrollToVerticalOffset($ScrollViewer.VerticalOffset - $e.Delta / 3)
+        $e.Handled = $true
+    }.GetNewClosure())
+
+    if ($null -ne $OnChanged) {
+        $TextBox.Add_TextChanged({ & $OnChanged }.GetNewClosure())
+    }
+}
+
 function Show-NcsPasswordPrompt {
     param(
         [Parameter(Mandatory)] [System.Windows.Window] $Owner,
@@ -339,6 +476,9 @@ function Get-NcsXamlControlMap {
         "ScheduleDescriptionTextBox",
         "SchedulePlaybookComboBox",
         "ScheduleLimitTextBox",
+        "ScheduleLimitTree",
+        "ScheduleLimitTreeBorder",
+        "ScheduleLimitTreeScroll",
         "ScheduleTagsTextBox",
         "ScheduleTimeoutTextBox",
         "ScheduleExtraArgsTextBox",
@@ -1479,130 +1619,17 @@ function Show-NcsConsoleApp {
         & $refreshPreview
     })
 
-    $controls.ActionLimitTextBox.Add_TextChanged({ & $refreshPreview })
-    $getSelectedTag = {
-        $item = $controls.ActionLimitTree.SelectedItem
-        if ($null -eq $item -or [string]::IsNullOrWhiteSpace($item.Tag)) { return $null }
-        return [string] $item.Tag
-    }
+    Register-NcsLimitPicker `
+        -TextBox $controls.ActionLimitTextBox `
+        -Tree $controls.ActionLimitTree `
+        -ScrollViewer $controls.ActionLimitTreeScroll `
+        -OnChanged { & $refreshPreview }
 
-    $appendToLimit = {
-        param([string] $Value)
-        $current = $controls.ActionLimitTextBox.Text.Trim()
-        if ([string]::IsNullOrWhiteSpace($current)) {
-            $controls.ActionLimitTextBox.Text = $Value
-        } else {
-            $controls.ActionLimitTextBox.Text = "$current,$Value"
-        }
-    }
+    Register-NcsLimitPicker `
+        -TextBox $controls.ScheduleLimitTextBox `
+        -Tree $controls.ScheduleLimitTree `
+        -ScrollViewer $controls.ScheduleLimitTreeScroll
 
-    $removeFromLimit = {
-        $tag = & $getSelectedTag
-        if (-not $tag) { return }
-        $current = $controls.ActionLimitTextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object {
-            $_ -ne '' -and $_ -ne $tag -and $_ -ne "!$tag" -and $_ -ne ":&$tag" -and $_ -ne "$tag*"
-        })
-        $controls.ActionLimitTextBox.Text = $parts -join ','
-    }
-
-    $isInLimit = {
-        param([string] $Tag)
-        $current = $controls.ActionLimitTextBox.Text.Trim()
-        $parts = @($current -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-        return ($parts -contains $Tag -or $parts -contains "!$Tag" -or $parts -contains ":&$Tag" -or $parts -contains "$Tag*")
-    }
-
-    $newMenuItem = {
-        param([string] $Header, [scriptblock] $Action)
-        $item = [System.Windows.Controls.MenuItem]::new()
-        $item.Header = $Header
-        $item.Background = Get-NcsBrush -Color "#1e2228"
-        $item.Foreground = Get-NcsBrush -Color "#d8dce2"
-        $item.Margin = [System.Windows.Thickness]::new(0)
-        $item.Padding = [System.Windows.Thickness]::new(10,5,10,5)
-        $item.Template = [System.Windows.Markup.XamlReader]::Parse(
-            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="MenuItem">' +
-            '<Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">' +
-            '<ContentPresenter ContentSource="Header" />' +
-            '</Border>' +
-            '<ControlTemplate.Triggers>' +
-            '<Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#242932" /></Trigger>' +
-            '<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="#555a65" /></Trigger>' +
-            '</ControlTemplate.Triggers>' +
-            '</ControlTemplate>'
-        )
-        $a = $Action
-        $item.Add_Click({ & $a }.GetNewClosure())
-        return $item
-    }
-
-    $limitContextMenu = [System.Windows.Controls.ContextMenu]::new()
-    $limitContextMenu.Template = [System.Windows.Markup.XamlReader]::Parse(
-        '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ContextMenu">' +
-        '<Border Background="#1e2228" BorderBrush="#2c3038" BorderThickness="1" Padding="0" MinWidth="140">' +
-        '<StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />' +
-        '</Border>' +
-        '</ControlTemplate>'
-    )
-
-    $newSep = {
-        $sep = [System.Windows.Controls.Separator]::new()
-        $sep.Template = [System.Windows.Markup.XamlReader]::Parse(
-            '<ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Separator">' +
-            '<Border Height="1" Background="#2c3038" Margin="4,2,4,2" />' +
-            '</ControlTemplate>'
-        )
-        return $sep
-    }
-
-    $addItem = & $newMenuItem "Add" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit $tag } }
-    $removeItem = & $newMenuItem "Remove" { & $removeFromLimit }
-    $limitContextMenu.Items.Add($addItem) | Out-Null
-    $limitContextMenu.Items.Add($removeItem) | Out-Null
-    $limitContextMenu.Items.Add((& $newSep)) | Out-Null
-    $limitContextMenu.Items.Add((& $newMenuItem "Exclude (!)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag" } })) | Out-Null
-    $limitContextMenu.Items.Add((& $newMenuItem "Intersect (:&)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
-    $limitContextMenu.Items.Add((& $newMenuItem "Wildcard (*)" { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*" } })) | Out-Null
-    $limitContextMenu.Items.Add((& $newSep)) | Out-Null
-    $limitContextMenu.Items.Add((& $newMenuItem "Clear all" { $controls.ActionLimitTextBox.Text = "" })) | Out-Null
-
-    $limitContextMenu.Add_Opened({
-        $pos = [System.Windows.Input.Mouse]::GetPosition($controls.ActionLimitTree)
-        $hit = [System.Windows.Media.VisualTreeHelper]::HitTest($controls.ActionLimitTree, $pos)
-        if ($null -ne $hit -and $null -ne $hit.VisualHit) {
-            $element = $hit.VisualHit
-            while ($null -ne $element -and $element -isnot [System.Windows.Controls.TreeViewItem]) {
-                $element = [System.Windows.Media.VisualTreeHelper]::GetParent($element)
-            }
-            if ($null -ne $element) {
-                $element.IsSelected = $true
-            }
-        }
-        $tag = & $getSelectedTag
-        $inLimit = if ($tag) { & $isInLimit $tag } else { $false }
-        $removeItem.IsEnabled = $inLimit
-    })
-
-    $controls.ActionLimitTree.ContextMenu = $limitContextMenu
-
-    $controls.ActionLimitTree.Add_MouseDoubleClick({
-        param($_sender, $e)
-        $selected = $controls.ActionLimitTree.SelectedItem
-        if ($null -eq $selected) { return }
-        # Only toggle limit on leaf items (no children = host, not group)
-        if ($selected.Items.Count -gt 0) { return }
-        $tag = & $getSelectedTag
-        if (-not $tag) { return }
-        if (& $isInLimit $tag) { & $removeFromLimit } else { & $appendToLimit $tag }
-        $e.Handled = $true
-    })
-
-    $controls.ActionLimitTree.Add_PreviewMouseWheel({
-        param($_sender, $e)
-        $controls.ActionLimitTreeScroll.ScrollToVerticalOffset($controls.ActionLimitTreeScroll.VerticalOffset - $e.Delta / 3)
-        $e.Handled = $true
-    })
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
@@ -2226,6 +2253,7 @@ function Show-NcsConsoleApp {
                 $controls.ConnectionInfoText.Text = ""
                 $controls.StatusTextBlock.Text = "Disconnected."
                 $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
+                $controls.ScheduleLimitTreeBorder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
@@ -2279,7 +2307,9 @@ function Show-NcsConsoleApp {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
                         Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
+                        Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                        $controls.ScheduleLimitTreeBorder.Visibility = "Visible"
                         $statusParts += "$(@($inventoryTree).Length) inventory groups."
                     }
                 } catch {
@@ -2330,7 +2360,9 @@ function Show-NcsConsoleApp {
                 $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                 if (@($inventoryTree).Length -gt 0) {
                     Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
+                    Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                     $controls.ActionLimitTreeBorder.Visibility = "Visible"
+                    $controls.ScheduleLimitTreeBorder.Visibility = "Visible"
                 }
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
