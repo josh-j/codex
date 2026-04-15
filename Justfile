@@ -27,9 +27,22 @@ default:
 # =============================================================================
 # Setup
 # =============================================================================
-# Complete environment setup (both venvs + all collections)
-setup-all: setup-main-venv setup-vcsa-venv setup-collections
+# Complete environment setup (both venvs + all collections + SMB share)
+setup-all: setup-main-venv setup-vcsa-venv setup-collections setup-samba
     @echo "✓ All environments ready"
+
+# Provision the SMB share used by ncs-console to fetch reports
+setup-samba:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f ".vaultpass" ]; then
+        echo "⚠ .vaultpass missing — skipping SMB setup." >&2
+        echo "  Create it (or populate vault_samba_user_password) then run: just setup-samba" >&2
+        exit 0
+    fi
+    {{ ansible_playbook }} playbooks/ncs/setup_samba.yml --ask-become-pass
+    echo "✓ SMB share 'reports' ready at //localhost/reports (user: ansible)"
+    echo "  ncs-console defaults already match — enter the SshHost and SMB password to connect."
 
 # Create main .venv with all dependencies
 setup-main-venv:

@@ -7,7 +7,7 @@
   "RemoteRepoPath": "~/ansible-ncs",
   "RemoteReportsPath": "/srv/samba/reports",
   "SmbShareName": "reports",
-  "SmbUser": "",
+  "SmbUser": "ansible",
   "ReportDeliveryMode": "Auto",
   "AutoRefreshIntervalSeconds": 5,
   "StrictHostKeyChecking": "accept-new",

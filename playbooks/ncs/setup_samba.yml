@@ -13,7 +13,7 @@
   gather_facts: true
 
   vars:
-    samba_report_share_name: "NCSReports"
+    samba_report_share_name: "reports"
     samba_report_share_path: "/srv/samba/reports"
     samba_report_share_user: "ansible"
     samba_report_share_group: "ansible"
