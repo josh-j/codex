@@ -170,11 +170,11 @@ public static class NcsMaximizeFix
     {
         if (msg == WM_GETMINMAXINFO)
         {
-            var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
+            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
             var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (monitor != IntPtr.Zero)
             {
-                var mi = new MONITORINFO { cbSize = Marshal.SizeOf(typeof(MONITORINFO)) };
+                var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
                 GetMonitorInfo(monitor, ref mi);
                 var work = mi.rcWork;
                 var mon = mi.rcMonitor;
@@ -189,7 +189,7 @@ public static class NcsMaximizeFix
                     Y = work.Bottom - work.Top
                 };
             }
-            Marshal.StructureToPtr(mmi, lParam, true);
+            Marshal.StructureToPtr<MINMAXINFO>(mmi, lParam, true);
             handled = true;
         }
         return IntPtr.Zero;
