@@ -1704,25 +1704,16 @@ function Show-NcsConsoleApp {
             & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
             return
         }
+        # Synchronous fetch for now — dispatcher defer was triggering a scope
+        # issue under StrictMode. Keep UX snappy with the Loading hint above.
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
-        $prevToken = 0
-        if ($script:TagFetchTokens.ContainsKey($TreeName)) {
-            $prevToken = [int] $script:TagFetchTokens[$TreeName]
+        try {
+            $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $localState.Settings -Playbook $Playbook
+        } catch {
+            $script:PlaybookTagsCache[$Playbook] = @()
         }
-        $myToken = $prevToken + 1
-        $script:TagFetchTokens[$TreeName] = $myToken
-        $deferred = {
-            if ($script:TagFetchTokens[$TreeName] -ne $myToken) { return }
-            try {
-                $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $localState.Settings -Playbook $Playbook
-            } catch {
-                $script:PlaybookTagsCache[$Playbook] = @()
-            }
-            if ($script:TagFetchTokens[$TreeName] -ne $myToken) { return }
-            & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
-        }.GetNewClosure()
-        [void] $localWindow.Dispatcher.BeginInvoke([action] $deferred, [System.Windows.Threading.DispatcherPriority]::Background)
+        & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
     }
 
     $invalidatePreflight = {
