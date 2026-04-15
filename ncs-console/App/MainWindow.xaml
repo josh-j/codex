@@ -447,6 +447,11 @@
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                         <TextBox x:Name="ScheduleTagsTextBox" ToolTip="--tags filter (comma-separated)" />
+                                        <Border x:Name="ScheduleTagsTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
+                                            <ScrollViewer x:Name="ScheduleTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                <TreeView x:Name="ScheduleTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                            </ScrollViewer>
+                                        </Border>
                                     </StackPanel>
                                 </Grid>
                                 <Grid Margin="0,6,0,0">

@@ -449,3 +449,38 @@ function Get-NcsRemoteInventoryTree {
 
     return $groups
 }
+
+function Get-NcsRemotePlaybookTags {
+    <#
+    .SYNOPSIS Fetch declared tags for a playbook via `ansible-playbook --list-tags`.
+    .OUTPUTS Group array in the shape Build-NcsTreeView expects, with all tags as
+             leaf items under a single "Tags" group. Empty array if the playbook
+             declares no tags.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)]
+        [string] $Playbook
+    )
+
+    $safePlaybook = $Playbook -replace "[^A-Za-z0-9._/-]", ""
+    if ([string]::IsNullOrWhiteSpace($safePlaybook)) { return @() }
+
+    $cmd = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-playbook --list-tags '$safePlaybook' 2>&1 | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u"
+    $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $cmd
+
+    if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
+        return @()
+    }
+
+    $items = [System.Collections.Generic.List[hashtable]]::new()
+    foreach ($line in ($probe.StdOut -split "`n")) {
+        $tag = $line.Trim()
+        if (-not [string]::IsNullOrWhiteSpace($tag)) {
+            $items.Add(@{ Label = $tag; tag = $tag })
+        }
+    }
+    if ($items.Count -eq 0) { return @() }
+    return @(@{ Group = "Tags"; Items = $items })
+}

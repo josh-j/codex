@@ -34,7 +34,10 @@ function Register-NcsLimitPicker {
         [Parameter(Mandatory)] [System.Windows.Controls.TextBox] $TextBox,
         [Parameter(Mandatory)] [System.Windows.Controls.TreeView] $Tree,
         [Parameter(Mandatory)] [System.Windows.Controls.ScrollViewer] $ScrollViewer,
-        [scriptblock] $OnChanged
+        [scriptblock] $OnChanged,
+        # When set, skip Exclude/Intersect/Wildcard items — appropriate for flat
+        # pickers (tags) where Ansible doesn't support those composition ops.
+        [switch] $Simple
     )
 
     $getSelectedTag = {
@@ -114,10 +117,12 @@ function Register-NcsLimitPicker {
     $removeItem = & $newMenuItem "Remove"           { & $removeFromLimit }
     $menu.Items.Add($addItem) | Out-Null
     $menu.Items.Add($removeItem) | Out-Null
-    $menu.Items.Add((& $newSep)) | Out-Null
-    $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } })) | Out-Null
-    $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
-    $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } })) | Out-Null
+    if (-not $Simple) {
+        $menu.Items.Add((& $newSep)) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Exclude (!)"     { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "!$tag"  } })) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Intersect (:&)"  { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit ":&$tag" } })) | Out-Null
+        $menu.Items.Add((& $newMenuItem "Wildcard (*)"    { $tag = & $getSelectedTag; if ($tag) { & $appendToLimit "$tag*"  } })) | Out-Null
+    }
     $menu.Items.Add((& $newSep)) | Out-Null
     $menu.Items.Add((& $newMenuItem "Clear all"       { $TextBox.Text = "" })) | Out-Null
 
@@ -480,6 +485,9 @@ function Get-NcsXamlControlMap {
         "ScheduleLimitTreeBorder",
         "ScheduleLimitTreeScroll",
         "ScheduleTagsTextBox",
+        "ScheduleTagsTree",
+        "ScheduleTagsTreeBorder",
+        "ScheduleTagsTreeScroll",
         "ScheduleTimeoutTextBox",
         "ScheduleExtraArgsTextBox",
         "ScheduleEnabledCheckBox",
@@ -1630,6 +1638,11 @@ function Show-NcsConsoleApp {
         -Tree $controls.ScheduleLimitTree `
         -ScrollViewer $controls.ScheduleLimitTreeScroll
 
+    Register-NcsLimitPicker -Simple `
+        -TextBox $controls.ScheduleTagsTextBox `
+        -Tree $controls.ScheduleTagsTree `
+        -ScrollViewer $controls.ScheduleTagsTreeScroll
+
     $controls.ActionTagsTextBox.Add_TextChanged({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Checked({ & $refreshPreview })
     $controls.ActionCheckModeCheckBox.Add_Unchecked({ & $refreshPreview })
@@ -2008,6 +2021,7 @@ function Show-NcsConsoleApp {
     # -------------------------------------------------------------------------
     $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
     $script:EditingScheduleIndex = -1
+    $script:ScheduleTagsCache = @{}
     $script:SchedulesLoaded = $false
 
     $openSchedules = {
@@ -2103,6 +2117,30 @@ function Show-NcsConsoleApp {
         $controls.SchedulePlaybookComboBox.ItemsSource = [string[]]$playbooks
     }
 
+    $populateTagsTree = {
+        param([string] $Playbook)
+        if ([string]::IsNullOrWhiteSpace($Playbook)) {
+            $controls.ScheduleTagsTree.Items.Clear()
+            $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+            return
+        }
+        if (-not $script:ScheduleTagsCache.ContainsKey($Playbook)) {
+            try {
+                $script:ScheduleTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $state.Settings -Playbook $Playbook
+            } catch {
+                $script:ScheduleTagsCache[$Playbook] = @()
+            }
+        }
+        $groups = $script:ScheduleTagsCache[$Playbook]
+        if (@($groups).Length -gt 0) {
+            Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleTagsTree" -Groups $groups -TagProperty "tag" -Expanded $true -LeafIcon ""
+            $controls.ScheduleTagsTreeBorder.Visibility = "Visible"
+        } else {
+            $controls.ScheduleTagsTree.Items.Clear()
+            $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+        }
+    }
+
     $showScheduleEditForm = {
         param([int] $Index)
         $script:EditingScheduleIndex = $Index
@@ -2129,9 +2167,17 @@ function Show-NcsConsoleApp {
         } else {
             $controls.SchedulePlaybookComboBox.SelectedIndex = -1
         }
+        & $populateTagsTree $src.Playbook
 
         $controls.ScheduleEditPanel.Visibility = "Visible"
     }
+
+    $controls.SchedulePlaybookComboBox.Add_SelectionChanged({
+        $selected = [string] $controls.SchedulePlaybookComboBox.SelectedItem
+        if ($script:EditingScheduleIndex -ne -1 -or $controls.ScheduleEditPanel.Visibility -eq "Visible") {
+            & $populateTagsTree $selected
+        }
+    }.GetNewClosure())
 
     $hideScheduleEditForm = {
         $controls.ScheduleEditPanel.Visibility = "Collapsed"
@@ -2254,6 +2300,8 @@ function Show-NcsConsoleApp {
                 $controls.StatusTextBlock.Text = "Disconnected."
                 $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
                 $controls.ScheduleLimitTreeBorder.Visibility = "Collapsed"
+                $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+                $script:ScheduleTagsCache = @{}
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Collapsed"
