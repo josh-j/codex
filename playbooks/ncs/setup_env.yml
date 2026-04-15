@@ -1,5 +1,5 @@
 ---
-# playbooks/infra/setup_env.yml
+# playbooks/ncs/setup_env.yml
 # Infrastructure readiness and reporting environment initialization.
 # This playbook ensures the local and remote filesystem structures are
 # correctly provisioned to store raw audit telemetry and final reports.
@@ -31,7 +31,7 @@
         msg: >-
           Report directory '{{ _report_dir }}' is missing or inaccessible.
           Ensure the Samba share is provisioned.
-          Run: ansible-playbook playbooks/infra/setup_samba.yml
+          Run: ansible-playbook playbooks/ncs/setup_samba.yml
       when: _dir_check is failed
 
     - name: Ensure report subdirectories exist

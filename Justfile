@@ -344,7 +344,7 @@ _stig-report:
     set -euo pipefail
     echo ""
     echo "Generating STIG reports and CKLB artifacts..."
-    {{ ansible_playbook }} playbooks/infra/generate_reports.yml
+    {{ ansible_playbook }} playbooks/ncs/generate_reports.yml
     echo "✓ Reports written to {{ reports_dir }}"
 
 # --- ESXi STIG ---
@@ -589,7 +589,7 @@ vault-view:
 
 # Initialize the Samba report share (run once)
 init-samba:
-    {{ ansible_playbook }} playbooks/infra/setup_samba.yml
+    {{ ansible_playbook }} playbooks/ncs/setup_samba.yml
 
 # Clean up all temporary build/cache artifacts (including symlinked collections)
 clean:
@@ -608,7 +608,7 @@ clean-all: clean
 
 # Apply playbook schedules (systemd timers) from schedules.yml
 apply-schedules:
-    {{ ansible_playbook }} playbooks/infra/manage_schedules.yml
+    {{ ansible_playbook }} playbooks/ncs/manage_schedules.yml
 
 # Show status of all NCS scheduled timers
 schedule-status:

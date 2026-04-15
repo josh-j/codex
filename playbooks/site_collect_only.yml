@@ -3,7 +3,7 @@
 # Collection-only pipeline (no report rendering).
 
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: infra/setup_env.yml
+  ansible.builtin.import_playbook: ncs/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
   ansible.builtin.import_playbook: vmware/collect.yml

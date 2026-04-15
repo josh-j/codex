@@ -1,5 +1,5 @@
 ---
-# playbooks/infra/setup_samba.yml
+# playbooks/ncs/setup_samba.yml
 # Installation and configuration of the Samba-based reporting host.
 # This one-time setup playbook installs required Samba packages and
 # configures the OS filesystem (mode 2775) for the report share.

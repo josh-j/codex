@@ -9,7 +9,7 @@
 
 # Phase 1: Environment Readiness
 - name: "Phase 1: Initialize Reporting Environment"
-  ansible.builtin.import_playbook: infra/setup_env.yml
+  ansible.builtin.import_playbook: ncs/setup_env.yml
 
 # Phase 2: VMware Discovery & Audit
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
@@ -29,4 +29,4 @@
 
 # Phase 4: Reporting & Dashboards (Decoupled Engine)
 - name: "Phase 4: Unified Infrastructure Reporting"
-  ansible.builtin.import_playbook: infra/generate_reports.yml
+  ansible.builtin.import_playbook: ncs/generate_reports.yml

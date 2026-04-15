@@ -3,4 +3,4 @@
 # Reporting-only pipeline from existing collected artifacts.
 
 - name: "Phase 4: Unified Infrastructure Reporting"
-  ansible.builtin.import_playbook: infra/generate_reports.yml
+  ansible.builtin.import_playbook: ncs/generate_reports.yml

@@ -20,7 +20,7 @@ playbooks/
 ├── ubuntu/             # Ubuntu/Linux playbooks
 ├── windows/            # Windows playbooks
 ├── photon/             # Photon OS playbooks
-├── infra/              # Infrastructure setup & reporting
+├── ncs/                # NCS platform setup, reporting, and scheduling
 └── test/               # Test/lab playbooks
 ```
 
@@ -32,9 +32,10 @@ Each subdirectory contains a `group_vars` symlink to `../group_vars` so inventor
 - **`site_collect_only.yml`**: Collection-only orchestration. Runs setup and platform audits without report rendering.
 - **`site_reports_only.yml`**: Reporting-only orchestration. Renders dashboards from existing artifacts.
 - **`site_vmware_only.yml`**: VMware-only orchestration with report rendering.
-- **`infra/generate_reports.yml`**: Unified reporting bridge. Exports inventory metadata and invokes the `ncs-reporter` Python CLI to process raw telemetry into HTML dashboards.
-- **`infra/setup_env.yml`**: Infrastructure bootstrap. Initializes local artifact directories and remote report folder structures with required permissions.
-- **`infra/setup_samba.yml`**: Service deployment. Configures the Samba share used to host and serve the generated dashboards.
+- **`ncs/generate_reports.yml`**: Unified reporting bridge. Exports inventory metadata and invokes the `ncs-reporter` Python CLI to process raw telemetry into HTML dashboards.
+- **`ncs/setup_env.yml`**: NCS bootstrap. Initializes local artifact directories and remote report folder structures with required permissions.
+- **`ncs/setup_samba.yml`**: Service deployment. Configures the Samba share used to host and serve the generated dashboards.
+- **`ncs/manage_schedules.yml`**: Deploys systemd timers from `schedules.yml` to run playbooks on a recurring schedule.
 
 ## Platform Audits (Read-Only Collection)
 
