@@ -179,9 +179,14 @@
                                     <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="Target Host/Group (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <Border x:Name="ActionLimitTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                                 <StackPanel>
+                                                    <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Left" Text="TARGET HOST / GROUP" Foreground="{StaticResource TextMutedBrush}" FontSize="10" FontWeight="SemiBold" />
+                                                            <TextBlock DockPanel.Dock="Right" Text="--limit" Foreground="{StaticResource AccentBrush}" FontFamily="{StaticResource FontMono}" FontSize="10" HorizontalAlignment="Right" />
+                                                        </DockPanel>
+                                                    </Border>
                                                     <TextBox x:Name="ActionLimitTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;). Right-click the tree below or double-click a host to compose." />
                                                     <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
                                                     <Grid MaxHeight="150">
@@ -192,9 +197,14 @@
                                                     </Grid>
                                                 </StackPanel>
                                             </Border>
-                                            <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                             <Border x:Name="ActionTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                                 <StackPanel>
+                                                    <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Left" Text="TAGS" Foreground="{StaticResource TextMutedBrush}" FontSize="10" FontWeight="SemiBold" />
+                                                            <TextBlock DockPanel.Dock="Right" Text="--tags" Foreground="{StaticResource AccentBrush}" FontFamily="{StaticResource FontMono}" FontSize="10" HorizontalAlignment="Right" />
+                                                        </DockPanel>
+                                                    </Border>
                                                     <TextBox x:Name="ActionTagsTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--tags filter (comma-separated). Right-click the tree below or double-click a tag to compose." />
                                                     <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
                                                     <Grid MaxHeight="150">
@@ -453,9 +463,14 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Target Host/Group (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                         <Border x:Name="ScheduleLimitTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                             <StackPanel>
+                                                <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Left" Text="TARGET HOST / GROUP" Foreground="{StaticResource TextMutedBrush}" FontSize="10" FontWeight="SemiBold" />
+                                                        <TextBlock DockPanel.Dock="Right" Text="--limit" Foreground="{StaticResource AccentBrush}" FontFamily="{StaticResource FontMono}" FontSize="10" HorizontalAlignment="Right" />
+                                                    </DockPanel>
+                                                </Border>
                                                 <TextBox x:Name="ScheduleLimitTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;). Right-click the tree below or double-click a host to compose." />
                                                 <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
                                                 <Grid MaxHeight="150">
@@ -468,9 +483,14 @@
                                         </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
                                         <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                             <StackPanel>
+                                                <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Left" Text="TAGS" Foreground="{StaticResource TextMutedBrush}" FontSize="10" FontWeight="SemiBold" />
+                                                        <TextBlock DockPanel.Dock="Right" Text="--tags" Foreground="{StaticResource AccentBrush}" FontFamily="{StaticResource FontMono}" FontSize="10" HorizontalAlignment="Right" />
+                                                    </DockPanel>
+                                                </Border>
                                                 <TextBox x:Name="ScheduleTagsTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--tags filter (comma-separated). Right-click the tree below or double-click a tag to compose." />
                                                 <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
                                                 <Grid MaxHeight="150">
