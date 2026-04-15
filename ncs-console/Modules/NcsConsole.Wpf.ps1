@@ -484,10 +484,12 @@ function Get-NcsXamlControlMap {
         "ScheduleLimitTree",
         "ScheduleLimitTreeBorder",
         "ScheduleLimitTreeScroll",
+        "ScheduleLimitEmptyText",
         "ScheduleTagsTextBox",
         "ScheduleTagsTree",
         "ScheduleTagsTreeBorder",
         "ScheduleTagsTreeScroll",
+        "ScheduleTagsEmptyText",
         "ScheduleTimeoutTextBox",
         "ScheduleExtraArgsTextBox",
         "ScheduleEnabledCheckBox",
@@ -2119,9 +2121,10 @@ function Show-NcsConsoleApp {
 
     $populateTagsTree = {
         param([string] $Playbook)
+        $controls.ScheduleTagsTree.Items.Clear()
         if ([string]::IsNullOrWhiteSpace($Playbook)) {
-            $controls.ScheduleTagsTree.Items.Clear()
-            $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+            $controls.ScheduleTagsEmptyText.Text = "Select a playbook to load tags"
+            $controls.ScheduleTagsEmptyText.Visibility = "Visible"
             return
         }
         if (-not $script:ScheduleTagsCache.ContainsKey($Playbook)) {
@@ -2134,10 +2137,10 @@ function Show-NcsConsoleApp {
         $groups = $script:ScheduleTagsCache[$Playbook]
         if (@($groups).Length -gt 0) {
             Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleTagsTree" -Groups $groups -TagProperty "tag" -Expanded $true -LeafIcon ""
-            $controls.ScheduleTagsTreeBorder.Visibility = "Visible"
+            $controls.ScheduleTagsEmptyText.Visibility = "Collapsed"
         } else {
-            $controls.ScheduleTagsTree.Items.Clear()
-            $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+            $controls.ScheduleTagsEmptyText.Text = "No --tags declared in this playbook"
+            $controls.ScheduleTagsEmptyText.Visibility = "Visible"
         }
     }
 
@@ -2299,8 +2302,10 @@ function Show-NcsConsoleApp {
                 $controls.ConnectionInfoText.Text = ""
                 $controls.StatusTextBlock.Text = "Disconnected."
                 $controls.ActionLimitTreeBorder.Visibility = "Collapsed"
-                $controls.ScheduleLimitTreeBorder.Visibility = "Collapsed"
-                $controls.ScheduleTagsTreeBorder.Visibility = "Collapsed"
+                $controls.ScheduleLimitTree.Items.Clear()
+                $controls.ScheduleLimitEmptyText.Visibility = "Visible"
+                $controls.ScheduleTagsTree.Items.Clear()
+                $controls.ScheduleTagsEmptyText.Visibility = "Visible"
                 $script:ScheduleTagsCache = @{}
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
@@ -2357,7 +2362,7 @@ function Show-NcsConsoleApp {
                         Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                         Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                         $controls.ActionLimitTreeBorder.Visibility = "Visible"
-                        $controls.ScheduleLimitTreeBorder.Visibility = "Visible"
+                        $controls.ScheduleLimitEmptyText.Visibility = "Collapsed"
                         $statusParts += "$(@($inventoryTree).Length) inventory groups."
                     }
                 } catch {
@@ -2410,7 +2415,7 @@ function Show-NcsConsoleApp {
                     Build-NcsTreeView -Controls $controls -TreeViewName "ActionLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                     Build-NcsTreeView -Controls $controls -TreeViewName "ScheduleLimitTree" -Groups $inventoryTree -TagProperty "limit" -Expanded $false -LeafIcon $script:IconFolder
                     $controls.ActionLimitTreeBorder.Visibility = "Visible"
-                    $controls.ScheduleLimitTreeBorder.Visibility = "Visible"
+                    $controls.ScheduleLimitEmptyText.Visibility = "Collapsed"
                 }
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
