@@ -437,20 +437,32 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Target Host/Group (--limit)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                        <TextBox x:Name="ScheduleLimitTextBox" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;)" />
-                                        <Border x:Name="ScheduleLimitTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
-                                            <ScrollViewer x:Name="ScheduleLimitTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                                <TreeView x:Name="ScheduleLimitTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                            </ScrollViewer>
+                                        <Border x:Name="ScheduleLimitTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
+                                            <StackPanel>
+                                                <TextBox x:Name="ScheduleLimitTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--limit pattern: groups, hosts, wildcards (site*), negation (!host), intersection (:&amp;). Right-click the tree below or double-click a host to compose." />
+                                                <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
+                                                <Grid MaxHeight="150">
+                                                    <ScrollViewer x:Name="ScheduleLimitTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                        <TreeView x:Name="ScheduleLimitTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                    </ScrollViewer>
+                                                    <TextBlock x:Name="ScheduleLimitEmptyText" Text="Connect to load inventory" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" />
+                                                </Grid>
+                                            </StackPanel>
                                         </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Tags (--tags)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" />
-                                        <TextBox x:Name="ScheduleTagsTextBox" ToolTip="--tags filter (comma-separated)" />
-                                        <Border x:Name="ScheduleTagsTreeBorder" Visibility="Collapsed" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" MaxHeight="150" Margin="0,0,0,4">
-                                            <ScrollViewer x:Name="ScheduleTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                                <TreeView x:Name="ScheduleTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                            </ScrollViewer>
+                                        <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
+                                            <StackPanel>
+                                                <TextBox x:Name="ScheduleTagsTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--tags filter (comma-separated). Right-click the tree below or double-click a tag to compose." />
+                                                <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
+                                                <Grid MaxHeight="150">
+                                                    <ScrollViewer x:Name="ScheduleTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                        <TreeView x:Name="ScheduleTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                    </ScrollViewer>
+                                                    <TextBlock x:Name="ScheduleTagsEmptyText" Text="No --tags declared in this playbook" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" />
+                                                </Grid>
+                                            </StackPanel>
                                         </Border>
                                     </StackPanel>
                                 </Grid>
