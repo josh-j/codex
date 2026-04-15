@@ -70,9 +70,17 @@ setup-vcsa-venv:
     # Symlink internal collections so both envs share them
     ln -sfn "$(pwd)/collections/ansible_collections/internal" \
         collections_vcsa/ansible_collections/internal
-    [ -d "collections/ansible_collections/vmware" ] && \
-        ln -sfn "$(pwd)/collections/ansible_collections/vmware" \
-        collections_vcsa/ansible_collections/vmware || true
+    # Symlink each vmware sub-collection individually (the vmware namespace dir
+    # is shared with galaxy-installed vmware.vmware, so we can't symlink the
+    # whole namespace)
+    if [ -d "collections/ansible_collections/vmware" ]; then
+        mkdir -p collections_vcsa/ansible_collections/vmware
+        for col in collections/ansible_collections/vmware/*/; do
+            [ -d "$col" ] || continue
+            name=$(basename "$col")
+            ln -sfn "$(pwd)/$col" "collections_vcsa/ansible_collections/vmware/$name"
+        done
+    fi
     echo "✓ VCSA venv ready"
     .venv-vcsa/bin/ansible --version | head -1
 
@@ -87,9 +95,14 @@ setup-collections:
     if [ -d "collections_vcsa/ansible_collections" ]; then
         ln -sfn "$(pwd)/collections/ansible_collections/internal" \
             collections_vcsa/ansible_collections/internal
-        [ -d "collections/ansible_collections/vmware" ] && \
-            ln -sfn "$(pwd)/collections/ansible_collections/vmware" \
-            collections_vcsa/ansible_collections/vmware || true
+        if [ -d "collections/ansible_collections/vmware" ]; then
+            mkdir -p collections_vcsa/ansible_collections/vmware
+            for col in collections/ansible_collections/vmware/*/; do
+                [ -d "$col" ] || continue
+                name=$(basename "$col")
+                ln -sfn "$(pwd)/$col" "collections_vcsa/ansible_collections/vmware/$name"
+            done
+        fi
         echo "✓ VCSA collection symlinks refreshed"
     fi
 
