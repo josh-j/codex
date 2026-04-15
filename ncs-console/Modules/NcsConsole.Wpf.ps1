@@ -1671,18 +1671,6 @@ function Show-NcsConsoleApp {
 
     $script:TagFetchTokens = @{}
 
-    $applyTagsToTree = {
-        param([string] $TreeName, [string] $EmptyTextName, $Groups)
-        $emptyText = $controls[$EmptyTextName]
-        if (@($Groups).Length -gt 0) {
-            Build-NcsTreeView -Controls $controls -TreeViewName $TreeName -Groups $Groups -TagProperty "tag" -Expanded $true -LeafIcon ""
-            $emptyText.Visibility = "Collapsed"
-        } else {
-            $emptyText.Text = "No --tags declared in this playbook"
-            $emptyText.Visibility = "Visible"
-        }
-    }
-
     $populatePlaybookTags = {
         param(
             [string] $Playbook,
@@ -1690,21 +1678,32 @@ function Show-NcsConsoleApp {
             [string] $EmptyTextName,
             [string] $EmptyMessage = "Select a playbook to load tags"
         )
-        $tree = $controls[$TreeName]
-        $emptyText = $controls[$EmptyTextName]
+        $localControls = $controls
+        $localState = $state
+        $localWindow = $window
+        $tree = $localControls[$TreeName]
+        $emptyText = $localControls[$EmptyTextName]
         $tree.Items.Clear()
         if ([string]::IsNullOrWhiteSpace($Playbook)) {
             $emptyText.Text = $EmptyMessage
             $emptyText.Visibility = "Visible"
             return
         }
-        # Cache hit: populate synchronously (instant)
+        $applyGroups = {
+            param($Controls, [string] $TreeName, [string] $EmptyTextName, $Groups)
+            $et = $Controls[$EmptyTextName]
+            if (@($Groups).Length -gt 0) {
+                Build-NcsTreeView -Controls $Controls -TreeViewName $TreeName -Groups $Groups -TagProperty "tag" -Expanded $true -LeafIcon ""
+                $et.Visibility = "Collapsed"
+            } else {
+                $et.Text = "No --tags declared in this playbook"
+                $et.Visibility = "Visible"
+            }
+        }
         if ($script:PlaybookTagsCache.ContainsKey($Playbook)) {
-            & $applyTagsToTree $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
+            & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
             return
         }
-        # Cache miss: show Loading, defer the SSH fetch so the UI paints first.
-        # Token lets us discard stale fetches when the user switches quickly.
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
         $prevToken = 0
@@ -1713,16 +1712,17 @@ function Show-NcsConsoleApp {
         }
         $myToken = $prevToken + 1
         $script:TagFetchTokens[$TreeName] = $myToken
-        $window.Dispatcher.BeginInvoke([action]{
+        $deferred = {
             if ($script:TagFetchTokens[$TreeName] -ne $myToken) { return }
             try {
-                $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $state.Settings -Playbook $Playbook
+                $script:PlaybookTagsCache[$Playbook] = Get-NcsRemotePlaybookTags -Settings $localState.Settings -Playbook $Playbook
             } catch {
                 $script:PlaybookTagsCache[$Playbook] = @()
             }
             if ($script:TagFetchTokens[$TreeName] -ne $myToken) { return }
-            & $applyTagsToTree $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
-        }.GetNewClosure(), [System.Windows.Threading.DispatcherPriority]::Background) | Out-Null
+            & $applyGroups $localControls $TreeName $EmptyTextName $script:PlaybookTagsCache[$Playbook]
+        }.GetNewClosure()
+        [void] $localWindow.Dispatcher.BeginInvoke([action] $deferred, [System.Windows.Threading.DispatcherPriority]::Background)
     }
 
     $invalidatePreflight = {
