@@ -1,4 +1,4 @@
-# NCS (Network Control System) Root Justfile
+# NCS (Non-Core Services) Root Justfile
 
 set dotenv-load := true
 
