@@ -6,7 +6,7 @@
         <mxCell id="1" parent="0"/>
 
         <!-- NCS outer container -->
-        <mxCell id="ncs" value="NCS — Network Control System" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 4;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=8;strokeColor=#666666;" vertex="1" parent="1">
+        <mxCell id="ncs" value="NCS — Non-Core Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;dashed=1;dashPattern=8 4;fontSize=16;fontStyle=1;verticalAlign=top;spacingTop=8;strokeColor=#666666;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1520" height="700" as="geometry"/>
         </mxCell>
 

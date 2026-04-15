@@ -1,4 +1,4 @@
-# NCS — Network Control System
+# NCS — Non-Core Services
 
 Ansible-based fleet management platform for auditing, STIG compliance, and reporting across VMware (vCenter/ESXi/VM), Linux (Ubuntu/Photon), and Windows infrastructure.
 

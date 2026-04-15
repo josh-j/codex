@@ -2,7 +2,7 @@
 
 ```mermaid
 graph TB
-    subgraph NCS["NCS — Network Control System"]
+    subgraph NCS["NCS — Non-Core Services"]
 
         subgraph Console["ncs-console &lpar;Operator GUI&rpar;"]
             WPF["WPF MainWindow<br/>&lpar;WebView2&rpar;"]

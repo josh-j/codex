@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-NCS (Network Control System) — an Ansible-based fleet management platform for auditing, STIG compliance, and reporting across VMware (vCenter/ESXi/VM), Linux (Ubuntu/Photon), and Windows infrastructure. It has two decoupled stages:
+NCS (Non-Core Services) — an Ansible-based fleet management platform for auditing, STIG compliance, and reporting across VMware (vCenter/ESXi/VM), Linux (Ubuntu/Photon), and Windows infrastructure. It has two decoupled stages:
 
 1. **Stage 1 — Collect** (Ansible): Roles run modules and emit `raw_*.yaml` artifacts via the `ncs_collector` callback plugin.
 2. **Stage 2 — Report** (`ncs-reporter`): A standalone Python CLI that normalizes raw data, evaluates alerts, and renders HTML dashboards / STIG reports / CKLB artifacts.
