@@ -1,5 +1,7 @@
 Set-StrictMode -Version Latest
 
+$script:NcsRemotePlaybooksDir = "playbooks"
+
 enum NcsSshAuthMode {
     Agent
     KeyFile
@@ -467,7 +469,7 @@ function Get-NcsRemotePlaybookTags {
     $safePlaybook = $Playbook -replace "[^A-Za-z0-9._/-]", ""
     if ([string]::IsNullOrWhiteSpace($safePlaybook)) { return @() }
 
-    $cmd = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-playbook --list-tags 'playbooks/$safePlaybook' 2>&1 | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u"
+    $cmd = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-playbook --list-tags '$script:NcsRemotePlaybooksDir/$safePlaybook' 2>&1 | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $cmd
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
