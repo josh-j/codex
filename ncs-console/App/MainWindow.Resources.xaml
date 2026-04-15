@@ -1,5 +1,4 @@
     <Window.Resources>
-        <!-- @@GENERATED_TOKENS_START@@ — from design_tokens.yaml, do not edit -->
         <SolidColorBrush x:Key="PanelBrush" Color="#181b1f" />
         <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1e2228" />
         <SolidColorBrush x:Key="AccentBrush" Color="#6e9fff" />
@@ -24,7 +23,6 @@
         <sys:Double x:Key="FontSizeLg">12</sys:Double>
         <sys:Double x:Key="FontSizeXl">13</sys:Double>
         <sys:Double x:Key="FontSizeTitle">14</sys:Double>
-        <!-- @@GENERATED_TOKENS_END@@ -->
 
         <Thickness x:Key="InputMargin">0,3,0,6</Thickness>
         <Thickness x:Key="InputPadding">8,5,8,5</Thickness>
