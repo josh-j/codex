@@ -455,6 +455,7 @@
                             <Trigger Property="Orientation" Value="Horizontal">
                                 <Setter Property="Height" Value="12" />
                                 <Setter Property="Width" Value="Auto" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
