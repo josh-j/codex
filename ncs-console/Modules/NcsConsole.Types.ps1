@@ -1,7 +1,5 @@
 Set-StrictMode -Version Latest
 
-$script:NcsRemotePlaybooksDir = "playbooks"
-
 enum NcsSshAuthMode {
     Agent
     KeyFile

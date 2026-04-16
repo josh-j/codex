@@ -1819,15 +1819,14 @@ function Show-NcsConsoleApp {
             $sender.Stop()
             [void] $script:TagFetchInFlight.Remove($key)
             $groups = @()
-            $endInvokeError = $null
             try {
                 $result = $entry.PS.EndInvoke($entry.AsyncResult)
                 if ($null -ne $result -and $result.Count -gt 0 -and $null -ne $result[0]) {
                     $groups = @($result[0])
                 }
             } catch {
-                $endInvokeError = $_.Exception.Message
                 $groups = @()
+                Add-NcsConsoleLine -Controls $entry.Controls -Line "[tag-fetch $($entry.Playbook)] EndInvoke: $($_.Exception.Message)"
             } finally {
                 try {
                     foreach ($err in $entry.PS.Streams.Error) {
@@ -1835,9 +1834,6 @@ function Show-NcsConsoleApp {
                     }
                 } catch { $null = $_ }
                 try { $entry.PS.Dispose() } catch { $null = $_ }
-            }
-            if ($null -ne $endInvokeError) {
-                Add-NcsConsoleLine -Controls $entry.Controls -Line "[tag-fetch $($entry.Playbook)] EndInvoke: $endInvokeError"
             }
             if (-not $script:TagFetchTokens.ContainsKey($entry.TreeName)) { return }
             if ($script:TagFetchTokens[$entry.TreeName] -ne $entry.Token) { return }
@@ -2443,7 +2439,8 @@ function Show-NcsConsoleApp {
     }.GetNewClosure())
 
     $applySchedules = {
-        $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "ansible-playbook $script:NcsRemotePlaybooksDir/ncs/manage_schedules.yml && $(Get-NcsTimerStatusQueryCommand)"
+        $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request ([NcsActionRequest]::new("ncs/manage_schedules.yml"))
+        $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "$playCmd && $(Get-NcsTimerStatusQueryCommand)"
         $probe = Invoke-NcsSshProbe -Settings $state.Settings -RemoteCommand $cmd
         if ($probe.ExitCode -eq 0) {
             $controls.StatusTextBlock.Text = "Schedules applied successfully."
@@ -2921,8 +2918,8 @@ function Show-NcsConsoleApp {
         }
         Stop-NcsTagFetches
         if ($null -ne $script:NcsWorkerPool) {
-            try { $script:NcsWorkerPool.Close() } catch { }
-            try { $script:NcsWorkerPool.Dispose() } catch { }
+            try { $script:NcsWorkerPool.Close() } catch { $null = $_ }
+            try { $script:NcsWorkerPool.Dispose() } catch { $null = $_ }
             $script:NcsWorkerPool = $null
         }
     })
