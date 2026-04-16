@@ -1730,22 +1730,22 @@ function Show-NcsConsoleApp {
         param(
             [string] $Playbook,
             [string] $TreeName,
-            [string] $EmptyTextName,
-            [string] $EmptyMessage = "Select a playbook to load tags"
+            [string] $EmptyTextName
         )
         $localControls = $controls
         $localState = $state
         $tree = $localControls[$TreeName]
         $emptyText = $localControls[$EmptyTextName]
+        $border = $localControls[$TreeName + "Border"]
         $tree.Items.Clear()
         if ([string]::IsNullOrWhiteSpace($Playbook)) {
-            $emptyText.Text = $EmptyMessage
-            $emptyText.Visibility = "Visible"
+            $border.Visibility = "Collapsed"
             return
         }
         $applyGroups = {
             param($Controls, [string] $TreeName, [string] $EmptyTextName, $Groups)
             $et = $Controls[$EmptyTextName]
+            $border = $Controls[$TreeName + "Border"]
             # PS unwraps empty arrays pulled out of hashtables to $null, and
             # @($null).Length is 1, so guard explicitly.
             $list = @()
@@ -1755,9 +1755,9 @@ function Show-NcsConsoleApp {
             if (@($list).Count -gt 0) {
                 Build-NcsTreeView -Controls $Controls -TreeViewName $TreeName -Groups $list -TagProperty "tag" -Expanded $true -LeafIcon ""
                 $et.Visibility = "Collapsed"
+                $border.Visibility = "Visible"
             } else {
-                $et.Text = "No --tags declared in this playbook"
-                $et.Visibility = "Visible"
+                $border.Visibility = "Collapsed"
             }
         }
         if ($script:PlaybookTagsCache.ContainsKey($Playbook)) {
@@ -1766,6 +1766,7 @@ function Show-NcsConsoleApp {
         }
         $token = [guid]::NewGuid().ToString('N')
         $script:TagFetchTokens[$TreeName] = $token
+        $border.Visibility = "Visible"
         $emptyText.Text = "Loading tags…"
         $emptyText.Visibility = "Visible"
 

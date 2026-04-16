@@ -197,7 +197,7 @@
                                                     </Grid>
                                                 </StackPanel>
                                             </Border>
-                                            <Border x:Name="ActionTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
+                                            <Border x:Name="ActionTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4" Visibility="Collapsed">
                                                 <StackPanel>
                                                     <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
                                                         <DockPanel>
@@ -483,7 +483,7 @@
                                         </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
+                                        <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4" Visibility="Collapsed">
                                             <StackPanel>
                                                 <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
                                                     <DockPanel>
