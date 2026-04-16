@@ -5,6 +5,7 @@ $script:MaxOutputLines = 50000
 $script:NcsActiveExecutionState = $null
 $script:NcsRemotePidPattern = '^\[\d{2}:\d{2}:\d{2}\]\s+NCS_REMOTE_PID:(\d+)$'
 $script:NcsRemoteRunRoot = '.cache/ncs-console'
+$script:NcsRemotePlaybooksDir = 'playbooks'
 
 function ConvertTo-NcsBashLiteral {
     param(
