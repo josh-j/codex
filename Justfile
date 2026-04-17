@@ -149,12 +149,14 @@ build-collections-all: (build-collection "core") (build-collection "vmware") (bu
 place-collection-siblings:
     #!/usr/bin/env bash
     set -euo pipefail
-    for col in core vmware linux windows; do
-        tarball=$(ls -1 collections/vendor/internal-${col}-*.tar.gz 2>/dev/null | head -1 || true)
-        if [ -z "$tarball" ]; then
-            echo "⚠ no tarball for internal.${col} in collections/vendor/; skipping" >&2
-            continue
-        fi
+    shopt -s nullglob
+    tarballs=(collections/vendor/internal-*.tar.gz)
+    if [ ${#tarballs[@]} -eq 0 ]; then
+        echo "no tarballs under collections/vendor/; run 'just vendor-collections' first" >&2
+        exit 1
+    fi
+    for tarball in "${tarballs[@]}"; do
+        col=$(basename "$tarball" | sed -E 's/^internal-([a-z_]+)-[0-9].*/\1/')
         dest="../ncs-ansible-${col}"
         tmp=$(mktemp -d)
         trap 'rm -rf "$tmp"' EXIT
@@ -213,8 +215,8 @@ new-collection name:
     echo "✓ Scaffolded $dest (tagged v0.1.0)."
     echo "  Next steps:"
     echo "    1. cd $dest && edit galaxy.yml description + populate roles/playbooks"
-    echo "    2. cd /home/sio/codex && just vendor-collections"
-    echo "    3. Add the new tarball to requirements.yml + commit"
+    echo "    2. back in this repo: just vendor-collections"
+    echo "    3. add the new tarball to requirements.yml + commit"
 
 # Rebuild every collection tarball and stage it under collections/vendor/
 # (the committed location requirements.yml Mode A points at). Run this
@@ -223,8 +225,18 @@ new-collection name:
 vendor-collections: build-collections-all
     #!/usr/bin/env bash
     set -euo pipefail
+    shopt -s nullglob
     mkdir -p collections/vendor
-    for f in dist/internal-*.tar.gz; do
+    # Drop stale tarballs so a version bump doesn't leave both the old
+    # and the new file side by side — each collection should ship at
+    # exactly one version per vendor snapshot.
+    rm -f collections/vendor/internal-*.tar.gz
+    tarballs=(dist/internal-*.tar.gz)
+    if [ ${#tarballs[@]} -eq 0 ]; then
+        echo "no built tarballs under dist/; build-collections-all failed?" >&2
+        exit 1
+    fi
+    for f in "${tarballs[@]}"; do
         cp -f "$f" collections/vendor/
     done
     echo "✓ collections/vendor/ refreshed:"
