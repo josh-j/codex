@@ -1,7 +1,0 @@
----
-# internal.template.example : tasks/stig_v1r0/00_prelude.yaml
-# TEMPLATE: Pre-STIG setup — gather baseline facts, set STIG-specific vars.
-
-- name: "Example STIG v1r0 | Prelude"
-  ansible.builtin.debug:
-    msg: "TEMPLATE: Add pre-STIG fact gathering and variable setup."
