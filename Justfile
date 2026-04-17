@@ -134,6 +134,39 @@ build-collection name:
 build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows")
     @echo "✓ all collections built under dist/"
 
+# Scaffold a new sibling collection repo from
+# ncs-ansible-collection-template/. Creates ../ncs-ansible-<name>/,
+# replaces the __COLLECTION_NAME__ placeholder, initializes git, and
+# cuts an initial commit. Fails if the target already exists.
+#
+# Usage: just new-collection storage
+new-collection name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dest="../ncs-ansible-{{ name }}"
+    if [ -e "$dest" ]; then
+        echo "$dest already exists; refusing to overwrite." >&2
+        exit 1
+    fi
+    cp -r ncs-ansible-collection-template "$dest"
+    # Substitute placeholders across every text file in the new repo.
+    find "$dest" -type f ! -name '*.tar.gz' -print0 \
+        | xargs -0 sed -i "s/__COLLECTION_NAME__/{{ name }}/g"
+    # Strip the roles/ and playbooks/ .gitkeep sentinels once the
+    # operator is ready to add real content — they're fine to leave
+    # in place for now so empty dirs survive the initial commit.
+    cd "$dest"
+    git init --quiet --initial-branch=main
+    git add -A
+    git commit --quiet -m "Initial scaffold: internal.{{ name }}"
+    git tag v0.1.0
+    cd - >/dev/null
+    echo "✓ Scaffolded $dest (tagged v0.1.0)."
+    echo "  Next steps:"
+    echo "    1. cd $dest && edit galaxy.yml description + populate roles/playbooks"
+    echo "    2. cd /home/sio/codex && just vendor-collections"
+    echo "    3. Add the new tarball to requirements.yml + commit"
+
 # Rebuild every collection tarball and stage it under collections/vendor/
 # (the committed location requirements.yml Mode A points at). Run this
 # after a `just release-collection` so a fresh ncs-ansible `git pull`
