@@ -1,6 +1,8 @@
 ---
 # Lab / test inventory.
-# Used by playbooks/test/ for standalone ESXi testing.
+# Used by internal.vmware.dev_esxi_standalone_stig_audit and
+# internal.vmware.dev_vm_standalone_stig_audit for standalone ESXi/VM testing.
+# Paired inventories live in inventory/lab/standalone/.
 
 all:
   children:

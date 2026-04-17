@@ -154,7 +154,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
 /tmp/venv-vcsa-316/bin/ansible-playbook \
   -f 1 \
   -i /tmp/vcsa-eam-inventory.yml \
-  playbooks/vmware_vcsa_stig_audit.yml \
+  internal.vmware.vcsa_stig_audit \
   -l test-vcsa-eam \
   -e '{"vault_vcenter_ssh_password":"Ineption123!"}'
 ```
@@ -166,7 +166,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
 /tmp/venv-vcsa-316/bin/ansible-playbook \
   -f 1 \
   -i /tmp/vcsa-eam-inventory.yml \
-  playbooks/vmware_vcsa_stig_remediate.yml \
+  internal.vmware.vcsa_stig_remediate \
   -l test-vcsa-eam \
   -e '{"vault_vcenter_ssh_password":"Ineption123!"}'
 ```
@@ -178,7 +178,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
 /tmp/venv-vcsa-316/bin/ansible-playbook \
   -f 1 \
   -i /tmp/vcsa-eam-inventory.yml \
-  playbooks/vmware_vcsa_stig_audit.yml \
+  internal.vmware.vcsa_stig_audit \
   -l test-vcsa-eam \
   -e '{"vault_vcenter_ssh_password":"Ineption123!","vcsa_stig_services":[{"name":"sts","target_type":"sts"}]}'
 ```
@@ -190,7 +190,7 @@ ANSIBLE_CONFIG=/tmp/ansible-vcsa.cfg \
 /tmp/venv-vcsa-316/bin/ansible-playbook \
   -f 1 \
   -i /tmp/vcsa-eam-inventory.yml \
-  playbooks/vmware_vcsa_stig_remediate.yml \
+  internal.vmware.vcsa_stig_remediate \
   -l test-vcsa-eam \
   -e '{"vault_vcenter_ssh_password":"Ineption123!","vcsa_stig_services":[{"name":"sts","target_type":"sts"}]}'
 ```
