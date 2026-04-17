@@ -6,7 +6,7 @@
   ansible.builtin.import_playbook: ncs/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware/collect.yml
+  ansible.builtin.import_playbook: internal.vmware.collect
 
 - name: "Phase 4: Unified Infrastructure Reporting"
   ansible.builtin.import_playbook: ncs/generate_reports.yml

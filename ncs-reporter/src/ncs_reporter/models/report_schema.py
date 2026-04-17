@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AfterValidator, AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Re-export for backwards compatibility with tests that import from here
 # (the actual evaluation now lives in normalization/_when.py)
@@ -70,27 +70,31 @@ class ScriptSpec(BaseModel):
 
 
 class ThresholdSpec(BaseModel):
-    """Severity breakpoints for a numeric value: `warn_at` → yellow, `crit_at` → red.
+    """Severity breakpoints for a numeric value.
 
-    Values at or above the threshold adopt that severity. `crit_at` takes precedence
-    when both match. Values below both thresholds render green (default/ok).
+    `warn_if_above: N` → yellow when the rendered value is ≥ N.
+    `crit_if_above: N` → red when the rendered value is ≥ N.
+    `crit_if_above` takes precedence when both match. Values below both
+    thresholds render green (default/ok).
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    warn_at: float | None = None
-    crit_at: float | None = None
+    warn_if_above: float | None = None
+    crit_if_above: float | None = None
 
 
 class FieldSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # Exactly one of path / compute / script must be set.
+    # Exactly one of path / compute / script / const must be set.
     # path    — dot-notation traversal with optional pipe transform
     # compute — arithmetic expression using {field_name} references
     # script  — nested spec with path, args, timeout; receives JSON on stdin, returns JSON on stdout
+    # const   — literal value (string, number, bool, list, dict) used as-is
     path: str | None = Field(default=None, validation_alias=AliasChoices("path", "from"))
     compute: str | None = Field(default=None, validation_alias=AliasChoices("compute", "expr"))
+    const: Any = Field(default=_SENTINEL_UNSET)
 
     @field_validator("compute", mode="before")
     @classmethod
@@ -163,18 +167,19 @@ class FieldSpec(BaseModel):
     all_where: dict[str, Any] | None = None
     # Sum a numeric field across all list items (after list_filter if set).
     sum_field: str | None = None
-    # Display thresholds for widgets that show this var (warn_at/crit_at).
+    # Display thresholds for widgets that show this var (warn_if_above / crit_if_above).
     thresholds: ThresholdSpec | None = None
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
-        sources = sum(x is not None for x in [self.path, self.compute, self.script])
+        has_const = self.const is not _SENTINEL_UNSET
+        sources = sum(x is not None for x in [self.path, self.compute, self.script]) + int(has_const)
         # Allow metadata-only vars (e.g., just thresholds on auto-imported data)
         has_metadata = self.thresholds is not None
         if sources == 0 and not has_metadata:
-            raise ValueError("FieldSpec requires one of: 'path', 'compute', 'script', or 'thresholds'")
+            raise ValueError("FieldSpec requires one of: 'path', 'compute', 'script', 'const', or 'thresholds'")
         if sources > 1:
-            raise ValueError("FieldSpec: 'path', 'compute', and 'script' are mutually exclusive")
+            raise ValueError("FieldSpec: 'path', 'compute', 'script', and 'const' are mutually exclusive")
         # At most one aggregation mode
         agg_count = sum(x is not None for x in [self.count_where, self.any_where, self.all_where, self.sum_field])
         if agg_count > 1:
@@ -257,11 +262,23 @@ class WidgetLayout(BaseModel):
         return v
 
 
-class KeyValueField(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+def _require_jinja_value(v: str) -> str:
+    """Enforce that a value: reference is a Jinja2 expression ('{{ var }}')."""
+    if "{{" not in v or "}}" not in v:
+        raise ValueError(
+            f"value: must be a Jinja2 expression like '{{{{ {v} }}}}', got {v!r}"
+        )
+    return v
 
-    label: str
-    field: str
+
+JinjaValueRef = Annotated[str, AfterValidator(_require_jinja_value)]
+
+
+class KeyValueField(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    value: JinjaValueRef
     format: str | None = None
     as_: Literal["status-badge"] | None = Field(default=None, alias="as")
 
@@ -269,8 +286,8 @@ class KeyValueField(BaseModel):
 class KeyValueWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -284,10 +301,10 @@ class StyleRule(BaseModel):
 
 
 class TableColumn(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid")
 
-    header: str
-    field: str
+    name: str
+    value: JinjaValueRef
     as_: Literal["status-badge"] | None = Field(default=None, alias="as")
     format: str | None = None
     link_field: str | None = None
@@ -297,8 +314,8 @@ class TableColumn(BaseModel):
 class TableWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -309,8 +326,8 @@ class TableWidget(BaseModel):
 class AlertPanelWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["alert_panel"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -319,13 +336,13 @@ class AlertPanelWidget(BaseModel):
 class ProgressBarWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["progress_bar"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    field: str  # Field containing a 0-100 percentage
-    label: str | None = None  # Optional secondary field for text label
+    value: JinjaValueRef  # 0-100 percentage expression
+    value_label: str | None = None  # Optional secondary field name used for text label
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
     thresholds: ThresholdSpec | None = None
 
@@ -333,8 +350,8 @@ class ProgressBarWidget(BaseModel):
 class MarkdownWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["markdown"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -344,8 +361,8 @@ class MarkdownWidget(BaseModel):
 class StatCardSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    field: str
-    label: str
+    value: JinjaValueRef
+    name: str
     format: str | None = None
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
     thresholds: ThresholdSpec | None = None
@@ -354,8 +371,8 @@ class StatCardSpec(BaseModel):
 class StatCardsWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["stat_cards"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -365,8 +382,8 @@ class StatCardsWidget(BaseModel):
 class GroupedTableWidget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = ""
-    title: str
+    slug: str = ""
+    name: str
     type: Literal["grouped_table"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
@@ -444,9 +461,9 @@ class PlatformSpec(BaseModel):
 
 
 class FleetColumn(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-    header: str
-    field: str
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    value: JinjaValueRef
     width: str | None = None
 
 
@@ -547,12 +564,11 @@ class ReportSchema(BaseModel):
                     w["type"] = w["type"].replace("-", "_")
 
         # Normalize extra_fleet_widget_columns dict form → list form
-        import re as _re
         for key in ("extra_fleet_widget_columns", "fleet_columns"):
             fc = values.get(key)
             if isinstance(fc, dict):
                 values[key] = [
-                    {"label": label, "field": _re.sub(r"\{\{\s*(\w+)\s*\}\}", r"\1", expr).strip()}
+                    {"name": label, "value": expr}
                     for label, expr in fc.items()
                 ]
                 break
@@ -577,18 +593,18 @@ class ReportSchema(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def _derive_widget_ids(self) -> "ReportSchema":
-        """Auto-derive widget IDs from titles when not set."""
+    def _derive_widget_slugs(self) -> "ReportSchema":
+        """Auto-derive widget slugs from names when not set."""
         import re as _re
         for widget in self.widgets:
-            if not widget.id and hasattr(widget, "title"):
-                widget.id = _re.sub(r"[^a-z0-9]+", "_", widget.title.lower()).strip("_")
+            if not widget.slug and hasattr(widget, "name"):
+                widget.slug = _re.sub(r"[^a-z0-9]+", "_", widget.name.lower()).strip("_")
         return self
 
     @model_validator(mode="after")
     def _cross_check_references(self) -> "ReportSchema":
         """Ensure all field references in alerts, widgets, and fleet columns exist in fields."""
-        self._derive_widget_ids()
+        self._derive_widget_slugs()
 
         # Skip cross-reference check when path_prefix is set — vars are
         # auto-imported from the raw data at runtime, not all declared.
@@ -613,23 +629,23 @@ class ReportSchema(BaseModel):
             pass  # when expression field refs are validated at runtime
 
         for widget in self.widgets:
-            wctx = f"widget '{widget.id}'"
+            wctx = f"widget '{widget.slug}'"
             if isinstance(widget, KeyValueWidget):
                 for kv in widget.fields:
-                    _check(kv.field, f"{wctx}: key_value")
+                    _check(kv.value, f"{wctx}: key_value")
             elif isinstance(widget, TableWidget):
                 _check(widget.rows_field, f"{wctx}: rows_field")
             elif isinstance(widget, ProgressBarWidget):
-                _check(widget.field, f"{wctx}: progress_bar")
-                _check(widget.label or "", f"{wctx}: progress_bar label")
+                _check(widget.value, f"{wctx}: progress_bar")
+                _check(widget.value_label or "", f"{wctx}: progress_bar value_label")
             elif isinstance(widget, StatCardsWidget):
                 for card in widget.cards:
-                    _check(card.field, f"{wctx}: stat_cards")
+                    _check(card.value, f"{wctx}: stat_cards")
             elif isinstance(widget, GroupedTableWidget):
                 _check(widget.rows_field, f"{wctx}: grouped_table rows_field")
 
         for col in self.fleet_columns:
-            _check(col.field, "fleet_column")
+            _check(col.value, "fleet_column")
 
         if errors:
             raise ValueError("Schema cross-reference errors:\n" + "\n".join(f"  - {e}" for e in errors))

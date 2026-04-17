@@ -60,12 +60,12 @@ def _format_value(fmt: str | None, value: Any) -> str:
 def _resolve_threshold_color(
     value: float, thresholds: Any | None, default_color: str = "blue"
 ) -> str:
-    """Resolve a color from a ThresholdSpec. `crit_at` → red, `warn_at` → yellow, else green."""
+    """Resolve a color from a ThresholdSpec. `crit_if_above` → red, `warn_if_above` → yellow, else green."""
     if thresholds is None:
         return default_color
-    if thresholds.crit_at is not None and value >= thresholds.crit_at:
+    if thresholds.crit_if_above is not None and value >= thresholds.crit_if_above:
         return "red"
-    if thresholds.warn_at is not None and value >= thresholds.warn_at:
+    if thresholds.warn_if_above is not None and value >= thresholds.warn_if_above:
         return "yellow"
     return "green"
 
@@ -78,12 +78,12 @@ def _render_table_cell(
     generated_fleet_dirs: set[str] | None = None,
 ) -> dict[str, Any]:
     """Render a single table cell from a TableColumn and row item."""
-    value: Any = _resolve_field_ref(col.field, item)
+    value: Any = _resolve_field_ref(col.value, item)
     link = None
     cell_class = ""
 
     if col.style_rules:
-        temp_ctx = {col.field: value}
+        temp_ctx = {col.value: value}
         if isinstance(item, dict):
             temp_ctx.update(item)
         for rule in col.style_rules:
@@ -129,7 +129,7 @@ def _auto_layout(widget: ReportWidget) -> dict[str, Any]:
 
 def _widget_base(widget: ReportWidget, **extra: Any) -> dict[str, Any]:
     """Build the base dict common to all widget renderings."""
-    return {"id": widget.id, "title": widget.title, "type": widget.type, "layout": _auto_layout(widget), **extra}
+    return {"slug": widget.slug, "name": widget.name, "type": widget.type, "layout": _auto_layout(widget), **extra}
 
 
 def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
@@ -141,7 +141,7 @@ def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
 def _render_key_value(widget: KeyValueWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a KeyValueWidget."""
     rows = [
-        {"label": kv.label, "value": _format_value(kv.format, _resolve_field_ref(kv.field, fields)), "as": kv.as_}
+        {"name": kv.name, "value": _format_value(kv.format, _resolve_field_ref(kv.value, fields)), "as": kv.as_}
         for kv in widget.fields
     ]
     return _widget_base(widget, rows=rows)
@@ -167,15 +167,15 @@ def _render_table(widget: TableWidget, fields: dict[str, Any], ctx: dict[str, An
 
 def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a ProgressBarWidget."""
-    value = _resolve_field_ref(widget.field, fields)
+    value = _resolve_field_ref(widget.value, fields)
     try:
         pct = max(0, min(100, float(value)))
     except (ValueError, TypeError):
         pct = 0.0
 
     label_text = ""
-    if widget.label:
-        label_text = str(fields.get(widget.label, ""))
+    if widget.value_label:
+        label_text = str(fields.get(widget.value_label, ""))
 
     color: str = widget.color
     if color == "auto":
@@ -200,13 +200,13 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
     field_specs = ctx.get("field_specs", {})
     cards_rendered = []
     for card in widget.cards:
-        resolved = _resolve_field_ref(card.field, fields)
+        resolved = _resolve_field_ref(card.value, fields)
         display = _format_value(card.format, resolved) if card.format else str(resolved)
 
         # Look up thresholds: per-card first, then from var's FieldSpec
         thresholds = card.thresholds
         if thresholds is None:
-            var_match = _re.search(r"\{\{\s*(\w+)", str(card.field))
+            var_match = _re.search(r"\{\{\s*(\w+)", str(card.value))
             if var_match:
                 spec = field_specs.get(var_match.group(1))
                 if spec and hasattr(spec, "thresholds"):
@@ -220,7 +220,7 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
                 num_val = 0.0
             resolved_color = _resolve_threshold_color(num_val, thresholds)
 
-        cards_rendered.append({"label": card.label, "value": display, "color": resolved_color})
+        cards_rendered.append({"name": card.name, "value": display, "color": resolved_color})
     return _widget_base(widget, cards=cards_rendered)
 
 
@@ -277,7 +277,7 @@ def _render_widget(
         return handler(widget, fields, ctx)
 
     # Fallback for unknown widget types
-    return {"id": widget.id, "title": widget.title, "type": "unknown", "layout": _auto_layout(widget)}
+    return {"slug": widget.slug, "name": widget.name, "type": "unknown", "layout": _auto_layout(widget)}
 
 
 # ---------------------------------------------------------------------------
@@ -316,8 +316,8 @@ def stig_view_to_node_widgets(
 
     widgets: list[dict[str, Any]] = [
         {
-            "id": f"stig-summary-{slug}",
-            "title": f"{label} STIG — Evaluation Summary",
+            "slug": f"stig-summary-{slug}",
+            "name": f"{label} STIG — Evaluation Summary",
             "type": "stig_summary",
             "layout": {"width": "half"},
             "total": findings_summary.get("total", len(findings)),
@@ -334,8 +334,8 @@ def stig_view_to_node_widgets(
 
     if open_findings:
         widgets.append({
-            "id": f"stig-open-{slug}",
-            "title": f"{label} STIG — Open Findings ({len(open_findings)})",
+            "slug": f"stig-open-{slug}",
+            "name": f"{label} STIG — Open Findings ({len(open_findings)})",
             "type": "stig_findings",
             "layout": {"width": "full"},
             "findings": open_findings,
@@ -343,8 +343,8 @@ def stig_view_to_node_widgets(
 
     if include_all_findings and findings:
         widgets.append({
-            "id": f"stig-all-{slug}",
-            "title": f"{label} STIG — All Findings ({len(findings)})",
+            "slug": f"stig-all-{slug}",
+            "name": f"{label} STIG — All Findings ({len(findings)})",
             "type": "stig_findings",
             "layout": {"width": "full"},
             "findings": findings,
@@ -403,7 +403,7 @@ def build_generic_node_view(
     # Auto-inject alert panel as first widget if not declared
     effective_widgets: list[ReportWidget] = list(schema.widgets)
     if not any(isinstance(w, AlertPanelWidget) for w in effective_widgets):
-        effective_widgets.insert(0, AlertPanelWidget(id="active_alerts", title="Active Alerts", type="alert_panel"))
+        effective_widgets.insert(0, AlertPanelWidget(slug="active_alerts", name="Active Alerts", type="alert_panel"))
 
     widgets_rendered = [
         rendered
@@ -495,7 +495,7 @@ def build_generic_fleet_view(
         }
         # Add quick access for schema-driven columns
         for col in schema.fleet_columns:
-            row[f"col_{col.field}"] = _resolve_field_ref(col.field, fields)
+            row[f"col_{col.value}"] = _resolve_field_ref(col.value, fields)
 
         host_rows.append(row)
 

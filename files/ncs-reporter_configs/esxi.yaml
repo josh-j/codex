@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../.schemas/report_schema.json
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
 config:
   display_name: "VMware ESXi"
   platform: vmware/esxi
@@ -6,17 +6,16 @@ config:
     platform_to_checklist:
       esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
   extra_fleet_widget_columns:
-    - header: Cluster
-      field: cluster
-    - header: Status
-      field: overall_status
-    - header: CPU %
-      field: cpu_used_pct
-    - header: Mem %
-      field: mem_used_pct
-    - header: VMs
-      field: vm_count
-
+    - name: Cluster
+      value: "{{ cluster }}"
+    - name: Status
+      value: "{{ overall_status }}"
+    - name: CPU %
+      value: "{{ cpu_used_pct }}"
+    - name: Mem %
+      value: "{{ mem_used_pct }}"
+    - name: VMs
+      value: "{{ vm_count }}"
 vars:
   # All raw_esxi.data.* fields are auto-imported from the collector payload.
   # Only computed/derived vars and metadata need explicit declaration.
@@ -24,12 +23,12 @@ vars:
     compute: "{{ uptime_seconds / 86400 }}"
   cpu_used_pct:
     thresholds:
-      warn_at: 80
-      crit_at: 90
+      warn_if_above: 80
+      crit_if_above: 90
   mem_used_pct:
     thresholds:
-      warn_at: 80
-      crit_at: 90
+      warn_if_above: 80
+      crit_if_above: 90
 
 alerts:
   - id: host_disconnected
@@ -97,76 +96,78 @@ alerts:
 widgets:
 
   - type: key-value
-    title: "Host Overview"
+    name: "Host Overview"
     layout: half
     fields:
-      - label: Connection State
-        field: connection_state
+      - name: Connection State
+        value: "{{ connection_state }}"
         as: status-badge
-      - label: Overall Status
-        field: overall_status
+      - name: Overall Status
+        value: "{{ overall_status }}"
         as: status-badge
-      - label: Cluster
-        field: cluster
-      - label: Datacenter
-        field: datacenter
-      - label: Version
-        field: version
-      - label: Build
-        field: build
-      - label: Maintenance Mode
-        field: in_maintenance_mode
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Version
+        value: "{{ version }}"
+      - name: Build
+        value: "{{ build }}"
+      - name: Maintenance Mode
+        value: "{{ in_maintenance_mode }}"
         as: status-badge
-      - label: Lockdown Mode
-        field: lockdown_mode
-
+      - name: Lockdown Mode
+        value: "{{ lockdown_mode }}"
   - type: stat-cards
-    id: resource_kpis
-    title: "Resource Utilization"
+    slug: resource_kpis
+    name: "Resource Utilization"
     layout: half
     cards:
-      'CPU %': "{{ cpu_used_pct | round(0) }}%"
-      'Mem %': "{{ mem_used_pct | round(0) }}%"
-      'VMs': "{{ vm_count }}"
-      'Uptime (days)': "{{ uptime_days | round(0) }}"
+      - name: CPU %
+        value: "{{ cpu_used_pct | round(0) }}%"
+      - name: Mem %
+        value: "{{ mem_used_pct | round(0) }}%"
+      - name: VMs
+        value: "{{ vm_count }}"
+      - name: Uptime (days)
+        value: "{{ uptime_days | round(0) }}"
 
   - type: key-value
-    title: "Security & Services"
+    name: "Security & Services"
     layout: half
     fields:
-      - label: SSH Enabled
-        field: ssh_enabled
+      - name: SSH Enabled
+        value: "{{ ssh_enabled }}"
         as: status-badge
-      - label: Shell Enabled
-        field: shell_enabled
+      - name: Shell Enabled
+        value: "{{ shell_enabled }}"
         as: status-badge
-      - label: NTP Running
-        field: ntp_running
+      - name: NTP Running
+        value: "{{ ntp_running }}"
         as: status-badge
 
   - type: table
-    title: "Datastores"
+    name: "Datastores"
     rows: "{{ datastores }}"
     columns:
-      - header: Name
-        field: name
-      - header: Total
-        field: total
-      - header: Free
-        field: free
-
+      - name: Name
+        value: "{{ name }}"
+      - name: Total
+        value: "{{ total }}"
+      - name: Free
+        value: "{{ free }}"
   - type: table
-    title: "Physical NICs"
+    name: "Physical NICs"
     rows: "{{ nics }}"
     columns:
-      - header: Device
-        field: device
-      - header: Status
-        field: link_status
+      - name: Device
+        value: "{{ device }}"
+      - name: Status
+        value: "{{ link_status }}"
         as: status-badge
-      - header: Speed (Mbps)
-        field: speed_mbps
-      - header: Driver
-        field: driver
-      - header: Switch
-        field: switch
+      - name: Speed (Mbps)
+        value: "{{ speed_mbps }}"
+      - name: Driver
+        value: "{{ driver }}"
+      - name: Switch
+        value: "{{ switch }}"

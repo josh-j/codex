@@ -1,0 +1,30 @@
+# >>>
+# options:
+#   vcsa_stig_include_photon: bool = false | Include Photon Baseline | Also remediate the underlying Photon OS STIG controls
+#   vcsa_stig_create_backups: bool = true | Create Backups | Back up config files before applying STIG changes
+# <<<
+---
+# internal/vmware/playbooks/vcsa_stig_remediate.yml
+# STIG hardening + verification for vCenter Server Appliance (VCSA).
+
+- name: "Phase 2a: VCSA STIG Remediation"
+  hosts: "{{ vcsa_target_hosts | default('vcsa') }}"
+  gather_facts: false
+  become: true
+  tags: ["vmware", "stig", "remediate", "vcsa"]
+  roles:
+    - role: internal.vmware.vcsa
+      vars:
+        ncs_action: remediate
+        ncs_profile: stig
+
+- name: "Phase 2b: VCSA STIG Post-Remediation Audit"
+  hosts: "{{ vcsa_target_hosts | default('vcsa') }}"
+  gather_facts: false
+  become: true
+  tags: ["vmware", "stig", "audit", "vcsa"]
+  roles:
+    - role: internal.vmware.vcsa
+      vars:
+        ncs_action: verify
+        ncs_profile: stig

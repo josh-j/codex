@@ -94,14 +94,14 @@ class TestGetFailingRules(unittest.TestCase):
                 "rule_version": "ESXI-70-000001",
                 "status": "failed",
                 "severity": "medium",
-                "title": "Lockdown",
+                "name": "Lockdown",
             },
             {
                 "id": "V-256376",
                 "rule_version": "ESXI-70-000002",
                 "status": "pass",
                 "severity": "medium",
-                "title": "Passed rule",
+                "name": "Passed rule",
             },
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -112,7 +112,7 @@ class TestGetFailingRules(unittest.TestCase):
 
     def test_empty_when_no_findings(self) -> None:
         rows = [
-            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "title": "OK"},
+            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "name": "OK"},
         ]
         with tempfile.TemporaryDirectory() as tmp:
             artifact = self._write_artifact(tmp, rows)
@@ -193,7 +193,7 @@ class TestBuildInteractivePlaybook(unittest.TestCase):
         self.group_id_map = build_group_id_map(self.metadata)
 
     def _row(self, rule_version: str) -> dict:
-        return {"rule_version": rule_version, "status": "failed", "severity": "medium", "title": "Test rule"}
+        return {"rule_version": rule_version, "status": "failed", "severity": "medium", "name": "Test rule"}
 
     def _build(self, rows: list[dict], esxi_host: str = "esxi-01.local") -> list:
         raw = build_interactive_playbook(rows, self.metadata, self.group_id_map, esxi_host=esxi_host)
@@ -300,7 +300,7 @@ class TestInferRuleVersion(unittest.TestCase):
 class TestBuildAnsibleArgs(unittest.TestCase):
     def test_basic_structure(self) -> None:
         args = build_ansible_args(
-            playbook="playbooks/vmware_stig_remediate.yml",
+            playbook="internal.vmware.vmware_stig_remediate",
             inventory="inventory/production/",
             limit="vcenter1",
             manage_var="esxi_70_000001_manage",
@@ -308,7 +308,7 @@ class TestBuildAnsibleArgs(unittest.TestCase):
             esxi_host="esxi-01.local",
         )
         self.assertIn("ansible-playbook", args)
-        self.assertIn("playbooks/vmware_stig_remediate.yml", args)
+        self.assertIn("internal.vmware.vmware_stig_remediate", args)
         self.assertIn("-l", args)
         self.assertIn("vcenter1", args)
         self.assertIn("-e@/tmp/disabled.yaml", args)
@@ -388,16 +388,16 @@ class TestGenericTargetHelpers(unittest.TestCase):
     def test_resolve_generic_apply_plan(self) -> None:
         self.assertEqual(
             resolve_generic_apply_plan("vcsa"),
-            ("playbooks/vmware/vcsa/stig_remediate.yml", "vcsa_stig_target_hosts"),
+            ("internal.vmware.vcsa_stig_remediate", "vcsa_stig_target_hosts"),
         )
         self.assertEqual(
             resolve_generic_apply_plan("photon"),
-            ("playbooks/linux/photon/stig_remediate.yml", "photon_target_hosts"),
+            ("internal.linux.photon_stig_remediate", "photon_target_hosts"),
         )
 
     def test_build_generic_apply_args_includes_target_var(self) -> None:
         args = build_generic_apply_args(
-            playbook="playbooks/linux/photon/stig_remediate.yml",
+            playbook="internal.linux.photon_stig_remediate",
             inventory="inventory/production/",
             limit="linux",
             target_var="photon_target_hosts",
@@ -420,7 +420,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 "rule_version": "ESXI-70-000001",
                 "status": "failed",
                 "severity": "medium",
-                "title": "Lockdown Mode",
+                "name": "Lockdown Mode",
                 "checktext": "Lockdown mode is disabled.",
             }
         ]
@@ -443,7 +443,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 "name": "esxi-01.local",
                 "status": "failed",
                 "severity": "medium",
-                "title": "Lockdown Mode",
+                "name": "Lockdown Mode",
                 "checktext": "Lockdown mode is disabled.",
                 "fixtext": "",
             }
@@ -570,7 +570,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                 "rule_version": "ESXI-70-000004",
                 "status": "failed",
                 "severity": "medium",
-                "title": "Syslog",
+                "name": "Syslog",
             }
         ]
         artifact = Path(tmp_dir) / "raw_stig_esxi.yaml"
@@ -638,7 +638,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
         from ncs_reporter.cli import main
 
         rows = [
-            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "title": "OK"}
+            {"id": "V-256375", "rule_version": "ESXI-70-000001", "status": "pass", "severity": "medium", "name": "OK"}
         ]
         with tempfile.TemporaryDirectory() as tmp:
             artifact = Path(tmp) / "raw_stig_esxi.yaml"
@@ -679,7 +679,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                     "rule_version": rule_version,
                     "status": "failed",
                     "severity": "medium",
-                    "title": "Test finding",
+                    "name": "Test finding",
                 }
             ],
             "target_type": target_type,
@@ -711,7 +711,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vmware/vm/stig_remediate.yml", result.output)
+        self.assertIn("internal.vmware.vm_stig_remediate", result.output)
         self.assertIn("vm_stig_target_vms=['app01.example.local']", result.output)
 
     def test_vcsa_dry_run_generates_vcsa_remediation_command(self) -> None:
@@ -737,7 +737,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/vmware/vcsa/stig_remediate.yml", result.output)
+        self.assertIn("internal.vmware.vcsa_stig_remediate", result.output)
         self.assertIn("vcsa_stig_target_hosts=['vcsa01.example.local']", result.output)
 
     def test_photon_dry_run_generates_photon_remediation_command(self) -> None:
@@ -763,7 +763,7 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/linux/photon/stig_remediate.yml", result.output)
+        self.assertIn("internal.linux.photon_stig_remediate", result.output)
         self.assertIn("photon_target_hosts=['photon01.example.local']", result.output)
 
     def test_ubuntu_dry_run_generates_ubuntu_remediation_command(self) -> None:
@@ -789,5 +789,5 @@ class TestStigApplyCLIGenericTargets(unittest.TestCase):
                 ],
             )
         self.assertEqual(result.exit_code, 0, f"CLI output:\n{result.output}")
-        self.assertIn("playbooks/linux/ubuntu/stig_remediate.yml", result.output)
+        self.assertIn("internal.linux.ubuntu_stig_remediate", result.output)
         self.assertIn("ubuntu_target_hosts=['ubuntu01.example.local']", result.output)

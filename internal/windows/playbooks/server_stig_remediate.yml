@@ -1,0 +1,23 @@
+# >>>
+# options:
+#   windows_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
+# <<<
+---
+# internal/windows/playbooks/server_stig_remediate.yml
+# Automated security hardening remediation for Windows Server.
+# This playbook applies STIG controls to Windows hosts, focusing on
+# registry settings, firewall profiles, and WinRM security.
+# It runs an initial audit, applies changes, and then refreshes
+# the audit state to confirm compliance.
+
+- name: "Phase 3c: Windows Server STIG Remediation"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  vars:
+    master_enable_windows_stig: true
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: remediate
+        ncs_profile: stig
+      when: master_enable_windows_stig | bool

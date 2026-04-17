@@ -100,7 +100,7 @@ class TestBuildSiteDashboardView:
                     "stig_esxi": {
                         "health": "WARNING",
                         "target_type": "esxi",
-                        "full_audit": [{"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule"}],
+                        "full_audit": [{"id": "V-001", "status": "open", "severity": "CAT_I", "name": "Rule"}],
                         "alerts": [],
                     }
                 }

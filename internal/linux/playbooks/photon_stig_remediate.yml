@@ -1,0 +1,25 @@
+# >>>
+# options:
+#   photon_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
+# <<<
+---
+# internal/linux/playbooks/photon_stig_remediate.yml
+# Automated STIG hardening and remediation for VMware Photon OS 3.0.
+
+- name: "Phase 2: Photon STIG Remediation"
+  hosts: "{{ photon_target_hosts | default('photon_servers') }}"
+  gather_facts: false
+  become: true
+  tags: ["photon", "remediate", "stig", "security"]
+  roles:
+    - role: internal.linux.photon
+      vars:
+        ncs_action: collect
+    - role: internal.linux.photon
+      vars:
+        ncs_action: remediate
+        ncs_profile: stig
+    - role: internal.linux.photon
+      vars:
+        ncs_action: verify
+        ncs_profile: stig

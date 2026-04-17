@@ -20,8 +20,8 @@ The stages are fully decoupled — you can re-render reports from existing artif
 
 | Directory | Purpose |
 |---|---|
-| `playbooks/` | Ansible playbooks organized by platform ([README](playbooks/README.md)) |
-| `internal/` | Custom Ansible collections: [core](internal/core/README.md), [linux](internal/linux/README.md), [vmware](internal/vmware/README.md), [windows](internal/windows/README.md) |
+| `playbooks/` | Site orchestrators + NCS infrastructure playbooks ([README](playbooks/README.md)) |
+| `internal/` | Custom Ansible collections (each ships its own platform playbooks): [core](internal/core/README.md), [linux](internal/linux/README.md), [vmware](internal/vmware/README.md), [windows](internal/windows/README.md) |
 | `ncs-reporter/` | Standalone Python reporting CLI ([README](ncs-reporter/README.md)) |
 | `ncs-console/` | PowerShell/WPF operator console ([README](ncs-console/README.md)) |
 | `inventory/` | Ansible inventory (`production/`, `lab/`) |

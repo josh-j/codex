@@ -12,8 +12,8 @@ uptime_days:
 memory_used_pct:
   compute: "{{ (memory_total_mb - memory_free_mb) / memory_total_mb * 100 }}"
   thresholds:
-    warn_at: 85
-    crit_at: 98
+    warn_if_above: 85
+    crit_if_above: 98
 
 swap_used_pct:
   compute: "{{ (swap_total_mb - swap_free_mb) / swap_total_mb * 100 }}"
@@ -27,13 +27,13 @@ failed_services_count:
   path: ".failed_services.stdout_lines | len_if_list"
   type: int
   thresholds:
-    crit_at: 1
+    crit_if_above: 1
 
 pending_updates_count:
   path: ".apt_simulate.stdout_lines | join_lines | regex_extract('(\\d+) upgraded,')"
   type: int
   thresholds:
-    warn_at: 1
+    warn_if_above: 1
 reboot_pending:
   path: ".reboot_stat.stat.exists"
   type: bool

@@ -1,0 +1,16 @@
+# >>>
+# options:
+#   ubuntu_stig_enable_hardening: bool = false | Enable Hardening | Actually apply STIG controls (false = audit only, true = enforce)
+# <<<
+---
+# internal/linux/playbooks/ubuntu_stig_remediate.yml
+# Compatibility wrapper for Ubuntu STIG remediation workflow.
+
+- name: "Composite Ubuntu STIG Remediate | Pre-Discover"
+  ansible.builtin.import_playbook: ubuntu_collect.yml
+
+- name: "Composite Ubuntu STIG Remediate | Apply"
+  ansible.builtin.import_playbook: ubuntu_stig_remediate_apply.yml
+
+- name: "Composite Ubuntu STIG Remediate | Verify"
+  ansible.builtin.import_playbook: ubuntu_stig_verify.yml

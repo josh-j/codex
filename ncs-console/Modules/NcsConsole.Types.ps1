@@ -147,7 +147,7 @@ INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_be
     "gather_facts", "connection", "become", "become_method", "become_user"}
 READ_ONLY_KEYWORDS = {"collect", "audit", "health", "status", "search", "scan", "report",
     "verify", "discover", "summary"}
-NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD"}
+NAME_MAP = {"esxi": "ESXi", "vcsa": "VCSA", "vm": "VM", "vmware": "VMware", "ad": "AD", "ncs": "NCS"}
 
 def auto_label(key):
     return key.replace("_", " ").title()
@@ -300,69 +300,121 @@ def add_item(tree, segments, item):
     node = get_node(tree, segments)
     node["items"].append(item)
 
-base = "playbooks"
-tree = {}  # nested: {"vmware": {"items": [...], "children": {"esxi": {"items": [...], "children": {}}}}}
+tree = {}  # nested: {"vmware": {"items": [...], "children": {"esxi": {...}}}}
 
-for root, dirs, files in os.walk(base):
-    dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
-    rel = os.path.relpath(root, base)
-    if rel == ".":
-        segments = ["Fleet"]
-    else:
-        segments = [p for p in rel.replace(os.sep, "/").split("/")]
-    for f in sorted(files):
-        if not f.endswith((".yml", ".yaml")) or f.startswith("_"):
-            continue
-        path = os.path.join(root, f)
-        playbook = os.path.relpath(path, base).replace(os.sep, "/")
-        try:
-            with open(path) as fh: text = fh.read()
-            docs = yaml.safe_load(text)
-            if not isinstance(docs, list) or len(docs) == 0:
-                continue
-            play = docs[0]
-            if not isinstance(play, dict):
-                continue
-            is_import = any(k.endswith("import_playbook") for k in play)
-        except Exception:
-            continue
-        blocks = parse_ncs_blocks(text)
-        if blocks and len(blocks) > 1:
-            # Multi-profile playbook (e.g. run.yml): single tree item with profile selector
-            profiles = []
-            any_mutating = False
-            for blk in blocks:
-                lbl = blk.get("label", fallback_label(f, None if is_import else play))
-                mut = blk.get("mutating", False)
-                if mut:
-                    any_mutating = True
-                profile = {"label": lbl}
-                if mut:
-                    profile["mutating"] = True
-                op = blk.get("operation")
-                if op:
-                    profile["operation"] = op
-                if blk.get("options"):
-                    profile["options"] = blk["options"]
-                profiles.append(profile)
-            item = build_item(playbook, fallback_label(f, None if is_import else play), any_mutating)
-            item["profiles"] = profiles
-            add_item(tree, segments, item)
-        elif blocks:
-            blk = blocks[0]
-            lbl = blk.get("label", fallback_label(f, None if is_import else play))
+SUB_PLATFORMS = {
+    "vmware": {"esxi", "vcsa", "vm"},
+    "linux": {"ubuntu", "photon"},
+    "windows": {"server", "domain"},
+}
+
+
+def is_playbook_file(filename):
+    return filename.endswith((".yml", ".yaml")) and not filename.startswith("_")
+
+
+def classify_collection_playbook(collection, filename):
+    """Given internal/<collection>/playbooks/<filename>, derive (segments, id, display_name).
+
+    Segments are kept lowercase; NAME_MAP in to_output handles display casing.
+    Files named <sub>_<name>.yml land under the sub-platform group when <sub>
+    is in SUB_PLATFORMS[collection]; otherwise they bubble up to the collection group.
+    """
+    stem = os.path.splitext(filename)[0]
+    fqcn = "internal.{}.{}".format(collection, stem)
+    subs = SUB_PLATFORMS.get(collection, set())
+    if "_" in stem:
+        first, rest = stem.split("_", 1)
+        if first in subs:
+            return ([collection, first], fqcn, rest)
+    return ([collection], fqcn, stem)
+
+
+def add_playbook_file(path, playbook_id, segments, display_stem):
+    try:
+        with open(path) as fh:
+            text = fh.read()
+        docs = yaml.safe_load(text)
+        if not isinstance(docs, list) or len(docs) == 0:
+            return
+        play = docs[0]
+        if not isinstance(play, dict):
+            return
+        is_import = any(k.endswith("import_playbook") for k in play)
+    except Exception:
+        return
+
+    f_label = display_stem + ".yml"
+    blocks = parse_ncs_blocks(text) or []
+    if len(blocks) > 1:
+        profiles = []
+        any_mutating = False
+        for blk in blocks:
+            lbl = blk.get("label", fallback_label(f_label, None if is_import else play))
             mut = blk.get("mutating", False)
-            opts = blk.get("options", [])
+            if mut:
+                any_mutating = True
+            profile = {"label": lbl}
+            if mut:
+                profile["mutating"] = True
             op = blk.get("operation")
             if op:
-                opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
-            add_item(tree, segments, build_item(playbook, lbl, mut, opts))
+                profile["operation"] = op
+            if blk.get("options"):
+                profile["options"] = blk["options"]
+            profiles.append(profile)
+        item = build_item(playbook_id, fallback_label(f_label, None if is_import else play), any_mutating)
+        item["profiles"] = profiles
+        add_item(tree, segments, item)
+    elif len(blocks) == 1:
+        blk = blocks[0]
+        lbl = blk.get("label", fallback_label(f_label, None if is_import else play))
+        mut = blk.get("mutating", False)
+        opts = blk.get("options", [])
+        op = blk.get("operation")
+        if op:
+            opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
+        add_item(tree, segments, build_item(playbook_id, lbl, mut, opts))
+    else:
+        lbl = fallback_label(f_label, None if is_import else play)
+        mut = not any(k in display_stem for k in READ_ONLY_KEYWORDS)
+        opts = fallback_options(play) if not is_import else []
+        add_item(tree, segments, build_item(playbook_id, lbl, mut, opts))
+
+
+# 1. App-layer playbooks (site orchestrators + ncs/ + core/)
+app_base = "playbooks"
+if os.path.isdir(app_base):
+    for root, dirs, files in os.walk(app_base):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        rel = os.path.relpath(root, app_base)
+        if rel == ".":
+            segments = ["Fleet"]
         else:
-            lbl = fallback_label(f, None if is_import else play)
+            segments = rel.replace(os.sep, "/").split("/")
+        for f in sorted(files):
+            if not is_playbook_file(f):
+                continue
+            path = os.path.join(root, f)
+            playbook = path.replace(os.sep, "/")
             stem = os.path.splitext(f)[0]
-            mut = not any(k in stem for k in READ_ONLY_KEYWORDS)
-            opts = fallback_options(play) if not is_import else []
-            add_item(tree, segments, build_item(playbook, lbl, mut, opts))
+            add_playbook_file(path, playbook, segments, stem)
+
+# 2. Collection playbooks: internal/<col>/playbooks/*.yml → FQCN internal.<col>.<stem>
+coll_root = os.path.join("collections", "ansible_collections", "internal")
+if os.path.isdir(coll_root):
+    for collection in sorted(os.listdir(coll_root)):
+        pdir = os.path.join(coll_root, collection, "playbooks")
+        if not os.path.isdir(pdir):
+            continue
+        for f in sorted(os.listdir(pdir)):
+            if not is_playbook_file(f):
+                continue
+            path = os.path.join(pdir, f)
+            if not os.path.isfile(path):
+                continue
+            segments, fqcn, display_stem = classify_collection_playbook(collection, f)
+            add_playbook_file(path, fqcn, segments, display_stem)
 
 def to_output(tree):
     """Convert nested tree dict to output format with Group/Items/Children."""
@@ -464,10 +516,13 @@ function Get-NcsRemotePlaybookTags {
         [string] $Playbook
     )
 
+    # Accepts an FQCN (e.g. internal.vmware.esxi_stig_audit) or a relative path to
+    # an app-layer playbook (e.g. playbooks/site.yml). Both forms pass safely through
+    # --list-tags after a conservative character filter.
     $safePlaybook = $Playbook -replace "[^A-Za-z0-9._/-]", ""
     if ([string]::IsNullOrWhiteSpace($safePlaybook)) { return @() }
 
-    $cmd = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-playbook --list-tags '$script:NcsRemotePlaybooksDir/$safePlaybook' 2>&1 | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u"
+    $cmd = New-NcsRepoShellCommand -Settings $Settings -Command "ansible-playbook --list-tags '$safePlaybook' 2>&1 | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u"
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand $cmd
 
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {

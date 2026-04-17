@@ -1,0 +1,25 @@
+# >>>
+# label: System Audit
+# is_read_only: true
+# operation: collect
+# ---
+# label: Password Status
+# is_read_only: true
+# operation: password_status
+# options:
+#   rotate_user: text = root | User | Local account to check password status for
+# <<<
+---
+# internal/linux/playbooks/ubuntu_run.yml
+# Generic Ubuntu role runner — driven by ncs_action, ncs_profile, ncs_operation.
+#
+# Usage:
+#   ansible-playbook internal.linux.ubuntu_run -e 'ncs_action=collect'
+#   ansible-playbook internal.linux.ubuntu_run -e 'ncs_action=audit ncs_profile=stig'
+#   ansible-playbook internal.linux.ubuntu_run -e 'ncs_action=audit ncs_operation=password_status'
+
+- name: "Ubuntu | {{ ncs_operation | default(ncs_profile | default('collect')) }}"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  roles:
+    - role: internal.linux.ubuntu

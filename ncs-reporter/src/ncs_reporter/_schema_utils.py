@@ -43,16 +43,14 @@ alerts:
     message: "Example metric is high: {{example_metric:.1f}}"
 
 widgets:
-  - id: alerts
-    title: "Active Alerts"
+  - name: "Active Alerts"
     type: alert_panel
 
-  - id: overview
-    title: "Overview"
+  - name: "Overview"
     type: key_value
     fields:
-      - {{ label: "Hostname", field: hostname }}
-      - {{ label: "Example Metric", field: example_metric }}
+      - {{ name: "Hostname", value: "{{{{ hostname }}}}" }}
+      - {{ name: "Example Metric", value: "{{{{ example_metric }}}}" }}
 """
 
 
@@ -154,80 +152,58 @@ alerts:
 
 widgets:
   # --- Alert panel (always recommended) ---
-  - id: alerts
-    title: "Active Alerts"
+  - name: "Active Alerts"
     type: alert_panel
 
   # --- Key-value pairs ---
-  - id: overview
-    title: "Overview"
+  - name: "Overview"
     type: key_value
     fields:
-      - {{ label: "Hostname", field: hostname }}
-      - {{ label: "Usage", field: example_pct, format: "{{value:.1f}}%" }}
-  # NOTE: key_value uses 'label:' (cell label). Tables use 'header:' (column header).
+      - {{ name: "Hostname", value: "{{{{ hostname }}}}" }}
+      - {{ name: "Usage", value: "{{{{ example_pct }}}}", format: "{{value:.1f}}%" }}
+  # NOTE: every value: reference must be a Jinja2 expression: value: "{{{{ var_name }}}}".
+  # Optional `slug:` pins the stable id used for anchors; omit to auto-derive from name.
 
   # --- Table ---
-  # - id: items_table
-  #   title: "Items"
+  # - name: "Items"
   #   type: table
-  #   rows: filtered_items           # alias for rows_field
+  #   rows: "{{{{ filtered_items }}}}"
   #   columns:
-  #     - {{ header: "Name", field: name }}
-  #     - {{ header: "Status", field: status, as: status-badge }}
+  #     - {{ name: "Name", value: "{{{{ name }}}}" }}
+  #     - {{ name: "Status", value: "{{{{ status }}}}", as: status-badge }}
 
   # --- Progress bar ---
-  # - id: usage_bar
-  #   title: "Usage"
+  # - name: "Usage"
   #   type: progress_bar
-  #   field: example_pct
+  #   value: "{{{{ example_pct }}}}"
   #   thresholds:
-  #     warn_at: 75
-  #     crit_at: 90
+  #     warn_if_above: 75
+  #     crit_if_above: 90
 
   # --- Stat cards ---
-  # - id: kpis
-  #   title: "Key Metrics"
+  # - name: "Key Metrics"
   #   type: stat_cards
   #   cards:
-  #     - {{ field: item_count, label: "Total Items" }}
-  #     - {{ field: example_pct, label: "Usage %", format: "{{value:.0f}}" }}
-
-  # --- Bar chart ---
-  # - id: chart
-  #   title: "By Category"
-  #   type: bar_chart
-  #   rows: filtered_items
-  #   label_field: name
-  #   value_field: usage_pct
-  #   max: 100
+  #     - {{ value: "{{{{ item_count }}}}", name: "Total Items" }}
+  #     - {{ value: "{{{{ example_pct }}}}", name: "Usage %", format: "{{value:.0f}}" }}
 
   # --- Grouped table ---
-  # - id: by_status
-  #   title: "By Status"
+  # - name: "By Status"
   #   type: grouped_table
-  #   rows: filtered_items
-  #   group_by: status
+  #   rows: "{{{{ filtered_items }}}}"
+  #   group_by: "{{{{ status }}}}"
   #   columns:
-  #     - {{ header: "Name", field: name }}
+  #     - {{ name: "Name", value: "{{{{ name }}}}" }}
 
   # --- Markdown ---
-  # - id: notes
-  #   title: "Notes"
+  # - name: "Notes"
   #   type: markdown
   #   content: "Report generated from **{{name}}** data."
 
-  # --- List ---
-  # - id: names
-  #   title: "Names"
-  #   type: list
-  #   items_field: filtered_items
-  #   display_field: name
-
 # Fleet table columns (shown in fleet overview):
 # fleet_columns:
-#   - {{ field: hostname, header: "Host" }}
-#   - {{ field: example_pct, header: "Usage %", format: "{{value:.0f}}%" }}
+#   - {{ value: "{{{{ hostname }}}}", name: "Host" }}
+#   - {{ value: "{{{{ example_pct }}}}", name: "Usage %", format: "{{value:.0f}}%" }}
 
 # Tip: run 'ncs-reporter platform info widgets' for all widget types.
 # Tip: run 'ncs-reporter platform info conditions' for all condition operators.
@@ -302,8 +278,7 @@ def schema_from_bundle(name: str, bundle_path: Path) -> str:
         "alerts: []",
         "",
         "widgets:",
-        "  - id: alerts",
-        '    title: "Active Alerts"',
+        '  - name: "Active Alerts"',
         "    type: alert_panel",
         "",
     ]

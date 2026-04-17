@@ -67,57 +67,57 @@ class TestCompactField:
 class TestCompactWidget:
     def test_alert_panel(self):
         result = _expand_compact_widget({"alert_panel": "Active Alerts"})
-        assert result == {"id": "active_alerts", "title": "Active Alerts", "type": "alert_panel"}
+        assert result == {"slug": "active_alerts", "name": "Active Alerts", "type": "alert_panel"}
 
     def test_key_value(self):
         result = _expand_compact_widget({
             "key_value": "Overview",
             "fields": [
-                {"label": "Hostname", "field": "hostname"},
-                {"label": "OS", "field": "os_name"},
+                {"name": "Hostname", "value": "{{ hostname }}"},
+                {"name": "OS", "value": "{{ os_name }}"},
             ],
         })
         assert result == {
-            "id": "overview",
-            "title": "Overview",
+            "slug": "overview",
+            "name": "Overview",
             "type": "key_value",
             "fields": [
-                {"label": "Hostname", "field": "hostname"},
-                {"label": "OS", "field": "os_name"},
+                {"name": "Hostname", "value": "{{ hostname }}"},
+                {"name": "OS", "value": "{{ os_name }}"},
             ],
         }
 
     def test_table(self):
         result = _expand_compact_widget({
             "table": "Disk Usage",
-            "rows": "health_disk",
+            "rows": "{{ health_disk }}",
             "columns": [
-                {"header": "Drive", "field": "DeviceID"},
-                {"header": "Used %", "field": "UsedPct", "as": "status-badge"},
+                {"name": "Drive", "value": "{{ DeviceID }}"},
+                {"name": "Used %", "value": "{{ UsedPct }}", "as": "status-badge"},
             ],
         })
         assert result == {
-            "id": "disk_usage",
-            "title": "Disk Usage",
+            "slug": "disk_usage",
+            "name": "Disk Usage",
             "type": "table",
-            "rows_field": "health_disk",
+            "rows_field": "{{ health_disk }}",
             "columns": [
-                {"header": "Drive", "field": "DeviceID"},
-                {"header": "Used %", "field": "UsedPct", "as": "status-badge"},
+                {"name": "Drive", "value": "{{ DeviceID }}"},
+                {"name": "Used %", "value": "{{ UsedPct }}", "as": "status-badge"},
             ],
         }
 
-    def test_explicit_id_overrides_auto(self):
+    def test_explicit_slug_overrides_auto(self):
         result = _expand_compact_widget({
             "alert_panel": "Alerts",
-            "id": "my_alerts",
+            "slug": "my_alerts",
         })
-        assert result["id"] == "my_alerts"
+        assert result["slug"] == "my_alerts"
 
     def test_full_format_passthrough(self):
-        original = {"id": "x", "title": "X", "type": "key_value", "fields": []}
+        original = {"slug": "x", "name": "X", "type": "key_value", "fields": []}
         result = _expand_compact_widget(dict(original))
-        assert result["id"] == "x"
+        assert result["slug"] == "x"
 
 
 # ---------------------------------------------------------------------------
@@ -178,14 +178,14 @@ class TestExpandCompactSyntax:
             "detection": {"keys_any": ["x"]},
             "fields": {"f": "x.f"},
             "fleet_columns": [
-                {"header": "Host", "field": "hostname"},
-                {"header": "Score", "field": "score"},
+                {"name": "Host", "value": "hostname"},
+                {"name": "Score", "value": "score"},
             ],
         }
         result = _expand_compact_syntax(data)
         assert result["fleet_columns"] == [
-            {"header": "Host", "field": "hostname"},
-            {"header": "Score", "field": "score"},
+            {"name": "Host", "value": "hostname"},
+            {"name": "Score", "value": "score"},
         ]
 
 
@@ -349,8 +349,8 @@ class TestRoundTrip:
                 {
                     "key_value": "Info",
                     "fields": [
-                        {"label": "Host", "field": "hostname"},
-                        {"label": "Uptime", "field": "uptime"},
+                        {"name": "Host", "value": "{{ hostname }}"},
+                        {"name": "Uptime", "value": "{{ uptime }}"},
                     ],
                 },
             ],

@@ -504,6 +504,7 @@ function Get-NcsXamlControlMap {
         "ActionTagsTextBox",
         "ActionTagsTree",
         "ActionTagsTreeBorder",
+        "ActionTagsTreePanel",
         "ActionTagsTreeScroll",
         "ActionTagsEmptyText",
         "ActionCheckModeCheckBox",
@@ -560,6 +561,7 @@ function Get-NcsXamlControlMap {
         "ScheduleTagsTextBox",
         "ScheduleTagsTree",
         "ScheduleTagsTreeBorder",
+        "ScheduleTagsTreePanel",
         "ScheduleTagsTreeScroll",
         "ScheduleTagsEmptyText",
         "ScheduleTimeoutTextBox",
@@ -1736,16 +1738,17 @@ function Show-NcsConsoleApp {
         $localState = $state
         $tree = $localControls[$TreeName]
         $emptyText = $localControls[$EmptyTextName]
-        $border = $localControls[$TreeName + "Border"]
+        $treePanel = $localControls[$TreeName + "Panel"]
         $tree.Items.Clear()
+        $emptyText.Visibility = "Collapsed"
+        $treePanel.Visibility = "Collapsed"
         if ([string]::IsNullOrWhiteSpace($Playbook)) {
-            $border.Visibility = "Collapsed"
             return
         }
         $applyGroups = {
             param($Controls, [string] $TreeName, [string] $EmptyTextName, $Groups)
             $et = $Controls[$EmptyTextName]
-            $border = $Controls[$TreeName + "Border"]
+            $tp = $Controls[$TreeName + "Panel"]
             # PS unwraps empty arrays pulled out of hashtables to $null, and
             # @($null).Length is 1, so guard explicitly.
             $list = @()
@@ -1755,9 +1758,10 @@ function Show-NcsConsoleApp {
             if (@($list).Count -gt 0) {
                 Build-NcsTreeView -Controls $Controls -TreeViewName $TreeName -Groups $list -TagProperty "tag" -Expanded $true -LeafIcon ""
                 $et.Visibility = "Collapsed"
-                $border.Visibility = "Visible"
+                $tp.Visibility = "Visible"
             } else {
-                $border.Visibility = "Collapsed"
+                $et.Visibility = "Collapsed"
+                $tp.Visibility = "Collapsed"
             }
         }
         if ($script:PlaybookTagsCache.ContainsKey($Playbook)) {
@@ -1766,9 +1770,6 @@ function Show-NcsConsoleApp {
         }
         $token = [guid]::NewGuid().ToString('N')
         $script:TagFetchTokens[$TreeName] = $token
-        $border.Visibility = "Visible"
-        $emptyText.Text = "Loading tags…"
-        $emptyText.Visibility = "Visible"
 
         if ($null -eq $script:NcsWorkerPool) {
             # Worker pool unavailable — run synchronously (UI blocks briefly).
@@ -2526,11 +2527,11 @@ function Show-NcsConsoleApp {
                 $controls.ActionLimitTree.Items.Clear()
                 $controls.ActionLimitEmptyText.Visibility = "Visible"
                 $controls.ActionTagsTree.Items.Clear()
-                $controls.ActionTagsEmptyText.Visibility = "Visible"
+                $controls.ActionTagsTreePanel.Visibility = "Collapsed"
                 $controls.ScheduleLimitTree.Items.Clear()
                 $controls.ScheduleLimitEmptyText.Visibility = "Visible"
                 $controls.ScheduleTagsTree.Items.Clear()
-                $controls.ScheduleTagsEmptyText.Visibility = "Visible"
+                $controls.ScheduleTagsTreePanel.Visibility = "Collapsed"
                 $script:TagFetchTokens = @{}
                 Stop-NcsTagFetches
                 $script:ActionGroups = @()

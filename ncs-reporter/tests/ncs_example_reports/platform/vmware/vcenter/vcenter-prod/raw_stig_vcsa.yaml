@@ -9,6 +9,6 @@ data:
   rule_version: VCST-70-000001
   status: failed
   severity: medium
-  title: VCSA STIG sample
+  name: VCSA STIG sample
   checktext: VCSA control not compliant.
 target_type: vcsa

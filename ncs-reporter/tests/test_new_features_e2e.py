@@ -35,10 +35,10 @@ class TestNewFeaturesE2E(unittest.TestCase):
                 "note": {"path": "raw_adv.data.note", "type": "str"},
             },
             "widgets": [
-                {"id": "p1", "title": "Usage", "type": "progress_bar", "field": "usage", "layout": {"width": "half"}},
-                {"id": "m1", "title": "Info", "type": "markdown", "content": "Hello **World**"},
+                {"slug": "p1", "name": "Usage", "type": "progress_bar", "value": "{{ usage }}", "layout": {"width": "half"}},
+                {"slug": "m1", "name": "Info", "type": "markdown", "content": "Hello **World**"},
             ],
-            "fleet_columns": [{"header": "Usage", "field": "usage"}],
+            "fleet_columns": [{"name": "Usage", "value": "{{ usage }}"}],
         }
         with open(self.schema_dir / "adv_test.yaml", "w") as f:
             yaml.dump(advanced_schema, f)

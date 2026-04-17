@@ -13,24 +13,24 @@
 
 # Phase 2: VMware STIG Hardening
 - name: "Phase 2a: ESXi STIG Hardening"
-  ansible.builtin.import_playbook: vmware/esxi/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.vmware.esxi_stig_remediate
 
 - name: "Phase 2b: VM STIG Hardening"
-  ansible.builtin.import_playbook: vmware/vm/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.vmware.vm_stig_remediate
 
 - name: "Phase 2c: VCSA STIG Hardening"
-  ansible.builtin.import_playbook: vmware/vcsa/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.vmware.vcsa_stig_remediate
 
 # Phase 3: Linux Fleet Hardening
 - name: "Phase 3: Linux System Hardening"
-  ansible.builtin.import_playbook: linux/ubuntu/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.linux.ubuntu_stig_remediate
 
 - name: "Phase 3b: Photon OS Hardening"
-  ansible.builtin.import_playbook: linux/photon/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.linux.photon_stig_remediate
 
 # Phase 4: Windows Fleet Hardening
 - name: "Phase 4: Windows System Hardening"
-  ansible.builtin.import_playbook: windows/server/stig_remediate.yml
+  ansible.builtin.import_playbook: internal.windows.server_stig_remediate
 
 # Phase 5: Verification & Unified Reporting
 - name: "Phase 5: Final Compliance Assessment"

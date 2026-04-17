@@ -5,7 +5,6 @@ $script:MaxOutputLines = 50000
 $script:NcsActiveExecutionState = $null
 $script:NcsRemotePidPattern = '^\[\d{2}:\d{2}:\d{2}\]\s+NCS_REMOTE_PID:(\d+)$'
 $script:NcsRemoteRunRoot = '.cache/ncs-console'
-$script:NcsRemotePlaybooksDir = 'playbooks'
 
 function ConvertTo-NcsBashLiteral {
     param(
@@ -321,7 +320,7 @@ function Resolve-NcsPlaybookCommand {
     )
 
     $inventory = "inventory/production"
-    $command = "ansible-playbook -i $inventory $script:NcsRemotePlaybooksDir/$($Request.Playbook) --vault-password-file .vaultpass"
+    $command = "ansible-playbook -i $inventory $($Request.Playbook) --vault-password-file .vaultpass"
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Limit)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Limit)

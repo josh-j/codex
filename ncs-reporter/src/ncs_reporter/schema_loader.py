@@ -340,13 +340,13 @@ def _slugify(title: str) -> str:
 
 
 def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
-    """Expand compact widget dict (e.g., {table: "Title", rows: field, columns: [...]})."""
+    """Expand compact widget dict (e.g., {table: "Name", rows: var, columns: [...]})."""
     for wtype in _WIDGET_TYPE_KEYS:
         if wtype not in item:
             continue
-        title = item.pop(wtype)
-        widget_id = item.pop("id", _slugify(title))
-        result: dict[str, Any] = {"id": widget_id, "title": title, "type": wtype}
+        name = item.pop(wtype)
+        slug = item.pop("slug", _slugify(name))
+        result: dict[str, Any] = {"slug": slug, "name": name, "type": wtype}
 
         if wtype == "table":
             result["rows_field"] = item.pop("rows", item.pop("rows_field", None))
@@ -358,21 +358,9 @@ def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
         result.update(item)
         return result
 
-    # Not a compact widget — still expand inner shorthand (stat_cards dict-form)
-    return _expand_columns_in_widget(item)
-
-
-def _expand_columns_in_widget(item: dict[str, Any]) -> dict[str, Any]:
-    """Expand widget-level shorthand. Today: only stat_cards dict-form."""
-    # Expand dict-form stat_cards: {'Label': '{{ expr }}'} → list of card specs.
-    # Card thresholds come from the referenced var's FieldSpec at render time.
-    cards = item.get("cards")
-    if isinstance(cards, dict):
-        item["cards"] = [
-            {"label": label, "field": value_expr}
-            for label, value_expr in cards.items()
-        ]
-
+    # Canonical widget — auto-derive slug from name when omitted.
+    if isinstance(item, dict) and item.get("type") and "name" in item and "slug" not in item:
+        item["slug"] = _slugify(str(item["name"]))
     return item
 
 
@@ -387,6 +375,9 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
         for key, val in list(fields.items()):
             if isinstance(val, str) and (" | " in val or " = " in val):
                 fields[key] = _expand_compact_field(val)
+            elif isinstance(val, (int, float, bool, list)):
+                # Bare non-string literal → const form, e.g. `snapshot_age_days: 7`
+                fields[key] = {"const": val}
 
     # 2. Alerts must be dicts with a 'when' key (compact string syntax removed)
     alerts = data.get("alerts")

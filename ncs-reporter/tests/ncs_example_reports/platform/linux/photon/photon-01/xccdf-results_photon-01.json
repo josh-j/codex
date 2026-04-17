@@ -2,9 +2,8 @@
   {
     "id": "PHOTON-000001",
     "rule_id": "PHOTON-000001",
-    "name": "photon-01",
+    "name": null,
     "status": "failed",
-    "title": "Photon STIG sample",
     "severity": "medium",
     "fixtext": "",
     "checktext": ""

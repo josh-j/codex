@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from ncs_reporter.alerts import compute_audit_rollups
-from ncs_reporter.models.report_schema import ReportSchema
+from ncs_reporter.models.report_schema import _SENTINEL_UNSET, ReportSchema
 from ncs_reporter.primitives import canonical_severity
 
 from ._when import (
@@ -78,6 +78,11 @@ def extract_fields(schema: ReportSchema, raw: dict[str, Any]) -> tuple[dict[str,
     path_total = 0
     path_resolved = 0
     path_broken = 0
+
+    # Pass 0.5: const fields — literal values, no resolution.
+    for name, spec in schema.fields.items():
+        if spec.const is not _SENTINEL_UNSET:
+            result[name] = spec.const
 
     # Pass 1: path-based fields (override auto-imported vars)
     for name, spec in schema.fields.items():
@@ -237,9 +242,9 @@ def normalize_from_schema(schema: ReportSchema, raw_bundle: dict[str, Any]) -> d
 
     widgets_meta: dict[str, Any] = {}
     for widget in schema.widgets:
-        widgets_meta[widget.id] = {
-            "id": widget.id,
-            "title": widget.title,
+        widgets_meta[widget.slug] = {
+            "slug": widget.slug,
+            "name": widget.name,
             "type": widget.type,
         }
 

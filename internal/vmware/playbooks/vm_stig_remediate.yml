@@ -1,0 +1,82 @@
+# >>>
+# label: VM STIG Remediation
+# options:
+#   vm_stig_target_vms: text | Target VMs (JSON array) | JSON array of specific VM names to harden (blank = all discovered VMs)
+# <<<
+---
+# internal/vmware/playbooks/vm_stig_remediate.yml
+# Automated security hardening remediation for VMware virtual machines.
+
+- name: "Phase 2b | Pre-Hardening VM Discovery & Snapshots"
+  hosts: vcsa
+  connection: local
+  gather_facts: false
+  become: false
+  tags: ["vmware", "stig", "remediate", "snapshot"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Discover and validate VM targets"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
+
+  tasks:
+    - name: Create safety snapshots
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      vars:
+        ncs_action: remediate
+        ncs_operation: snapshot
+        vm_snapshot_targets: "{{ vm_stig_target_vms | default([]) }}"
+        vm_snapshot_name: "Ansible_Pre_STIG_Hardening_{{ now(utc=true, fmt='%Y%m%d_%H%M%S') }}"
+        vm_snapshot_desc: "Safety snapshot before STIG remediation"
+      when: vm_stig_target_vms | default([]) | length > 0
+
+- name: "Phase 2d | VM STIG Hardening (per vCenter)"
+  hosts: vcsa
+  connection: local
+  gather_facts: false
+  become: false
+  tags: ["vmware", "stig", "remediate", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  pre_tasks:
+    - name: "Re-discover VM targets (if not cached)"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
+
+  tasks:
+    - name: "Execute VM STIG Hardening"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      vars:
+        ncs_action: remediate
+        ncs_profile: stig
+      when: vm_stig_target_vms | default([]) | length > 0
+
+- name: "Phase 2f | Post-Remediation VM STIG Audit"
+  hosts: vcsa
+  connection: local
+  gather_facts: false
+  become: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  pre_tasks:
+    - name: "Re-discover VM targets (if not cached)"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
+
+  tasks:
+    - name: "Execute Post-Remediation VM STIG Audit"
+      ansible.builtin.include_role:
+        name: internal.vmware.vm
+      vars:
+        ncs_action: verify
+        ncs_profile: stig
+      when: vm_stig_target_vms | default([]) | length > 0

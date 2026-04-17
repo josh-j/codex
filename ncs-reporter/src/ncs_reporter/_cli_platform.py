@@ -51,15 +51,15 @@ def _validate_config_references(
         from .models.report_schema import KeyValueWidget, ProgressBarWidget, TableWidget
         if isinstance(widget, KeyValueWidget):
             for kv in widget.fields:
-                referenced.add(kv.field)
+                referenced.add(kv.value)
         elif isinstance(widget, TableWidget):
             referenced.add(widget.rows_field)
         elif isinstance(widget, ProgressBarWidget):
-            referenced.add(widget.field)
-            if widget.label:
-                referenced.add(widget.label)
+            referenced.add(widget.value)
+            if widget.value_label:
+                referenced.add(widget.value_label)
     for col in s.fleet_columns:
-        referenced.add(col.field)
+        referenced.add(col.value)
     for spec in s.fields.values():
         for tmpl in [spec.compute or "", *(spec.script.args if spec.script else {}).values()]:
             if isinstance(tmpl, str):

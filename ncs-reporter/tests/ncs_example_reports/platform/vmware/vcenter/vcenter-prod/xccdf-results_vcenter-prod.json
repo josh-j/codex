@@ -2,9 +2,8 @@
   {
     "id": "VCST-70-000001",
     "rule_id": "VCST-70-000001",
-    "name": "vcenter-prod",
+    "name": null,
     "status": "failed",
-    "title": "VCSA STIG sample",
     "severity": "medium",
     "fixtext": "",
     "checktext": ""

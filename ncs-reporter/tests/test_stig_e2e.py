@@ -47,7 +47,7 @@ class TestStigE2E(unittest.TestCase):
                     "id": "V-256379",
                     "status": status,
                     "severity": "medium",
-                    "title": "stigrule_256379_account_lock_failures",
+                    "name": "stigrule_256379_account_lock_failures",
                     "checktext": f"Rule Requirement: Security.AccountLockFailures must be set to 3. Status: {status}",
                 }
             ],
@@ -209,7 +209,7 @@ class TestVmStigE2E(unittest.TestCase):
                     "id": "V-256450",
                     "status": status,
                     "severity": "medium",
-                    "title": "stigrule_256450_copy_disabled",
+                    "name": "stigrule_256450_copy_disabled",
                     "checktext": f"Rule Requirement: Copy operations must be disabled. Status: {status}",
                 }
             ],
@@ -325,7 +325,7 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
                     "id": "VCST-70-000001",
                     "status": "failed",
                     "severity": "medium",
-                    "title": "VCST test",
+                    "name": "VCST test",
                 }
             ],
             "target_type": "vcsa",
@@ -372,7 +372,7 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
                     "id": "PHOTON-000001",
                     "status": "failed",
                     "severity": "medium",
-                    "title": "Photon test",
+                    "name": "Photon test",
                 }
             ],
             "target_type": "photon",

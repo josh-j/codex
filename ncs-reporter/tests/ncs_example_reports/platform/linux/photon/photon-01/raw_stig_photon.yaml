@@ -9,6 +9,6 @@ data:
   rule_version: PHOTON-000001
   status: failed
   severity: medium
-  title: Photon STIG sample
+  name: Photon STIG sample
   checktext: Photon control not compliant.
 target_type: photon
