@@ -1,7 +1,0 @@
----
-# internal.template.example : tasks/stig_v1r0/90_post_stig.yaml
-# TEMPLATE: Post-STIG cleanup — restart services, verify state, emit results.
-
-- name: "Example STIG v1r0 | Post-STIG"
-  ansible.builtin.debug:
-    msg: "TEMPLATE: Add post-STIG cleanup and verification tasks."

@@ -28,28 +28,8 @@ default:
 # Setup
 # =============================================================================
 # Complete environment setup (both venvs + all collections + SMB share)
-setup-all: setup-internal-symlink setup-main-venv setup-vcsa-venv setup-collections setup-samba
+setup-all: setup-main-venv setup-vcsa-venv setup-collections install-collections setup-samba
     @echo "✓ All environments ready"
-
-# Repair collections/ansible_collections/internal → ../../internal if broken/missing.
-# The symlink is git-tracked but some checkouts (e.g. cross-filesystem, Windows Git) drop it.
-setup-internal-symlink:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    link="collections/ansible_collections/internal"
-    target="../../internal"
-    if [ -L "$link" ] && [ -d "$link/" ]; then
-        echo "✓ $link already points to a valid target"
-        exit 0
-    fi
-    if [ ! -d "internal" ]; then
-        echo "⚠ internal/ not found at repo root — cannot create symlink" >&2
-        exit 1
-    fi
-    rm -rf "$link"
-    mkdir -p "$(dirname "$link")"
-    ln -sfn "$target" "$link"
-    echo "✓ Repaired $link → $target"
 
 # Provision the SMB share used by ncs-console to fetch reports
 setup-samba:
@@ -139,15 +119,15 @@ setup-collections:
         echo "✓ VCSA collection symlinks refreshed"
     fi
 
-# Build a release tarball for one internal collection.
+# Build a release tarball for one internal collection from its sibling repo.
 # Usage: just build-collection core     (outputs dist/internal-core-<ver>.tar.gz)
 build-collection name:
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -d "internal/{{ name }}" ] || { echo "unknown collection: {{ name }}" >&2; exit 1; }
+    src="../ncs-ansible-{{ name }}"
+    [ -d "$src" ] || { echo "sibling repo not found: $src" >&2; exit 1; }
     mkdir -p dist
-    cd "internal/{{ name }}"
-    ../../.venv/bin/ansible-galaxy collection build --force --output-path ../../dist
+    .venv/bin/ansible-galaxy collection build "$src" --force --output-path dist
     echo "✓ built dist/internal-{{ name }}-<version>.tar.gz"
 
 # Build tarballs for every internal collection.
@@ -155,18 +135,12 @@ build-collections-all: (build-collection "core") (build-collection "vmware") (bu
     @echo "✓ all collections built under dist/"
 
 # Install the four internal collections from the requirements.yml manifest.
-# Use in environments without the monorepo symlink — e.g. production or CI.
-# Without --force, the symlink (if present) wins; remove it before running.
 install-collections:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ -L collections/ansible_collections/internal ]; then
-        echo "note: collections/ansible_collections/internal is a symlink — remove it first"
-        echo "      to install from requirements.yml instead of using the monorepo source."
-        exit 1
-    fi
     .venv/bin/ansible-galaxy collection install -r requirements.yml \
         --collections-path collections/ --force
+    echo "✓ collections installed from requirements.yml"
     echo "✓ collections installed from requirements.yml"
 
 # Verify both environments are correctly configured
