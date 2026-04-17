@@ -134,6 +134,20 @@ build-collection name:
 build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows")
     @echo "✓ all collections built under dist/"
 
+# Rebuild every collection tarball and stage it under collections/vendor/
+# (the committed location requirements.yml Mode A points at). Run this
+# after a `just release-collection` so a fresh ncs-ansible `git pull`
+# carries the new version to every consumer machine.
+vendor-collections: build-collections-all
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p collections/vendor
+    for f in dist/internal-*.tar.gz; do
+        cp -f "$f" collections/vendor/
+    done
+    echo "✓ collections/vendor/ refreshed:"
+    ls -1 collections/vendor/
+
 # Install the four internal collections from the requirements.yml manifest.
 install-collections:
     #!/usr/bin/env bash

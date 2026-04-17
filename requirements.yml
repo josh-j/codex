@@ -2,39 +2,36 @@
 # ncs-ansible assembles four independent NCS collections, all resolved
 # locally — never fetched from Galaxy, GitHub, or any remote.
 #
-# Active mode: sibling working directories at /home/sio/ncs-ansible-<col>/.
-# Edits to those repos propagate into ncs-ansible by re-running:
+# Active mode: vendored tarballs at collections/vendor/. These are
+# committed to the ncs-ansible repo so a fresh `git pull` on any host
+# carries the current collection snapshot, and `just install-collections`
+# works without sibling-repo checkouts.
 #
-#   just install-collections
+# Rebuild the tarballs after cutting a new release in a sibling repo:
+#   just vendor-collections    # build + stage into collections/vendor/
 #
-# (Ansible copies the directory contents into
-#  collections/ansible_collections/ at install time; edits don't
-#  live-update until re-install.)
-#
-# To switch to tarball mode for production / CI, comment out the Mode B
-# block below and uncomment the Mode A tarballs block. Build tarballs
-# inside each sibling repo with:
-#
-#   cd /home/sio/ncs-ansible-<col>
-#   ansible-galaxy collection build --output-path /home/sio/codex/dist/
+# Alternate: Mode B (sibling working directories) for active dev on
+# a separate collection repo — uncomment the block below and comment
+# out the tarball block.
 
 collections:
-  # --- Mode B: sibling working directories (active) -----------------------
-  - name: "../ncs-ansible-core"
-    type: dir
-  - name: "../ncs-ansible-vmware"
-    type: dir
-  - name: "../ncs-ansible-linux"
-    type: dir
-  - name: "../ncs-ansible-windows"
-    type: dir
+  # --- Mode A (default): vendored tarballs ---------------------------------
+  - name: "./collections/vendor/internal-core-1.0.0.tar.gz"
+    type: file
+  - name: "./collections/vendor/internal-vmware-1.1.0.tar.gz"
+    type: file
+  - name: "./collections/vendor/internal-linux-1.1.0.tar.gz"
+    type: file
+  - name: "./collections/vendor/internal-windows-1.1.0.tar.gz"
+    type: file
 
-  # --- Mode A: local tarballs from dist/ ---------------------------------
-  # - name: "./dist/internal-core-1.0.0.tar.gz"
-  #   type: file
-  # - name: "./dist/internal-vmware-1.1.0.tar.gz"
-  #   type: file
-  # - name: "./dist/internal-linux-1.1.0.tar.gz"
-  #   type: file
-  # - name: "./dist/internal-windows-1.1.0.tar.gz"
-  #   type: file
+  # --- Mode B: sibling working directories --------------------------------
+  #
+  # - name: "../ncs-ansible-core"
+  #   type: dir
+  # - name: "../ncs-ansible-vmware"
+  #   type: dir
+  # - name: "../ncs-ansible-linux"
+  #   type: dir
+  # - name: "../ncs-ansible-windows"
+  #   type: dir
