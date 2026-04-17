@@ -40,3 +40,11 @@ schedules:
   #   enabled: true
   #   notify_on_failure: true
   #   timeout_minutes: 240
+
+  # - name: hourly-collect-and-alert
+  #   description: "Collect fleet telemetry, then fire cooldown-gated alert actions"
+  #   playbook: playbooks/site_collect_and_alert.yml
+  #   calendar: "hourly"
+  #   enabled: true
+  #   notify_on_failure: true
+  #   timeout_minutes: 45

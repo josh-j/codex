@@ -192,45 +192,47 @@ The two triggers aren't parallel; they stack:
 └──────────────────────────┘
 ```
 
-### Example wiring
+### The glue playbook
 
-To turn alerts into a true event pipeline, add a scheduler entry that invokes
-`fire-on-alerts` after a fresh collect. Either bundle it into a site
-orchestrator, or schedule a thin wrapper:
+`playbooks/site_collect_and_alert.yml` composes both halves in one
+site orchestrator. Phase 1 imports `site_collect_only.yml` to refresh
+raw bundles; phase 2 enumerates every `raw_*.yaml` under
+`ncs_config.report_directory/platform/` and invokes
+`ncs-reporter fire-on-alerts` against each. Per-bundle failures don't
+abort the sweep — each alert action runs independently and the
+state file protects against re-firing noisy actions while one is
+being investigated.
 
-```yaml
-# schedules.yml
-schedules:
-  - name: hourly-alert-sweep
-    description: "Collect + evaluate alerts + fire gated actions"
-    playbook: playbooks/site_collect_and_alert.yml
-    calendar: "hourly"
-    enabled: true
-    notify_on_failure: true
-    timeout_minutes: 45
+Variables (all with sensible defaults):
+
+| Var | Default | Purpose |
+|---|---|---|
+| `ncs_config.report_directory` | `/srv/samba/reports` | Root under which `raw_*.yaml` bundles live |
+| `ncs_config.alert_state_file` | `/var/lib/ncs/alert_state.yaml` | Cooldown state path |
+| `ncs_fire_on_alerts_dry_run` | `false` | Set `true` to preview actions without executing them |
+
+Invoke it directly:
+
+```bash
+ansible-playbook -i inventory/production playbooks/site_collect_and_alert.yml
+ansible-playbook -i inventory/production playbooks/site_collect_and_alert.yml \
+    -e ncs_fire_on_alerts_dry_run=true       # preview mode
 ```
 
-```yaml
-# playbooks/site_collect_and_alert.yml (sketch — not yet in repo)
-- import_playbook: site_collect_only.yml
+Or wire it into a schedule (example already present in `schedules.yml`):
 
-- name: Fire alert actions across the fleet
-  hosts: localhost
-  connection: local
-  tasks:
-    - name: Evaluate alerts per host + fire gated actions
-      ansible.builtin.command:
-        cmd: >-
-          ncs-reporter fire-on-alerts
-          -i {{ item }}
-          --state-file /var/lib/ncs/alert_state.yaml
-          --project-dir {{ playbook_dir }}/..
-      loop: "{{ query('fileglob', '/srv/samba/reports/platform/**/raw_*.yaml') }}"
-      changed_when: false
+```yaml
+- name: hourly-collect-and-alert
+  description: "Collect fleet telemetry, then fire cooldown-gated alert actions"
+  playbook: playbooks/site_collect_and_alert.yml
+  calendar: "hourly"
+  enabled: true
+  notify_on_failure: true
+  timeout_minutes: 45
 ```
 
-This glue playbook is not yet shipped — it's the natural bridge if you want
-alerts to drive continuous action without manual CLI invocation.
+Enable by uncommenting the block in `schedules.yml` and running
+`just apply-schedules`.
 
 ---
 
