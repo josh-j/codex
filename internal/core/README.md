@@ -2,6 +2,19 @@
 
 Shared plugin framework and orchestration roles used by all platform-specific internal collections. Provides the unified action/profile/operation interface, STIG automation engine, PowerShell execution wrapper, and telemetry collection callback.
 
+This is the base dependency every `internal.<platform>` collection declares.
+It has no Ansible-collection dependencies of its own.
+
+## Installation
+
+```bash
+# from a built tarball
+ansible-galaxy collection install internal-core-<version>.tar.gz
+
+# or via the app repo's requirements.yml manifest
+ansible-galaxy collection install -r requirements.yml
+```
+
 ## Plugins
 
 | Plugin | Type | Purpose |
