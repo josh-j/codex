@@ -339,21 +339,6 @@ def _slugify(title: str) -> str:
     return _re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
 
 
-def _expand_compact_column(value: str) -> dict[str, Any]:
-    """Expand 'Label: field_name [badge]' into a column/field dict."""
-    badge = False
-    if value.endswith(" [badge]"):
-        badge = True
-        value = value[:-8]
-    if ":" not in value:
-        return {"label": value, "field": value}
-    label, field = value.split(":", 1)
-    result: dict[str, Any] = {"label": label.strip(), "field": field.strip()}
-    if badge:
-        result["badge"] = True
-    return result
-
-
 def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
     """Expand compact widget dict (e.g., {table: "Title", rows: field, columns: [...]})."""
     for wtype in _WIDGET_TYPE_KEYS:
@@ -365,95 +350,28 @@ def _expand_compact_widget(item: dict[str, Any]) -> dict[str, Any]:
 
         if wtype == "table":
             result["rows_field"] = item.pop("rows", item.pop("rows_field", None))
-            result["columns"] = _expand_column_list(item.pop("columns", []))
+            result["columns"] = item.pop("columns", [])
         elif wtype == "key_value":
-            result["fields"] = _expand_column_list(item.pop("fields", []))
+            result["fields"] = item.pop("fields", [])
 
         # Pass through remaining keys (layout, visible_if, etc.)
         result.update(item)
         return result
 
-    # Not a compact widget — but still expand compact column strings inside it
+    # Not a compact widget — still expand inner shorthand (stat_cards dict-form)
     return _expand_columns_in_widget(item)
 
 
-_COLUMN_KEYS = frozenset({"label", "title", "field", "badge", "format", "link_field", "style_rules", "width"})
-
-
-def _expand_compact_column_dict(item: dict[str, Any]) -> dict[str, Any]:
-    """Expand a dict column that uses a compact label→field entry.
-
-    Accepts: {'Tools Status': '{{ tools_status }}', badge: true}
-    Returns: {label: 'Tools Status', field: '{{ tools_status }}', badge: true}
-    """
-    unknown = {k: v for k, v in item.items() if k not in _COLUMN_KEYS}
-    if len(unknown) != 1:
-        return item  # not compact form — leave as-is
-    compact_label, compact_field = next(iter(unknown.items()))
-    if not isinstance(compact_field, str):
-        return item  # value isn't a field ref — leave as-is
-    result: dict[str, Any] = {"label": compact_label, "field": compact_field}
-    for k, v in item.items():
-        if k != compact_label:
-            result[k] = v
-    # Support [badge] suffix in label
-    if "[badge]" in compact_label:
-        result["label"] = compact_label.replace(" [badge]", "").replace("[badge]", "")
-        result["badge"] = True
-    return result
-
-
-def _expand_column_list(items: list[Any]) -> list[Any]:
-    """Expand compact column/field strings and compact dicts in a list."""
-    result: list[Any] = []
-    for c in items:
-        if isinstance(c, str):
-            result.append(_expand_compact_column(c))
-        elif isinstance(c, dict) and "label" not in c and "title" not in c and "field" not in c:
-            result.append(_expand_compact_column_dict(c))
-        else:
-            result.append(c)
-    return result
-
-
-def _expand_dict_columns(mapping: dict[str, str]) -> list[dict[str, Any]]:
-    """Expand dict-form columns/fields: {'Label [badge]': '{{ var }}'} → list of dicts."""
-    result: list[dict[str, Any]] = []
-    for label, field_ref in mapping.items():
-        badge = "[badge]" in label
-        clean_label = label.replace(" [badge]", "").replace("[badge]", "")
-        entry: dict[str, Any] = {"label": clean_label, "field": field_ref}
-        if badge:
-            entry["badge"] = True
-        result.append(entry)
-    return result
-
-
 def _expand_columns_in_widget(item: dict[str, Any]) -> dict[str, Any]:
-    """Expand compact column strings and dict-form columns in a widget dict."""
-    for key in ("columns", "fields"):
-        val = item.get(key)
-        if isinstance(val, dict):
-            item[key] = _expand_dict_columns(val)
-        elif isinstance(val, list):
-            item[key] = _expand_column_list(val)
-
-    # Expand dict-form stat_cards: {'Label': '{{ expr }}'} + widget-level thresholds
+    """Expand widget-level shorthand. Today: only stat_cards dict-form."""
+    # Expand dict-form stat_cards: {'Label': '{{ expr }}'} → list of card specs.
+    # Card thresholds come from the referenced var's FieldSpec at render time.
     cards = item.get("cards")
     if isinstance(cards, dict):
-        widget_thresholds = item.pop("thresholds", {}) or {}
-        expanded_cards: list[dict[str, Any]] = []
-        for label, value_expr in cards.items():
-            card: dict[str, Any] = {"label": label, "field": value_expr}
-            # Extract var name from Jinja2 expression for threshold matching
-            import re as _re
-            var_match = _re.search(r"\{\{\s*(\w+)", str(value_expr))
-            if var_match:
-                var_name = var_match.group(1)
-                if var_name in widget_thresholds:
-                    card["thresholds"] = widget_thresholds[var_name]
-            expanded_cards.append(card)
-        item["cards"] = expanded_cards
+        item["cards"] = [
+            {"label": label, "field": value_expr}
+            for label, value_expr in cards.items()
+        ]
 
     return item
 
@@ -523,11 +441,6 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
                     "type": field_type,
                 }
                 fields[field_name] = entry
-
-    # 5. Expand compact fleet_columns
-    fleet_columns = data.get("fleet_columns")
-    if isinstance(fleet_columns, list):
-        data["fleet_columns"] = _expand_column_list(fleet_columns)
 
     return data
 

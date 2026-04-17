@@ -344,17 +344,17 @@ class TestSchemaModelValidation:
                         "id": "summary",
                         "title": "Summary",
                         "type": "key_value",
-                        "fields": [{"title": "Host", "field": "hostname"}],
+                        "fields": [{"label": "Host", "field": "hostname"}],
                     },
                     {
                         "id": "table1",
                         "title": "Rows",
                         "type": "table",
                         "rows": "rows_data",
-                        "columns": [{"title": "Name", "field": "name"}],
+                        "columns": [{"header": "Name", "field": "name"}],
                     },
                 ],
-                "fleet_columns": [{"title": "Host", "field": "hostname"}],
+                "fleet_columns": [{"header": "Host", "field": "hostname"}],
             }
         )
 
@@ -364,7 +364,7 @@ class TestSchemaModelValidation:
         assert schema.fields["hostname"].fallback == "unknown"
         assert schema.fields["uptime_days"].compute == "uptime_seconds / 86400"
         assert schema.widgets[1].rows_field == "rows_data"
-        assert schema.fleet_columns[0].label == "Host"
+        assert schema.fleet_columns[0].header == "Host"
 
 
 # ---------------------------------------------------------------------------
@@ -1100,7 +1100,7 @@ class TestWidgetRendering:
             field="used_pct",
             label="used_gb",
             color="auto",
-            thresholds={75: "yellow", 90: "red"},
+            thresholds={"warn_at": 75, "crit_at": 90},
         )
 
         # Test ok range (below 75)
@@ -1144,7 +1144,7 @@ class TestWidgetRendering:
             rows_field="my_rows",
             columns=[
                 TableColumn(
-                    label="Status",
+                    header="Status",
                     field="status",
                     style_rules=[
                         StyleRule(when="status > 90", css_class="red")

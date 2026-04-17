@@ -24,7 +24,8 @@ config:
       VC: vcsa
       PH: photon
   extra_fleet_widget_columns:
-    'Version': "{{ appliance_version }}"
+    - header: Version
+      field: appliance_version
 
 vars:
   # All raw_vcsa.data.* fields are auto-imported from the collector payload.
@@ -32,7 +33,9 @@ vars:
   appliance_uptime_days:
     compute: "{{ appliance_uptime_seconds / 86400 }}"
   alarm_count:
-    thresholds: { 1: yellow, 5: red }
+    thresholds:
+      warn_at: 1
+      crit_at: 5
 
 alerts:
   - id: appliance_health_red
@@ -117,12 +120,17 @@ widgets:
     title: "Active vCenter Alarms"
     rows: "{{ active_alarms }}"
     columns:
-      - 'Alarm': "{{ alarm_name }}"
-      - 'Entity': "{{ entity }}"
-      - 'Severity': "{{ severity }}"
-        badge: true
-      - 'Time': "{{ time }}"
-      - 'Description': "{{ description }}"
+      - header: Alarm
+        field: alarm_name
+      - header: Entity
+        field: entity
+      - header: Severity
+        field: severity
+        as: status-badge
+      - header: Time
+        field: time
+      - header: Description
+        field: description
 
   - type: stat-cards
     id: inventory_kpis
@@ -141,124 +149,179 @@ widgets:
     title: "Appliance Overview"
     layout: half
     fields:
-      - 'Version': "{{ appliance_version }}"
-      - 'Build': "{{ appliance_build }}"
-      - 'Health Overall': "{{ appliance_health_overall }}"
-        badge: true
-      - 'Health CPU': "{{ appliance_health_cpu }}"
-        badge: true
-      - 'Health Memory': "{{ appliance_health_memory }}"
-        badge: true
-      - 'Health DB': "{{ appliance_health_database }}"
-        badge: true
-      - 'Health Storage': "{{ appliance_health_storage }}"
-        badge: true
-      - 'Uptime (days)': "{{ appliance_uptime_days }}"
-      - 'SSH Enabled': "{{ ssh_enabled }}"
-        badge: true
-      - 'NTP Mode': "{{ ntp_mode }}"
-      - 'Backup Schedules': "{{ backup_schedule_count }}"
-      - 'Extensions': "{{ extension_count }}"
-      - 'Content Libraries': "{{ content_library_count }}"
-      - 'Tag Categories': "{{ tag_category_count }}"
+      - label: Version
+        field: appliance_version
+      - label: Build
+        field: appliance_build
+      - label: Health Overall
+        field: appliance_health_overall
+        as: status-badge
+      - label: Health CPU
+        field: appliance_health_cpu
+        as: status-badge
+      - label: Health Memory
+        field: appliance_health_memory
+        as: status-badge
+      - label: Health DB
+        field: appliance_health_database
+        as: status-badge
+      - label: Health Storage
+        field: appliance_health_storage
+        as: status-badge
+      - label: Uptime (days)
+        field: appliance_uptime_days
+      - label: SSH Enabled
+        field: ssh_enabled
+        as: status-badge
+      - label: NTP Mode
+        field: ntp_mode
+      - label: Backup Schedules
+        field: backup_schedule_count
+      - label: Extensions
+        field: extension_count
+      - label: Content Libraries
+        field: content_library_count
+      - label: Tag Categories
+        field: tag_category_count
 
   - type: table
     title: "Clusters"
     when: cluster_count > 0
     rows: "{{ clusters }}"
     columns:
-      - 'Cluster': "{{ name }}"
-      - 'Datacenter': "{{ datacenter }}"
-      - 'Hosts': "{{ host_count }}"
-      - 'HA': "{{ ha_enabled }}"
-        badge: true
-      - 'DRS': "{{ drs_enabled }}"
-        badge: true
-      - 'CPU %': "{{ cpu_usage_pct }}"
-      - 'Mem %': "{{ mem_usage_pct }}"
+      - header: Cluster
+        field: name
+      - header: Datacenter
+        field: datacenter
+      - header: Hosts
+        field: host_count
+      - header: HA
+        field: ha_enabled
+        as: status-badge
+      - header: DRS
+        field: drs_enabled
+        as: status-badge
+      - header: CPU %
+        field: cpu_usage_pct
+      - header: Mem %
+        field: mem_usage_pct
 
   - type: table
     title: "Datastores"
     when: datastore_count > 0
     rows: "{{ datastores }}"
     columns:
-      'Name': "{{ name }}"
-      'Capacity (GB)': "{{ capacity_gb }}"
-      'Free (GB)': "{{ free_gb }}"
-      'Used %': "{{ used_pct }}"
+      - header: Name
+        field: name
+      - header: Capacity (GB)
+        field: capacity_gb
+      - header: Free (GB)
+        field: free_gb
+      - header: Used %
+        field: used_pct
 
   - type: table
     title: "Resource Pools"
     when: resource_pool_count > 0
     rows: "{{ resource_pools }}"
     columns:
-      'Name': "{{ name }}"
-      'CPU Reservation': "{{ runtime_cpu_reservation_used }}"
-      'CPU Limit': "{{ runtime_cpu_overall_usage }}"
-      'Memory Reservation': "{{ runtime_memory_reservation_used }}"
-      'Memory Limit': "{{ runtime_memory_overall_usage }}"
+      - header: Name
+        field: name
+      - header: CPU Reservation
+        field: runtime_cpu_reservation_used
+      - header: CPU Limit
+        field: runtime_cpu_overall_usage
+      - header: Memory Reservation
+        field: runtime_memory_reservation_used
+      - header: Memory Limit
+        field: runtime_memory_overall_usage
 
   - type: table
     title: "Distributed Switches"
     when: dvswitch_count > 0
     rows: "{{ dvswitches }}"
     columns:
-      'Name': "{{ name }}"
-      'Ports': "{{ num_ports }}"
-      'Uplinks': "{{ num_uplinks }}"
-      'MTU': "{{ mtu }}"
+      - header: Name
+        field: name
+      - header: Ports
+        field: num_ports
+      - header: Uplinks
+        field: num_uplinks
+      - header: MTU
+        field: mtu
 
   - type: table
     title: "Distributed Portgroups"
     when: dvs_portgroup_count > 0
     rows: "{{ dvs_portgroups }}"
     columns:
-      'Name': "{{ portgroup_name }}"
-      'Switch': "{{ dvswitch_name }}"
-      'VLAN': "{{ vlan_id }}"
-      'Ports': "{{ num_ports }}"
-      'Type': "{{ port_binding }}"
+      - header: Name
+        field: portgroup_name
+      - header: Switch
+        field: dvswitch_name
+      - header: VLAN
+        field: vlan_id
+      - header: Ports
+        field: num_ports
+      - header: Type
+        field: port_binding
 
   - type: table
     title: "Licenses"
     when: license_count > 0
     rows: "{{ licenses }}"
     columns:
-      'Name': "{{ name }}"
-      'Edition': "{{ edition }}"
-      'Total': "{{ total }}"
-      'Used': "{{ used }}"
-      'Expiration': "{{ expiration_date }}"
+      - header: Name
+        field: name
+      - header: Edition
+        field: edition
+      - header: Total
+        field: total
+      - header: Used
+        field: used
+      - header: Expiration
+        field: expiration_date
 
   - type: table
     title: "Extensions"
     when: extension_count > 0
     rows: "{{ extensions }}"
     columns:
-      'Label': "{{ ext_label }}"
-      'Company': "{{ ext_company }}"
-      'Version': "{{ ext_version }}"
-      'Last Heartbeat': "{{ ext_last_heartbeat_time }}"
+      - header: Label
+        field: ext_label
+      - header: Company
+        field: ext_company
+      - header: Version
+        field: ext_version
+      - header: Last Heartbeat
+        field: ext_last_heartbeat_time
 
   - type: table
     title: "Content Libraries"
     when: content_library_count > 0
     rows: "{{ content_libraries }}"
     columns:
-      'Name': "{{ lib_name }}"
-      'Type': "{{ lib_type }}"
-      'Description': "{{ lib_description }}"
+      - header: Name
+        field: lib_name
+      - header: Type
+        field: lib_type
+      - header: Description
+        field: lib_description
 
   - type: table
     title: "Backup Schedules"
     when: backup_schedule_count > 0
     rows: "{{ backup_schedules }}"
     columns:
-      - 'Name': "{{ name }}"
-      - 'Enabled': "{{ enabled }}"
-        badge: true
+      - header: Name
+        field: name
+      - header: Enabled
+        field: enabled
+        as: status-badge
         style_rules:
           - when: enabled == 0.0
             css_class: "sv-critical"
-      - 'Location': "{{ location }}"
-      - 'Retain Count': "{{ retain_count }}"
+      - header: Location
+        field: location
+      - header: Retain Count
+        field: retain_count

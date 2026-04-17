@@ -68,9 +68,6 @@ def _add_aliases(schema: dict) -> None:
             type_prop.pop("const")
             type_prop["enum"] = [canonical, hyphenated]
 
-    # Accept dict shorthand for fields/cards/columns properties.
-    # Configs use compact dict form {'Label': "{{ field }}"} which the
-    # model_validator normalises to arrays at runtime.
     # Accept string shorthand for WidgetLayout (e.g. layout: half)
     # The model_validator converts "half" → {"width": "half"} at runtime.
     for def_name in defs:
@@ -86,25 +83,16 @@ def _add_aliases(schema: dict) -> None:
                 "default": "full",
             }
 
-    _DICT_OR_ARRAY = {
-        "KeyValueWidget": ["fields"],
-        "StatCardsWidget": ["cards"],
-        "TableWidget": ["columns"],
-        "GroupedTableWidget": ["columns"],
-    }
-    for def_name, prop_names in _DICT_OR_ARRAY.items():
-        defn = defs.get(def_name, {})
-        props = defn.get("properties", {})
-        for prop_name in prop_names:
-            prop = props.get(prop_name)
-            if prop and (prop.get("type") == "array" or "anyOf" not in prop):
-                # Allow either array (canonical) or object (compact dict shorthand)
-                prop.pop("items", None)
-                prop.pop("type", None)
-                prop["anyOf"] = [
-                    {"type": "array", "items": {"anyOf": [{"type": "object", "additionalProperties": True}]}},
-                    {"type": "object", "additionalProperties": True},
-                ]
+    # stat_cards still accepts dict shorthand {'Label': "{{ expr }}"} (expanded by schema_loader)
+    stat_cards = defs.get("StatCardsWidget", {})
+    cards_prop = stat_cards.get("properties", {}).get("cards")
+    if cards_prop and cards_prop.get("type") == "array":
+        cards_prop.pop("items", None)
+        cards_prop.pop("type", None)
+        cards_prop["anyOf"] = [
+            {"type": "array", "items": {"anyOf": [{"type": "object", "additionalProperties": True}]}},
+            {"type": "object", "additionalProperties": True},
+        ]
 
     # Accept $include strings where arrays or dicts are expected.
     # The schema_loader resolves $include at load time before validation.

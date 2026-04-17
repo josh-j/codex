@@ -69,6 +69,19 @@ class ScriptSpec(BaseModel):
     timeout: int = Field(default=30, validation_alias=AliasChoices("timeout", "script_timeout"))
 
 
+class ThresholdSpec(BaseModel):
+    """Severity breakpoints for a numeric value: `warn_at` → yellow, `crit_at` → red.
+
+    Values at or above the threshold adopt that severity. `crit_at` takes precedence
+    when both match. Values below both thresholds render green (default/ok).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    warn_at: float | None = None
+    crit_at: float | None = None
+
+
 class FieldSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -150,8 +163,8 @@ class FieldSpec(BaseModel):
     all_where: dict[str, Any] | None = None
     # Sum a numeric field across all list items (after list_filter if set).
     sum_field: str | None = None
-    # Display thresholds: { value: color } for widgets that show this var.
-    thresholds: dict[int, str] | None = None
+    # Display thresholds for widgets that show this var (warn_at/crit_at).
+    thresholds: ThresholdSpec | None = None
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
@@ -245,12 +258,12 @@ class WidgetLayout(BaseModel):
 
 
 class KeyValueField(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    label: str = Field(validation_alias=AliasChoices("label", "title"))
+    label: str
     field: str
     format: str | None = None
-    badge: bool = False
+    as_: Literal["status-badge"] | None = Field(default=None, alias="as")
 
 
 class KeyValueWidget(BaseModel):
@@ -271,11 +284,11 @@ class StyleRule(BaseModel):
 
 
 class TableColumn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    label: str = Field(validation_alias=AliasChoices("label", "title"))
+    header: str
     field: str
-    badge: bool = False
+    as_: Literal["status-badge"] | None = Field(default=None, alias="as")
     format: str | None = None
     link_field: str | None = None
     style_rules: list[StyleRule] = Field(default_factory=list)
@@ -314,7 +327,7 @@ class ProgressBarWidget(BaseModel):
     field: str  # Field containing a 0-100 percentage
     label: str | None = None  # Optional secondary field for text label
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
-    thresholds: dict[int, str] | None = None  # e.g., { 75: "yellow", 90: "red" }
+    thresholds: ThresholdSpec | None = None
 
 
 class MarkdownWidget(BaseModel):
@@ -335,7 +348,7 @@ class StatCardSpec(BaseModel):
     label: str
     format: str | None = None
     color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
-    thresholds: dict[int, str] | None = None
+    thresholds: ThresholdSpec | None = None
 
 
 class StatCardsWidget(BaseModel):
@@ -431,8 +444,8 @@ class PlatformSpec(BaseModel):
 
 
 class FleetColumn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    label: str = Field(validation_alias=AliasChoices("label", "title"))
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    header: str
     field: str
     width: str | None = None
 

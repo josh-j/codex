@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from ncs_reporter.schema_loader import (
-    _expand_compact_column,
     _expand_compact_field,
     _expand_compact_syntax,
     _expand_compact_widget,
@@ -61,31 +60,7 @@ class TestCompactField:
 
 
 # ---------------------------------------------------------------------------
-# Compact column expansion
-# ---------------------------------------------------------------------------
-
-
-class TestCompactColumn:
-    def test_label_and_field(self):
-        assert _expand_compact_column("Hostname: health_hostname") == {
-            "label": "Hostname",
-            "field": "health_hostname",
-        }
-
-    def test_badge(self):
-        assert _expand_compact_column("Status: status [badge]") == {
-            "label": "Status",
-            "field": "status",
-            "badge": True,
-        }
-
-    def test_no_colon(self):
-        result = _expand_compact_column("hostname")
-        assert result == {"label": "hostname", "field": "hostname"}
-
-
-# ---------------------------------------------------------------------------
-# Compact widget expansion
+# Compact widget expansion (top-level shorthand only — column/field shorthand removed)
 # ---------------------------------------------------------------------------
 
 
@@ -97,7 +72,10 @@ class TestCompactWidget:
     def test_key_value(self):
         result = _expand_compact_widget({
             "key_value": "Overview",
-            "fields": ["Hostname: hostname", "OS: os_name"],
+            "fields": [
+                {"label": "Hostname", "field": "hostname"},
+                {"label": "OS", "field": "os_name"},
+            ],
         })
         assert result == {
             "id": "overview",
@@ -113,7 +91,10 @@ class TestCompactWidget:
         result = _expand_compact_widget({
             "table": "Disk Usage",
             "rows": "health_disk",
-            "columns": ["Drive: DeviceID", "Used %: UsedPct [badge]"],
+            "columns": [
+                {"header": "Drive", "field": "DeviceID"},
+                {"header": "Used %", "field": "UsedPct", "as": "status-badge"},
+            ],
         })
         assert result == {
             "id": "disk_usage",
@@ -121,8 +102,8 @@ class TestCompactWidget:
             "type": "table",
             "rows_field": "health_disk",
             "columns": [
-                {"label": "Drive", "field": "DeviceID"},
-                {"label": "Used %", "field": "UsedPct", "badge": True},
+                {"header": "Drive", "field": "DeviceID"},
+                {"header": "Used %", "field": "UsedPct", "as": "status-badge"},
             ],
         }
 
@@ -137,20 +118,6 @@ class TestCompactWidget:
         original = {"id": "x", "title": "X", "type": "key_value", "fields": []}
         result = _expand_compact_widget(dict(original))
         assert result["id"] == "x"
-
-    def test_compact_columns_in_full_format(self):
-        widget = {
-            "id": "tbl",
-            "title": "T",
-            "type": "table",
-            "rows_field": "data",
-            "columns": ["Name: name", "Status: status [badge]"],
-        }
-        result = _expand_compact_widget(widget)
-        assert result["columns"] == [
-            {"label": "Name", "field": "name"},
-            {"label": "Status", "field": "status", "badge": True},
-        ]
 
 
 # ---------------------------------------------------------------------------
@@ -205,17 +172,20 @@ class TestExpandCompactSyntax:
         assert result["alerts"][0]["id"] == "a1"
         assert result["alerts"][1]["id"] == "a2"
 
-    def test_fleet_columns_expansion(self):
+    def test_fleet_columns_passthrough(self):
         data = {
             "name": "test",
             "detection": {"keys_any": ["x"]},
             "fields": {"f": "x.f"},
-            "fleet_columns": ["Host: hostname", "Score: score [badge]"],
+            "fleet_columns": [
+                {"header": "Host", "field": "hostname"},
+                {"header": "Score", "field": "score"},
+            ],
         }
         result = _expand_compact_syntax(data)
         assert result["fleet_columns"] == [
-            {"label": "Host", "field": "hostname"},
-            {"label": "Score", "field": "score", "badge": True},
+            {"header": "Host", "field": "hostname"},
+            {"header": "Score", "field": "score"},
         ]
 
 
@@ -378,7 +348,10 @@ class TestRoundTrip:
                 {"alert_panel": "Alerts"},
                 {
                     "key_value": "Info",
-                    "fields": ["Host: hostname", "Uptime: uptime"],
+                    "fields": [
+                        {"label": "Host", "field": "hostname"},
+                        {"label": "Uptime", "field": "uptime"},
+                    ],
                 },
             ],
         }

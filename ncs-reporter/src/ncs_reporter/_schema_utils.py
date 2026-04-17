@@ -165,6 +165,7 @@ widgets:
     fields:
       - {{ label: "Hostname", field: hostname }}
       - {{ label: "Usage", field: example_pct, format: "{{value:.1f}}%" }}
+  # NOTE: key_value uses 'label:' (cell label). Tables use 'header:' (column header).
 
   # --- Table ---
   # - id: items_table
@@ -172,15 +173,17 @@ widgets:
   #   type: table
   #   rows: filtered_items           # alias for rows_field
   #   columns:
-  #     - {{ label: "Name", field: name }}
-  #     - {{ label: "Status", field: status, badge: true }}
+  #     - {{ header: "Name", field: name }}
+  #     - {{ header: "Status", field: status, as: status-badge }}
 
   # --- Progress bar ---
   # - id: usage_bar
   #   title: "Usage"
   #   type: progress_bar
   #   field: example_pct
-  #   thresholds: {{ 75: yellow, 90: red }}
+  #   thresholds:
+  #     warn_at: 75
+  #     crit_at: 90
 
   # --- Stat cards ---
   # - id: kpis
@@ -206,7 +209,7 @@ widgets:
   #   rows: filtered_items
   #   group_by: status
   #   columns:
-  #     - {{ label: "Name", field: name }}
+  #     - {{ header: "Name", field: name }}
 
   # --- Markdown ---
   # - id: notes
@@ -223,8 +226,8 @@ widgets:
 
 # Fleet table columns (shown in fleet overview):
 # fleet_columns:
-#   - {{ field: hostname, label: "Host" }}
-#   - {{ field: example_pct, label: "Usage %", format: "{{value:.0f}}%" }}
+#   - {{ field: hostname, header: "Host" }}
+#   - {{ field: example_pct, header: "Usage %", format: "{{value:.0f}}%" }}
 
 # Tip: run 'ncs-reporter platform info widgets' for all widget types.
 # Tip: run 'ncs-reporter platform info conditions' for all condition operators.

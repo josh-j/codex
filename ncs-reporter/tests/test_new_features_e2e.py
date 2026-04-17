@@ -38,7 +38,7 @@ class TestNewFeaturesE2E(unittest.TestCase):
                 {"id": "p1", "title": "Usage", "type": "progress_bar", "field": "usage", "layout": {"width": "half"}},
                 {"id": "m1", "title": "Info", "type": "markdown", "content": "Hello **World**"},
             ],
-            "fleet_columns": [{"label": "Usage", "field": "usage"}],
+            "fleet_columns": [{"header": "Usage", "field": "usage"}],
         }
         with open(self.schema_dir / "adv_test.yaml", "w") as f:
             yaml.dump(advanced_schema, f)

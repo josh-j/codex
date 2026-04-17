@@ -313,7 +313,7 @@
             <table class="kv">
                 <tbody>
                 {% for row in widget.rows %}
-                    <tr><td>{{ row.label }}</td><td>{% if row.badge %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
+                    <tr><td>{{ row.label }}</td><td>{% if row.as == 'status-badge' %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -327,7 +327,7 @@
                 <thead>
                     <tr>
                     {% for col in widget.get('columns', []) %}
-                        <th class="sortable">{{ col.label }}</th>
+                        <th class="sortable">{{ col.header }}</th>
                     {% endfor %}
                     </tr>
                 </thead>
@@ -337,7 +337,7 @@
                     {% for cell in row %}
                         <td class="{{ cell.css_class | default('') }}">
                         {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
-                        {% if cell.badge %}
+                        {% if cell.as == 'status-badge' %}
                             {{ render_badge(cell.value) }}
                         {% else %}
                             {{ cell.value }}
@@ -359,7 +359,7 @@
                 <thead>
                     <tr>
                     {% for col in widget.get('columns', []) %}
-                        <th class="sortable">{{ col.label }}</th>
+                        <th class="sortable">{{ col.header }}</th>
                     {% endfor %}
                     </tr>
                 </thead>
@@ -378,7 +378,7 @@
                     {% for cell in row %}
                         <td class="{{ cell.css_class | default('') }}">
                         {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
-                        {% if cell.badge %}
+                        {% if cell.as == 'status-badge' %}
                             {{ render_badge(cell.value) }}
                         {% else %}
                             {{ cell.value }}
