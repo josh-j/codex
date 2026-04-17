@@ -216,7 +216,6 @@ release-collection name version message:
     just build-collection {{ name }}
     echo "✓ internal.{{ name }} v{{ version }} released; dist/internal-{{ name }}-{{ version }}.tar.gz"
     echo "  Next: bump internal.{{ name }} in ncs-ansible/requirements.yml, then 'just install-collections'"
-    echo "✓ collections installed from requirements.yml"
 
 # Verify both environments are correctly configured
 verify-env:
