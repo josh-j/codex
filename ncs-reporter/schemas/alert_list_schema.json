@@ -94,6 +94,18 @@
           "title": "Msg",
           "type": "string"
         },
+        "items": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Items"
+        },
         "suppress_if": {
           "anyOf": [
             {

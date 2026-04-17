@@ -5,7 +5,7 @@ Checks:
   - when: and visible_if: values should be unquoted (Ansible convention)
   - compute: values must use "{{ expression }}" (Jinja2 delimiters)
   - widget type: values must use hyphens, not underscores
-  - [badge] shorthand not allowed — use list-form with 'badge: true'
+  - legacy column shorthand: badge: true / label: / title: in column items
 """
 
 from __future__ import annotations
@@ -47,9 +47,17 @@ def lint_file(path: Path) -> list[str]:
         if m:
             errors.append(f"{path.name}:{i}: type: use hyphens — {m.group(2)} → {m.group(2).replace('_', '-')}")
 
-        # Check [badge] shorthand
-        if not line.lstrip().startswith("#") and "[badge]" in line:
-            errors.append(f"{path.name}:{i}: [badge] shorthand not allowed — use list-form with 'badge: true'")
+        # Check for legacy badge: true (replaced by `as: status-badge`)
+        stripped = line.lstrip()
+        if not stripped.startswith("#"):
+            if re.match(r"badge:\s*(true|false)\b", stripped):
+                errors.append(
+                    f"{path.name}:{i}: badge: true is no longer supported — use 'as: status-badge'"
+                )
+            if "[badge]" in line:
+                errors.append(
+                    f"{path.name}:{i}: [badge] shorthand not allowed — use 'as: status-badge'"
+                )
 
     return errors
 

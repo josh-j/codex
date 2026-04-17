@@ -103,7 +103,7 @@
                     <th class="sortable">Hostname</th>
                     <th class="th-health sortable">Health</th>
                     {% for col in generic_fleet_view.get('fleet_columns', []) %}
-                        <th class="sortable" style="{% if col.get('width') %}width:{{ col.width }};{% endif %}">{{ col.label }}</th>
+                        <th class="sortable" style="{% if col.get('width') %}width:{{ col.width }};{% endif %}">{{ col.header }}</th>
                     {% endfor %}
                     {# Keep alert counts as optional default if no columns defined? No, stay 100% schema. #}
                 </tr>

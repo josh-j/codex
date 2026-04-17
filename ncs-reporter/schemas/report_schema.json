@@ -144,6 +144,18 @@
           "title": "Msg",
           "type": "string"
         },
+        "items": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Items"
+        },
         "suppress_if": {
           "anyOf": [
             {
@@ -376,17 +388,13 @@
             "thresholds": {
               "anyOf": [
                 {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/ThresholdSpec"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Thresholds"
+              "default": null
             },
             "from": {
               "anyOf": [
@@ -425,8 +433,8 @@
     "FleetColumn": {
       "additionalProperties": false,
       "properties": {
-        "label": {
-          "title": "Label",
+        "header": {
+          "title": "Header",
           "type": "string"
         },
         "field": {
@@ -447,7 +455,7 @@
         }
       },
       "required": [
-        "label",
+        "header",
         "field"
       ],
       "title": "FleetColumn",
@@ -511,24 +519,11 @@
           "type": "string"
         },
         "columns": {
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
           "title": "Columns",
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
-                ]
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": true
-            }
-          ]
+          "type": "array"
         },
         "rows": {
           "title": "Rows Field",
@@ -567,10 +562,18 @@
           "default": null,
           "title": "Format"
         },
-        "badge": {
-          "default": false,
-          "title": "Badge",
-          "type": "boolean"
+        "as": {
+          "anyOf": [
+            {
+              "const": "status-badge",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As"
         }
       },
       "required": [
@@ -630,24 +633,11 @@
           "title": "When"
         },
         "fields": {
+          "items": {
+            "$ref": "#/$defs/KeyValueField"
+          },
           "title": "Fields",
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
-                ]
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": true
-            }
-          ]
+          "type": "array"
         }
       },
       "required": [
@@ -853,17 +843,13 @@
         "thresholds": {
           "anyOf": [
             {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
+              "$ref": "#/$defs/ThresholdSpec"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Thresholds"
+          "default": null
         }
       },
       "required": [
@@ -949,17 +935,13 @@
         "thresholds": {
           "anyOf": [
             {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
+              "$ref": "#/$defs/ThresholdSpec"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Thresholds"
+          "default": null
         }
       },
       "required": [
@@ -1094,18 +1076,26 @@
     "TableColumn": {
       "additionalProperties": false,
       "properties": {
-        "label": {
-          "title": "Label",
+        "header": {
+          "title": "Header",
           "type": "string"
         },
         "field": {
           "title": "Field",
           "type": "string"
         },
-        "badge": {
-          "default": false,
-          "title": "Badge",
-          "type": "boolean"
+        "as": {
+          "anyOf": [
+            {
+              "const": "status-badge",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As"
         },
         "format": {
           "anyOf": [
@@ -1140,7 +1130,7 @@
         }
       },
       "required": [
-        "label",
+        "header",
         "field"
       ],
       "title": "TableColumn",
@@ -1197,24 +1187,11 @@
           "type": "string"
         },
         "columns": {
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
           "title": "Columns",
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
-                ]
-              }
-            },
-            {
-              "type": "object",
-              "additionalProperties": true
-            }
-          ]
+          "type": "array"
         },
         "rows": {
           "title": "Rows Field",
@@ -1227,6 +1204,38 @@
         "columns"
       ],
       "title": "TableWidget",
+      "type": "object"
+    },
+    "ThresholdSpec": {
+      "additionalProperties": false,
+      "description": "Severity breakpoints for a numeric value: `warn_at` \u2192 yellow, `crit_at` \u2192 red.\n\nValues at or above the threshold adopt that severity. `crit_at` takes precedence\nwhen both match. Values below both thresholds render green (default/ok).",
+      "properties": {
+        "warn_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warn At"
+        },
+        "crit_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crit At"
+        }
+      },
+      "title": "ThresholdSpec",
       "type": "object"
     },
     "WidgetLayout": {

@@ -44,17 +44,17 @@ widgets:
     label: storage_gb
     color: auto
     thresholds:
-      75: yellow
-      90: red
+      warn_at: 75
+      crit_at: 90
 
   - id: network_table
     title: "Network Interfaces"
     type: table
     rows_field: interfaces
     columns:
-      - label: "Name"
+      - header: "Name"
         field: name
-      - label: "Status"
+      - header: "Status"
         field: status
         style_rules:
           - condition: { op: eq_str, field: status, value: "down" }

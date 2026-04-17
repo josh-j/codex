@@ -28,8 +28,28 @@ default:
 # Setup
 # =============================================================================
 # Complete environment setup (both venvs + all collections + SMB share)
-setup-all: setup-main-venv setup-vcsa-venv setup-collections setup-samba
+setup-all: setup-internal-symlink setup-main-venv setup-vcsa-venv setup-collections setup-samba
     @echo "✓ All environments ready"
+
+# Repair collections/ansible_collections/internal → ../../internal if broken/missing.
+# The symlink is git-tracked but some checkouts (e.g. cross-filesystem, Windows Git) drop it.
+setup-internal-symlink:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    link="collections/ansible_collections/internal"
+    target="../../internal"
+    if [ -L "$link" ] && [ -d "$link/" ]; then
+        echo "✓ $link already points to a valid target"
+        exit 0
+    fi
+    if [ ! -d "internal" ]; then
+        echo "⚠ internal/ not found at repo root — cannot create symlink" >&2
+        exit 1
+    fi
+    rm -rf "$link"
+    mkdir -p "$(dirname "$link")"
+    ln -sfn "$target" "$link"
+    echo "✓ Repaired $link → $target"
 
 # Provision the SMB share used by ncs-console to fetch reports
 setup-samba:
@@ -55,7 +75,7 @@ setup-main-venv:
         echo "Installing via pip..."
         python3.12 -m venv .venv
         .venv/bin/pip install --upgrade pip
-        .venv/bin/pip install ansible-core pyvmomi pykerberos
+        .venv/bin/pip install ansible-core pyvmomi pykerberos requests
         .venv/bin/pip install -e ../ncs-reporter
         .venv/bin/pip install ruff mypy pytest basedpyright
     fi
@@ -70,7 +90,7 @@ setup-vcsa-venv:
     rm -rf .venv-vcsa
     python3.12 -m venv .venv-vcsa
     .venv-vcsa/bin/pip install --upgrade pip
-    .venv-vcsa/bin/pip install 'ansible-core>=2.15,<2.16' pyvmomi pykerberos
+    .venv-vcsa/bin/pip install 'ansible-core>=2.15,<2.16' pyvmomi pykerberos requests
     # Python 3.7-compatible community collections in separate path.
     # vmware.vmware pinned to <2.0.0: latest requires ansible-core >=2.17,
     # but VCSA venv is locked to 2.15 for Python 3.7 managed nodes.

@@ -58,17 +58,16 @@ def _format_value(fmt: str | None, value: Any) -> str:
 
 
 def _resolve_threshold_color(
-    value: float, thresholds: dict[int, str] | None, default_color: str = "blue"
+    value: float, thresholds: Any | None, default_color: str = "blue"
 ) -> str:
-    """Resolve a color name from sorted thresholds. Returns default_color if no thresholds."""
-    if not thresholds:
+    """Resolve a color from a ThresholdSpec. `crit_at` → red, `warn_at` → yellow, else green."""
+    if thresholds is None:
         return default_color
-    sorted_thresh = sorted([(int(k), v) for k, v in thresholds.items()])
-    color = "green"
-    for thresh_val, c_name in sorted_thresh:
-        if value >= thresh_val:
-            color = c_name
-    return color
+    if thresholds.crit_at is not None and value >= thresholds.crit_at:
+        return "red"
+    if thresholds.warn_at is not None and value >= thresholds.warn_at:
+        return "yellow"
+    return "green"
 
 
 def _render_table_cell(
@@ -106,7 +105,7 @@ def _render_table_cell(
 
     rendered_value = _format_value(col.format, value) if col.format else value
 
-    return {"value": rendered_value, "badge": col.badge, "link": link, "css_class": cell_class}
+    return {"value": rendered_value, "as": col.as_, "link": link, "css_class": cell_class}
 
 
 # Widget types that are compact enough to sit side-by-side at half width
@@ -142,7 +141,7 @@ def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
 def _render_key_value(widget: KeyValueWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render a KeyValueWidget."""
     rows = [
-        {"label": kv.label, "value": _format_value(kv.format, _resolve_field_ref(kv.field, fields)), "badge": kv.badge}
+        {"label": kv.label, "value": _format_value(kv.format, _resolve_field_ref(kv.field, fields)), "as": kv.as_}
         for kv in widget.fields
     ]
     return _widget_base(widget, rows=rows)
@@ -206,7 +205,7 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
 
         # Look up thresholds: per-card first, then from var's FieldSpec
         thresholds = card.thresholds
-        if not thresholds:
+        if thresholds is None:
             var_match = _re.search(r"\{\{\s*(\w+)", str(card.field))
             if var_match:
                 spec = field_specs.get(var_match.group(1))
@@ -214,7 +213,7 @@ def _render_stat_cards(widget: StatCardsWidget, fields: dict[str, Any], ctx: dic
                     thresholds = spec.thresholds
 
         resolved_color: str = card.color
-        if resolved_color == "auto" and thresholds:
+        if resolved_color == "auto" and thresholds is not None:
             try:
                 num_val = float(resolved)
             except (ValueError, TypeError):

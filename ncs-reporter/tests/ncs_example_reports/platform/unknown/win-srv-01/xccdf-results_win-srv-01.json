@@ -1,0 +1,82 @@
+[
+  {
+    "id": "WN22-00-000000",
+    "rule_id": "WN22-00-000000",
+    "name": "win-srv-01",
+    "status": "failed",
+    "title": "Windows must disable Guest account.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000001",
+    "rule_id": "WN22-00-000001",
+    "name": "win-srv-01",
+    "status": "pass",
+    "title": "Windows must enforce password history.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000002",
+    "rule_id": "WN22-00-000002",
+    "name": "win-srv-01",
+    "status": "failed",
+    "title": "Windows must enable Firewall.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000003",
+    "rule_id": "WN22-00-000003",
+    "name": "win-srv-01",
+    "status": "pass",
+    "title": "Windows must disable SMBv1.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000004",
+    "rule_id": "WN22-00-000004",
+    "name": "win-srv-01",
+    "status": "pass",
+    "title": "Windows must set legal notice.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000005",
+    "rule_id": "WN22-00-000005",
+    "name": "win-srv-01",
+    "status": "pass",
+    "title": "Windows must disable autorun.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000006",
+    "rule_id": "WN22-00-000006",
+    "name": "win-srv-01",
+    "status": "na",
+    "title": "Windows NA check.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "WN22-00-000007",
+    "rule_id": "WN22-00-000007",
+    "name": "win-srv-01",
+    "status": "pass",
+    "title": "Windows final check.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "UBTU-22-010000",
+    "rule_id": "UBTU-22-010000",
+    "name": "web-prod-01",
+    "status": "failed",
+    "title": "Ubuntu must disable root login.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010001",
+    "rule_id": "UBTU-22-010001",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "Ubuntu must require strong passwords.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010002",
+    "rule_id": "UBTU-22-010002",
+    "name": "web-prod-01",
+    "status": "failed",
+    "title": "Ubuntu must configure auditd.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010003",
+    "rule_id": "UBTU-22-010003",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "Ubuntu must use FIPS mode.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010004",
+    "rule_id": "UBTU-22-010004",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "Ubuntu must clear tmp.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010005",
+    "rule_id": "UBTU-22-010005",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "Ubuntu must disable unneeded services.",
+    "severity": "low",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010006",
+    "rule_id": "UBTU-22-010006",
+    "name": "web-prod-01",
+    "status": "na",
+    "title": "Ubuntu NA check.",
+    "severity": "medium",
+    "fixtext": "",
+    "checktext": ""
+  },
+  {
+    "id": "UBTU-22-010007",
+    "rule_id": "UBTU-22-010007",
+    "name": "web-prod-01",
+    "status": "pass",
+    "title": "Ubuntu final check.",
+    "severity": "high",
+    "fixtext": "",
+    "checktext": ""
+  }
+]
