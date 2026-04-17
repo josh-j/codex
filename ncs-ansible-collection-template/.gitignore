@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# ansible-galaxy collection build output
+*.tar.gz
+.ansible/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

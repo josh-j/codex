@@ -1,0 +1,14 @@
+---
+namespace: internal
+name: __COLLECTION_NAME__
+version: 0.1.0
+readme: README.md
+authors:
+  - NCS
+description: "__COLLECTION_NAME__ audit and automation roles for the NCS fleet."
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - security
+dependencies:
+  "internal.core": ">=1.0.0,<2.0.0"
