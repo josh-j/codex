@@ -141,6 +141,81 @@ install-collections:
     .venv/bin/ansible-galaxy collection install -r requirements.yml \
         --collections-path collections/ --force
     echo "✓ collections installed from requirements.yml"
+
+# Verify every FQCN playbook referenced in ncs-reporter configs resolves
+# against the currently-installed collections. Fails non-zero on drift.
+verify-fqcn-contract:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fqcns=$(.venv/bin/python scripts/verify_fqcn_contract.py)
+    if [ -z "$fqcns" ]; then
+        echo "no FQCN references found in ncs-reporter/src/ncs_reporter/configs/"
+        exit 0
+    fi
+    fail=0
+    while read -r fqcn; do
+        if .venv/bin/ansible-playbook --syntax-check -i inventory/production "$fqcn" >/dev/null 2>&1; then
+            echo "✓ $fqcn"
+        else
+            echo "✗ $fqcn — referenced in reporter configs but unresolvable" >&2
+            fail=1
+        fi
+    done <<< "$fqcns"
+    exit $fail
+
+# Run ansible-lint against one collection's sibling repo.
+# Usage: just lint-collection vmware
+lint-collection name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="../ncs-ansible-{{ name }}"
+    [ -d "$src" ] || { echo "sibling repo not found: $src" >&2; exit 1; }
+    if ! .venv/bin/python -c "import ansiblelint" 2>/dev/null; then
+        .venv/bin/pip install ansible-lint >/dev/null
+    fi
+    .venv/bin/ansible-lint "$src"
+
+# Cut a release of one collection. Non-interactive; the `message` becomes
+# the CHANGELOG entry for this version. Bumps galaxy.yml, prepends
+# CHANGELOG, commits, tags `v<version>`, and rebuilds the tarball.
+#
+# Usage:
+#   just release-collection vmware 1.2.0 "Fix esxi STIG rule 42"
+release-collection name version message:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="../ncs-ansible-{{ name }}"
+    [ -d "$src" ] || { echo "sibling repo not found: $src" >&2; exit 1; }
+    cd "$src"
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "sibling repo has uncommitted changes; commit or stash first." >&2
+        exit 1
+    fi
+    if git rev-parse --verify "refs/tags/v{{ version }}" >/dev/null 2>&1; then
+        echo "tag v{{ version }} already exists in $src" >&2
+        exit 1
+    fi
+    current=$(sed -nE 's/^version:[[:space:]]*([^[:space:]]+).*/\1/p' galaxy.yml | head -1)
+    echo "Releasing internal.{{ name }} ${current} → {{ version }}"
+    sed -i -E "s/^(version:[[:space:]]*).*/\1{{ version }}/" galaxy.yml
+    today=$(date -u +%Y-%m-%d)
+    if [ ! -s CHANGELOG.md ]; then
+        printf '# Changelog — internal.%s\n\n' "{{ name }}" > CHANGELOG.md
+    fi
+    tmp=$(mktemp)
+    {
+        head -1 CHANGELOG.md
+        printf '\n## %s — %s\n\n- %s\n\n' "{{ version }}" "$today" "{{ message }}"
+        tail -n +2 CHANGELOG.md
+    } > "$tmp"
+    mv "$tmp" CHANGELOG.md
+    git add galaxy.yml CHANGELOG.md
+    git commit -m "Release v{{ version }}: {{ message }}"
+    git tag "v{{ version }}"
+    cd - >/dev/null
+    just build-collection {{ name }}
+    echo "✓ internal.{{ name }} v{{ version }} released; dist/internal-{{ name }}-{{ version }}.tar.gz"
+    echo "  Next: bump internal.{{ name }} in ncs-ansible/requirements.yml, then 'just install-collections'"
     echo "✓ collections installed from requirements.yml"
 
 # Verify both environments are correctly configured
