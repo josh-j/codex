@@ -1,0 +1,20 @@
+---
+# internal/vmware/playbooks/esxi_stig_audit.yml
+- name: "Phase 2a | ESXi STIG Audit"
+  hosts: "vcsa:esxi_hosts"
+  connection: local
+  gather_facts: false
+  become: false
+  tags: ["vmware", "stig", "audit", "esxi"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: Route ESXi targets
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: route_esxi
+  roles:
+    - role: internal.vmware.esxi
+      vars:
+        ncs_action: audit
+        ncs_profile: stig

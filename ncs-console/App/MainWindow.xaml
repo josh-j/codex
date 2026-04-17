@@ -197,7 +197,7 @@
                                                     </Grid>
                                                 </StackPanel>
                                             </Border>
-                                            <Border x:Name="ActionTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4" Visibility="Collapsed">
+                                            <Border x:Name="ActionTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                                 <StackPanel>
                                                     <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
                                                         <DockPanel>
@@ -206,13 +206,15 @@
                                                         </DockPanel>
                                                     </Border>
                                                     <TextBox x:Name="ActionTagsTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--tags filter (comma-separated). Right-click the tree below or double-click a tag to compose." />
-                                                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
-                                                    <Grid MaxHeight="150">
-                                                        <ScrollViewer x:Name="ActionTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                                            <TreeView x:Name="ActionTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                                        </ScrollViewer>
-                                                        <TextBlock x:Name="ActionTagsEmptyText" Text="Select a playbook to load tags" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" />
-                                                    </Grid>
+                                                    <StackPanel x:Name="ActionTagsTreePanel" Visibility="Collapsed">
+                                                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
+                                                        <Grid MaxHeight="150">
+                                                            <ScrollViewer x:Name="ActionTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                                <TreeView x:Name="ActionTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                            </ScrollViewer>
+                                                            <TextBlock x:Name="ActionTagsEmptyText" Text="Select a playbook to load tags" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" Visibility="Collapsed" />
+                                                        </Grid>
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                             <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
@@ -483,7 +485,7 @@
                                         </Border>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4" Visibility="Collapsed">
+                                        <Border x:Name="ScheduleTagsTreeBorder" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,4">
                                             <StackPanel>
                                                 <Border Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,4,8,4" CornerRadius="4,4,0,0">
                                                     <DockPanel>
@@ -492,13 +494,15 @@
                                                     </DockPanel>
                                                 </Border>
                                                 <TextBox x:Name="ScheduleTagsTextBox" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Margin="0" ToolTip="--tags filter (comma-separated). Right-click the tree below or double-click a tag to compose." />
-                                                <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
-                                                <Grid MaxHeight="150">
-                                                    <ScrollViewer x:Name="ScheduleTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                                        <TreeView x:Name="ScheduleTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                                    </ScrollViewer>
-                                                    <TextBlock x:Name="ScheduleTagsEmptyText" Text="No --tags declared in this playbook" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" />
-                                                </Grid>
+                                                <StackPanel x:Name="ScheduleTagsTreePanel" Visibility="Collapsed">
+                                                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0" />
+                                                    <Grid MaxHeight="150">
+                                                        <ScrollViewer x:Name="ScheduleTagsTreeScroll" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                            <TreeView x:Name="ScheduleTagsTree" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeSm}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                        </ScrollViewer>
+                                                        <TextBlock x:Name="ScheduleTagsEmptyText" Text="No --tags declared in this playbook" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,16" Visibility="Collapsed" />
+                                                    </Grid>
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

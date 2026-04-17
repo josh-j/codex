@@ -6,13 +6,13 @@
   ansible.builtin.import_playbook: ncs/setup_env.yml
 
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware/collect.yml
+  ansible.builtin.import_playbook: internal.vmware.collect
 
 - name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: linux/ubuntu/collect.yml
+  ansible.builtin.import_playbook: internal.linux.ubuntu_collect
 
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/server/collect.yml
+  ansible.builtin.import_playbook: internal.windows.server_collect
 
 - name: "Phase 3c: Windows System Health Check"
-  ansible.builtin.import_playbook: windows/server/health.yml
+  ansible.builtin.import_playbook: internal.windows.server_health

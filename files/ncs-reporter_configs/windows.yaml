@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../.schemas/report_schema.json
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
 config:
   platform: windows
   stig:
@@ -6,17 +6,16 @@ config:
       WN: windows
       MS: windows
   extra_fleet_widget_columns:
-    - header: Collected At
-      field: collected_at
-    - header: CCM Status
-      field: ccm_service_state
-    - header: Reboot
-      field: health_reboot_pending
-    - header: Critical
-      field: _critical_count
-    - header: Warning
-      field: _warning_count
-
+    - name: Collected At
+      value: "{{ collected_at }}"
+    - name: CCM Status
+      value: "{{ ccm_service_state }}"
+    - name: Reboot
+      value: "{{ health_reboot_pending }}"
+    - name: Critical
+      value: "{{ _critical_count }}"
+    - name: Warning
+      value: "{{ _warning_count }}"
 # ---------------------------------------------------------------------------
 # Fields
 # ---------------------------------------------------------------------------
@@ -89,150 +88,142 @@ alerts:
 widgets:
 
   - type: key-value
-    title: "System Information"
+    name: "System Information"
     fields:
-      - label: Hostname
-        field: health_hostname
-      - label: OS
-        field: health_os_name
-      - label: Uptime (hours)
-        field: health_uptime_hours
-      - label: CCMExec State
-        field: ccm_service_state
-      - label: Reboot Pending
-        field: health_reboot_pending
-      - label: Secure Channel
-        field: health_secure_channel
-
+      - name: Hostname
+        value: "{{ health_hostname }}"
+      - name: OS
+        value: "{{ health_os_name }}"
+      - name: Uptime (hours)
+        value: "{{ health_uptime_hours }}"
+      - name: CCMExec State
+        value: "{{ ccm_service_state }}"
+      - name: Reboot Pending
+        value: "{{ health_reboot_pending }}"
+      - name: Secure Channel
+        value: "{{ health_secure_channel }}"
   - type: table
-    title: "Disk Usage"
+    name: "Disk Usage"
     rows: "{{ health_disk }}"
     columns:
-      - header: Drive
-        field: DeviceID
-      - header: Size (GB)
-        field: SizeGB
-      - header: Free (GB)
-        field: FreeGB
-      - header: Used %
-        field: UsedPct
+      - name: Drive
+        value: "{{ DeviceID }}"
+      - name: Size (GB)
+        value: "{{ SizeGB }}"
+      - name: Free (GB)
+        value: "{{ FreeGB }}"
+      - name: Used %
+        value: "{{ UsedPct }}"
         as: status-badge
 
   - type: key-value
-    title: "Memory & CPU"
+    name: "Memory & CPU"
     fields:
-      - label: Memory Used %
-        field: health_memory_used_pct
-      - label: CPU Load %
-        field: health_cpu_load_pct
-
+      - name: Memory Used %
+        value: "{{ health_memory_used_pct }}"
+      - name: CPU Load %
+        value: "{{ health_cpu_load_pct }}"
   - type: table
-    title: "Critical Services"
+    name: "Critical Services"
     rows: "{{ health_services }}"
     columns:
-      - header: Service
-        field: display_name
-      - header: Status
-        field: status
+      - name: Service
+        value: "{{ display_name }}"
+      - name: Status
+        value: "{{ status }}"
         as: status-badge
-      - header: Start Type
-        field: start_type
-
+      - name: Start Type
+        value: "{{ start_type }}"
   - type: table
-    title: "Recent Critical/Error Events"
+    name: "Recent Critical/Error Events"
     rows: "{{ health_events }}"
     columns:
-      - header: Time
-        field: time
-      - header: Log
-        field: log
-      - header: Level
-        field: level
+      - name: Time
+        value: "{{ time }}"
+      - name: Log
+        value: "{{ log }}"
+      - name: Level
+        value: "{{ level }}"
         as: status-badge
-      - header: Source
-        field: source
-      - header: ID
-        field: id
-      - header: Message
-        field: message
-
+      - name: Source
+        value: "{{ source }}"
+      - name: ID
+        value: "{{ id }}"
+      - name: Message
+        value: "{{ message }}"
   - type: key-value
-    title: "Vulnerability Summary"
+    name: "Vulnerability Summary"
     fields:
-      - label: Total Findings
-        field: vuln_total_findings
-      - label: Remediated
-        field: vuln_remediated
-      - label: Open
-        field: vuln_open
-
+      - name: Total Findings
+        value: "{{ vuln_total_findings }}"
+      - name: Remediated
+        value: "{{ vuln_remediated }}"
+      - name: Open
+        value: "{{ vuln_open }}"
   - type: table
-    title: "Vulnerability Findings"
+    name: "Vulnerability Findings"
     rows: "{{ vuln_findings }}"
     columns:
-      - header: Plugin ID
-        field: plugin_id
-      - header: Severity
-        field: severity
+      - name: Plugin ID
+        value: "{{ plugin_id }}"
+      - name: Severity
+        value: "{{ severity }}"
         as: status-badge
-      - header: Title
-        field: title
-      - header: Remediated
-        field: remediated
+      - name: Title
+        value: "{{ title }}"
+      - name: Remediated
+        value: "{{ remediated }}"
         as: status-badge
 
   - type: table
-    title: "ConfigMgr Applications"
+    name: "ConfigMgr Applications"
     rows: "{{ configmgr_apps }}"
     columns:
-      - header: Name
-        field: Name
-      - header: Version
-        field: Version
-
+      - name: Name
+        value: "{{ Name }}"
+      - name: Version
+        value: "{{ Version }}"
   - type: table
-    title: "Applications Pending Update"
+    name: "Applications Pending Update"
     rows: "{{ apps_to_update }}"
     columns:
-      - header: Name
-        field: Name
-      - header: Current Version
-        field: CurrentVersion
-      - header: Target Version
-        field: TargetVersion
-
+      - name: Name
+        value: "{{ Name }}"
+      - name: Current Version
+        value: "{{ CurrentVersion }}"
+      - name: Target Version
+        value: "{{ TargetVersion }}"
   - type: table
-    title: "Update Results"
+    name: "Update Results"
     rows: "{{ update_results }}"
     columns:
-      - header: Application
-        field: application
-      - header: Status
-        field: status
+      - name: Application
+        value: "{{ application }}"
+      - name: Status
+        value: "{{ status }}"
         as: status-badge
-      - header: Failed
-        field: failed
+      - name: Failed
+        value: "{{ failed }}"
         as: status-badge
 
   - type: table
-    title: "KB Detection Status"
+    name: "KB Detection Status"
     rows: "{{ kb_detection }}"
     columns:
-      - header: KB
-        field: kb
-      - header: Installed
-        field: installed
+      - name: KB
+        value: "{{ kb }}"
+      - name: Installed
+        value: "{{ installed }}"
         as: status-badge
-      - header: Detection Method
-        field: method
-
+      - name: Detection Method
+        value: "{{ method }}"
   - type: table
-    title: "Installed Software"
+    name: "Installed Software"
     rows: "{{ health_software_versions }}"
     columns:
-      - header: Name
-        field: name
-      - header: Version
-        field: version
-      - header: Publisher
-        field: publisher
+      - name: Name
+        value: "{{ name }}"
+      - name: Version
+        value: "{{ version }}"
+      - name: Publisher
+        value: "{{ publisher }}"

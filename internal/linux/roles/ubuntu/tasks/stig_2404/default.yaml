@@ -8,6 +8,16 @@
 # Audisp remote syslog/SIEM destination (SV-270658)
 stig_2404_stigrule_270658_remote_server: ""
 
+# Site helper — audisp-syslog forwarder (not a STIG rule).
+# Opt-in because rule 270829 locks audit logs to root:root 0600, so any
+# syslog daemon that needs audit events must receive them via the audispd
+# plugin (running inside auditd as root) rather than reading the files.
+# Requires audispd-plugins; rsyslog must be configured to handle the
+# chosen facility (default local6).
+stig_2404_site_audisp_syslog_manage: false
+stig_2404_site_audisp_syslog_priority: "LOG_INFO"
+stig_2404_site_audisp_syslog_facility: "LOG_LOCAL6"
+
 # NTP server (SV-270751)
 stig_2404_stigrule_270751_chrony_server: "172.25.70.11"
 

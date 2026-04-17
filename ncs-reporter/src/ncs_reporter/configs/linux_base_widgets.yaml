@@ -2,78 +2,81 @@
 
 
 - type: stat-cards
-  id: headline_kpis
-  title: "Key Metrics"
+  slug: headline_kpis
+  name: "Key Metrics"
   # Thresholds for these vars are declared in linux_base_fields.yaml
   cards:
-    'Uptime (d)': "{{ uptime_days | round(0) }}"
-    'Mem Used %': "{{ memory_used_pct | round(1) }}%"
-    'Failed Svcs': "{{ failed_services_count }}"
-    'Pending Updates': "{{ pending_updates_count }}"
+    - name: Uptime (d)
+      value: "{{ uptime_days | round(0) }}"
+    - name: Mem Used %
+      value: "{{ memory_used_pct | round(1) }}%"
+    - name: Failed Svcs
+      value: "{{ failed_services_count }}"
+    - name: Pending Updates
+      value: "{{ pending_updates_count }}"
 
 - type: key-value
-  title: "System Overview"
+  name: "System Overview"
   fields:
-    - label: Hostname
-      field: hostname
-    - label: IP Address
-      field: ip_address
-    - label: Distribution
-      field: distribution
-    - label: Version
-      field: distribution_version
-    - label: Kernel
-      field: kernel
-    - label: Uptime (days)
-      field: uptime_days
+    - name: Hostname
+      value: "{{ hostname }}"
+    - name: IP Address
+      value: "{{ ip_address }}"
+    - name: Distribution
+      value: "{{ distribution }}"
+    - name: Version
+      value: "{{ distribution_version }}"
+    - name: Kernel
+      value: "{{ kernel }}"
+    - name: Uptime (days)
+      value: "{{ uptime_days }}"
       format: "{{ value | round(1) }}"
-    - label: Load Avg (15m)
-      field: load_avg_15m
+    - name: Load Avg (15m)
+      value: "{{ load_avg_15m }}"
       format: "{value:.2f}"
 
 - type: key-value
-  title: "Memory"
+  name: "Memory"
   fields:
-    - label: Total (MB)
-      field: memory_total_mb
+    - name: Total (MB)
+      value: "{{ memory_total_mb }}"
       format: "{{ value | round(1) }}"
-    - label: Free (MB)
-      field: memory_free_mb
+    - name: Free (MB)
+      value: "{{ memory_free_mb }}"
       format: "{{ value | round(1) }}"
-    - label: Used %
-      field: memory_used_pct
+    - name: Used %
+      value: "{{ memory_used_pct }}"
       format: "{{ value | round(1) }}"
-    - label: Swap Total (MB)
-      field: swap_total_mb
+    - name: Swap Total (MB)
+      value: "{{ swap_total_mb }}"
       format: "{{ value | round(1) }}"
-    - label: Swap Used %
-      field: swap_used_pct
+    - name: Swap Used %
+      value: "{{ swap_used_pct }}"
       format: "{{ value | round(1) }}"
 
 - type: key-value
-  title: "Patching & Services"
+  name: "Patching & Services"
   fields:
-    - label: Failed Services
-      field: failed_services_count
-    - label: Pending Updates
-      field: pending_updates_count
-    - label: Reboot Required
-      field: reboot_pending
-
+    - name: Failed Services
+      value: "{{ failed_services_count }}"
+    - name: Pending Updates
+      value: "{{ pending_updates_count }}"
+    - name: Reboot Required
+      value: "{{ reboot_pending }}"
 - type: table
-  title: "Filesystems"
+  name: "Filesystems"
   rows: "{{ disks }}"
   columns:
-    - header: Mount
-      field: mount
-    - header: Device
-      field: device
-    - header: FS Type
-      field: fstype
-    - header: Total (GB)
-      field: total_gb
-    - header: Free (GB)
-      field: free_gb
-    - header: Used %
-      field: used_pct
+    - name: Mount
+      value: "{{ mount }}"
+    - name: Device
+      value: "{{ device }}"
+    - name: FS Type
+      value: "{{ fstype }}"
+    - name: Total (GB)
+      value: "{{ total_gb }}"
+    - name: Free (GB)
+      value: "{{ free_gb }}"
+    - name: Used %
+      value: "{{ used_pct }}"
       as: status-badge

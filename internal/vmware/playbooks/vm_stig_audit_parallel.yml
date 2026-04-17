@@ -1,0 +1,52 @@
+# >>>
+# label: VM STIG Audit (Parallel)
+# is_read_only: true
+# options:
+#   site: text | Site Code (required, e.g. tyfq) | vCenter site code used to target vcsa-<site>
+# <<<
+---
+# internal/vmware/playbooks/vm_stig_audit_parallel.yml
+
+- name: "Phase 2b-pre | Discover VMs and build target list"
+  hosts: "vcsa-{{ site | default('undefined') }}"
+  connection: local
+  gather_facts: false
+  become: false
+  strategy: linear
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Validate site variable is provided"
+      ansible.builtin.assert:
+        that:
+          - site is defined
+          - site | length > 0
+        fail_msg: "Please specify a site (e.g., -e 'site=tyfq')"
+
+  tasks:
+    - name: "Discover VMs and register parallel targets"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: register_vm_targets
+
+- name: "Phase 2b | VM STIG Audit (parallel per VM)"
+  hosts: _stig_vm_targets
+  connection: local
+  gather_facts: false
+  become: false
+  strategy: free
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    _current_vm_name: "{{ inventory_hostname }}"
+    _current_vm_datacenter: "{{ vm_datacenter | default(omit) }}"
+    vm_datacenter_map: "{{ { inventory_hostname: vm_datacenter | default('') } }}"
+    vm_stig_target_vms:
+      - "{{ inventory_hostname }}"
+  roles:
+    - role: internal.vmware.common
+    - role: internal.vmware.vm
+      vars:
+        ncs_action: audit
+        ncs_profile: stig

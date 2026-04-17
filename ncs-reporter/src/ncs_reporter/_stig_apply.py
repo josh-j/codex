@@ -39,6 +39,14 @@ RULE_REQUIRED_VARS: dict[str, str] = {
 
 SUPPORTED_TARGET_TYPES: frozenset[str] = default_registry().all_target_types()
 
+# Fallback mapping used by resolve_generic_apply_plan when a target_type has no
+# registry entry. Keeps config-less platforms addressable via collection FQCN.
+_TARGET_TYPE_COLLECTION: dict[str, str] = {
+    "ubuntu": "linux", "photon": "linux",
+    "vcsa": "vmware", "vcenter": "vmware", "vm": "vmware", "esxi": "vmware",
+    "windows": "windows", "server": "windows",
+}
+
 
 class RuleMetadata:
     """Lightweight view of one CKLB rule entry."""
@@ -193,13 +201,13 @@ def resolve_generic_apply_plan(target_type: str) -> tuple[str, str | None]:
 
     Falls back to convention-based paths if no explicit mapping is configured.
     """
-    from .platform_registry import default_registry
     result = default_registry().stig_apply_plan(target_type)
     if result is not None:
         return result
-    # Convention fallback: playbooks/<target>_stig_remediate.yml
+    # Convention fallback — see _TARGET_TYPE_COLLECTION.
     t = target_type.lower()
-    return (f"playbooks/{t}_stig_remediate.yml", f"{t}_target_hosts")
+    collection = _TARGET_TYPE_COLLECTION.get(t, t)
+    return (f"internal.{collection}.{t}_stig_remediate", f"{t}_target_hosts")
 
 
 def build_generic_apply_args(

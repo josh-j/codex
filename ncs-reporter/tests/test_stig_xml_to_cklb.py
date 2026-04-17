@@ -8,7 +8,7 @@ The stig_xml callback writes xccdf-results_<host>.json as a bare JSON list:
             "rule_id": "V-256376",
             "name": "esxi-01",
             "status": "failed",
-            "title": "stigrule_256376_dcui_access",
+            "name": "stigrule_256376_dcui_access",
             "severity": "medium",
             "fixtext": "Fix text here",
             "checktext": "DCUI.Access must be set to root only."
@@ -57,7 +57,7 @@ def _make_skeleton(*group_ids: str) -> dict[str, Any]:
         for gid in group_ids
     ]
     return {
-        "title": "VMware vSphere 7.0 ESXi STIG",
+        "name": "VMware vSphere 7.0 ESXi STIG",
         "id": "vsphere7-esxi",
         "cklb_version": "1.0",
         "stigs": [
@@ -92,7 +92,7 @@ def _stig_xml_row(
         "rule_id": f"V-{rule_num}",
         "name": host,
         "status": status,
-        "title": f"stigrule_{rule_num}_check",
+        "name": f"stigrule_{rule_num}_check",
         "severity": "medium",
         "fixtext": f"Fix for {rule_num}",
         "checktext": checktext or f"Check text for {rule_num}",

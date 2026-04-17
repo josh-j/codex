@@ -174,7 +174,7 @@ def _write_raw_yaml(bundle: dict) -> None:
                         "rule_id": item.get("id"),
                         "name": host,
                         "status": item.get("status"),
-                        "title": item.get("title"),
+                        "name": item.get("title"),
                         "severity": item.get("severity"),
                         "fixtext": "",
                         "checktext": "",
@@ -214,7 +214,7 @@ def main() -> None:
                         "rule_version": "VCST-70-000001",
                         "status": "failed",
                         "severity": "medium",
-                        "title": "VCSA STIG sample",
+                        "name": "VCSA STIG sample",
                         "checktext": "VCSA control not compliant.",
                     }
                 ],
@@ -236,7 +236,7 @@ def main() -> None:
                         "rule_version": "PHOTON-000001",
                         "status": "failed",
                         "severity": "medium",
-                        "title": "Photon STIG sample",
+                        "name": "Photon STIG sample",
                         "checktext": "Photon control not compliant.",
                     }
                 ],

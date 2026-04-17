@@ -2,7 +2,7 @@ metadata:
   host: win-srv-01
   raw_type: stig_windows
   audit_type: stig_windows
-  timestamp: '2026-04-16T14:47:37+00:00'
+  timestamp: '2026-04-17T07:53:48+00:00'
 target_type: windows
 data:
 - id: WN22-00-000000

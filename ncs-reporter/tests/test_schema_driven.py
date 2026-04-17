@@ -331,7 +331,7 @@ class TestSchemaModelValidation:
             {
                 "name": "alias_test",
                 "platform": "test",
-                "title": "Alias Test",
+                "name": "Alias Test",
                 "detection": {"any": ["raw_test"]},
                 "fields": {
                     "hostname": {"from": "raw_test.data.hostname", "default": "unknown"},
@@ -341,20 +341,20 @@ class TestSchemaModelValidation:
                 },
                 "widgets": [
                     {
-                        "id": "summary",
-                        "title": "Summary",
+                        "slug": "summary",
+                        "name": "Summary",
                         "type": "key_value",
-                        "fields": [{"label": "Host", "field": "hostname"}],
+                        "fields": [{"name": "Host", "value": "{{ hostname }}"}],
                     },
                     {
-                        "id": "table1",
-                        "title": "Rows",
+                        "slug": "table1",
+                        "name": "Rows",
                         "type": "table",
                         "rows": "rows_data",
-                        "columns": [{"header": "Name", "field": "name"}],
+                        "columns": [{"name": "Name", "value": "{{ name }}"}],
                     },
                 ],
-                "fleet_columns": [{"header": "Host", "field": "hostname"}],
+                "fleet_columns": [{"name": "Host", "value": "{{ hostname }}"}],
             }
         )
 
@@ -364,7 +364,7 @@ class TestSchemaModelValidation:
         assert schema.fields["hostname"].fallback == "unknown"
         assert schema.fields["uptime_days"].compute == "uptime_seconds / 86400"
         assert schema.widgets[1].rows_field == "rows_data"
-        assert schema.fleet_columns[0].header == "Host"
+        assert schema.fleet_columns[0].name == "Host"
 
 
 # ---------------------------------------------------------------------------
@@ -1094,13 +1094,13 @@ class TestWidgetRendering:
         from ncs_reporter.view_models.generic import _render_widget
 
         w = ProgressBarWidget(
-            id="prog1",
-            title="Progress",
+            slug="prog1",
+            name="Progress",
             type="progress_bar",
-            field="used_pct",
-            label="used_gb",
+            value="{{ used_pct }}",
+            value_label="used_gb",
             color="auto",
-            thresholds={"warn_at": 75, "crit_at": 90},
+            thresholds={"warn_if_above": 75, "crit_if_above": 90},
         )
 
         # Test ok range (below 75)
@@ -1129,7 +1129,7 @@ class TestWidgetRendering:
         from ncs_reporter.models.report_schema import MarkdownWidget
         from ncs_reporter.view_models.generic import _render_widget
 
-        w = MarkdownWidget(id="md1", title="Note", type="markdown", content="**bold**")
+        w = MarkdownWidget(slug="md1", name="Note", type="markdown", content="**bold**")
         r = _render_widget(w, {}, [])
         assert r["content"] == "**bold**"
 
@@ -1138,14 +1138,14 @@ class TestWidgetRendering:
         from ncs_reporter.view_models.generic import _render_widget
 
         w = TableWidget(
-            id="t1",
-            title="T1",
+            slug="t1",
+            name="T1",
             type="table",
             rows_field="my_rows",
             columns=[
                 TableColumn(
-                    header="Status",
-                    field="status",
+                    name="Status",
+                    value="{{ status }}",
                     style_rules=[
                         StyleRule(when="status > 90", css_class="red")
                     ],

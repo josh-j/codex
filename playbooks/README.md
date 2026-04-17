@@ -1,87 +1,51 @@
-# NCS Playbooks Reference
+# NCS App-Layer Playbooks
 
-This directory contains the Ansible playbooks for fleet-wide auditing, remediation, and reporting.
-Playbooks are organized into platform subdirectories for discoverability.
-
-Most platform playbooks now drive roles through the shared interface:
-`ncs_action`, optional `ncs_profile`, and optional `ncs_operation`.
+This directory is the **application layer** of `ncs-ansible`. It contains the
+site orchestrators and shared NCS infrastructure playbooks. Per-platform
+playbooks now live inside their respective collections under `internal/`
+(see the `internal/<collection>/playbooks/` directories).
 
 ## Directory Structure
 
 ```
 playbooks/
-├── site*.yml           # Top-level orchestrators
-├── group_vars/         # Shared variables
-├── templates/          # Shared Jinja2 templates
-├── vmware/             # VMware cross-component orchestrators
-├── esxi/               # ESXi STIG and audit playbooks
-├── vcsa/               # VCSA (vCenter Server Appliance) playbooks
-├── vm/                 # VM STIG and audit playbooks
-├── ubuntu/             # Ubuntu/Linux playbooks
-├── windows/            # Windows playbooks
-├── photon/             # Photon OS playbooks
-├── ncs/                # NCS platform setup, reporting, and scheduling
-└── test/               # Test/lab playbooks
+├── site.yml, site_*.yml   # Site orchestrators (chain platform phases)
+├── ncs/                   # NCS infra: report dir init, report gen, samba, timers
+│   ├── setup_env.yml
+│   ├── generate_reports.yml
+│   ├── setup_samba.yml
+│   └── manage_schedules.yml
+├── core/                  # Localhost alerting
+│   └── send_alert_email.yml
+└── templates/             # Shared Jinja2 templates (smb.conf, systemd units)
 ```
 
-Each subdirectory contains a `group_vars` symlink to `../group_vars` so inventory variables resolve correctly regardless of which subdirectory a playbook runs from.
+All shared variables (SMTP, reporting paths, `ncs_config`) now live under
+`inventory/production/group_vars/all/`, auto-loaded by Ansible when the
+site orchestrators run against the production inventory.
 
-## Orchestration & Reporting
+## Collection playbooks (invoke by FQCN)
 
-- **`site.yml`**: Master orchestrator for full-fleet audits. Executes environment setup, platform audits (VMware, Linux, Windows), and final report generation in a single run.
-- **`site_collect_only.yml`**: Collection-only orchestration. Runs setup and platform audits without report rendering.
-- **`site_reports_only.yml`**: Reporting-only orchestration. Renders dashboards from existing artifacts.
-- **`site_vmware_only.yml`**: VMware-only orchestration with report rendering.
-- **`ncs/generate_reports.yml`**: Unified reporting bridge. Exports inventory metadata and invokes the `ncs-reporter` Python CLI to process raw telemetry into HTML dashboards.
-- **`ncs/setup_env.yml`**: NCS bootstrap. Initializes local artifact directories and remote report folder structures with required permissions.
-- **`ncs/setup_samba.yml`**: Service deployment. Configures the Samba share used to host and serve the generated dashboards.
-- **`ncs/manage_schedules.yml`**: Deploys systemd timers from `schedules.yml` to run playbooks on a recurring schedule.
-
-## Platform Audits (Read-Only Collection)
-
-These playbooks are purely collectors that gather un-normalized state via the `ncs_collector` callback.
-
-- **`ubuntu/audit.yml`**: Read-only collection of Linux system health, hardware utilization, service status, and security configuration.
-- **`ubuntu/discover.yml`**: Phase playbook for Ubuntu discovery only.
-- **`vmware/audit.yml`**: Full read-only VMware collection (vCenter + ESXi + VM data) for unified reporting.
-- **`vcsa/audit.yml`**: Read-only VMware control-plane audit focused on vCenter appliance and alarms.
-- **`vcsa/stig_audit.yml`**: Read-only VCSA STIG audit for appliance security controls.
-- **`esxi/audit.yml`**: Read-only VMware infrastructure audit focused on ESXi hosts and datastores.
-- **`vm/audit.yml`**: Read-only VMware workload audit focused on VMs and snapshots.
-- **`windows/audit.yml`**: Read-only collection of Windows health metrics, installed software, and update status.
-- **`windows/post_patch_audit.yml`**: Phase playbook for post-patch Windows verification.
-- **`vmware/collect.yml`**: Compatibility alias to `vmware/audit.yml`.
-
-## STIG Compliance & Hardening
-
-Security-focused playbooks for baseline verification and automated enforcement.
-
-- **`**/stig_audit.yml`**: Read-only compliance verification. Executes checks against DISA STIG requirements and emits raw STIG telemetry via `ncs_collector`.
-- **`**/stig_remediate.yml`**: State enforcement. Applies configuration changes to align systems with STIG security requirements.
-- **`vcsa/stig_remediate.yml`**: VCSA STIG hardening plus post-remediation compliance verification.
-- **`ubuntu/stig_remediate_apply.yml`**: Phase playbook that applies Ubuntu STIG remediation.
-- **`ubuntu/stig_verify.yml`**: Phase playbook that runs Ubuntu STIG verification.
-
-## Lifecycle & Maintenance
-
-- **`**/patch.yml`**: Software lifecycle management. Orchestrates OS-level package updates and reboots for Linux and Windows.
-- **`ubuntu/patch_apply.yml`**: Phase playbook that applies Ubuntu patching actions.
-- **`windows/update.yml`**: Phase playbook that applies Windows updates.
-- **`ubuntu/password_rotate_bulk.yml`**: Security utility for automated rotation and management of local system passwords.
+| Collection | Playbooks |
+|---|---|
+| `internal.vmware` | `collect`, `esxi_collect`, `esxi_stig_audit`, `esxi_stig_remediate`, `esxi_password_status`, `esxi_password_rotate`, `esxi_refresh_inventory`, `vcsa_collect`, `vcsa_stig_audit`, `vcsa_stig_remediate`, `vcsa_password_*`, `vm_collect`, `vm_stig_audit`, `vm_stig_remediate`, `vm_stig_*_parallel` |
+| `internal.linux` | `ubuntu_collect`, `ubuntu_stig_audit`, `ubuntu_stig_remediate`, `ubuntu_stig_verify`, `ubuntu_update`, `ubuntu_password_*`, `ubuntu_run`, `photon_stig_audit`, `photon_stig_remediate`, `photon_password_*` |
+| `internal.windows` | `server_collect`, `server_health`, `server_stig_audit`, `server_stig_remediate`, `server_run`, `server_cleanup`, `server_kb_install`, `server_openssh`, `server_registry_fix`, `server_windows_update`, `server_patch`, `server_scheduled_task`, `server_service`, `server_vuln_scan`, `server_winrm_enable`, `server_remote_ops`, `server_ad_search`, `server_update_software`, `server_uninstall_software`, `domain_collect`, `domain_run` |
 
 ## Usage
 
-Standard execution via `ansible-playbook`:
-
 ```bash
-# Full fleet audit and report generation
-ansible-playbook playbooks/site.yml
+# Full fleet audit + report generation
+ansible-playbook -i inventory/production playbooks/site.yml
 
-# Read-only VMware STIG audits
-ansible-playbook playbooks/vmware/esxi/stig_audit.yml
-ansible-playbook playbooks/vmware/vm/stig_audit.yml
-ansible-playbook playbooks/vmware/vcsa/stig_audit.yml
+# Site-level STIG audit across every platform
+ansible-playbook -i inventory/production playbooks/site_stig_audit.yml
 
-# Ubuntu package patching
-ansible-playbook playbooks/linux/ubuntu/patch.yml
+# Per-platform action via FQCN (invokes the collection directly)
+ansible-playbook -i inventory/production internal.vmware.esxi_stig_audit
+ansible-playbook -i inventory/production internal.linux.ubuntu_collect
+ansible-playbook -i inventory/production internal.windows.server_stig_remediate
 ```
+
+Every platform playbook accepts the shared role interface vars:
+`ncs_action`, `ncs_profile`, and `ncs_operation`.

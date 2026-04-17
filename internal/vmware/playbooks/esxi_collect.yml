@@ -1,0 +1,29 @@
+# >>>
+# is_read_only: true
+# label: Collect
+# options:
+#   esxi_collect_per_host: bool = true | Per-Host Health | Collect metrics per ESXi host instead of cluster-level aggregates
+#   esxi_collect_datacenters: bool = true | Datacenter Scan | Query datacenter topology and folder structure
+#   esxi_collect_compute: bool = true | Compute/Cluster Data | Query cluster, host CPU/memory, and HA/DRS status
+#   esxi_collect_storage: bool = true | Datastore Scan | Query datastore capacity, usage, and connectivity
+# <<<
+---
+# internal/vmware/playbooks/esxi_collect.yml
+# Read-only audit focused on ESXi host and datastore inventory/health data.
+
+- name: Phase 2b | ESXi Infrastructure Audit
+  hosts: "vcsa:esxi_hosts"
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: Route ESXi targets
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: route_esxi
+  roles:
+    - role: internal.vmware.esxi
+      vars:
+        ncs_action: collect

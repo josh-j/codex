@@ -1,23 +1,22 @@
-# yaml-language-server: $schema=../../.schemas/report_schema.json
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
 config:
   platform: linux/ubuntu
   stig:
     ansible_playbook:
-      path: "playbooks/linux/ubuntu/stig_remediate.yml"
+      path: "internal.linux.ubuntu_stig_remediate"
       target_var: "ubuntu_target_hosts"
     rule_prefix_to_platform:
       UBTU: ubuntu
       GEN: ubuntu
   extra_fleet_widget_columns:
-    - header: Distribution
-      field: distribution
-    - header: Uptime (d)
-      field: uptime_days
-    - header: Critical
-      field: _critical_count
-    - header: Warning
-      field: _warning_count
-
+    - name: Distribution
+      value: "{{ distribution }}"
+    - name: Uptime (d)
+      value: "{{ uptime_days }}"
+    - name: Critical
+      value: "{{ _critical_count }}"
+    - name: Warning
+      value: "{{ _warning_count }}"
 vars:
   $include: "linux_base_fields.yaml"
 

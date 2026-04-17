@@ -83,17 +83,6 @@ def _add_aliases(schema: dict) -> None:
                 "default": "full",
             }
 
-    # stat_cards still accepts dict shorthand {'Label': "{{ expr }}"} (expanded by schema_loader)
-    stat_cards = defs.get("StatCardsWidget", {})
-    cards_prop = stat_cards.get("properties", {}).get("cards")
-    if cards_prop and cards_prop.get("type") == "array":
-        cards_prop.pop("items", None)
-        cards_prop.pop("type", None)
-        cards_prop["anyOf"] = [
-            {"type": "array", "items": {"anyOf": [{"type": "object", "additionalProperties": True}]}},
-            {"type": "object", "additionalProperties": True},
-        ]
-
     # Accept $include strings where arrays or dicts are expected.
     # The schema_loader resolves $include at load time before validation.
     top_props = schema.get("properties", {})
@@ -132,39 +121,51 @@ def main() -> None:
     out_dir = Path(__file__).resolve().parent / "schemas"
     out_dir.mkdir(exist_ok=True)
 
-    # Main schema (vcsa.yaml, windows.yaml, esxi.yaml, etc.)
-    schema = ReportSchema.model_json_schema()
-    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-    schema["title"] = "NCS Reporter Schema Config"
-    schema["description"] = "YAML-driven report schema for ncs_reporter."
-    _add_aliases(schema)
+    # 1. Generate the report-schema JSON (applies aliases to $defs + root props).
+    report_schema = ReportSchema.model_json_schema()
+    _add_aliases(report_schema)
 
-    main_path = out_dir / "report_schema.json"
-    main_path.write_text(json.dumps(schema, indent=2) + "\n")
-    print(f"Wrote {main_path}")
-
-    # Alert list schema (linux_base_alerts.yaml, etc.)
+    # 2. Generate the alert-rule JSON and extract its AlertRule definition so
+    #    we can embed it as a second oneOf branch in the unified schema.
     alert_schema = AlertRule.model_json_schema()
-    alert_list_schema = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "NCS Reporter Alert List",
-        "description": "A list of alert rules, included via $include in main config files.",
-        "type": "array",
-        "items": {"$ref": "#/$defs/AlertRule"},
-        "$defs": alert_schema.get("$defs", {}),
-    }
-    # If AlertRule is the root, put it in $defs
-    if "$defs" not in alert_schema:
-        alert_list_schema["$defs"] = {"AlertRule": alert_schema}
-    else:
-        alert_list_schema["$defs"]["AlertRule"] = {
-            k: v for k, v in alert_schema.items() if k != "$defs"
-        }
-    _add_aliases(alert_list_schema)
+    report_defs = report_schema.setdefault("$defs", {})
+    for def_name, defn in alert_schema.get("$defs", {}).items():
+        report_defs.setdefault(def_name, defn)
+    # AlertRule itself lives at the top level of its own schema — move to $defs.
+    alert_rule_def = {k: v for k, v in alert_schema.items() if k != "$defs"}
+    report_defs["AlertRule"] = alert_rule_def
 
-    alert_path = out_dir / "alert_list_schema.json"
-    alert_path.write_text(json.dumps(alert_list_schema, indent=2) + "\n")
-    print(f"Wrote {alert_path}")
+    # 3. Build the unified oneOf root: accept either a full report config
+    #    (object) or a bare alert list (array of AlertRule).
+    report_body = {k: v for k, v in report_schema.items() if k not in {"$schema", "$defs", "title", "description"}}
+    unified: dict = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "NCS Reporter Config",
+        "description": (
+            "YAML-driven report schema for ncs_reporter. Accepts either a full "
+            "report config (object) or a standalone alert list (array of AlertRule)."
+        ),
+        "oneOf": [
+            report_body,
+            {
+                "type": "array",
+                "items": {"$ref": "#/$defs/AlertRule"},
+                "description": "Standalone alert list — included via $include in main configs.",
+            },
+        ],
+        "$defs": report_defs,
+    }
+
+    out_path = out_dir / "ncs_reporter_config_schema.json"
+    out_path.write_text(json.dumps(unified, indent=2) + "\n")
+    print(f"Wrote {out_path}")
+
+    # Remove any superseded single-purpose schemas so the source of truth is clear.
+    for stale in ("report_schema.json", "alert_list_schema.json"):
+        stale_path = out_dir / stale
+        if stale_path.exists():
+            stale_path.unlink()
+            print(f"Removed stale {stale_path}")
 
 
 if __name__ == "__main__":

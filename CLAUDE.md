@@ -47,14 +47,21 @@ Four internal Ansible collections live under `internal/` and are symlinked into 
 
 The `ncs_collector` callback plugin (`internal/core/plugins/callback/ncs_collector.py`) is the bridge between stages — it intercepts Ansible task results and persists them as `raw_*.yaml` files.
 
-### Playbooks (playbooks/)
+### Playbooks
 
-Organized by platform subdirectory. Key patterns:
-- `site.yml` — Master orchestrator (setup → audit all platforms → report)
-- `*/audit.yml` — Read-only collection
-- `*/stig_audit.yml` — Read-only STIG compliance check
-- `*/stig_remediate.yml` — MUTATING STIG hardening
-- Playbooks use `ncs_action`, `ncs_profile`, and `ncs_operation` as the shared role interface
+**App layer** (`playbooks/`) — site orchestrators + NCS infrastructure:
+- `site.yml`, `site_*.yml` — Master orchestrators (setup → audit platforms → report)
+- `ncs/` — report dir init, report generation, samba share, schedule timers
+- `core/send_alert_email.yml` — localhost alerting
+
+**Collections** — each platform ships self-contained playbooks invoked by FQCN:
+- `internal/vmware/playbooks/` → `ansible-playbook internal.vmware.esxi_stig_audit` etc.
+- `internal/linux/playbooks/` → `ansible-playbook internal.linux.ubuntu_collect` etc.
+- `internal/windows/playbooks/` → `ansible-playbook internal.windows.server_stig_audit` etc.
+
+Playbook file naming inside collections is flat with a sub-platform prefix
+(`esxi_stig_audit.yml`, `ubuntu_collect.yml`, `server_stig_audit.yml`). Shared
+role interface is `ncs_action` / `ncs_profile` / `ncs_operation`.
 
 ### ncs-reporter (ncs-reporter/)
 

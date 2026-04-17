@@ -230,10 +230,10 @@ Continue to next rule? [y/n/abort]: y
 2. Filters findings to `status=open`
 3. For ESXi, generates an all-disabled vars file (`esxi_70_NNNNNN_manage: false`) and applies selected rules interactively
 4. For non-ESXi targets, runs the mapped remediation playbook with target host scoping:
-   - `vm` -> `playbooks/vmware/vm/stig_remediate.yml`
-   - `vcsa` -> `playbooks/vmware/vcsa/stig_remediate.yml`
-   - `photon` -> `playbooks/linux/photon/stig_remediate.yml`
-   - `ubuntu` -> `playbooks/linux/ubuntu/stig_remediate.yml`
+   - `vm` -> `internal.vmware.vm_stig_remediate`
+   - `vcsa` -> `internal.vmware.vcsa_stig_remediate`
+   - `photon` -> `internal.linux.photon_stig_remediate`
+   - `ubuntu` -> `internal.linux.ubuntu_stig_remediate`
 
 ESXi command pattern:
    ```bash

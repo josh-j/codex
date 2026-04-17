@@ -108,7 +108,7 @@ def _esxi_stig_raw(host: str, status: str = "failed") -> dict:
                 "id": "V-256379",
                 "status": status,
                 "severity": "medium",
-                "title": "stigrule_256379_account_lock_failures",
+                "name": "stigrule_256379_account_lock_failures",
                 "checktext": f"Security.AccountLockFailures must be 3. Status: {status}",
             }
         ],

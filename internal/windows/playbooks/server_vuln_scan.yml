@@ -1,0 +1,13 @@
+---
+# internal/windows/playbooks/server_vuln_scan.yml
+# ACAS vulnerability scan import and live remediation status check.
+
+- name: "Windows | Vulnerability Scan Import"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, vuln, security]
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: audit
+        ncs_operation: vuln_scan

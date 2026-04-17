@@ -1,0 +1,13 @@
+---
+# internal/windows/playbooks/server_update_software.yml
+# Update Chrome, Edge, Office, Notepad++, or general apps via winget.
+
+- name: "Windows | Software Update"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, update, software]
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: remediate
+        ncs_operation: update_software

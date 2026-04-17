@@ -6,10 +6,10 @@
   ansible.builtin.import_playbook: ncs/setup_env.yml
 
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/server/collect.yml
+  ansible.builtin.import_playbook: internal.windows.server_collect
 
 - name: "Phase 3c: Windows System Health Check"
-  ansible.builtin.import_playbook: windows/server/health.yml
+  ansible.builtin.import_playbook: internal.windows.server_health
 
 - name: "Phase 4: Unified Infrastructure Reporting"
   ansible.builtin.import_playbook: ncs/generate_reports.yml

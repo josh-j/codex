@@ -138,6 +138,51 @@
       [ -f /etc/audit/audisp-remote.conf ] && rconf=/etc/audit/audisp-remote.conf || rconf=/etc/audisp/audisp-remote.conf
       sed -i "s/^\s*remote_server\s*=.*/remote_server = {{ stig_2404_stigrule_270658_remote_server }}/" "$rconf"
 
+# --- Site helper: audisp-syslog forwarder ---------------------------------
+# Not a DISA STIG rule. Lets rsyslog receive audit events via the audispd
+# plugin (which runs inside auditd as root) instead of tailing
+# /var/log/audit/audit.log directly. Required because rule 270829 forces
+# log_group=root on the audit log files, which locks syslog (group adm)
+# out of direct reads after rotation.
+#
+# Opt-in: set stig_2404_site_audisp_syslog_manage=true in inventory.
+# Requires audispd-plugins to be installed (rule 270658 handles that
+# package). After enable, configure rsyslog to route local6.* to the
+# desired destination.
+- name: "site_audisp_syslog | configure plugin"
+  when:
+    - stig_2404_site_audisp_syslog_manage | default(false) | bool
+    - "'audispd-plugins' in (ansible_facts.packages | default({}))"
+  block:
+    - name: "site_audisp_syslog | locate plugins.d directory"
+      ansible.builtin.stat:
+        path: /etc/audit/plugins.d
+      register: _site_audisp_plugins_new
+
+    - name: "site_audisp_syslog | set plugin config path"
+      ansible.builtin.set_fact:
+        _site_audisp_syslog_conf: >-
+          {{ '/etc/audit/plugins.d/syslog.conf'
+             if _site_audisp_plugins_new.stat.exists
+             else '/etc/audisp/plugins.d/syslog.conf' }}
+
+    - name: "site_audisp_syslog | render plugin config"
+      ansible.builtin.copy:
+        dest: "{{ _site_audisp_syslog_conf }}"
+        owner: root
+        group: root
+        mode: "0640"
+        content: |
+          # Managed by internal.linux.ubuntu (site_audisp_syslog)
+          active = yes
+          direction = out
+          path = /sbin/audisp-syslog
+          type = always
+          args = {{ stig_2404_site_audisp_syslog_priority }} {{ stig_2404_site_audisp_syslog_facility }}
+          format = string
+      notify: auditd_sighup
+  tags: [audit, syslog, site]
+
 # --- 270816 - Audit log storage on separate partition ---
 - name: "stigrule_270816"
   internal.core.stig:

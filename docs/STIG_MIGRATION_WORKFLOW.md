@@ -394,7 +394,7 @@ ANSIBLE_CALLBACKS_ENABLED=internal.core.ncs_collector \
 ### 4.4 STIG Report
 
 ```bash
-.venv/bin/python scripts/stig_report.py \
+.venv/bin/python internal/linux/roles/ubuntu/files/stig_report.py \
   /srv/samba/reports/platform/<path>/raw_stig_<type>.yaml \
   files/ncs-reporter_configs/cklb_skeletons/<skeleton>.json
 ```

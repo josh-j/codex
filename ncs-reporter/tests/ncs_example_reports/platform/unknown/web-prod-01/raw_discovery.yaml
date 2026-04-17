@@ -1,7 +1,7 @@
 metadata:
   host: web-prod-01
   raw_type: discovery
-  timestamp: '2026-04-16T14:47:37+00:00'
+  timestamp: '2026-04-17T07:53:48+00:00'
   engine: ncs_collector_callback
 data:
   hostname: web-prod-01
@@ -45,7 +45,7 @@ data:
     - deploy
     - /home/deploy
     - /bin/bash
-  epoch_seconds: 1776350857.0
+  epoch_seconds: 1776412428.0
   mounts:
   - mount: /
     device: /dev/sda1

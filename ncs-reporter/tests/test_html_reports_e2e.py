@@ -288,7 +288,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
                     "id": "V-256379",
                     "status": "failed",
                     "severity": "medium",
-                    "title": "stigrule_256379_account_lock_failures",
+                    "name": "stigrule_256379_account_lock_failures",
                     "checktext": "Security.AccountLockFailures must be 3.",
                 }
             ],

@@ -13,19 +13,19 @@
 
 # Phase 2: VMware Discovery & Audit
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
-  ansible.builtin.import_playbook: vmware/collect.yml
+  ansible.builtin.import_playbook: internal.vmware.collect
 
 # Phase 3: Linux Fleet Audit
 - name: "Phase 3: Linux System Health Audit"
-  ansible.builtin.import_playbook: linux/ubuntu/collect.yml
+  ansible.builtin.import_playbook: internal.linux.ubuntu_collect
 
 # Phase 3b: Windows Fleet Audit
 - name: "Phase 3b: Windows System Audit"
-  ansible.builtin.import_playbook: windows/server/collect.yml
+  ansible.builtin.import_playbook: internal.windows.server_collect
 
 # Phase 3c: Windows Health Check
 - name: "Phase 3c: Windows System Health Check"
-  ansible.builtin.import_playbook: windows/server/health.yml
+  ansible.builtin.import_playbook: internal.windows.server_health
 
 # Phase 4: Reporting & Dashboards (Decoupled Engine)
 - name: "Phase 4: Unified Infrastructure Reporting"

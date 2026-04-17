@@ -29,40 +29,40 @@ fields:
     type: list
 
 widgets:
-  - id: layout_test
-    title: "Layout Test"
+  - slug: layout_test
+    name: "Layout Test"
     type: key_value
     layout: { width: "half" }
     fields:
-      - { label: "Uptime", field: uptime_days }
+      - { name: "Uptime", value: "{{ uptime_days }}" }
 
-  - id: storage_progress
-    title: "Storage Usage"
+  - slug: storage_progress
+    name: "Storage Usage"
     type: progress_bar
     layout: { width: "half" }
-    field: used_pct
-    label: storage_gb
+    value: "{{ used_pct }}"
+    value_label: storage_gb
     color: auto
     thresholds:
-      warn_at: 75
-      crit_at: 90
+      warn_if_above: 75
+      crit_if_above: 90
 
-  - id: network_table
-    title: "Network Interfaces"
+  - slug: network_table
+    name: "Network Interfaces"
     type: table
     rows_field: interfaces
     columns:
-      - header: "Name"
-        field: name
-      - header: "Status"
-        field: status
+      - name: "Name"
+        value: "{{ name }}"
+      - name: "Status"
+        value: "{{ status }}"
         style_rules:
-          - condition: { op: eq_str, field: status, value: "down" }
+          - when: status == 'down'
             css_class: "health-crit"
-          - condition: { op: eq_str, field: status, value: "up" }
+          - when: status == 'up'
             css_class: "health-ok"
 
-  - id: note
-    title: "Note"
+  - slug: note
+    name: "Note"
     type: markdown
     content: "This is a **markdown** widget."

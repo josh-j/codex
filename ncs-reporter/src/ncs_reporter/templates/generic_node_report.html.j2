@@ -107,7 +107,7 @@
     <div class="toc">
         <div class="toc-left">
             {% for widget in widgets %}
-            <a href="#{{ widget.id }}">{{ widget.title }}</a>
+            <a href="#{{ widget.slug }}">{{ widget.name }}</a>
             {% endfor %}
         </div>
     </div>
@@ -121,14 +121,14 @@
         {% elif w_width == 'quarter' %}{% set flex_basis = 'calc(25% - 10.5px)' %}
         {% endif %}
 
-        <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.id }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
+        <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
             <div class="widget-titlebar">
                 {% if widget.type == 'alert_panel' %}
                 <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
                 {% else %}
-                <span class="widget-title">{{ widget.title }}</span>
+                <span class="widget-title">{{ widget.name }}</span>
                 {% endif %}
-                <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.title }}"></button>
+                <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.name }}"></button>
             </div>
 
             {# ── Non-table widget types ─────────────────────────────────────── #}
@@ -155,7 +155,7 @@
                 {% for card in widget.get('cards', []) %}
                 <div class="stat-card stat-card-{{ card.color | default('blue') }}">
                     <div class="stat-card-value">{{ card.value }}</div>
-                    <div class="stat-card-label">{{ card.label }}</div>
+                    <div class="stat-card-label">{{ card.name }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -313,7 +313,7 @@
             <table class="kv">
                 <tbody>
                 {% for row in widget.rows %}
-                    <tr><td>{{ row.label }}</td><td>{% if row.as == 'status-badge' %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
+                    <tr><td>{{ row.name }}</td><td>{% if row.as == 'status-badge' %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -327,7 +327,7 @@
                 <thead>
                     <tr>
                     {% for col in widget.get('columns', []) %}
-                        <th class="sortable">{{ col.header }}</th>
+                        <th class="sortable">{{ col.name }}</th>
                     {% endfor %}
                     </tr>
                 </thead>
@@ -359,13 +359,13 @@
                 <thead>
                     <tr>
                     {% for col in widget.get('columns', []) %}
-                        <th class="sortable">{{ col.header }}</th>
+                        <th class="sortable">{{ col.name }}</th>
                     {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                 {% for group_name, group_rows in widget.groups.items() %}
-                    {% set grp_id = "grp-" ~ widget.id ~ "-" ~ loop.index %}
+                    {% set grp_id = "grp-" ~ widget.slug ~ "-" ~ loop.index %}
                     <tr class="group-hdr" data-group="{{ grp_id }}">
                         <td colspan="{{ widget.columns | length }}">
                             <span class="group-toggle"></span>

@@ -78,7 +78,7 @@ class TestNormalizeStigFinding:
             "status": "open",
             "severity": "CAT_I",
             "id": "V-001",
-            "title": "Test Rule",
+            "name": "Test Rule",
             "description": "Test desc",
         }
         result = _normalize_stig_finding(finding, "stig_esxi", "vmware")
@@ -116,8 +116,8 @@ class TestSummarizeStigFindings:
 class TestBuildStigHostView:
     def test_basic_host_view(self):
         findings = [
-            {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
-            {"id": "V-002", "status": "pass", "severity": "CAT_II", "title": "Rule 2"},
+            {"id": "V-001", "status": "open", "severity": "CAT_I", "name": "Rule 1"},
+            {"id": "V-002", "status": "pass", "severity": "CAT_II", "name": "Rule 2"},
         ]
         view = build_stig_host_view("host1", "stig_esxi", _stig_payload(findings), ctx=ReportContext(report_stamp="20260226"))
         assert view["target"]["host"] == "host1"
@@ -134,7 +134,7 @@ class TestBuildStigHostView:
 
     def test_enriches_finding_detail_from_cklb_lookup(self):
         findings = [
-            {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
+            {"id": "V-001", "status": "open", "severity": "CAT_I", "name": "Rule 1"},
         ]
         cklb_lookup = {
             "V-001": {
@@ -206,15 +206,15 @@ class TestBuildStigFleetView:
             "host1": {
                 "stig_esxi": _stig_payload(
                     [
-                        {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
+                        {"id": "V-001", "status": "open", "severity": "CAT_I", "name": "Rule 1"},
                     ]
                 )
             },
             "host2": {
                 "stig_vm": _stig_payload(
                     [
-                        {"id": "V-001", "status": "open", "severity": "CAT_I", "title": "Rule 1"},
-                        {"id": "V-002", "status": "pass", "severity": "CAT_II", "title": "Rule 2"},
+                        {"id": "V-001", "status": "open", "severity": "CAT_I", "name": "Rule 1"},
+                        {"id": "V-002", "status": "pass", "severity": "CAT_II", "name": "Rule 2"},
                     ]
                 )
             },
