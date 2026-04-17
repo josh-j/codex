@@ -8,6 +8,8 @@ build/
 
 # ncs-console dependencies (pulled by ncs-console/setup.ps1)
 ncs-console/App/lib/
+# ncs-console shortcut icon (generated on first install-shortcut.ps1 run)
+ncs-console/App/ncs-icon.ico
 
 # Installed local internal.* collections (resolved by requirements.yml).
 # Community collections elsewhere in this dir remain tracked; only the
