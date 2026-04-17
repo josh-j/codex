@@ -1,0 +1,64 @@
+---
+# ncs-ansible assembles four independent NCS collections.
+#
+# The four collections live entirely on local disk — they are never
+# fetched from Galaxy, GitHub, or any remote. Two install modes are
+# supported (pick one per environment; don't mix them in the same tree):
+#
+#   (A) Built tarballs from ./dist/     ← typical release/production mode
+#       Build with: just build-collections-all
+#       Install with: just install-collections
+#
+#   (B) Sibling working directories      ← typical during active dev on
+#       a separate collection repo
+#
+# During monorepo development neither mode is used: the symlink
+#   collections/ansible_collections/internal → ../../internal
+# lets Ansible pick up edits to internal/<col>/ immediately.
+# Justfile's `install-collections` target refuses to run while that
+# symlink exists.
+
+collections:
+  # --- Mode (A): local tarballs -------------------------------------------
+  #
+  # Produce with `just build-collections-all`, then `just install-collections`.
+  # Tarball filenames encode the version; update when you cut a new one.
+  #
+  # - name: "./dist/internal-core-1.0.0.tar.gz"
+  #   type: file
+  # - name: "./dist/internal-vmware-1.1.0.tar.gz"
+  #   type: file
+  # - name: "./dist/internal-linux-1.1.0.tar.gz"
+  #   type: file
+  # - name: "./dist/internal-windows-1.1.0.tar.gz"
+  #   type: file
+
+  # --- Mode (B): sibling working directories ------------------------------
+  #
+  # Adjust the paths if your collection repos live elsewhere. Ansible
+  # copies the directory contents into `collections/ansible_collections/`
+  # at install time — edits to the sibling dir after install do NOT
+  # propagate until you re-run `install-collections`.
+  #
+  # - name: "../ncs-ansible-core"
+  #   type: dir
+  # - name: "../ncs-ansible-vmware"
+  #   type: dir
+  # - name: "../ncs-ansible-linux"
+  #   type: dir
+  # - name: "../ncs-ansible-windows"
+  #   type: dir
+
+  # --- Monorepo placeholder (default) -------------------------------------
+  #
+  # Leave the named entries in so `ansible-galaxy collection list`
+  # displays expected versions. Version ranges are informational until
+  # one of the modes above is uncommented.
+  - name: internal.core
+    version: ">=1.0.0,<2.0.0"
+  - name: internal.vmware
+    version: ">=1.1.0,<2.0.0"
+  - name: internal.linux
+    version: ">=1.1.0,<2.0.0"
+  - name: internal.windows
+    version: ">=1.1.0,<2.0.0"

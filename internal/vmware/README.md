@@ -10,6 +10,25 @@ The maintained audit entrypoints are:
 
 All service-specific STIG tasks (eam, lookup, perfcharts, postgresql, rhttpproxy, sts, ui, vami) are consolidated within the vcsa role.
 
+Depends on `internal.core` (`>=1.0.0,<2.0.0`).
+
+## Installation
+
+```bash
+# from a built tarball
+ansible-galaxy collection install internal-vmware-<version>.tar.gz
+
+# or via the app repo's requirements.yml manifest
+ansible-galaxy collection install -r requirements.yml
+```
+
+Playbooks ship under `playbooks/` inside the collection; invoke by FQCN:
+
+```bash
+ansible-playbook -i inventory/production internal.vmware.esxi_stig_audit
+ansible-playbook -i inventory/production internal.vmware.vcsa_stig_remediate
+```
+
 ## Usage
 
 Read-only VMware fleet audit:

@@ -11,6 +11,25 @@ Windows audit, health checks, STIG compliance, and Active Directory operations.
 
 Both roles use `internal.core.dispatch` with dynamic dispatch for operation routing.
 
+Depends on `internal.core` (`>=1.0.0,<2.0.0`).
+
+## Installation
+
+```bash
+# from a built tarball
+ansible-galaxy collection install internal-windows-<version>.tar.gz
+
+# or via the app repo's requirements.yml manifest
+ansible-galaxy collection install -r requirements.yml
+```
+
+Playbooks ship under `playbooks/` inside the collection; invoke by FQCN:
+
+```bash
+ansible-playbook -i inventory/production internal.windows.server_collect
+ansible-playbook -i inventory/production internal.windows.server_stig_audit
+```
+
 ## Server Health Checks
 
 The `health` profile runs: disk, memory/CPU, network, OS info, event logs, secure channel, services, and reboot-pending checks.
