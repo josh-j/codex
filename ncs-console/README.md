@@ -46,6 +46,17 @@ If execution policy blocks unsigned scripts, set `RemoteSigned` for the current 
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
+### Desktop shortcut
+
+```powershell
+pwsh -File .\install-shortcut.ps1
+```
+
+Generates `App\ncs-icon.ico` (bold white "N" on a dark background with a
+cyan accent band) and drops an "NCS Console" shortcut on the Desktop
+pointing at `ncs-console.ps1`. Re-run with `-Force` to refresh after
+updates; pass `-Uninstall` to remove.
+
 ## Actions
 
 Actions are auto-discovered from the `playbooks/` directory on the remote host. The tree hierarchy mirrors the directory structure. Labels, options, and mutating flags are extracted from playbook YAML and `# >>> / # <<<` metadata blocks. The app runs `ansible-playbook` directly (activating `.venv` if present) — no Makefile, Justfile, or make targets are involved.
