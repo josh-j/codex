@@ -1,0 +1,70 @@
+---
+# playbooks/site_collect_and_alert.yml
+# Collect fresh telemetry across the fleet, then fire cooldown-gated
+# alert actions against every raw bundle ncs_collector wrote.
+#
+# Pairs the clock-driven scheduler (schedules.yml → systemd timers) with
+# the state-driven alert trigger (ncs-reporter fire-on-alerts) so that
+# detection and reaction run on the same cadence without manual CLI
+# invocation. See docs/SCHEDULING_AND_ALERT_ACTIONS.md for the design.
+
+# Phase 1: collect raw_*.yaml across every platform
+- ansible.builtin.import_playbook: site_collect_only.yml
+
+# Phase 2: evaluate alerts + fire per-alert actions
+- name: "Fire alert actions across the fleet"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  vars:
+    ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/..', true) }}"
+    _ncs_report_dir: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}"
+    _ncs_alert_state_file: "{{ ncs_config.alert_state_file | default('/var/lib/ncs/alert_state.yaml') }}"
+    _ncs_fire_on_alerts_dry_run: "{{ ncs_fire_on_alerts_dry_run | default(false) | bool }}"
+
+  tasks:
+    - name: "Ensure alert-state parent directory exists"
+      ansible.builtin.file:
+        path: "{{ _ncs_alert_state_file | dirname }}"
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: "Enumerate collected raw bundles"
+      ansible.builtin.find:
+        paths: "{{ _ncs_report_dir }}/platform"
+        patterns: "raw_*.yaml"
+        recurse: true
+      register: _ncs_raw_bundles
+
+    - name: "Report bundle count"
+      ansible.builtin.debug:
+        msg: "Evaluating alerts for {{ _ncs_raw_bundles.files | length }} raw bundle(s)"
+
+    - name: "Evaluate alerts + fire gated actions"
+      ansible.builtin.command:
+        cmd: >-
+          {{ ncs_repo_path }}/.venv/bin/ncs-reporter fire-on-alerts
+          --input {{ item.path | quote }}
+          --state-file {{ _ncs_alert_state_file | quote }}
+          --project-dir {{ ncs_repo_path | quote }}
+          {{ '--dry-run' if _ncs_fire_on_alerts_dry_run else '' }}
+      loop: "{{ _ncs_raw_bundles.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      register: _ncs_fire_results
+      changed_when: false
+      # Don't abort the whole sweep on a single-host failure; each alert
+      # action runs independently and the state file protects us from
+      # re-firing noisy actions while an issue is investigated.
+      failed_when: false
+
+    - name: "Summarize failures (if any)"
+      ansible.builtin.debug:
+        msg: "{{ item.item.path | basename }}: exit {{ item.rc }}"
+      loop: "{{ _ncs_fire_results.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.path | basename }}"
+      when: item.rc is defined and item.rc != 0
