@@ -134,6 +134,55 @@ build-collection name:
 build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows")
     @echo "✓ all collections built under dist/"
 
+# Materialize the four internal.* collections as sibling working trees
+# at ../ncs-ansible-<col>/. For each tarball in collections/vendor/,
+# extract the contents and rsync them into the sibling dir (preserving
+# any existing .git). If the sibling has no .git yet, initialize a git
+# repo with an initial commit and a v<version> tag from galaxy.yml.
+#
+# Use this on a fresh clone to bootstrap the four sibling repos without
+# access to the dev machine where they originated, or to refresh an
+# existing set of siblings against the currently-vendored tarballs.
+#
+# After placement each sibling is an independent repo — add remotes and
+# push to whatever alternative git host you want.
+place-collection-siblings:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for col in core vmware linux windows; do
+        tarball=$(ls -1 collections/vendor/internal-${col}-*.tar.gz 2>/dev/null | head -1 || true)
+        if [ -z "$tarball" ]; then
+            echo "⚠ no tarball for internal.${col} in collections/vendor/; skipping" >&2
+            continue
+        fi
+        dest="../ncs-ansible-${col}"
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        .venv/bin/python scripts/extract_collection_tarball.py "$tarball" "$tmp/src"
+        mkdir -p "$dest"
+        rsync -a --delete --exclude='.git' "$tmp/src"/ "$dest"/
+        rm -rf "$tmp"
+        trap - EXIT
+        if [ ! -d "$dest/.git" ]; then
+            version=$(sed -nE 's/^version:[[:space:]]*([^[:space:]]+).*/\1/p' "$dest/galaxy.yml" | head -1)
+            (cd "$dest"
+                git init --quiet --initial-branch=main
+                git add -A
+                git commit --quiet -m "Initial placement from $(basename "$tarball")"
+                if [ -n "$version" ]; then
+                    git tag "v${version}"
+                fi
+            )
+            echo "✓ $dest initialized from $(basename "$tarball") (v${version})"
+        else
+            echo "✓ $dest refreshed from $(basename "$tarball") — .git preserved; run 'git status' to review drift"
+        fi
+    done
+    echo ""
+    echo "Next: cd into each ../ncs-ansible-<col>, review changes, and"
+    echo "      git remote add <name> <url> && git push <name> --all --follow-tags"
+    echo "      to publish to an alternative repo."
+
 # Scaffold a new sibling collection repo from
 # ncs-ansible-collection-template/. Creates ../ncs-ansible-<name>/,
 # replaces the __COLLECTION_NAME__ placeholder, initializes git, and
