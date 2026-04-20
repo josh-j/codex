@@ -1,6 +1,9 @@
 # NCS (Non-Core Services) Root Justfile
 
 set dotenv-load := true
+# `mod?` below is still flagged unstable in some just releases; opt in here
+# so `just setup-all` doesn't require a `--unstable` flag on every call.
+set unstable := true
 
 # Ensure ncs_collector callback can find platform configs
 export NCS_REPO_ROOT := justfile_directory()
