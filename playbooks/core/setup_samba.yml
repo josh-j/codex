@@ -159,6 +159,18 @@
         name: Samba
       when: "'active' in _ufw_status.stdout"
 
+    # Surface the credentials an ncs-console operator needs to plug into
+    # the Settings pane. The password is pulled from the vault rather
+    # than reprinting whatever was just hashed into passdb, so re-running
+    # setup-samba always shows the current vault value. no_log is kept
+    # OFF here deliberately — the operator is the intended audience.
+    - name: Show SMB credentials for ncs-console
+      ansible.builtin.debug:
+        msg:
+          - "SMB user:     {{ samba_report_share_user }}"
+          - "SMB password: {{ vault_samba_user_password }}"
+          - "Paste these into ncs-console Settings → SmbUser / SmbPassword."
+
   handlers:
     - name: Restart Samba daemon
       ansible.builtin.systemd:
