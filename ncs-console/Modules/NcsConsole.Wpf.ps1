@@ -1249,35 +1249,104 @@ function Sync-NcsControlsFromSettings {
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
 }
 
-$script:ConsoleLineCount = 0
+$script:NcsConsoleMaxLines = 3000
+$script:NcsConsoleColors = @{
+    Error     = "#f47067"
+    Warning   = "#d4a72c"
+    Info      = "#6cb6ff"
+    Success   = "#57ab5a"
+    Muted     = "#8e939c"
+    Timestamp = "#555b66"
+}
+$script:NcsConsoleLineTimestampPattern = '^(\[\d{2}:\d{2}:\d{2}\])\s*(\[stderr\]\s*)?(.*)$'
+$script:NcsLineColorCache = [System.Collections.Generic.Dictionary[string,object]]::new()
+$script:NcsLineColorCacheMax = 512
 
 function Get-NcsLineColor {
     param([string] $Line)
 
     $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*(\[stderr\]\s*)?', ''
 
+    $cached = $null
+    if ($script:NcsLineColorCache.TryGetValue($text, [ref]$cached)) {
+        return $cached
+    }
+
+    $color = $null
     if ($text -match '^\s*(fatal|ERROR)' -or $text -match '\bfailed=\d*[1-9]' -or $text -match '\bunreachable=\d*[1-9]' -or $text -match '\bignored=\d*[1-9]') {
-        return "#f47067"
+        $color = $script:NcsConsoleColors.Error
+    } elseif ($text -match '^\s*(changed):|changed=\d*[1-9]') {
+        $color = $script:NcsConsoleColors.Warning
+    } elseif ($text -match '^\s*(skipping|rescued):|skipped=\d*[1-9]' -or $text -match '\[(WARNING|DEPRECATION WARNING)\]') {
+        $color = $script:NcsConsoleColors.Warning
+    } elseif ($text -match '^(PLAY|TASK|RUNNING HANDLER) \[' -or $text -match '^PLAY RECAP') {
+        $color = $script:NcsConsoleColors.Info
+    } elseif ($text -match '^\s*(ok|included):' -or $text -match '\bok=\d*[1-9]') {
+        $color = $script:NcsConsoleColors.Success
+    } elseif ($Line -match '\[stderr\]') {
+        $color = $script:NcsConsoleColors.Error
+    } elseif ($text -match '^>' -or $text -match '^---') {
+        $color = $script:NcsConsoleColors.Muted
     }
-    if ($text -match '^\s*(changed):|changed=\d*[1-9]') {
-        return "#d4a72c"
+
+    if ($script:NcsLineColorCache.Count -ge $script:NcsLineColorCacheMax) {
+        $script:NcsLineColorCache.Clear()
     }
-    if ($text -match '^\s*(skipping|rescued):|skipped=\d*[1-9]' -or $text -match '\[(WARNING|DEPRECATION WARNING)\]') {
-        return "#d4a72c"
+    $script:NcsLineColorCache[$text] = $color
+    return $color
+}
+
+function Add-NcsConsoleLines {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls,
+        [Parameter(Mandatory)]
+        [System.Collections.IList] $Lines
+    )
+
+    if ($Lines.Count -eq 0) { return }
+
+    $doc = $Controls.ConsoleTextBox.Document
+    $tsBrush = Get-NcsBrush -Color $script:NcsConsoleColors.Timestamp
+    $stderrBrush = Get-NcsBrush -Color $script:NcsConsoleColors.Error
+
+    $doc.BeginChange()
+    try {
+        foreach ($line in $Lines) {
+            $para = [System.Windows.Documents.Paragraph]::new()
+
+            if ($line -match $script:NcsConsoleLineTimestampPattern) {
+                $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
+                $tsRun.Foreground = $tsBrush
+                $para.Inlines.Add($tsRun)
+                if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
+                    $stderrTag = [System.Windows.Documents.Run]::new("[stderr] ")
+                    $stderrTag.Foreground = $stderrBrush
+                    $para.Inlines.Add($stderrTag)
+                }
+                $bodyText = $Matches[3]
+            } else {
+                $bodyText = $line
+            }
+
+            $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
+            $color = Get-NcsLineColor -Line $line
+            if ($null -ne $color) {
+                $bodyRun.Foreground = Get-NcsBrush -Color $color
+            }
+            $para.Inlines.Add($bodyRun)
+            $doc.Blocks.Add($para)
+        }
+
+        if ($doc.Blocks.Count -gt $script:NcsConsoleMaxLines) {
+            $target = [int]($script:NcsConsoleMaxLines * 0.9)
+            while ($doc.Blocks.Count -gt $target) {
+                $doc.Blocks.Remove($doc.Blocks.FirstBlock)
+            }
+        }
+    } finally {
+        $doc.EndChange()
     }
-    if ($text -match '^(PLAY|TASK|RUNNING HANDLER) \[' -or $text -match '^PLAY RECAP') {
-        return "#6cb6ff"
-    }
-    if ($text -match '^\s*(ok|included):' -or $text -match '\bok=\d*[1-9]') {
-        return "#57ab5a"
-    }
-    if ($Line -match '\[stderr\]') {
-        return "#f47067"
-    }
-    if ($text -match '^>' -or $text -match '^---') {
-        return "#8e939c"
-    }
-    return $null
 }
 
 function Add-NcsConsoleLine {
@@ -1288,38 +1357,7 @@ function Add-NcsConsoleLine {
         [string] $Line
     )
 
-    $doc = $Controls.ConsoleTextBox.Document
-    $para = [System.Windows.Documents.Paragraph]::new()
-
-    if ($Line -match '^(\[\d{2}:\d{2}:\d{2}\])\s*(\[stderr\]\s*)?(.*)$') {
-        $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
-        $tsRun.Foreground = Get-NcsBrush -Color "#555b66"
-        $para.Inlines.Add($tsRun)
-        if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
-            $stderrTag = [System.Windows.Documents.Run]::new("[stderr] ")
-            $stderrTag.Foreground = Get-NcsBrush -Color "#f47067"
-            $para.Inlines.Add($stderrTag)
-        }
-        $bodyText = $Matches[3]
-    } else {
-        $bodyText = $Line
-    }
-
-    $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
-    $color = Get-NcsLineColor -Line $Line
-    if ($null -ne $color) {
-        $bodyRun.Foreground = Get-NcsBrush -Color $color
-    }
-    $para.Inlines.Add($bodyRun)
-    $doc.Blocks.Add($para)
-
-    $script:ConsoleLineCount++
-    if ($script:ConsoleLineCount -gt 8500) {
-        while ($doc.Blocks.Count -gt 8000) {
-            $doc.Blocks.Remove($doc.Blocks.FirstBlock)
-        }
-        $script:ConsoleLineCount = $doc.Blocks.Count
-    }
+    Add-NcsConsoleLines -Controls $Controls -Lines @($Line)
 }
 
 $script:_CachedConsoleScrollViewer = $null
@@ -2772,9 +2810,9 @@ function Show-NcsConsoleApp {
             Add-NcsConsoleLine -Controls $controls -Line "> $playCmd"
             Sync-NcsConsoleScroll -Controls $controls
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
-                -OnOutput {
-                    param($line)
-                    Add-NcsConsoleLine -Controls $controls -Line $line
+                -OnOutputBatchLines {
+                    param($lines)
+                    Add-NcsConsoleLines -Controls $controls -Lines $lines
                 } `
                 -OnOutputBatch {
                     Sync-NcsConsoleScroll -Controls $controls

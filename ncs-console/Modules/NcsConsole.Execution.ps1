@@ -462,6 +462,7 @@ function Start-NcsRemoteCommand {
         [NcsActionRequest] $Request,
         [scriptblock] $OnOutput,
         [scriptblock] $OnOutputBatch,
+        [scriptblock] $OnOutputBatchLines,
         [scriptblock] $OnCompleted,
         [scriptblock] $OnStale,
         [int] $StaleSeconds = 120
@@ -543,6 +544,7 @@ function Start-NcsRemoteCommand {
         StartedAt      = $startedAt
         OnOutput       = $OnOutput
         OnOutputBatch  = $OnOutputBatch
+        OnOutputBatchLines = $OnOutputBatchLines
         OnCompleted    = $OnCompleted
         OnStale        = $OnStale
         StaleSeconds   = $StaleSeconds
@@ -571,18 +573,24 @@ function Start-NcsRemoteCommand {
             $now = Get-Date
             $line = $null
             $gotOutput = $false
+            $batch = if ($es.OnOutputBatchLines) { [System.Collections.Generic.List[string]]::new() } else { $null }
             while ($es.PendingLines.TryDequeue([ref]$line)) {
                 if ($line -match $script:NcsRemotePidPattern) {
                     $es.RemotePid = [int] $Matches[1]
                 } else {
                     $es.Lines.Add($line)
                     $gotOutput = $true
-                    if ($es.OnOutput) { & $es.OnOutput $line }
+                    if ($null -ne $batch) {
+                        $batch.Add($line)
+                    } elseif ($es.OnOutput) {
+                        & $es.OnOutput $line
+                    }
                 }
             }
             if ($gotOutput) {
                 $es.LastOutputAt = $now
                 $es.StaleNotified = $false
+                if ($null -ne $batch -and $batch.Count -gt 0) { & $es.OnOutputBatchLines $batch }
                 if ($es.OnOutputBatch) { & $es.OnOutputBatch }
             }
 
