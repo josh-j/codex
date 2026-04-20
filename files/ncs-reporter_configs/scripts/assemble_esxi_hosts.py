@@ -132,7 +132,7 @@ def _merge_nics(host: dict[str, Any], host_nics: dict[str, Any]) -> None:
     host["nics"] = nics
 
 
-def _merge_services(host: dict[str, Any], services: Any) -> None:
+def _merge_services(host: dict[str, Any], services: list[dict[str, Any]] | None) -> None:
     """Merge per-host service list (already keyed to this host) into the record."""
     if not isinstance(services, list):
         return

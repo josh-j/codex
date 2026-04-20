@@ -129,21 +129,8 @@
           printf '%s\n%s\n' {{ vault_samba_user_password | quote }} {{ vault_samba_user_password | quote }}
           | smbpasswd -s {{ '-a' if _samba_user_exists.rc != 0 else '' }} {{ samba_report_share_user }}
         executable: /bin/bash
-      register: _smbpasswd_set
       no_log: true
       changed_when: true
-      failed_when:
-        - _smbpasswd_set.rc != 0
-
-    - name: Surface smbpasswd stderr on failure
-      ansible.builtin.debug:
-        msg: >-
-          smbpasswd exited {{ _smbpasswd_set.rc }} — the no_log password
-          shell hid the stderr. Rerun this task with no_log temporarily
-          disabled, or inspect /var/log/samba/ for the root cause.
-      when:
-        - _smbpasswd_set is defined
-        - _smbpasswd_set.failed | default(false)
 
     - name: Enable Samba user account
       ansible.builtin.command: smbpasswd -e {{ samba_report_share_user }}
