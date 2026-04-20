@@ -181,10 +181,8 @@ widgets:
         value: "{{ site_label }}"
       - name: Fabric Health
         value: "{{ fabric_health_score }}"
-        as: status-badge
       - name: Tenant Health
         value: "{{ tenant_health_score }}"
-        as: status-badge
       - name: Active Faults
         value: "{{ active_fault_count }}"
       - name: Critical Faults
