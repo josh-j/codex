@@ -1,6 +1,6 @@
 # /etc/samba/smb.conf
 # Managed by Ansible — do not edit manually
-# Source: playbooks/ncs/templates/smb.conf.j2
+# Source: playbooks/core/templates/smb.conf.j2
 
 [global]
    workgroup = {{ samba_workgroup }}
@@ -12,9 +12,12 @@
    # Restrict to SMB2/3 — SMB1 is disabled (WannaCry, EternalBlue)
    server min protocol = SMB2
    server max protocol = SMB3
-   # Only allow connections from RFC1918 ranges and localhost.
-   # Adjust to match your management network CIDR.
-   hosts allow = 127.0.0.1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+   # Allow connections from the subnets in samba_allowed_cidrs (defined
+   # in setup_samba.yml vars). Windows clients reaching this host from
+   # an address outside the allow list are rejected pre-auth and the
+   # Windows side surfaces that as `System error 5 Access is denied`,
+   # so expand samba_allowed_cidrs rather than the default here.
+   hosts allow = {{ samba_allowed_cidrs | join(' ') }}
    hosts deny = ALL
 
    # Logging

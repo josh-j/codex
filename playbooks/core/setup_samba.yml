@@ -20,6 +20,16 @@
     samba_valid_users: "{{ samba_report_share_user }}"
     samba_workgroup: "WORKGROUP"
     samba_server_string: "NCS Ansible Report Server"
+    # Subnets/hosts permitted to reach the Samba share. Defaults to loopback
+    # plus all of RFC1918; override via -e 'samba_allowed_cidrs=["10.5.0.0/16","203.0.113.42"]'
+    # or an inventory/group_vars entry when the ncs-console client is on a
+    # non-RFC1918 network (e.g. a corporate routed block) and `net use` hits
+    # System error 5.
+    samba_allowed_cidrs:
+      - 127.0.0.1
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
 
     _report_subdirs:
       - "platform"
