@@ -1349,42 +1349,40 @@ function Add-NcsConsoleLines {
     $tsBrush = Get-NcsBrush -Color $script:NcsConsoleColors.Timestamp
     $stderrBrush = Get-NcsBrush -Color $script:NcsConsoleColors.Error
 
-    $doc.BeginChange()
-    try {
-        foreach ($line in $Lines) {
-            $para = [System.Windows.Documents.Paragraph]::new()
+    # FlowDocument has no BeginChange/EndChange — bulk inserts just happen
+    # inside a single dispatcher pass, which is what WPF already batches by
+    # coalescing layout invalidation.
+    foreach ($line in $Lines) {
+        $para = [System.Windows.Documents.Paragraph]::new()
 
-            if ($line -match $script:NcsConsoleLineTimestampPattern) {
-                $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
-                $tsRun.Foreground = $tsBrush
-                $para.Inlines.Add($tsRun)
-                if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
-                    $stderrTag = [System.Windows.Documents.Run]::new("[stderr] ")
-                    $stderrTag.Foreground = $stderrBrush
-                    $para.Inlines.Add($stderrTag)
-                }
-                $bodyText = $Matches[3]
-            } else {
-                $bodyText = $line
+        if ($line -match $script:NcsConsoleLineTimestampPattern) {
+            $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
+            $tsRun.Foreground = $tsBrush
+            $para.Inlines.Add($tsRun)
+            if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
+                $stderrTag = [System.Windows.Documents.Run]::new("[stderr] ")
+                $stderrTag.Foreground = $stderrBrush
+                $para.Inlines.Add($stderrTag)
             }
-
-            $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
-            $color = Get-NcsLineColor -Line $line
-            if ($null -ne $color) {
-                $bodyRun.Foreground = Get-NcsBrush -Color $color
-            }
-            $para.Inlines.Add($bodyRun)
-            $doc.Blocks.Add($para)
+            $bodyText = $Matches[3]
+        } else {
+            $bodyText = $line
         }
 
-        if ($doc.Blocks.Count -gt $script:NcsConsoleMaxLines) {
-            $target = [int]($script:NcsConsoleMaxLines * 0.9)
-            while ($doc.Blocks.Count -gt $target) {
-                $doc.Blocks.Remove($doc.Blocks.FirstBlock)
-            }
+        $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
+        $color = Get-NcsLineColor -Line $line
+        if ($null -ne $color) {
+            $bodyRun.Foreground = Get-NcsBrush -Color $color
         }
-    } finally {
-        $doc.EndChange()
+        $para.Inlines.Add($bodyRun)
+        $doc.Blocks.Add($para)
+    }
+
+    if ($doc.Blocks.Count -gt $script:NcsConsoleMaxLines) {
+        $target = [int]($script:NcsConsoleMaxLines * 0.9)
+        while ($doc.Blocks.Count -gt $target) {
+            $doc.Blocks.Remove($doc.Blocks.FirstBlock)
+        }
     }
 }
 

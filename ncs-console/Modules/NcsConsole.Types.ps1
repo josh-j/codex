@@ -392,6 +392,11 @@ def add_playbook_file(path, playbook_id, segments, display_stem):
         add_item(tree, segments, build_item(playbook_id, lbl, mut, opts))
 
 
+# Two top-level sections: playbooks in the repo's own `playbooks/` tree go
+# under Native, collection playbooks under Imported. The `Native` prefix
+# also disambiguates names that collide with collection IDs
+# (e.g. playbooks/core/... vs internal.core).
+
 # 1. App-layer playbooks (site orchestrators + ncs/ + core/)
 app_base = "playbooks"
 if os.path.isdir(app_base):
@@ -408,7 +413,7 @@ if os.path.isdir(app_base):
             path = os.path.join(root, f)
             playbook = path.replace(os.sep, "/")
             stem = os.path.splitext(f)[0]
-            add_playbook_file(path, playbook, segments, stem)
+            add_playbook_file(path, playbook, ["Native"] + segments, stem)
 
 # 2. Collection playbooks: internal/<col>/playbooks/*.yml → FQCN internal.<col>.<stem>
 coll_root = os.path.join("collections", "ansible_collections", "internal")
@@ -424,7 +429,7 @@ if os.path.isdir(coll_root):
             if not os.path.isfile(path):
                 continue
             segments, fqcn, display_stem = classify_collection_playbook(collection, f)
-            add_playbook_file(path, fqcn, segments, display_stem)
+            add_playbook_file(path, fqcn, ["Imported"] + segments, display_stem)
 
 def to_output(tree):
     """Convert nested tree dict to output format with Group/Items/Children."""
@@ -441,10 +446,15 @@ def to_output(tree):
     return result
 
 output = to_output(tree)
-# Move Fleet to front if present
-fleet = [g for g in output if g["Group"] == "Fleet"]
-rest = [g for g in output if g["Group"] != "Fleet"]
-print(json.dumps(fleet + rest))
+# Native first; within Native, Fleet (repo-root orchestrators) leads.
+native_entry = next((g for g in output if g["Group"] == "Native"), None)
+imported_entry = next((g for g in output if g["Group"] == "Imported"), None)
+if native_entry and "Children" in native_entry:
+    fleet = [c for c in native_entry["Children"] if c["Group"] == "Fleet"]
+    rest = [c for c in native_entry["Children"] if c["Group"] != "Fleet"]
+    native_entry["Children"] = fleet + rest
+ordered = [e for e in (native_entry, imported_entry) if e]
+print(json.dumps(ordered))
 '@
     $command = New-NcsRepoShellCommand -Settings $Settings -Command (
         New-NcsRemoteHeredocCommand -Preamble 'python3' -Content $pyScript -Sentinel 'NCSPLAYBOOKS'
