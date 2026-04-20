@@ -115,17 +115,11 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _merge_nics(host: dict[str, Any], nic_result: dict[str, Any]) -> None:
-    """Merge vmware_host_vmnic_info result into a host record."""
-    hosts_nics = nic_result.get("hosts_vmnic_info", {})
-    if not isinstance(hosts_nics, dict):
-        return
-    hostname = host["name"]
-    host_nics = hosts_nics.get(hostname, {})
+def _merge_nics(host: dict[str, Any], host_nics: dict[str, Any]) -> None:
+    """Merge per-host vmnic info (already keyed to this host) into the record."""
     if not isinstance(host_nics, dict):
         return
-
-    nics = []
+    nics: list[dict[str, Any]] = []
     for nic in host_nics.get("vmnic_details", []):
         if isinstance(nic, dict):
             nics.append({
@@ -138,23 +132,16 @@ def _merge_nics(host: dict[str, Any], nic_result: dict[str, Any]) -> None:
     host["nics"] = nics
 
 
-def _merge_services(host: dict[str, Any], svc_result: dict[str, Any]) -> None:
-    """Merge vmware_host_service_info result into a host record."""
-    hosts_svcs = svc_result.get("host_service_info", {})
-    if not isinstance(hosts_svcs, dict):
+def _merge_services(host: dict[str, Any], services: Any) -> None:
+    """Merge per-host service list (already keyed to this host) into the record."""
+    if not isinstance(services, list):
         return
-    hostname = host["name"]
-    host_svcs = hosts_svcs.get(hostname, [])
-    if not isinstance(host_svcs, list):
-        return
-
     svc_map: dict[str, bool] = {}
-    for svc in host_svcs:
+    for svc in services:
         if isinstance(svc, dict):
             key = svc.get("key", "")
-            running = svc.get("running", False)
             if key:
-                svc_map[key] = running
+                svc_map[key] = svc.get("running", False)
 
     host["ssh_enabled"] = svc_map.get("TSM-SSH", False)
     host["shell_enabled"] = svc_map.get("TSM", False)
@@ -163,49 +150,30 @@ def _merge_services(host: dict[str, Any], svc_result: dict[str, Any]) -> None:
 
 
 def assemble_hosts(fields: dict[str, Any]) -> list[dict[str, Any]]:
-    """Main assembly: merge facts, NICs, services into per-host records."""
+    """Main assembly: unpack per-host records from the folded bulk payload."""
     hosts_info = fields.get("hosts_info", {})
     if not isinstance(hosts_info, dict):
         hosts_info = {}
 
-    host_facts_results = _extract_loop_results(hosts_info.get("host_facts"))
-    host_nics_results = _extract_loop_results(hosts_info.get("host_nics"))
-    host_services_results = _extract_loop_results(hosts_info.get("host_services"))
-
-    # Build cluster→host mapping
+    host_records = _extract_loop_results(hosts_info.get("host_facts"))
     cluster_map = _build_cluster_map(fields.get("clusters_info_results"))
 
-    # Index NIC and service results by hostname
-    nics_by_host: dict[str, dict[str, Any]] = {}
-    for r in host_nics_results:
-        if isinstance(r, dict) and r.get("item"):
-            nics_by_host[r["item"]] = r
-
-    svcs_by_host: dict[str, dict[str, Any]] = {}
-    for r in host_services_results:
-        if isinstance(r, dict) and r.get("item"):
-            svcs_by_host[r["item"]] = r
-
     hosts: list[dict[str, Any]] = []
-    for result in host_facts_results:
-        if not isinstance(result, dict):
+    for record in host_records:
+        if not isinstance(record, dict):
             continue
-        if result.get("failed") or result.get("skipped"):
+        if record.get("failed") or record.get("skipped"):
             continue
 
-        host = _parse_host_facts(result)
+        host = _parse_host_facts(record)
         hostname = host["name"]
 
-        # Add cluster/datacenter context
         ctx = cluster_map.get(hostname, {})
         host["cluster"] = ctx.get("cluster", "")
         host["datacenter"] = ctx.get("datacenter", "")
 
-        # Merge NIC and service data
-        if hostname in nics_by_host:
-            _merge_nics(host, nics_by_host[hostname])
-        if hostname in svcs_by_host:
-            _merge_services(host, svcs_by_host[hostname])
+        _merge_nics(host, record.get("nics"))
+        _merge_services(host, record.get("services"))
 
         hosts.append(host)
 
