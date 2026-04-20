@@ -65,12 +65,12 @@
     # session (or a re-login) for the group membership to take effect.
     - name: Add the invoking sudoer to the report group
       ansible.builtin.user:
-        name: "{{ ansible_user_id }}"
+        name: "{{ ansible_facts['user_id'] }}"
         groups: "{{ samba_report_share_group }}"
         append: true
       when:
-        - ansible_user_id is defined
-        - ansible_user_id not in ['root', samba_report_share_user]
+        - ansible_facts['user_id'] is defined
+        - ansible_facts['user_id'] not in ['root', samba_report_share_user]
 
     # -------------------------------------------------------------------------
     # 2. FILESYSTEM (Reinforced SGID 2775)
