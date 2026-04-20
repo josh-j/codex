@@ -238,6 +238,19 @@
             <Setter Property="Padding" Value="{StaticResource CardPadding}" />
             <Setter Property="Margin" Value="{StaticResource CardMargin}" />
         </Style>
+        <!-- Shared titlebar style for every column-top header (Console,
+             Reports, Schedules, and any future column). Kept distinct from
+             StatusCardStyle because the header is only the TOP of a split
+             column (content lives in its own Border below), so the bottom
+             corners stay square — but every other property must match the
+             Playbooks card (which uses StatusCardStyle) so titles line up. -->
+        <Style x:Key="PanelTitleBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8,8,0,0" />
+            <Setter Property="Padding" Value="{StaticResource CardPadding}" />
+        </Style>
         <Style x:Key="SectionExpanderStyle" TargetType="Expander">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Margin" Value="0,0,0,4" />
