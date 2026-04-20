@@ -1,5 +1,5 @@
 ---
-# playbooks/ncs/manage_schedules.yml
+# playbooks/core/manage_schedules.yml
 # Manage systemd timers for scheduled playbook execution.
 # Reads schedules.yml from the repo root and deploys/removes timer+service
 # units on the local host. Run with: just apply-schedules

@@ -44,7 +44,7 @@ schedules:
 ```bash
 just apply-schedules
 # or
-ansible-playbook -i inventory/production playbooks/ncs/manage_schedules.yml
+ansible-playbook -i inventory/production playbooks/core/manage_schedules.yml
 ```
 
 This reads `schedules.yml`, validates each entry, and deploys paired units to
@@ -73,7 +73,7 @@ Any `ansible-playbook` target. Common patterns:
 
 - `playbooks/site.yml` — full audit + report
 - `playbooks/site_stig_audit.yml` — STIG compliance sweep
-- `playbooks/ncs/generate_reports.yml` — rebuild dashboards from existing raw data
+- `playbooks/core/generate_reports.yml` — rebuild dashboards from existing raw data
 - `internal.linux.ubuntu_collect` (FQCN) — single-platform refresh
 
 ### State
@@ -182,7 +182,7 @@ The two triggers aren't parallel; they stack:
                ↓
 ┌──────────────────────────┐
 │  ncs-reporter render     │   HTML dashboards (optional)
-│  playbooks/ncs/          │
+│  playbooks/core/          │
 │  generate_reports.yml    │
 └──────────────┬───────────┘
                ↓
@@ -241,7 +241,7 @@ Enable by uncommenting the block in `schedules.yml` and running
 | You want to... | Use |
 |---|---|
 | Run the full audit every night | **Scheduler**: add an entry to `schedules.yml` |
-| Regenerate dashboards every hour off already-collected data | **Scheduler** pointing at `ncs/generate_reports.yml` |
+| Regenerate dashboards every hour off already-collected data | **Scheduler** pointing at `core/generate_reports.yml` |
 | Page oncall when a VCSA goes RED | **Alert action**: `action.command:` → webhook, or `action.playbook:` → mail playbook |
 | Automatically restart a failed service when detected | **Alert action**: `action.playbook:` → remediation playbook |
 | Send a notification only once per day per host for the same issue | **Alert action** with `cooldown: 24h` |

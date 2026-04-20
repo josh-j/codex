@@ -1,5 +1,5 @@
 ---
-# playbooks/ncs/generate_reports.yml
+# playbooks/core/generate_reports.yml
 # Invokes ncs-reporter to render HTML dashboards, STIG reports, and CKLB
 # artifacts from raw audit data collected by ncs_collector.
 

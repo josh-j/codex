@@ -48,7 +48,7 @@ setup-samba:
         echo "  Create it (or populate vault_samba_user_password) then run: just setup-samba" >&2
         exit 0
     fi
-    {{ ansible_playbook }} playbooks/ncs/setup_samba.yml --ask-become-pass
+    {{ ansible_playbook }} playbooks/core/setup_samba.yml --ask-become-pass
     echo "✓ SMB share 'reports' ready at //localhost/reports (user: ansible)"
     echo "  ncs-console defaults already match — enter the SshHost and SMB password to connect."
 
@@ -250,13 +250,22 @@ vendor-collections: build-collections-all
     echo "✓ collections/vendor/ refreshed:"
     ls -1 collections/vendor/
 
-# Install the four internal collections from the requirements.yml manifest.
+# Install every internal.* collection from the requirements.yml manifest,
+# then regenerate the fleet-level site_<verb>_only.yml orchestrators so
+# the list of imported collections stays in lockstep with what's installed.
 install-collections:
     #!/usr/bin/env bash
     set -euo pipefail
     .venv/bin/ansible-galaxy collection install -r requirements.yml \
         --collections-path collections/ --force
     echo "✓ collections installed from requirements.yml"
+    {{ python }} scripts/regenerate_site_playbooks.py
+
+# Rebuild the fleet-level site_<verb>_only.yml orchestrators from whatever
+# internal.* collections are currently installed under collections/. Useful
+# when you just added or removed a sibling without running a full install.
+regenerate-site-playbooks:
+    {{ python }} scripts/regenerate_site_playbooks.py
 
 # Verify every FQCN playbook referenced in ncs-reporter configs resolves
 # against the currently-installed collections. Fails non-zero on drift.
@@ -555,7 +564,7 @@ _stig-report:
     set -euo pipefail
     echo ""
     echo "Generating STIG reports and CKLB artifacts..."
-    {{ ansible_playbook }} playbooks/ncs/generate_reports.yml
+    {{ ansible_playbook }} playbooks/core/generate_reports.yml
     echo "✓ Reports written to {{ reports_dir }}"
 
 # --- ESXi STIG ---
@@ -800,7 +809,7 @@ vault-view:
 
 # Initialize the Samba report share (run once)
 init-samba:
-    {{ ansible_playbook }} playbooks/ncs/setup_samba.yml
+    {{ ansible_playbook }} playbooks/core/setup_samba.yml
 
 # Clean up all temporary build/cache artifacts (including symlinked collections)
 clean:
@@ -819,7 +828,7 @@ clean-all: clean
 
 # Apply playbook schedules (systemd timers) from schedules.yml
 apply-schedules:
-    {{ ansible_playbook }} playbooks/ncs/manage_schedules.yml
+    {{ ansible_playbook }} playbooks/core/manage_schedules.yml
 
 # Show status of all NCS scheduled timers
 schedule-status:

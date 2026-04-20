@@ -19,7 +19,7 @@
 schedules:
   - name: daily-reports
     description: "Regenerate fleet reports from collected data"
-    playbook: playbooks/ncs/generate_reports.yml
+    playbook: playbooks/core/generate_reports.yml
     calendar: "daily"
     enabled: false
     notify_on_failure: true

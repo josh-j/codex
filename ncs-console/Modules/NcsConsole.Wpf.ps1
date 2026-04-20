@@ -2516,7 +2516,7 @@ function Show-NcsConsoleApp {
     }.GetNewClosure())
 
     $applySchedules = {
-        $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request ([NcsActionRequest]::new("ncs/manage_schedules.yml"))
+        $playCmd = Resolve-NcsPlaybookCommand -Settings $state.Settings -Request ([NcsActionRequest]::new("core/manage_schedules.yml"))
         $cmd = New-NcsRepoShellCommand -Settings $state.Settings -Command "$playCmd && $(Get-NcsTimerStatusQueryCommand)"
         $probe = Invoke-NcsSshProbe -Settings $state.Settings -RemoteCommand $cmd
         if ($probe.ExitCode -eq 0) {
