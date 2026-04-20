@@ -319,8 +319,34 @@ function Resolve-NcsPlaybookCommand {
         [NcsActionRequest] $Request
     )
 
-    $inventory = "inventory/production"
+    # Inventory: user-supplied hostnames become an inline inventory (trailing
+    # comma is how Ansible distinguishes a host list from a file path).
+    $inventory = if (-not [string]::IsNullOrWhiteSpace($Request.AdHocHosts)) {
+        (ConvertTo-NcsBashLiteral -Value ($Request.AdHocHosts.Trim() + ","))
+    } else {
+        "inventory/production"
+    }
+
     $command = "ansible-playbook -i $inventory $($Request.Playbook) --vault-password-file .vaultpass"
+
+    if (-not [string]::IsNullOrWhiteSpace($Request.AdHocUser)) {
+        $command += " -u " + (ConvertTo-NcsBashLiteral -Value $Request.AdHocUser.Trim())
+    }
+
+    # Password-file flags reference paths created by the wrapper in the per-run
+    # dir. The wrapper writes the file with chmod 600 before invoking ansible
+    # and the EXIT trap removes the whole dir.
+    if (-not [string]::IsNullOrWhiteSpace($Request.AdHocSshPassword)) {
+        $command += ' --connection-password-file "${RUN_DIR}/conn.pw"'
+    }
+
+    if ($Request.AdHocBecome) {
+        $command += " -b"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Request.AdHocBecomePassword)) {
+        $command += ' --become-password-file "${RUN_DIR}/become.pw"'
+    }
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Limit)) {
         $command += " --limit " + (ConvertTo-NcsBashLiteral -Value $Request.Limit)
@@ -343,6 +369,12 @@ function Resolve-NcsPlaybookCommand {
         }
     }
 
+    if ($Request.AdHocExtraVars.Count -gt 0) {
+        foreach ($key in $Request.AdHocExtraVars.Keys) {
+            $command += " -e " + (ConvertTo-NcsBashLiteral -Value "$key=$($Request.AdHocExtraVars[$key])")
+        }
+    }
+
     $extraArgs = Split-NcsExtraArgs -ExtraArgs $Request.ExtraArgs
     if (@($extraArgs).Length -gt 0) {
         $escapedArgs = $extraArgs | ForEach-Object { ConvertTo-NcsBashLiteral -Value $_ }
@@ -350,6 +382,12 @@ function Resolve-NcsPlaybookCommand {
     }
 
     return $command
+}
+
+function ConvertTo-NcsBase64Utf8 {
+    param([string] $Value)
+    if ($null -eq $Value) { return "" }
+    return [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($Value))
 }
 
 function Get-NcsRemoteShellCommand {
@@ -364,11 +402,16 @@ function Get-NcsRemoteShellCommand {
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $actionCommand = Resolve-NcsPlaybookCommand -Settings $Settings -Request $Request
+    $inventoryCheck = if ([string]::IsNullOrWhiteSpace($Request.AdHocHosts)) {
+        "test -d inventory/production || { echo 'Missing inventory/production/ on the remote repo.' >&2; exit 22; }"
+    } else {
+        ": # ad-hoc hosts supplied; skipping inventory/production check"
+    }
     $actionScript = @(
         "set -e"
         "test -d $repo || { echo 'Remote repo path does not exist.' >&2; exit 21; }"
         "cd $repo"
-        "test -d inventory/production || { echo 'Missing inventory/production/ on the remote repo.' >&2; exit 22; }"
+        $inventoryCheck
         "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
         "if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi"
         "command -v ansible-playbook >/dev/null 2>&1 || { echo 'ansible-playbook not found in .venv or PATH.' >&2; exit 24; }"
@@ -380,19 +423,36 @@ function Get-NcsRemoteShellCommand {
         "fi"
     ) -join "`n"
 
+    # Ad-hoc credentials (if any) travel as base64 inside the heredoc so they
+    # never appear on a process command line. The wrapper decodes them into
+    # 0600 files under the per-run dir and the EXIT trap rm -rf's the dir.
+    $seedSecrets = @()
+    if (-not [string]::IsNullOrWhiteSpace($Request.AdHocSshPassword)) {
+        $b64 = ConvertTo-NcsBase64Utf8 -Value $Request.AdHocSshPassword
+        $seedSecrets += "umask 077; printf '%s' '$b64' | base64 -d > `"`${RUN_DIR}/conn.pw`""
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Request.AdHocBecomePassword)) {
+        $b64 = ConvertTo-NcsBase64Utf8 -Value $Request.AdHocBecomePassword
+        $seedSecrets += "umask 077; printf '%s' '$b64' | base64 -d > `"`${RUN_DIR}/become.pw`""
+    }
+    $secretSeed = if ($seedSecrets.Count -gt 0) { ($seedSecrets -join "`n") + "`n" } else { "" }
+
     $runScript = @"
 set -u
 RUN_ID=$(ConvertTo-NcsBashLiteral -Value $RunId)
 RUN_ROOT="`${HOME}/$($script:NcsRemoteRunRoot)"
-PID_FILE="`${RUN_ROOT}/`${RUN_ID}.pid"
-ACTION_FILE="`${RUN_ROOT}/`${RUN_ID}.sh"
-mkdir -p "`${RUN_ROOT}"
-cat > "`${ACTION_FILE}" <<'NCSACTION'
+RUN_DIR="`${RUN_ROOT}/`${RUN_ID}"
+PID_FILE="`${RUN_DIR}/run.pid"
+ACTION_FILE="`${RUN_DIR}/action.sh"
+export RUN_DIR
+mkdir -p "`${RUN_DIR}"
+chmod 700 "`${RUN_DIR}"
+${secretSeed}cat > "`${ACTION_FILE}" <<'NCSACTION'
 $actionScript
 NCSACTION
 chmod 700 "`${ACTION_FILE}"
 cleanup() {
-  rm -f "`${PID_FILE}" "`${ACTION_FILE}"
+  rm -rf "`${RUN_DIR}"
 }
 trap cleanup EXIT
 trap 'if [ -f "`${PID_FILE}" ]; then kill -TERM "`$(cat "`${PID_FILE}")" >/dev/null 2>&1 || true; fi; exit 130' INT TERM HUP

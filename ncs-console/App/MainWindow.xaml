@@ -218,6 +218,24 @@
                                                 </StackPanel>
                                             </Border>
                                             <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
+                                            <Expander x:Name="AdHocExpander" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
+                                                <Expander.Header>
+                                                    <TextBlock Text="Ad-hoc run (override inventory + credentials)" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                                </Expander.Header>
+                                                <StackPanel Margin="0,4,0,0">
+                                                    <TextBlock Text="Hosts (comma-separated; blank = inventory/production)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="AdHocHostsTextBox" ToolTip="e.g. apic1.example.com, apic2.example.com" />
+                                                    <TextBlock Text="Remote user" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="AdHocUserTextBox" ToolTip="Passed as ansible-playbook -u" />
+                                                    <TextBlock Text="SSH password" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <PasswordBox x:Name="AdHocSshPasswordBox" ToolTip="Sent to remote as --connection-password-file; 0600 temp file cleaned up per run" />
+                                                    <CheckBox x:Name="AdHocBecomeCheckBox" Content="Become (sudo)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBlock Text="Become password" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <PasswordBox x:Name="AdHocBecomePasswordBox" ToolTip="Sent to remote as --become-password-file; 0600 temp file cleaned up per run" />
+                                                    <TextBlock Text="Extra vars (key=value per line)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="AdHocExtraVarsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto" ToolTip="e.g. aci_username=admin&#10;aci_password=...&#10;Passed as ansible-playbook -e" />
+                                                </StackPanel>
+                                            </Expander>
                                             <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
                                                 <Expander.Header>
                                                     <TextBlock Text="Advanced" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />

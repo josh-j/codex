@@ -513,6 +513,13 @@ function Get-NcsXamlControlMap {
         "ActionOptionsPanel",
         "ActionScrollViewer",
         "ExtraArgsTextBox",
+        "AdHocExpander",
+        "AdHocHostsTextBox",
+        "AdHocUserTextBox",
+        "AdHocSshPasswordBox",
+        "AdHocBecomeCheckBox",
+        "AdHocBecomePasswordBox",
+        "AdHocExtraVarsTextBox",
         "MutatingWarning",
         "RunButton",
         "CancelButton",
@@ -1060,6 +1067,38 @@ function Set-NcsRequestFromControls {
     }
     $Request.ExtraArgs = $Controls.ExtraArgsTextBox.Text.Trim()
     $Request.Options = Get-NcsActionOptionValues -Controls $Controls
+
+    $Request.AdHocHosts = $Controls.AdHocHostsTextBox.Text.Trim()
+    $Request.AdHocUser = $Controls.AdHocUserTextBox.Text.Trim()
+    $Request.AdHocSshPassword = $Controls.AdHocSshPasswordBox.Password
+    $Request.AdHocBecome = [bool] $Controls.AdHocBecomeCheckBox.IsChecked
+    $Request.AdHocBecomePassword = $Controls.AdHocBecomePasswordBox.Password
+    $Request.AdHocExtraVars = ConvertFrom-NcsAdHocExtraVars -Text $Controls.AdHocExtraVarsTextBox.Text
+}
+
+function ConvertFrom-NcsAdHocExtraVars {
+    param([string] $Text)
+    $result = @{}
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    foreach ($line in $Text -split "`r?`n") {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq "" -or $trimmed.StartsWith("#")) { continue }
+        $eq = $trimmed.IndexOf("=")
+        if ($eq -lt 1) { continue }
+        $key = $trimmed.Substring(0, $eq).Trim()
+        $val = $trimmed.Substring($eq + 1).Trim()
+        if ($key -ne "") { $result[$key] = $val }
+    }
+    return $result
+}
+
+function Clear-NcsAdHocControls {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable] $Controls
+    )
+    $Controls.AdHocSshPasswordBox.Clear()
+    $Controls.AdHocBecomePasswordBox.Clear()
 }
 
 
@@ -2833,6 +2872,7 @@ function Show-NcsConsoleApp {
                     $state.LastRunResult = $runResult
                     $state.CurrentHandle = $null
                     Set-NcsIdleUiState -Controls $controls
+                    Clear-NcsAdHocControls -Controls $controls
                     $badgeState = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
                     Set-NcsRunStateBadge -Controls $controls -State $badgeState
                     Add-NcsConsoleLine -Controls $controls -Line "--- exit: $($runResult.ExitCode) | $($runResult.OutputLines.Length) lines | $(Format-NcsDuration -Duration $runResult.Duration) ---"

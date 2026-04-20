@@ -72,6 +72,16 @@ class NcsActionRequest {
     [string] $Verbosity = ""
     [string] $ExtraArgs = ""
     [hashtable] $Options = @{}
+    # Ad-hoc one-off overrides. Empty string / false means "use inventory/production
+    # and whatever the remote already has." AdHocSshPassword / AdHocBecomePassword
+    # travel to the remote via base64 inside the wrapper heredoc and land in
+    # 0600 files under the per-run dir (cleaned up in the wrapper's EXIT trap).
+    [string] $AdHocHosts = ""
+    [string] $AdHocUser = ""
+    [string] $AdHocSshPassword = ""
+    [bool]   $AdHocBecome = $false
+    [string] $AdHocBecomePassword = ""
+    [hashtable] $AdHocExtraVars = @{}
     [datetime] $RequestedAt = [datetime]::UtcNow
 
     NcsActionRequest([string] $Playbook) {
