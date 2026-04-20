@@ -417,32 +417,32 @@ site-collect:
 site-reports:
     {{ ansible_playbook }} playbooks/site_reports_only.yml
 
-# Run VMware health audit (all sites or limited)
-audit-vmware target="vcsa":
+# Collect VMware inventory + health (all sites or limited)
+collect-vmware target="vcsa":
     {{ ansible_playbook }} internal.vmware.collect -l {{ target }} -v
 
-# Run VMware health audit for a single site
-audit-vmware-site site:
+# Collect VMware inventory + health for a single site
+collect-vmware-site site:
     {{ ansible_playbook }} internal.vmware.collect -l vcsa-{{ site }}
 
-# Run ESXi health audit (all sites or limited)
-audit-esxi target="vcsa":
+# Collect ESXi host data (all sites or limited)
+collect-esxi target="vcsa":
     {{ ansible_playbook }} internal.vmware.esxi_collect -l {{ target }} -v
 
-# Run ESXi health audit for a single site
-audit-esxi-site site:
+# Collect ESXi host data for a single site
+collect-esxi-site site:
     {{ ansible_playbook }} internal.vmware.esxi_collect -l vcsa-{{ site }}
 
-# Run VM workload audit (all sites or limited)
-audit-vm target="vcsa":
+# Collect VM workload data (all sites or limited)
+collect-vm target="vcsa":
     {{ ansible_playbook }} internal.vmware.vm_collect -l {{ target }} -v
 
-# Run VM workload audit for a single site
-audit-vm-site site:
+# Collect VM workload data for a single site
+collect-vm-site site:
     {{ ansible_playbook }} internal.vmware.vm_collect -l vcsa-{{ site }}
 
-# Run Ubuntu audit
-audit-ubuntu target="ubuntu_servers":
+# Collect Ubuntu host data
+collect-ubuntu target="ubuntu_servers":
     {{ ansible_playbook }} internal.linux.ubuntu_collect -l {{ target }}
 
 # Run Ubuntu apt update + dist-upgrade
@@ -454,11 +454,11 @@ update-ubuntu-apply target="ubuntu_servers":
     {{ ansible_playbook }} internal.linux.ubuntu_update_apply -l {{ target }}
 
 # Run Ubuntu discovery phase only
-audit-ubuntu-discover:
+collect-ubuntu-discover:
     {{ ansible_playbook }} internal.linux.ubuntu_collect
 
-# Run Windows audit
-audit-windows target="windows_servers":
+# Collect Windows server data
+collect-windows target="windows_servers":
     {{ ansible_playbook }} internal.windows.server_collect -l {{ target }}
 
 # Run Windows update apply phase
@@ -473,16 +473,16 @@ health-windows target="windows_servers":
 cleanup-windows target="windows_servers":
     {{ ansible_playbook }} internal.windows.server_cleanup -l {{ target }}
 
-# Run Windows post-patch audit phase
+# Run Windows post-patch verification phase
 audit-windows-post-patch:
     {{ ansible_playbook }} internal.windows.server_post_patch_audit
 
-# Audit a specific Linux host
-audit-linux-host hostname:
+# Collect on a specific Linux host
+collect-linux-host hostname:
     {{ ansible_playbook }} internal.linux.ubuntu_collect -l {{ hostname }}
 
-# Audit a specific Windows host
-audit-windows-host hostname:
+# Collect on a specific Windows host
+collect-windows-host hostname:
     {{ ansible_playbook }} internal.windows.server_collect -l {{ hostname }}
 
 # =============================================================================
@@ -595,12 +595,12 @@ stig-audit-vm-site site: && _stig-report
 
 # --- VCSA Health ---
 
-# Run VCSA health audit (all sites or limited)
-audit-vcsa target="vcsa":
+# Collect VCSA data (all sites or limited)
+collect-vcsa target="vcsa":
     {{ ansible_playbook }} internal.vmware.vcsa_collect -l {{ target }} -v
 
-# Run VCSA health audit for a single site
-audit-vcsa-site site:
+# Collect VCSA data for a single site
+collect-vcsa-site site:
     {{ ansible_playbook }} internal.vmware.vcsa_collect -l vcsa-{{ site }}
 
 # --- VCSA STIG (requires .venv-vcsa for Python 3.7 managed nodes) ---

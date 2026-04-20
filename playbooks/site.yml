@@ -15,12 +15,12 @@
 - name: "Phase 2: VMware Infrastructure Inventory & Health"
   ansible.builtin.import_playbook: internal.vmware.collect
 
-# Phase 3: Linux Fleet Audit
-- name: "Phase 3: Linux System Health Audit"
+# Phase 3: Linux Fleet Collect
+- name: "Phase 3: Linux System Collect"
   ansible.builtin.import_playbook: internal.linux.ubuntu_collect
 
-# Phase 3b: Windows Fleet Audit
-- name: "Phase 3b: Windows System Audit"
+# Phase 3b: Windows Fleet Collect
+- name: "Phase 3b: Windows System Collect"
   ansible.builtin.import_playbook: internal.windows.server_collect
 
 # Phase 3c: Windows Health Check

@@ -22,9 +22,9 @@ collections:
     type: file
   - name: "./collections/vendor/internal-linux-1.1.2.tar.gz"
     type: file
-  - name: "./collections/vendor/internal-windows-1.1.2.tar.gz"
+  - name: "./collections/vendor/internal-windows-1.1.3.tar.gz"
     type: file
-  - name: "./collections/vendor/internal-aci-0.3.2.tar.gz"
+  - name: "./collections/vendor/internal-aci-0.3.3.tar.gz"
     type: file
 
   # --- Mode B: sibling working directories --------------------------------
