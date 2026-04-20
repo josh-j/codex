@@ -1485,7 +1485,8 @@ function Set-NcsIdleUiState {
 
     $Controls.RunButton.Visibility = "Visible"
     $Controls.CancelButton.Visibility = "Collapsed"
-    $Controls.ActionTreeView.IsEnabled = $true
+    $Controls.ActionTreeView.IsHitTestVisible = $true
+    $Controls.ActionTreeView.Focusable = $true
 }
 
 function Set-NcsRunningUiState {
@@ -1500,11 +1501,15 @@ function Set-NcsRunningUiState {
     $Controls.ExitCodePanel.Visibility = "Visible"
     $Controls.DurationPanel.Visibility = "Visible"
     # Lock the playbook picker so a run in flight can't have its target
-    # swapped out from under it — the selected item's Tag is what the
-    # command was built from, so changing selection mid-run would make
-    # the badge + tooltip point at a different playbook than is actually
-    # executing on the remote.
-    $Controls.ActionTreeView.IsEnabled = $false
+    # swapped out from under it. IsEnabled=false was the obvious lever
+    # but WPF's default disabled visual repaints the whole tree to a
+    # washed-out near-white, leaking through the dark theme. Using
+    # IsHitTestVisible + Focusable blocks mouse clicks and keyboard
+    # navigation respectively without changing any brush state, so
+    # the tree stays visually identical to its idle appearance while
+    # ignoring input until the run completes.
+    $Controls.ActionTreeView.IsHitTestVisible = $false
+    $Controls.ActionTreeView.Focusable = $false
 }
 
 function Update-NcsCommandPreview {
