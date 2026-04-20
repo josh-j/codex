@@ -280,7 +280,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource CardPadding}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
@@ -330,7 +330,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource CardPadding}">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="Reports" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -370,7 +370,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource PaddingLg}">
+                        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8,8,0,0" Padding="{StaticResource CardPadding}">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="Schedules" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
