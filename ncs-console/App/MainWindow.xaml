@@ -304,7 +304,7 @@
                             </StackPanel>
                         </Border>
 
-                        <RichTextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1">
+                        <RichTextBox x:Name="ConsoleTextBox" Grid.Row="1" FontFamily="{StaticResource FontMono}" FontSize="{StaticResource FontSizeLg}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#0d1015" Foreground="#d8dce2" CaretBrush="#d8dce2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" FocusVisualStyle="{x:Null}">
                             <RichTextBox.Resources>
                                 <Style TargetType="Paragraph">
                                     <Setter Property="Margin" Value="0" />
@@ -312,7 +312,7 @@
                             </RichTextBox.Resources>
                         </RichTextBox>
 
-                        <Border x:Name="DetectedPathsPanel" Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="{StaticResource PaddingMd}" Visibility="Collapsed">
+                        <Border x:Name="DetectedPathsPanel" Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1" CornerRadius="0,0,8,8" Padding="{StaticResource PaddingMd}">
                             <Expander IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="0">
                                 <Expander.Header>
                                     <TextBlock Text="Detected Paths" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />

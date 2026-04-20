@@ -2769,7 +2769,6 @@ function Show-NcsConsoleApp {
             $controls.ConsoleTextBox.Document.Blocks.Clear()
             $script:ConsoleLineCount = 0
             $controls.DetectedPathsListBox.ItemsSource = $null
-            $controls.DetectedPathsPanel.Visibility = "Collapsed"
             $controls.ExitCodeTextBlock.Text = "-"
             $controls.DurationTextBlock.Text = "-"
             Set-NcsRunStateBadge -Controls $controls -State "Running"
@@ -2906,9 +2905,6 @@ function Show-NcsConsoleApp {
                     $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
                     $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
                     $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
-                    if ($null -ne $runResult.DetectedPaths -and @($runResult.DetectedPaths).Length -gt 0) {
-                        $controls.DetectedPathsPanel.Visibility = "Visible"
-                    }
                     Sync-NcsConsoleScroll -Controls $controls
                 }
             $state.CurrentHandle = $handle
