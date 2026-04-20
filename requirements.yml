@@ -18,7 +18,7 @@ collections:
   # --- Mode A (default): vendored tarballs ---------------------------------
   - name: "./collections/vendor/internal-core-1.0.1.tar.gz"
     type: file
-  - name: "./collections/vendor/internal-vmware-1.1.11.tar.gz"
+  - name: "./collections/vendor/internal-vmware-1.1.12.tar.gz"
     type: file
   - name: "./collections/vendor/internal-linux-1.1.2.tar.gz"
     type: file
