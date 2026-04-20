@@ -1483,6 +1483,7 @@ function Set-NcsIdleUiState {
 
     $Controls.RunButton.Visibility = "Visible"
     $Controls.CancelButton.Visibility = "Collapsed"
+    $Controls.ActionTreeView.IsEnabled = $true
 }
 
 function Set-NcsRunningUiState {
@@ -1496,6 +1497,12 @@ function Set-NcsRunningUiState {
     $Controls.RunStateBorder.Visibility = "Visible"
     $Controls.ExitCodePanel.Visibility = "Visible"
     $Controls.DurationPanel.Visibility = "Visible"
+    # Lock the playbook picker so a run in flight can't have its target
+    # swapped out from under it — the selected item's Tag is what the
+    # command was built from, so changing selection mid-run would make
+    # the badge + tooltip point at a different playbook than is actually
+    # executing on the remote.
+    $Controls.ActionTreeView.IsEnabled = $false
 }
 
 function Update-NcsCommandPreview {
