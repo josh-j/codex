@@ -689,10 +689,12 @@ function New-NcsGroupTreeItem {
     $groupItem.Header = $Group.Group
     $groupItem.Tag = $Group.Group
     $groupItem.IsExpanded = $Expanded
-    # Child groups first (subdirectories)
+    # Only the top-level groups respect the caller's $Expanded preference;
+    # descendants always start collapsed so users aren't greeted with a
+    # fully-unrolled tree of every sub-platform on load.
     if ($Group.ContainsKey('Children') -and $null -ne $Group['Children']) {
         foreach ($child in @($Group['Children'])) {
-            $childItem = New-NcsGroupTreeItem -Group $child -TagProperty $TagProperty -Expanded $Expanded -LeafIcon $LeafIcon
+            $childItem = New-NcsGroupTreeItem -Group $child -TagProperty $TagProperty -Expanded $false -LeafIcon $LeafIcon
             $groupItem.Items.Add($childItem) | Out-Null
         }
     }
