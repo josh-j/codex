@@ -151,7 +151,7 @@ function Get-NcsRemotePlaybookTree {
 
     $pyScript = @'
 import os, json, yaml, re
-SKIP_DIRS = {"templates", "test", "roles", "__pycache__", "core", "group_vars"}
+SKIP_DIRS = {"templates", "test", "roles", "__pycache__", "group_vars"}
 INTERNAL_VARS = {"ansible_python_interpreter", "ansible_connection", "ansible_become",
     "ansible_become_method", "ansible_user", "ansible_host", "ansible_port",
     "gather_facts", "connection", "become", "become_method", "become_user"}
@@ -392,28 +392,25 @@ def add_playbook_file(path, playbook_id, segments, display_stem):
         add_item(tree, segments, build_item(playbook_id, lbl, mut, opts))
 
 
-# Two top-level sections: playbooks in the repo's own `playbooks/` tree go
-# under Native, collection playbooks under Imported. The `Native` prefix
-# also disambiguates names that collide with collection IDs
-# (e.g. playbooks/core/... vs internal.core).
+# Two top-level sections: everything shipped in the monorepo's own
+# `playbooks/` tree (site orchestrators at the root + localhost helpers
+# under playbooks/core/) collapses under a single `Core` group; every
+# internal.* collection's playbooks land under `Imported`.
 
-# 1. App-layer playbooks (site orchestrators + ncs/ + core/)
+# 1. App-layer playbooks (site orchestrators + core/ helpers) — all
+#    flattened under a single `Core` top-level group regardless of
+#    where they sit in the playbooks/ tree.
 app_base = "playbooks"
 if os.path.isdir(app_base):
     for root, dirs, files in os.walk(app_base):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
-        rel = os.path.relpath(root, app_base)
-        if rel == ".":
-            segments = ["Fleet"]
-        else:
-            segments = rel.replace(os.sep, "/").split("/")
         for f in sorted(files):
             if not is_playbook_file(f):
                 continue
             path = os.path.join(root, f)
             playbook = path.replace(os.sep, "/")
             stem = os.path.splitext(f)[0]
-            add_playbook_file(path, playbook, ["Native"] + segments, stem)
+            add_playbook_file(path, playbook, ["Core"], stem)
 
 # 2. Collection playbooks: internal/<col>/playbooks/*.yml → FQCN internal.<col>.<stem>
 coll_root = os.path.join("collections", "ansible_collections", "internal")
@@ -446,14 +443,10 @@ def to_output(tree):
     return result
 
 output = to_output(tree)
-# Native first; within Native, Fleet (repo-root orchestrators) leads.
-native_entry = next((g for g in output if g["Group"] == "Native"), None)
+# Core first (monorepo-shipped playbooks), Imported after (collections).
+core_entry = next((g for g in output if g["Group"] == "Core"), None)
 imported_entry = next((g for g in output if g["Group"] == "Imported"), None)
-if native_entry and "Children" in native_entry:
-    fleet = [c for c in native_entry["Children"] if c["Group"] == "Fleet"]
-    rest = [c for c in native_entry["Children"] if c["Group"] != "Fleet"]
-    native_entry["Children"] = fleet + rest
-ordered = [e for e in (native_entry, imported_entry) if e]
+ordered = [e for e in (core_entry, imported_entry) if e]
 print(json.dumps(ordered))
 '@
     $command = New-NcsRepoShellCommand -Settings $Settings -Command (
