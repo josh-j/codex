@@ -2659,6 +2659,17 @@ function Show-NcsConsoleApp {
     $controls.PreflightButton.Add_Click({
         try {
             if ($null -ne $state.PreflightResult -and $state.PreflightResult.IsReady) {
+                # Disconnect implicitly cancels any in-flight run — the
+                # remote wrapper sees the dropped SSH channel, its
+                # INT/TERM/HUP trap kills the ansible child, and the
+                # per-run dir (including any seeded credential files)
+                # is rm -rf'd by the EXIT trap.
+                if ($null -ne $state.CurrentHandle) {
+                    Stop-NcsRemoteCommand -Handle $state.CurrentHandle
+                    $state.CurrentHandle = $null
+                    Set-NcsIdleUiState -Controls $controls
+                    Add-NcsConsoleLine -Controls $controls -Line "--- disconnect requested — run cancelled ---"
+                }
                 $state.PreflightResult = $null
                 Set-NcsPreflightState -Controls $controls -State "Not Connected"
                 $controls.ConnectionInfoText.Text = ""
