@@ -622,12 +622,42 @@ function Get-NcsTreeViewSelection {
     return [string] $selectedItem.Tag
 }
 
+# Human-readable label for the currently-selected tree item ("ESXi Collect"
+# rather than the FQCN "internal.vmware.esxi_collect"). Returns the Tag
+# unchanged as a fallback if the item wasn't built via New-NcsLeafTreeItem.
+function Get-NcsTreeViewSelectionLabel {
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [string] $TreeViewName
+    )
+
+    $selectedItem = $Controls[$TreeViewName].SelectedItem
+    if ($null -eq $selectedItem) { return "" }
+    if (-not [string]::IsNullOrWhiteSpace($selectedItem.DataContext)) {
+        return [string] $selectedItem.DataContext
+    }
+    return [string] $selectedItem.Tag
+}
+
 function New-NcsLeafTreeItem {
     param($Item, [string] $TagProperty, [string] $LeafIcon)
     $leafItem = [System.Windows.Controls.TreeViewItem]::new()
     $leafItem.Tag = $Item[$TagProperty]
-    $leafItem.ToolTip = $Item.Label
-    $displayText = if ($Item[$TagProperty]) { [System.IO.Path]::GetFileName($Item[$TagProperty]) } else { $Item.Label }
+    # DataContext stashes the human-readable Label so callers (e.g. the
+    # run badge) can retrieve it via Get-NcsTreeViewSelectionLabel without
+    # walking the TreeViewItem.Header visual tree.
+    $leafItem.DataContext = $Item.Label
+    # Show the human-readable label in the tree ("ESXi Collect"), surface
+    # the underlying identifier (FQCN or file path) as the tooltip for
+    # users who need to know which playbook the entry resolves to.
+    $displayText = if (-not [string]::IsNullOrWhiteSpace($Item.Label)) {
+        $Item.Label
+    } elseif ($Item[$TagProperty]) {
+        [System.IO.Path]::GetFileName($Item[$TagProperty])
+    } else {
+        ""
+    }
+    $leafItem.ToolTip = if ($Item[$TagProperty]) { $Item[$TagProperty] } else { $Item.Label }
     if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
         $sp = [System.Windows.Controls.StackPanel]::new()
         $sp.Orientation = "Horizontal"
@@ -2849,7 +2879,9 @@ function Show-NcsConsoleApp {
                 }
             }
 
-            $controls.RunMetaText.Text = $selectedPlaybook
+            $selectedLabel = Get-NcsTreeViewSelectionLabel -Controls $controls -TreeViewName "ActionTreeView"
+            $state.LastActionLabel = if ($selectedLabel) { $selectedLabel } else { $selectedPlaybook }
+            $controls.RunMetaText.Text = $state.LastActionLabel
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
             if ($controls.ConsolePane.Visibility -eq "Collapsed") {
@@ -2892,7 +2924,7 @@ function Show-NcsConsoleApp {
                     if (-not [string]::IsNullOrWhiteSpace($runResult.SessionLogPath)) {
                         Add-NcsConsoleLine -Controls $controls -Line "Session log: $($runResult.SessionLogPath)"
                     }
-                    $controls.RunMetaText.Text = $runResult.Action
+                    $controls.RunMetaText.Text = if ($state.LastActionLabel) { $state.LastActionLabel } else { $runResult.Action }
                     if ($runResult.WasCancelled) {
                         $controls.StatusTextBlock.Text = "Run cancelled."
                     } elseif ($runResult.Succeeded) {
