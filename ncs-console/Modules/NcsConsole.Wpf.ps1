@@ -1614,6 +1614,10 @@ function Show-NcsConsoleApp {
         PreflightResult = $null
         CurrentHandle   = $null
         LastRunResult   = $null
+        # Human-readable label of the playbook the current run is dispatching
+        # (e.g. "ESXi Collect"); carried from run-start through OnCompleted
+        # so the post-run badge shows the same shortname the tree showed.
+        LastActionLabel = $null
         ReportCacheRoot = $(if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
                 Join-Path -Path $env:LOCALAPPDATA -ChildPath "NcsConsole/ReportCache/reports"
             } else {
