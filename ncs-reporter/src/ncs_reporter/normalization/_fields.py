@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ncs_reporter.primitives import safe_list
+from ncs_reporter.primitives import safe_list, to_int
 
 from ._when import _parse_iso, eval_expression
 from ._transforms import _PARAM_TRANSFORMS, _TRANSFORMS
@@ -190,6 +190,7 @@ def resolve_field(path: str, raw: dict[str, Any]) -> Any:
 
     Syntax:
       - Dot-notation traversal: ``"ansible_facts.hostname"``
+      - Numeric segments index into lists: ``"results.0.json.imdata.0.cur"``
       - Optional pipe transforms (chainable): ``"interfaces | len_if_list"``
       - Parameterized transforms: ``"lines | regex_extract('(\\d+) upgraded')"``
     """
@@ -204,6 +205,9 @@ def resolve_field(path: str, raw: dict[str, Any]) -> Any:
             continue
         if isinstance(obj, dict):
             obj = obj.get(segment)
+        elif isinstance(obj, list) and segment.lstrip("-").isdigit():
+            idx = to_int(segment)
+            obj = obj[idx] if -len(obj) <= idx < len(obj) else None
         else:
             obj = None
             break

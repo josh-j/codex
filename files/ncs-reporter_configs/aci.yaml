@@ -14,18 +14,9 @@ config:
     - name: OSPF Down
       value: "{{ ospf_down_count }}"
 
-# ---------------------------------------------------------------------------
-# Fields
-# ---------------------------------------------------------------------------
-#
-# All raw_aci.data.* fields are auto-imported from the collector payload.
-# That covers: apic_hostname, apic_short, health_results, faults,
-# cleared_faults, ingress, egress, ospf, interface_description_map,
-# audit_failed. Only derived / script-normalized fields are declared here.
-
 vars:
-  # Site-code → friendly-name lookup. Keyed on the first 4 characters of
-  # `apic_short` (lowercased). Expand as new sites come online.
+  # Keyed on the first 4 chars of `apic_short` (lowercased); extend as new
+  # sites come online.
   _site_map:
     const:
       tyfq: TYFQ-Ramstein
@@ -38,43 +29,30 @@ vars:
   site_label:
     compute: "{{ _site_map.get((apic_short | string)[:4] | lower, apic_short) }}"
 
-  # Fabric + tenant health score extraction. The raw health_results shape is
-  # a pair of ansible.builtin.uri responses; the script pulls the numeric
-  # `cur` value from each. Returns -1 when the APIC response was missing.
-  _health_scores:
-    script:
-      run: "aci_extract_health.py"
-    type: dict
-
   fabric_health_score:
-    compute: "{{ _health_scores.fabric if _health_scores.fabric is not none else -1 }}"
+    path: ".health_results.0.json.imdata.0.fabricHealthTotal.attributes.cur"
     type: int
     fallback: -1
 
   tenant_health_score:
-    compute: "{{ _health_scores.tenant if _health_scores.tenant is not none else -1 }}"
+    path: ".health_results.1.json.imdata.0.healthInst.attributes.cur"
     type: int
     fallback: -1
 
-  # Flattened fault attribute dicts (drops the `faultInst` wrapper).
   active_faults:
     compute: "{{ faults | map(attribute='faultInst.attributes') | list }}"
     type: list
 
-  cleared_fault_attrs:
-    compute: "{{ cleared_faults | map(attribute='faultInst.attributes') | list }}"
-    type: list
-
-  # Recent cleared faults, excluding noisy TCA ingress-drop events, capped
-  # at the top 5 by raw order (which the APIC returns newest-first).
+  # TCA ingress-drop events are noisy environmental churn; APIC returns
+  # cleared faults newest-first, so slicing after the reject is safe.
   recent_cleared_faults:
     compute: >-
-      {{ (cleared_fault_attrs
+      {{ (cleared_faults
+          | map(attribute='faultInst.attributes')
           | rejectattr('descr', 'search', '(?i)TCA:\\s*ingress\\s*drop')
           | list)[:5] }}
     type: list
 
-  # Active fault severity counts.
   critical_fault_count:
     compute: "{{ active_faults | selectattr('severity', 'eq', 'critical') | list | length }}"
     type: int
@@ -88,20 +66,13 @@ vars:
     compute: "{{ active_faults | length }}"
     type: int
 
-  # OSPF neighbors not in 'full' adjacency — attributes only.
-  ospf_attrs:
-    compute: "{{ ospf | map(attribute='ospfAdjEp.attributes') | list }}"
-    type: list
   ospf_down:
-    compute: "{{ ospf_attrs | rejectattr('operSt', 'eq', 'full') | list }}"
+    compute: "{{ ospf | map(attribute='ospfAdjEp.attributes') | rejectattr('operSt', 'eq', 'full') | list }}"
     type: list
   ospf_down_count:
     compute: "{{ ospf_down | length }}"
     type: int
 
-  # Interface utilization — enriched and filtered by the script. Rows include
-  # interface_label (DN-decoded) and description (from the APIC's per-dn
-  # description map). Port-channel aggregates are dropped (member ports stay).
   ingress_high_util:
     script:
       run: "aci_enrich_interfaces.py"
@@ -125,10 +96,6 @@ vars:
   critical_egress_util:
     compute: "{{ egress_high_util | selectattr('utilMax', 'gt', 75) | list | length }}"
     type: int
-
-# ---------------------------------------------------------------------------
-# Alerts
-# ---------------------------------------------------------------------------
 
 alerts:
   - id: collection_failed
@@ -220,10 +187,6 @@ alerts:
     suppress_if: link_utilization_critical_egress
     when: (egress_high_util | length) > 0
     msg: "{{ egress_high_util | length }} egress interface(s) above 25% average utilization"
-
-# ---------------------------------------------------------------------------
-# Widgets
-# ---------------------------------------------------------------------------
 
 widgets:
 

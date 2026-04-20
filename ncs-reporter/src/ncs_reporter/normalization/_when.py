@@ -54,8 +54,7 @@ def _age_days(value: Any, reference: Any = None) -> float:
 
 def _regex_search(value: Any, pattern: str, ignorecase: bool = False) -> str:
     """Return the first regex match (or first capture group) in *value*, or ''."""
-    flags = re.IGNORECASE if ignorecase else 0
-    m = re.search(pattern, "" if value is None else str(value), flags)
+    m = re.search(pattern, "" if value is None else str(value), re.IGNORECASE if ignorecase else 0)
     if m is None:
         return ""
     return m.group(1) if m.groups() else m.group(0)
@@ -63,14 +62,12 @@ def _regex_search(value: Any, pattern: str, ignorecase: bool = False) -> str:
 
 def _regex_replace(value: Any, pattern: str, replacement: str = "", ignorecase: bool = False) -> str:
     """Substitute *pattern* with *replacement* in *value* (all matches)."""
-    flags = re.IGNORECASE if ignorecase else 0
-    return re.sub(pattern, replacement, "" if value is None else str(value), flags=flags)
+    return re.sub(pattern, replacement, "" if value is None else str(value), flags=re.IGNORECASE if ignorecase else 0)
 
 
 def _regex_findall(value: Any, pattern: str, ignorecase: bool = False) -> list[str]:
     """Return all non-overlapping regex matches in *value* as a list of strings."""
-    flags = re.IGNORECASE if ignorecase else 0
-    return re.findall(pattern, "" if value is None else str(value), flags)
+    return re.findall(pattern, "" if value is None else str(value), re.IGNORECASE if ignorecase else 0)
 
 
 def _register_common_filters(env: NativeEnvironment) -> None:

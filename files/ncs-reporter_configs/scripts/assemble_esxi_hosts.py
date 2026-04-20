@@ -16,6 +16,8 @@ import json
 import sys
 from typing import Any
 
+from ncs_reporter.primitives import to_float, to_int
+
 
 def _extract_loop_results(raw: Any) -> list[dict[str, Any]]:
     """Extract inner results from an Ansible loop register."""
@@ -48,20 +50,6 @@ def _build_cluster_map(clusters_results: Any) -> dict[str, dict[str, str]]:
     return mapping
 
 
-def _safe_float(val: Any, default: float = 0.0) -> float:
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return default
-
-
-def _safe_int(val: Any, default: int = 0) -> int:
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return default
-
-
 def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
     """Parse a single vmware_host_facts loop result into a host record."""
     hostname = result.get("item", "")
@@ -69,8 +57,8 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(facts, dict):
         facts = {}
 
-    mem_total = _safe_float(facts.get("ansible_memtotal_mb", 0))
-    mem_free = _safe_float(facts.get("ansible_memfree_mb", 0))
+    mem_total = to_float(facts.get("ansible_memtotal_mb", 0))
+    mem_free = to_float(facts.get("ansible_memfree_mb", 0))
     mem_used = mem_total - mem_free
     mem_pct = round((mem_used / mem_total) * 100, 1) if mem_total > 0 else 0.0
 
@@ -78,7 +66,7 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
     cpu_model = facts.get("ansible_processor", "")
 
     # Uptime
-    uptime = _safe_int(facts.get("ansible_uptime", 0))
+    uptime = to_int(facts.get("ansible_uptime", 0))
 
     # Datastores
     datastores = []
@@ -91,15 +79,15 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
             })
 
     # CPU utilization: quickStats.overallCpuUsage / (numCpuCores * cpuMhz)
-    cpu_cores = _safe_int(facts.get("ansible_processor_cores", 0))
-    cpu_threads = _safe_int(facts.get("ansible_processor_vcpus", 0))
+    cpu_cores = to_int(facts.get("ansible_processor_cores", 0))
+    cpu_threads = to_int(facts.get("ansible_processor_vcpus", 0))
     # vmware_host_facts does not expose CPU usage MHz directly;
     # cpu_used_pct will be 0 unless enriched by additional collection.
-    cpu_used_pct = _safe_float(facts.get("ansible_cpu_used_pct", 0.0))
+    cpu_used_pct = to_float(facts.get("ansible_cpu_used_pct", 0.0))
 
     # VM count: not directly available from vmware_host_facts;
     # will be 0 unless enriched by additional per-host collection.
-    vm_count = _safe_int(facts.get("ansible_vm_count", 0))
+    vm_count = to_int(facts.get("ansible_vm_count", 0))
 
     return {
         "name": hostname,
@@ -143,7 +131,7 @@ def _merge_nics(host: dict[str, Any], nic_result: dict[str, Any]) -> None:
             nics.append({
                 "device": nic.get("device", ""),
                 "link_status": nic.get("status", "unknown"),
-                "speed_mbps": _safe_int(nic.get("speed", 0)),
+                "speed_mbps": to_int(nic.get("speed", 0)),
                 "driver": nic.get("driver", ""),
                 "switch": nic.get("vswitch", ""),
             })
