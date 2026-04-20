@@ -283,6 +283,11 @@ function Show-NcsPasswordPrompt {
     $btnPanel.HorizontalAlignment = "Right"
     $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
 
+    # Avoid .GetNewClosure() for the OK/Cancel handlers — it's been flaky
+    # under StrictMode (cancelling crashed/froze the shell). Both handlers
+    # recover the owning Window from $sender instead, which doesn't need a
+    # captured $inputBox. IsCancel on Cancel also wires Escape + window-close
+    # to the same DialogResult=$false path for free.
     $okBtn = [System.Windows.Controls.Button]::new()
     $okBtn.Content = $OkLabel
     $okBtn.Background = Get-NcsBrush -Color "#1e2228"
@@ -291,7 +296,10 @@ function Show-NcsPasswordPrompt {
     $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
     $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
     $okBtn.IsDefault = $true
-    $okBtn.Add_Click({ $inputBox.DialogResult = $true }.GetNewClosure())
+    $okBtn.Add_Click({
+        param($sender, $e)
+        [System.Windows.Window]::GetWindow($sender).DialogResult = $true
+    })
 
     $cancelBtn = [System.Windows.Controls.Button]::new()
     $cancelBtn.Content = "Cancel"
@@ -299,7 +307,11 @@ function Show-NcsPasswordPrompt {
     $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
     $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
     $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-    $cancelBtn.Add_Click({ $inputBox.DialogResult = $false }.GetNewClosure())
+    $cancelBtn.IsCancel = $true
+    $cancelBtn.Add_Click({
+        param($sender, $e)
+        [System.Windows.Window]::GetWindow($sender).DialogResult = $false
+    })
 
     $btnPanel.Children.Add($cancelBtn) | Out-Null
     $btnPanel.Children.Add($okBtn) | Out-Null
