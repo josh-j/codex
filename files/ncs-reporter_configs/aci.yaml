@@ -30,12 +30,12 @@ vars:
     compute: "{{ _site_map.get((apic_short | string)[:4] | lower, apic_short) }}"
 
   fabric_health_score:
-    path: ".health_results.0.json.imdata.0.fabricHealthTotal.attributes.cur"
+    path: ".health_results.0.imdata.0.fabricHealthTotal.attributes.cur"
     type: int
     fallback: -1
 
   tenant_health_score:
-    path: ".health_results.1.json.imdata.0.healthInst.attributes.cur"
+    path: ".health_results.1.imdata.0.healthInst.attributes.cur"
     type: int
     fallback: -1
 
