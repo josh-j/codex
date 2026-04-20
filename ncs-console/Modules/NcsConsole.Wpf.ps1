@@ -2851,9 +2851,9 @@ function Show-NcsConsoleApp {
             Add-NcsConsoleLine -Controls $controls -Line "> $playCmd"
             Sync-NcsConsoleScroll -Controls $controls
             $handle = Start-NcsRemoteCommand -Settings $state.Settings -Request $request `
-                -OnOutputBatchLines {
-                    param($lines)
-                    Add-NcsConsoleLines -Controls $controls -Lines $lines
+                -OnOutput {
+                    param($line)
+                    Add-NcsConsoleLine -Controls $controls -Line $line
                 } `
                 -OnOutputBatch {
                     Sync-NcsConsoleScroll -Controls $controls
