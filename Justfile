@@ -412,14 +412,6 @@ site-collect:
 site-reports:
     {{ ansible_playbook }} playbooks/site_reports_only.yml
 
-# Run VMware-only collection and reporting
-site-vmware:
-    {{ ansible_playbook }} playbooks/site_vmware_only.yml
-
-# Run Windows-only collection and reporting
-site-windows:
-    {{ ansible_playbook }} playbooks/site_windows_only.yml
-
 # Run VMware health audit (all sites or limited)
 audit-vmware target="vcsa":
     {{ ansible_playbook }} internal.vmware.collect -l {{ target }} -v
