@@ -24,6 +24,8 @@ collections:
     type: file
   - name: "./collections/vendor/internal-windows-1.1.0.tar.gz"
     type: file
+  - name: "./collections/vendor/internal-aci-0.1.0.tar.gz"
+    type: file
 
   # --- Mode B: sibling working directories --------------------------------
   #
@@ -34,4 +36,6 @@ collections:
   # - name: "../ncs-ansible-linux"
   #   type: dir
   # - name: "../ncs-ansible-windows"
+  #   type: dir
+  # - name: "../ncs-ansible-aci"
   #   type: dir

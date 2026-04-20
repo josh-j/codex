@@ -131,7 +131,7 @@ build-collection name:
     echo "✓ built dist/internal-{{ name }}-<version>.tar.gz"
 
 # Build tarballs for every internal collection.
-build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows")
+build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows") (build-collection "aci")
     @echo "✓ all collections built under dist/"
 
 # Materialize the four internal.* collections as sibling working trees

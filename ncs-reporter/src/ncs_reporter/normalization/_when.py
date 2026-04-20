@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -51,10 +52,38 @@ def _age_days(value: Any, reference: Any = None) -> float:
     return (ref_dt - dt).total_seconds() / SECONDS_PER_DAY
 
 
+def _regex_search(value: Any, pattern: str, ignorecase: bool = False) -> str:
+    """Return the first regex match (or first capture group) in *value*, or ''."""
+    flags = re.IGNORECASE if ignorecase else 0
+    m = re.search(pattern, "" if value is None else str(value), flags)
+    if m is None:
+        return ""
+    return m.group(1) if m.groups() else m.group(0)
+
+
+def _regex_replace(value: Any, pattern: str, replacement: str = "", ignorecase: bool = False) -> str:
+    """Substitute *pattern* with *replacement* in *value* (all matches)."""
+    flags = re.IGNORECASE if ignorecase else 0
+    return re.sub(pattern, replacement, "" if value is None else str(value), flags=flags)
+
+
+def _regex_findall(value: Any, pattern: str, ignorecase: bool = False) -> list[str]:
+    """Return all non-overlapping regex matches in *value* as a list of strings."""
+    flags = re.IGNORECASE if ignorecase else 0
+    return re.findall(pattern, "" if value is None else str(value), flags)
+
+
+def _register_common_filters(env: NativeEnvironment) -> None:
+    env.filters["age_days"] = _age_days
+    env.filters["regex_search"] = _regex_search
+    env.filters["regex_replace"] = _regex_replace
+    env.filters["regex_findall"] = _regex_findall
+
+
 @functools.lru_cache(maxsize=1)
 def _build_jinja_env() -> NativeEnvironment:
     env = NativeEnvironment(undefined=Undefined)
-    env.filters["age_days"] = _age_days
+    _register_common_filters(env)
     return env
 
 
@@ -119,7 +148,7 @@ def _build_arithmetic_env() -> NativeEnvironment:
     from ._transforms import _TRANSFORMS
 
     env = NativeEnvironment(undefined=_NumericUndefined)
-    env.filters["age_days"] = _age_days
+    _register_common_filters(env)
     env.filters.update(_TRANSFORMS)
     return env
 
