@@ -40,7 +40,10 @@
     # -------------------------------------------------------------------------
     - name: Install Samba packages
       ansible.builtin.apt:
-        name: [samba, samba-common, python3-samba]
+        # samba-common-bin ships pdbedit/smbpasswd (setup uses both);
+        # smbclient is for operator-side diagnosis of the share. Neither
+        # is a hard dep of the samba daemon package on Debian/Ubuntu.
+        name: [samba, samba-common, samba-common-bin, smbclient, python3-samba]
         state: present
         update_cache: true
 
