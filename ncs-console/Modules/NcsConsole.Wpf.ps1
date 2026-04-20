@@ -473,6 +473,7 @@ function Get-NcsXamlControlMap {
         "MaximizeWindowButton",
         "CloseWindowButton",
         "RunStateText",
+        "RunStateSeparator",
         "RunMetaText",
         "ConnectionInfoText",
         "SshHostTextBox",
@@ -1123,15 +1124,18 @@ function Set-NcsRunStateBadge {
     )
 
     $Controls.RunStateText.Text = $State
+    # Every color per state must be readable against `bg` — RunStateText,
+    # the ` · ` separator, and RunMetaText all live inside the badge border.
     $styles = @{
         Succeeded = @{ bg = "#6e9fff"; fg = "#ffffff"; meta = "#d8e4ff" }
-        Failed    = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#8e939c" }
+        Failed    = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#ffe4e4" }
         Canceled  = @{ bg = "#ff9830"; fg = "#1e2228"; meta = "#3d3020" }
-        Blocked   = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#8e939c" }
+        Blocked   = @{ bg = "#f2495c"; fg = "#ffffff"; meta = "#ffe4e4" }
     }
     $s = if ($styles.ContainsKey($State)) { $styles[$State] } else { @{ bg = "#1e2228"; fg = "#ffffff"; meta = "#8e939c" } }
     $Controls.RunStateBorder.Background = Get-NcsBrush -Color $s.bg
     $Controls.RunStateText.Foreground = Get-NcsBrush -Color $s.fg
+    $Controls.RunStateSeparator.Foreground = Get-NcsBrush -Color $s.meta
     $Controls.RunMetaText.Foreground = Get-NcsBrush -Color $s.meta
 }
 
