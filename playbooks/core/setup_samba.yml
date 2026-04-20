@@ -58,6 +58,20 @@
         system: true
         create_home: false
 
+    # Give the operator running ansible-playbook write access to
+    # /srv/samba/reports/platform so the ncs_collector callback can emit
+    # raw_*.yaml under it. Without this the first run after setup fails
+    # with Permission denied on the callback path. Requires a new shell
+    # session (or a re-login) for the group membership to take effect.
+    - name: Add the invoking sudoer to the report group
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: "{{ samba_report_share_group }}"
+        append: true
+      when:
+        - ansible_user_id is defined
+        - ansible_user_id not in ['root', samba_report_share_user]
+
     # -------------------------------------------------------------------------
     # 2. FILESYSTEM (Reinforced SGID 2775)
     # -------------------------------------------------------------------------
@@ -105,15 +119,31 @@
       changed_when: false
       failed_when: false
 
+    # printf %s preserves literal passwords with shell metacharacters
+    # (`$`, backticks, `!`, spaces); plain echo inside `(…; …) | smbpasswd`
+    # used to expand them. no_log on failure kept hiding that.
     - name: Add or update Samba user in passdb
       ansible.builtin.shell:
-        cmd: |
-          set -o pipefail
-          (echo "{{ vault_samba_user_password }}"; echo "{{ vault_samba_user_password }}")
+        cmd: >-
+          set -o pipefail ;
+          printf '%s\n%s\n' {{ vault_samba_user_password | quote }} {{ vault_samba_user_password | quote }}
           | smbpasswd -s {{ '-a' if _samba_user_exists.rc != 0 else '' }} {{ samba_report_share_user }}
         executable: /bin/bash
+      register: _smbpasswd_set
       no_log: true
       changed_when: true
+      failed_when:
+        - _smbpasswd_set.rc != 0
+
+    - name: Surface smbpasswd stderr on failure
+      ansible.builtin.debug:
+        msg: >-
+          smbpasswd exited {{ _smbpasswd_set.rc }} — the no_log password
+          shell hid the stderr. Rerun this task with no_log temporarily
+          disabled, or inspect /var/log/samba/ for the root cause.
+      when:
+        - _smbpasswd_set is defined
+        - _smbpasswd_set.failed | default(false)
 
     - name: Enable Samba user account
       ansible.builtin.command: smbpasswd -e {{ samba_report_share_user }}
