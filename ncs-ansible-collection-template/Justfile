@@ -1,0 +1,10 @@
+# Scaffolded Justfile for an internal.__COLLECTION_NAME__ sibling.
+# Imports the monorepo's shared recipes when ../ncs-ansible is a
+# checkout alongside this repo; silently no-ops otherwise so the
+# sibling is still usable in isolation.
+
+import? '../ncs-ansible/shared.just'
+import? '../codex/shared.just'
+
+# Collection-specific recipes go below. See the imported file for
+# lint / yamllint / build / clean.

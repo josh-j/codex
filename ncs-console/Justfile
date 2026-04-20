@@ -1,0 +1,41 @@
+# NCS Console (WPF / PowerShell) — sibling Justfile.
+# Mounted from the monorepo Justfile as `console`. Reached as
+# `just console::<recipe>` from the monorepo root, or directly as
+# `just <recipe>` from this directory.
+
+set shell := ['pwsh', '-NoProfile', '-Command']
+
+# Run PSScriptAnalyzer against every module + the entry script.
+lint:
+    Invoke-ScriptAnalyzer -Path . -Recurse -Settings PSGallery -ReportSummary
+
+# Run Pester tests, if any *.Tests.ps1 exist under Scripts/.
+test:
+    #!/usr/bin/env pwsh
+    if (Get-ChildItem -Path Scripts -Filter '*.Tests.ps1' -Recurse -ErrorAction SilentlyContinue) {
+        Invoke-Pester -CI
+    } else {
+        Write-Host 'No Pester tests found; nothing to run.'
+    }
+
+# Bootstrap NuGet dependencies under App/lib/.
+setup:
+    ./setup.ps1
+
+# Install the Start-menu shortcut.
+install-shortcut:
+    ./install-shortcut.ps1
+
+# Launch the console app.
+run:
+    ./ncs-console.ps1
+
+# Package the console into ../dist/ncs-console-<version>.zip.
+build version:
+    #!/usr/bin/env pwsh
+    $dist = Join-Path (Resolve-Path ..) 'dist'
+    New-Item -ItemType Directory -Force -Path $dist | Out-Null
+    $archive = Join-Path $dist "ncs-console-{{version}}.zip"
+    Compress-Archive -Path App, Config, Modules, Scripts, ncs-console.ps1, install-shortcut.ps1, setup.ps1, README.md `
+                     -DestinationPath $archive -Force
+    Write-Host "✓ $archive"
