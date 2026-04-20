@@ -73,23 +73,6 @@ vars:
     compute: "{{ ospf_down | length }}"
     type: int
 
-  ingress_high_util:
-    script:
-      run: "aci_enrich_interfaces.py"
-      args:
-        source: ingress
-        util_threshold: 25
-        top_n: 10
-    type: list
-  egress_high_util:
-    script:
-      run: "aci_enrich_interfaces.py"
-      args:
-        source: egress
-        util_threshold: 25
-        top_n: 10
-    type: list
-
   critical_ingress_util:
     compute: "{{ ingress_high_util | selectattr('utilMax', 'gt', 75) | list | length }}"
     type: int
