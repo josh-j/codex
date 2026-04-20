@@ -1,17 +1,13 @@
 # NCS (Non-Core Services) Root Justfile
 
 set dotenv-load := true
-# `mod?` below is still flagged unstable in some just releases; opt in here
-# so `just setup-all` doesn't require a `--unstable` flag on every call.
-set unstable := true
 
 # Ensure ncs_collector callback can find platform configs
 export NCS_REPO_ROOT := justfile_directory()
 
-# Expose ncs-console's own Justfile as `just console::<recipe>`.
-# Optional mount: silently no-ops on hosts without the subtree or
-# without PowerShell installed.
-mod? console 'ncs-console'
+# (ncs-console's own Justfile lives at ncs-console/Justfile; `just mod`
+#  to mount it here needs a newer just release than some deployment
+#  hosts carry, so reach it directly: `cd ncs-console && just <recipe>`.)
 
 # --- Variables ---
 python           := if path_exists(".venv/bin/python3") == "true" { ".venv/bin/python3" } else { "python3" }
