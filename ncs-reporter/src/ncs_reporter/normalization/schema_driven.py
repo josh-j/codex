@@ -20,7 +20,6 @@ from ._when import (
     evaluate_when,
 )
 from ._fields import (
-    _BUILTIN_SCRIPTS_DIR,  # noqa: F401
     _SCRIPT_ERROR_SENTINEL,
     _apply_list_processing,
     _coerce,

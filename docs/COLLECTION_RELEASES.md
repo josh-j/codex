@@ -68,7 +68,7 @@ just verify-fqcn-contract                 # every reporter-config FQCN still res
 
 `verify-fqcn-contract` is the most important one. It catches the case
 where a release removes or renames a playbook that
-`ncs-reporter/src/ncs_reporter/configs/*.yaml` pins as an FQCN string.
+`ncs_configs/ncs-reporter/*.yaml` pins as an FQCN string.
 The script reads every `stig.ansible_playbook.path:` from those configs
 and syntax-checks each one against the currently-installed collections.
 Run it after `install-collections` in the main repo.

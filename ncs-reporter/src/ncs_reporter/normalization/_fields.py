@@ -21,31 +21,29 @@ logger = logging.getLogger(__name__)
 # Script field execution
 # ---------------------------------------------------------------------------
 
-# Built-in scripts shipped with the package
-_BUILTIN_SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
-
-
 def _resolve_script(script: str, schema_source_path: str | None) -> Path | None:
     """
     Resolve *script* to an executable path.  Search order:
       1. Absolute path (used as-is if it exists)
       2. Relative to the schema file's directory
-      3. CWD-relative
-      4. Built-in package scripts/
+      3. Relative to the schema file's directory under scripts/
+      4. CWD-relative
+      5. CWD-relative under scripts/
     """
     p = Path(script)
     if p.is_absolute():
         return p if p.exists() else None
 
     if schema_source_path:
-        candidate = Path(schema_source_path).parent / script
-        if candidate.exists():
-            return candidate
+        schema_dir = Path(schema_source_path).parent
+        for candidate in (schema_dir / script, schema_dir / "scripts" / script):
+            if candidate.exists():
+                return candidate
 
     if p.exists():
         return p
 
-    candidate = _BUILTIN_SCRIPTS_DIR / script
+    candidate = Path("scripts") / script
     if candidate.exists():
         return candidate
 

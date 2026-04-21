@@ -133,8 +133,12 @@ def _widget_base(widget: ReportWidget, **extra: Any) -> dict[str, Any]:
 
 
 def _safe_rows(fields: dict[str, Any], key: str) -> list[Any]:
-    """Return field value as a list, or empty list if not a list."""
-    val = fields.get(key, [])
+    """Return field value as a list, or empty list if not a list.
+
+    *key* may be a bare field name (``clusters``), a dot-path (``foo.bar``),
+    or a Jinja expression (``{{ clusters }}``).
+    """
+    val = _resolve_field_ref(key, fields)
     return val if isinstance(val, list) else []
 
 

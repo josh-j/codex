@@ -1,7 +1,7 @@
 ---
 # playbooks/core/manage_schedules.yml
 # Manage systemd timers for scheduled playbook execution.
-# Reads schedules.yml from the repo root and deploys/removes timer+service
+# Reads ncs_configs/schedules.yml and deploys/removes timer+service
 # units on the local host. Run with: just apply-schedules
 #
 # Requires become (systemd units go in /etc/systemd/system/).
@@ -15,7 +15,7 @@
   vars:
     ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/../..', true) }}"
     ncs_schedule_user: "{{ lookup('env', 'SUDO_USER') | default(lookup('env', 'USER'), true) }}"
-    _schedules_file: "{{ ncs_repo_path }}/schedules.yml"
+    _schedules_file: "{{ ncs_repo_path }}/ncs_configs/schedules.yml"
     _unit_prefix: "ncs-"
     _wrapper_dir: "{{ ncs_repo_path }}/.cache/ncs-schedules"
     _log_dir: "/var/log/ncs-schedules"

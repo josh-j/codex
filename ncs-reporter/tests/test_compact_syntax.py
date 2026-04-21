@@ -282,7 +282,7 @@ class TestIncludeAlerts:
         """Photon config loads alerts via $include."""
         from pathlib import Path
 
-        path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "photon.yaml"
+        path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "photon.yaml"
         schema = load_schema_from_file(path)
         assert len(schema.alerts) == 9
 
@@ -290,7 +290,7 @@ class TestIncludeAlerts:
         """Photon config loads widgets via $include."""
         from pathlib import Path
 
-        path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "photon.yaml"
+        path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "photon.yaml"
         schema = load_schema_from_file(path)
         assert len(schema.widgets) == 5  # alert_panel is auto-injected, not declared
 
@@ -367,7 +367,7 @@ class TestRoundTrip:
         """The compact windows.yaml loads without errors."""
         from pathlib import Path
 
-        path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "windows.yaml"
+        path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "windows.yaml"
         schema = load_schema_from_file(path)
         assert schema.name == "windows"
         assert len(schema.fields) == 0  # all fields auto-imported (collected_at from metadata)

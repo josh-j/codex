@@ -2,10 +2,10 @@
 """Emit the list of FQCN playbook references from ncs-reporter configs.
 
 Reads every `config.stig.ansible_playbook.path:` value across
-ncs-reporter/src/ncs_reporter/configs/*.yaml and prints the FQCN-form
-references, one per line. The Justfile target `verify-fqcn-contract`
-runs this, then `ansible-playbook --syntax-check` on each FQCN to catch
-drift between the reporter config and installed collection versions.
+ncs_configs/ncs-reporter/*.yaml and prints the FQCN-form references,
+one per line. The Justfile target `verify-fqcn-contract` runs this,
+then `ansible-playbook --syntax-check` on each FQCN to catch drift
+between the reporter config and installed collection versions.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ _FQCN = re.compile(r"^internal\.[a-z_]+\.[a-z0-9_]+$")
 
 
 def main() -> int:
-    root = pathlib.Path("ncs-reporter/src/ncs_reporter/configs")
+    root = pathlib.Path("ncs_configs/ncs-reporter")
     if not root.is_dir():
         print(f"configs dir not found: {root}", file=sys.stderr)
         return 1

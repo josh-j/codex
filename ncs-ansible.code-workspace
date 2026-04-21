@@ -7,8 +7,7 @@
 	"settings": {
 		"yaml.schemas": {
 			"./ncs-reporter/schemas/report_schema.json": [
-				"ncs-reporter/src/ncs_reporter/configs/*.yaml",
-				"files/ncs-reporter_configs/*.yaml",
+				"ncs_configs/ncs-reporter/*.yaml",
 				"!**/*_base_alerts.yaml",
 				"!**/*_base_fields.yaml",
 				"!**/*_base_widgets.yaml"

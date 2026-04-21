@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ncs_reporter.models.report_schema import (
@@ -577,7 +579,7 @@ class TestVcsaSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vcsa.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vcsa"
         assert s.platform == "vmware"
@@ -594,7 +596,7 @@ class TestVcsaSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vcsa.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -643,7 +645,7 @@ class TestEsxiHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "esxi"
         assert s.platform == "vmware"
@@ -657,7 +659,7 @@ class TestEsxiHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "esxi.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
         # Simulate a pre-assembled per-host bundle from the collector
@@ -692,7 +694,7 @@ class TestVmHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
@@ -707,7 +709,7 @@ class TestVmHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -749,21 +751,22 @@ class TestVmHealthSchema:
 
 class TestPhotonSchema:
     def test_photon_schema_loads_and_detects_bundle(self) -> None:
-        from pathlib import Path
-        from ncs_reporter.schema_loader import detect_schemas_for_bundle, load_schema_from_file
+        from ncs_reporter.schema_loader import detect_schemas_for_bundle, discover_schemas, load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "photon.yaml"
+        configs_dir = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter"
+        schema_path = configs_dir / "photon.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "photon"
         assert s.platform == "linux"
 
+        discover_schemas.cache_clear()
         bundle = {
             "raw_photon": {
                 "metadata": {"timestamp": "2026-03-02T00:00:00Z"},
                 "data": {"ansible_facts": {"hostname": "photon-01"}},
             }
         }
-        detected = detect_schemas_for_bundle(bundle)
+        detected = detect_schemas_for_bundle(bundle, extra_dirs=(str(configs_dir),))
         detected_names = {d.name for d in detected}
         assert "photon" in detected_names
 
@@ -804,7 +807,7 @@ class TestScriptFields:
         )
 
     def test_count_aged_snapshots_none_old(self) -> None:
-        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
+        schema = self._schema_with_script(str(Path(__file__).parent / "fixtures" / "scripts" / "normalize_snapshots.py"), {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [{"creation_time": "2026-02-27T00:00:00Z"}],
             "collected_at": "2026-02-27T06:00:00Z",
@@ -813,7 +816,7 @@ class TestScriptFields:
         assert fields["aged_count"] == 0
 
     def test_count_aged_snapshots_one_old(self) -> None:
-        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
+        schema = self._schema_with_script(str(Path(__file__).parent / "fixtures" / "scripts" / "normalize_snapshots.py"), {"age_days": 7, "mode": "count"})
         raw = {
             # snapshot created 10 days before collection
             "snapshots": [{"creation_time": "2026-02-17T00:00:00Z"}],
@@ -823,7 +826,7 @@ class TestScriptFields:
         assert fields["aged_count"] == 1
 
     def test_count_aged_snapshots_mixed(self) -> None:
-        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
+        schema = self._schema_with_script(str(Path(__file__).parent / "fixtures" / "scripts" / "normalize_snapshots.py"), {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [
                 {"creation_time": "2026-02-26T00:00:00Z"},  # 1 day — NOT old
@@ -836,7 +839,7 @@ class TestScriptFields:
         assert fields["aged_count"] == 2
 
     def test_aged_snapshot_alert_fires(self) -> None:
-        schema = self._schema_with_script("normalize_snapshots.py", {"age_days": 7, "mode": "count"})
+        schema = self._schema_with_script(str(Path(__file__).parent / "fixtures" / "scripts" / "normalize_snapshots.py"), {"age_days": 7, "mode": "count"})
         raw = {
             "snapshots": [{"creation_time": "2026-01-01T00:00:00Z"}],
             "collected_at": "2026-02-27T00:00:00Z",
@@ -882,10 +885,9 @@ class TestScriptFields:
         assert mountpoints == {"/", "/data"}
 
     def test_vm_schema_snapshot_alerts_reference_list(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent / "src" / "ncs_reporter" / "configs" / "vm.yaml"
+        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert "snapshots" in s.fields
         spec = s.fields["snapshots"]

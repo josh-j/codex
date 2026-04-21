@@ -40,7 +40,7 @@ Extract all rules from the CKLB skeleton and map them to implementation tasks:
 ```bash
 python3 -c "
 import json
-with open('files/ncs-reporter_configs/cklb_skeletons/<SKELETON>.json') as f:
+with open('ncs_configs/ncs-reporter/cklb_skeletons/<SKELETON>.json') as f:
     cklb = json.load(f)
 for r in cklb['stigs'][0]['rules']:
     print(f'{r[\"rule_version\"]:>20} | {r[\"group_id_src\"]:>12} | {r[\"severity\"]:<8} | {r[\"group_title\"][:60]}')
@@ -396,7 +396,7 @@ ANSIBLE_CALLBACKS_ENABLED=internal.core.ncs_collector \
 ```bash
 .venv/bin/python internal/linux/roles/ubuntu/files/stig_report.py \
   /srv/samba/reports/platform/<path>/raw_stig_<type>.yaml \
-  files/ncs-reporter_configs/cklb_skeletons/<skeleton>.json
+  ncs_configs/ncs-reporter/cklb_skeletons/<skeleton>.json
 ```
 
 **Target metrics:**
@@ -425,7 +425,7 @@ Once the report shows acceptable compliance, verify against the actual DISA chec
 
 ```python
 import json, re
-with open('files/ncs-reporter_configs/cklb_skeletons/<SKELETON>.json') as f:
+with open('ncs_configs/ncs-reporter/cklb_skeletons/<SKELETON>.json') as f:
     cklb = json.load(f)
 for r in cklb['stigs'][0]['rules']:
     check = r.get('check_content', '')

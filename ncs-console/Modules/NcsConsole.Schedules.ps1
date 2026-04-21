@@ -89,7 +89,7 @@ function Save-NcsRemoteSchedules {
 
     $json = ConvertTo-NcsScheduleJson -Schedules $Schedules
     $inner = New-NcsRemoteHeredocCommand `
-        -Preamble ("$script:NcsJsonToYamlCmd > schedules.yml") `
+        -Preamble ("$script:NcsJsonToYamlCmd > ncs_configs/schedules.yml") `
         -Content $json `
         -Sentinel 'NCSSCHEDULES'
     $cmd = New-NcsRepoShellCommand -Settings $Settings -Command $inner
@@ -180,7 +180,7 @@ function Get-NcsRemoteScheduleSnapshot {
         [NcsConsoleSettings] $Settings
     )
 
-    $cmd = "{ (cat schedules.yml 2>/dev/null || echo 'schedules: []') | $script:NcsYamlToJsonCmd; } 2>/dev/null || echo '{}'; " + (Get-NcsTimerStatusQueryCommand)
+    $cmd = "{ (cat ncs_configs/schedules.yml 2>/dev/null || echo 'schedules: []') | $script:NcsYamlToJsonCmd; } 2>/dev/null || echo '{}'; " + (Get-NcsTimerStatusQueryCommand)
     $probe = Invoke-NcsSshProbe -Settings $Settings -RemoteCommand (New-NcsRepoShellCommand -Settings $Settings -Command $cmd)
     if ($probe.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($probe.StdOut)) {
         return @{ Schedules = @(); TimerStatus = @{} }

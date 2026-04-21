@@ -21,7 +21,7 @@ Schedules full playbook runs against the wall clock.
 
 ### Config
 
-All schedules live in one file at the repo root: `schedules.yml`.
+All schedules live in one file: `ncs_configs/schedules.yml`.
 
 ```yaml
 schedules:
@@ -37,7 +37,7 @@ schedules:
 **Supported fields**: `name`, `playbook`, `calendar`, `description`, `limit`,
 `tags`, `extra_args`, `check_mode`, `enabled`, `notify_on_failure`,
 `timeout_minutes`. See the inline docstring in
-[`schedules.yml`](../schedules.yml) for defaults.
+[`schedules.yml`](../ncs_configs/schedules.yml) for defaults.
 
 ### Deployment
 
@@ -47,7 +47,7 @@ just apply-schedules
 ansible-playbook -i inventory/production playbooks/core/manage_schedules.yml
 ```
 
-This reads `schedules.yml`, validates each entry, and deploys paired units to
+This reads `ncs_configs/schedules.yml`, validates each entry, and deploys paired units to
 `/etc/systemd/system/`:
 
 - `ncs-<name>.service` — one-shot unit that executes the wrapper script

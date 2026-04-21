@@ -17,7 +17,7 @@ ansible_vault    := if path_exists(".venv/bin/ansible-vault") == "true" { ".venv
 ncs_reporter     := if path_exists(".venv/bin/ncs-reporter") == "true" { ".venv/bin/ncs-reporter" } else { "ncs-reporter" }
 # VCSA SSH-based STIG requires ansible-core 2.15 + Python 3.7-compat collections
 vcsa_playbook    := "ANSIBLE_CONFIG=ansible-vcsa.cfg " + (if path_exists(".venv-vcsa/bin/ansible-playbook") == "true" { ".venv-vcsa/bin/ansible-playbook" } else { ansible_playbook })
-reporter_config_dir := "files/ncs-reporter_configs"
+reporter_config_dir := "ncs_configs/ncs-reporter"
 inventory_file   := "inventory/production/"
 reports_dir      := "/srv/samba/reports"
 platform_root    := reports_dir + "/platform"
@@ -270,7 +270,7 @@ verify-fqcn-contract:
     set -euo pipefail
     fqcns=$(.venv/bin/python scripts/verify_fqcn_contract.py)
     if [ -z "$fqcns" ]; then
-        echo "no FQCN references found in ncs-reporter/src/ncs_reporter/configs/"
+        echo "no FQCN references found in ncs_configs/ncs-reporter/"
         exit 0
     fi
     fail=0
@@ -807,6 +807,12 @@ vault-view:
 init-samba:
     {{ ansible_playbook }} playbooks/core/setup_samba.yml
 
+# Delete all generated reports from the Samba share
+clear-reports:
+    @echo "Deleting all contents of {{ reports_dir }}"
+    sudo find {{ reports_dir }} -mindepth 1 -delete
+    @echo "✓ {{ reports_dir }} cleared"
+
 # Clean up all temporary build/cache artifacts (including symlinked collections)
 clean:
     rm -rf .mypy_cache .ruff_cache .pytest_cache .coverage
@@ -822,7 +828,7 @@ clean-all: clean
 # Scheduling
 # =============================================================================
 
-# Apply playbook schedules (systemd timers) from schedules.yml
+# Apply playbook schedules (systemd timers) from ncs_configs/schedules.yml
 apply-schedules:
     {{ ansible_playbook }} playbooks/core/manage_schedules.yml
 

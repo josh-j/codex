@@ -70,16 +70,17 @@ Standalone Python package (`ncs-reporter/src/ncs_reporter/`). Key modules:
 - `normalization/` — Platform-specific data normalization and alert logic (health evaluation lives here, never in templates or Ansible)
 - `view_models/` — Typed Pydantic view contracts consumed by templates
 - `aggregation.py` — Multi-host state aggregation
-- `configs/` — Bundled YAML config schemas (mirrored to `files/ncs-reporter_configs/`)
 - `_config.py` — Config schema loader supporting both canonical and alias keys
 
-### Config Sync
+### Runtime Configs
 
-Reporter configs exist in two places that must stay in sync:
-- `ncs-reporter/src/ncs_reporter/configs/` (bundled with the package)
-- `files/ncs-reporter_configs/` (deployed by Ansible)
+Operator-editable configs live under the top-level `ncs_configs/` directory:
+- `ncs_configs/ncs-reporter/` — reporter YAML schemas, `cklb_skeletons/`, and `scripts/` (consumed by ncs-reporter via `--config-dir`)
+- `ncs_configs/schedules.yml` — systemd timer definitions consumed by `playbooks/core/manage_schedules.yml`
 
-A pre-commit hook runs `scripts/check_config_sync.py` when either side is staged. Fix with: `python3 scripts/check_config_sync.py --fix`
+Each internal collection also has its own `internal/<col>/ncs_configs/` for collection-owned configuration data.
+
+`ncs-reporter` no longer ships a bundled config/script copy; the Ansible tree is the single source of truth.
 
 ## Two Ansible Environments
 

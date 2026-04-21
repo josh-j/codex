@@ -229,7 +229,7 @@ Document breaking changes in `core/CHANGELOG.md` before tagging.
 
 ### `ncs-reporter` FQCN references a playbook that moved/disappeared
 
-`ncs-reporter/src/ncs_reporter/configs/*.yaml` pins FQCN strings like
+`ncs_configs/ncs-reporter/*.yaml` pins FQCN strings like
 `internal.vmware.vcsa_stig_remediate`. If a collection renames or
 removes a playbook, the reporter's `stig-apply` command breaks
 silently. Mitigate with a CI check that runs

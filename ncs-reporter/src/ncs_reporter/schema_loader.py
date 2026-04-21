@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -13,9 +14,6 @@ import yaml
 from ncs_reporter.models.report_schema import PlatformSpec, ReportSchema
 
 logger = logging.getLogger(__name__)
-
-# Built-in configs directory (ships with the package)
-_BUILTIN_CONFIGS_DIR = Path(__file__).parent / "configs"
 
 # User-level config directories (prefer configs/, fall back to schemas/)
 _USER_CONFIGS_DIR = Path.home() / ".config" / "ncs_reporter" / "configs"
@@ -223,23 +221,27 @@ def discover_schemas(extra_dirs: tuple[str, ...] = ()) -> dict[str, ReportSchema
     Scan all config directories and return a name→ReportSchema mapping.
 
     Search order (first-wins on name collision):
-      1. extra_dirs (callers / tests can inject custom paths)
-      2. ./configs/  (CWD-relative, preferred)
-      3. ./schemas/  (CWD-relative, deprecated fallback)
-      4. ~/.config/ncs_reporter/configs/
-      5. ~/.config/ncs_reporter/schemas/  (deprecated fallback)
-      6. Built-in package configs/
+      1. extra_dirs (callers / tests can inject custom paths; typically from --config-dir)
+      2. $NCS_REPORTER_CONFIG_DIR (colon-separated list, if set)
+      3. ./configs/  (CWD-relative, preferred)
+      4. ./schemas/  (CWD-relative, deprecated fallback)
+      5. ~/.config/ncs_reporter/configs/
+      6. ~/.config/ncs_reporter/schemas/  (deprecated fallback)
     """
     result: dict[str, ReportSchema] = {}
 
     for d in extra_dirs:
         _scan_dir(Path(d), result)
 
+    env_dirs = os.environ.get("NCS_REPORTER_CONFIG_DIR", "")
+    for d in env_dirs.split(os.pathsep):
+        if d.strip():
+            _scan_dir(Path(d.strip()), result)
+
     _scan_dir(Path("configs"), result)
     _scan_dir(Path("schemas"), result)
     _scan_dir(_USER_CONFIGS_DIR, result)
     _scan_dir(_USER_SCHEMAS_DIR_LEGACY, result)
-    _scan_dir(_BUILTIN_CONFIGS_DIR, result)
 
     return result
 
