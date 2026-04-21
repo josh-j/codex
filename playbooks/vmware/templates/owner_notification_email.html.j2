@@ -1,0 +1,157 @@
+{# Per-owner VMware compliance digest.  Variables: owner_email, issues, ... #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VMware Compliance Digest</title>
+</head>
+<body style="font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; color: #1f2937; max-width: 760px; margin: 0 auto; padding: 24px;">
+
+<h2 style="margin: 0 0 12px;">VMware Compliance Digest</h2>
+<p style="margin: 0 0 16px;">
+  Hello{% if owner_email %} <b>{{ owner_email }}</b>{% endif %},
+</p>
+<p style="margin: 0 0 16px;">
+  The following VMware resources owned by you are flagged for action.
+  Please address each section, or contact your platform team if the findings are incorrect.
+  Covered vCenter(s): <b>{{ issues.vcenters | join(', ') }}</b>.
+</p>
+
+{% macro vm_row(vm) -%}
+<tr>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.vcenter }}</td>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;"><b>{{ vm.guest_name }}</b></td>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.datacenter }}</td>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.cluster }}</td>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.backup_schedule | default('—') }}</td>
+  <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.last_backup_at | default('—') }}</td>
+</tr>
+{%- endmacro %}
+
+{% macro vm_table(title, rows, note, severity='CRITICAL') -%}
+{% if rows | length > 0 %}
+<h3 style="margin: 24px 0 4px;">
+  <span style="background: {{ '#fee2e2' if severity == 'CRITICAL' else '#fef3c7' }}; color: {{ '#991b1b' if severity == 'CRITICAL' else '#92400e' }}; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">{{ severity }}</span>
+  {{ title }} ({{ rows | length }})
+</h3>
+<p style="margin: 4px 0 10px; color: #4b5563;">{{ note }}</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">
+  <thead><tr style="background: #f3f4f6;">
+    <th style="text-align: left; padding: 6px 8px;">vCenter</th>
+    <th style="text-align: left; padding: 6px 8px;">VM</th>
+    <th style="text-align: left; padding: 6px 8px;">Datacenter</th>
+    <th style="text-align: left; padding: 6px 8px;">Cluster</th>
+    <th style="text-align: left; padding: 6px 8px;">Schedule</th>
+    <th style="text-align: left; padding: 6px 8px;">Last Backup</th>
+  </tr></thead>
+  <tbody>
+  {% for vm in rows | sort(attribute='guest_name') %}
+    {{ vm_row(vm) }}
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{%- endmacro %}
+
+{{ vm_table('VMs Never Backed Up', issues.no_backup,
+            'A Backup Schedule tag is set, but no backup has ever been recorded for these VMs.') }}
+{{ vm_table('VMs Missing Backup Tag', issues.no_backup_tags,
+            'These VMs have no Backup Schedule tag. Apply Daily / Weekly / Monthly, or explicit No Backup.') }}
+{{ vm_table('VMs With Overdue Backups', issues.overdue_backup,
+            'These VMs have backup records older than their Backup Schedule cadence.') }}
+
+{% if issues.aged_snapshots | length > 0 %}
+<h3 style="margin: 24px 0 4px;">
+  <span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">CRITICAL</span>
+  Aged Snapshots ({{ issues.aged_snapshots | length }})
+</h3>
+<p style="margin: 4px 0 10px; color: #4b5563;">
+  These snapshots exceed the retention window. Consolidate or delete them to free datastore space.
+</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">
+  <thead><tr style="background: #f3f4f6;">
+    <th style="text-align: left; padding: 6px 8px;">vCenter</th>
+    <th style="text-align: left; padding: 6px 8px;">VM</th>
+    <th style="text-align: left; padding: 6px 8px;">Snapshot</th>
+    <th style="text-align: left; padding: 6px 8px;">Created</th>
+    <th style="text-align: left; padding: 6px 8px;">Days Old</th>
+  </tr></thead>
+  <tbody>
+  {% for snap in issues.aged_snapshots | sort(attribute='days_old', reverse=true) %}
+    <tr>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ snap.vcenter }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;"><b>{{ snap.vm_name }}</b></td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ snap.name }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ snap.creation_time }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ snap.days_old }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if issues.missing_owner_desc | length > 0 %}
+<h3 style="margin: 24px 0 4px;">
+  <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">INFO</span>
+  Owner Tag Missing Description ({{ issues.missing_owner_desc | length }})
+</h3>
+<p style="margin: 4px 0 10px; color: #4b5563;">
+  These VMs carry an Owner tag attributed to you, but the tag description is empty. Adding a description helps others find the responsible point of contact.
+</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">
+  <thead><tr style="background: #f3f4f6;">
+    <th style="text-align: left; padding: 6px 8px;">vCenter</th>
+    <th style="text-align: left; padding: 6px 8px;">VM</th>
+    <th style="text-align: left; padding: 6px 8px;">Datacenter</th>
+    <th style="text-align: left; padding: 6px 8px;">Cluster</th>
+    <th style="text-align: left; padding: 6px 8px;">Owner Tag</th>
+  </tr></thead>
+  <tbody>
+  {% for vm in issues.missing_owner_desc | sort(attribute='guest_name') %}
+    <tr>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.vcenter }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;"><b>{{ vm.guest_name }}</b></td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.datacenter }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.cluster }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.owner_tag }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if issues.powered_off | length > 0 %}
+<h3 style="margin: 24px 0 4px;">
+  <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">INFO</span>
+  Powered-Off VMs ({{ issues.powered_off | length }})
+</h3>
+<p style="margin: 4px 0 10px; color: #4b5563;">
+  These VMs are currently powered off. If they are no longer needed, consider decommissioning to free resources.
+</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%; font-size: 0.9em;">
+  <thead><tr style="background: #f3f4f6;">
+    <th style="text-align: left; padding: 6px 8px;">vCenter</th>
+    <th style="text-align: left; padding: 6px 8px;">VM</th>
+    <th style="text-align: left; padding: 6px 8px;">Datacenter</th>
+    <th style="text-align: left; padding: 6px 8px;">Cluster</th>
+    <th style="text-align: left; padding: 6px 8px;">Guest OS</th>
+  </tr></thead>
+  <tbody>
+  {% for vm in issues.powered_off | sort(attribute='guest_name') %}
+    <tr>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.vcenter }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;"><b>{{ vm.guest_name }}</b></td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.datacenter }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.cluster }}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;">{{ vm.guest_os }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<p style="margin: 32px 0 8px; color: #6b7280; font-size: 0.85em;">
+  This digest is generated automatically from collected VMware telemetry. Please do not reply to this email.
+</p>
+</body>
+</html>

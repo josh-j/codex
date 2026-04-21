@@ -65,6 +65,26 @@ vars:
     compute: "{{ snapshots | selectattr('days_old', 'ge', snapshot_age_days) | list }}"
     type: list
 
+  vms_never_backup:
+    compute: "{{ virtual_machines | selectattr('backup_never', 'equalto', true) | list }}"
+    type: list
+
+  vms_no_backup_tags:
+    compute: "{{ virtual_machines | selectattr('backup_expected_days', 'equalto', -1) | list }}"
+    type: list
+
+  vms_overdue_backup:
+    compute: "{{ virtual_machines | selectattr('backup_overdue', 'equalto', true) | list }}"
+    type: list
+
+  vms_no_owner_email:
+    compute: "{{ virtual_machines | rejectattr('owner_email', 'match', '^.+@.+\\..+$') | list }}"
+    type: list
+
+  vms_missing_owner_desc:
+    compute: "{{ virtual_machines | selectattr('owner_tag', 'ne', '') | selectattr('owner_description', 'equalto', '') | list }}"
+    type: list
+
   powered_off_vm_count:
     compute: "{{ powered_off_vms | length }}"
     thresholds:
@@ -79,6 +99,21 @@ vars:
 
   aged_snapshot_count:
     compute: "{{ aged_snapshots | length }}"
+
+  vms_never_backup_count:
+    compute: "{{ vms_never_backup | length }}"
+
+  vms_no_backup_tags_count:
+    compute: "{{ vms_no_backup_tags | length }}"
+
+  vms_overdue_backup_count:
+    compute: "{{ vms_overdue_backup | length }}"
+
+  vms_no_owner_email_count:
+    compute: "{{ vms_no_owner_email | length }}"
+
+  vms_missing_owner_desc_count:
+    compute: "{{ vms_missing_owner_desc | length }}"
 
 # ---------------------------------------------------------------------------
 # Alerts
@@ -118,6 +153,41 @@ alerts:
     when: aged_snapshot_count > 0
     items: "{{ aged_snapshots }}"
     msg: "{{ aged_snapshot_count }} snapshot(s) older than {{ snapshot_age_days }} days"
+
+  - id: vms_never_backup
+    category: "Data Protection"
+    severity: CRITICAL
+    when: vms_never_backup_count > 0
+    items: "{{ vms_never_backup }}"
+    msg: "{{ vms_never_backup_count }} VM(s) scheduled for backup have never been backed up"
+
+  - id: vms_no_backup_tags
+    category: "Data Protection"
+    severity: CRITICAL
+    when: vms_no_backup_tags_count > 0
+    items: "{{ vms_no_backup_tags }}"
+    msg: "{{ vms_no_backup_tags_count }} VM(s) missing a Backup Schedule tag"
+
+  - id: vms_overdue_backup
+    category: "Data Protection"
+    severity: CRITICAL
+    when: vms_overdue_backup_count > 0
+    items: "{{ vms_overdue_backup }}"
+    msg: "{{ vms_overdue_backup_count }} VM(s) have overdue backups (past the Backup Schedule cadence)"
+
+  - id: vms_no_owner_email
+    category: "Ownership"
+    severity: INFO
+    when: vms_no_owner_email_count > 0
+    items: "{{ vms_no_owner_email }}"
+    msg: "{{ vms_no_owner_email_count }} VM(s) missing a valid Owner Email attribute"
+
+  - id: vms_missing_owner_desc
+    category: "Ownership"
+    severity: INFO
+    when: vms_missing_owner_desc_count > 0
+    items: "{{ vms_missing_owner_desc }}"
+    msg: "{{ vms_missing_owner_desc_count }} VM(s) with an Owner tag but empty description"
 
 # ---------------------------------------------------------------------------
 # Widgets
@@ -182,3 +252,85 @@ widgets:
         value: "{{ state }}"
       - name: Days Old
         value: "{{ 'Unknown' if days_old == -1 else days_old }}"
+
+  - type: table
+    name: "VMs Never Backed Up"
+    when: vms_never_backup_count > 0
+    rows: "{{ vms_never_backup }}"
+    columns:
+      - name: Name
+        value: "{{ guest_name }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Schedule
+        value: "{{ backup_schedule }}"
+      - name: Owner Email
+        value: "{{ owner_email }}"
+
+  - type: table
+    name: "VMs Missing Backup Tag"
+    when: vms_no_backup_tags_count > 0
+    rows: "{{ vms_no_backup_tags }}"
+    columns:
+      - name: Name
+        value: "{{ guest_name }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Owner Email
+        value: "{{ owner_email }}"
+
+  - type: table
+    name: "VMs With Overdue Backups"
+    when: vms_overdue_backup_count > 0
+    rows: "{{ vms_overdue_backup }}"
+    columns:
+      - name: Name
+        value: "{{ guest_name }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Schedule
+        value: "{{ backup_schedule }}"
+      - name: Last Backup
+        value: "{{ last_backup_at }}"
+      - name: Days Since
+        value: "{{ days_since_backup }}"
+      - name: Expected (days)
+        value: "{{ backup_expected_days }}"
+      - name: Owner Email
+        value: "{{ owner_email }}"
+
+  - type: table
+    name: "VMs Missing Owner Email"
+    when: vms_no_owner_email_count > 0
+    rows: "{{ vms_no_owner_email }}"
+    columns:
+      - name: Name
+        value: "{{ guest_name }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Owner Tag
+        value: "{{ owner_tag }}"
+
+  - type: table
+    name: "VMs With Owner Tag But No Description"
+    when: vms_missing_owner_desc_count > 0
+    rows: "{{ vms_missing_owner_desc }}"
+    columns:
+      - name: Name
+        value: "{{ guest_name }}"
+      - name: Datacenter
+        value: "{{ datacenter }}"
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Owner Tag
+        value: "{{ owner_tag }}"
+      - name: Owner Email
+        value: "{{ owner_email }}"

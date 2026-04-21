@@ -25,6 +25,14 @@ schedules:
     notify_on_failure: true
     timeout_minutes: 30
 
+  - name: owner-digest
+    description: "Email VMware VM owners about backup/ownership compliance issues"
+    playbook: playbooks/vmware/owner_digest.yml
+    calendar: "Tue,Thu 09:00:00"
+    enabled: false
+    notify_on_failure: true
+    timeout_minutes: 30
+
   # - name: nightly-fleet-audit
   #   description: "Full fleet audit and report pipeline"
   #   playbook: playbooks/site.yml

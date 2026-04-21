@@ -1,0 +1,106 @@
+---
+# playbooks/vmware/owner_digest.yml
+# Email VMware VM owners about their VMs' backup/ownership compliance issues.
+#
+# Reads raw_vm.yaml bundles collected by internal.vmware.vm_collect, groups
+# findings by owner_email via scripts/build_owner_digest.py, and sends one
+# HTML digest per owner via community.general.mail.
+#
+# Usage (manual):
+#   ansible-playbook playbooks/vmware/owner_digest.yml
+#   ansible-playbook playbooks/vmware/owner_digest.yml -e dry_run=true
+#   ansible-playbook playbooks/vmware/owner_digest.yml -e notify_powered_off=true
+#
+# Scheduled via ncs_configs/schedules.yml entry `owner-digest`.
+
+- name: VMware per-owner compliance digest
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  vars:
+    ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/../..', true) }}"
+    platform_root: "{{ ncs_platform_root | default('/srv/samba/reports/platform') }}"
+    scripts_dir: "{{ ncs_repo_path }}/ncs_configs/ncs-reporter/scripts"
+    age_days: "{{ ncs_digest_snapshot_age_days | default(7) | int }}"
+    dry_run: "{{ dry_run | default(false) | bool }}"
+    notify_powered_off: "{{ notify_powered_off | default(false) | bool }}"
+
+    smtp_host: "{{ ncs_smtp_host | default('localhost') }}"
+    smtp_port: "{{ ncs_smtp_port | default(25) }}"
+    smtp_username: "{{ ncs_smtp_username | default(omit) }}"
+    smtp_password: "{{ ncs_smtp_password | default(omit) }}"
+    smtp_secure: "{{ ncs_smtp_secure | default('starttls') }}"
+    from_email: "{{ ncs_digest_from_email | default(ncs_alert_email_from | default('ncs-alerts@localhost')) }}"
+    cc_emails: "{{ ncs_digest_cc | default([]) }}"
+    email_subject: >-
+      {{ ncs_digest_subject
+         | default('ACTION REQUIRED: VMware Compliance Issue - Do Not Reply') }}
+    email_delay_seconds: "{{ ncs_digest_delay_seconds | default(10) | int }}"
+
+  tasks:
+    - name: Build per-owner digest payload
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [
+              scripts_dir ~ '/build_owner_digest.py',
+              '--platform-root', platform_root,
+              '--scripts-dir', scripts_dir,
+              '--age-days', age_days | string,
+            ] + (['--notify-powered-off'] if notify_powered_off else [])
+          }}
+      register: _digest_raw
+      changed_when: false
+
+    - name: Parse digest payload
+      ansible.builtin.set_fact:
+        digest: "{{ _digest_raw.stdout | from_json }}"
+
+    - name: Report orphan findings (no owner email on record)
+      ansible.builtin.debug:
+        msg:
+          - "VMs with no Owner Email attribute: {{ digest.orphans.no_owner_email | length }}"
+          - "VMs with Owner tag but empty description: {{ digest.orphans.missing_owner_desc | length }}"
+
+    - name: Summarize digest
+      ansible.builtin.debug:
+        msg: "Will send to {{ digest.owner_issues | length }} owner(s); dry_run={{ dry_run }}"
+
+    - name: Render digest emails (dry-run)
+      ansible.builtin.debug:
+        msg:
+          - "to: {{ item.key }}"
+          - "cc: {{ cc_emails }}"
+          - "subject: {{ email_subject }}"
+          - "body_length: {{ (lookup('template', 'owner_notification_email.html.j2')) | length }}"
+      loop: "{{ digest.owner_issues | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      vars:
+        owner_email: "{{ item.key }}"
+        issues: "{{ item.value }}"
+      when: dry_run
+
+    - name: Send digest emails
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        username: "{{ smtp_username }}"
+        password: "{{ smtp_password }}"
+        secure: "{{ smtp_secure }}"
+        from: "{{ from_email }}"
+        to: "{{ item.key }}"
+        cc: "{{ cc_emails }}"
+        subject: "{{ email_subject }}"
+        subtype: html
+        body: "{{ lookup('template', 'owner_notification_email.html.j2') }}"
+      loop: "{{ digest.owner_issues | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+        pause: "{{ email_delay_seconds }}"
+      vars:
+        owner_email: "{{ item.key }}"
+        issues: "{{ item.value }}"
+      when: not dry_run
