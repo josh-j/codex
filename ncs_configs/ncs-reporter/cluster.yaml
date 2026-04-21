@@ -18,27 +18,8 @@ config:
       value: "{{ host_count }}"
     - name: HA
       value: "{{ ha_enabled }}"
-      as: status-badge
 
 vars:
-  cluster_name:
-    fallback: ""
-  host_count:
-    fallback: 0
-  ha_enabled:
-    fallback: false
-  drs_enabled:
-    fallback: false
-  cpu_usage_pct:
-    fallback: 0
-  mem_usage_pct:
-    fallback: 0
-  resource_summary:
-    fallback: {}
-    type: dict
-  virtual_machines:
-    fallback: []
-    type: list
   vm_count:
     compute: "{{ virtual_machines | length }}"
   powered_on_vm_count:

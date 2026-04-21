@@ -22,24 +22,13 @@ config:
       value: "{{ esxi_host_count }}"
 
 vars:
-  datacenter_name:
-    fallback: ""
-  clusters:
-    fallback: {}
-    type: dict
   clusters_list:
-    compute: "{{ clusters | dict2items | map(attribute='value') | list }}"
+    compute: "{{ clusters.values() | list }}"
     type: list
   cluster_count:
     compute: "{{ clusters_list | length }}"
   esxi_host_count:
     compute: "{{ clusters_list | map(attribute='host_count') | sum }}"
-  datastores:
-    fallback: []
-    type: list
-  dvswitches:
-    fallback: []
-    type: list
 
 alerts: []
 

@@ -17,18 +17,7 @@ config:
     - name: ESXi Hosts
       value: "{{ esxi_host_count }}"
 
-vars:
-  vcenters:
-    fallback: []
-    type: list
-  datacenter_count:
-    fallback: 0
-  cluster_count:
-    fallback: 0
-  esxi_host_count:
-    fallback: 0
-  vm_count:
-    fallback: 0
+vars: {}
 
 alerts: []
 

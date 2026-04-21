@@ -1,0 +1,238 @@
+{# Generic tree-tier report page. Drives every node in the hierarchical
+   report tree (inventory root, intermediate tiers, leaf host pages).
+   Shape of `tree_node_view`:
+     meta      : {tier, slug, title, display_name, report_date, generated_at}
+     health    : "OK" | "WARNING" | "CRITICAL"
+     summary   : {total, critical_count, warning_count, info_count}
+     alerts    : [{severity, category, message, detail, affected_items}]
+     widgets   : [{slug, name, type, ...}]  (see _render_widget)
+     nav.breadcrumbs : [{text, href?}]   (last entry has href=None)
+     nav.children    : [{title, tier, url, child_count}]
+#}
+{% macro render_badge(value) %}
+{% set v = (value | string) | lower %}
+{% if v in ('poweredon', 'toolsok', 'toolsrunning', 'green', 'ok', 'up', 'running', 'connected', 'healthy', 'true') %}
+    <span class="sv-ok" title="{{ value }}"><span class="status-icon status-icon-ok"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('red', 'critical', 'down', 'error', 'failed', 'false') %}
+    <span class="sv-critical" title="{{ value }}"><span class="status-icon status-icon-crit"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('yellow', 'warning', 'degraded') %}
+    <span class="sv-warning" title="{{ value }}"><span class="status-icon status-icon-warn"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('gray', 'grey', 'unknown') %}
+    <span class="sv-info" title="{{ value }}"><span class="status-icon status-icon-off"></span><span class="badge-text-print">{{ value }}</span></span>
+{% elif v in ('poweredoff', 'suspended') %}
+    <span class="sv-off" title="{{ value }}"><span class="status-icon status-icon-off"></span><span class="badge-text-print">{{ value }}</span></span>
+{% else %}
+    {{ value }}
+{% endif %}
+{% endmacro %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set view = tree_node_view | default({}) %}
+    {% set meta = view.get('meta', {}) %}
+    {% set nav = view.get('nav', {}) %}
+    {% set summary = view.get('summary', {}) %}
+    {% set alerts = view.get('alerts', []) %}
+    {% set widgets = view.get('widgets', []) %}
+    {% set children = nav.get('children', []) %}
+    {% set health = view.get('health', 'UNKNOWN') %}
+    {% set crit = summary.get('critical_count', 0) %}
+    {% set warn = summary.get('warning_count', 0) %}
+    <title>{{ meta.get('display_name', 'Report') }} — {{ meta.get('title', meta.get('slug', '')) }}</title>
+    <style>{{ _minified_css }}</style>
+</head>
+<body>
+<div class="page-wrap">
+
+    {# Breadcrumb trail — every tree node carries its own ancestor chain #}
+    <nav class="breadcrumb-bar">
+        {% for crumb in nav.get('breadcrumbs', []) %}
+            {% if crumb.get('href') %}
+                <a href="{{ crumb.href }}">{{ crumb.text }}</a>
+            {% else %}
+                <span class="breadcrumb-current">{{ crumb.text }}</span>
+            {% endif %}
+            {% if not loop.last %}<span class="breadcrumb-sep"> › </span>{% endif %}
+        {% endfor %}
+    </nav>
+
+    <div class="page-header">
+        <div>
+            <h1>{{ meta.get('display_name', 'Report') }} &mdash; <code>{{ meta.get('title', meta.get('slug', '')) }}</code></h1>
+            <span class="page-subtitle">Tier: {{ meta.get('tier', '') | upper }}</span>
+        </div>
+        <div class="right">
+            {% if health == 'OK' %}<span class="health-ok">OK</span>
+            {% elif health == 'WARNING' %}<span class="health-warn">WARNING</span>
+            {% elif health == 'CRITICAL' %}<span class="health-crit">CRITICAL</span>
+            {% else %}<span class="health-unk">{{ health }}</span>{% endif %}
+            <br>{{ meta.get('report_date', report_date | default('')) }}
+        </div>
+    </div>
+
+    {# Children-of-this-node navigation block — only shown when the node has descendants #}
+    {% if children %}
+    <div class="widget" id="tree-children">
+        <div class="widget-titlebar">
+            <span class="widget-title">{{ children | length }} {{ 'child' if children | length == 1 else 'children' }}</span>
+        </div>
+        <div class="widget-body widget-table-view">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sortable">Name</th>
+                        <th class="sortable">Tier</th>
+                        <th class="sortable">Sub-nodes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for child in children %}
+                    <tr class="row-interactive">
+                        <td><a href="{{ child.url }}" class="link-strong">{{ child.title }}</a></td>
+                        <td class="nowrap subtle-text">{{ child.tier }}</td>
+                        <td>{{ child.child_count }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="widget-grid-container">
+    {% for widget in widgets %}
+        {% set w_width = widget.get('layout', {}).get('width', 'full') %}
+        {% set flex_basis = '100%' %}
+        {% if w_width == 'half' %}{% set flex_basis = 'calc(50% - 7px)' %}
+        {% elif w_width == 'third' %}{% set flex_basis = 'calc(33.333% - 9.33px)' %}
+        {% elif w_width == 'quarter' %}{% set flex_basis = 'calc(25% - 10.5px)' %}
+        {% endif %}
+
+        <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
+            <div class="widget-titlebar">
+                {% if widget.type == 'alert_panel' %}
+                <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+                {% else %}
+                <span class="widget-title">{{ widget.name }}</span>
+                {% endif %}
+                <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ widget.name }}"></button>
+            </div>
+
+            {% if widget.type == 'stat_cards' %}
+            <div class="widget-body widget-body-padded">
+                <div class="stat-cards-row">
+                    {% for card in widget.get('cards', []) %}
+                    <div class="stat-card stat-card-{{ card.color | default('blue') }}">
+                        <div class="stat-card-value">{{ card.value }}</div>
+                        <div class="stat-card-label">{{ card.name }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% else %}
+            <div class="widget-body widget-table-view">
+
+            {% if widget.type == 'alert_panel' %}
+            {% if alerts %}
+            <table>
+                <thead><tr><th class="th-severity">Severity</th><th class="th-category">Category</th><th>Message</th></tr></thead>
+                <tbody>
+                {% for alert in alerts %}
+                    <tr class="{{ 'alert-crit' if alert.severity == 'CRITICAL' else 'alert-warn' if alert.severity == 'WARNING' else '' }}">
+                        <td class="{{ 'sv-critical' if alert.severity == 'CRITICAL' else 'sv-warning' if alert.severity == 'WARNING' else 'sv-info' }} nowrap">{{ alert.severity }}</td>
+                        <td class="nowrap subtle-text strong-text alert-category">{{ alert.get('category', '') }}</td>
+                        <td>{{ alert.get('message', '') }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No active alerts.</div>
+            {% endif %}
+
+            {% elif widget.type == 'key_value' %}
+            {% if widget.get('rows', []) %}
+            <table class="kv">
+                <tbody>
+                {% for row in widget.rows %}
+                    <tr><td>{{ row.name }}</td><td>{% if row.as == 'status-badge' %}{{ render_badge(row.value) }}{% else %}{{ row.value }}{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No data.</div>
+            {% endif %}
+
+            {% elif widget.type == 'table' %}
+            {% if widget.get('rows', []) %}
+            <table>
+                <thead>
+                    <tr>{% for col in widget.get('columns', []) %}<th class="sortable">{{ col.name }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                {% for row in widget.rows %}
+                    <tr class="row-interactive">
+                    {% for cell in row %}
+                        <td class="{{ cell.css_class | default('') }}">
+                        {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
+                        {% if cell.as == 'status-badge' %}{{ render_badge(cell.value) }}{% else %}{{ cell.value }}{% endif %}
+                        {% if cell.link %}</a>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No rows.</div>
+            {% endif %}
+
+            {% elif widget.type == 'grouped_table' %}
+            {% if widget.get('groups', {}) %}
+            <table>
+                <thead>
+                    <tr>{% for col in widget.get('columns', []) %}<th class="sortable">{{ col.name }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                {% for group_name, group_rows in widget.groups.items() %}
+                    {% set grp_id = "grp-" ~ widget.slug ~ "-" ~ loop.index %}
+                    <tr class="group-hdr" data-group="{{ grp_id }}">
+                        <td colspan="{{ widget.columns | length }}">
+                            <span class="group-toggle"></span>
+                            <strong>{{ group_name }}</strong>
+                            <span class="subtle-text">({{ group_rows | length }})</span>
+                        </td>
+                    </tr>
+                    {% for row in group_rows %}
+                    <tr class="group-row row-interactive" data-group="{{ grp_id }}">
+                    {% for cell in row %}
+                        <td class="{{ cell.css_class | default('') }}">
+                        {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
+                        {% if cell.as == 'status-badge' %}{{ render_badge(cell.value) }}{% else %}{{ cell.value }}{% endif %}
+                        {% if cell.link %}</a>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">No rows.</div>
+            {% endif %}
+
+            {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+
+</div>
+<script>{{ _minified_js }}</script>
+</body>
+</html>
