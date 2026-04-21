@@ -23,15 +23,15 @@ Output:
       │   └── win-srv-01/raw_stig_windows.yaml          ← NEW raw input
       ├── ubuntu/              ← HTML output dir (same dir for linux)
       │   ├── linux_fleet_report.html
-      │   ├── web-prod-01/health_report.html
+      │   ├── web-prod-01/<host>.html
       │   └── web-prod-01/web-prod-01_stig_ubuntu.html  ← NEW
       ├── vcenter/             ← HTML output dir (renamed from vmware)
       │   ├── vcenter_fleet_report.html
-      │   ├── vcenter-prod/health_report.html
+      │   ├── vcenter-prod/<host>.html
       │   └── vcenter-prod/vcenter-prod_stig_esxi.html  ← NEW
       └── windows/             ← HTML output dir (same dir for windows)
           ├── windows_fleet_report.html
-          ├── win-srv-01/health_report.html
+          ├── win-srv-01/<host>.html
           └── win-srv-01/win-srv-01_stig_windows.html   ← NEW
 """
 
@@ -323,7 +323,7 @@ def main() -> None:
         search_index.append(
             {
                 "h": hostname,
-                "u": f"platform/{rep_dir}/{hostname}/health_report.html",
+                "u": f"platform/{rep_dir}/{hostname}/<host>.html",
                 "p": rep_dir.split("/")[0] if "/" in rep_dir else rep_dir,
             }
         )
@@ -405,7 +405,7 @@ def main() -> None:
         for json_art in sorted((PLATFORM_ROOT / input_dir).glob("*/xccdf-results_*.json")):
             print(f"  {json_art}  [stig_xml]")
     for report_dir in ["linux/ubuntu", "vmware/vcenter", "vmware/esxi", "vmware/vm", "windows"]:
-        for html in sorted((OUT_ROOT / "platform" / report_dir).glob("**/health_report.html")):
+        for html in sorted((OUT_ROOT / "platform" / report_dir).glob("**/<host>.html")):
             print(f"  {html}")
 
 

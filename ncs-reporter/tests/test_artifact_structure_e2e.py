@@ -183,7 +183,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         self._run_all()
         # Site report: single file, no stamped copy (written directly by all_cmd)
         site = self.reports_root / "site.html"
-        stamped_site = self.reports_root / f"site_health_report_{STAMP}.html"
+        stamped_site = self.reports_root / f"site_{STAMP}.html"
         self.assertTrue(site.exists())
         self.assertFalse(stamped_site.exists(), "all_cmd writes site report without stamp")
 
@@ -203,8 +203,8 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_node_reports_under_platform_subdirectory(self):
         self._run_all()
-        linux_node = self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
-        vmware_node = self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html"
+        linux_node = self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "linux-01.html"
+        vmware_node = self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "vc-01.html"
         self.assertTrue(linux_node.exists(), f"Linux node report not found: {linux_node}")
         self.assertTrue(vmware_node.exists(), f"VMware VCSA node report not found: {vmware_node}")
 
@@ -302,9 +302,9 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
     def test_node_reports_do_not_collide(self):
         """Node reports for the same hostname land in separate platform trees."""
         self._run_all()
-        linux_report = self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
+        linux_report = self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / f"{self.SHARED_HOSTNAME}.html"
         vmware_report = (
-            self.reports_root / "platform" / "vmware" / "vcsa" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcsa" / self.SHARED_HOSTNAME / f"{self.SHARED_HOSTNAME}.html"
         )
         self.assertTrue(linux_report.exists(), f"Linux node report missing: {linux_report}")
         self.assertTrue(vmware_report.exists(), f"VMware node report missing: {vmware_report}")
@@ -315,10 +315,10 @@ class TestHostnameCollisionIsolation(unittest.TestCase):
         VMware-specific content — they are not the same file."""
         self._run_all()
         linux_content = (
-            self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "linux" / "ubuntu" / self.SHARED_HOSTNAME / f"{self.SHARED_HOSTNAME}.html"
         ).read_text()
         vmware_content = (
-            self.reports_root / "platform" / "vmware" / "vcsa" / self.SHARED_HOSTNAME / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcsa" / self.SHARED_HOSTNAME / f"{self.SHARED_HOSTNAME}.html"
         ).read_text()
         # The two files must differ — same hostname but different platform data
         self.assertNotEqual(linux_content, vmware_content)

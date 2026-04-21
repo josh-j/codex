@@ -467,9 +467,7 @@ def build_generic_fleet_view(
     host_rows: list[dict[str, Any]] = []
     fleet_alerts: list[dict[str, Any]] = []
 
-    from ncs_reporter.models.platforms_config import (
-        FILENAME_HEALTH_REPORT as _FHR,
-    )
+    from ncs_reporter.models.platforms_config import host_report_basename
 
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         # Use pre-normalized data if present, otherwise normalize on the fly
@@ -488,7 +486,7 @@ def build_generic_fleet_view(
 
         row = {
             "hostname": hostname,
-            "node_report": f"{hostname}/{_FHR}",
+            "node_report": f"{hostname}/{host_report_basename(hostname)}",
             "health": health,
             "health_badge": status_badge_meta(health),
             "critical_count": counts["critical"],
@@ -517,7 +515,7 @@ def build_generic_fleet_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": f"{host}/{_FHR}",
+                "node_report": f"{host}/{host_report_basename(host)}",
                 "platform": schema.display_name,
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],

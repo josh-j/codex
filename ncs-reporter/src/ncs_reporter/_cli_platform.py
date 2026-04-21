@@ -200,10 +200,10 @@ def platform_run(
         bundle = yaml.safe_load(f) or {}
 
     from .models.platforms_config import (
-        FILENAME_HEALTH_REPORT as _FHR,
         FILENAME_FLEET_SUFFIX as _FFS,
         TEMPLATE_NODE as _TN,
         TEMPLATE_FLEET as _TF,
+        host_report_basename,
     )
     common_vars = generate_timestamps(report_stamp)
     rc = report_context(common_vars)
@@ -220,8 +220,9 @@ def platform_run(
     host_dir = output_path / hostname
     host_dir.mkdir(exist_ok=True)
     content = env.get_template(_TN).render(generic_node_view=node_view, **common_vars)
-    write_report(host_dir, _FHR, content, common_vars["report_stamp"])
-    click.echo(f"Node report: {host_dir}/{_FHR}")
+    node_basename = host_report_basename(hostname)
+    write_report(host_dir, node_basename, content, common_vars["report_stamp"])
+    click.echo(f"Node report: {host_dir}/{node_basename}")
 
     fleet_view = build_generic_fleet_view(s, {hostname: bundle}, ctx=rc, nav_ctx=GenericNavContext(nav=fleet_nav))
     content = env.get_template(_TF).render(generic_fleet_view=fleet_view, **common_vars)

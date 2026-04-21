@@ -13,10 +13,18 @@ from ncs_reporter.pathing import validate_template
 # ---------------------------------------------------------------------------
 
 PLATFORM_DIR_PREFIX = "platform"
-FILENAME_HEALTH_REPORT = "health_report.html"
 FILENAME_SITE_HEALTH = "site.html"
 FILENAME_STIG_FLEET = "site.stig.html"
 FILENAME_FLEET_SUFFIX = "_fleet_report.html"
+
+
+def host_report_basename(hostname: str) -> str:
+    """Filename a per-host HTML report lands at inside its own directory."""
+    return f"{hostname}.html"
+
+
+def host_report_historical_basename(hostname: str, report_stamp: str) -> str:
+    return f"{hostname}_{report_stamp}.html"
 NAV_LABEL_STIG = "STIG"
 CKLB_SKELETONS_DIR = "cklb_skeletons"
 
@@ -33,11 +41,11 @@ def fleet_link_url(report_dir: str, schema_name: str, back_to_root: str = "") ->
 
 
 def host_report_url(report_dir: str, hostname: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{FILENAME_HEALTH_REPORT}"
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{host_report_basename(hostname)}"
 
 
 def host_report_historical_url(report_dir: str, hostname: str, report_stamp: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/health_report_{report_stamp}.html"
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{host_report_historical_basename(hostname, report_stamp)}"
 
 
 def stig_host_url(report_dir: str, hostname: str, target_type: str, back_to_root: str = "") -> str:
@@ -68,10 +76,10 @@ def host_node_rel_dir(report_dir: str, hostname: str) -> str:
 DEFAULT_PATH_TEMPLATES: dict[str, str] = {
     "raw_stig_artifact": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/raw_stig_{{target_type}}.yaml",
     "report_fleet": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{schema_name}}{FILENAME_FLEET_SUFFIX}",
-    "report_node_latest": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{FILENAME_HEALTH_REPORT}",
-    "report_node_historical": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/health_report_{{report_stamp}}.html",
+    "report_node_latest": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}.html",
+    "report_node_historical": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}_{{report_stamp}}.html",
     "report_stig_host": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}_stig_{{target_type}}.html",
-    "report_search_entry": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{FILENAME_HEALTH_REPORT}",
+    "report_search_entry": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}.html",
     "report_site": FILENAME_SITE_HEALTH,
     "report_stig_fleet": FILENAME_STIG_FLEET,
 }

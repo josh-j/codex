@@ -101,7 +101,7 @@ class TestNewFeaturesE2E(unittest.TestCase):
         self.assertIn("Print report", site_report, "TOC should contain print action")
 
         # 5. Verify New Widgets in Node Report
-        node_report = (self.reports_root / "platform" / "test" / "host-01" / "health_report.html").read_text()
+        node_report = (self.reports_root / "platform" / "test" / "host-01" / "host-01.html").read_text()
 
         # Progress Bar (check for percentage — minifier may remove spaces)
         self.assertIn("75.5%", node_report)

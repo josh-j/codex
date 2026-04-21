@@ -219,21 +219,21 @@ class TestHtmlReportsE2E(unittest.TestCase):
 
         # Check Node Reports
         self.assertTrue(
-            (self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html").exists()
+            (self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "linux-01.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html").exists()
+            (self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "vc-01.html").exists()
         )
         # ESXi hosts are split from vCenter bundle into per-host reports
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "esxi" / "esxi-01.local" / "health_report.html").exists(),
+            (self.reports_root / "platform" / "vmware" / "esxi" / "esxi-01.local" / "esxi-01.local.html").exists(),
             "ESXi per-host report should be created via split_field expansion",
         )
-        self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "windows" / "win-01" / "win-01.html").exists())
 
         # Verify alert data appears in rendered HTML
         linux_report = (
-            self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
+            self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "linux-01.html"
         ).read_text()
         self.assertTrue(_has_attr(linux_report, "href", "../../../../site.html"))
         self.assertTrue(_has_attr(linux_report, "href", "../ubuntu_fleet_report.html"))
@@ -244,7 +244,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         )
 
         vmware_report = (
-            self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html"
+            self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "vc-01.html"
         ).read_text()
         self.assertTrue(_has_attr(vmware_report, "href", "../../../../site.html"))
         self.assertTrue(_has_attr(vmware_report, "href", "../vcsa_fleet_report.html"))
@@ -254,7 +254,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
             "WARNING" in vmware_report or "yellow" in vmware_report, "VMware node report should reflect health warning"
         )
 
-        windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").read_text()
+        windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "win-01.html").read_text()
         self.assertTrue(_has_attr(windows_report, "href", "../../../site.html"))
         self.assertTrue(_has_attr(windows_report, "href", "../windows_fleet_report.html"))
         self.assertTrue(_has_attr(windows_report, "href", "../../../platform/vmware/vcsa/vcsa_fleet_report.html"))

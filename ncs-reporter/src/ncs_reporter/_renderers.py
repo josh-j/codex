@@ -155,8 +155,8 @@ def render_platform(
 
     When multiple schemas match for a platform, each schema produces its own
     fleet report and per-host node report.  The first (primary) schema renders
-    node reports as ``health_report.html``; additional schemas use
-    ``{schema_name}_report.html``.
+    the node report as ``{hostname}.html``; additional schemas use
+    ``{hostname}_{schema_name}.html``.
 
     When ``config.stig_widgets_by_host`` is provided, STIG summary widgets are
     embedded directly into each node report so operators don't have to navigate
@@ -212,7 +212,6 @@ def render_platform(
     # Render each schema independently
     for schema_idx, schema in enumerate(matched_schemas):
         is_primary = schema_idx == 0
-        node_file_stem = "health_report" if is_primary else f"{schema.name}_report"
 
         schema_name_for_file = schema.name
         fleet_report_abs = render_template(
@@ -249,6 +248,7 @@ def render_platform(
             rendered_host_count += 1
             host_dir = output_path / hostname
             host_dir.mkdir(exist_ok=True)
+            node_file_stem = hostname if is_primary else f"{hostname}_{schema.name}"
             node_rel_dir = host_node_rel_dir(cfg.report_dir, hostname)
             node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
             if cfg.has_site_report:

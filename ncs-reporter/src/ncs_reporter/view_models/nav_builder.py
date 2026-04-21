@@ -18,9 +18,9 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from ..models.platforms_config import (
-    FILENAME_HEALTH_REPORT,  # only for sibling-relative URLs
     NAV_LABEL_STIG,
     fleet_link_url,
+    host_report_basename,
     stig_fleet_url,
 )
 from ..platform_registry import PlatformRegistry
@@ -118,7 +118,7 @@ class NavBuilder:
         current_dir = self._hosts_data[hostname]
         peers = self._siblings_by_dir.get(current_dir, [])
         return [
-            {"name": h, "report": f"../{h}/{FILENAME_HEALTH_REPORT}" if h != hostname else "#"}
+            {"name": h, "report": f"../{h}/{host_report_basename(h)}" if h != hostname else "#"}
             for h in peers
         ]
 

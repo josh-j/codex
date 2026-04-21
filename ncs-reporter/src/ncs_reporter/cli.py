@@ -192,7 +192,7 @@ def node(platform: str, input_file: str, hostname: str, output_dir: str) -> None
     content = get_jinja_env().get_template(TEMPLATE_NODE).render(
         generic_node_view=view, **common_vars
     )
-    dest = output_path / f"{hostname}_health_report.html"
+    dest = output_path / f"{hostname}.html"
     dest.write_text(content)
     click.echo(f"Success: Report generated at {dest}")
 

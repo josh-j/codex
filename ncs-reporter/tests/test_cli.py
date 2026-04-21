@@ -237,8 +237,8 @@ class LinuxCommandTests(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report.html")))
             # Host report
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "host1_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "host1.html")))
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ class VmwareCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
             self.assertTrue(os.path.exists(os.path.join(output_dir, "vcsa_fleet_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01", "health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01", "vc01.html")))
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ class WindowsCommandTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
             self.assertTrue(os.path.exists(os.path.join(output_dir, "windows_fleet_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "win01", "health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "win01", "win01.html")))
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ class NodeCommandTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1_health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "host1.html")))
 
     def test_node_vmware(self):
         runner = CliRunner()
@@ -374,7 +374,7 @@ class NodeCommandTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01_health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01.html")))
 
     def test_node_windows(self):
         runner = CliRunner()
@@ -399,7 +399,7 @@ class NodeCommandTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "win01_health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "win01.html")))
 
     def test_node_invalid_platform_rejected(self):
         runner = CliRunner()
@@ -435,7 +435,7 @@ class ReportContentTests(unittest.TestCase):
             output_dir = os.path.join(tmpdir, "reports")
             runner.invoke(main, ["linux", "-i", input_path, "-o", output_dir])
 
-            report = os.path.join(output_dir, "mylinuxhost", "health_report.html")
+            report = os.path.join(output_dir, "mylinuxhost", "mylinuxhost.html")
             with open(report) as f:
                 content = f.read()
             self.assertIn("mylinuxhost", content)
