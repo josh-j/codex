@@ -33,7 +33,7 @@
     <div class="page-header">
         <div>
             <h1>Site Dashboard</h1>
-            <span class="page-subtitle">Global Fleet Health</span>
+            <span class="page-subtitle">Global Inventory Health</span>
         </div>
         <div class="right">
             {{ site_meta.get('report_date', report_date | default('')) }}
@@ -43,7 +43,7 @@
     <div class="toc">
         <div class="toc-left">
             {% if alert_groups %}<a href="#alerts">Active Alerts</a>{% endif %}
-            <a href="#platforms">Fleet Summary</a>
+            <a href="#platforms">Inventory by Product</a>
             <a href="#inventory">Inventory Summary</a>
             {% if stig_fleet_meta %}<a href="#stig">STIG Compliance</a>{% endif %}
         </div>
@@ -100,13 +100,13 @@
     </div>
     {% endif %}
 
-    {# --- Fleet Summary + Inventory Summary side-by-side --- #}
+    {# --- Inventory by Product + Inventory Summary side-by-side --- #}
     <div class="widget-grid-container">
 
     <div class="widget" id="platforms" style="flex: 1 1 calc(50% - 7px); min-width: 300px; margin-bottom: 0;">
         <div class="widget-titlebar">
-            <span class="widget-title">Fleet Summary</span>
-            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Fleet Summary"></button>
+            <span class="widget-title">Inventory by Product</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Inventory by Product"></button>
         </div>
         <div class="widget-body widget-table-view">
         <table>
@@ -179,7 +179,7 @@
                 STIG Compliance Overview
                 {% if stig_fleet_rows | length > 0 %}
                 <span class="widget-title-meta">
-                    <a href="stig_fleet_report.html" class="titlebar-link">View Detailed STIG Fleet Report &rsaquo;</a>
+                    <a href="stig_fleet_report.html" class="titlebar-link">View Detailed STIG Inventory Report &rsaquo;</a>
                 </span>
                 {% endif %}
             </span>

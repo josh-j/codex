@@ -330,7 +330,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         # STIG fleet totals table must show at least 1 host
         # The template renders: <td>Hosts audited</td><td><strong>N</strong></td>
         # We assert the STIG overview widget is present and rendering platform data correctly.
-        self.assertIn("View Detailed STIG Fleet Report", site_html, "STIG detailed link must appear in the site report")
+        self.assertIn("View Detailed STIG Inventory Report", site_html, "STIG detailed link must appear in the site report")
         self.assertIn("vmware", site_html.lower(), "vmware platform metrics must appear in the site report STIG widget")
 
         # The template renders open finding counts; the raw data has one "failed" rule

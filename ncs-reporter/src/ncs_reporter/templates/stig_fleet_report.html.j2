@@ -12,7 +12,7 @@
     {% set findings_index = view.get('findings_index', {}) %}
     {% set top_findings = findings_index.get('top_findings', []) %}
     {% set nav = view.get('nav', {}) %}
-    <title>STIG Fleet Compliance Overview</title>
+    <title>STIG Inventory Compliance Overview</title>
     <style>{{ _minified_css }}.platform-row td:first-child{font-weight:600;text-transform:capitalize}</style>
 </head>
 <body>
@@ -23,7 +23,7 @@
 
     <div class="page-header">
         <div>
-            <h1>STIG Compliance — Fleet Report</h1>
+            <h1>STIG Compliance — Inventory Report</h1>
             <span class="page-subtitle">Cross-platform STIG compliance summary</span>
         </div>
         <div class="right">
@@ -33,7 +33,7 @@
 
     <div class="toc">
         <div class="toc-left">
-            <a href="#overview">Fleet Compliance Overview</a>
+            <a href="#overview">Inventory Compliance Overview</a>
             <a href="#host-details">Host Details</a>
             {% if top_findings | length > 0 %}<a href="#top-findings">Top Findings</a>{% endif %}
         </div>
@@ -41,8 +41,8 @@
 
     <div class="widget" id="overview">
         <div class="widget-titlebar">
-            <span class="widget-title">Fleet Compliance Overview</span>
-            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Fleet Compliance Overview"></button>
+            <span class="widget-title">Inventory Compliance Overview</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Inventory Compliance Overview"></button>
         </div>
         <div class="widget-body widget-subgroup">
             <div class="widget-grid">

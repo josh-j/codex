@@ -14,7 +14,7 @@
     {% set crit_hosts  = hosts | selectattr('critical_count', 'gt', 0) | list | length %}
     {% set warn_hosts  = hosts | selectattr('warning_count',  'gt', 0) | list | length %}
     {% set ok_hosts    = hosts | selectattr('health', 'eq', 'OK') | list | length %}
-    <title>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</title>
+    <title>{{ meta.get('display_name', 'Inventory') }} — Inventory Report</title>
     <style>{{ _minified_css }}</style>
 </head>
 <body>
@@ -26,7 +26,7 @@
 
     <div class="page-header">
         <div>
-            <h1>{{ meta.get('display_name', 'Fleet') }} — Fleet Report</h1>
+            <h1>{{ meta.get('display_name', 'Inventory') }} — Inventory Report</h1>
             <span class="page-subtitle">Platform: {{ meta.get('platform', '') | upper }} &nbsp;&middot;&nbsp; {{ meta.get('total_hosts', 0) }} hosts</span>
         </div>
         <div class="right">
