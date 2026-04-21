@@ -104,7 +104,6 @@ setup-main-venv:
     UV_CACHE_DIR=/tmp/uv-cache uv sync --dev
     echo "✓ Main venv ready"
     .venv/bin/ansible --version | head -1
-    .venv/bin/python -c "from pyVim.connect import SmartConnect; print('✓ pyvmomi OK')" 2>/dev/null || echo "⚠ pyvmomi not found — run: uv sync"
 
 # Create VCSA-compatible venv with ansible-core 2.15 (Python 3.7 managed nodes)
 setup-vcsa-venv:
@@ -174,8 +173,18 @@ build-collection name:
     echo "✓ built dist/internal-{{ name }}-<version>.tar.gz"
 
 # Build tarballs for every internal collection.
-build-collections-all: (build-collection "core") (build-collection "vmware") (build-collection "linux") (build-collection "windows") (build-collection "aci")
-    @echo "✓ all collections built under dist/"
+# Wipes dist/internal-*.tar.gz first so only the current version of each
+# collection ends up under dist/ — otherwise `vendor-collections` would
+# pick up every historical tarball this machine has ever produced.
+build-collections-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p dist
+    rm -f dist/internal-*.tar.gz
+    for name in core vmware linux windows aci; do
+        just build-collection "$name"
+    done
+    echo "✓ all collections built under dist/"
 
 # Materialize the four internal.* collections as sibling working trees
 # at ../ncs-ansible-<col>/. For each tarball in collections/vendor/,
