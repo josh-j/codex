@@ -1,0 +1,56 @@
+[project]
+name = "ncs-ansible"
+version = "0.1.0"
+description = "NCS (Non-Core Services) Ansible fleet management platform"
+requires-python = ">=3.10"
+dependencies = [
+    "ansible-core>=2.16",
+    "pyvmomi",
+    "requests",
+    "ncs-reporter",
+]
+
+[project.optional-dependencies]
+# pykerberos is needed for Windows/AD workflows but requires gcc + krb5-dev.
+# Install explicitly: `uv sync --extra kerberos` (or `--all-extras`).
+kerberos = ["pykerberos"]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "basedpyright",
+    "ansible-lint",
+]
+
+[tool.uv.sources]
+ncs-reporter = { path = "ncs-reporter", editable = true }
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [
+    "collections_vcsa",
+    "collections",
+    ".venv",
+    ".venv-vcsa",
+]
+
+[tool.ruff.lint]
+per-file-ignores = { "internal/core/plugins/modules/*.py" = ["E402"], "internal/core/tests/*.py" = ["E402"] }
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+reportExplicitAny = false
+reportAny = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportMissingParameterType = false
+reportMissingTypeArgument = false

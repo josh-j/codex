@@ -48,21 +48,15 @@ setup-samba:
     echo "✓ SMB share 'reports' ready at //localhost/reports (user: ansible)"
     echo "  ncs-console defaults already match — enter the SshHost and SMB password to connect."
 
-# Create main .venv with all dependencies
+# Create main .venv with all dependencies (via uv sync)
 setup-main-venv:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ -f "pyproject.toml" ] && command -v uv >/dev/null 2>&1; then
-        echo "Installing via uv sync..."
-        UV_CACHE_DIR=/tmp/uv-cache uv sync --dev
-    else
-        echo "Installing via pip..."
-        python3.12 -m venv .venv
-        .venv/bin/pip install --upgrade pip
-        .venv/bin/pip install ansible-core pyvmomi pykerberos requests
-        .venv/bin/pip install -e ../ncs-reporter
-        .venv/bin/pip install ruff mypy pytest basedpyright
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "uv not found on PATH. Install from https://docs.astral.sh/uv/ and retry." >&2
+        exit 1
     fi
+    UV_CACHE_DIR=/tmp/uv-cache uv sync --dev
     echo "✓ Main venv ready"
     .venv/bin/ansible --version | head -1
     .venv/bin/python -c "from pyVim.connect import SmartConnect; print('✓ pyvmomi OK')" 2>/dev/null || echo "⚠ pyvmomi not found — run: uv sync"
