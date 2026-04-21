@@ -57,12 +57,29 @@ def _eval_schema_fields(schema: ReportSchema, seed: dict[str, Any]) -> dict[str,
 
 
 
+def _eval_fields_and_alerts(
+    schema: ReportSchema,
+    seed: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Return ``(fields, alerts)`` for a node's schema evaluated against *seed*.
+
+    Bundle-shaped seeds (``raw_<type>`` envelopes) go through full
+    :func:`normalize_from_schema` so path/compute/script fields resolve; flat
+    seeds (tier schemas) use the compute-only fast path.
+    """
+    if _looks_like_bundle(seed):
+        normalized = normalize_from_schema(schema, seed)
+        return normalized["fields"], normalized["alerts"]
+    fields = _eval_schema_fields(schema, seed)
+    return fields, build_schema_alerts(schema, fields)
+
+
 def build_tree_node_view(
     node: ReportNode,
     *,
     schema: ReportSchema,
     ctx: ReportContext | None = None,
-    descendant_rollups: dict[int, dict[str, int]] | None = None,
+    node_state: dict[int, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single tree node.
 
@@ -70,23 +87,21 @@ def build_tree_node_view(
     ``compute:`` / ``fallback:`` declarations layer on top. Widgets are
     rendered via the existing ``_render_widget`` helper so all widget types
     behave identically on tree-tier pages.
-    """
-    seed = node.data_source({}) if node.data_source else {}
-    if not isinstance(seed, dict):
-        seed = {}
 
-    # When the node data looks like a raw-bundle (top-level keys are
-    # `raw_<type>` with metadata/data envelopes), go through the full
-    # schema_driven normalization so path/compute/script fields all resolve.
-    # Otherwise treat the seed as an already-shaped fields dict — the tier
-    # schemas (vsphere/datacenter/cluster) take this path.
-    if _looks_like_bundle(seed):
-        normalized = normalize_from_schema(schema, seed)
-        fields = normalized["fields"]
-        alerts = normalized["alerts"]
+    ``node_state`` is the tree-wide cache populated by
+    :func:`_compute_tree_state` — when passed, this function reuses the
+    pre-computed fields/alerts/rollup for *node* and its children instead of
+    re-evaluating them.
+    """
+    cached = (node_state or {}).get(id(node))
+    if cached is not None:
+        fields = cached["fields"]
+        alerts = cached["alerts"]
     else:
-        fields = _eval_schema_fields(schema, seed)
-        alerts = build_schema_alerts(schema, fields)
+        seed = node.data_source({}) if node.data_source else {}
+        if not isinstance(seed, dict):
+            seed = {}
+        fields, alerts = _eval_fields_and_alerts(schema, seed)
 
     alerts.sort(key=lambda a: (
         _SEVERITY_ORDER.get(a.get("severity", "INFO"), 3),
@@ -151,11 +166,11 @@ def build_tree_node_view(
                     "tier": child.tier,
                     "url": _relative_to(child, node),
                     "child_count": len(child.children),
-                    "rollup": (descendant_rollups or {}).get(id(child), {"critical": 0, "warning": 0, "info": 0}),
+                    "rollup": ((node_state or {}).get(id(child), {}).get("rollup", {"critical": 0, "warning": 0, "info": 0})),
                 }
                 for child in node.children
             ],
-            "descendant_rollup": (descendant_rollups or {}).get(id(node), {"critical": 0, "warning": 0, "info": 0}),
+            "descendant_rollup": ((node_state or {}).get(id(node), {}).get("rollup", {"critical": 0, "warning": 0, "info": 0})),
         },
     }
 
@@ -177,42 +192,48 @@ def _relative_to(target: ReportNode, origin: ReportNode) -> str:
     return "/".join([*rel_dir_segments, filename])
 
 
-def _compute_descendant_rollups(
+def _compute_tree_state(
     root: ReportNode,
     schemas_by_name: dict[str, ReportSchema],
-) -> dict[int, dict[str, int]]:
-    """Walk the tree bottom-up, totaling each node's alert counts + descendants'.
+) -> dict[int, dict[str, Any]]:
+    """Evaluate every node's schema once and accumulate subtree alert counts.
 
-    The result is keyed by ``id(node)`` (stable for the lifetime of the call)
-    so callers can look up a node's own roll-up plus pass the dict through to
-    :func:`build_tree_node_view` for children-badge population.
+    Returns a dict keyed by ``id(node)`` with entries of shape::
+
+        {"fields": dict, "alerts": list[dict], "rollup": {critical, warning, info}}
+
+    ``fields`` and ``alerts`` are exactly what :func:`build_tree_node_view`
+    needs for its render pass, so callers should reuse them rather than
+    re-evaluating the schema. ``rollup`` sums this node's own alerts plus
+    all descendants' — for the children-nav severity badges on each parent
+    page.
+
+    The dict is valid for the *lifetime of this call only*. ``id(node)``
+    values are recycled after garbage collection, so the dict must not be
+    cached across ``render_tree()`` invocations.
     """
-    rollups: dict[int, dict[str, int]] = {}
+    state: dict[int, dict[str, Any]] = {}
     ordered: list[ReportNode] = list(root.walk())
-    # Bottom-up by descending depth ensures a node is visited after its children.
     ordered.sort(key=lambda n: n.depth, reverse=True)
     for node in ordered:
-        own = {"critical": 0, "warning": 0, "info": 0}
         schema = schemas_by_name.get(node.schema_name)
+        fields: dict[str, Any] = {}
+        alerts: list[dict[str, Any]] = []
         if schema is not None:
             seed = node.data_source({}) if node.data_source else {}
             if isinstance(seed, dict):
-                if _looks_like_bundle(seed):
-                    own_alerts = normalize_from_schema(schema, seed)["alerts"]
-                else:
-                    fields = _eval_schema_fields(schema, seed)
-                    own_alerts = build_schema_alerts(schema, fields)
-                for a in own_alerts:
-                    sev = str(a.get("severity", "")).lower()
-                    if sev in own:
-                        own[sev] += 1
-        accumulated = dict(own)
+                fields, alerts = _eval_fields_and_alerts(schema, seed)
+        rollup = {"critical": 0, "warning": 0, "info": 0}
+        for a in alerts:
+            sev = str(a.get("severity", "")).lower()
+            if sev in rollup:
+                rollup[sev] += 1
         for child in node.children:
-            child_roll = rollups.get(id(child), {"critical": 0, "warning": 0, "info": 0})
-            for k in accumulated:
-                accumulated[k] += child_roll[k]
-        rollups[id(node)] = accumulated
-    return rollups
+            child_rollup = state.get(id(child), {}).get("rollup", {})
+            for k in rollup:
+                rollup[k] += child_rollup.get(k, 0)
+        state[id(node)] = {"fields": fields, "alerts": alerts, "rollup": rollup}
+    return state
 
 
 def render_tree(
@@ -226,14 +247,14 @@ def render_tree(
 ) -> list[Path]:
     """Render every node in *root*'s subtree, returning the list of HTML paths written."""
     tpl = env.get_template(template_name)
-    rollups = _compute_descendant_rollups(root, schemas_by_name)
+    tree_state = _compute_tree_state(root, schemas_by_name)
     written: list[Path] = []
     for node in root.walk():
         schema = schemas_by_name.get(node.schema_name)
         if schema is None:
             logger.warning("no schema for tree-node %s (tier=%s)", node.slug, node.tier)
             continue
-        view = build_tree_node_view(node, schema=schema, ctx=ctx, descendant_rollups=rollups)
+        view = build_tree_node_view(node, schema=schema, ctx=ctx, node_state=tree_state)
         out_path = node.node_path.resolve_under(output_root) / f"{node.slug}.html"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         content = tpl.render(
