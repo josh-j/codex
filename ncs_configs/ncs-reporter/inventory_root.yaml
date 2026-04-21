@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+#
+# Generic product-root schema used by flat inventories (Ubuntu, Photon,
+# Windows Server, ACI). The tree renderer supplies `hosts` (a list of
+# child-host summaries) and `host_count` via the inventory root's
+# data_source.
+config:
+  display_name: "Inventory"
+  platform: inventory_root
+  extra_inventory_widget_columns:
+    - name: Hosts
+      value: "{{ host_count }}"
+
+vars: {}
+
+alerts: []
+
+widgets:
+  - type: stat-cards
+    slug: inventory_kpis
+    name: "Inventory Footprint"
+    cards:
+      - name: Hosts
+        value: "{{ host_count }}"
+
+  - type: table
+    name: "Hosts"
+    when: host_count > 0
+    rows: "{{ hosts }}"
+    columns:
+      - name: Host
+        value: "{{ title }}"
+        link_field: report_url

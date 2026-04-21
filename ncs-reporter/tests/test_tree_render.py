@@ -133,9 +133,10 @@ class TestRenderTree:
             host_schema_name="esxi",
         )
         env = get_jinja_env()
+        inventory_root_schema = load_schema_from_file(CONFIGS_DIR / "inventory_root.yaml")
         written = render_tree(
             root,
-            schemas_by_name={"esxi": esxi_schema},
+            schemas_by_name={"esxi": esxi_schema, "inventory_root": inventory_root_schema},
             env=env,
             output_root=tmp_path,
             ctx=ReportContext(report_stamp="20260421"),

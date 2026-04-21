@@ -307,7 +307,7 @@ def build_flat_inventory_tree(
         tier="inventory",
         slug=inventory_slug,
         title=title,
-        schema_name=schema_name,
+        schema_name="inventory_root",
         node_path=NodePath.product(inventory_slug),
     )
     raw_key = f"raw_{host_schema_name}"
