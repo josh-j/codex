@@ -25,10 +25,7 @@ def _expected_days(backup_schedule: str) -> int:
     """Return the cadence in days for a Backup Schedule tag value, -1 if none/unknown."""
     if not isinstance(backup_schedule, str):
         return -1
-    for key, days in _SCHEDULE_EXPECTED_DAYS.items():
-        if key in backup_schedule:
-            return days
-    return -1
+    return _SCHEDULE_EXPECTED_DAYS.get(backup_schedule.strip(), -1)
 
 
 def _classify_backup(

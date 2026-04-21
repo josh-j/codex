@@ -44,6 +44,16 @@ import yaml
 _EMAIL_RE = re.compile(r"^.+@.+\..+$")
 
 
+def _import_get_vms_list(scripts_dir: Path):
+    sys.path.insert(0, str(scripts_dir))
+    try:
+        import get_vms_list  # type: ignore[import-not-found]
+
+        return get_vms_list
+    finally:
+        sys.path.pop(0)
+
+
 def _find_bundles(platform_root: Path) -> list[Path]:
     return sorted((platform_root / "vmware" / "vm").glob("*/raw_vm.yaml"))
 
@@ -56,14 +66,9 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def _classify(vms_info_raw: dict[str, Any], exclude_patterns: list[str], scripts_dir: Path) -> list[dict[str, Any]]:
+def _classify(vms_info_raw: dict[str, Any], exclude_patterns: list[str], module) -> list[dict[str, Any]]:
     """Defer to the reporter's get_vms_list() so classification stays in one place."""
-    sys.path.insert(0, str(scripts_dir))
-    try:
-        import get_vms_list  # type: ignore[import-not-found]
-    finally:
-        sys.path.pop(0)
-    return get_vms_list.get_vms_list(vms_info_raw, exclude_patterns=exclude_patterns)
+    return module.get_vms_list(vms_info_raw, exclude_patterns=exclude_patterns)
 
 
 def _parse_iso(ts: str) -> datetime | None:
@@ -101,16 +106,18 @@ def _aged_snapshots_with_owner(
     return aged
 
 
-def _owner_bucket() -> dict[str, Any]:
-    return {
-        "vcenters": [],
-        "no_backup": [],
-        "no_backup_tags": [],
-        "overdue_backup": [],
-        "missing_owner_desc": [],
-        "aged_snapshots": [],
-        "powered_off": [],
-    }
+_BUCKET_KEYS = (
+    "no_backup",
+    "no_backup_tags",
+    "overdue_backup",
+    "missing_owner_desc",
+    "aged_snapshots",
+    "powered_off",
+)
+
+
+def _owner_bucket() -> dict[str, list[Any]]:
+    return {key: [] for key in _BUCKET_KEYS}
 
 
 def main(argv: list[str]) -> int:
@@ -122,6 +129,7 @@ def main(argv: list[str]) -> int:
     args = ap.parse_args(argv)
 
     owner_issues: dict[str, dict[str, Any]] = {}
+    owner_vcenters: dict[str, set[str]] = {}
     orphans = {"no_owner_email": [], "missing_owner_desc": []}
 
     bundles = _find_bundles(args.platform_root)
@@ -129,13 +137,15 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"no raw_vm.yaml bundles under {args.platform_root}/vmware/vm\n")
         return 1
 
+    get_vms_list = _import_get_vms_list(args.scripts_dir)
+
     for bundle_path in bundles:
         bundle = _load_yaml(bundle_path)
         data = bundle.get("data") or bundle
         vcenter = bundle.get("metadata", {}).get("host") or bundle_path.parent.name
         vms_info_raw = data.get("vms_info_raw") or {"virtual_machines": data.get("virtual_machines", [])}
         infra_patterns = data.get("infra_patterns", [])
-        vms = _classify(vms_info_raw, infra_patterns, args.scripts_dir)
+        vms = _classify(vms_info_raw, infra_patterns, get_vms_list)
 
         snapshots_raw = data.get("snapshots_raw", [])
         aged = _aged_snapshots_with_owner(snapshots_raw, args.age_days, vms, datetime.now(tz=timezone.utc))
@@ -155,8 +165,7 @@ def main(argv: list[str]) -> int:
                 continue
 
             bucket = owner_issues.setdefault(owner, _owner_bucket())
-            if vcenter not in bucket["vcenters"]:
-                bucket["vcenters"].append(vcenter)
+            owner_vcenters.setdefault(owner, set()).add(vcenter)
             if vm.get("backup_never"):
                 bucket["no_backup"].append({"vcenter": vcenter, **vm})
             if vm.get("backup_expected_days", -1) == -1:
@@ -171,9 +180,11 @@ def main(argv: list[str]) -> int:
             if not _EMAIL_RE.match(owner):
                 continue
             bucket = owner_issues.setdefault(owner, _owner_bucket())
-            if vcenter not in bucket["vcenters"]:
-                bucket["vcenters"].append(vcenter)
+            owner_vcenters.setdefault(owner, set()).add(vcenter)
             bucket["aged_snapshots"].append({"vcenter": vcenter, **snap})
+
+    for owner, bucket in owner_issues.items():
+        bucket["vcenters"] = sorted(owner_vcenters.get(owner, set()))
 
     json.dump({"owner_issues": owner_issues, "orphans": orphans}, sys.stdout, default=str)
     return 0
