@@ -54,16 +54,17 @@ Reports are rendered into a flat hierarchy to ensure predictable relative linkin
 - `site.stig.html`: The cross-platform STIG compliance dashboard.
 - `search_index.js`: The dynamic search database used by the UI.
 
-### Fleet & Node Reports
+### Inventory & Node Reports
 Reports are grouped by their "Report Directory" (which may differ slightly from the input directory for legacy/aggregation reasons).
 
-**Pattern:** `<REPORTS_ROOT>/platform/{report_dir}/{hostname}/health_report.html`
+**Pattern:** `<REPORTS_ROOT>/platform/{report_dir}/{hostname}/{hostname}.html`
 
 | Component | Path |
 | :--- | :--- |
-| **Fleet Dashboard** | `platform/{report_dir}/{report_dir}_fleet_report.html` |
-| **Latest Node Report** | `platform/{report_dir}/{hostname}/health_report.html` |
-| **Historical Node Report** | `platform/{report_dir}/{hostname}/health_report_{YYYYMMDD}.html` |
+| **Inventory Dashboard** (legacy fleet page) | `platform/{report_dir}/{schema_name}_inventory.html` |
+| **Latest Node Report** | `platform/{report_dir}/{hostname}/{hostname}.html` |
+| **Historical Node Report** | `platform/{report_dir}/{hostname}/{hostname}_{YYYYMMDD}.html` |
+| **Tree-tier Report** (vSphere, per-inventory) | `{inventory}/{…}/{node_slug}/{node_slug}.html` |
 
 ### STIG Specific Reports
 STIG reports are nested according to the `target_type` of the audit.
@@ -84,7 +85,7 @@ STIG reports are nested according to the `target_type` of the audit.
 
 When `ncs-reporter` renders a node report, it performs a local filesystem scan of the destination directory. 
 
-1. It looks for files matching the pattern `health_report_*.html` (or `*_stig_*_*.html`).
+1. It looks for files matching the pattern `{hostname}_*.html` (or `*_stig_*_*.html`).
 2. It extracts the date stamp from the filename.
 3. It populates the **History** dropdown in the breadcrumb bar with these links.
 
@@ -96,7 +97,7 @@ Because the reports are static and intended to be viewed via `file://` or simple
 
 The HTML templates include a `data-root` attribute on the search container which is calculated based on the directory depth:
 - **Site Report**: `data-root="./"`
-- **Fleet Report**: `data-root="../../"`
+- **Inventory Report** (legacy per-platform fleet page): `data-root="../../"`
 - **Node Report**: `data-root="../../../"`
 - **STIG Node Report**: depth varies by target (for example, VCSA/component STIG under `platform/vmware/vcenter/vcsa/<host>/` uses `data-root="../../../../../"`).
 

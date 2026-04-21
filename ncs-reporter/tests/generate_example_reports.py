@@ -22,15 +22,15 @@ Output:
       │   ├── win-srv-01/raw_audit.yaml
       │   └── win-srv-01/raw_stig_windows.yaml          ← NEW raw input
       ├── ubuntu/              ← HTML output dir (same dir for linux)
-      │   ├── linux_fleet_report.html
+      │   ├── linux_inventory.html
       │   ├── web-prod-01/<host>.html
       │   └── web-prod-01/web-prod-01_stig_ubuntu.html  ← NEW
       ├── vcenter/             ← HTML output dir (renamed from vmware)
-      │   ├── vcenter_fleet_report.html
+      │   ├── vcenter_inventory.html
       │   ├── vcenter-prod/<host>.html
       │   └── vcenter-prod/vcenter-prod_stig_esxi.html  ← NEW
       └── windows/             ← HTML output dir (same dir for windows)
-          ├── windows_fleet_report.html
+          ├── windows_inventory.html
           ├── win-srv-01/<host>.html
           └── win-srv-01/win-srv-01_stig_windows.html   ← NEW
 """

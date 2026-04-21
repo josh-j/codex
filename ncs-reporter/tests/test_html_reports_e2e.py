@@ -206,16 +206,16 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertIn("linux-01", content)
         self.assertIn("vc-01", content)
         self.assertIn("win-01", content)
-        self.assertTrue(_has_attr(content, "href", "platform/linux/ubuntu/ubuntu_fleet_report.html"))
-        self.assertTrue(_has_attr(content, "href", "platform/vmware/vcsa/vcsa_fleet_report.html"))
-        self.assertTrue(_has_attr(content, "href", "platform/windows/windows_fleet_report.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/linux/ubuntu/ubuntu_inventory.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/vmware/vcsa/vcsa_inventory.html"))
+        self.assertTrue(_has_attr(content, "href", "platform/windows/windows_inventory.html"))
         self.assertTrue(_has_attr(content, "data-root", "./"))
 
         # Check Platform Reports
-        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "esxi" / "esxi_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "windows" / "windows_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_inventory.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa_inventory.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "esxi" / "esxi_inventory.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "windows" / "windows_inventory.html").exists())
 
         # Check Node Reports
         self.assertTrue(
@@ -236,8 +236,8 @@ class TestHtmlReportsE2E(unittest.TestCase):
             self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "linux-01.html"
         ).read_text()
         self.assertTrue(_has_attr(linux_report, "href", "../../../../site.html"))
-        self.assertTrue(_has_attr(linux_report, "href", "../ubuntu_fleet_report.html"))
-        self.assertTrue(_has_attr(linux_report, "href", "../../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../ubuntu_inventory.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../../../../platform/vmware/vcsa/vcsa_inventory.html"))
         self.assertTrue(_has_attr(linux_report, "data-root", "../../../../"))
         self.assertTrue(
             "CRITICAL" in linux_report or "/" in linux_report, "Linux node report should reflect critical disk alert"
@@ -247,8 +247,8 @@ class TestHtmlReportsE2E(unittest.TestCase):
             self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "vc-01.html"
         ).read_text()
         self.assertTrue(_has_attr(vmware_report, "href", "../../../../site.html"))
-        self.assertTrue(_has_attr(vmware_report, "href", "../vcsa_fleet_report.html"))
-        self.assertTrue(_has_attr(vmware_report, "href", "../../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
+        self.assertTrue(_has_attr(vmware_report, "href", "../vcsa_inventory.html"))
+        self.assertTrue(_has_attr(vmware_report, "href", "../../../../platform/vmware/vcsa/vcsa_inventory.html"))
         self.assertTrue(_has_attr(vmware_report, "data-root", "../../../../"))
         self.assertTrue(
             "WARNING" in vmware_report or "yellow" in vmware_report, "VMware node report should reflect health warning"
@@ -256,8 +256,8 @@ class TestHtmlReportsE2E(unittest.TestCase):
 
         windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "win-01.html").read_text()
         self.assertTrue(_has_attr(windows_report, "href", "../../../site.html"))
-        self.assertTrue(_has_attr(windows_report, "href", "../windows_fleet_report.html"))
-        self.assertTrue(_has_attr(windows_report, "href", "../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
+        self.assertTrue(_has_attr(windows_report, "href", "../windows_inventory.html"))
+        self.assertTrue(_has_attr(windows_report, "href", "../../../platform/vmware/vcsa/vcsa_inventory.html"))
         self.assertTrue(_has_attr(windows_report, "data-root", "../../../"))
         self.assertTrue(
             "failed" in windows_report.lower() or "1" in windows_report,

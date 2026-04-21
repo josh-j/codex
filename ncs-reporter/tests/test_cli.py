@@ -234,8 +234,8 @@ class LinuxCommandTests(unittest.TestCase):
             self.assertIn("Done", result.output)
 
             # Fleet report should exist
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report_20250101.html")))
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_fleet_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_inventory_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "ubuntu_inventory.html")))
             # Host report
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "host1_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "host1", "host1.html")))
@@ -257,7 +257,7 @@ class VmwareCommandTests(unittest.TestCase):
             result = runner.invoke(main, ["vmware", "-i", input_path, "-o", output_dir, "--report-stamp", "20250101"])
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "vcsa_fleet_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "vcsa_inventory_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "vc01", "vc01.html")))
 
 
@@ -277,7 +277,7 @@ class WindowsCommandTests(unittest.TestCase):
             result = runner.invoke(main, ["windows", "-i", input_path, "-o", output_dir, "--report-stamp", "20250101"])
             self.assertEqual(result.exit_code, 0, msg=result.output)
 
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "windows_fleet_report_20250101.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "windows_inventory_20250101.html")))
             self.assertTrue(os.path.exists(os.path.join(output_dir, "win01", "win01.html")))
 
 
@@ -449,7 +449,7 @@ class ReportContentTests(unittest.TestCase):
             output_dir = os.path.join(tmpdir, "reports")
             runner.invoke(main, ["vmware", "-i", input_path, "-o", output_dir])
 
-            report = os.path.join(output_dir, "vcsa_fleet_report.html")
+            report = os.path.join(output_dir, "vcsa_inventory.html")
             with open(report) as f:
                 content = f.read()
             self.assertIn("<!doctype html>", content.lower())
@@ -508,7 +508,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
             # Fleet report for linux should be generated
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_inventory.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
     def test_platforms_config_invalid_yaml_fails_fast(self):
@@ -588,7 +588,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_inventory.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
     def test_config_yaml_in_config_dir_is_applied(self):
@@ -636,7 +636,7 @@ class AllCommandPlatformsConfigTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_fleet_report.html")
+            fleet = os.path.join(reports_root, "platform", "linux", "ubuntu", "ubuntu_inventory.html")
             self.assertTrue(os.path.exists(fleet), msg=f"Expected {fleet}. Output: {result.output}")
 
 

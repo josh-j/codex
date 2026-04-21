@@ -189,16 +189,16 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_platform_fleet_reports_created(self):
         self._run_all()
-        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_fleet_report.html").exists())
-        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa_fleet_report.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "linux" / "ubuntu" / "ubuntu_inventory.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "vmware" / "vcsa" / "vcsa_inventory.html").exists())
 
     def test_stamped_fleet_reports_created(self):
         self._run_all()
         self.assertTrue(
-            (self.reports_root / "platform" / "linux" / "ubuntu" / f"ubuntu_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "linux" / "ubuntu" / f"ubuntu_inventory_{STAMP}.html").exists()
         )
         self.assertTrue(
-            (self.reports_root / "platform" / "vmware" / "vcsa" / f"vcsa_fleet_report_{STAMP}.html").exists()
+            (self.reports_root / "platform" / "vmware" / "vcsa" / f"vcsa_inventory_{STAMP}.html").exists()
         )
 
     def test_node_reports_under_platform_subdirectory(self):
@@ -208,7 +208,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         self.assertTrue(linux_node.exists(), f"Linux node report not found: {linux_node}")
         self.assertTrue(vmware_node.exists(), f"VMware VCSA node report not found: {vmware_node}")
 
-    def test_stig_fleet_report_at_reports_root(self):
+    def test_stig_inventory_at_reports_root(self):
         self._run_all()
         fleet = self.reports_root / "site.stig.html"
         self.assertTrue(fleet.exists(), "STIG fleet report must be at reports root")

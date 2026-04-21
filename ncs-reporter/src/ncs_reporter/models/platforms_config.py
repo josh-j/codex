@@ -15,7 +15,7 @@ from ncs_reporter.pathing import validate_template
 PLATFORM_DIR_PREFIX = "platform"
 FILENAME_SITE_HEALTH = "site.html"
 FILENAME_STIG_FLEET = "site.stig.html"
-FILENAME_FLEET_SUFFIX = "_fleet_report.html"
+FILENAME_FLEET_SUFFIX = "_inventory.html"
 
 
 def host_report_basename(hostname: str) -> str:
