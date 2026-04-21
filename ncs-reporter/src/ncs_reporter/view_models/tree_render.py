@@ -21,12 +21,20 @@ from typing import Any
 from ncs_reporter.models.report_schema import AlertPanelWidget, ReportSchema
 from ncs_reporter.models.tree import ReportNode
 from ncs_reporter.normalization._when import eval_compute
-from ncs_reporter.normalization.schema_driven import build_schema_alerts
+from ncs_reporter.normalization.schema_driven import build_schema_alerts, normalize_from_schema
 
 from .._report_context import ReportContext
 from .generic import _SEVERITY_ORDER, _render_widget
 
 logger = logging.getLogger(__name__)
+
+
+def _looks_like_bundle(data: dict[str, Any]) -> bool:
+    """True when *data* has a top-level ``raw_<type>`` key with a ``data`` dict envelope."""
+    for key, value in data.items():
+        if key.startswith("raw_") and isinstance(value, dict) and isinstance(value.get("data"), dict):
+            return True
+    return False
 
 
 def _eval_schema_fields(schema: ReportSchema, seed: dict[str, Any]) -> dict[str, Any]:
@@ -78,9 +86,20 @@ def build_tree_node_view(
     seed = node.data_source({}) if node.data_source else {}
     if not isinstance(seed, dict):
         seed = {}
-    fields = _eval_schema_fields(schema, seed)
 
-    alerts = build_schema_alerts(schema, fields)
+    # When the node data looks like a raw-bundle (top-level keys are
+    # `raw_<type>` with metadata/data envelopes), go through the full
+    # schema_driven normalization so path/compute/script fields all resolve.
+    # Otherwise treat the seed as an already-shaped fields dict — the tier
+    # schemas (vsphere/datacenter/cluster) take this path.
+    if _looks_like_bundle(seed):
+        normalized = normalize_from_schema(schema, seed)
+        fields = normalized["fields"]
+        alerts = normalized["alerts"]
+    else:
+        fields = _eval_schema_fields(schema, seed)
+        alerts = build_schema_alerts(schema, fields)
+
     alerts.sort(key=lambda a: (
         _SEVERITY_ORDER.get(a.get("severity", "INFO"), 3),
         a.get("category", ""),

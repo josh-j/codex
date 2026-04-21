@@ -160,20 +160,52 @@ def build_vsphere_tree(
         node_path=NodePath.product("vsphere"),
     )
 
+    vcenter_summaries: list[dict[str, Any]] = []
+
     for vc_host, vc_data in sorted(vcenter_bundles.items()):
         vc_slug = slugify(vc_host)
-        vc_title = vc_data.get("appliance_version")
+        vc_bundle = {"raw_vcsa": {"data": vc_data, "metadata": {"host": vc_host}}}
         vc_node = root.find_or_add_child(
             vc_slug,
             tier="vcenter",
             schema_name="vcsa",
-            title=vc_host if not vc_title else f"{vc_host}",
-            data_source=_static_source(vc_data),
+            title=vc_host,
+            data_source=_static_source(vc_bundle),
         )
 
         clusters = vc_data.get("clusters") or {}
         if isinstance(clusters, dict):
             _attach_datacenters_and_clusters(vc_node, clusters, vc_data, esxi_bundles, vm_bundles, vc_host)
+
+        vcenter_summaries.append({
+            "title": vc_host,
+            "report_url": f"{vc_slug}/{vc_slug}.html",
+            "version": vc_data.get("appliance_version", ""),
+            "health": vc_data.get("appliance_health_overall", "unknown"),
+            "alert_counts": {"critical": 0, "warning": 0},
+            "datacenter_count": len(vc_node.children),
+            "cluster_count": sum(len(dc.children) for dc in vc_node.children),
+        })
+
+    total_clusters = sum(e["cluster_count"] for e in vcenter_summaries)
+    total_datacenters = sum(e["datacenter_count"] for e in vcenter_summaries)
+    total_esxi = sum(
+        len(cl.children)
+        for vc in root.children
+        for dc in vc.children
+        for cl in dc.children
+    )
+    total_vms = sum(
+        len(_as_list((vm_bundles.get(host) or {}).get("virtual_machines")))
+        for host in vcenter_bundles
+    )
+    root.data_source = _static_source({
+        "vcenters": vcenter_summaries,
+        "datacenter_count": total_datacenters,
+        "cluster_count": total_clusters,
+        "esxi_host_count": total_esxi,
+        "vm_count": total_vms,
+    })
 
     return root
 
@@ -242,13 +274,18 @@ def _attach_datacenters_and_clusters(
                 if not _esxi_in_cluster(esxi_data, cluster_name):
                     continue
                 esxi_vms = [vm for vm in cluster_vms if _vm_on_host(vm, esxi_host)]
-                esxi_node_data = {**esxi_data, "virtual_machines": esxi_vms}
+                esxi_bundle = {
+                    "raw_esxi": {
+                        "data": {**esxi_data, "virtual_machines": esxi_vms},
+                        "metadata": {"host": esxi_host},
+                    },
+                }
                 cluster_node.find_or_add_child(
                     slugify(esxi_host),
                     tier="esxi_host",
                     schema_name="esxi",
                     title=esxi_host,
-                    data_source=_static_source(esxi_node_data),
+                    data_source=_static_source(esxi_bundle),
                 )
 
 
@@ -262,7 +299,9 @@ def build_flat_inventory_tree(
 ) -> ReportNode:
     """Materialize a flat inventory tree (Ubuntu, Photon, Windows, ACI).
 
-    Each host becomes a direct child of the inventory root.
+    Each host becomes a direct child of the inventory root. Host data is
+    wrapped as a ``raw_<schema>`` bundle so the existing host schema's
+    path-based field extraction keeps working.
     """
     root = ReportNode(
         tier="inventory",
@@ -271,14 +310,20 @@ def build_flat_inventory_tree(
         schema_name=schema_name,
         node_path=NodePath.product(inventory_slug),
     )
+    raw_key = f"raw_{host_schema_name}"
+    hosts_summary: list[dict[str, Any]] = []
     for host, data in sorted(host_bundles.items()):
+        host_slug = slugify(host)
+        wrapped = {raw_key: {"data": data, "metadata": {"host": host}}}
         root.find_or_add_child(
-            slugify(host),
+            host_slug,
             tier="host",
             schema_name=host_schema_name,
             title=host,
-            data_source=_static_source(data),
+            data_source=_static_source(wrapped),
         )
+        hosts_summary.append({"title": host, "report_url": f"{host_slug}/{host_slug}.html"})
+    root.data_source = _static_source({"hosts": hosts_summary, "host_count": len(hosts_summary)})
     return root
 
 

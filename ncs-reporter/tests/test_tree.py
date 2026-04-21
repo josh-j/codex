@@ -114,8 +114,8 @@ class TestBuildVsphereTree:
 
         # Each ESXi node's data is filtered to its own VMs
         esxi_01 = cluster_a.children[0]
-        esxi_data = esxi_01.data_source({})
-        vms = esxi_data["virtual_machines"]
+        esxi_bundle = esxi_01.data_source({})
+        vms = esxi_bundle["raw_esxi"]["data"]["virtual_machines"]
         assert [v["guest_name"] for v in vms] == ["web-01"]
 
     def test_cluster_data_filters_vms_by_cluster(self) -> None:
@@ -163,4 +163,4 @@ class TestBuildFlatInventoryTree:
         assert root.slug == "ubuntu"
         assert [c.slug for c in root.children] == ["web-01", "web-02"]
         assert root.children[0].node_path.html_path.as_posix() == "ubuntu/web-01/web-01.html"
-        assert root.children[0].data_source({}) == {"k": 1}
+        assert root.children[0].data_source({}) == {"raw_ubuntu": {"data": {"k": 1}, "metadata": {"host": "web-01"}}}

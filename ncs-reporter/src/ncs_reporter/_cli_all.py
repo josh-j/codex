@@ -533,3 +533,101 @@ def all_cmd(
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
     )
+
+    # Step 6: Hierarchical tree-tier render (additive alongside legacy output)
+    try:
+        _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+    except Exception as exc:  # noqa: BLE001
+        # Tree rendering is strictly additive while the layout refactor is
+        # in flight; if it fails for any reason, surface the error but don't
+        # fail the whole CLI run — the legacy report output above is still
+        # valid and this preserves behavior for existing consumers.
+        logger.exception("Hierarchical tree render failed: %s", exc)
+        click.echo(f"--- Tree render failed: {exc} (legacy reports unaffected) ---", err=True)
+
+
+def _render_inventory_trees(
+    r_root: Path,
+    all_platform_data: dict[str, dict[str, Any]],
+    extra_dirs: tuple[str, ...],
+    common_vars: dict[str, Any],
+) -> None:
+    """Render the hierarchical inventory trees (vSphere + flat products).
+
+    Additive pass — coexists with the legacy platform/fleet/host HTML until
+    the legacy path is removed in Phase D. Writes HTML under
+    ``<reports_root>/<product-slug>/…``.
+    """
+    from ._report_context import ReportContext
+    from .models.tree import build_flat_inventory_tree, build_vsphere_tree
+    from .view_models.tree_render import render_tree
+
+    schemas = discover_schemas(extra_dirs=extra_dirs)
+    env = get_jinja_env()
+    ctx = ReportContext(report_stamp=common_vars.get("report_stamp", ""))
+
+    vcenter_bundles, esxi_bundles, vm_bundles = _collect_vsphere_bundles(all_platform_data)
+    if vcenter_bundles:
+        vsphere_root = build_vsphere_tree(
+            vcenter_bundles=vcenter_bundles,
+            esxi_bundles=esxi_bundles,
+            vm_bundles=vm_bundles,
+        )
+        written = render_tree(vsphere_root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
+        click.echo(f"--- Inventory tree: vsphere ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
+
+    for product_slug, product_title, raw_key, schema_name in (
+        ("ubuntu", "Ubuntu", "raw_ubuntu", "ubuntu"),
+        ("photon", "Photon", "raw_photon", "photon"),
+        ("windows", "Windows Server", "raw_windows", "windows"),
+        ("aci", "ACI", "raw_aci", "aci"),
+    ):
+        host_bundles = _collect_host_bundles(all_platform_data, raw_key)
+        if not host_bundles:
+            continue
+        if schema_name not in schemas:
+            continue
+        root = build_flat_inventory_tree(
+            inventory_slug=product_slug,
+            title=product_title,
+            schema_name=schema_name,
+            host_bundles=host_bundles,
+            host_schema_name=schema_name,
+        )
+        written = render_tree(root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
+        click.echo(f"--- Inventory tree: {product_slug} ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
+
+
+def _collect_vsphere_bundles(
+    all_platform_data: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Pull raw_vcsa / raw_esxi / raw_vm data dicts out of the merged platform payloads."""
+    vcenter_bundles: dict[str, dict[str, Any]] = {}
+    esxi_bundles: dict[str, dict[str, Any]] = {}
+    vm_bundles: dict[str, dict[str, Any]] = {}
+    for platform_data in all_platform_data.values():
+        hosts = platform_data.get("hosts", {})
+        for host, bundle in hosts.items():
+            for raw_key, target in (
+                ("raw_vcsa", vcenter_bundles),
+                ("raw_esxi", esxi_bundles),
+                ("raw_vm", vm_bundles),
+            ):
+                raw = bundle.get(raw_key)
+                if isinstance(raw, dict) and isinstance(raw.get("data"), dict):
+                    target[host] = raw["data"]
+    return vcenter_bundles, esxi_bundles, vm_bundles
+
+
+def _collect_host_bundles(
+    all_platform_data: dict[str, dict[str, Any]],
+    raw_key: str,
+) -> dict[str, dict[str, Any]]:
+    """Extract ``raw_<platform>.data`` dicts keyed by hostname."""
+    result: dict[str, dict[str, Any]] = {}
+    for platform_data in all_platform_data.values():
+        for host, bundle in platform_data.get("hosts", {}).items():
+            raw = bundle.get(raw_key)
+            if isinstance(raw, dict) and isinstance(raw.get("data"), dict):
+                result[host] = raw["data"]
+    return result
