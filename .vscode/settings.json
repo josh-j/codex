@@ -1,0 +1,127 @@
+{
+  // --------------------------------------------------------------------
+  // General Editor & Files
+  // --------------------------------------------------------------------
+  "terminal.integrated.scrollback": 10000,
+  "editor.wordWrap": "wordWrapColumn",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.associations": {
+    "**/playbooks/**/*.yml": "ansible",
+    "**/playbooks/**/*.yaml": "ansible",
+    "**/roles/**/tasks/**/*.yml": "ansible",
+    "**/roles/**/tasks/**/*.yaml": "ansible",
+    "**/roles/**/handlers/**/*.yml": "ansible",
+    "**/roles/**/handlers/**/*.yaml": "ansible",
+    "**/collections/ansible_collections/**/roles/**/tasks/**/*.yml": "ansible",
+    "**/collections/ansible_collections/**/roles/**/handlers/**/*.yml": "ansible",
+    "*.j2": "jinja-yaml",
+    "host_vars/*": "ansible",
+    "group_vars/*": "ansible"
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/collections/**": true,
+    "**/collections_vcsa/**": true,
+    "**/.venv/**": true,
+    "**/.venv-vcsa/**": true,
+    "**/__pycache__/**": true
+  },
+  "files.exclude": {
+    "**/.artifacts": true,
+    "**/.ansible": true,
+    "**/.python-version": true,
+    ".vaultpass": true,
+    "uv.lock": true,
+    "**/.cache": true
+  },
+  "search.followSymlinks": false,
+
+  // --------------------------------------------------------------------
+  // Python (uv + Ruff)
+  // --------------------------------------------------------------------
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // --------------------------------------------------------------------
+  // Ansible (Red Hat Extension)
+  // NOTE: the Ansible extension needs absolute paths. The {{NCS_REPO_ROOT}}
+  // tokens below are rewritten to this checkout's absolute path by
+  // `just configure-vscode` (also wired into `just setup-all`). Re-run
+  // that recipe if you move the checkout to a new directory.
+  // --------------------------------------------------------------------
+  "ansible.executionEnvironment.enabled": false,
+  "ansible.python.interpreterPath": "{{NCS_REPO_ROOT}}/.venv/bin/python",
+  "ansible.ansible.path": "ansible",
+  "ansible.validation.lint.enabled": true,
+  "ansible.validation.lint.path": "{{NCS_REPO_ROOT}}/.venv/bin/ansible-lint",
+  "ansible.validation.lint.arguments": "--config-file {{NCS_REPO_ROOT}}/.ansible-lint",
+  "ansible.completion.provideRedirectModules": true,
+  "ansible.completion.provideModuleOptionAliases": true,
+
+  // --------------------------------------------------------------------
+  // XML
+  // --------------------------------------------------------------------
+  "xml.validation.enabled": false,
+  "xml.validation.noNetwork": true,
+
+  // --------------------------------------------------------------------
+  // Offline Schemas (Firewall Bypass)
+  // --------------------------------------------------------------------
+  "yaml.schemas": {
+    "./.schemas/ansible-lint-config.json": [
+      ".ansible-lint",
+      ".ansible-lint.yaml",
+      ".ansible-lint.yml"
+    ],
+    "./.schemas/playbook.json": [
+      "playbooks/**/*.yml",
+      "playbooks/**/*.yaml",
+      "site.yml",
+      "site.yaml"
+    ],
+    "./.schemas/tasks.json": [
+      "roles/**/tasks/*.yml",
+      "roles/**/tasks/*.yaml",
+      "roles/**/handlers/*.yml",
+      "roles/**/handlers/*.yaml"
+    ],
+    "./.schemas/requirements.json": [
+      "requirements.yml",
+      "requirements.yaml",
+      "**/meta/requirements.yml"
+    ],
+    "./.schemas/galaxy.json": [
+      "galaxy.yml"
+    ],
+    "./.schemas/inventory.json": [
+      "inventory/**/*.yml",
+      "inventory/**/*.yaml"
+    ],
+    "./.schemas/molecule.json": [
+      "molecule.yml",
+      "molecule/**/molecule.yml"
+    ],
+    "./.schemas/ansible-navigator-config.json": [
+      "ansible-navigator.yml",
+      "ansible-navigator.yaml"
+    ]
+  },
+
+  // --------------------------------------------------------------------
+  // TOML Schema (pyproject.toml)
+  // Requires tamasfe.even-better-toml extension
+  // --------------------------------------------------------------------
+  "evenBetterToml.schema.associations": {
+    "pyproject.toml": "./.schemas/pyproject.json"
+  }
+}

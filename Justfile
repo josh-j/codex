@@ -32,10 +32,25 @@ default:
 # Setup
 # =============================================================================
 # Complete environment setup on a fresh Ubuntu host:
-#   apt prerequisites + uv + both venvs + all collections + SMB share.
+#   apt prerequisites + uv + both venvs + all collections + SMB share
+#   + VS Code workspace settings with absolute paths patched in.
 # Requires sudo (for apt-get and Samba provisioning).
-setup-all: setup-system setup-main-venv setup-vcsa-venv setup-collections install-collections setup-samba
+setup-all: setup-system setup-main-venv setup-vcsa-venv setup-collections install-collections setup-samba configure-vscode
     @echo "✓ All environments ready"
+
+# Rewrite {{NCS_REPO_ROOT}} placeholders in .vscode/settings.json to the
+# absolute path of this checkout. Idempotent — re-run after moving the
+# checkout.
+configure-vscode:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    settings=".vscode/settings.json"
+    if [ ! -f "$settings" ]; then
+        echo "⚠ $settings not present — skipping."
+        exit 0
+    fi
+    python3 scripts/configure_vscode_paths.py "$settings" "$(pwd)"
+    echo "✓ .vscode/settings.json paths patched to $(pwd)"
 
 # Install OS-level prerequisites and uv. Idempotent.
 # Targets Ubuntu 22.04 / 24.04 (apt). Safe to re-run.
