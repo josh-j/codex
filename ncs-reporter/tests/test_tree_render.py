@@ -88,8 +88,9 @@ class TestBuildTreeNodeView:
         cluster = synthetic_vsphere_tree.children[0].children[0].children[0]
         view = build_tree_node_view(cluster, schema=schemas["cluster"])
         crumbs = [c["text"] for c in view["nav"]["breadcrumbs"]]
-        # vsphere → vc-prod-01 → DC-East → CL-A
-        assert crumbs[0] == "vSphere"
+        # Site → vSphere → vc-prod-01 → DC-East → CL-A
+        assert crumbs[0] == "Site"
+        assert crumbs[1] == "vSphere"
         assert crumbs[-1] == "CL-A"
 
     def test_children_block_populated(self, schemas, synthetic_vsphere_tree):
@@ -158,13 +159,12 @@ class TestRelativeLinks:
     def test_ancestor_link_ascends(self, schemas, synthetic_vsphere_tree):
         cluster = synthetic_vsphere_tree.children[0].children[0].children[0]
         view = build_tree_node_view(cluster, schema=schemas["cluster"])
-        # Cluster at vsphere/vc-prod-01/dc-east/cl-a/cl-a.html — vSphere root link
-        # should ascend three levels.
-        root_crumb = view["nav"]["breadcrumbs"][0]
-        # Cluster dir has depth 4; vSphere root is depth 1 → 3 levels up to its dir,
-        # then up 1 more to reach the dir's parent → wrong. Correct: from cluster's
-        # dir, vsphere.html lives at ../../../vsphere.html (3 "../" + "vsphere.html").
-        # But our helper puts the file NAME only after the up-traversal, since both
-        # share the vsphere prefix (common=1). Let's just check it's a relative path.
-        assert root_crumb["href"].endswith("vsphere.html")
-        assert root_crumb["href"].count("..") == 3
+        # Breadcrumbs: [Site, vSphere, vc-prod-01, DC-East, CL-A].
+        # vSphere is second; it should ascend three levels to the tree root.
+        vsphere_crumb = view["nav"]["breadcrumbs"][1]
+        assert vsphere_crumb["href"].endswith("vsphere.html")
+        assert vsphere_crumb["href"].count("..") == 3
+
+        site_crumb = view["nav"]["breadcrumbs"][0]
+        # Cluster dir is 4 levels deep; site.html is at the report root.
+        assert site_crumb["href"] == "../../../../site.html"
