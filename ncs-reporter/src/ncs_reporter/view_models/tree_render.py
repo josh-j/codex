@@ -55,19 +55,6 @@ def _eval_schema_fields(schema: ReportSchema, seed: dict[str, Any]) -> dict[str,
     return fields
 
 
-def _child_link_rows(node: ReportNode, from_node: ReportNode) -> list[dict[str, Any]]:
-    """Return relative-link rows for *node*'s children, anchored at *from_node*'s dir."""
-    rows: list[dict[str, Any]] = []
-    for child in node.children:
-        rel = Path("..", *([".."] * (from_node.depth - node.depth - 1)))  # noqa: S108 — str path
-        href = child.node_path.html_path.as_posix()
-        rows.append({
-            "title": child.title,
-            "tier": child.tier,
-            "url": href,
-            "child_count": len(child.children),
-        })
-    return rows
 
 
 def build_tree_node_view(
@@ -75,6 +62,7 @@ def build_tree_node_view(
     *,
     schema: ReportSchema,
     ctx: ReportContext | None = None,
+    descendant_rollups: dict[int, dict[str, int]] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single tree node.
 
@@ -163,9 +151,11 @@ def build_tree_node_view(
                     "tier": child.tier,
                     "url": _relative_to(child, node),
                     "child_count": len(child.children),
+                    "rollup": (descendant_rollups or {}).get(id(child), {"critical": 0, "warning": 0, "info": 0}),
                 }
                 for child in node.children
             ],
+            "descendant_rollup": (descendant_rollups or {}).get(id(node), {"critical": 0, "warning": 0, "info": 0}),
         },
     }
 
@@ -187,6 +177,44 @@ def _relative_to(target: ReportNode, origin: ReportNode) -> str:
     return "/".join([*rel_dir_segments, filename])
 
 
+def _compute_descendant_rollups(
+    root: ReportNode,
+    schemas_by_name: dict[str, ReportSchema],
+) -> dict[int, dict[str, int]]:
+    """Walk the tree bottom-up, totaling each node's alert counts + descendants'.
+
+    The result is keyed by ``id(node)`` (stable for the lifetime of the call)
+    so callers can look up a node's own roll-up plus pass the dict through to
+    :func:`build_tree_node_view` for children-badge population.
+    """
+    rollups: dict[int, dict[str, int]] = {}
+    ordered: list[ReportNode] = list(root.walk())
+    # Bottom-up by descending depth ensures a node is visited after its children.
+    ordered.sort(key=lambda n: n.depth, reverse=True)
+    for node in ordered:
+        own = {"critical": 0, "warning": 0, "info": 0}
+        schema = schemas_by_name.get(node.schema_name)
+        if schema is not None:
+            seed = node.data_source({}) if node.data_source else {}
+            if isinstance(seed, dict):
+                if _looks_like_bundle(seed):
+                    own_alerts = normalize_from_schema(schema, seed)["alerts"]
+                else:
+                    fields = _eval_schema_fields(schema, seed)
+                    own_alerts = build_schema_alerts(schema, fields)
+                for a in own_alerts:
+                    sev = str(a.get("severity", "")).lower()
+                    if sev in own:
+                        own[sev] += 1
+        accumulated = dict(own)
+        for child in node.children:
+            child_roll = rollups.get(id(child), {"critical": 0, "warning": 0, "info": 0})
+            for k in accumulated:
+                accumulated[k] += child_roll[k]
+        rollups[id(node)] = accumulated
+    return rollups
+
+
 def render_tree(
     root: ReportNode,
     *,
@@ -198,13 +226,14 @@ def render_tree(
 ) -> list[Path]:
     """Render every node in *root*'s subtree, returning the list of HTML paths written."""
     tpl = env.get_template(template_name)
+    rollups = _compute_descendant_rollups(root, schemas_by_name)
     written: list[Path] = []
     for node in root.walk():
         schema = schemas_by_name.get(node.schema_name)
         if schema is None:
             logger.warning("no schema for tree-node %s (tier=%s)", node.slug, node.tier)
             continue
-        view = build_tree_node_view(node, schema=schema, ctx=ctx)
+        view = build_tree_node_view(node, schema=schema, ctx=ctx, descendant_rollups=rollups)
         out_path = node.node_path.resolve_under(output_root) / f"{node.slug}.html"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         content = tpl.render(

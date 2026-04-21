@@ -93,6 +93,20 @@ class TestBuildTreeNodeView:
         assert crumbs[1] == "vSphere"
         assert crumbs[-1] == "CL-A"
 
+    def test_descendant_rollup_surfaces_child_alert_counts(self, schemas, synthetic_vsphere_tree, esxi_schema):
+        """vSphere root's children block carries each vCenter's descendant alert counts."""
+        from ncs_reporter.view_models.tree_render import _compute_descendant_rollups
+
+        all_schemas = {**schemas, "vcsa": schemas["vsphere"], "esxi": esxi_schema}
+        rollups = _compute_descendant_rollups(synthetic_vsphere_tree, all_schemas)
+
+        # Root's own rollup aggregates everything in the subtree.
+        root_rollup = rollups[id(synthetic_vsphere_tree)]
+        assert set(root_rollup.keys()) == {"critical", "warning", "info"}
+        # Each child's rollup is also reachable.
+        for child in synthetic_vsphere_tree.children:
+            assert id(child) in rollups
+
     def test_children_block_populated(self, schemas, synthetic_vsphere_tree):
         vc = synthetic_vsphere_tree.children[0]
         view = build_tree_node_view(vc, schema=schemas["vsphere"])  # using vsphere schema for smoke

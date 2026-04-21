@@ -86,14 +86,21 @@
                         <th class="sortable">Name</th>
                         <th class="sortable">Tier</th>
                         <th class="sortable">Sub-nodes</th>
+                        <th class="sortable">Critical</th>
+                        <th class="sortable">Warning</th>
                     </tr>
                 </thead>
                 <tbody>
                 {% for child in children %}
+                    {% set rollup = child.get('rollup', {}) %}
+                    {% set c_crit = rollup.get('critical', 0) %}
+                    {% set c_warn = rollup.get('warning', 0) %}
                     <tr class="row-interactive">
                         <td><a href="{{ child.url }}" class="link-strong">{{ child.title }}</a></td>
                         <td class="nowrap subtle-text">{{ child.tier }}</td>
                         <td>{{ child.child_count }}</td>
+                        <td>{% if c_crit > 0 %}<span class="sv-critical">{{ c_crit }}</span>{% else %}0{% endif %}</td>
+                        <td>{% if c_warn > 0 %}<span class="sv-warning">{{ c_warn }}</span>{% else %}0{% endif %}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
