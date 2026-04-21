@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import yaml
 
 from ._config import (
     default_paths,
@@ -492,7 +493,19 @@ def all_cmd(
         global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
 
     if not global_data["hosts"]:
-        click.echo("No platform data or STIG artifacts found; nothing to render.")
+        # Legacy aggregation is empty. Tree-layout raw bundles may still
+        # exist directly under reports_root (collector emitting only to the
+        # hierarchical layout); render those and return. No site dashboard,
+        # no STIG fleet report — those still depend on the legacy
+        # global_data until the tree renderer absorbs them.
+        try:
+            _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Hierarchical tree render failed: %s", exc)
+            click.echo(f"--- Tree render failed: {exc} ---", err=True)
+            return
+        if not any(r_root.iterdir()):
+            click.echo("No platform data or STIG artifacts found; nothing to render.")
         return
 
     global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
@@ -566,7 +579,15 @@ def _render_inventory_trees(
     env = get_jinja_env()
     ctx = ReportContext(report_stamp=common_vars.get("report_stamp", ""))
 
+    # vSphere tree: start from whatever the legacy aggregation built,
+    # then overlay tree-layout raw.yaml files written by the new
+    # tree_path-aware collector. The tree layout wins when both exist.
     vcenter_bundles, esxi_bundles, vm_bundles = _collect_vsphere_bundles(all_platform_data)
+    tree_vcenters, tree_esxi, tree_vms = _collect_vsphere_bundles_from_tree(r_root)
+    vcenter_bundles.update(tree_vcenters)
+    esxi_bundles.update(tree_esxi)
+    vm_bundles.update(tree_vms)
+
     if vcenter_bundles:
         vsphere_root = build_vsphere_tree(
             vcenter_bundles=vcenter_bundles,
@@ -583,6 +604,7 @@ def _render_inventory_trees(
         ("aci", "ACI", "raw_aci", "aci"),
     ):
         host_bundles = _collect_host_bundles(all_platform_data, raw_key)
+        host_bundles.update(_collect_flat_inventory_from_tree(r_root, product_slug))
         if not host_bundles:
             continue
         if schema_name not in schemas:
@@ -630,4 +652,77 @@ def _collect_host_bundles(
             raw = bundle.get(raw_key)
             if isinstance(raw, dict) and isinstance(raw.get("data"), dict):
                 result[host] = raw["data"]
+    return result
+
+
+def _read_bundle_data(path: Path) -> dict[str, Any] | None:
+    """Read a collector-emitted ``raw.yaml`` and return its ``.data`` dict.
+
+    Returns ``None`` when the file is missing, unreadable, or doesn't match
+    the collector envelope shape.
+    """
+    try:
+        with path.open(encoding="utf-8") as f:
+            bundle = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError):
+        return None
+    if not isinstance(bundle, dict):
+        return None
+    data = bundle.get("data")
+    return data if isinstance(data, dict) else None
+
+
+def _collect_vsphere_bundles_from_tree(
+    reports_root: Path,
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Walk the hierarchical ``vsphere/…`` tree for collector-written raw bundles.
+
+    Expected layout (written by internal.vmware 1.1.16+ and internal.core
+    1.0.9+):
+
+        <reports_root>/vsphere/<vc-slug>/raw.yaml            — vCenter
+        <reports_root>/vsphere/<vc-slug>/raw.vm.yaml         — VM list
+        <reports_root>/vsphere/<vc-slug>/<dc>/<cluster>/<host>/raw.yaml — ESXi host
+
+    Missing files / directories silently contribute nothing; the caller
+    merges the results over any legacy aggregation.
+    """
+    vsphere_dir = reports_root / "vsphere"
+    vcenter_bundles: dict[str, dict[str, Any]] = {}
+    esxi_bundles: dict[str, dict[str, Any]] = {}
+    vm_bundles: dict[str, dict[str, Any]] = {}
+    if not vsphere_dir.is_dir():
+        return vcenter_bundles, esxi_bundles, vm_bundles
+
+    for vc_dir in sorted(p for p in vsphere_dir.iterdir() if p.is_dir()):
+        vc_slug = vc_dir.name
+        vc_data = _read_bundle_data(vc_dir / "raw.yaml")
+        if vc_data is not None:
+            vcenter_bundles[vc_slug] = vc_data
+        vm_data = _read_bundle_data(vc_dir / "raw.vm.yaml")
+        if vm_data is not None:
+            vm_bundles[vc_slug] = vm_data
+        # ESXi hosts: any descendant directory containing raw.yaml below the
+        # vc-slug directory (but not the vc-slug dir itself).
+        for raw_path in vc_dir.glob("*/*/*/raw.yaml"):
+            host_data = _read_bundle_data(raw_path)
+            if host_data is not None:
+                esxi_bundles[raw_path.parent.name] = host_data
+
+    return vcenter_bundles, esxi_bundles, vm_bundles
+
+
+def _collect_flat_inventory_from_tree(
+    reports_root: Path,
+    inventory_slug: str,
+) -> dict[str, dict[str, Any]]:
+    """Walk ``<reports_root>/<inventory_slug>/<host>/raw.yaml`` for flat products."""
+    product_dir = reports_root / inventory_slug
+    result: dict[str, dict[str, Any]] = {}
+    if not product_dir.is_dir():
+        return result
+    for host_dir in sorted(p for p in product_dir.iterdir() if p.is_dir()):
+        data = _read_bundle_data(host_dir / "raw.yaml")
+        if data is not None:
+            result[host_dir.name] = data
     return result

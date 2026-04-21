@@ -100,6 +100,50 @@ class TestTreeLayoutE2E(unittest.TestCase):
         # Relative link up 3 levels to vsphere.html
         self.assertIn("../../../vsphere.html", cluster_html)
 
+    def test_reporter_reads_tree_raw_paths(self) -> None:
+        """Bundles written only under reports_root/<inventory>/… are picked up."""
+        # Simulate what the new collector writes: no legacy platform/… files at all,
+        # only tree-layout raw.yaml files already materialized under reports_root.
+        (self.reports_root / "ubuntu" / "web-01").mkdir(parents=True)
+        (self.reports_root / "ubuntu" / "web-01" / "raw.yaml").write_text(yaml.safe_dump({
+            "metadata": {"host": "web-01", "timestamp": "2026-02-26T23:00:00Z"},
+            "data": {
+                "hostname": "web-01",
+                "distribution": "Ubuntu", "distribution_version": "24.04",
+                "kernel": "6.8.0", "uptime_seconds": 86400,
+                "memory_total_mb": 16384, "memory_free_mb": 8192,
+                "swap_total_mb": 0, "swap_free_mb": 0,
+                "mounts": [{"mount": "/", "device": "/dev/sda1", "fstype": "ext4",
+                            "size_total": 100 * 1024**3, "size_available": 50 * 1024**3}],
+                "failed_services": {"stdout_lines": []},
+                "shadow_raw": {"stdout_lines": []},
+                "sshd_raw": {"stdout_lines": []},
+                "world_writable": {"stdout_lines": []},
+                "reboot_stat": {"stat": {"exists": False}},
+                "apt_simulate": {"stdout_lines": ["0 upgraded"]},
+                "file_stats": {"results": []},
+                "epoch_seconds": 1740610800,
+            },
+        }))
+
+        # Touch an empty platform_root so the CLI has something to scan.
+        self.platform_root.mkdir(parents=True)
+
+        result = self.runner.invoke(
+            main,
+            [
+                "all",
+                "--platform-root", str(self.platform_root),
+                "--reports-root", str(self.reports_root),
+                "--report-stamp", "20260226",
+            ],
+            catch_exceptions=False,
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+
+        # The tree reader should have found the bundle and rendered the host page.
+        self.assertTrue((self.reports_root / "ubuntu" / "web-01" / "web-01.html").exists())
+
     def test_flat_inventory_emits_product_then_host(self) -> None:
         self._write_bundle("linux/ubuntu/web-01/raw_ubuntu.yaml", {
             "metadata": {"host": "web-01", "timestamp": "2026-02-26T23:00:00Z"},
