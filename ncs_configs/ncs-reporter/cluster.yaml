@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+#
+# vSphere Cluster tier — rendered once per cluster under a datacenter.
+# The tree assembler supplies a data_source dict combining:
+#   cluster_name       : str
+#   name, datacenter   : from raw_vcsa.data.clusters[<name>]
+#   ha_enabled, drs_enabled, host_count, cpu_usage_pct, mem_usage_pct,
+#   resource_summary  : (cpu/mem capacity / used)
+#   virtual_machines  : list[dict] filtered to this cluster's VMs
+#
+# The ESXi-hosts table on this page is injected by the tree walker from the
+# cluster node's children (not from raw data) so it links to per-host pages.
+config:
+  display_name: "Cluster"
+  platform: cluster
+  extra_inventory_widget_columns:
+    - name: Hosts
+      value: "{{ host_count }}"
+    - name: HA
+      value: "{{ ha_enabled }}"
+      as: status-badge
+
+vars:
+  cluster_name:
+    fallback: ""
+  host_count:
+    fallback: 0
+  ha_enabled:
+    fallback: false
+  drs_enabled:
+    fallback: false
+  cpu_usage_pct:
+    fallback: 0
+  mem_usage_pct:
+    fallback: 0
+  resource_summary:
+    fallback: {}
+    type: dict
+  virtual_machines:
+    fallback: []
+    type: list
+  vm_count:
+    compute: "{{ virtual_machines | length }}"
+  powered_on_vm_count:
+    compute: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | list | length }}"
+
+alerts:
+  - id: cluster_ha_disabled
+    category: "High Availability"
+    severity: WARNING
+    when: ha_enabled == false
+    msg: "HA is disabled on cluster {{ cluster_name }}"
+
+  - id: cluster_drs_disabled
+    category: "DRS"
+    severity: INFO
+    when: drs_enabled == false
+    msg: "DRS is disabled on cluster {{ cluster_name }}"
+
+widgets:
+  - type: stat-cards
+    slug: cluster_kpis
+    name: "Cluster Footprint"
+    cards:
+      - name: ESXi Hosts
+        value: "{{ host_count }}"
+      - name: VMs
+        value: "{{ vm_count }}"
+      - name: Powered On
+        value: "{{ powered_on_vm_count }}"
+      - name: CPU %
+        value: "{{ cpu_usage_pct }}"
+      - name: Memory %
+        value: "{{ mem_usage_pct }}"
+
+  - type: key-value
+    name: "Cluster Overview"
+    layout: half
+    fields:
+      - name: Cluster
+        value: "{{ cluster_name }}"
+      - name: HA Enabled
+        value: "{{ ha_enabled }}"
+        as: status-badge
+      - name: DRS Enabled
+        value: "{{ drs_enabled }}"
+        as: status-badge
+      - name: ESXi Host Count
+        value: "{{ host_count }}"

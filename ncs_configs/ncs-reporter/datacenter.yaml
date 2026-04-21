@@ -1,0 +1,104 @@
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+#
+# vSphere Datacenter tier — rendered once per datacenter under a vCenter.
+# The reporter's tree assembler supplies the data_source: a filtered view of
+# the parent vCenter's raw_vcsa bundle, scoped to this datacenter.
+#
+# Inputs carried by the node's data_source (see models/tree.py):
+#   datacenter_name : str
+#   clusters        : dict[str, dict]  — this DC's clusters
+#   datastores      : list[dict]        — datastores in this DC
+#   dvswitches      : list[dict]        — distributed switches (currently DC-wide)
+#
+# Storage Policies are not yet collected; the section renders empty when the
+# data is absent, which is the intended behavior.
+config:
+  display_name: "Datacenter"
+  platform: datacenter
+  extra_inventory_widget_columns:
+    - name: Clusters
+      value: "{{ cluster_count }}"
+    - name: ESXi Hosts
+      value: "{{ esxi_host_count }}"
+
+vars:
+  datacenter_name:
+    fallback: ""
+  clusters:
+    fallback: {}
+    type: dict
+  clusters_list:
+    compute: "{{ clusters | dict2items | map(attribute='value') | list }}"
+    type: list
+  cluster_count:
+    compute: "{{ clusters_list | length }}"
+  esxi_host_count:
+    compute: "{{ clusters_list | map(attribute='host_count') | sum }}"
+  datastores:
+    fallback: []
+    type: list
+  dvswitches:
+    fallback: []
+    type: list
+
+alerts: []
+
+widgets:
+  - type: stat-cards
+    slug: datacenter_kpis
+    name: "Datacenter Footprint"
+    cards:
+      - name: Clusters
+        value: "{{ cluster_count }}"
+      - name: ESXi Hosts
+        value: "{{ esxi_host_count }}"
+      - name: Datastores
+        value: "{{ datastores | length }}"
+      - name: Distributed Switches
+        value: "{{ dvswitches | length }}"
+
+  - type: table
+    name: "Compute — Clusters"
+    when: cluster_count > 0
+    rows: "{{ clusters_list }}"
+    columns:
+      - name: Cluster
+        value: "{{ name }}"
+      - name: Hosts
+        value: "{{ host_count }}"
+      - name: HA
+        value: "{{ ha_enabled }}"
+        as: status-badge
+      - name: DRS
+        value: "{{ drs_enabled }}"
+        as: status-badge
+      - name: CPU %
+        value: "{{ cpu_usage_pct }}"
+      - name: Mem %
+        value: "{{ mem_usage_pct }}"
+
+  - type: table
+    name: "Storage — Datastores"
+    rows: "{{ datastores }}"
+    columns:
+      - name: Name
+        value: "{{ name }}"
+      - name: Capacity (GB)
+        value: "{{ capacity_gb }}"
+      - name: Free (GB)
+        value: "{{ free_gb }}"
+      - name: Used %
+        value: "{{ used_pct }}"
+
+  - type: table
+    name: "Networking — Distributed Switches"
+    rows: "{{ dvswitches }}"
+    columns:
+      - name: Name
+        value: "{{ name }}"
+      - name: Ports
+        value: "{{ num_ports }}"
+      - name: Uplinks
+        value: "{{ num_uplinks }}"
+      - name: MTU
+        value: "{{ mtu }}"

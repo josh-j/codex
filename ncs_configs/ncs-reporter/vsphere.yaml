@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+#
+# vSphere inventory root — the product page for the vSphere tree.
+# Populated from the child vCenter nodes. The reporter's tree walker
+# supplies `vcenters` as a list of child-node summaries (slug, title,
+# health, alert_counts, report_url) before rendering.
+config:
+  display_name: "vSphere"
+  platform: vsphere
+  extra_inventory_widget_columns:
+    - name: vCenters
+      value: "{{ vcenters | length }}"
+    - name: Datacenters
+      value: "{{ datacenter_count }}"
+    - name: Clusters
+      value: "{{ cluster_count }}"
+    - name: ESXi Hosts
+      value: "{{ esxi_host_count }}"
+
+vars:
+  vcenters:
+    fallback: []
+    type: list
+  datacenter_count:
+    fallback: 0
+  cluster_count:
+    fallback: 0
+  esxi_host_count:
+    fallback: 0
+  vm_count:
+    fallback: 0
+
+alerts: []
+
+widgets:
+  - type: stat-cards
+    slug: vsphere_kpis
+    name: "Fleet Footprint"
+    cards:
+      - name: vCenters
+        value: "{{ vcenters | length }}"
+      - name: Datacenters
+        value: "{{ datacenter_count }}"
+      - name: Clusters
+        value: "{{ cluster_count }}"
+      - name: ESXi Hosts
+        value: "{{ esxi_host_count }}"
+      - name: VMs
+        value: "{{ vm_count }}"
+
+  - type: table
+    name: "vCenters"
+    when: (vcenters | length) > 0
+    rows: "{{ vcenters }}"
+    columns:
+      - name: vCenter
+        value: "{{ title }}"
+        link_field: report_url
+      - name: Version
+        value: "{{ version }}"
+      - name: Health
+        value: "{{ health }}"
+        as: status-badge
+      - name: Critical
+        value: "{{ alert_counts.critical }}"
+      - name: Warning
+        value: "{{ alert_counts.warning }}"
+      - name: Datacenters
+        value: "{{ datacenter_count }}"
+      - name: Clusters
+        value: "{{ cluster_count }}"
