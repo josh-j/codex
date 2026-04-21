@@ -18,10 +18,10 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from ..models.platforms_config import (
-    FILENAME_HEALTH_REPORT,
-    FILENAME_STIG_FLEET,
+    FILENAME_HEALTH_REPORT,  # only for sibling-relative URLs
     NAV_LABEL_STIG,
     fleet_link_url,
+    stig_fleet_url,
 )
 from ..platform_registry import PlatformRegistry
 from .common import fleet_entries_for_dir
@@ -108,7 +108,7 @@ class NavBuilder:
                     "report": fleet_link_url(plt_dir, schema_name, back),
                 })
         if self._has_stig_fleet:
-            fleets.append({"name": NAV_LABEL_STIG, "report": f"{back}{FILENAME_STIG_FLEET}"})
+            fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url(back)})
         return fleets
 
     def build_tree_siblings(self, hostname: str) -> list[dict[str, str]]:
@@ -408,7 +408,7 @@ class NavBuilder:
                     "report": fleet_link_url(plt_dir, schema_name),
                 })
 
-        tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
+        tree_fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url()})
         nav["tree_fleets"] = tree_fleets
 
         # --- breadcrumbs -----------------------------------------------------
@@ -462,7 +462,7 @@ class NavBuilder:
                 "report": item["fleet_link"],
             })
         if has_stig_rows:
-            tree_fleets.append({"name": NAV_LABEL_STIG, "report": FILENAME_STIG_FLEET})
+            tree_fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url()})
 
         # --- breadcrumbs -----------------------------------------------------
         crumbs: list[dict[str, Any]] = [

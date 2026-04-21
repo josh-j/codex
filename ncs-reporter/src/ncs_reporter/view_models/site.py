@@ -38,11 +38,7 @@ def build_site_dashboard_view(
     cklb_dir: Any = None,
     generated_fleet_dirs: set[str] | None = None,
 ) -> dict[str, Any]:
-    from ncs_reporter.models.platforms_config import (
-        FILENAME_HEALTH_REPORT as _FHR,
-        PLATFORM_DIR_PREFIX as _PDP,
-        fleet_link_url,
-    )
+    from ncs_reporter.models.platforms_config import fleet_link_url, host_report_url
     reg = registry or default_registry()
     all_alerts: list[dict[str, Any]] = []
     infra: dict[str, int] = {}
@@ -104,7 +100,7 @@ def build_site_dashboard_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": f"{_PDP}/{host_report_dirs[host]}/{host}/{_FHR}" if host in host_report_dirs else "",
+                "node_report": host_report_url(host_report_dirs[host], host) if host in host_report_dirs else "",
                 "platform": alert.get("platform", ""),
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],

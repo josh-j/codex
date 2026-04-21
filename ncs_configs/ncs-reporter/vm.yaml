@@ -8,7 +8,7 @@ config:
       target_var: "vm_stig_target_vms"
     platform_to_checklist:
       vm: cklb_skeletons/cklb_skeleton_vsphere7_vms_V1R4.json
-  extra_product_widget_columns:
+  extra_inventory_widget_columns:
     - name: VMs
       value: "{{ vm_count }}"
     - name: Snapshots

@@ -5,7 +5,7 @@ config:
     rule_prefix_to_platform:
       WN: windows
       MS: windows
-  extra_product_widget_columns:
+  extra_inventory_widget_columns:
     - name: Collected At
       value: "{{ collected_at }}"
     - name: CCM Status

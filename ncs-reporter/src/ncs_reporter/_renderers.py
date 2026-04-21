@@ -127,9 +127,9 @@ def build_stig_host_views(
         # Annotate with a relative URL from the node report dir to this STIG report.
         # Node reports live at platform/{report_dir}/{hostname}/health_report.html
         if global_inventory_index and hostname in global_inventory_index:
-            from .models.platforms_config import PLATFORM_DIR_PREFIX
+            from .models.platforms_config import host_node_rel_dir
             node_plt_dir = global_inventory_index[hostname]
-            node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{node_plt_dir}/{hostname}"
+            node_rel_dir = host_node_rel_dir(node_plt_dir, hostname)
             host_report_filename = Path(se["host_report_abs"]).name
             stig_abs = f"{host_rel_dir}/{host_report_filename}"
             host_view["_report_url"] = rel_href(node_rel_dir, stig_abs)
@@ -192,9 +192,10 @@ def render_platform(
     stamp = common_vars["report_stamp"]
     rc = report_context(common_vars)
     from .models.platforms_config import (
-        PLATFORM_DIR_PREFIX,
         TEMPLATE_NODE,
         TEMPLATE_FLEET,
+        host_node_rel_dir,
+        platform_dir_url,
     )
     node_tpl = env.get_template(TEMPLATE_NODE)
     fleet_tpl = env.get_template(TEMPLATE_FLEET)
@@ -248,7 +249,7 @@ def render_platform(
             rendered_host_count += 1
             host_dir = output_path / hostname
             host_dir.mkdir(exist_ok=True)
-            node_rel_dir = f"{PLATFORM_DIR_PREFIX}/{cfg.report_dir}/{hostname}"
+            node_rel_dir = host_node_rel_dir(cfg.report_dir, hostname)
             node_nav["fleet_report"] = rel_href(node_rel_dir, fleet_report_abs)
             if cfg.has_site_report:
                 node_nav["site_report"] = rel_href(node_rel_dir, site_report_abs)
@@ -281,7 +282,7 @@ def render_platform(
             continue
 
         if cfg.has_site_report:
-            fleet_nav["site_report"] = rel_href(f"{PLATFORM_DIR_PREFIX}/{cfg.report_dir}", site_report_abs)
+            fleet_nav["site_report"] = rel_href(platform_dir_url(cfg.report_dir), site_report_abs)
 
         fleet_view = build_generic_fleet_view(
             schema,

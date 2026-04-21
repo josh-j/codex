@@ -5,7 +5,7 @@ config:
   stig:
     platform_to_checklist:
       esxi: cklb_skeletons/cklb_skeleton_vsphere7_esxi_V1R4.json
-  extra_product_widget_columns:
+  extra_inventory_widget_columns:
     - name: Cluster
       value: "{{ cluster }}"
     - name: Status

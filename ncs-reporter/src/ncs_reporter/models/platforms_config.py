@@ -32,6 +32,39 @@ def fleet_link_url(report_dir: str, schema_name: str, back_to_root: str = "") ->
     return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{schema_name}{FILENAME_FLEET_SUFFIX}"
 
 
+def host_report_url(report_dir: str, hostname: str, back_to_root: str = "") -> str:
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{FILENAME_HEALTH_REPORT}"
+
+
+def host_report_historical_url(report_dir: str, hostname: str, report_stamp: str, back_to_root: str = "") -> str:
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/health_report_{report_stamp}.html"
+
+
+def stig_host_url(report_dir: str, hostname: str, target_type: str, back_to_root: str = "") -> str:
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html"
+
+
+def stig_fleet_url(back_to_root: str = "") -> str:
+    return f"{back_to_root}{FILENAME_STIG_FLEET}"
+
+
+def site_report_url(back_to_root: str = "") -> str:
+    return f"{back_to_root}{FILENAME_SITE_HEALTH}"
+
+
+def platform_dir_url(report_dir: str, back_to_root: str = "") -> str:
+    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}"
+
+
+def raw_stig_artifact_path(report_dir: str, hostname: str, target_type: str) -> str:
+    return f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/raw_stig_{target_type}.yaml"
+
+
+def host_node_rel_dir(report_dir: str, hostname: str) -> str:
+    """Directory that holds a host's reports, relative to the report root."""
+    return f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}"
+
+
 DEFAULT_PATH_TEMPLATES: dict[str, str] = {
     "raw_stig_artifact": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/raw_stig_{{target_type}}.yaml",
     "report_fleet": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{schema_name}}{FILENAME_FLEET_SUFFIX}",

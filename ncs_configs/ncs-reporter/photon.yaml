@@ -10,7 +10,7 @@ config:
       target_var: "photon_target_hosts"
     platform_to_checklist:
       photon: cklb_skeletons/cklb_skeleton_vsphere7_vca_photon_os_V1R4.json
-  extra_product_widget_columns:
+  extra_inventory_widget_columns:
     - name: Distribution
       value: "{{ distribution }}"
     - name: Uptime (d)

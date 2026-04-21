@@ -100,8 +100,8 @@ def _render_table_cell(
             if target_platform:
                 depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
                 back_to_root = "../" * (depth + 1)
-                from ncs_reporter.models.platforms_config import FILENAME_HEALTH_REPORT, PLATFORM_DIR_PREFIX
-                link = f"{back_to_root}{PLATFORM_DIR_PREFIX}/{target_platform}/{link_val}/{FILENAME_HEALTH_REPORT}"
+                from ncs_reporter.models.platforms_config import host_report_url
+                link = host_report_url(target_platform, link_val, back_to_root)
 
     rendered_value = _format_value(col.format, value) if col.format else value
 

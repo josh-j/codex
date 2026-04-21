@@ -502,6 +502,7 @@ class ReportSchema(BaseModel):
         default_factory=list,
         validation_alias=AliasChoices(
             "fleet_columns",
+            "extra_inventory_widget_columns",
             "extra_product_widget_columns",
             "extra_fleet_widget_columns",
         ),
@@ -567,7 +568,7 @@ class ReportSchema(BaseModel):
                 if isinstance(w, dict) and isinstance(w.get("type"), str):
                     w["type"] = w["type"].replace("-", "_")
 
-        for key in ("extra_product_widget_columns", "extra_fleet_widget_columns", "fleet_columns"):
+        for key in ("extra_inventory_widget_columns", "extra_product_widget_columns", "extra_fleet_widget_columns", "fleet_columns"):
             fc = values.get(key)
             if isinstance(fc, dict):
                 values[key] = [
