@@ -2,7 +2,7 @@
 config:
   display_name: "Cisco ACI"
   platform: aci/apic
-  extra_fleet_widget_columns:
+  extra_product_widget_columns:
     - name: Site
       value: "{{ site_label }}"
     - name: Fabric

@@ -23,7 +23,7 @@ config:
       ESXI: esxi
       VC: vcsa
       PH: photon
-  extra_fleet_widget_columns:
+  extra_product_widget_columns:
     - name: Version
       value: "{{ appliance_version }}"
 vars:

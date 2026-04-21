@@ -8,7 +8,7 @@ config:
     rule_prefix_to_platform:
       UBTU: ubuntu
       GEN: ubuntu
-  extra_fleet_widget_columns:
+  extra_product_widget_columns:
     - name: Distribution
       value: "{{ distribution }}"
     - name: Uptime (d)
