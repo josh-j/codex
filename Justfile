@@ -74,8 +74,9 @@ setup-system:
         export PATH="$HOME/.local/bin:$PATH"
     fi
     uv --version
-    # Pre-fetch the two Python interpreters we need (main venv + VCSA venv).
-    UV_CACHE_DIR=/tmp/uv-cache uv python install 3.11 3.12
+    # VCSA venv is pinned to 3.11 (ansible-core 2.15 supports 3.9–3.11).
+    # The main venv uses whatever uv resolves for `requires-python = ">=3.10"`.
+    UV_CACHE_DIR=/tmp/uv-cache uv python install 3.11
     echo "✓ System prerequisites ready"
     echo "  If this is the first install, open a new shell so \$PATH picks up uv."
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from conftest import CONFIGS_DIR
 
 import pytest
 
@@ -579,7 +580,7 @@ class TestVcsaSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vcsa.yaml"
+        schema_path = CONFIGS_DIR / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vcsa"
         assert s.platform == "vmware"
@@ -596,7 +597,7 @@ class TestVcsaSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vcsa.yaml"
+        schema_path = CONFIGS_DIR / "vcsa.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -645,7 +646,7 @@ class TestEsxiHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "esxi.yaml"
+        schema_path = CONFIGS_DIR / "esxi.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "esxi"
         assert s.platform == "vmware"
@@ -659,7 +660,7 @@ class TestEsxiHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "esxi.yaml"
+        schema_path = CONFIGS_DIR / "esxi.yaml"
         s = load_schema_from_file(schema_path)
 
         # Simulate a pre-assembled per-host bundle from the collector
@@ -694,7 +695,7 @@ class TestVmHealthSchema:
         from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
+        schema_path = CONFIGS_DIR / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
@@ -709,7 +710,7 @@ class TestVmHealthSchema:
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
+        schema_path = CONFIGS_DIR / "vm.yaml"
         s = load_schema_from_file(schema_path)
 
         bundle = {
@@ -753,8 +754,7 @@ class TestPhotonSchema:
     def test_photon_schema_loads_and_detects_bundle(self) -> None:
         from ncs_reporter.schema_loader import detect_schemas_for_bundle, discover_schemas, load_schema_from_file
 
-        configs_dir = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter"
-        schema_path = configs_dir / "photon.yaml"
+        schema_path = CONFIGS_DIR / "photon.yaml"
         s = load_schema_from_file(schema_path)
         assert s.name == "photon"
         assert s.platform == "linux"
@@ -766,7 +766,7 @@ class TestPhotonSchema:
                 "data": {"ansible_facts": {"hostname": "photon-01"}},
             }
         }
-        detected = detect_schemas_for_bundle(bundle, extra_dirs=(str(configs_dir),))
+        detected = detect_schemas_for_bundle(bundle, extra_dirs=(str(CONFIGS_DIR),))
         detected_names = {d.name for d in detected}
         assert "photon" in detected_names
 
@@ -887,7 +887,7 @@ class TestScriptFields:
     def test_vm_schema_snapshot_alerts_reference_list(self) -> None:
         from ncs_reporter.schema_loader import load_schema_from_file
 
-        schema_path = Path(__file__).parent.parent.parent / "ncs_configs" / "ncs-reporter" / "vm.yaml"
+        schema_path = CONFIGS_DIR / "vm.yaml"
         s = load_schema_from_file(schema_path)
         assert "snapshots" in s.fields
         spec = s.fields["snapshots"]

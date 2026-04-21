@@ -179,7 +179,7 @@ def _render_progress_bar(widget: ProgressBarWidget, fields: dict[str, Any], ctx:
 
     label_text = ""
     if widget.value_label:
-        label_text = str(fields.get(widget.value_label, ""))
+        label_text = str(_resolve_field_ref(widget.value_label, fields))
 
     color: str = widget.color
     if color == "auto":
