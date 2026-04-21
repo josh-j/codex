@@ -231,6 +231,7 @@ def _attach_datacenters_and_clusters(
     vm_bundle = vm_bundles.get(vc_host, {})
     all_vms = _as_list(vm_bundle.get("virtual_machines"))
 
+    # Pre-group once so placement is O(N) instead of O(C × N) per loop below.
     clusters_by_dc: dict[str, dict[str, dict[str, Any]]] = {}
     for cluster_name, cluster_data in clusters.items():
         if not isinstance(cluster_data, dict):
@@ -238,12 +239,32 @@ def _attach_datacenters_and_clusters(
         dc_name = str(cluster_data.get("datacenter") or "").strip() or "unknown-datacenter"
         clusters_by_dc.setdefault(dc_name, {})[cluster_name] = cluster_data
 
+    datastores_by_dc: dict[str, list[Any]] = {}
+    for ds in datastores:
+        if not isinstance(ds, dict):
+            continue
+        datastores_by_dc.setdefault(str(ds.get("datacenter", "")).strip(), []).append(ds)
+
+    esxi_by_cluster: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for esxi_host, esxi_data in esxi_bundles.items():
+        if not isinstance(esxi_data, dict):
+            continue
+        esxi_by_cluster.setdefault(str(esxi_data.get("cluster", "")).strip(), []).append((esxi_host, esxi_data))
+
+    vms_by_cluster: dict[str, list[dict[str, Any]]] = {}
+    vms_by_host: dict[str, list[dict[str, Any]]] = {}
+    for vm in all_vms:
+        if not isinstance(vm, dict):
+            continue
+        vms_by_cluster.setdefault(str(vm.get("cluster", "")).strip(), []).append(vm)
+        vms_by_host.setdefault(str(vm.get("esxi_host", "")).strip(), []).append(vm)
+
     for dc_name, dc_clusters in sorted(clusters_by_dc.items()):
         dc_slug = slugify(dc_name)
         dc_data = {
             "datacenter_name": dc_name,
             "clusters": dc_clusters,
-            "datastores": [d for d in datastores if _matches_dc(d, dc_name)],
+            "datastores": datastores_by_dc.get(dc_name, []),
             "dvswitches": dvswitches,
         }
         dc_node = vc_node.find_or_add_child(
@@ -256,7 +277,7 @@ def _attach_datacenters_and_clusters(
 
         for cluster_name, cluster_data in sorted(dc_clusters.items()):
             cluster_slug = slugify(cluster_name)
-            cluster_vms = [vm for vm in all_vms if _vm_in_cluster(vm, cluster_name)]
+            cluster_vms = vms_by_cluster.get(cluster_name, [])
             cluster_node_data = {
                 "cluster_name": cluster_name,
                 **cluster_data,
@@ -270,10 +291,8 @@ def _attach_datacenters_and_clusters(
                 data_source=_static_source(cluster_node_data),
             )
 
-            for esxi_host, esxi_data in sorted(esxi_bundles.items()):
-                if not _esxi_in_cluster(esxi_data, cluster_name):
-                    continue
-                esxi_vms = [vm for vm in cluster_vms if _vm_on_host(vm, esxi_host)]
+            for esxi_host, esxi_data in sorted(esxi_by_cluster.get(cluster_name, [])):
+                esxi_vms = vms_by_host.get(esxi_host, [])
                 esxi_bundle = {
                     "raw_esxi": {
                         "data": {**esxi_data, "virtual_machines": esxi_vms},
@@ -334,19 +353,3 @@ def build_flat_inventory_tree(
 
 def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
-
-
-def _matches_dc(datastore: Any, dc_name: str) -> bool:
-    return isinstance(datastore, dict) and str(datastore.get("datacenter", "")).strip() == dc_name
-
-
-def _vm_in_cluster(vm: Any, cluster_name: str) -> bool:
-    return isinstance(vm, dict) and str(vm.get("cluster", "")).strip() == cluster_name
-
-
-def _vm_on_host(vm: Any, esxi_host: str) -> bool:
-    return isinstance(vm, dict) and str(vm.get("esxi_host", "")).strip() == esxi_host
-
-
-def _esxi_in_cluster(esxi_data: Any, cluster_name: str) -> bool:
-    return isinstance(esxi_data, dict) and str(esxi_data.get("cluster", "")).strip() == cluster_name
