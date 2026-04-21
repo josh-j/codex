@@ -31,9 +31,38 @@ default:
 # =============================================================================
 # Setup
 # =============================================================================
-# Complete environment setup (both venvs + all collections + SMB share)
-setup-all: setup-main-venv setup-vcsa-venv setup-collections install-collections setup-samba
+# Complete environment setup on a fresh Ubuntu host:
+#   apt prerequisites + uv + both venvs + all collections + SMB share.
+# Requires sudo (for apt-get and Samba provisioning).
+setup-all: setup-system setup-main-venv setup-vcsa-venv setup-collections install-collections setup-samba
     @echo "✓ All environments ready"
+
+# Install OS-level prerequisites and uv. Idempotent.
+# Targets Ubuntu 22.04 / 24.04 (apt). Safe to re-run.
+setup-system:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v apt-get >/dev/null 2>&1; then
+        echo "apt-get not found — setup-system targets Ubuntu/Debian hosts." >&2
+        exit 1
+    fi
+    echo "→ Installing apt prerequisites (requires sudo)"
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        curl ca-certificates git openssh-client \
+        build-essential libkrb5-dev libssl-dev pkg-config \
+        sshpass rsync
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "→ Installing uv (https://astral.sh/uv)"
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        # Pick up ~/.local/bin from the installer for the remainder of this run
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+    uv --version
+    # Pre-fetch the two Python interpreters we need (main venv + VCSA venv).
+    UV_CACHE_DIR=/tmp/uv-cache uv python install 3.11 3.12
+    echo "✓ System prerequisites ready"
+    echo "  If this is the first install, open a new shell so \$PATH picks up uv."
 
 # Provision the SMB share used by ncs-console to fetch reports
 setup-samba:
@@ -66,9 +95,9 @@ setup-vcsa-venv:
     #!/usr/bin/env bash
     set -euo pipefail
     rm -rf .venv-vcsa
-    python3.12 -m venv .venv-vcsa
-    .venv-vcsa/bin/pip install --upgrade pip
-    .venv-vcsa/bin/pip install 'ansible-core>=2.15,<2.16' pyvmomi pykerberos requests
+    UV_CACHE_DIR=/tmp/uv-cache uv venv --python 3.11 .venv-vcsa
+    UV_CACHE_DIR=/tmp/uv-cache VIRTUAL_ENV=$(pwd)/.venv-vcsa uv pip install \
+        'ansible-core>=2.15,<2.16' pyvmomi pykerberos requests
     # Python 3.7-compatible community collections in separate path.
     # vmware.vmware pinned to <2.0.0: latest requires ansible-core >=2.17,
     # but VCSA venv is locked to 2.15 for Python 3.7 managed nodes.
