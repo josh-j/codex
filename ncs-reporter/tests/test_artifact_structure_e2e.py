@@ -169,8 +169,8 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_site_report_created(self):
         self._run_all()
-        site = self.reports_root / "site_health_report.html"
-        self.assertTrue(site.exists(), "site_health_report.html must exist at reports root")
+        site = self.reports_root / "site.html"
+        self.assertTrue(site.exists(), "site.html must exist at reports root")
         content = site.read_text()
         # linux-01 has a disk at 90% → warning alert → appears in Global Alert Queue
         self.assertIn("linux-01", content)
@@ -182,7 +182,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         Platform fleet reports go through write_report() and do get stamped copies."""
         self._run_all()
         # Site report: single file, no stamped copy (written directly by all_cmd)
-        site = self.reports_root / "site_health_report.html"
+        site = self.reports_root / "site.html"
         stamped_site = self.reports_root / f"site_health_report_{STAMP}.html"
         self.assertTrue(site.exists())
         self.assertFalse(stamped_site.exists(), "all_cmd writes site report without stamp")
@@ -210,7 +210,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
 
     def test_stig_fleet_report_at_reports_root(self):
         self._run_all()
-        fleet = self.reports_root / "stig_fleet_report.html"
+        fleet = self.reports_root / "site.stig.html"
         self.assertTrue(fleet.exists(), "STIG fleet report must be at reports root")
 
     def test_stig_host_report_under_platform_vmware(self):

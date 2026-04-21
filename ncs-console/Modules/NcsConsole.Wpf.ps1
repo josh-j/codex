@@ -8,7 +8,7 @@ $script:BrushCache = @{}
 $script:_NcsTreeViewItemStyle = $null
 $script:IconFolder = "M1 3 L5 3 L5 1 L11 1 L11 3 L15 3 L15 13 L1 13 Z"
 $script:IconFile = "M2 0 L8 0 L10 2 L10 14 L2 14 Z M4 4 L8 4 M4 7 L8 7 M4 10 L7 10"
-$script:DefaultReportPath = "site_health_report.html"
+$script:DefaultReportPath = "site.html"
 function Get-NcsBrush {
     param([string] $Color)
     $cached = $script:BrushCache[$Color]

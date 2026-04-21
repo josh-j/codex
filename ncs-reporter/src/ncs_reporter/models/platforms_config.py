@@ -14,8 +14,8 @@ from ncs_reporter.pathing import validate_template
 
 PLATFORM_DIR_PREFIX = "platform"
 FILENAME_HEALTH_REPORT = "health_report.html"
-FILENAME_SITE_HEALTH = "site_health_report.html"
-FILENAME_STIG_FLEET = "stig_fleet_report.html"
+FILENAME_SITE_HEALTH = "site.html"
+FILENAME_STIG_FLEET = "site.stig.html"
 FILENAME_FLEET_SUFFIX = "_fleet_report.html"
 NAV_LABEL_STIG = "STIG"
 CKLB_SKELETONS_DIR = "cklb_skeletons"

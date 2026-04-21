@@ -316,7 +316,7 @@ class SiteCommandTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertTrue(os.path.exists(os.path.join(output_dir, "site_health_report.html")))
+            self.assertTrue(os.path.exists(os.path.join(output_dir, "site.html")))
 
 
 

@@ -89,7 +89,7 @@ class TestNewFeaturesE2E(unittest.TestCase):
         self.assertIn("window.NCS_SEARCH_INDEX =", index_content)
 
         # 2. Verify Search Bar in HTML
-        site_report = (self.reports_root / "site_health_report.html").read_text()
+        site_report = (self.reports_root / "site.html").read_text()
         self.assertIn('class="nav-search"', site_report)
         self.assertIn('data-root="./"', site_report)
         self.assertIn('class="search-results', site_report)

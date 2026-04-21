@@ -156,11 +156,11 @@ class TestStigE2E(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         # Fleet report
-        fleet_report = self.reports_root / "stig_fleet_report.html"
+        fleet_report = self.reports_root / "site.stig.html"
         self.assertTrue(fleet_report.exists(), "STIG fleet report should exist")
         fleet_content = fleet_report.read_text()
         self.assertIn("esxi-01", fleet_content)
-        self.assertTrue(_has_attr(fleet_content, "href", "site_health_report.html"))
+        self.assertTrue(_has_attr(fleet_content, "href", "site.html"))
         # vcsa fleet link only appears when vcsa health data exists
         self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html"))
         self.assertTrue(_has_attr(fleet_content, "data-root", "./"))
@@ -171,8 +171,8 @@ class TestStigE2E(unittest.TestCase):
         self.assertTrue(host_report.exists(), "STIG host report should exist")
         host_content = host_report.read_text()
         self.assertIn("esxi-01", host_content)
-        self.assertTrue(_has_attr(host_content, "href", "../../../../site_health_report.html"))
-        self.assertTrue(_has_attr(host_content, "href", "../../../../stig_fleet_report.html"))
+        self.assertTrue(_has_attr(host_content, "href", "../../../../site.html"))
+        self.assertTrue(_has_attr(host_content, "href", "../../../../site.stig.html"))
         self.assertTrue(_has_attr(host_content, "data-root", "../../../../"))
         self.assertTrue(
             "open" in host_content or "not_a_finding" in host_content,

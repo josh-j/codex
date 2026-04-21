@@ -199,7 +199,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         # Check Site Report
-        site_report = self.reports_root / "site_health_report.html"
+        site_report = self.reports_root / "site.html"
         self.assertTrue(site_report.exists())
         content = site_report.read_text()
         self.assertIn("Site Dashboard", content)
@@ -235,7 +235,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         linux_report = (
             self.reports_root / "platform" / "linux" / "ubuntu" / "linux-01" / "health_report.html"
         ).read_text()
-        self.assertTrue(_has_attr(linux_report, "href", "../../../../site_health_report.html"))
+        self.assertTrue(_has_attr(linux_report, "href", "../../../../site.html"))
         self.assertTrue(_has_attr(linux_report, "href", "../ubuntu_fleet_report.html"))
         self.assertTrue(_has_attr(linux_report, "href", "../../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
         self.assertTrue(_has_attr(linux_report, "data-root", "../../../../"))
@@ -246,7 +246,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         vmware_report = (
             self.reports_root / "platform" / "vmware" / "vcsa" / "vc-01" / "health_report.html"
         ).read_text()
-        self.assertTrue(_has_attr(vmware_report, "href", "../../../../site_health_report.html"))
+        self.assertTrue(_has_attr(vmware_report, "href", "../../../../site.html"))
         self.assertTrue(_has_attr(vmware_report, "href", "../vcsa_fleet_report.html"))
         self.assertTrue(_has_attr(vmware_report, "href", "../../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
         self.assertTrue(_has_attr(vmware_report, "data-root", "../../../../"))
@@ -255,7 +255,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         )
 
         windows_report = (self.reports_root / "platform" / "windows" / "win-01" / "health_report.html").read_text()
-        self.assertTrue(_has_attr(windows_report, "href", "../../../site_health_report.html"))
+        self.assertTrue(_has_attr(windows_report, "href", "../../../site.html"))
         self.assertTrue(_has_attr(windows_report, "href", "../windows_fleet_report.html"))
         self.assertTrue(_has_attr(windows_report, "href", "../../../platform/vmware/vcsa/vcsa_fleet_report.html"))
         self.assertTrue(_has_attr(windows_report, "data-root", "../../../"))
@@ -322,7 +322,7 @@ class TestHtmlReportsE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
-        site_html = (self.reports_root / "site_health_report.html").read_text()
+        site_html = (self.reports_root / "site.html").read_text()
 
         # STIG section must be present in the rendered HTML
         self.assertIn("STIG Compliance", site_html)

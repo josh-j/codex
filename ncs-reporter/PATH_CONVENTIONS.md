@@ -50,8 +50,8 @@ Template placeholders are validated strictly. Required placeholders are:
 Reports are rendered into a flat hierarchy to ensure predictable relative linking for the "Global Search" and breadcrumb features.
 
 ### Global Reports
-- `site_health_report.html`: The high-level site dashboard.
-- `stig_fleet_report.html`: The cross-platform STIG compliance dashboard.
+- `site.html`: The high-level site dashboard.
+- `site.stig.html`: The cross-platform STIG compliance dashboard.
 - `search_index.js`: The dynamic search database used by the UI.
 
 ### Fleet & Node Reports

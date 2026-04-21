@@ -24,7 +24,7 @@ def verify_basic(report_root: Path) -> list[str]:
     """Check that core report artifacts exist."""
     errors: list[str] = []
 
-    site_dashboard = report_root / "site_health_report.html"
+    site_dashboard = report_root / "site.html"
     if not site_dashboard.is_file():
         errors.append(f"Missing site dashboard: {site_dashboard}")
 
@@ -51,10 +51,13 @@ def verify_stig_targets(
     """Check that STIG artifacts exist for each required target type."""
     errors: list[str] = []
 
-    # STIG fleet report
-    stig_fleet = list(report_root.glob("stig_fleet_report*.html"))
-    if not stig_fleet:
-        errors.append("Missing STIG fleet report")
+    # STIG inventory report (root-level STIG overview)
+    stig_root_reports = [
+        *report_root.glob("site.stig*.html"),
+        *report_root.glob("stig_fleet_report*.html"),  # legacy
+    ]
+    if not stig_root_reports:
+        errors.append("Missing STIG inventory report")
 
     # Scan for raw_stig_*.yaml files to build a map of target_type -> hostnames
     platform_dir = report_root / "platform"

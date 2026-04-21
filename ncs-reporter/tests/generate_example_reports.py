@@ -8,8 +8,8 @@ passed in-memory to the renderer.
 
 Output:
   tests/ncs_example_reports/
-  ├── site_health_report.html
-  ├── stig_fleet_report.html                            ← NEW
+  ├── site.html
+  ├── site.stig.html                            ← NEW
   └── platform/
       ├── ubuntu/              ← raw input dir (ncs_collector writes here)
       │   ├── web-prod-01/raw_discovery.yaml
@@ -307,9 +307,9 @@ def main() -> None:
         {"metadata": {}, "hosts": all_hosts},
         ctx=rc,
     )
-    tpl = env.get_template("site_health_report.html.j2")
+    tpl = env.get_template("site.html.j2")
     content = tpl.render(site_dashboard_view=site_view, **common_vars)
-    (OUT_ROOT / "site_health_report.html").write_text(content)
+    (OUT_ROOT / "site.html").write_text(content)
 
     # ------------------------------------------------------------------
     # 3.5 Search Index
@@ -398,7 +398,7 @@ def main() -> None:
     # Summary
     # ------------------------------------------------------------------
     print(f"Generated reports in {OUT_ROOT}/")
-    print(f"  {OUT_ROOT}/site_health_report.html")
+    print(f"  {OUT_ROOT}/site.html")
     for input_dir in ["linux/ubuntu", "linux/photon", "vmware/vcenter", "vmware/esxi", "vmware/vm", "windows"]:
         for raw in sorted((PLATFORM_ROOT / input_dir).glob("*/raw_*.yaml")):
             print(f"  {raw}  [raw]")
