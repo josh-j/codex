@@ -334,10 +334,5 @@ artifact that `ncs-reporter` later consumes.
 
 ## See also
 
-- [STIG migration workflow](_dev/STIG_MIGRATION_WORKFLOW.md) — how to
-  port a legacy STIG role to `internal.core.stig`.
-- [STIG bug postmortem](_dev/STIG_BUGS_ENCOUNTERED.md) — catalog of
-  real bugs encountered during the Ubuntu 24.04 and Photon OS 3
-  migrations; useful as a checklist when authoring new rules.
 - `prompts/stig_from_xccdf.md` — agent prompt for scaffolding a new
   `stig_<version>/` folder from an XCCDF benchmark.

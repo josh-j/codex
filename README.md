@@ -19,7 +19,7 @@ Every sub-project is a tracked subdirectory of this repo. The five built-in `int
 | `ncs-ansible-collection-template/` | subdir | Scaffold for new collections |
 | `ncs-reporter/` | subdir | Standalone Python reporting CLI ([README](ncs-reporter/README.md)) |
 | `ncs-console/` | subdir | PowerShell/WPF operator console ([README](ncs-console/README.md)) |
-| `docs/` | subdir | Architecture, references, dev runbooks under `_dev/` |
+| `docs/` | subdir | Architecture and reference docs |
 | `prompts/` | subdir | Reusable agent prompts for repetitive authoring tasks |
 
 ## Pipeline
@@ -82,4 +82,3 @@ Both live under `ncs-ansible/`:
 - [Collection Layout (inventory + vault)](docs/COLLECTION_LAYOUT.md)
 - [Scheduling & Alert Actions](docs/SCHEDULING_AND_ALERT_ACTIONS.md)
 - [OpenSSH + Kerberos](docs/OPENSSH_KERBEROS.md)
-- [Dev runbooks](docs/_dev/) — STIG migration workflow, release process, bug postmortem
