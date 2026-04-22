@@ -1,0 +1,11 @@
+---
+# internal.__COLLECTION_NAME__.example : meta/main.yaml
+galaxy_info:
+  role_name: example
+  author: NCS
+  description: Example role scaffold for the internal.__COLLECTION_NAME__ collection.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+dependencies:
+  - role: internal.core.dispatch
+  - role: internal.core.emit

@@ -1,0 +1,10 @@
+---
+# internal.__COLLECTION_NAME__.example : defaults/main.yaml
+#
+# Default variables for the example role. Override from inventory
+# group_vars, host_vars, or a vault file. Convention: prefix every var
+# with the collection name so cross-collection runs don't collide.
+
+# Skip the emit step (useful for ad-hoc runs where you don't want to
+# write to the telemetry lake).
+__collection_name___skip_export: false

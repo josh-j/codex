@@ -1,0 +1,31 @@
+---
+# internal/__COLLECTION_NAME__/playbooks/example_collect.yml
+#
+# Example collect playbook scaffolded by the collection template.
+# Demonstrates the NCS playbook conventions:
+#   - flat filename prefixed with the sub-platform ("example") + action
+#     ("collect"); invoked as `internal.__COLLECTION_NAME__.example_collect`
+#   - optional `<role>_target_hosts` variable for the host pattern so the
+#     orchestrator can redirect the playbook to any inventory group
+#   - role invocation with `ncs_action: collect` so the role's dispatch
+#     routes to tasks/collect.yaml
+#
+# Replace `example` with your real platform name (or add siblings like
+# <platform>_stig_audit.yml, <platform>_stig_remediate.yml) once you
+# flesh out the collection.
+
+# >>>
+# is_read_only: true
+# label: Example Collect
+# options:
+#   example_skip_export: bool = false | Skip Emit | Don't write raw_example.yaml to the telemetry lake
+# <<<
+
+- name: "__COLLECTION_NAME__ | Example collect"
+  hosts: "{{ example_target_hosts | default('localhost') }}"
+  gather_facts: false
+  tags: ["__collection_name__", "audit", "example"]
+  roles:
+    - role: internal.__COLLECTION_NAME__.example
+      vars:
+        ncs_action: collect

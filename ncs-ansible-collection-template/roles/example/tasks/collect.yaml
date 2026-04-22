@@ -1,0 +1,30 @@
+---
+# internal.__COLLECTION_NAME__.example : tasks/collect.yaml
+#
+# Minimal read-only collection. Replace the body with real probes for
+# your platform — REST calls (delegated to localhost), SSH facts, CLI
+# commands, etc. — then emit the result through internal.core.emit so
+# ncs-reporter can pick it up.
+
+- name: "__COLLECTION_NAME__ | Gather system facts"
+  ansible.builtin.setup:
+    gather_subset:
+      - min
+  register: _example_facts
+
+- name: "__COLLECTION_NAME__ | Build collection payload"
+  ansible.builtin.set_fact:
+    _example_payload:
+      hostname: "{{ inventory_hostname }}"
+      collected_at: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int) }}"
+      os: "{{ ansible_facts.get('distribution', 'unknown') }}"
+      os_version: "{{ ansible_facts.get('distribution_version', 'unknown') }}"
+      uptime_seconds: "{{ ansible_facts.get('uptime_seconds', 0) }}"
+
+- name: "__COLLECTION_NAME__ | Emit raw_example.yaml"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    emit_type: "raw_example"
+    emit_data: "{{ _example_payload }}"
+  when: not (__collection_name___skip_export | default(false) | bool)

@@ -1,0 +1,21 @@
+---
+# internal.__COLLECTION_NAME__.example : tasks/main.yaml
+#
+# Minimal role entry point showing the NCS dispatch pattern. Delete or
+# rename the `example` role once your real roles exist.
+
+- name: "__COLLECTION_NAME__ | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "__COLLECTION_NAME__ | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: "__COLLECTION_NAME__"
+    _ncs_default_action: collect
+    _ncs_allowed_profiles: []
+    _ncs_allowed_operations: []
+    _dispatch_map:
+      _default_: collect

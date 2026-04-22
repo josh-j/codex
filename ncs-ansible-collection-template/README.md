@@ -26,13 +26,25 @@ ansible-playbook -i inventory/production internal.__COLLECTION_NAME__.<name>
 
 ```
 ncs-ansible-__COLLECTION_NAME__/
-├── galaxy.yml           # namespace/name/version + dependency on internal.core
-├── meta/runtime.yml     # required ansible-core version
-├── roles/               # one role per logical unit (platform, operation area)
-├── playbooks/           # flat filename convention: <sub>_<action>.yml
-├── plugins/             # optional: action/filter/callback plugins
+├── galaxy.yml                         # namespace/name/version + dependency on internal.core
+├── meta/runtime.yml                   # required ansible-core version
+├── roles/
+│   └── example/                       # scaffolded example role — rename or replace
+│       ├── tasks/{main,collect}.yaml
+│       ├── defaults/main.yaml
+│       ├── meta/main.yaml
+│       └── README.md
+├── playbooks/
+│   └── example_collect.yml            # scaffolded example playbook
+├── plugins/                           # optional: action/filter/callback plugins
 └── CHANGELOG.md
 ```
+
+The `example` role + `example_collect.yml` playbook are a working
+minimum that dispatches via `internal.core.dispatch` and emits
+`raw_example.yaml` via `internal.core.emit`. Treat them as a starting
+point — rename, replace, or delete once your real platform code is
+in place.
 
 Playbook filename convention: flat, prefixed with the sub-platform (if
 any) then the action. Examples from the existing collections:

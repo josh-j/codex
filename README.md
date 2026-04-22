@@ -52,19 +52,23 @@ See `ncs-ansible/Justfile` for the full command surface. Reporter-only workflows
 
 Third-party platforms plug into NCS as their own collection. The orchestrator (`ncs-ansible/`) consumes them exactly like the built-in five — `internal.core` provides the shared callback and STIG wrapper, and your collection ships its roles, playbooks, and reporter configs.
 
-1. **Scaffold from the template.** Copy `ncs-ansible-collection-template/` out next to the orchestrator (either inside this umbrella or as a sibling checkout):
+1. **Scaffold from the template.** Copy `ncs-ansible-collection-template/` to a sibling directory and rewrite every `__COLLECTION_NAME__` placeholder:
 
    ```bash
    cp -r ncs-ansible-collection-template ../ncs-ansible-netbox
    cd ../ncs-ansible-netbox
-   # Replace __COLLECTION_NAME__ with your platform name
-   sed -i 's/__COLLECTION_NAME__/netbox/g' galaxy.yml README.md meta/*
+   # Rewrite the placeholder token everywhere (filenames + contents)
+   grep -rl '__COLLECTION_NAME__' . | xargs sed -i 's/__COLLECTION_NAME__/netbox/g'
+   grep -rl '__collection_name__' . | xargs sed -i 's/__collection_name__/netbox/g'
+   # Rename the scaffolded `example` role + playbook to match your platform
+   git mv roles/example roles/netbox
+   git mv playbooks/example_collect.yml playbooks/netbox_collect.yml
    ```
 
 2. **Wire the pieces.** The template already ships the right shape:
    - `galaxy.yml` — set `name:` and keep `dependencies: { internal.core: ">=1.0.0,<2.0.0" }`.
-   - `roles/<platform>/` — at least one role, using the `ncs_action` / `ncs_profile` / `ncs_operation` contract so `internal.core.dispatch` can route to it. See `HELPERS.md` in the template.
-   - `playbooks/<platform>_collect.yml` — emits `raw_*.yaml` via the `ncs_collector` callback (inherited from `internal.core`).
+   - `roles/<platform>/` — rename the scaffolded `example/` role, then flesh it out. The dispatch + emit wiring is already in place; edit `tasks/collect.yaml` to add real probes. See `HELPERS.md` in the template for the full role-interface contract.
+   - `playbooks/<platform>_collect.yml` — the scaffolded example playbook invokes the role and emits `raw_*.yaml` via `ncs_collector` (inherited from `internal.core`). Add sibling playbooks for STIG / maintenance as needed.
    - `plugins/` — optional filter/action/callback plugins specific to your platform.
 
 3. **Collection-local test harness.** The template carries a `tests/` skeleton; populate it exactly like the built-ins:
