@@ -23,9 +23,11 @@ ncs-console/App/ncs-icon.ico
 
 # Claude Code
 .claude/
+CLAUDE.md
 
 # Operator-only, never commit
 docs/LAB_ACCESS.md
+docs/_dev/
 
 # Per-collection test inventory + vault password — see docs/COLLECTION_LAYOUT.md
 ncs-ansible-*/tests/inventory/
