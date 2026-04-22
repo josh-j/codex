@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+ANSIBLE_ROOT = REPO_ROOT / "ncs-ansible"
+VMWARE_ROLES_ROOT = ANSIBLE_ROOT / "collections/ansible_collections/internal/vmware/roles"
 
 
-def _walk_tasks(tasks: object):
+def _walk_tasks(tasks: object) -> Iterator[dict]:
     """Yield every task dict in a task list, descending into block/rescue/always."""
     if not isinstance(tasks, list):
         return
@@ -21,8 +24,7 @@ def _walk_tasks(tasks: object):
             yield from _walk_tasks(task.get(nested_key))
 
 
-def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
-    task_file = REPO_ROOT / relative_path
+def _extract_set_fact_keys(task_file: Path, fact_name: str) -> set[str]:
     tasks = yaml.safe_load(task_file.read_text(encoding="utf-8")) or []
     for task in _walk_tasks(tasks):
         payload = task.get("ansible.builtin.set_fact")
@@ -34,24 +36,26 @@ def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
     return set()
 
 
-VCENTER_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vcsa/tasks/collect.yaml",
-    "vmware_raw_vcenter",
-)
+_VMWARE_FACTS = {
+    "vcenter": "vcsa",
+    "esxi": "esxi",
+    "vm": "vm",
+}
+_VMWARE_KEYS = {
+    fact: _extract_set_fact_keys(
+        VMWARE_ROLES_ROOT / role / "tasks" / "collect.yaml",
+        f"vmware_raw_{fact}",
+    )
+    for fact, role in _VMWARE_FACTS.items()
+}
+VCENTER_DATA_KEYS = _VMWARE_KEYS["vcenter"]
+ESXI_DATA_KEYS = _VMWARE_KEYS["esxi"]
+VM_DATA_KEYS = _VMWARE_KEYS["vm"]
 
-ESXI_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/esxi/tasks/collect.yaml",
-    "vmware_raw_esxi",
-)
-
-VM_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vm/tasks/collect.yaml",
-    "vmware_raw_vm",
-)
-
-# Hardcoded because discover.yaml's set_fact is inside a block (not
-# top-level), so _extract_set_fact_keys can't reach it.  Keep in sync
-# with internal.linux.ubuntu tasks/discover.yaml → ubuntu_raw_discovery.
+# Linux/Windows fact sets stay hardcoded: their assemblers are spread
+# across multiple task files and dynamic set_facts, so a single-file
+# extractor can't recover them. Keep in sync with the corresponding
+# internal.linux.ubuntu and internal.windows.server collect tasks.
 LINUX_DATA_KEYS: set[str] = {
     "hostname",
     "ip_address",

@@ -4,53 +4,39 @@ from pathlib import Path
 
 import yaml
 
-from fixtures._assemble_contracts import ESXI_DATA_KEYS, VCENTER_DATA_KEYS, VM_DATA_KEYS
+from fixtures._assemble_contracts import (
+    ANSIBLE_ROOT,
+    ESXI_DATA_KEYS,
+    VCENTER_DATA_KEYS,
+    VM_DATA_KEYS,
+    VMWARE_ROLES_ROOT,
+    _walk_tasks,
+)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-VMWARE_ROOT = REPO_ROOT / "ncs-ansible" / "collections" / "ansible_collections" / "internal" / "vmware"
+VMWARE_ROOT = ANSIBLE_ROOT / "collections/ansible_collections/internal/vmware"
 
 
-def _read_yaml(relative_path: str) -> dict:
-    return yaml.safe_load((REPO_ROOT / "ncs-ansible" / relative_path).read_text(encoding="utf-8")) or {}
-
-
-def _extract_actions_from_main_yaml(main_yaml_path: Path) -> list[str]:
-    """Extract the list of valid action routes the role declares to dispatch.
-
-    The current role pattern passes the set of allowed actions to
-    ``internal.core.dispatch`` as ``_ncs_action_routes:`` (a YAML list).
-    The legacy pattern used an inline ``assert`` with
-    ``_ncs_requested_action in [...]``; still honored for compatibility.
-    """
-    import re
-
-    content = main_yaml_path.read_text(encoding="utf-8")
-
-    routes_match = re.search(r"_ncs_action_routes:\s*\n((?:\s*-\s*[^\n]+\n)+)", content)
-    if routes_match:
-        return [
-            line.strip().lstrip("-").strip().strip("'\"")
-            for line in routes_match.group(1).splitlines()
-            if line.strip().startswith("-")
-        ]
-
-    legacy_match = re.search(r"_ncs_requested_action\s+in\s+\[([^\]]+)\]", content)
-    if legacy_match:
-        return [a.strip().strip("'\"") for a in legacy_match.group(1).split(",")]
-
+def _extract_dispatch_action_routes(main_yaml_path: Path) -> list[str]:
+    """Return the `_ncs_action_routes` list a role passes to internal.core.dispatch."""
+    tasks = yaml.safe_load(main_yaml_path.read_text(encoding="utf-8")) or []
+    for task in _walk_tasks(tasks):
+        include = task.get("ansible.builtin.include_role")
+        if not isinstance(include, dict) or include.get("name") != "internal.core.dispatch":
+            continue
+        task_vars = task.get("vars")
+        if not isinstance(task_vars, dict):
+            continue
+        routes = task_vars.get("_ncs_action_routes")
+        if isinstance(routes, list):
+            return [str(r) for r in routes]
     return []
 
 
 def test_vmware_supported_actions_match_task_files() -> None:
-    role_tasks = {
-        "esxi": VMWARE_ROOT / "roles" / "esxi" / "tasks",
-        "vm": VMWARE_ROOT / "roles" / "vm" / "tasks",
-    }
-
-    for role_name, task_dir in role_tasks.items():
-        main_yaml = task_dir / "main.yaml"
+    for role_name in ("esxi", "vm"):
+        main_yaml = VMWARE_ROLES_ROOT / role_name / "tasks" / "main.yaml"
         assert main_yaml.is_file(), f"{role_name} main.yaml should exist"
-        actions = _extract_actions_from_main_yaml(main_yaml)
+        actions = _extract_dispatch_action_routes(main_yaml)
         assert actions, f"{role_name} supported actions should not be empty"
 
 
