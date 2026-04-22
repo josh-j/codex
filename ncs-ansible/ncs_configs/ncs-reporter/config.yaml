@@ -1,0 +1,15 @@
+# Reporter config index for the orchestrator.
+#
+# Each per-platform schema, cklb_skeleton, and script lives in its own
+# collection's ncs_configs/ncs-reporter/ dir. This file points the
+# reporter at them so `ncs-reporter all --config-dir ncs_configs/ncs-reporter`
+# still discovers every config and skeleton.
+#
+# See docs/COLLECTION_LAYOUT.md for the full contract.
+
+extra_config_dirs:
+  - ../../../ncs-ansible-core/ncs_configs/ncs-reporter
+  - ../../../ncs-ansible-linux/ncs_configs/ncs-reporter
+  - ../../../ncs-ansible-vmware/ncs_configs/ncs-reporter
+  - ../../../ncs-ansible-windows/ncs_configs/ncs-reporter
+  - ../../../ncs-ansible-aci/ncs_configs/ncs-reporter

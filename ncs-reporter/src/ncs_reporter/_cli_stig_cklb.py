@@ -26,6 +26,7 @@ def _resolve_skeleton_path(
     *,
     explicit_skeleton_dir: Path | None,
     config_dir: Path | None,
+    extra_config_dirs: tuple[Path, ...] = (),
     builtin_skeleton_dir: Path,
 ) -> Path | None:
     """Resolve a skeleton file path using a layered search.
@@ -33,7 +34,8 @@ def _resolve_skeleton_path(
     Resolution order:
       1. --skeleton-dir / bare filename  (legacy explicit CLI override)
       2. --config-dir / path-from-schema (supports subdirs like cklb_skeletons/)
-      3. Package builtins / bare filename (bundled VMware/Photon skeletons)
+      3. Any extra_config_dirs / path-from-schema (per-collection configs)
+      4. Package builtins / bare filename (bundled VMware/Photon skeletons)
     """
     bare_name = Path(skeleton_file).name
 
@@ -44,6 +46,11 @@ def _resolve_skeleton_path(
 
     if config_dir:
         candidate = config_dir / skeleton_file
+        if candidate.exists():
+            return candidate
+
+    for extra in extra_config_dirs:
+        candidate = extra / skeleton_file
         if candidate.exists():
             return candidate
 
@@ -61,6 +68,7 @@ def _generate_cklb_artifacts(
     registry: PlatformRegistry | None = None,
     explicit_skeleton_dir: Path | None = None,
     config_dir: Path | None = None,
+    extra_config_dirs: tuple[Path, ...] = (),
 ) -> None:
     """Core CKLB generation logic.
 
@@ -91,6 +99,7 @@ def _generate_cklb_artifacts(
                 skeleton_file,
                 explicit_skeleton_dir=explicit_skeleton_dir,
                 config_dir=config_dir,
+                extra_config_dirs=extra_config_dirs,
                 builtin_skeleton_dir=builtin_skeleton_dir,
             )
 
@@ -98,6 +107,7 @@ def _generate_cklb_artifacts(
                 searched = " \u2192 ".join(filter(None, [
                     str(explicit_skeleton_dir / Path(skeleton_file).name) if explicit_skeleton_dir else None,
                     str(config_dir / skeleton_file) if config_dir else None,
+                    *(str(extra / skeleton_file) for extra in extra_config_dirs),
                     str(builtin_skeleton_dir / Path(skeleton_file).name),
                 ]))
                 click.echo(
@@ -124,6 +134,24 @@ def _registry_from_config_dir(config_dir: str | None) -> PlatformRegistry | None
     except Exception as exc:
         logger.warning("Could not build registry from config-dir '%s': %s", config_dir, exc)
         return None
+
+
+def _resolve_extra_config_dirs(config_dir: str | None) -> tuple[Path, ...]:
+    """Read config.yaml from config_dir and return its extra_config_dirs as Paths.
+
+    Used so CKLB skeleton resolution can search per-collection config dirs when
+    they host the skeletons alongside their platform YAMLs.
+    """
+    if not config_dir:
+        return ()
+    try:
+        config_yaml = load_config_yaml(config_dir)
+        extras, _platforms_cfg = resolve_config_dir(config_dir, (), None, config_yaml)
+    except Exception as exc:
+        logger.warning("Could not resolve extra_config_dirs for '%s': %s", config_dir, exc)
+        return ()
+    root = Path(config_dir).resolve()
+    return tuple(Path(p) for p in extras if Path(p).resolve() != root)
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +182,7 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None, config_dir:
         cklb_output,
         registry=registry,
         config_dir=Path(config_dir) if config_dir else None,
+        extra_config_dirs=_resolve_extra_config_dirs(config_dir),
     )
 
     render_stig(hosts_data, output_path, common_vars, cklb_dir=cklb_output)
@@ -193,6 +222,7 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None, config_dir:
         registry=registry,
         explicit_skeleton_dir=Path(skeleton_dir) if skeleton_dir else None,
         config_dir=Path(config_dir) if config_dir else None,
+        extra_config_dirs=_resolve_extra_config_dirs(config_dir),
     )
 
 

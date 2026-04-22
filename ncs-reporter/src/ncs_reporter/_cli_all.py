@@ -404,11 +404,13 @@ def _render_stig_and_cklb(
         click.echo("--- Generating CKLB Artifacts ---")
         cklb_output = r_root / "cklb"
         cklb_output.mkdir(parents=True, exist_ok=True)
+        from ._cli_stig_cklb import _resolve_extra_config_dirs
         _generate_cklb_artifacts(
             load_hosts_data(str(all_hosts_state)),
             cklb_output,
             registry=runtime_registry,
             config_dir=Path(config_dir) if config_dir else None,
+            extra_config_dirs=_resolve_extra_config_dirs(config_dir),
         )
 
     # STIG fleet rendering

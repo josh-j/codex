@@ -93,11 +93,13 @@ for the full contract.
 
 ### Runtime Configs
 
-Operator-editable configs live under `ncs-ansible/ncs_configs/`:
-- `ncs-ansible/ncs_configs/ncs-reporter/` — reporter YAML schemas, `cklb_skeletons/`, `scripts/` (consumed by ncs-reporter via `--config-dir`)
-- `ncs-ansible/ncs_configs/schedules.yml` — systemd timer definitions consumed by `playbooks/core/manage_schedules.yml`
+Operator-editable configs are split between the orchestrator (truly cross-platform or deployment-wide) and each collection (platform-owned):
 
-Each collection subdir also carries its own `ncs-ansible-<name>/ncs_configs/` for collection-owned configuration.
+- `ncs-ansible/ncs_configs/schedules.yml` — systemd timer definitions consumed by `playbooks/core/manage_schedules.yml` (orchestrator-owned, deployment-specific).
+- `ncs-ansible/ncs_configs/ncs-reporter/` — cross-platform reporter schemas (`inventory_root.yaml`) plus a `config.yaml` that lists each collection's `ncs_configs/ncs-reporter/` as an `extra_config_dir`. This is the primary `--config-dir` the reporter is invoked with.
+- `ncs-ansible-<name>/ncs_configs/ncs-reporter/` — platform reporter schemas, `cklb_skeletons/`, and helper `scripts/` for that collection. Ships and versions with the collection. The reporter auto-picks them up via the orchestrator's `extra_config_dirs` entry.
+
+See [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md) for the full contract.
 
 ## Two Ansible Environments
 

@@ -22,7 +22,8 @@
   vars:
     ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/../..', true) }}"
     platform_root: "{{ ncs_platform_root | default('/srv/samba/reports/platform') }}"
-    scripts_dir: "{{ ncs_repo_path }}/ncs_configs/ncs-reporter/scripts"
+    scripts_dir: "{{ ncs_repo_path }}/../ncs-ansible-vmware/ncs_configs/ncs-reporter/scripts"
+    owner_digest_exe: "{{ playbook_dir }}/files/build_owner_digest.py"
     age_days: "{{ ncs_digest_snapshot_age_days | default(7) | int }}"
     dry_run: "{{ dry_run | default(false) | bool }}"
     notify_powered_off: "{{ notify_powered_off | default(false) | bool }}"
@@ -45,7 +46,7 @@
         argv: >-
           {{
             [
-              scripts_dir ~ '/build_owner_digest.py',
+              owner_digest_exe,
               '--platform-root', platform_root,
               '--scripts-dir', scripts_dir,
               '--age-days', age_days | string,
