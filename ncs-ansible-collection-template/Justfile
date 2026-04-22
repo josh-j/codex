@@ -4,7 +4,6 @@
 # sibling is still usable in isolation.
 
 import? '../ncs-ansible/shared.just'
-import? '../codex/shared.just'
 
 # Collection-specific recipes go below. See the imported file for
 # lint / yamllint / build / clean.

@@ -3,7 +3,6 @@
 # in isolation (no recipes available, but `just --list` still runs).
 
 import? '../ncs-ansible/shared.just'
-import? '../codex/shared.just'
 
 # Collection-specific recipes below. See shared.just for
 # lint / yamllint / build / clean.

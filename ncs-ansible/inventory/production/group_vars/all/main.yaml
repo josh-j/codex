@@ -30,7 +30,7 @@ ncs_config:
 # syslog_host: syslog.yourdomain.mil
 
 # --- Reporting ---
-report_directory: /opt/codex/reports
+report_directory: /opt/ncs-framework/reports
 
 # --- SMTP alert email configuration (used by playbooks/core/send_alert_email.yml) ---
 # ncs_smtp_host: smtp.example.com
