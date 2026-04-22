@@ -8,6 +8,12 @@
 _ag     := if path_exists(justfile_directory() + "/.venv/bin/ansible-galaxy") == "true" { justfile_directory() + "/.venv/bin/ansible-galaxy" } else { "ansible-galaxy" }
 _al     := if path_exists(justfile_directory() + "/.venv/bin/ansible-lint") == "true" { justfile_directory() + "/.venv/bin/ansible-lint" } else { "ansible-lint" }
 _yl     := if path_exists(justfile_directory() + "/.venv/bin/yamllint") == "true" { justfile_directory() + "/.venv/bin/yamllint" } else { "yamllint" }
+_ap     := if path_exists(justfile_directory() + "/.venv/bin/ansible-playbook") == "true" { justfile_directory() + "/.venv/bin/ansible-playbook" } else { "ansible-playbook" }
+
+# Standard per-collection test harness locations — see tests/README.md.
+# Collection Justfiles reference these via the _test_run helper below.
+_test_inv   := justfile_directory() + "/tests/inventory"
+_test_vault := justfile_directory() + "/tests/.vault_pass"
 
 # Lint the collection's roles + playbooks against ansible-lint.
 lint:

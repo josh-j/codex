@@ -7,3 +7,15 @@ import? '../codex/shared.just'
 
 # Collection-specific recipes below. See shared.just for
 # lint / yamllint / build / clean.
+
+# Dry-run server_collect against tests/inventory. Safe (no mutations).
+# See tests/README.md for how to bootstrap the lab inventory + vault.
+test:
+    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} \
+        --check playbooks/server_collect.yml
+
+# Same as `test` but without --check — will execute real work against
+# the lab. Only run against a disposable host.
+test-apply:
+    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} \
+        playbooks/server_collect.yml

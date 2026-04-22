@@ -80,6 +80,17 @@ Standalone Python package (`ncs-reporter/src/ncs_reporter/`). Key modules:
 - `aggregation.py` — multi-host state aggregation
 - `_config.py` — config schema loader supporting canonical and alias keys
 
+### Inventory & Vault Split
+
+Each collection carries its own `tests/inventory/` + `tests/.vault_pass`
+(gitignored, per-collection test password) so it can be exercised
+standalone via `cd ncs-ansible-<name> && just test`. The orchestrator's
+production inventory (`ncs-ansible/inventory/production/`) and vault
+(`ncs-ansible/.vaultpass`) are a separate world — orchestrator runs never
+read from collection `tests/`, and collection `just test` runs never read
+from the orchestrator. See [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md)
+for the full contract.
+
 ### Runtime Configs
 
 Operator-editable configs live under `ncs-ansible/ncs_configs/`:

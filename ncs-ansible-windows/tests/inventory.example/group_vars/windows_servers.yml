@@ -1,0 +1,12 @@
+---
+# Lab defaults for Windows Server hosts. Hybrid WinRM-or-SSH connection
+# per role — this example uses SSH + Kerberos (GSSAPI). Adjust for your
+# lab's auth posture.
+ansible_connection: ssh
+ansible_shell_type: powershell
+ansible_user: svc-ansible@LAB.EXAMPLE.TEST
+ansible_ssh_common_args: '-o GSSAPIAuthentication=yes -o GSSAPIServerIdentity=yes'
+# If the lab uses password auth instead of GSSAPI, set:
+#   ansible_password: "{{ vault_windows_server_password }}"
+# and vault-encrypt the value in tests/inventory/group_vars/windows_servers_vault.yml
+vault_windows_server_password: "replace-me-with-vaulted-value"

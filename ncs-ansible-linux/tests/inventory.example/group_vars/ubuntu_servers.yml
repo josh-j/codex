@@ -1,0 +1,14 @@
+---
+# Lab defaults for Ubuntu hosts. Mirror of the orchestrator's
+# production group_vars/ubuntu_servers.yaml shape, with placeholder
+# values. Real secrets should live in a vault-encrypted file next to
+# this one (e.g. vault.yml) and be referenced via vault_* variable
+# names below.
+ansible_user: svc-ansible
+ansible_become: true
+ansible_become_method: sudo
+# Encrypt the real value in tests/inventory/group_vars/ubuntu_servers_vault.yml
+# with `ansible-vault encrypt --vault-password-file tests/.vault_pass`.
+ansible_password: "{{ vault_ubuntu_server_password }}"
+ansible_become_password: "{{ vault_ubuntu_server_password }}"
+vault_ubuntu_server_password: "replace-me-with-vaulted-value"

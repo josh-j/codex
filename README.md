@@ -72,6 +72,7 @@ Both live under `ncs-ansible/`:
 
 - [Architecture Diagram](docs/MERMAID_ARCH.md)
 - [`internal.core.stig` Reference](docs/INTERNAL_CORE_STIG.md)
+- [Collection Layout (inventory + vault)](docs/COLLECTION_LAYOUT.md)
 - [Scheduling & Alert Actions](docs/SCHEDULING_AND_ALERT_ACTIONS.md)
 - [OpenSSH + Kerberos](docs/OPENSSH_KERBEROS.md)
 - [Dev runbooks](docs/_dev/) — STIG migration workflow, release process, bug postmortem

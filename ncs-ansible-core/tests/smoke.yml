@@ -1,0 +1,33 @@
+---
+# Standalone smoke test for internal.core — exercises the stig action
+# plugin against localhost with a trivial rule so the collection can be
+# validated without any external inventory.
+#
+#   ansible-playbook -i tests/inventory tests/smoke.yml
+#
+# Passes when the rule reports status=pass. No remediation happens; the
+# probe is a pure variable comparison via _stig_validate_expr.
+
+- name: "internal.core | smoke"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: "Begin"
+      internal.core.stig:
+        _stig_phase: begin
+        _stig_manage_prefix: "core_smoke_"
+
+    - name: "stigrule_000001"
+      vars:
+        ping_reply: "pong"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: ping_reply
+            equals: "pong"
+        ansible.builtin.debug:
+          msg: "probe reached apply (should never happen when compliant)"
+
+    - name: "End"
+      internal.core.stig:
+        _stig_phase: end

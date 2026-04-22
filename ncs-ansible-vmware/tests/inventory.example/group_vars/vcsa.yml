@@ -1,0 +1,6 @@
+---
+# Lab defaults for vCenter/VCSA.
+vmware_validate_certs: false
+ansible_python_interpreter: /usr/bin/python3
+# Encrypt in tests/inventory/group_vars/vcsa_vault.yml
+vault_vcenter_password: "replace-me-with-vaulted-value"

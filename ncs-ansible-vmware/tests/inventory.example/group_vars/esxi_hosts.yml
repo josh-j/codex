@@ -1,0 +1,5 @@
+---
+# Lab defaults for standalone ESXi hosts (when running esxi_collect
+# with connection: local against vCenter, no direct-to-host SSH).
+ansible_connection: local
+vmware_validate_certs: false

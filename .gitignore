@@ -26,3 +26,7 @@ ncs-console/App/ncs-icon.ico
 
 # Operator-only, never commit
 docs/LAB_ACCESS.md
+
+# Per-collection test inventory + vault password — see docs/COLLECTION_LAYOUT.md
+ncs-ansible-*/tests/inventory/
+ncs-ansible-*/tests/.vault_pass

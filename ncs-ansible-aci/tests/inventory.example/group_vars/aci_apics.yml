@@ -1,0 +1,6 @@
+---
+# Lab defaults for APIC controllers. The aci role runs with connection:
+# local and reaches APICs over HTTPS, so no ssh user/password is needed.
+ansible_connection: local
+aci_validate_certs: false
+vault_aci_admin_password: "replace-me-with-vaulted-value"

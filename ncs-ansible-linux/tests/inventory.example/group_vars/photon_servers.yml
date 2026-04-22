@@ -1,0 +1,9 @@
+---
+# Lab defaults for Photon OS (vCenter appliance) hosts.
+ansible_user: root
+ansible_become: false
+ansible_python_interpreter: /usr/bin/python3
+# Encrypt the real value in tests/inventory/group_vars/photon_servers_vault.yml
+# with `ansible-vault encrypt --vault-password-file tests/.vault_pass`.
+ansible_password: "{{ vault_photon_root_password }}"
+vault_photon_root_password: "replace-me-with-vaulted-value"
