@@ -11,9 +11,21 @@ _yl     := if path_exists(justfile_directory() + "/.venv/bin/yamllint") == "true
 _ap     := if path_exists(justfile_directory() + "/.venv/bin/ansible-playbook") == "true" { justfile_directory() + "/.venv/bin/ansible-playbook" } else { "ansible-playbook" }
 
 # Standard per-collection test harness locations — see tests/README.md.
-# Collection Justfiles reference these via the _test_run helper below.
 _test_inv   := justfile_directory() + "/tests/inventory"
 _test_vault := justfile_directory() + "/tests/.vault_pass"
+
+# Parametrized test helpers. Each collection's Justfile declares:
+#
+#   test:       (_test_check "playbooks/ubuntu_collect.yml")
+#   test-apply: (_test_apply "playbooks/ubuntu_collect.yml")
+#
+# _test_check runs the playbook in --check mode against tests/inventory;
+# _test_apply drops --check for real execution against the lab.
+_test_check playbook:
+    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} --check {{playbook}}
+
+_test_apply playbook:
+    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} {{playbook}}
 
 # Lint the collection's roles + playbooks against ansible-lint.
 lint:

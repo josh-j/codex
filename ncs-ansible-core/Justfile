@@ -8,12 +8,8 @@ import? '../codex/shared.just'
 # Collection-specific recipes below. See shared.just for
 # lint / yamllint / build / clean.
 
-# Run the collection's standalone smoke playbook against localhost.
 # internal.core has no platform playbooks; smoke.yml exercises the
-# stig action plugin end-to-end. See tests/README.md.
-test:
-    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} tests/smoke.yml
-
-# Same as `test` but without --check — no-op here since smoke.yml does
-# no mutations, kept for parity with the other collections.
-test-apply: test
+# stig action plugin against localhost. No mutations, so `test` and
+# `test-apply` are equivalent — kept for parity with other collections.
+test:       (_test_apply "tests/smoke.yml")
+test-apply: (_test_apply "tests/smoke.yml")

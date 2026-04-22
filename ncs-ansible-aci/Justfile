@@ -8,14 +8,5 @@ import? '../codex/shared.just'
 # Collection-specific recipes below. See shared.just for
 # lint / yamllint / build / clean.
 
-# Dry-run apic_collect against tests/inventory. Safe (read-only).
-# See tests/README.md for how to bootstrap the lab inventory + vault.
-test:
-    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} \
-        --check playbooks/apic_collect.yml
-
-# Same as `test` but without --check. apic_collect is read-only so
-# this is primarily useful for exercising non-check branches.
-test-apply:
-    {{_ap}} -i {{_test_inv}} --vault-password-file {{_test_vault}} \
-        playbooks/apic_collect.yml
+test:       (_test_check "playbooks/apic_collect.yml")
+test-apply: (_test_apply "playbooks/apic_collect.yml")
