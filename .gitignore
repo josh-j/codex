@@ -22,6 +22,7 @@ ncs-console/App/ncs-icon.ico
 .vaultpass
 
 # Claude Code
+.claude
 .claude/
 CLAUDE.md
 
