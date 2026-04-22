@@ -426,16 +426,12 @@ format:
 
 # Run static type checking
 check:
-    mypy .
+    {{ python }} -m mypy .
     {{ if path_exists(".venv/bin/basedpyright") == "true" { ".venv/bin/basedpyright ." } else { "basedpyright . --pythonpath `which python3`" } }}
 
-# Run unit tests
+# Run reporter tests (no Ansible-side tests live here; delegate to ncs-reporter)
 test:
-    {{ python }} -m pytest tests/unit
-
-# Run integration tests
-integration:
-    {{ python }} -m pytest tests/integration -v
+    cd ../ncs-reporter && just test
 
 # Run Jinja2 template linting
 jinja-lint:

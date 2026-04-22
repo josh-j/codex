@@ -43,6 +43,12 @@ per-file-ignores = { "internal/core/plugins/modules/*.py" = ["E402"], "internal/
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
+exclude = [
+    "collections/",
+    "collections_vcsa/",
+    "\\.venv/",
+    "\\.venv-vcsa/",
+]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
