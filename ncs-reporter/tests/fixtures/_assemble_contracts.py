@@ -13,7 +13,6 @@ VMWARE_ROLES_ROOT = ANSIBLE_ROOT / "collections/ansible_collections/internal/vmw
 
 
 def _walk_tasks(tasks: object) -> Iterator[dict]:
-    """Yield every task dict in a task list, descending into block/rescue/always."""
     if not isinstance(tasks, list):
         return
     for task in tasks:
@@ -33,24 +32,16 @@ def _extract_set_fact_keys(task_file: Path, fact_name: str) -> set[str]:
         fact_payload = payload[fact_name]
         if isinstance(fact_payload, dict):
             return {str(k) for k in fact_payload}
-    return set()
+    raise RuntimeError(f"{fact_name} not set as a dict in {task_file}")
 
 
-_VMWARE_FACTS = {
-    "vcenter": "vcsa",
-    "esxi": "esxi",
-    "vm": "vm",
-}
-_VMWARE_KEYS = {
-    fact: _extract_set_fact_keys(
-        VMWARE_ROLES_ROOT / role / "tasks" / "collect.yaml",
-        f"vmware_raw_{fact}",
-    )
-    for fact, role in _VMWARE_FACTS.items()
-}
-VCENTER_DATA_KEYS = _VMWARE_KEYS["vcenter"]
-ESXI_DATA_KEYS = _VMWARE_KEYS["esxi"]
-VM_DATA_KEYS = _VMWARE_KEYS["vm"]
+def _vmware_keys(role: str, fact: str) -> set[str]:
+    return _extract_set_fact_keys(VMWARE_ROLES_ROOT / role / "tasks" / "collect.yaml", fact)
+
+
+VCENTER_DATA_KEYS = _vmware_keys("vcsa", "vmware_raw_vcenter")
+ESXI_DATA_KEYS = _vmware_keys("esxi", "vmware_raw_esxi")
+VM_DATA_KEYS = _vmware_keys("vm", "vmware_raw_vm")
 
 # Linux/Windows fact sets stay hardcoded: their assemblers are spread
 # across multiple task files and dynamic set_facts, so a single-file

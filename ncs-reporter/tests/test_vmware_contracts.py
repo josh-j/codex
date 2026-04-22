@@ -17,7 +17,6 @@ VMWARE_ROOT = ANSIBLE_ROOT / "collections/ansible_collections/internal/vmware"
 
 
 def _extract_dispatch_action_routes(main_yaml_path: Path) -> list[str]:
-    """Return the `_ncs_action_routes` list a role passes to internal.core.dispatch."""
     tasks = yaml.safe_load(main_yaml_path.read_text(encoding="utf-8")) or []
     for task in _walk_tasks(tasks):
         include = task.get("ansible.builtin.include_role")
@@ -65,7 +64,3 @@ def test_vmware_schema_doc_mentions_all_public_payload_keys() -> None:
         assert key in schema_doc, f"{key} missing from VMware schema documentation"
 
 
-def test_vmware_contract_sets_are_nonempty() -> None:
-    assert VCENTER_DATA_KEYS, "VCENTER_DATA_KEYS parsed to empty set"
-    assert ESXI_DATA_KEYS, "ESXI_DATA_KEYS parsed to empty set"
-    assert VM_DATA_KEYS, "VM_DATA_KEYS parsed to empty set"
