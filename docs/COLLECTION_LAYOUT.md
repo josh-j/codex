@@ -92,19 +92,19 @@ Each built-in collection owns the reporter schemas, CKLB skeletons, and helper s
 | Path | What's there |
 |---|---|
 | `ncs-ansible/ncs_configs/schedules.yml` | Systemd timer definitions (orchestrator feature) |
-| `ncs-ansible/ncs_configs/ncs-reporter/config.yaml` | Primary index — lists each collection's config dir via `extra_config_dirs:` |
-| `ncs-ansible/ncs_configs/ncs-reporter/inventory_root.yaml` | Cross-platform inventory-root schema |
+| `ncs-ansible/ncs_configs/config.yaml` | Primary index — lists each collection's config dir via `extra_config_dirs:` |
+| `ncs-ansible/ncs_configs/inventory_root.yaml` | Cross-platform inventory-root schema |
 | `ncs-ansible-core/ncs_configs/` | (empty — core has no reporter configs) |
-| `ncs-ansible-linux/ncs_configs/ncs-reporter/*.yaml` | `linux_base_*`, `ubuntu`, `photon` schemas |
-| `ncs-ansible-linux/ncs_configs/ncs-reporter/scripts/user_inventory.py` | Linux helper script referenced by `linux_base_fields.yaml` |
-| `ncs-ansible-linux/ncs_configs/ncs-reporter/cklb_skeletons/…` | Ubuntu CKLB skeleton |
-| `ncs-ansible-vmware/ncs_configs/ncs-reporter/*.yaml` | `vm`, `esxi`, `vcsa`, `vsphere`, `cluster`, `datacenter` schemas |
-| `ncs-ansible-vmware/ncs_configs/ncs-reporter/scripts/*.py` | VMware helper scripts (`get_vms_list`, `count_vm_compliance`, `normalize_snapshots`, `assemble_esxi_hosts`) |
-| `ncs-ansible-vmware/ncs_configs/ncs-reporter/cklb_skeletons/…` | vSphere 7 CKLB skeletons (includes `vca_photon_os` — also referenced by `linux/photon.yaml`) |
-| `ncs-ansible-windows/ncs_configs/ncs-reporter/windows.yaml` | Windows schema |
-| `ncs-ansible-aci/ncs_configs/ncs-reporter/aci.yaml` | ACI schema |
+| `ncs-ansible-linux/ncs_configs/*.yaml` | `linux_base_*`, `ubuntu`, `photon` schemas |
+| `ncs-ansible-linux/ncs_configs/scripts/user_inventory.py` | Linux helper script referenced by `linux_base_fields.yaml` |
+| `ncs-ansible-linux/ncs_configs/cklb_skeletons/…` | Ubuntu CKLB skeleton |
+| `ncs-ansible-vmware/ncs_configs/*.yaml` | `vm`, `esxi`, `vcsa`, `vsphere`, `cluster`, `datacenter` schemas |
+| `ncs-ansible-vmware/ncs_configs/scripts/*.py` | VMware helper scripts (`get_vms_list`, `count_vm_compliance`, `normalize_snapshots`, `assemble_esxi_hosts`) |
+| `ncs-ansible-vmware/ncs_configs/cklb_skeletons/…` | vSphere 7 CKLB skeletons (includes `vca_photon_os` — also referenced by `linux/photon.yaml`) |
+| `ncs-ansible-windows/ncs_configs/windows.yaml` | Windows schema |
+| `ncs-ansible-aci/ncs_configs/aci.yaml` | ACI schema |
 
-The reporter resolves schemas, scripts, and CKLB skeletons relative to each config file's own directory, so `cklb_skeletons/foo.json` inside `vcsa.yaml` finds the file next to it in the vmware collection. `$include: "linux_base_fields.yaml"` inside `ubuntu.yaml` resolves to the sibling in the linux collection. Invoke the reporter with `--config-dir ncs-ansible/ncs_configs/ncs-reporter` and the orchestrator's `config.yaml` fans out to every collection's dir.
+The reporter resolves schemas, scripts, and CKLB skeletons relative to each config file's own directory, so `cklb_skeletons/foo.json` inside `vcsa.yaml` finds the file next to it in the vmware collection. `$include: "linux_base_fields.yaml"` inside `ubuntu.yaml` resolves to the sibling in the linux collection. Invoke the reporter with `--config-dir ncs-ansible/ncs_configs` and the orchestrator's `config.yaml` fans out to every collection's dir.
 
 ## Don't do these
 
