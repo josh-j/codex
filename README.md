@@ -2,7 +2,7 @@
 
 **ncs-framework** — umbrella repository for the NCS fleet management platform: auditing, STIG compliance, and reporting across VMware (vCenter/ESXi/VM), Linux (Ubuntu/Photon), and Windows infrastructure.
 
-The root directory is kept as `codex/` on disk for now; logically it is the `ncs-framework`.
+This umbrella is **ncs-framework**. The checkout directory on disk may be named differently on your machine; paths below are relative to the repo root.
 
 ## Layout
 
@@ -40,7 +40,7 @@ The stages are decoupled — reports can be re-rendered from existing artifacts 
 
 ```bash
 git clone <url>
-cd codex/ncs-ansible
+cd ncs-framework/ncs-ansible
 just setup-all    # venvs + collections + SMB share
 just --list       # every Justfile recipe
 just site         # full audit + report pipeline

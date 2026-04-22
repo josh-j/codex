@@ -72,7 +72,7 @@ The collection exports three raw payload families through `set_stats` for the `i
 - `vmware_raw_esxi`
 - `vmware_raw_vm`
 
-Their canonical top-level keys are documented in [docs/SCHEMA.md](/home/sio/codex/collections/ansible_collections/internal/vmware/docs/SCHEMA.md).
+Their canonical top-level keys are documented in [docs/SCHEMA.md](docs/SCHEMA.md).
 
 ## Requirements
 

@@ -123,7 +123,7 @@ ncs-reporter fire-on-alerts \
   -i /srv/samba/reports/platform/vmware/vcsa/vcenter-prod/raw_vcenter.yaml \
   --hostname vcenter-prod \
   --state-file /var/lib/ncs/alert_state.yaml \
-  --project-dir /opt/codex
+  --project-dir /opt/ncs-framework
 ```
 
 - `-i` — path to the raw bundle (what the collector wrote).

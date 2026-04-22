@@ -1,11 +1,11 @@
 # Scaffold a ground-up `stig_<version>/` task folder from an XCCDF benchmark
 
-You are a coding agent working in the **ncs-framework** umbrella (repo root
-is `codex/` on disk). This repo already ships several fully-built STIG task
-folders that share a common shape. Your job here is to take a DISA XCCDF
-benchmark for a new STIG and produce a brand-new `stig_<version>/` task
-folder that matches those conventions exactly — not a port of one specific
-sibling, but a clean scaffold driven by the XCCDF itself.
+You are a coding agent working in the **ncs-framework** umbrella repo.
+This repo already ships several fully-built STIG task folders that share
+a common shape. Your job here is to take a DISA XCCDF benchmark for a
+new STIG and produce a brand-new `stig_<version>/` task folder that
+matches those conventions exactly — not a port of one specific sibling,
+but a clean scaffold driven by the XCCDF itself.
 
 Do **not** wire the new folder into the collection's dispatcher or any
 playbook. Scaffolding only. The operator will review the folder in isolation,
