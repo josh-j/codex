@@ -27,7 +27,7 @@ from ._report_context import (
     report_context,
 )
 from .aggregation import deep_merge, hosts_unchanged, load_all_reports, normalize_host_bundle, read_report, write_output
-from ._cli_stig_cklb import _generate_cklb_artifacts
+from ._cli_stig_cklb import _generate_cklb_artifacts, _resolve_extra_config_dirs
 from .models.platforms_config import PlatformEntry
 from .pathing import render_template
 from .platform_registry import PlatformRegistry
@@ -404,7 +404,6 @@ def _render_stig_and_cklb(
         click.echo("--- Generating CKLB Artifacts ---")
         cklb_output = r_root / "cklb"
         cklb_output.mkdir(parents=True, exist_ok=True)
-        from ._cli_stig_cklb import _resolve_extra_config_dirs
         _generate_cklb_artifacts(
             load_hosts_data(str(all_hosts_state)),
             cklb_output,
