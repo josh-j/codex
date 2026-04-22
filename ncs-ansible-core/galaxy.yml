@@ -1,0 +1,12 @@
+---
+namespace: internal
+name: core
+version: 1.0.9
+readme: README.md
+authors:
+  - NCS
+description: Core utilities, plugins, and filters for Ansible reporting.
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - monitoring

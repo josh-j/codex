@@ -1,0 +1,212 @@
+---
+# =============================================================================
+# Audit, logging, and journald — split from 30_system_config.yaml
+# =============================================================================
+
+# --- 270832 - audit rules immutable ---
+- name: "stigrule_270832"
+  internal.core.stig:
+    _stig_check: "grep -qE '^\\s*-e\\s+2\\s*$' /etc/audit/rules.d/99-stig-immutable.rules"
+    cmd: |
+      set -eu
+      sed -i '/^\s*-e\s\+2\s*$/d' /etc/audit/rules.d/audit.rules 2>/dev/null || true
+      echo '-e 2' > /etc/audit/rules.d/99-stig-immutable.rules
+
+# --- 270818/270819 - auditd.conf space_left / action_mail_acct ---
+- name: "stigrule_270818"
+  internal.core.stig:
+    _stig_gate_packages: [auditd]
+    _stig_gate_status: failed
+    _stig_check: |
+      set -eu
+      grep -qE '^\s*space_left\s*=\s*25%' /etc/audit/auditd.conf
+      grep -qE '^\s*space_left_action\s*=\s*email' /etc/audit/auditd.conf
+    cmd: |
+      set -eu
+      sed -i 's/^\s*space_left\s*=.*/{{ stig_2404_stigrule_270818_space_left_line }}/' /etc/audit/auditd.conf
+      sed -i 's/^\s*space_left_action\s*=.*/{{ stig_2404_stigrule_270818_space_left_action_line }}/' /etc/audit/auditd.conf
+
+- name: "stigrule_270819"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_gate_packages: [auditd]
+    _stig_gate_status: failed
+    _stig_notify: [auditd_sighup]
+    path: /etc/audit/auditd.conf
+    regexp: '^\s*action_mail_acct\s*='
+    line: "{{ stig_2404_stigrule_270819_action_mail_acct_line }}"
+    create: false
+
+# --- 270820 - audit log_format ENRICHED ---
+- name: "stigrule_270820"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_gate_packages: [auditd]
+    _stig_gate_status: failed
+    _stig_notify: [auditd_sighup]
+    path: /etc/audit/auditd.conf
+    regexp: '^\s*log_format\s*='
+    line: "log_format = ENRICHED"
+    create: false
+
+# --- 270681 - rsyslog auth and daemon ---
+- name: "stigrule_270681"
+  internal.core.stig:
+    _stig_gate_packages: [rsyslog]
+    _stig_notify: [rsyslog_restart]
+    _stig_check: |
+      set -eu
+      grep -qE '^\s*auth\.\*,authpriv\.\*' /etc/rsyslog.d/50-default.conf
+      grep -qE '^\s*daemon\.\*' /etc/rsyslog.d/50-default.conf
+    cmd: |
+      set -eu
+      f=/etc/rsyslog.d/50-default.conf
+      grep -qE '^\s*auth\.\*,authpriv\.\*' "$f" && \
+        sed -i 's|^\s*auth\.\*,authpriv\.\*.*|{{ stig_2404_stigrule_270681_rsyslog_auth_line }}|' "$f" || \
+        echo '{{ stig_2404_stigrule_270681_rsyslog_auth_line }}' >> "$f"
+      grep -qE '^\s*daemon\.\*' "$f" && \
+        sed -i 's|^\s*daemon\.\*.*|{{ stig_2404_stigrule_270681_rsyslog_daemon_line }}|' "$f" || \
+        echo '{{ stig_2404_stigrule_270681_rsyslog_daemon_line }}' >> "$f"
+
+# --- 270758 - journalctl permissions ---
+- name: "stigrule_270758"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    path: /usr/bin/journalctl
+    owner: root
+    group: root
+    mode: "0740"
+
+# --- 270759 - journald Storage=persistent ---
+- name: "stigrule_270759"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    path: /etc/systemd/journald.conf
+    regexp: '^\s*Storage\s*='
+    line: "Storage=persistent"
+    create: true
+
+# --- 270760 - journald Compress=yes ---
+- name: "stigrule_270760"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    path: /etc/systemd/journald.conf
+    regexp: '^\s*Compress\s*='
+    line: "Compress=yes"
+    create: true
+
+# --- 270765 - /var/log mode ---
+- name: "stigrule_270765"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    path: /var/log
+    mode: "0755"
+
+# --- 270766 - /var/log owner ---
+- name: "stigrule_270766"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    path: /var/log
+    owner: root
+
+# --- 270767 - /var/log group ---
+- name: "stigrule_270767"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    path: /var/log
+    group: syslog
+
+# --- 270658 - audisp remote plugin ---
+- name: "stigrule_270658"
+  internal.core.stig:
+    _stig_gate_packages: [audispd-plugins]
+    _stig_gate_vars:
+      stig_2404_stigrule_270658_remote_server: "non-empty"
+    _stig_gate_status: not_reviewed
+    _stig_check: |
+      set -eu
+      grep -qE '^\s*active\s*=\s*yes' /etc/audit/plugins.d/au-remote.conf 2>/dev/null || \
+      grep -qE '^\s*active\s*=\s*yes' /etc/audisp/plugins.d/au-remote.conf 2>/dev/null
+      grep -qE '^\s*remote_server\s*=' /etc/audit/audisp-remote.conf 2>/dev/null || \
+      grep -qE '^\s*remote_server\s*=' /etc/audisp/audisp-remote.conf 2>/dev/null
+    cmd: |
+      set -eu
+      conf=""
+      [ -d /etc/audit/plugins.d ] && conf=/etc/audit/plugins.d/au-remote.conf || conf=/etc/audisp/plugins.d/au-remote.conf
+      sed -i 's/^\s*active\s*=.*/active = yes/' "$conf" 2>/dev/null || echo 'active = yes' >> "$conf"
+      rconf=""
+      [ -f /etc/audit/audisp-remote.conf ] && rconf=/etc/audit/audisp-remote.conf || rconf=/etc/audisp/audisp-remote.conf
+      sed -i "s/^\s*remote_server\s*=.*/remote_server = {{ stig_2404_stigrule_270658_remote_server }}/" "$rconf"
+
+# --- Site helper: audisp-syslog forwarder ---------------------------------
+# Not a DISA STIG rule. Lets rsyslog receive audit events via the audispd
+# plugin (which runs inside auditd as root) instead of tailing
+# /var/log/audit/audit.log directly. Required because rule 270829 forces
+# log_group=root on the audit log files, which locks syslog (group adm)
+# out of direct reads after rotation.
+#
+# Opt-in: set stig_2404_site_audisp_syslog_manage=true in inventory.
+# Requires audispd-plugins to be installed (rule 270658 handles that
+# package). After enable, configure rsyslog to route local6.* to the
+# desired destination.
+- name: "site_audisp_syslog | configure plugin"
+  when:
+    - stig_2404_site_audisp_syslog_manage | default(false) | bool
+    - "'audispd-plugins' in (ansible_facts.packages | default({}))"
+  block:
+    - name: "site_audisp_syslog | locate plugins.d directory"
+      ansible.builtin.stat:
+        path: /etc/audit/plugins.d
+      register: _site_audisp_plugins_new
+
+    - name: "site_audisp_syslog | set plugin config path"
+      ansible.builtin.set_fact:
+        _site_audisp_syslog_conf: >-
+          {{ '/etc/audit/plugins.d/syslog.conf'
+             if _site_audisp_plugins_new.stat.exists
+             else '/etc/audisp/plugins.d/syslog.conf' }}
+
+    - name: "site_audisp_syslog | render plugin config"
+      ansible.builtin.copy:
+        dest: "{{ _site_audisp_syslog_conf }}"
+        owner: root
+        group: root
+        mode: "0640"
+        content: |
+          # Managed by internal.linux.ubuntu (site_audisp_syslog)
+          active = yes
+          direction = out
+          path = /sbin/audisp-syslog
+          type = always
+          args = {{ stig_2404_site_audisp_syslog_priority }} {{ stig_2404_site_audisp_syslog_facility }}
+          format = string
+      notify: auditd_sighup
+  tags: [audit, syslog, site]
+
+# --- 270816 - Audit log storage on separate partition ---
+- name: "stigrule_270816"
+  internal.core.stig:
+    _stig_audit_only: true
+    _stig_gate_packages: [auditd]
+    _stig_gate_status: failed
+    _stig_check: |
+      set -eu
+      mountpoint -q {{ stig_2404_stigrule_270816_audit_log_mountpoint | quote }}
+    cmd: "true"
+
+# --- 270817 - Weekly audit offload ---
+- name: "stigrule_270817"
+  internal.core.stig:
+    _stig_gate_vars:
+      stig_2404_stigrule_270817_audit_offload_destination: "non-empty"
+    _stig_gate_status: not_reviewed
+    _stig_check: |
+      set -eu
+      crontab -l 2>/dev/null | grep -q 'audit' || test -f /etc/cron.weekly/audit-offload
+    cmd: |
+      set -eu
+      cat > /etc/cron.weekly/audit-offload <<'CRONEOF'
+      #!/bin/bash
+      rsync -az /var/log/audit/ {{ stig_2404_stigrule_270817_audit_offload_destination }}
+      CRONEOF
+      chmod 0755 /etc/cron.weekly/audit-offload

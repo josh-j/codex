@@ -1,0 +1,259 @@
+---
+# vars/eam_stig_rules.yaml
+# Data-driven XML STIG rules for VCSA 7.0 EAM (ESX Agent Manager)
+# Used by xml_evaluator.yaml (xmllint-based, no community.general.xml)
+#
+# check_type values:
+#   attribute   — xmllint checks xpath/@attribute = expected
+#   text        — xmllint checks xpath text content = expected
+#   absent      — xmllint asserts xpath/@attribute returns "XPath set is empty"
+#   grep        — shell grep on the file
+
+eam_xml_rules:
+  # =========================================================================
+  # server.xml — Connector / Executor settings
+  # =========================================================================
+
+  # VCEM-70-000001: connectionTimeout must be 60000
+  - stig_id: "VCEM-70-000001"
+    desc: "Limit TCP connection keep-alive time"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: "/Server/Service/Connector"
+    attribute: "connectionTimeout"
+    expected: "{{ var_server_xml_connectiontimeout }}"
+    manage_var: run_connection_timeout
+
+  # VCEM-70-000002: maxThreads on Executor must be 300
+  - stig_id: "VCEM-70-000002"
+    desc: "Limit concurrent connections"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: '/Server/Service/Executor[@name="tomcatThreadPool"]'
+    attribute: "maxThreads"
+    expected: "{{ var_server_xml_maxthreads }}"
+    manage_var: run_max_threads
+
+  # VCEM-70-000003: maxPostSize must not be set
+  - stig_id: "VCEM-70-000003"
+    desc: "Limit maximum POST request size"
+    path: "{{ var_server_xml_path }}"
+    check_type: absent
+    xpath: "/Server/Service/Connector"
+    attribute: "maxPostSize"
+    manage_var: run_max_post_size
+
+  # VCEM-70-000004: Cookie httpOnly must be true
+  - stig_id: "VCEM-70-000004"
+    desc: "Protect cookies from XSS (httpOnly)"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: "/x:web-app/x:session-config/x:cookie-config/x:http-only"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "{{ var_web_xml_http_only }}"
+    manage_var: run_http_only
+
+  # VCEM-70-000005: Access log valve pattern
+  - stig_id: "VCEM-70-000005"
+    desc: "Record user access in monitoring format"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]'
+    attribute: "pattern"
+    expected: "{{ var_server_xml_access_log_valve_pattern }}"
+    manage_var: run_access_valve_pattern
+
+  # VCEM-70-000010: UserDatabaseRealm must not exist
+  - stig_id: "VCEM-70-000010"
+    desc: "Must not be configured with unsupported realms"
+    path: "{{ var_server_xml_path }}"
+    check_type: grep
+    grep_pattern: "UserDatabaseRealm"
+    grep_expected: absent
+    manage_var: run_user_database_realm
+
+  # VCEM-70-000012a-d: Shell MIME types must not exist
+  - stig_id: "VCEM-70-000012a"
+    desc: "Must not map x-csh MIME type"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: "x-csh"
+    grep_expected: absent
+    manage_var: run_removed_mime_mappings
+
+  - stig_id: "VCEM-70-000012b"
+    desc: "Must not map x-sh MIME type"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: "x-sh<"
+    grep_expected: absent
+    manage_var: run_removed_mime_mappings
+
+  - stig_id: "VCEM-70-000012c"
+    desc: "Must not map x-shar MIME type"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: "x-shar"
+    grep_expected: absent
+    manage_var: run_removed_mime_mappings
+
+  - stig_id: "VCEM-70-000012d"
+    desc: "Must not map x-ksh MIME type"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: "x-ksh"
+    grep_expected: absent
+    manage_var: run_removed_mime_mappings
+
+  # VCEM-70-000013: JspServlet mapping
+  - stig_id: "VCEM-70-000013"
+    desc: "Must have mappings set for Java servlet pages"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="JspServlet"]/x:url-pattern'
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "{{ var_web_xml_servlet_jsp_url_pattern }}"
+    manage_var: run_java_servlet
+
+  # VCEM-70-000014: WebDAV must not be installed
+  - stig_id: "VCEM-70-000014"
+    desc: "Must not have WebDAV servlet installed"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: "webdav"
+    grep_expected: absent
+    manage_var: run_remove_webdav
+
+  # VCEM-70-000015: JreMemoryLeakPreventionListener must exist
+  - stig_id: "VCEM-70-000015"
+    desc: "Must be configured with memory leak protection"
+    path: "{{ var_server_xml_path }}"
+    check_type: grep
+    grep_pattern: "JreMemoryLeakPreventionListener"
+    grep_expected: present
+    manage_var: run_mem_leak_prevention
+
+  # VCEM-70-000019: acceptCount on Executor
+  - stig_id: "VCEM-70-000019"
+    desc: "Must limit the number of allowed connections"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: '/Server/Service/Executor[@name="tomcatThreadPool"]'
+    attribute: "acceptCount"
+    expected: "{{ var_server_xml_acceptcount }}"
+    manage_var: run_accept_count
+
+  # VCEM-70-000020: URIEncoding must be UTF-8
+  - stig_id: "VCEM-70-000020"
+    desc: "Must set URIEncoding to UTF-8"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: "/Server/Service/Connector"
+    attribute: "URIEncoding"
+    expected: "{{ var_server_xml_uriencoding }}"
+    manage_var: run_uri_encoding
+
+  # VCEM-70-000022: welcome-file-list
+  - stig_id: "VCEM-70-000022"
+    desc: "Must configure welcome file"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: "/x:web-app/x:welcome-file-list/x:welcome-file"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "{{ var_web_xml_welcome_file_list }}"
+    manage_var: run_web_welcome_file
+
+  # VCEM-70-000023: Directory listings disabled
+  - stig_id: "VCEM-70-000023"
+    desc: "Must have directory listings disabled"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="listings"]/x:param-value'
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "false"
+    manage_var: run_web_remove_listings
+
+  # VCEM-70-000024: Error page
+  - stig_id: "VCEM-70-000024"
+    desc: "Must set error pages"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: '/x:web-app/x:error-page[x:exception-type="java.lang.Throwable"]/x:location'
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "{{ var_web_xml_error_page }}"
+    manage_var: run_web_error_page
+
+  # VCEM-70-000025a: showServerInfo must be false
+  - stig_id: "VCEM-70-000025a"
+    desc: "Must not disclose server information in errors"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.ErrorReportValve"]'
+    attribute: "showServerInfo"
+    expected: "{{ var_server_xml_show_server_info }}"
+    manage_var: run_hide_error_reports
+
+  # VCEM-70-000025b: showReport must be false
+  - stig_id: "VCEM-70-000025b"
+    desc: "Must not disclose error reports"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.ErrorReportValve"]'
+    attribute: "showReport"
+    expected: "{{ var_server_xml_show_server_report }}"
+    manage_var: run_hide_error_reports
+
+  # VCEM-70-000026: Server header must be anonymous
+  - stig_id: "VCEM-70-000026"
+    desc: "Must set Server header to anonymous"
+    path: "{{ var_server_xml_path }}"
+    check_type: attribute
+    xpath: "/Server/Service/Connector"
+    attribute: "server"
+    expected: "{{ var_server_xml_server }}"
+    manage_var: run_server_anonymous
+
+  # VCEM-70-000027: allowTrace must not be set
+  - stig_id: "VCEM-70-000027"
+    desc: "Must not allow HTTP TRACE"
+    path: "{{ var_server_xml_path }}"
+    check_type: absent
+    xpath: '//Connector[@allowTrace="true"]'
+    attribute: "allowTrace"
+    manage_var: run_allow_trace
+
+  # VCEM-70-000028: debug init-param must not exist
+  - stig_id: "VCEM-70-000028"
+    desc: "Must not have debug enabled"
+    path: "{{ var_web_xml_path }}"
+    check_type: grep
+    grep_pattern: ">0<"
+    grep_expected: absent
+    manage_var: run_web_remove_debug
+
+  # VCEM-70-000030: Cookie secure must be true
+  - stig_id: "VCEM-70-000030"
+    desc: "Must set secure flag on cookies"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: "/x:web-app/x:session-config/x:cookie-config/x:secure"
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "{{ var_web_xml_cookie_secure }}"
+    manage_var: run_web_cookie_secure
+
+  # VCEM-70-000033: DefaultServlet readonly must not be false
+  - stig_id: "VCEM-70-000033"
+    desc: "Must set readonly for default servlet"
+    path: "{{ var_web_xml_path }}"
+    check_type: text
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="readonly"]/x:param-value'
+    namespaces:
+      x: "http://java.sun.com/xml/ns/javaee"
+    expected: "true"
+    manage_var: run_web_remove_readonly

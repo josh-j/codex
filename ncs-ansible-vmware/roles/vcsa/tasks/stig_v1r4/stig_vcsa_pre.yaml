@@ -1,0 +1,15 @@
+---
+# internal.vmware.vcsa : tasks/stig_vcsa_pre.yaml
+# Pre-phase1 setup for VCSA STIG: load profile vars + optional Photon baseline.
+
+- name: "VCSA STIG | Load VCSA profile vars"
+  ansible.builtin.include_vars:
+    file: "{{ _ncs_task_root }}/stig_v1r4/vars/vcsa_{{ vcsa_stig_profile | default('v1r4') }}.yaml"
+
+- name: "VCSA STIG | Optional Photon baseline"
+  ansible.builtin.include_role:
+    name: internal.linux.photon
+  vars:
+    ncs_action: "{{ 'remediate' if (vcsa_stig_enable_hardening | default(false) | bool) else 'audit' }}"
+    ncs_profile: stig
+  when: vcsa_stig_include_photon | default(false) | bool

@@ -1,0 +1,16 @@
+---
+# internal.linux.ubuntu : tasks/stig.yaml
+
+- name: "Ubuntu STIG"
+  ansible.builtin.include_role:
+    name: internal.core.stig_orchestrator
+  vars:
+    _ncs_stig_label: "Ubuntu STIG"
+    _ncs_stig_target_type: "ubuntu"
+    _ncs_stig_task_file: "{{ _ncs_task_root }}/stig_2404/main.yaml"
+    _ncs_stig_compat_facts:
+      ubuntu_stig_enable_audit: "{{ ubuntu_enable_stig_audit | default(ubuntu_stig_enable_audit) | default(true) }}"
+      ubuntu_stig_enable_hardening: "{{ ubuntu_enable_stig_hardening | default(ubuntu_stig_enable_hardening) | default(false) }}"
+    _ncs_stig_mode_facts:
+      ubuntu_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+      ubuntu_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"

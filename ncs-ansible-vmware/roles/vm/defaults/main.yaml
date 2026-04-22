@@ -1,0 +1,16 @@
+---
+# internal.vmware.vm : defaults/main.yaml
+
+# Pipeline config
+vm_stig_enable_hardening: false
+vm_stig_enable_audit: true
+vmware_stig_target: "vm"
+vm_stig_target_vms: []
+
+# Collection toggles
+vm_collect_workload: true
+vm_collect_snapshots: true
+
+# Thresholds (used by ncs-reporter)
+vmware_snapshot_age_warning_days: 7
+vmware_snapshot_size_warning_gb: 100.0

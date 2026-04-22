@@ -1,0 +1,19 @@
+---
+# internal.windows.domain : ops/group_membership.yaml
+# Requires: domain_group_name (the group to enumerate)
+
+- name: "Group Membership | Query members of {{ domain_group_name | default('') }}"
+  ansible.windows.win_powershell:
+    script: |
+      Get-ADGroupMember -Identity '{{ domain_group_name }}' -Recursive |
+        Select-Object Name, SamAccountName, ObjectClass, DistinguishedName
+  register: _ad_members
+
+- name: "Group Membership | Store results"
+  ansible.builtin.set_fact:
+    domain_group_members: "{{ _ad_members.output }}"
+  changed_when: false
+
+- name: "Group Membership | Display count"
+  ansible.builtin.debug:
+    msg: "{{ domain_group_name }} has {{ domain_group_members | length }} members (recursive)"

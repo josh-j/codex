@@ -1,0 +1,7 @@
+---
+# internal/linux/playbooks/stig_audit.yml
+# Canonical fleet-level STIG audit across every Linux flavour in the
+# collection.
+
+- ansible.builtin.import_playbook: ubuntu_stig_audit.yml
+- ansible.builtin.import_playbook: photon_stig_audit.yml

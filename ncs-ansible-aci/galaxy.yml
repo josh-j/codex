@@ -1,0 +1,14 @@
+---
+namespace: internal
+name: aci
+version: 0.3.5
+readme: README.md
+authors:
+  - NCS
+description: "aci audit and automation roles for the NCS fleet."
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - security
+dependencies:
+  "internal.core": ">=1.0.0,<2.0.0"

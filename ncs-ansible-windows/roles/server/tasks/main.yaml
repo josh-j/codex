@@ -1,0 +1,45 @@
+---
+# internal.windows.server : tasks/main.yaml
+
+- name: "Windows | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "Windows | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: Windows
+    _ncs_default_action: collect
+    _ncs_dynamic_dispatch: true
+    _ncs_dynamic_dispatch_prefix: "maintain/"
+    _ncs_pre_dispatch_facts:
+      windows_audit_force_update: "{{ ncs_action | default('audit') == 'remediate' and ncs_operation | default('none') == 'patch' }}"
+    _ncs_allowed_profiles:
+      - stig
+      - health
+    _ncs_allowed_operations:
+      - ad_search
+      - cleanup
+      - kb_install
+      - openssh
+      - patch
+      - registry_fix
+      - remote_ops
+      - scheduled_task
+      - service
+      - uninstall_software
+      - update_software
+      - vuln_scan
+      - windows_update
+      - winrm_enable
+    _ncs_extra_validations:
+      - "{{ (_ncs_requested_profile != 'health') or (_ncs_requested_action in ['audit', 'collect', 'verify']) }}"
+      - "{{ (_ncs_requested_operation not in ['ad_search', 'vuln_scan']) or (_ncs_requested_action in ['audit', 'verify']) }}"
+      - "{{ (_ncs_requested_operation not in ['cleanup', 'kb_install', 'openssh', 'patch', 'registry_fix', 'remote_ops', 'scheduled_task', 'service', 'uninstall_software', 'update_software', 'windows_update', 'winrm_enable']) or (_ncs_requested_action in ['remediate', 'verify']) }}"
+    _dispatch_map:
+      stig: stig
+      health: health
+      patch: collect
+      _default_: collect

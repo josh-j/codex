@@ -1,0 +1,20 @@
+---
+# internal.vmware.esxi : tasks/stig.yaml
+
+- name: "ESXi STIG"
+  ansible.builtin.include_role:
+    name: internal.core.stig_orchestrator
+  vars:
+    _ncs_stig_label: "ESXi STIG"
+    _ncs_stig_target_type: "esxi"
+    _ncs_stig_task_file: "{{ _ncs_task_root }}/stig_v7r4/main.yaml"
+    _ncs_stig_compat_facts:
+      esxi_stig_enable_hardening: "{{ vmware_stig_enable_hardening | default(esxi_stig_enable_hardening) | default(false) }}"
+    _ncs_stig_mode_facts:
+      esxi_stig_enable_audit: "{{ _ncs_stig_action in ['audit', 'verify'] }}"
+      esxi_stig_enable_hardening: "{{ _ncs_stig_action == 'remediate' }}"
+    _ncs_stig_pre_validations:
+      - "{{ esxi_stig_target_hosts | default([]) | length > 0 }}"
+    _ncs_stig_phase1_loop: "{{ esxi_stig_target_hosts | unique | list }}"
+    _ncs_stig_phase1_loop_var: _current_esxi_host
+    _ncs_stig_phase2_loop: "{{ esxi_stig_target_hosts | difference([ansible_host]) | unique | list }}"

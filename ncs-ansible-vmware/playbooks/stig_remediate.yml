@@ -1,0 +1,7 @@
+---
+# internal/vmware/playbooks/stig_remediate.yml
+# Canonical fleet-level STIG remediate across every VMware sub-platform.
+
+- ansible.builtin.import_playbook: esxi_stig_remediate.yml
+- ansible.builtin.import_playbook: vcsa_stig_remediate.yml
+- ansible.builtin.import_playbook: vm_stig_remediate.yml

@@ -1,0 +1,36 @@
+---
+# internal.windows.domain : ops/dhcp_scopes.yaml
+# Requires: domain_dhcp_server (hostname of DHCP server to query)
+
+- name: "DHCP Scopes | Query DHCP server scopes"
+  ansible.windows.win_powershell:
+    script: |
+      $server = '{{ domain_dhcp_server }}'
+      $scopes = Get-DhcpServerv4Scope -ComputerName $server |
+        Select-Object ScopeId, Name, SubnetMask, StartRange, EndRange, State, LeaseDuration
+      $stats = foreach ($s in $scopes) {
+        $st = Get-DhcpServerv4ScopeStatistics -ComputerName $server -ScopeId $s.ScopeId
+        @{
+          scope_id      = $s.ScopeId.ToString()
+          name          = $s.Name
+          subnet_mask   = $s.SubnetMask.ToString()
+          start_range   = $s.StartRange.ToString()
+          end_range     = $s.EndRange.ToString()
+          state         = $s.State.ToString()
+          in_use        = $st.InUse
+          free          = $st.Free
+          percent_in_use = $st.PercentageInUse
+        }
+      }
+      $stats
+  register: _dhcp_scopes
+  when: domain_dhcp_server | default('') | length > 0
+
+- name: "DHCP Scopes | Store results"
+  ansible.builtin.set_fact:
+    domain_dhcp_results: "{{ _dhcp_scopes.output | default([]) }}"
+  changed_when: false
+
+- name: "DHCP Scopes | Display count"
+  ansible.builtin.debug:
+    msg: "Found {{ domain_dhcp_results | length }} DHCP scopes"

@@ -1,0 +1,50 @@
+---
+# internal.windows.server : tasks/update_software.yaml
+# Software update orchestrator — dispatches to per-app subtasks.
+
+- name: "Update Software | Orchestrator"
+  vars:
+    _update_software_failed: false
+    _update_software_results: []
+  block:
+    - name: "Update Software | Chrome"
+      ansible.builtin.include_tasks: updates/chrome.yaml
+      when: "'chrome' in windows_update_software_targets"
+      tags: [update, chrome]
+
+    - name: "Update Software | Edge"
+      ansible.builtin.include_tasks: updates/edge.yaml
+      when: "'edge' in windows_update_software_targets"
+      tags: [update, edge]
+
+    - name: "Update Software | Office"
+      ansible.builtin.include_tasks: updates/office.yaml
+      when: "'office' in windows_update_software_targets"
+      tags: [update, office]
+
+    - name: "Update Software | Notepad++"
+      ansible.builtin.include_tasks: updates/notepad.yaml
+      when: "'notepad' in windows_update_software_targets"
+      tags: [update, notepad]
+
+    - name: "Update Software | General (winget)"
+      ansible.builtin.include_tasks: updates/general.yaml
+      when: "'general' in windows_update_software_targets"
+      tags: [update, general]
+
+  rescue:
+    - name: "Update Software | Mark failure"
+      ansible.builtin.set_fact:
+        _update_software_failed: true
+      changed_when: false
+
+  always:
+    - name: "Update Software | Emit telemetry"
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/update_software"
+        _ncs_emit_payload:
+          targets: "{{ windows_update_software_targets }}"
+          results: "{{ _update_software_results | default([]) }}"
+          failed: "{{ _update_software_failed | bool }}"

@@ -1,0 +1,24 @@
+---
+# internal.vmware.vcsa : defaults/main.yaml
+
+# =============================================================================
+# Connection Defaults
+# =============================================================================
+vmware_validate_certs: false
+
+# =============================================================================
+# STIG Settings
+# =============================================================================
+vcsa_stig_enable_audit: true
+vcsa_stig_enable_hardening: false
+vmware_stig_export_cklb: true
+vcsa_stig_profile: "v1r4"
+vcsa_stig_include_photon: false
+vcsa_stig_photon_version: "3"
+vcsa_stig_create_backups: true
+
+# =============================================================================
+# Collection Toggles
+# =============================================================================
+vcsa_collect_appliance: true
+vcsa_collect_alarms: true

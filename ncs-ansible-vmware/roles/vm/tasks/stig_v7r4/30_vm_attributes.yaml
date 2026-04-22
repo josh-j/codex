@@ -1,0 +1,42 @@
+---
+# v7r4/vm_attributes.yaml — VM attribute STIG rules (3 rules)
+# vMotion encryption, logging, FT encryption
+# Validate via _stig_validate_expr against bulk-gathered attributes.
+# Remediate via community.vmware.vmware_guest.
+
+- block:
+    # --- V-256472 / VMCH-70-000024: vMotion encryption required ---
+    - name: "stigrule_256472"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_attr_vmotion_encryption
+            equals: "required"
+        encryption:
+          encrypted_vmotion: required
+
+    # --- V-256473 / VMCH-70-000025: Logging enabled ---
+    - name: "stigrule_256473"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_attr_logging_enabled
+            equals: "True"
+        advanced_settings:
+          - key: "vmx.log.enabled"
+            value: "TRUE"
+
+    # --- V-256477 / VMCH-70-000029: FT encryption required ---
+    - name: "stigrule_256477"
+      internal.core.stig:
+        _stig_validate_expr:
+          - var: _vm_attr_ft_encryption
+            matches: "(?i)^(required|ftencryptionrequired)$"
+        encryption:
+          encrypted_ft: required
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: community.vmware.vmware_guest
+      _stig_use_check_mode_probe: false
+      _stig_skip_post_validate: true
+      name: "{{ _current_vm_name }}"
+      datacenter: "{{ _current_vm_datacenter }}"

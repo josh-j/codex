@@ -1,0 +1,120 @@
+---
+# internal.aci.apic : tasks/collect.yaml
+#
+# APIC REST is reached over HTTPS by URL, never by SSH — every call is
+# delegated to localhost.
+
+- name: ACI Collection Orchestrator
+  vars:
+    _discover_failed: false
+    _aci_data_fetches:
+      - { name: fabric_health,  uri: "{{ aci_health_fabric_uri }}" }
+      - { name: tenant_health,  uri: "{{ aci_health_tenant_uri }}" }
+      - { name: faults,         uri: "{{ aci_faults_uri }}" }
+      - { name: cleared_faults, uri: "{{ aci_cleared_faults_uri }}" }
+      - { name: ingress,        uri: "{{ aci_ingr_uri }}" }
+      - { name: egress,         uri: "{{ aci_egr_uri }}" }
+      - { name: ospf,           uri: "{{ aci_ospf_uri }}" }
+      - { name: interfaces,     uri: "{{ aci_intf_descr_uri }}" }
+  block:
+    - name: "ACI | Authenticate to APIC"
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ inventory_hostname }}{{ aci_login_uri }}"
+        method: POST
+        body:
+          aaaUser:
+            attributes:
+              name: "{{ aci_username }}"
+              pwd: "{{ aci_password }}"
+        body_format: json
+        validate_certs: false
+      register: _aci_login
+      retries: "{{ aci_login_retries }}"
+      delay: "{{ aci_login_delay }}"
+      until: _aci_login.status == 200
+      no_log: true
+
+    - name: "ACI | Set login cookie fact"
+      delegate_to: localhost
+      ansible.builtin.set_fact:
+        apic_cookie: "{{ _aci_login.cookies_string | regex_search('APIC-cookie=[^;]+') }}"
+
+    - name: "ACI | Fetch data blocks"
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ inventory_hostname }}{{ item.uri }}"
+        method: GET
+        headers:
+          Cookie: "{{ apic_cookie }}"
+        validate_certs: false
+      register: _aci_responses
+      loop: "{{ _aci_data_fetches }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "ACI | Index responses by name"
+      ansible.builtin.set_fact:
+        _aci_by_name: >-
+          {{ dict(_aci_responses.results
+                  | map(attribute='item.name')
+                  | zip(_aci_responses.results | map(attribute='json'))) }}
+      changed_when: false
+
+    - name: "ACI | Build interface description map"
+      ansible.builtin.set_fact:
+        _aci_description_map: >-
+          {{ (_aci_by_name.interfaces | default({})).imdata | default([])
+             | map(attribute='l1PhysIf.attributes')
+             | items2dict(key_name='dn', value_name='descr') }}
+      changed_when: false
+
+    - name: "ACI | Enrich ingress utilization rows"
+      ansible.builtin.include_tasks: _enrich_util.yaml
+      vars:
+        _util_raw: "{{ (_aci_by_name.ingress | default({})).imdata | default([]) }}"
+        _util_wrapper: eqptIngrTotalHist15min
+        _util_output_fact: _aci_ingress_high_util
+
+    - name: "ACI | Enrich egress utilization rows"
+      ansible.builtin.include_tasks: _enrich_util.yaml
+      vars:
+        _util_raw: "{{ (_aci_by_name.egress | default({})).imdata | default([]) }}"
+        _util_wrapper: eqptEgrTotalHist15min
+        _util_output_fact: _aci_egress_high_util
+
+  rescue:
+    - name: "ACI | Mark discovery as failed"
+      ansible.builtin.set_fact:
+        _discover_failed: true
+      changed_when: false
+
+  always:
+    - name: "ACI | Assemble flat discovery payload"
+      vars:
+        _by: "{{ _aci_by_name | default({}) }}"
+      ansible.builtin.set_fact:
+        _aci_raw_payload:
+          apic_hostname: "{{ inventory_hostname }}"
+          apic_short: "{{ inventory_hostname_short }}"
+          health_results:
+            - "{{ _by.fabric_health | default({}) }}"
+            - "{{ _by.tenant_health | default({}) }}"
+          faults: "{{ (_by.faults | default({})).imdata | default([]) }}"
+          cleared_faults: "{{ (_by.cleared_faults | default({})).imdata | default([]) }}"
+          ospf: "{{ (_by.ospf | default({})).imdata | default([]) }}"
+          ingress_high_util: "{{ _aci_ingress_high_util | default([]) }}"
+          egress_high_util: "{{ _aci_egress_high_util | default([]) }}"
+          audit_failed: "{{ _discover_failed | bool }}"
+      changed_when: false
+
+    - name: "ACI | Emit discovery telemetry"
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "aci/apic"
+        _ncs_emit_tree_path:
+          - aci
+          - "{{ inventory_hostname }}"
+        _ncs_emit_payload: "{{ _aci_raw_payload | default({}) }}"
+        _ncs_emit_skip: "{{ aci_skip_export | default(false) }}"

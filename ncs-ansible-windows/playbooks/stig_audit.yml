@@ -1,0 +1,4 @@
+---
+# internal/windows/playbooks/stig_audit.yml
+
+- ansible.builtin.import_playbook: server_stig_audit.yml

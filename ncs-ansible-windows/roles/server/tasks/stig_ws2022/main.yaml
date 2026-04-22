@@ -1,0 +1,9 @@
+---
+# internal.windows.server : tasks/stig_ws2022/main.yaml
+
+- name: "Windows STIG | Prelude"
+  ansible.builtin.import_tasks: stig_ws2022/00_prelude.yaml
+
+- name: "Windows STIG | Security baseline"
+  ansible.builtin.include_tasks: stig_ws2022/10_security_baseline.yaml
+  when: not (_stig_audit_ran | default(false))

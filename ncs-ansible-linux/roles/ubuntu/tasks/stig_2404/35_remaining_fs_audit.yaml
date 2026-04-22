@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# Remaining filesystem and audit log controls — migrated to internal.core.stig
+# Rules: 270750 (sticky bit), 270827 (log file mode), 270828 (log file owner),
+#        270829 (log group), 270830 (log dir mode)
+# =============================================================================
+
+- block:
+    # --- 270750 - world-writable dirs must have sticky bit ---
+    - name: "stigrule_270750"
+      internal.core.stig:
+        _stig_check: "test -z \"$(find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null)\""
+        cmd: "find / -xdev -type d -perm -0002 ! -perm -1000 -exec chmod a+t {} +"
+
+    # --- 270827 - audit log files mode <= 0600 ---
+    - name: "stigrule_270827"
+      internal.core.stig:
+        _stig_check: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          for f in "$dir"/*; do [ ! -f "$f" ] || [ "$(stat -c '%a' "$f")" -le 600 ] || exit 1; done
+        cmd: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          find "$dir" -maxdepth 1 -type f ! -perm 0600 -exec chmod 0600 {} +
+
+    # --- 270828 - audit log files owner root ---
+    - name: "stigrule_270828"
+      internal.core.stig:
+        _stig_check: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          for f in "$dir"/*; do [ ! -f "$f" ] || [ "$(stat -c '%U' "$f")" = "root" ] || exit 1; done
+        cmd: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          find "$dir" -maxdepth 1 -type f ! -user root -exec chown root {} +
+
+    # --- 270829 - audit log_group root and files group root ---
+    - name: "stigrule_270829"
+      internal.core.stig:
+        _stig_check: |
+          set -eu
+          grep -Eq '^[[:space:]]*log_group[[:space:]]*=[[:space:]]*root[[:space:]]*$' /etc/audit/auditd.conf
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          for f in "$dir"/*; do [ ! -f "$f" ] || [ "$(stat -c '%G' "$f")" = "root" ] || exit 1; done
+        cmd: |
+          set -eu
+          sed -i 's/^[[:space:]]*log_group[[:space:]]*=.*/log_group = root/' /etc/audit/auditd.conf
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          find "$dir" -maxdepth 1 -type f ! -group root -exec chgrp root {} +
+          systemctl kill auditd -s SIGHUP
+
+    # --- 270830 - audit log directory mode <= 0750 ---
+    - name: "stigrule_270830"
+      internal.core.stig:
+        _stig_check: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          [ "$(stat -c '%a' "$dir")" -le 750 ]
+        cmd: |
+          set -eu
+          dir="$(awk -F'= *' '/^[[:space:]]*log_file[[:space:]]*=/ {print $2}' /etc/audit/auditd.conf | tail -n1 | xargs dirname)"
+          chmod 0750 "$dir"
+
+  module_defaults:
+    internal.core.stig:
+      _stig_gate_packages: [auditd]
+      _stig_gate_status: failed

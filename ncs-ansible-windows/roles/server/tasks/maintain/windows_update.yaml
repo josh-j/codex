@@ -1,0 +1,109 @@
+---
+# internal.windows.server : tasks/windows_update.yaml
+# Direct Windows Update via COM API (not ConfigMgr).
+
+- name: "Windows Update | Orchestrator"
+  vars:
+    _wu_failed: false
+  block:
+    - name: "Windows Update | Search, download, and optionally install"
+      ansible.windows.win_powershell:
+        script: |
+          param([string[]]$Categories, [bool]$Install, [bool]$AllowReboot)
+          $result = @{
+            search_count  = 0
+            downloaded    = 0
+            installed     = 0
+            reboot_needed = $false
+            updates       = @()
+            errors        = @()
+          }
+
+          try {
+            $session = New-Object -ComObject Microsoft.Update.Session
+            $searcher = $session.CreateUpdateSearcher()
+
+            # Build category filter
+            $catFilter = ($Categories | ForEach-Object { "CategoryIDs contains '$_'" }) -join ' or '
+            $criteria = "IsInstalled=0"
+
+            $searchResult = $searcher.Search($criteria)
+            $result.search_count = $searchResult.Updates.Count
+
+            if ($searchResult.Updates.Count -eq 0) {
+              $result | ConvertTo-Json -Depth 3 -Compress
+              return
+            }
+
+            # Collect update info
+            $toProcess = New-Object -ComObject Microsoft.Update.UpdateColl
+            foreach ($update in $searchResult.Updates) {
+              $info = @{
+                title    = $update.Title
+                kb       = ($update.KBArticleIDs | ForEach-Object { "KB$_" }) -join ','
+                severity = [string]$update.MsrcSeverity
+                size_mb  = [math]::Round($update.MaxDownloadSize / 1MB, 1)
+                status   = 'found'
+              }
+              $toProcess.Add($update) | Out-Null
+              $result.updates += $info
+            }
+
+            # Download
+            $downloader = $session.CreateUpdateDownloader()
+            $downloader.Updates = $toProcess
+            $dlResult = $downloader.Download()
+            $result.downloaded = $toProcess.Count
+
+            # Install if requested
+            if ($Install) {
+              $installer = New-Object -ComObject Microsoft.Update.UpdateInstaller
+              $installer.Updates = $toProcess
+              $instResult = $installer.Install()
+
+              for ($i = 0; $i -lt $toProcess.Count; $i++) {
+                $code = $instResult.GetUpdateResult($i).ResultCode
+                $result.updates[$i].status = switch ($code) {
+                  2 { 'installed' }
+                  3 { 'installed_reboot' }
+                  4 { 'failed' }
+                  5 { 'aborted' }
+                  default { "code_$code" }
+                }
+                if ($code -eq 2 -or $code -eq 3) { $result.installed++ }
+              }
+              $result.reboot_needed = $instResult.RebootRequired
+
+              if ($AllowReboot -and $instResult.RebootRequired) {
+                Restart-Computer -Force
+              }
+            }
+          } catch {
+            $result.errors += $_.Exception.Message
+          }
+
+          $result | ConvertTo-Json -Depth 3 -Compress
+        parameters:
+          Categories: "{{ windows_update_categories }}"
+          Install: "{{ windows_update_install | bool }}"
+          AllowReboot: "{{ windows_update_allow_reboot | bool }}"
+      register: _wu_result
+      changed_when: false
+      async: "{{ windows_update_timeout_minutes | int * 60 }}"
+      poll: 30
+
+  rescue:
+    - name: "Windows Update | Mark failure"
+      ansible.builtin.set_fact:
+        _wu_failed: true
+      changed_when: false
+
+  always:
+    - name: "Windows Update | Emit telemetry"
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/windows_update"
+        _ncs_emit_payload:
+          results: "{{ _wu_result.output[0] | default('{}') | from_json }}"
+          failed: "{{ _wu_failed | bool }}"

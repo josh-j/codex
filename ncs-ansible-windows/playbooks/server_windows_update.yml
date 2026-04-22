@@ -1,0 +1,13 @@
+---
+# internal/windows/playbooks/server_windows_update.yml
+# Direct Windows Update via COM API (not ConfigMgr).
+
+- name: "Windows | Windows Update (COM API)"
+  hosts: "{{ windows_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  tags: [windows, update, patching]
+  roles:
+    - role: internal.windows.server
+      vars:
+        ncs_action: remediate
+        ncs_operation: windows_update

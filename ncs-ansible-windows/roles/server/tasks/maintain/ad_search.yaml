@@ -1,0 +1,119 @@
+---
+# internal.windows.server : tasks/ad_search.yaml
+# Active Directory user/computer search with BitLocker key recovery.
+
+- name: "AD Search | Validate input"
+  ansible.builtin.assert:
+    that:
+      - windows_ad_search_term | length > 0
+    fail_msg: "windows_ad_search_term must be set to a search string"
+
+- name: "AD Search | User search"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$SearchTerm, [string[]]$ExtraProperties)
+      Import-Module ActiveDirectory -ErrorAction Stop
+
+      $props = @('DisplayName', 'SamAccountName', 'UserPrincipalName', 'EmailAddress',
+                 'Manager', 'Department', 'Title', 'Enabled', 'LockedOut',
+                 'LastLogonDate', 'PasswordLastSet', 'SmartcardLogonRequired',
+                 'MemberOf', 'DistinguishedName')
+      if ($ExtraProperties) { $props += $ExtraProperties }
+
+      $filter = "DisplayName -like '*$SearchTerm*' -or SamAccountName -like '*$SearchTerm*' -or UserPrincipalName -like '*$SearchTerm*' -or EmployeeID -like '*$SearchTerm*'"
+      $users = Get-ADUser -Filter $filter -Properties $props -ErrorAction Stop
+
+      $results = @()
+      foreach ($u in $users) {
+        $groups = ($u.MemberOf | ForEach-Object { ($_ -split ',')[0] -replace 'CN=' }) -join '; '
+        $mgr = if ($u.Manager) { ($u.Manager -split ',')[0] -replace 'CN=' } else { '' }
+        $results += @{
+          display_name     = $u.DisplayName
+          sam_account       = $u.SamAccountName
+          upn              = $u.UserPrincipalName
+          email            = $u.EmailAddress
+          manager          = $mgr
+          department       = $u.Department
+          title            = $u.Title
+          enabled          = $u.Enabled
+          locked_out       = $u.LockedOut
+          last_logon       = if ($u.LastLogonDate) { $u.LastLogonDate.ToString('o') } else { '' }
+          password_last_set = if ($u.PasswordLastSet) { $u.PasswordLastSet.ToString('o') } else { '' }
+          smartcard_required = $u.SmartcardLogonRequired
+          groups           = $groups
+          dn               = $u.DistinguishedName
+        }
+      }
+      @{ type = 'user'; count = $results.Count; results = @($results) } | ConvertTo-Json -Depth 3 -Compress
+    parameters:
+      SearchTerm: "{{ windows_ad_search_term }}"
+      ExtraProperties: "{{ windows_ad_search_properties }}"
+  register: _ad_user_result
+  when: windows_ad_search_type == 'user'
+  changed_when: false
+  delegate_to: "{{ groups['domain_controllers'] | default([inventory_hostname]) | first }}"
+
+- name: "AD Search | Computer search"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$SearchTerm, [bool]$IncludeBitLocker)
+      Import-Module ActiveDirectory -ErrorAction Stop
+
+      $props = @('Name', 'DNSHostName', 'IPv4Address', 'OperatingSystem',
+                 'OperatingSystemVersion', 'LastLogonDate', 'Created',
+                 'Enabled', 'Location', 'Description', 'MemberOf',
+                 'ServicePrincipalNames', 'DistinguishedName')
+
+      $filter = "Name -like '*$SearchTerm*' -or DNSHostName -like '*$SearchTerm*' -or IPv4Address -like '*$SearchTerm*' -or Description -like '*$SearchTerm*'"
+      $computers = Get-ADComputer -Filter $filter -Properties $props -ErrorAction Stop
+
+      $results = @()
+      foreach ($c in $computers) {
+        $groups = ($c.MemberOf | ForEach-Object { ($_ -split ',')[0] -replace 'CN=' }) -join '; '
+        $entry = @{
+          name        = $c.Name
+          dns_name    = $c.DNSHostName
+          ip          = $c.IPv4Address
+          os          = $c.OperatingSystem
+          os_version  = $c.OperatingSystemVersion
+          last_logon  = if ($c.LastLogonDate) { $c.LastLogonDate.ToString('o') } else { '' }
+          created     = if ($c.Created) { $c.Created.ToString('o') } else { '' }
+          enabled     = $c.Enabled
+          location    = $c.Location
+          description = $c.Description
+          groups      = $groups
+          spns        = ($c.ServicePrincipalNames -join '; ')
+          dn          = $c.DistinguishedName
+        }
+
+        # BitLocker recovery key
+        if ($IncludeBitLocker) {
+          try {
+            $keys = Get-ADObject -Filter "objectClass -eq 'msFVE-RecoveryInformation'" `
+              -SearchBase $c.DistinguishedName -Properties msFVE-RecoveryPassword -ErrorAction SilentlyContinue
+            $entry['bitlocker_keys'] = @($keys | ForEach-Object { $_.'msFVE-RecoveryPassword' })
+          } catch {
+            $entry['bitlocker_keys'] = @()
+          }
+        }
+        $results += $entry
+      }
+      @{ type = 'computer'; count = $results.Count; results = @($results) } | ConvertTo-Json -Depth 3 -Compress
+    parameters:
+      SearchTerm: "{{ windows_ad_search_term }}"
+      IncludeBitLocker: "{{ windows_ad_bitlocker_recovery | bool }}"
+  register: _ad_computer_result
+  when: windows_ad_search_type == 'computer'
+  changed_when: false
+  delegate_to: "{{ groups['domain_controllers'] | default([inventory_hostname]) | first }}"
+
+- name: "AD Search | Emit telemetry"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/ad_search"
+    _ncs_emit_payload:
+      search_type: "{{ windows_ad_search_type }}"
+      search_term: "{{ windows_ad_search_term }}"
+      user_results: "{{ _ad_user_result.output[0] | default('{}') | from_json }}"
+      computer_results: "{{ _ad_computer_result.output[0] | default('{}') | from_json }}"

@@ -1,0 +1,144 @@
+---
+# Photon OS 3.0 STIG — Phase setup and fact gathering
+
+- name: "Photon STIG | Load STIG defaults and vars"
+  ansible.builtin.include_vars:
+    file: "{{ item }}"
+  loop:
+    - "{{ _ncs_task_root }}/stig_photon3/stig.yaml"
+    - "{{ _ncs_task_root }}/stig_photon3/vars.yaml"
+
+- name: "Set NCS STIG target type to photon"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_type: "photon"
+  tags:
+    - always
+
+- name: "Set Photon STIG execution phase"
+  ansible.builtin.set_fact:
+    _photon3_stig_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+    _stig_active_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+  changed_when: false
+  tags:
+    - always
+
+- name: "DEBUG | Phase and check_mode"
+  ansible.builtin.debug:
+    msg: "phase={{ _photon3_stig_phase }} check_mode={{ ansible_check_mode }}"
+
+- name: "Photon STIG | Gather package facts"
+  ansible.builtin.package_facts:
+    manager: rpm
+  check_mode: false
+  tags: [always]
+  ignore_errors: true
+  register: _pkg_facts_result
+
+# Fallback: if package_facts failed (missing rpm Python lib), populate
+# ansible_facts.packages manually via rpm -qa so gate checks work.
+- name: "Photon STIG | Fallback package facts via rpm -qa"
+  ansible.builtin.shell:
+    cmd: |
+      python3 -c "
+      import subprocess, json
+      pkgs = subprocess.check_output(['rpm', '-qa', '--qf', '%{NAME}\n'], text=True).strip().split('\n')
+      print(json.dumps({p: [{'source': 'rpm'}] for p in set(pkgs) if p}))
+      "
+  register: _rpm_qa_json
+  changed_when: false
+  check_mode: false
+  when: _pkg_facts_result is failed or (ansible_facts.packages | default({})) == {}
+
+- name: "Photon STIG | Set fallback package facts"
+  ansible.builtin.set_fact:
+    ansible_facts: "{{ ansible_facts | default({}) | combine({'packages': _rpm_qa_json.stdout | from_json}) }}"
+  when: _rpm_qa_json is not skipped and _rpm_qa_json.rc | default(1) == 0
+
+- name: "Photon STIG | Gather service facts"
+  ansible.builtin.service_facts:
+  check_mode: false
+  tags: [always]
+
+# --- Install prerequisite packages (remediate only) ---
+- name: "Photon STIG | Install audit package (remediate only)"
+  ansible.builtin.shell:
+    cmd: tdnf install -y --nogpgcheck audit 2>&1
+  register: _tdnf_audit
+  changed_when: "'Nothing to do' not in _tdnf_audit.stdout"
+  failed_when: _tdnf_audit.rc != 0 and 'Nothing to do' not in _tdnf_audit.stdout
+  check_mode: false
+  when: _photon3_stig_phase != 'audit'
+
+- name: "Photon STIG | Install rsyslog package (remediate only)"
+  ansible.builtin.shell:
+    cmd: tdnf install -y --nogpgcheck rsyslog 2>&1
+  register: _tdnf_rsyslog
+  changed_when: "'Nothing to do' not in _tdnf_rsyslog.stdout"
+  failed_when: _tdnf_rsyslog.rc != 0 and 'Nothing to do' not in _tdnf_rsyslog.stdout
+  check_mode: false
+  when: _photon3_stig_phase != 'audit'
+
+- name: "Photon STIG | Ensure /etc/cron.d exists (remediate only)"
+  ansible.builtin.file:
+    path: /etc/cron.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: _photon3_stig_phase != 'audit'
+
+- name: "Photon STIG | Refresh package facts after prereq installs"
+  ansible.builtin.shell:
+    cmd: |
+      python3 -c "
+      import subprocess, json
+      pkgs = subprocess.check_output(['rpm', '-qa', '--qf', '%{NAME}\n'], text=True).strip().split('\n')
+      print(json.dumps({p: [{'source': 'rpm'}] for p in set(pkgs) if p}))
+      "
+  register: _rpm_refresh_json
+  changed_when: false
+  check_mode: false
+  when:
+    - _photon3_stig_phase != 'audit'
+    - (_tdnf_audit is changed) or (_tdnf_rsyslog is changed)
+
+- name: "Photon STIG | Apply refreshed package facts"
+  ansible.builtin.set_fact:
+    ansible_facts: "{{ ansible_facts | default({}) | combine({'packages': _rpm_refresh_json.stdout | from_json}) }}"
+  when: _rpm_refresh_json is not skipped and _rpm_refresh_json.rc | default(1) == 0
+
+- name: "Photon STIG | Refresh service facts after prereq installs"
+  ansible.builtin.service_facts:
+  check_mode: false
+  when:
+    - _photon3_stig_phase != 'audit'
+    - (_tdnf_audit is changed) or (_tdnf_rsyslog is changed)
+
+- name: "Photon STIG | Create file backups (remediate only)"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      stamp=$(date +%Y%m%d%H%M%S)
+      backup_dir="/tmp/photon_stig_backup_${stamp}"
+      mkdir -p "$backup_dir"
+      for f in \
+        {{ var_sshd_config_file }} \
+        {{ var_auditd_conf_file }} \
+        {{ var_login_defs_file }} \
+        {{ var_pamd_systemauth_file }} \
+        {{ var_pamd_systempassword_file }} \
+        {{ var_sysctl_conf_file }} \
+        {{ var_limits_conf_file }} \
+        {{ var_syslog_conf_path }} \
+        {{ var_grub_conf_file }}; do
+        [ -f "$f" ] && cp -a "$f" "$backup_dir/" || true
+      done
+      echo "$backup_dir"
+  register: _photon_backup_dir
+  changed_when: false
+  check_mode: false
+  when:
+    - _photon3_stig_phase != 'audit'
+    - run_create_backups | default(true) | bool

@@ -1,0 +1,7 @@
+---
+# internal/aci/playbooks/collect.yml
+# Canonical fleet-level collect entry point. Importable as
+# `internal.aci.collect` — the monorepo's site generator iterates every
+# installed internal.* collection that exposes this verb.
+
+- ansible.builtin.import_playbook: apic_collect.yml

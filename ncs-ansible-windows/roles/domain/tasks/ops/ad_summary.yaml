@@ -1,0 +1,39 @@
+---
+# internal.windows.domain : ops/ad_summary.yaml
+# Default operation — collects a broad AD summary in a single pass.
+
+- name: "AD Summary | Query domain info"
+  ansible.windows.win_powershell:
+    script: |
+      $domain = Get-ADDomain
+      $forest = Get-ADForest
+      $dcs = Get-ADDomainController -Filter * | Select-Object Name, IPv4Address, OperatingSystem, IsGlobalCatalog
+      $userCount = (Get-ADUser -Filter *).Count
+      $computerCount = (Get-ADComputer -Filter *).Count
+      $groupCount = (Get-ADGroup -Filter *).Count
+      $ouCount = (Get-ADOrganizationalUnit -Filter *).Count
+      @{
+        domain_name        = $domain.DNSRoot
+        domain_netbios     = $domain.NetBIOSName
+        forest_name        = $forest.Name
+        functional_level   = $domain.DomainMode
+        forest_level       = $forest.ForestMode
+        domain_controllers = $dcs
+        user_count         = $userCount
+        computer_count     = $computerCount
+        group_count        = $groupCount
+        ou_count           = $ouCount
+      }
+  register: _ad_summary
+
+- name: "AD Summary | Store results"
+  ansible.builtin.set_fact:
+    domain_ad_summary: "{{ _ad_summary.output[0] }}"
+  changed_when: false
+
+- name: "AD Summary | Emit telemetry"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/domain"
+    _ncs_emit_payload: "{{ domain_ad_summary }}"

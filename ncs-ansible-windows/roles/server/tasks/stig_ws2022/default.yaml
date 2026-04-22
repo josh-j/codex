@@ -1,0 +1,24 @@
+---
+# internal.windows.server : tasks/stig_ws2022/default.yaml
+# STIG configuration values and per-rule manage flags for Windows Server 2022.
+
+# ── SITE-SPECIFIC CONFIGURATION VALUES ──────────────────────────────────────
+# Override in group/host vars to match your environment.
+
+stig_ws2022_stigrule_000001_rdp_nla_value: 1
+stig_ws2022_stigrule_000005_password_complexity_value: 1
+stig_ws2022_stigrule_000009_uac_filter_admin_value: 1
+
+# ── STIG MANAGE FLAGS ───────────────────────────────────────────────────────
+# Set to false to skip individual controls.
+
+stig_ws2022_stigrule_000001_manage: true   # RDP NLA
+stig_ws2022_stigrule_000002_manage: true   # Firewall profiles
+stig_ws2022_stigrule_000003_manage: true   # SMBv1 disabled
+stig_ws2022_stigrule_000004_manage: true   # Guest account disabled
+stig_ws2022_stigrule_000005_manage: true   # Password complexity
+stig_ws2022_stigrule_000006_manage: true   # Defender real-time
+stig_ws2022_stigrule_000007_manage: true   # WinRM no unencrypted
+stig_ws2022_stigrule_000008_manage: true   # WinRM no basic auth
+stig_ws2022_stigrule_000009_manage: true   # UAC Admin Approval Mode
+stig_ws2022_stigrule_000010_manage: true   # Audit Logon events

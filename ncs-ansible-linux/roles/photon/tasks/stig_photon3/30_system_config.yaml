@@ -1,0 +1,687 @@
+---
+# =============================================================================
+# System configuration — login.defs, PAM, sysctl, kernel modules, misc
+# Photon OS 3.0 STIG
+# =============================================================================
+
+# =============================================================================
+# login.defs rules (lineinfile)
+# =============================================================================
+- name: "stigrule_PHTN-30-000025"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_encrypt_method }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*ENCRYPT_METHOD\s+'
+    line: "ENCRYPT_METHOD {{ var_login_encrypt_method }}"
+
+- name: "stigrule_PHTN-30-000027"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_pass_min_days }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*PASS_MIN_DAYS\s+'
+    line: "PASS_MIN_DAYS {{ var_login_pass_min_days }}"
+
+- name: "stigrule_PHTN-30-000028"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_pass_max_days }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*PASS_MAX_DAYS\s+'
+    line: "PASS_MAX_DAYS {{ var_login_pass_max_days }}"
+
+- name: "stigrule_PHTN-30-000072"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_fail_delay }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*FAIL_DELAY\s+'
+    line: "FAIL_DELAY {{ var_login_fail_delay }}"
+
+- name: "stigrule_PHTN-30-000075"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_createhome }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*CREATE_HOME\s+'
+    line: "CREATE_HOME {{ var_login_createhome }}"
+
+- name: "stigrule_PHTN-30-000114"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_login_umask }}"
+    path: '{{ var_login_defs_file }}'
+    regexp: '^\s*UMASK\s+'
+    line: "UMASK {{ var_login_umask }}"
+
+# =============================================================================
+# PAM rules (shell+validator — Photon 3 uses pam_tally2 and pam_cracklib)
+# =============================================================================
+
+# --- PHTN-30-000002 - pam_tally2 account lockout ---
+- name: "stigrule_PHTN-30-000002"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_lock }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'pam_tally2\.so.*deny={{ var_pamd_lock }}.*onerr=fail.*audit' {{ var_pamd_systemauth_file }}
+        grep -qE 'pam_tally2\.so.*onerr=fail.*audit' /etc/pam.d/system-account
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systemauth_file }}"
+      line="auth required pam_tally2.so deny={{ var_pamd_lock }} onerr=fail audit even_deny_root unlock_time={{ var_pamd_unlock_time }} root_unlock_time={{ var_pamd_root_unlock_time }}"
+      if grep -qE 'pam_tally2\.so' "$f"; then
+        sed -i '/pam_tally2\.so/c\'"$line" "$f"
+      else
+        sed -i '1i\'"$line" "$f"
+      fi
+      # Account side
+      acct_line="account required pam_tally2.so onerr=fail audit"
+      if grep -qE 'pam_tally2\.so' /etc/pam.d/system-account 2>/dev/null; then
+        sed -i '/pam_tally2\.so/c\'"$acct_line" /etc/pam.d/system-account
+      else
+        echo "$acct_line" >> /etc/pam.d/system-account
+      fi
+
+# --- PHTN-30-000021 - pam_cracklib ucredit ---
+- name: "stigrule_PHTN-30-000021"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_upperchars }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'ucredit={{ var_pamd_upperchars }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'ucredit=' "$f"; then
+        sed -i 's/ucredit=[^ ]*/ucredit={{ var_pamd_upperchars }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ ucredit={{ var_pamd_upperchars }}/' "$f"
+      fi
+
+# --- PHTN-30-000022 - pam_cracklib lcredit ---
+- name: "stigrule_PHTN-30-000022"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_lowerchars }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'lcredit={{ var_pamd_lowerchars }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'lcredit=' "$f"; then
+        sed -i 's/lcredit=[^ ]*/lcredit={{ var_pamd_lowerchars }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ lcredit={{ var_pamd_lowerchars }}/' "$f"
+      fi
+
+# --- PHTN-30-000023 - pam_cracklib dcredit ---
+- name: "stigrule_PHTN-30-000023"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_numchars }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'dcredit={{ var_pamd_numberchars }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'dcredit=' "$f"; then
+        sed -i 's/dcredit=[^ ]*/dcredit={{ var_pamd_numberchars }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ dcredit={{ var_pamd_numberchars }}/' "$f"
+      fi
+
+# --- PHTN-30-000024 - pam_cracklib difok ---
+- name: "stigrule_PHTN-30-000024"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_diffchars }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'difok={{ var_pamd_diffchars }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'difok=' "$f"; then
+        sed -i 's/difok=[^ ]*/difok={{ var_pamd_diffchars }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ difok={{ var_pamd_diffchars }}/' "$f"
+      fi
+
+# --- PHTN-30-000029 - pam_pwhistory remember ---
+- name: "stigrule_PHTN-30-000029"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_pwremember }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'pam_pwhistory\.so.*remember={{ var_pamd_pwremember }}' {{ var_pamd_systempassword_file }}
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'pam_pwhistory\.so' "$f"; then
+        if grep -qE 'remember=' "$f"; then
+          sed -i 's/remember=[^ ]*/remember={{ var_pamd_pwremember }}/' "$f"
+        else
+          sed -i '/pam_pwhistory\.so/s/$/ remember={{ var_pamd_pwremember }}/' "$f"
+        fi
+      else
+        sed -i '/pam_cracklib\.so/a password required pam_pwhistory.so remember={{ var_pamd_pwremember }} use_authtok' "$f"
+      fi
+
+# --- PHTN-30-000030 - pam_cracklib minlen ---
+- name: "stigrule_PHTN-30-000030"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_minlength }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'minlen={{ var_pamd_minlength }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'minlen=' "$f"; then
+        sed -i 's/minlen=[^ ]*/minlen={{ var_pamd_minlength }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ minlen={{ var_pamd_minlength }}/' "$f"
+      fi
+
+# --- PHTN-30-000050 - pam_cracklib ocredit ---
+- name: "stigrule_PHTN-30-000050"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_complexchars }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'ocredit={{ var_pamd_complexchars }}'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'ocredit=' "$f"; then
+        sed -i 's/ocredit=[^ ]*/ocredit={{ var_pamd_complexchars }}/' "$f"
+      else
+        sed -i '/pam_cracklib\.so/s/$/ ocredit={{ var_pamd_complexchars }}/' "$f"
+      fi
+
+# --- PHTN-30-000071 - pam_cracklib module presence ---
+- name: "stigrule_PHTN-30-000071"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_cracklib }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'pam_cracklib\.so' {{ var_pamd_systempassword_file }}
+        lines=$(grep -cE 'pam_cracklib\.so' {{ var_pamd_systempassword_file }})
+        [ "$lines" -eq 1 ]
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if ! grep -qE 'pam_cracklib\.so' "$f"; then
+        sed -i '1i password requisite pam_cracklib.so minlen={{ var_pamd_minlength }} minclass=4 ucredit={{ var_pamd_upperchars }} lcredit={{ var_pamd_lowerchars }} dcredit={{ var_pamd_numberchars }} ocredit={{ var_pamd_complexchars }} difok={{ var_pamd_diffchars }}' "$f"
+      fi
+
+# --- PHTN-30-000073 - pam_faildelay ---
+- name: "stigrule_PHTN-30-000073"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_faildelay }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE 'pam_faildelay\.so.*delay={{ var_pamd_faildelay }}' {{ var_pamd_systemauth_file }}
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systemauth_file }}"
+      if grep -qE 'pam_faildelay\.so' "$f"; then
+        sed -i 's/pam_faildelay\.so.*/pam_faildelay.so delay={{ var_pamd_faildelay }}/' "$f"
+      else
+        echo "auth optional pam_faildelay.so delay={{ var_pamd_faildelay }}" >> "$f"
+      fi
+
+# --- PHTN-30-000110 - pam_cracklib enforce_for_root ---
+- name: "stigrule_PHTN-30-000110"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_enforceforroot }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_cracklib\.so' {{ var_pamd_systempassword_file }} | grep -qE 'enforce_for_root'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if ! grep -E 'pam_cracklib\.so' "$f" | grep -q 'enforce_for_root'; then
+        sed -i '/pam_cracklib\.so/s/$/ enforce_for_root/' "$f"
+      fi
+
+# --- PHTN-30-000117 - pam_unix sha512 ---
+- name: "stigrule_PHTN-30-000117"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_pamd_encryption }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -E 'pam_unix\.so' {{ var_pamd_systempassword_file }} | grep -qE 'sha512'
+    cmd: |
+      set -eu
+      f="{{ var_pamd_systempassword_file }}"
+      if grep -qE 'pam_unix\.so' "$f"; then
+        if ! grep -E 'pam_unix\.so' "$f" | grep -q 'sha512'; then
+          sed -i '/pam_unix\.so/s/$/ sha512/' "$f"
+        fi
+      fi
+
+# --- PHTN-30-000118 - Create /etc/security/opasswd ---
+- name: "stigrule_PHTN-30-000118"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.file
+    _stig_manage: "{{ run_create_opasswd }}"
+    path: /etc/security/opasswd
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+# =============================================================================
+# Misc system settings
+# =============================================================================
+
+# --- PHTN-30-000004 - maxlogins ---
+- name: "stigrule_PHTN-30-000004"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_limits_maxlogins }}"
+    path: '{{ var_limits_conf_file }}'
+    regexp: '^\*\s+hard\s+maxlogins\s+'
+    line: "* hard maxlogins {{ var_limits_maxlogins }}"
+    state: present
+
+# --- PHTN-30-000005 - tmout.sh profile script ---
+- name: "stigrule_PHTN-30-000005"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_configure_tmout }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '^TMOUT={{ var_tmout_sh }}' /etc/profile.d/tmout.sh
+        grep -qE '^readonly TMOUT' /etc/profile.d/tmout.sh
+    cmd: |
+      set -eu
+      cat > /etc/profile.d/tmout.sh <<'TMEOF'
+      TMOUT={{ var_tmout_sh }}
+      readonly TMOUT
+      export TMOUT
+      mesg n 2>/dev/null
+      TMEOF
+      chmod 0644 /etc/profile.d/tmout.sh
+      chown root:root /etc/profile.d/tmout.sh
+
+# --- PHTN-30-000007 - rsyslog authpriv logging ---
+- name: "stigrule_PHTN-30-000007"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_sshd_rsyslog }}"
+    _stig_gate_packages: [rsyslog]
+    _stig_notify: [photon_restart_rsyslog]
+    path: '{{ var_syslog_conf_path }}'
+    regexp: '^\s*authpriv\.\*'
+    line: "authpriv.* {{ var_syslog_authpriv_log }}"
+    state: present
+    create: true
+  notify: photon_restart_rsyslog
+
+# --- PHTN-30-000032 - Disable kernel modules via modprobe.conf ---
+- name: "stigrule_PHTN-30-000032"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_manage: "{{ run_disable_kernel_modules }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        grep -qE '^install sctp /bin/false' {{ var_modprobe_conf_file }}
+        grep -qE '^install usb_storage /bin/false' {{ var_modprobe_conf_file }}
+        grep -qE '^install bluetooth /bin/false' {{ var_modprobe_conf_file }}
+    cmd: |
+      set -eu
+      cat > {{ var_modprobe_conf_file }} <<'MODEOF'
+      install sctp /bin/false
+      install dccp /bin/false
+      install dccp_ipv4 /bin/false
+      install dccp_ipv6 /bin/false
+      install ipx /bin/false
+      install appletalk /bin/false
+      install decnet /bin/false
+      install rds /bin/false
+      install tipc /bin/false
+      install bluetooth /bin/false
+      install usb_storage /bin/false
+      install ieee1394 /bin/false
+      install cramfs /bin/false
+      install freevxfs /bin/false
+      install jffs2 /bin/false
+      install hfs /bin/false
+      install hfsplus /bin/false
+      install squashfs /bin/false
+      install udf /bin/false
+      MODEOF
+      chmod 0644 {{ var_modprobe_conf_file }}
+      chown root:root {{ var_modprobe_conf_file }}
+
+# --- PHTN-30-000033 - Duplicate UIDs (audit-only) ---
+- name: "stigrule_PHTN-30-000033"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ run_duplicate_user_uids }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        test -z "$(awk -F: '{print $3}' /etc/passwd | sort -n | uniq -d)"
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+# --- PHTN-30-000035 - INACTIVE=0 in useradd ---
+- name: "stigrule_PHTN-30-000035"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_useradd_inactive }}"
+    path: '{{ var_useradd_file }}'
+    regexp: '^\s*INACTIVE\s*='
+    line: "INACTIVE={{ var_useradd_inactive }}"
+    state: present
+
+# --- PHTN-30-000062 - NOPASSWD in sudoers (audit-only) ---
+- name: "stigrule_PHTN-30-000062"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.shell
+    _stig_use_check_mode_probe: false
+    _stig_audit_only: true
+    _stig_manage: "{{ run_sudo_nopasswd }}"
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      cmd: |
+        set -eu
+        ! grep -rE '^\s*[^#].*NOPASSWD' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -q .
+    _stig_skip_post_validate: true
+    cmd: "true"
+
+
+# =============================================================================
+# Sysctl rules
+# =============================================================================
+- block:
+    # --- PHTN-30-000036 - tcp_syncookies ---
+    - name: "stigrule_PHTN-30-000036"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_tcp_syncookies }}"
+        name: net.ipv4.tcp_syncookies
+        value: '{{ var_sysctl_tcp_syncookies }}'
+
+    # --- PHTN-30-000065 - randomize_va_space ---
+    - name: "stigrule_PHTN-30-000065"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_randomize_va_space }}"
+        name: kernel.randomize_va_space
+        value: '{{ var_sysctl_randomize_va_space }}'
+
+    # --- PHTN-30-000098 - accept_source_route (6 sub-params) ---
+    - name: "stigrule_PHTN-30-000098 - net.ipv4.conf.all.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_accept_source_route }}"
+        name: net.ipv4.conf.all.accept_source_route
+        value: '{{ var_sysctl_net_ipv4_conf_all_accept_source_route }}'
+
+    - name: "stigrule_PHTN-30-000098 - net.ipv4.conf.default.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_accept_source_route }}"
+        name: net.ipv4.conf.default.accept_source_route
+        value: '{{ var_sysctl_net_ipv4_conf_default_accept_source_route }}'
+
+    - name: "stigrule_PHTN-30-000098 - net.ipv4.conf.eth0.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_accept_source_route }}"
+        name: net.ipv4.conf.eth0.accept_source_route
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_accept_source_route }}'
+
+    - name: "stigrule_PHTN-30-000098 - net.ipv6.conf.all.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_all_accept_source_route }}"
+        name: net.ipv6.conf.all.accept_source_route
+        value: '{{ var_sysctl_net_ipv6_conf_all_accept_source_route }}'
+
+    - name: "stigrule_PHTN-30-000098 - net.ipv6.conf.default.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_default_accept_source_route }}"
+        name: net.ipv6.conf.default.accept_source_route
+        value: '{{ var_sysctl_net_ipv6_conf_default_accept_source_route }}'
+
+    - name: "stigrule_PHTN-30-000098 - net.ipv6.conf.eth0.accept_source_route"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_eth0_accept_source_route }}"
+        name: net.ipv6.conf.eth0.accept_source_route
+        value: '{{ var_sysctl_net_ipv6_conf_eth0_accept_source_route }}'
+
+    # --- PHTN-30-000099 - icmp_echo_ignore_broadcasts ---
+    - name: "stigrule_PHTN-30-000099"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_icmp_echo_ignore_broadcasts }}"
+        name: net.ipv4.icmp_echo_ignore_broadcasts
+        value: '{{ var_sysctl_net_ipv4_icmp_echo_ignore_broadcasts }}'
+
+    # --- PHTN-30-000100 - accept_redirects (3 sub-params) ---
+    - name: "stigrule_PHTN-30-000100 - net.ipv4.conf.all.accept_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_accept_redirects }}"
+        name: net.ipv4.conf.all.accept_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_all_accept_redirects }}'
+
+    - name: "stigrule_PHTN-30-000100 - net.ipv4.conf.default.accept_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_accept_redirects }}"
+        name: net.ipv4.conf.default.accept_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_default_accept_redirects }}'
+
+    - name: "stigrule_PHTN-30-000100 - net.ipv4.conf.eth0.accept_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_accept_redirects }}"
+        name: net.ipv4.conf.eth0.accept_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_accept_redirects }}'
+
+    # --- PHTN-30-000101 - secure_redirects (3 sub-params) ---
+    - name: "stigrule_PHTN-30-000101 - net.ipv4.conf.all.secure_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_secure_redirects }}"
+        name: net.ipv4.conf.all.secure_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_all_secure_redirects }}'
+
+    - name: "stigrule_PHTN-30-000101 - net.ipv4.conf.default.secure_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_secure_redirects }}"
+        name: net.ipv4.conf.default.secure_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_default_secure_redirects }}'
+
+    - name: "stigrule_PHTN-30-000101 - net.ipv4.conf.eth0.secure_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_secure_redirects }}"
+        name: net.ipv4.conf.eth0.secure_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_secure_redirects }}'
+
+    # --- PHTN-30-000102 - send_redirects (3 sub-params) ---
+    - name: "stigrule_PHTN-30-000102 - net.ipv4.conf.all.send_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_send_redirects }}"
+        name: net.ipv4.conf.all.send_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_all_send_redirects }}'
+
+    - name: "stigrule_PHTN-30-000102 - net.ipv4.conf.default.send_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_send_redirects }}"
+        name: net.ipv4.conf.default.send_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_default_send_redirects }}'
+
+    - name: "stigrule_PHTN-30-000102 - net.ipv4.conf.eth0.send_redirects"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_send_redirects }}"
+        name: net.ipv4.conf.eth0.send_redirects
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_send_redirects }}'
+
+    # --- PHTN-30-000103 - log_martians (3 sub-params) ---
+    - name: "stigrule_PHTN-30-000103 - net.ipv4.conf.all.log_martians"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_log_martians }}"
+        name: net.ipv4.conf.all.log_martians
+        value: '{{ var_sysctl_net_ipv4_conf_all_log_martians }}'
+
+    - name: "stigrule_PHTN-30-000103 - net.ipv4.conf.default.log_martians"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_log_martians }}"
+        name: net.ipv4.conf.default.log_martians
+        value: '{{ var_sysctl_net_ipv4_conf_default_log_martians }}'
+
+    - name: "stigrule_PHTN-30-000103 - net.ipv4.conf.eth0.log_martians"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_log_martians }}"
+        name: net.ipv4.conf.eth0.log_martians
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_log_martians }}'
+
+    # --- PHTN-30-000104 - rp_filter (3 sub-params) ---
+    - name: "stigrule_PHTN-30-000104 - net.ipv4.conf.all.rp_filter"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_rp_filter }}"
+        name: net.ipv4.conf.all.rp_filter
+        value: '{{ var_sysctl_net_ipv4_conf_all_rp_filter }}'
+
+    - name: "stigrule_PHTN-30-000104 - net.ipv4.conf.default.rp_filter"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_rp_filter }}"
+        name: net.ipv4.conf.default.rp_filter
+        value: '{{ var_sysctl_net_ipv4_conf_default_rp_filter }}'
+
+    - name: "stigrule_PHTN-30-000104 - net.ipv4.conf.eth0.rp_filter"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_rp_filter }}"
+        name: net.ipv4.conf.eth0.rp_filter
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_rp_filter }}'
+
+    # --- PHTN-30-000105 - mc_forwarding (6 sub-params) ---
+    - name: "stigrule_PHTN-30-000105 - net.ipv4.conf.all.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_all_mc_forwarding }}"
+        name: net.ipv4.conf.all.mc_forwarding
+        value: '{{ var_sysctl_net_ipv4_conf_all_mc_forwarding }}'
+
+    - name: "stigrule_PHTN-30-000105 - net.ipv4.conf.default.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_default_mc_forwarding }}"
+        name: net.ipv4.conf.default.mc_forwarding
+        value: '{{ var_sysctl_net_ipv4_conf_default_mc_forwarding }}'
+
+    - name: "stigrule_PHTN-30-000105 - net.ipv4.conf.eth0.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_conf_eth0_mc_forwarding }}"
+        name: net.ipv4.conf.eth0.mc_forwarding
+        value: '{{ var_sysctl_net_ipv4_conf_eth0_mc_forwarding }}'
+
+    - name: "stigrule_PHTN-30-000105 - net.ipv6.conf.all.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_all_mc_forwarding }}"
+        name: net.ipv6.conf.all.mc_forwarding
+        value: '{{ var_sysctl_net_ipv6_conf_all_mc_forwarding }}'
+
+    - name: "stigrule_PHTN-30-000105 - net.ipv6.conf.default.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_default_mc_forwarding }}"
+        name: net.ipv6.conf.default.mc_forwarding
+        value: '{{ var_sysctl_net_ipv6_conf_default_mc_forwarding }}'
+
+    - name: "stigrule_PHTN-30-000105 - net.ipv6.conf.eth0.mc_forwarding"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv6_conf_eth0_mc_forwarding }}"
+        name: net.ipv6.conf.eth0.mc_forwarding
+        value: '{{ var_sysctl_net_ipv6_conf_eth0_mc_forwarding }}'
+
+    # --- PHTN-30-000106 - ip_forward ---
+    - name: "stigrule_PHTN-30-000106"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_net_ipv4_ip_forward }}"
+        name: net.ipv4.ip_forward
+        value: '{{ var_sysctl_net_ipv4_ip_forward }}'
+
+    # --- PHTN-30-000107 - tcp_timestamps ---
+    - name: "stigrule_PHTN-30-000107"
+      internal.core.stig:
+        _stig_manage: "{{ run_sysctl_tcp_timestamps }}"
+        name: net.ipv4.tcp_timestamps
+        value: '{{ var_sysctl_tcp_timestamps }}'
+
+  module_defaults:
+    internal.core.stig:
+      _stig_apply: ansible.posix.sysctl
+      state: present
+      sysctl_file: '{{ var_sysctl_conf_file }}'
+      sysctl_set: true
+      reload: true
+
+# =============================================================================
+# DNS
+# =============================================================================
+
+# --- PHTN-30-000245 - Disable FallbackDNS ---
+- name: "stigrule_PHTN-30-000245"
+  internal.core.stig:
+    _stig_apply: ansible.builtin.lineinfile
+    _stig_manage: "{{ run_dns_fallback }}"
+    _stig_notify: [photon_restart_resolved]
+    path: '{{ var_resolved_file }}'
+    regexp: '^\s*FallbackDNS\s*='
+    line: "FallbackDNS="
+    state: present
+  notify: photon_restart_resolved

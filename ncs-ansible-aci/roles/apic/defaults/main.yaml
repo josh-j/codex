@@ -1,0 +1,24 @@
+---
+# internal.aci.apic : defaults/main.yaml
+
+# Credentials — override from inventory / group_vars / vault.
+aci_username: admin
+aci_password: ""
+
+# APIC REST API endpoints.
+aci_login_uri: "/api/aaaLogin.json"
+aci_health_fabric_uri: "/api/node/mo/topology/health.json"
+aci_health_tenant_uri: "/api/node/mo/uni/tn-USAFE/health.json"
+aci_faults_uri: '/api/node/class/faultInst.json?query-target-filter=and(eq(faultInst.lc,"raised"))'
+aci_cleared_faults_uri: "/api/node/class/faultInst.json?time-range=24h"
+aci_ingr_uri: "/api/node/class/eqptIngrTotalHist15min.json?order-by=eqptIngrTotalHist15min.utilMax|desc&page-size=10"
+aci_egr_uri: "/api/node/class/eqptEgrTotalHist15min.json?order-by=eqptEgrTotalHist15min.utilMax|desc&page-size=10"
+aci_ospf_uri: '/api/node/class/ospfAdjEp.json?query-target-filter=wcard(ospfAdjEp.dn,"USAFE")'
+aci_intf_descr_uri: '/api/node/class/l1PhysIf.json?query-target-filter=ne(l1PhysIf.descr,"")'
+
+# Skip telemetry emission (useful for ad-hoc runs).
+aci_skip_export: false
+
+# Retry/backoff for the initial login.
+aci_login_retries: 3
+aci_login_delay: 5

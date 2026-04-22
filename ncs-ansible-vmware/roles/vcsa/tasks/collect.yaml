@@ -1,0 +1,408 @@
+---
+# internal.vmware.vcsa : tasks/collect.yaml
+# VCSA collection: infrastructure inventory, appliance health, alarms.
+
+- name: Collect | Preflight
+  ansible.builtin.include_tasks: preflight.yaml
+  tags: [always]
+
+- name: VCSA Collect
+  block:
+    - name: Collect | Bootstrap shared collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_collection
+      vars:
+        vmware_collection_raw_placeholders:
+          _raw_appliance_health: {}
+          _raw_appliance_backup: {}
+          _raw_alarms: {}
+          _raw_datacenters: {}
+          _raw_clusters: {}
+          _raw_datastores: {}
+          _raw_resource_pools: {}
+          _raw_dvswitches: {}
+          _raw_dvs_portgroups: {}
+          _raw_licenses: {}
+          _raw_extensions: {}
+          _raw_content_library_ids: {}
+          _raw_content_libraries: {}
+          _raw_tag_categories: {}
+          _raw_tags: {}
+
+    # --- Inventory ---
+
+    - name: Inventory | Query Datacenters
+      community.vmware.vmware_datacenter_info:
+      register: _raw_datacenters
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_datacenters | default(true) | bool
+
+    - name: Inventory | Extract Datacenter list
+      ansible.builtin.set_fact:
+        _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
+      changed_when: false
+      when: vcsa_collect_datacenters | default(true) | bool
+
+    - name: Inventory | Query Compute (Clusters & Hosts)
+      vmware.vmware.cluster_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_clusters
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_compute | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
+    - name: Inventory | Query Storage (Datastores)
+      community.vmware.vmware_datastore_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_datastores
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      retries: 2
+      delay: 5
+      until: _raw_datastores is succeeded
+      when:
+        - vcsa_collect_storage | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
+    - name: Inventory | Query Resource Pools
+      community.vmware.vmware_resource_pool_info:
+      register: _raw_resource_pools
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_resource_pools | default(true) | bool
+
+    - name: Inventory | Query Distributed Switches
+      community.vmware.vmware_dvswitch_info:
+      register: _raw_dvswitches
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_networking | default(true) | bool
+
+    - name: Inventory | Query Distributed Portgroups
+      community.vmware.vmware_dvs_portgroup_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_dvs_portgroups
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_networking | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
+    - name: Inventory | Query Licenses
+      vmware.vmware.license_info:
+      register: _raw_licenses
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_licenses | default(true) | bool
+
+    - name: Inventory | Query vCenter Extensions
+      community.vmware.vcenter_extension_info:
+      register: _raw_extensions
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_extensions | default(true) | bool
+
+    - name: Inventory | Query Content Library IDs
+      community.vmware.vmware_content_library_info:
+      register: _raw_content_library_ids
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_content_libraries | default(true) | bool
+
+    - name: Inventory | Query Content Library Details
+      community.vmware.vmware_content_library_info:
+        library_id: "{{ item }}"
+      loop: "{{ (_raw_content_library_ids | default({})).content_libs | default([]) }}"
+      register: _raw_content_libraries
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_content_libraries | default(true) | bool
+        - (_raw_content_library_ids | default({})).content_libs | default([]) | length > 0
+
+    - name: Inventory | Query Tag Categories
+      community.vmware.vmware_category_info:
+      register: _raw_tag_categories
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_tags | default(true) | bool
+
+    - name: Inventory | Query Tags
+      community.vmware.vmware_tag_info:
+      register: _raw_tags
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_tags | default(true) | bool
+
+    # --- Appliance ---
+
+    - name: Appliance | Gather system data
+      vmware.vmware.appliance_info:
+      register: _raw_appliance_health
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      retries: 2
+      delay: 5
+      until: _raw_appliance_health is succeeded
+      changed_when: false
+      when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+
+    - name: Appliance | Get backup schedule
+      vmware.vmware.vcsa_backup_schedule_info:
+      register: _raw_appliance_backup
+      delegate_to: localhost
+      failed_when: false
+      changed_when: false
+      no_log: true
+      when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+
+    # --- Alarms ---
+
+    - name: Alarms | Get triggered alarms
+      internal.vmware.vmware_triggered_alarms_info:
+      register: _raw_alarms
+      delegate_to: localhost
+      changed_when: false
+      when: vcsa_collect_alarms | default(vcenter_collect_alarms | default(true)) | bool
+
+  always:
+    # --- Assemble ---
+
+    - name: Flatten and normalize datastores from per-datacenter results
+      ansible.builtin.set_fact:
+        _flat_datastores_raw: >-
+          {% set ds_list = [] %}
+          {% for raw_ds in (_raw_datastores.results | default([])
+               | selectattr('datastores', 'defined')
+               | map(attribute='datastores')
+               | flatten) %}
+            {% set cap = (raw_ds.capacity | default(0) | float) %}
+            {% set free = (raw_ds.freeSpace | default(0) | float) %}
+            {% set cap_gb = (cap / 1073741824) | round(1) %}
+            {% set free_gb = (free / 1073741824) | round(1) %}
+            {% set used_pct = (((cap - free) / cap) * 100) | round(1) if cap > 0 else 0.0 %}
+            {% set _ = ds_list.append({
+              "name": raw_ds.name | default(""),
+              "type": raw_ds.type | default(""),
+              "capacity_gb": cap_gb,
+              "free_gb": free_gb,
+              "used_pct": used_pct,
+              "accessible": raw_ds.accessible | default(false),
+              "maintenance_mode": raw_ds.maintenanceMode | default("normal"),
+            }) %}
+          {% endfor %}
+          {{ ds_list }}
+      changed_when: false
+
+    - name: Parse flattened datastores
+      ansible.builtin.set_fact:
+        _flat_datastores: "{{ _flat_datastores_raw | from_yaml | default([]) }}"
+      changed_when: false
+
+    - name: Flatten distributed portgroups from per-datacenter results
+      ansible.builtin.set_fact:
+        _flat_dvs_portgroups: "{{ _raw_dvs_portgroups.results | default([]) | selectattr('dvs_portgroup_info', 'defined') | map(attribute='dvs_portgroup_info') | flatten | list }}"
+      changed_when: false
+
+    - name: Flatten clusters and compute counts
+      ansible.builtin.set_fact:
+        _flat_clusters_raw: >-
+          {% set clusters = [] %}
+          {% for dc in (_raw_clusters.results | default([])) %}
+            {% if dc.clusters is defined and dc.clusters is mapping %}
+              {% for cname, cdata in dc.clusters.items() %}
+                {% set hosts = cdata.hosts | default([]) %}
+                {% set res = cdata.resource_summary | default({}) %}
+                {% set cpu_cap = (res.cpuCapacityMHz | default(1)) | float %}
+                {% set mem_cap = (res.memCapacityMB | default(1)) | float %}
+                {% set _ = clusters.append({
+                  "name": cname,
+                  "datacenter": dc.item | default(""),
+                  "host_count": hosts | length,
+                  "ha_enabled": cdata.ha_enabled | default(false),
+                  "drs_enabled": cdata.drs_enabled | default(false),
+                  "cpu_usage_pct": (((res.cpuUsedMHz | default(0)) | float / cpu_cap) * 100) | round(1) if cpu_cap > 0 else 0,
+                  "mem_usage_pct": (((res.memUsedMB | default(0)) | float / mem_cap) * 100) | round(1) if mem_cap > 0 else 0,
+                }) %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {{ clusters }}
+        _cluster_count_raw: >-
+          {% set count = [] %}
+          {% for dc in (_raw_clusters.results | default([])) %}
+            {% if dc.clusters is defined and dc.clusters is mapping %}
+              {% set _ = count.extend(dc.clusters.keys() | list) %}
+            {% endif %}
+          {% endfor %}
+          {{ count | length }}
+        _esxi_host_count_raw: >-
+          {% set count = [0] %}
+          {% for dc in (_raw_clusters.results | default([])) %}
+            {% if dc.clusters is defined and dc.clusters is mapping %}
+              {% for cdata in dc.clusters.values() %}
+                {% if cdata.hosts is defined %}
+                  {% set _ = count.append(cdata.hosts | length) %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {{ count | sum }}
+      changed_when: false
+
+    - name: Parse flattened clusters and counts
+      ansible.builtin.set_fact:
+        _flat_clusters: "{{ _flat_clusters_raw | from_yaml | default([]) }}"
+        _cluster_count: "{{ _cluster_count_raw | int }}"
+        _esxi_host_count: "{{ _esxi_host_count_raw | int }}"
+      changed_when: false
+
+    - name: Flatten dvswitches, extensions, and content libraries
+      ansible.builtin.set_fact:
+        _flat_dvswitches_raw: >-
+          {% set sw_list = [] %}
+          {% for sw in ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) %}
+            {% set props = ((sw.configure | default({})).settings | default({})).properties | default({}) %}
+            {% set general = props.general | default({}) %}
+            {% set advanced = props.advanced | default({}) %}
+            {% set _ = sw_list.append({
+              "name": general.name | default(sw.configure.name | default("")),
+              "num_ports": general.numPorts | default(0),
+              "num_uplinks": general.numUplinks | default(0),
+              "mtu": advanced.maxMtu | default(0),
+              "uuid": sw.uuid | default(""),
+              "vendor": general.vendor | default(""),
+              "version": general.version | default(""),
+            }) %}
+          {% endfor %}
+          {{ sw_list }}
+        _flat_extensions_raw: >-
+          {% set ext_list = [] %}
+          {% for e in ((_raw_extensions | default({})).extension_info | default([])) %}
+            {% set _ = ext_list.append({
+              "ext_label": e.extension_label | default(""),
+              "ext_company": e.extension_company | default(""),
+              "ext_version": e.extension_version | default(""),
+              "ext_key": e.extension_key | default(""),
+              "ext_last_heartbeat_time": e.extension_last_heartbeat_time | default(""),
+            }) %}
+          {% endfor %}
+          {{ ext_list }}
+        _flat_content_libraries_raw: >-
+          {% set libs = [] %}
+          {% for result in (_raw_content_libraries.results | default([])) %}
+            {% for lib in (result.content_lib_details | default([])) %}
+              {% set _ = libs.append({
+                "lib_name": lib.library_name | default(""),
+                "lib_type": lib.library_type | default(""),
+                "lib_description": lib.library_description | default(""),
+                "lib_id": lib.library_id | default(""),
+              }) %}
+            {% endfor %}
+          {% endfor %}
+          {{ libs }}
+      changed_when: false
+
+    - name: Parse flattened dvswitches, extensions, and content libraries
+      ansible.builtin.set_fact:
+        _flat_dvswitches: "{{ _flat_dvswitches_raw | from_yaml | default([]) }}"
+        _flat_extensions: "{{ _flat_extensions_raw | from_yaml | default([]) }}"
+        _flat_content_libraries: "{{ _flat_content_libraries_raw | from_yaml | default([]) }}"
+      changed_when: false
+
+    - name: Assemble flat vCenter payload
+      ansible.builtin.set_fact:
+        vmware_raw_vcenter:
+          appliance_version: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.version | default('unknown') }}"
+          appliance_build: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.build_number | default('unknown') }}"
+          appliance_health_overall: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.overall | default('gray') }}"
+          appliance_health_cpu: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.cpu | default('gray') }}"
+          appliance_health_memory: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.memory | default('gray') }}"
+          appliance_health_database: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.database | default('gray') }}"
+          appliance_health_storage: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.storage | default('gray') }}"
+          appliance_uptime_seconds: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.uptime | default(0) | float }}"
+          ssh_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.ssh | default(false) | bool }}"
+          shell_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.shell.enabled | default(false) | bool }}"
+          ntp_mode: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.mode | default('unknown') }}"
+          ntp_servers: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.servers | default([]) }}"
+          backup_schedules: "{{ (_raw_appliance_backup | default({})).schedules | default([]) }}"
+          backup_schedule_count: "{{ ((_raw_appliance_backup | default({})).schedules | default([])) | length }}"
+          vcenter_count: 1
+          datacenter_count: "{{ ((_raw_datacenters | default({})).datacenter_info | default([])) | length }}"
+          cluster_count: "{{ _cluster_count | int }}"
+          esxi_host_count: "{{ _esxi_host_count | int }}"
+          datastore_count: "{{ _flat_datastores | length }}"
+          resource_pool_count: "{{ ((_raw_resource_pools | default({})).resource_pool_info | default([])) | length }}"
+          dvswitch_count: "{{ ((_raw_dvswitches | default({})).distributed_virtual_switches | default([])) | length }}"
+          dvs_portgroup_count: "{{ _flat_dvs_portgroups | length }}"
+          license_count: "{{ ((_raw_licenses | default({})).licenses | default([])) | length }}"
+          extension_count: "{{ ((_raw_extensions | default({})).extension_info | default([])) | length }}"
+          content_library_count: "{{ (_raw_content_library_ids | default({})).content_libs | default([]) | length }}"
+          tag_category_count: "{{ ((_raw_tag_categories | default({})).tag_category_info | default([])) | length }}"
+          tag_count: "{{ ((_raw_tags | default({})).tag_info | default([])) | length }}"
+          alarm_count: "{{ ((_raw_alarms | default({})).alarms | default([])) | length }}"
+          clusters: "{{ _flat_clusters }}"
+          datastores: "{{ _flat_datastores }}"
+          resource_pools: "{{ (_raw_resource_pools | default({})).resource_pool_info | default([]) }}"
+          dvswitches: "{{ _flat_dvswitches }}"
+          dvs_portgroups: "{{ _flat_dvs_portgroups }}"
+          licenses: "{{ (_raw_licenses | default({})).licenses | default([]) }}"
+          extensions: "{{ _flat_extensions }}"
+          content_libraries: "{{ _flat_content_libraries }}"
+          tag_categories: "{{ (_raw_tag_categories | default({})).tag_category_info | default([]) }}"
+          tags: "{{ (_raw_tags | default({})).tag_info | default([]) }}"
+          active_alarms: "{{ (_raw_alarms | default({})).alarms | default([]) }}"
+          config: "{{ vcenter.config | default({}) }}"
+      changed_when: false
+      no_log: true
+
+    # --- Export ---
+
+    - name: "vCenter | Emit collection telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect_vcenter:
+            platform_dir: "vmware/vcsa"
+            report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
+            payload: "{{ vmware_raw_vcenter }}"
+            config: {}
+            # Hierarchical report layout: vsphere/<vcenter-slug>/raw.yaml
+            tree_path:
+              - vsphere
+              - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+        per_host: true
+      when: vmware_raw_vcenter is defined
+      changed_when: false
+      no_log: true

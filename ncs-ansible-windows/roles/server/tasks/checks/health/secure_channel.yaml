@@ -1,0 +1,30 @@
+---
+# checks/health/secure_channel.yaml — Domain secure channel test
+
+- name: "Health | Secure Channel | Test domain trust"
+  ansible.windows.win_powershell:
+    script: |
+      $result = @{
+        is_domain_joined = $false
+        secure_channel   = 'N/A'
+        domain           = ''
+      }
+      $cs = Get-CimInstance Win32_ComputerSystem
+      if ($cs.PartOfDomain) {
+        $result.is_domain_joined = $true
+        $result.domain = $cs.Domain
+        try {
+          $test = Test-ComputerSecureChannel -ErrorAction Stop
+          $result.secure_channel = if ($test) { 'OK' } else { 'FAILED' }
+        } catch {
+          $result.secure_channel = "ERROR: $($_.Exception.Message)"
+        }
+      }
+      $result | ConvertTo-Json -Compress
+  register: _health_secure_channel_result
+  changed_when: false
+
+- name: "Health | Secure Channel | Stage results"
+  ansible.builtin.set_fact:
+    _health_secure_channel: "{{ _health_secure_channel_result.output[0] | from_json }}"
+  changed_when: false

@@ -1,0 +1,80 @@
+---
+argument_specs:
+  main:
+    short_description: ESXi audit, collection, and STIG orchestration
+    description:
+      - Collects ESXi host inventory, health metrics, and datastore state.
+      - Performs STIG compliance evaluation and optional hardening.
+      - Manages local user passwords via vCenter API.
+      - Requires vCenter credentials (explicit or vault).
+    options:
+      ncs_action:
+        type: str
+        required: false
+        default: collect
+        choices: [collect, audit, remediate, verify]
+        description: Primary action to perform.
+      ncs_profile:
+        type: str
+        required: false
+        choices: [stig]
+        description: Compliance profile. Mutually exclusive with ncs_operation.
+      ncs_operation:
+        type: str
+        required: false
+        choices: [password_status, password_rotate]
+        description: Named operation. Mutually exclusive with ncs_profile.
+      vmware_username:
+        type: str
+        required: false
+        description: vCenter username. Falls back to vault_vcenter_username.
+      vmware_password:
+        type: str
+        required: false
+        description: vCenter password. Falls back to vault_vcenter_password.
+      vmware_validate_certs:
+        type: bool
+        required: false
+        default: false
+        description: Validate vCenter TLS certificates.
+      esxi_stig_target_hosts:
+        type: list
+        elements: str
+        required: false
+        default: []
+        description: Explicit ESXi host list. If empty, discovered from vCenter.
+      esxi_stig_enable_audit:
+        type: bool
+        required: false
+        default: true
+        description: Enable STIG audit checks.
+      esxi_stig_enable_hardening:
+        type: bool
+        required: false
+        default: false
+        description: Enable STIG remediation (mutating).
+      esxi_stig_enable_ssh_checks:
+        type: bool
+        required: false
+        default: true
+        description: Include SSH-dependent STIG checks.
+      esxi_collect_datacenters:
+        type: bool
+        required: false
+        default: true
+        description: Collect datacenter inventory.
+      esxi_collect_compute:
+        type: bool
+        required: false
+        default: true
+        description: Collect cluster and host compute metrics.
+      esxi_collect_storage:
+        type: bool
+        required: false
+        default: true
+        description: Collect datastore metrics.
+      esxi_collect_per_host:
+        type: bool
+        required: false
+        default: true
+        description: Collect per-host health data.

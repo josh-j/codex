@@ -1,0 +1,31 @@
+---
+# internal.windows.domain : tasks/main.yaml
+
+- name: "Domain | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "Domain | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: Domain
+    _ncs_default_action: audit
+    _ncs_allowed_operations:
+      - user_search
+      - group_search
+      - computer_search
+      - ou_search
+      - group_membership
+      - password_policy
+      - stale_accounts
+      - privileged_groups
+      - gpo_audit
+      - dns_zones
+      - dhcp_scopes
+      - domain_trusts
+    _ncs_dynamic_dispatch: true
+    _ncs_dynamic_dispatch_prefix: "ops/"
+    _dispatch_map:
+      _default_: ops/ad_summary

@@ -1,0 +1,36 @@
+---
+# checks/health/services.yaml — Key service status check
+
+- name: "Health | Services | Check critical services"
+  ansible.windows.win_powershell:
+    script: |
+      param([string[]]$ServiceNames)
+      $results = @()
+      foreach ($svc in $ServiceNames) {
+        $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+        if ($s) {
+          $results += @{
+            name         = $s.Name
+            display_name = $s.DisplayName
+            status       = [string]$s.Status
+            start_type   = [string]$s.StartType
+          }
+        } else {
+          $results += @{
+            name         = $svc
+            display_name = $svc
+            status       = "NotFound"
+            start_type   = "N/A"
+          }
+        }
+      }
+      @($results) | ConvertTo-Json -Compress
+    parameters:
+      ServiceNames: "{{ windows_health_critical_services }}"
+  register: _health_services_result
+  changed_when: false
+
+- name: "Health | Services | Stage results"
+  ansible.builtin.set_fact:
+    _health_services: "{{ _health_services_result.output[0] | from_json | default([]) }}"
+  changed_when: false

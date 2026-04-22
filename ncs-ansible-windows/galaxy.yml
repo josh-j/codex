@@ -1,0 +1,14 @@
+---
+namespace: internal
+name: windows
+version: 1.1.5
+readme: README.md
+authors:
+  - ncs
+description: Windows auditing and reporting roles.
+license: ["proprietary"]
+tags:
+  - windows
+  - security
+dependencies:
+  "internal.core": ">=1.0.0,<2.0.0"

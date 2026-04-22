@@ -1,0 +1,6 @@
+---
+# internal/linux/playbooks/stig_remediate.yml
+# Canonical fleet-level STIG remediate across every Linux flavour.
+
+- ansible.builtin.import_playbook: ubuntu_stig_remediate.yml
+- ansible.builtin.import_playbook: photon_stig_remediate.yml

@@ -1,0 +1,17 @@
+[sssd]
+services = nss, pam
+config_file_version = 2
+domains = {{ stig_2404_sssd_domain | default('area52.afnoapps.usaf.mil') }}
+
+[pam]
+offline_credentials_expiration = 1
+pam_cert_auth = True
+
+[domain/{{ stig_2404_sssd_domain | default('area52.afnoapps.usaf.mil') }}]
+id_provider = ldap
+auth_provider = ldap
+ldap_uri = {{ stig_2404_sssd_ldap_uri | default('ldap://TYFQ-DC-001V') }}
+ldap_search_base = {{ stig_2404_sssd_ldap_search_base | default('DC=AREA52,DC=AFNOAPPS,DC=USAF,DC=MIL') }}
+ldap_user_certificate = userCertificate;binary
+certificate_verification = ca_cert,ocsp
+ca_cert = /etc/ssl/certs/ca-certificates.crt

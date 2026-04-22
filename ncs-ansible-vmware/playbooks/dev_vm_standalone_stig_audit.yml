@@ -1,0 +1,38 @@
+---
+# internal/vmware/playbooks/dev_vm_standalone_stig_audit.yml
+# Lab VM STIG audit against vCenter at 192.168.2.120
+#
+# Usage:
+#   .venv/bin/ansible-playbook internal.vmware.dev_vm_standalone_stig_audit \
+#     -i inventory/lab/standalone/vm_inventory.yml
+
+- name: "Lab VM STIG Audit"
+  hosts: esxi_standalone
+  connection: local
+  gather_facts: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    vm_stig_enable_hardening: false
+  pre_tasks:
+    - name: "Set vCenter hostname (ESXi standalone)"
+      ansible.builtin.set_fact:
+        ansible_host: "{{ vmware_hostname }}"
+      changed_when: false
+      no_log: true
+
+    - name: "Discover and validate VM targets"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
+      vars:
+        _vmware_discovery_hostname: "{{ vmware_hostname }}"
+
+    - name: "Show discovered targets"
+      ansible.builtin.debug:
+        msg: "Targets: {{ vm_stig_target_vms | default([]) }}"
+
+  roles:
+    - role: internal.vmware.vm
+      vars:
+        vm_stig_enable_hardening: false

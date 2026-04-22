@@ -1,0 +1,26 @@
+---
+- name: photon_reload_auditd
+  listen: "reload auditd"
+  ansible.builtin.command: /sbin/augenrules --load
+  register: output
+  changed_when: output.rc == 0
+  when:
+    - not (ansible_is_chroot | default(false))
+
+- name: photon_restart_sshd
+  listen: "restart sshd"
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+
+- name: photon_restart_rsyslog
+  listen: "restart rsyslog"
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted
+
+- name: photon_restart_resolved
+  listen: "restart resolved"
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted

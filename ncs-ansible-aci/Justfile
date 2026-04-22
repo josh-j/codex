@@ -1,0 +1,9 @@
+# Imports the monorepo's shared recipes when the monorepo is
+# alongside this repo; silently no-ops otherwise so the sibling works
+# in isolation (no recipes available, but `just --list` still runs).
+
+import? '../ncs-ansible/shared.just'
+import? '../codex/shared.just'
+
+# Collection-specific recipes below. See shared.just for
+# lint / yamllint / build / clean.

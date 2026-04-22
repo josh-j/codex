@@ -1,0 +1,32 @@
+---
+# checks/health/software_versions.yaml — Installed software version inventory
+
+- name: "Health | Software Versions | Gather installed software"
+  ansible.windows.win_powershell:
+    script: |
+      $paths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+      )
+      $apps = @()
+      foreach ($p in $paths) {
+        Get-ItemProperty $p -ErrorAction SilentlyContinue |
+          Where-Object { $_.DisplayName -and $_.DisplayName.Trim() } |
+          ForEach-Object {
+            $apps += @{
+              name      = $_.DisplayName.Trim()
+              version   = $_.DisplayVersion
+              publisher = $_.Publisher
+              install_date = $_.InstallDate
+            }
+          }
+      }
+      $apps = $apps | Sort-Object { $_.name } -Unique
+      @($apps) | ConvertTo-Json -Compress
+  register: _health_software_result
+  changed_when: false
+
+- name: "Health | Software Versions | Stage results"
+  ansible.builtin.set_fact:
+    _health_software_versions: "{{ _health_software_result.output[0] | from_json | default([]) }}"
+  changed_when: false

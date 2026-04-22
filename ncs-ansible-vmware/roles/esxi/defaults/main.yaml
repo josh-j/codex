@@ -1,0 +1,20 @@
+---
+# internal.vmware.esxi : defaults/main.yaml
+
+# Pipeline config
+esxi_stig_enable_audit: true
+esxi_stig_enable_hardening: false
+esxi_stig_target_hosts: []
+esxi_stig_enable_ssh_checks: true
+
+# Collection toggles
+esxi_collect_datacenters: true
+esxi_collect_compute: true
+esxi_collect_storage: true
+esxi_collect_per_host: true
+
+# Thresholds (used by ncs-reporter)
+vmware_cpu_critical_pct: 90.0
+vmware_memory_critical_pct: 90.0
+vmware_datastore_free_critical_pct: 10.0
+vmware_datastore_free_warning_pct: 15.0

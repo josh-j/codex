@@ -1,0 +1,5 @@
+---
+# The collection repo's top-level dir (ncs-ansible-aci)
+# isn't a role itself, so suppress the role-name warning for the root.
+skip_list:
+  - role-name

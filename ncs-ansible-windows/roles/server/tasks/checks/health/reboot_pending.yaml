@@ -1,0 +1,54 @@
+---
+# checks/health/reboot_pending.yaml — Registry-based pending reboot detection
+
+- name: "Health | Reboot Pending | Check all reboot indicators"
+  ansible.windows.win_powershell:
+    script: |
+      $pending = @{
+        reboot_pending       = $false
+        cbs_reboot           = $false
+        wu_reboot            = $false
+        pend_file_rename     = $false
+        sccm_reboot          = $false
+        component_servicing  = $false
+        reasons              = @()
+      }
+
+      # Component-Based Servicing
+      if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') {
+        $pending.cbs_reboot = $true
+        $pending.component_servicing = $true
+        $pending.reasons += 'CBS'
+      }
+
+      # Windows Update
+      if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') {
+        $pending.wu_reboot = $true
+        $pending.reasons += 'WindowsUpdate'
+      }
+
+      # Pending File Rename Operations
+      $pfro = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue
+      if ($pfro.PendingFileRenameOperations) {
+        $pending.pend_file_rename = $true
+        $pending.reasons += 'PendingFileRename'
+      }
+
+      # SCCM Client
+      try {
+        $sccm = Invoke-CimMethod -Namespace 'root\ccm\ClientSDK' -ClassName CCM_ClientUtilities -MethodName DetermineIfRebootPending -ErrorAction SilentlyContinue
+        if ($sccm -and ($sccm.RebootPending -or $sccm.IsHardRebootPending)) {
+          $pending.sccm_reboot = $true
+          $pending.reasons += 'SCCM'
+        }
+      } catch {}
+
+      $pending.reboot_pending = $pending.reasons.Count -gt 0
+      $pending | ConvertTo-Json -Compress
+  register: _health_reboot_result
+  changed_when: false
+
+- name: "Health | Reboot Pending | Stage results"
+  ansible.builtin.set_fact:
+    _health_reboot_pending: "{{ _health_reboot_result.output[0] | from_json }}"
+  changed_when: false

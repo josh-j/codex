@@ -1,0 +1,108 @@
+---
+# internal.windows.server : tasks/registry_fix.yaml
+# Apply registry-based CVE remediations from predefined catalog.
+
+- name: "Registry Fix | Load fix catalog"
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/vars/registry_fixes.yaml"
+  tags: [registry_fix]
+
+- name: "Registry Fix | Determine fixes to apply"
+  ansible.builtin.set_fact:
+    _registry_fixes_selected: >-
+      {{
+        windows_registry_fix_catalog
+        if (windows_registry_fix_ids | length == 0)
+        else (windows_registry_fix_catalog | selectattr('id', 'in', windows_registry_fix_ids) | list)
+      }}
+  changed_when: false
+
+- name: "Registry Fix | Check current registry state"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$FixesJson)
+      $fixes = $FixesJson | ConvertFrom-Json
+      $results = @()
+      foreach ($fix in $fixes) {
+        $current = $null
+        $compliant = $false
+        try {
+          $prop = Get-ItemProperty -Path $fix.path -Name $fix.name -ErrorAction SilentlyContinue
+          if ($prop) {
+            $current = $prop.($fix.name)
+            $compliant = ($current -eq $fix.value)
+          }
+        } catch {}
+        $results += @{
+          id        = $fix.id
+          title     = $fix.title
+          cve       = $fix.cve
+          path      = $fix.path
+          name      = $fix.name
+          expected  = $fix.value
+          current   = $current
+          compliant = $compliant
+        }
+      }
+      @($results) | ConvertTo-Json -Depth 2 -Compress
+    parameters:
+      FixesJson: "{{ _registry_fixes_selected | to_json }}"
+  register: _registry_check_result
+  changed_when: false
+
+- name: "Registry Fix | Stage check results"
+  ansible.builtin.set_fact:
+    _registry_check_results: "{{ _registry_check_result.output[0] | from_json | default([]) }}"
+  changed_when: false
+
+- name: "Registry Fix | Apply non-compliant fixes"
+  ansible.windows.win_regedit:
+    path: "{{ item.path }}"
+    name: "{{ item.name }}"
+    data: "{{ item.expected }}"
+    type: "{{ (windows_registry_fix_catalog | selectattr('id', 'equalto', item.id) | first).type | default('dword') }}"
+  loop: "{{ _registry_check_results | selectattr('compliant', 'equalto', false) | list }}"
+  loop_control:
+    label: "{{ item.id }} - {{ item.title }}"
+  when: windows_registry_fix_apply | bool
+  register: _registry_apply_results
+
+- name: "Registry Fix | Verify after apply"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$FixesJson)
+      $fixes = $FixesJson | ConvertFrom-Json
+      $results = @()
+      foreach ($fix in $fixes) {
+        $current = $null
+        $compliant = $false
+        try {
+          $prop = Get-ItemProperty -Path $fix.path -Name $fix.name -ErrorAction SilentlyContinue
+          if ($prop) {
+            $current = $prop.($fix.name)
+            $compliant = ($current -eq $fix.value)
+          }
+        } catch {}
+        $results += @{
+          id        = $fix.id
+          title     = $fix.title
+          cve       = $fix.cve
+          compliant = $compliant
+        }
+      }
+      @($results) | ConvertTo-Json -Depth 2 -Compress
+    parameters:
+      FixesJson: "{{ _registry_fixes_selected | to_json }}"
+  register: _registry_verify_result
+  when: windows_registry_fix_apply | bool
+  changed_when: false
+
+- name: "Registry Fix | Emit telemetry"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/registry_fix"
+    _ncs_emit_payload:
+      before: "{{ _registry_check_results }}"
+      after: "{{ _registry_verify_result.output[0] | default('[]') | from_json }}"
+      applied: "{{ windows_registry_fix_apply | bool }}"

@@ -1,0 +1,7 @@
+# General
+run_create_backups: true
+
+# Photon
+photon_version: '3'
+var_syslog_authpriv_log: '/var/log/audit/sshinfo.log'
+run_sshd_banner_issue: false

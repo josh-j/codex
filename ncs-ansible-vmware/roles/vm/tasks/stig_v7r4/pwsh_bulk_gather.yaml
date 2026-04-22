@@ -1,0 +1,143 @@
+---
+# tasks/v7r4/pwsh_bulk_gather.yaml
+# Single PowerCLI invocation to gather ALL data needed by 28 VM STIG rules.
+# Replaces the previous per-VM hardware query + include_vars + evaluator loop.
+
+- name: "VM STIG | Pre | Bulk PowerCLI gather for {{ _current_vm_name }}"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      timeout 90 pwsh -NoProfile -Command "
+      \$ProgressPreference = 'SilentlyContinue'
+      {{ _pwsh_preamble }}
+      \$vm = Get-VM -Name '{{ _current_vm_name }}' -ErrorAction Stop
+      \$view = \$vm | Get-View
+      \$devs = \$view.Config.Hardware.Device
+
+      \$result = @{}
+
+      # --- Hardware device counts (V-256457 through V-256461) ---
+      try {
+        \$result.floppy = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualFloppy] }).Count
+        \$result.cdrom = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualCdrom] }).Count
+        \$result.parallel = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualParallelPort] }).Count
+        \$result.serial = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualSerialPort] }).Count
+        \$result.usb = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualUSBController] -or \$_ -is [VMware.Vim.VirtualUSBXHCIController] }).Count
+      } catch {
+        \$result.floppy = -1; \$result.cdrom = -1; \$result.parallel = -1; \$result.serial = -1; \$result.usb = -1
+      }
+
+      # --- VM attributes (V-256472, V-256473, V-256477) ---
+      try {
+        \$result.vmotion_encryption = [string]\$view.Config.MigrateEncryption
+        \$result.ft_encryption = [string]\$view.Config.FtEncryptionMode
+        \$result.logging_enabled = [string]\$view.Config.Flags.EnableLogging
+      } catch {
+        \$result.vmotion_encryption = 'UNKNOWN'
+        \$result.ft_encryption = 'UNKNOWN'
+        \$result.logging_enabled = 'UNKNOWN'
+      }
+
+      # --- Advanced settings (covers 14 rules) ---
+      try {
+        \$adv = @{}
+        Get-AdvancedSetting -Entity \$vm | ForEach-Object { \$adv[\$_.Name] = [string]\$_.Value }
+        \$result.advanced_settings = \$adv
+      } catch {
+        \$result.advanced_settings = @{}
+        \$result.advanced_settings_error = \$_.Exception.Message
+      }
+
+      # --- Disk persistence mode (V-256455 / VMCH-70-000006) ---
+      try {
+        \$disks = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualDisk] })
+        \$nonPersistent = @(\$disks | Where-Object { \$_.Backing.DiskMode -and \$_.Backing.DiskMode -ne 'persistent' -and \$_.Backing.DiskMode -ne 'independent_persistent' })
+        \$result.non_persistent_disks = \$nonPersistent.Count
+      } catch {
+        \$result.non_persistent_disks = -1
+      }
+
+      # --- Shared salt (V-256466 / VMCH-70-000018) ---
+      \$result.pshare_salt_present = if (\$adv -and \$adv.ContainsKey('sched.mem.pshare.salt')) { 'true' } else { 'false' }
+
+      # --- dvFilter (V-256467 / VMCH-70-000019) ---
+      try {
+        \$dvfilterKeys = @()
+        if (\$adv) { \$dvfilterKeys = @(\$adv.Keys | Where-Object { \$_ -match '^ethernet\d+\.filter\d+\.name\$' }) }
+        \$result.dvfilter_count = \$dvfilterKeys.Count
+      } catch {
+        \$result.dvfilter_count = -1
+      }
+
+      # --- PCI passthrough (V-256476 / VMCH-70-000028) ---
+      try {
+        \$pci = @(\$devs | Where-Object { \$_ -is [VMware.Vim.VirtualPCIPassthrough] })
+        \$result.pci_passthrough_count = \$pci.Count
+      } catch {
+        \$result.pci_passthrough_count = -1
+      }
+
+      \$result | ConvertTo-Json -Depth 3 -Compress
+      " | tr -d '\r' | tail -1
+  register: _vm_bulk_result
+  environment:
+    VC_PASS: "{{ vmware_password | string | trim }}"
+  check_mode: false
+  changed_when: false
+  no_log: true
+  ignore_errors: true  # noqa: ignore-errors — if gather fails, rules gate out as not_reviewed
+
+- name: "VM STIG | Pre | Parse bulk gather"
+  ansible.builtin.set_fact:
+    _vm_bulk: "{{ _vm_bulk_result.stdout | from_json }}"
+    _vm_bulk_ok: true
+  check_mode: false
+  changed_when: false
+  when:
+    - _vm_bulk_result is not failed
+    - _vm_bulk_result.stdout | default('') | length > 2
+
+- name: "VM STIG | Pre | Bulk gather failed"
+  ansible.builtin.debug:
+    msg: >-
+      Bulk PowerCLI gather failed for {{ _current_vm_name }}.
+      All rules will report as not_reviewed.
+      Error: {{ _vm_bulk_result.stderr | default('unknown') | truncate(200) }}
+  when: not (_vm_bulk_ok | default(false))
+
+- name: "VM STIG | Pre | Derive compliance facts"
+  ansible.builtin.set_fact:
+    # --- Advanced settings (flat vars for validate_expr) ---
+    _vm_adv_copy_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.copy.disable'] | default('') }}"
+    _vm_adv_dnd_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.dnd.disable'] | default('') }}"
+    _vm_adv_paste_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.paste.disable'] | default('') }}"
+    _vm_adv_disk_shrink_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.diskShrink.disable'] | default('') }}"
+    _vm_adv_disk_wiper_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.diskWiper.disable'] | default('') }}"
+    _vm_adv_hgfs_disable: "{{ _vm_bulk.advanced_settings['isolation.tools.hgfsServerSet.disable'] | default('') }}"
+    _vm_adv_max_connections: "{{ _vm_bulk.advanced_settings['RemoteDisplay.maxConnections'] | default('') }}"
+    _vm_adv_setinfo_size_limit: "{{ _vm_bulk.advanced_settings['tools.setinfo.sizeLimit'] | default('') }}"
+    _vm_adv_connectable_disable: "{{ _vm_bulk.advanced_settings['isolation.device.connectable.disable'] | default('') }}"
+    _vm_adv_guest_host_info: "{{ _vm_bulk.advanced_settings['tools.guestlib.enableHostInfo'] | default('') }}"
+    _vm_adv_desktop_autolock: "{{ _vm_bulk.advanced_settings['tools.guest.desktop.autolock'] | default('') }}"
+    _vm_adv_3d_enable: "{{ _vm_bulk.advanced_settings['mks.enable3d'] | default('') }}"
+    _vm_adv_log_rotate_size: "{{ _vm_bulk.advanced_settings['vmx.log.rotateSize'] | default('') }}"
+    _vm_adv_log_keep_old: "{{ _vm_bulk.advanced_settings['vmx.log.keepOld'] | default('') }}"
+    # --- Hardware device counts ---
+    _vm_hw_floppy: "{{ _vm_bulk.floppy | default(-1) }}"
+    _vm_hw_cdrom: "{{ _vm_bulk.cdrom | default(-1) }}"
+    _vm_hw_parallel: "{{ _vm_bulk.parallel | default(-1) }}"
+    _vm_hw_serial: "{{ _vm_bulk.serial | default(-1) }}"
+    _vm_hw_usb: "{{ _vm_bulk.usb | default(-1) }}"
+    # --- VM attributes ---
+    _vm_attr_vmotion_encryption: "{{ _vm_bulk.vmotion_encryption | default('UNKNOWN') }}"
+    _vm_attr_ft_encryption: "{{ _vm_bulk.ft_encryption | default('UNKNOWN') }}"
+    _vm_attr_logging_enabled: "{{ _vm_bulk.logging_enabled | default('UNKNOWN') }}"
+    # --- Audit-only facts ---
+    _vm_non_persistent_disks: "{{ _vm_bulk.non_persistent_disks | default(-1) }}"
+    _vm_pshare_salt_present: "{{ _vm_bulk.pshare_salt_present | default('UNKNOWN') }}"
+    _vm_dvfilter_count: "{{ _vm_bulk.dvfilter_count | default(-1) }}"
+    _vm_pci_passthrough_count: "{{ _vm_bulk.pci_passthrough_count | default(-1) }}"
+  check_mode: false
+  changed_when: false
+  when: _vm_bulk_ok | default(false)

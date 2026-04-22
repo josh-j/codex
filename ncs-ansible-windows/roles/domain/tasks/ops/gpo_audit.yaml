@@ -1,0 +1,21 @@
+---
+# internal.windows.domain : ops/gpo_audit.yaml
+
+- name: "GPO Audit | Query all Group Policy Objects"
+  ansible.windows.win_powershell:
+    script: |
+      Get-GPO -All | Select-Object DisplayName, Id, GpoStatus,
+        @{N='CreationTime'; E={$_.CreationTime.ToString('o')}},
+        @{N='ModificationTime'; E={$_.ModificationTime.ToString('o')}},
+        @{N='UserEnabled'; E={$_.GpoStatus -notmatch 'UserSettingsDisabled|AllSettingsDisabled'}},
+        @{N='ComputerEnabled'; E={$_.GpoStatus -notmatch 'ComputerSettingsDisabled|AllSettingsDisabled'}}
+  register: _ad_gpos
+
+- name: "GPO Audit | Store results"
+  ansible.builtin.set_fact:
+    domain_gpo_results: "{{ _ad_gpos.output }}"
+  changed_when: false
+
+- name: "GPO Audit | Display count"
+  ansible.builtin.debug:
+    msg: "Found {{ domain_gpo_results | length }} GPOs"

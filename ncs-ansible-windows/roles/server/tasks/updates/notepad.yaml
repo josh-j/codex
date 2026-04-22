@@ -1,0 +1,44 @@
+---
+# updates/notepad.yaml — Notepad++ update via winget or direct download
+
+- name: "Update Software | Notepad++ | Check and update"
+  ansible.windows.win_powershell:
+    script: |
+      $result = @{ app = 'Notepad++'; before = ''; after = ''; success = $false; message = '' }
+
+      # Get current version
+      $nppPath = "${env:ProgramFiles}\Notepad++\notepad++.exe"
+      $nppPath86 = "${env:ProgramFiles(x86)}\Notepad++\notepad++.exe"
+      $exe = if (Test-Path $nppPath) { $nppPath } elseif (Test-Path $nppPath86) { $nppPath86 } else { $null }
+
+      if ($exe) {
+        $result.before = (Get-Item $exe).VersionInfo.FileVersion
+      } else {
+        $result.message = 'Notepad++ not installed'
+        $result | ConvertTo-Json -Compress
+        return
+      }
+
+      # Try winget first
+      $winget = Get-Command winget -ErrorAction SilentlyContinue
+      if ($winget) {
+        try {
+          $proc = Start-Process 'winget' -ArgumentList 'upgrade Notepad++.Notepad++ --silent --accept-source-agreements --accept-package-agreements' -Wait -PassThru -NoNewWindow
+          Start-Sleep -Seconds 5
+          $result.after = (Get-Item $exe).VersionInfo.FileVersion
+          $result.success = ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq -1978335189)  # No update available
+          $result.message = "winget exit code: $($proc.ExitCode)"
+        } catch {
+          $result.message = "winget error: $($_.Exception.Message)"
+        }
+      } else {
+        $result.message = 'winget not available; manual update required'
+      }
+      $result | ConvertTo-Json -Compress
+  register: _notepad_update_result
+  changed_when: false
+
+- name: "Update Software | Notepad++ | Stage result"
+  ansible.builtin.set_fact:
+    _update_software_results: "{{ _update_software_results | default([]) + [_notepad_update_result.output[0] | from_json] }}"
+  changed_when: false

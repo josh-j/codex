@@ -1,0 +1,35 @@
+---
+# internal.linux.photon : tasks/main.yaml
+
+- name: "Photon | Verify SSH connectivity"
+  block:
+    - ansible.builtin.wait_for_connection:
+        timeout: 10
+  rescue:
+    - ansible.builtin.fail:
+        msg: >-
+          SSH connection to {{ inventory_hostname }} failed.
+          Verify the host is reachable and SSH is enabled.
+
+- name: "Photon | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "Photon | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: Photon
+    _ncs_default_action: collect
+    _ncs_allowed_operations:
+      - password_status
+      - password_rotate
+    _ncs_extra_validations:
+      - "{{ (_ncs_requested_operation != 'password_rotate') or (_ncs_requested_action == 'remediate') }}"
+      - "{{ (_ncs_requested_operation != 'password_status') or (_ncs_requested_action in ['audit', 'verify']) }}"
+    _dispatch_map:
+      stig: stig
+      password_rotate: maintain/password_rotate
+      password_status: maintain/password_status
+      _default_: collect

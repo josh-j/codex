@@ -1,0 +1,16 @@
+---
+namespace: internal
+name: vmware
+version: 1.1.17
+readme: README.md
+authors:
+  - NCS
+description: VMware audit collection, reporting handoff, and STIG automation roles.
+license: ["GPL-3.0-or-later"]
+tags:
+  - infrastructure
+  - security
+  - vmware
+  - compliance
+dependencies:
+  "internal.core": ">=1.0.0,<2.0.0"

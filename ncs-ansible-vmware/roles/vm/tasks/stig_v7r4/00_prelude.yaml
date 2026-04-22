@@ -1,0 +1,60 @@
+---
+# stig_v7r4/00_prelude.yaml — VM STIG initialization
+
+- name: "VM STIG | Load STIG defaults"
+  ansible.builtin.include_vars:
+    file: "{{ _ncs_task_root }}/stig_v7r4/stig.yaml"
+  tags: [always]
+
+- name: "VM STIG | Register target VM for callback"
+  ansible.builtin.set_fact:
+    _ncs_stig_target_host: "{{ _current_vm_name }}"
+    _ncs_stig_target_type: "vm"
+    _stig_active_phase: >-
+      {{ _stig_phase_hint | default((ansible_check_mode | default(false)) | ternary('audit', 'remediate')) }}
+    _vm_bulk_ok: false
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# PowerCLI connection preamble
+# =========================================================================
+- name: "VM STIG | Set PowerCLI preamble"
+  ansible.builtin.set_fact:
+    _pwsh_preamble: >-
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:\$false | Out-Null;
+      Set-PowerCLIConfiguration -ParticipateInCeip:\$false -Confirm:\$false | Out-Null;
+      Connect-VIServer -Server '{{ ansible_host }}' -User '{{ vmware_username }}' -Password \$env:VC_PASS -Force -WarningAction SilentlyContinue | Out-Null;
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# Load manage flag aliases for _stig_manage_prefix auto-resolution
+# =========================================================================
+- name: "VM STIG | Load STIG defaults"
+  ansible.builtin.include_vars:
+    file: "{{ _ncs_task_root }}/stig_v7r4/default.yaml"
+  tags:
+    - always
+
+- name: "VM STIG | Set manage prefix"
+  ansible.builtin.set_fact:
+    _stig_manage_prefix: "vm_v7r4_"
+  changed_when: false
+  tags:
+    - always
+
+# =========================================================================
+# Resolve datacenter for current VM
+# =========================================================================
+- name: "VM STIG | Resolve datacenter for {{ _current_vm_name }}"
+  ansible.builtin.set_fact:
+    _current_vm_datacenter: "{{ vm_datacenter_map[_current_vm_name] | default(omit) }}"
+  check_mode: false
+  changed_when: false
+
+# =========================================================================
+# Pre-flight: Bulk PowerCLI gather
+# =========================================================================
+- name: "VM STIG | Bulk PowerCLI gather"
+  ansible.builtin.include_tasks: stig_v7r4/pwsh_bulk_gather.yaml

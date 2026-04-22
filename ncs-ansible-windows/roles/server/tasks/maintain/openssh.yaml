@@ -1,0 +1,114 @@
+---
+# internal.windows.server : tasks/openssh.yaml
+# Install and configure OpenSSH Server Windows feature.
+
+- name: "OpenSSH | Install and configure"
+  vars:
+    _openssh_failed: false
+  block:
+    - name: "OpenSSH | Install OpenSSH Server capability"
+      ansible.windows.win_powershell:
+        script: |
+          $result = @{ already_installed = $false; installed = $false; message = '' }
+
+          # Check current state
+          $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*' -ErrorAction Stop
+          if ($cap.State -eq 'Installed') {
+            $result.already_installed = $true
+            $result.message = 'OpenSSH Server already installed'
+            $result | ConvertTo-Json -Compress
+            return
+          }
+
+          # Install
+          $install = Add-WindowsCapability -Online -Name $cap.Name -ErrorAction Stop
+          if ($install.RestartNeeded) {
+            $result.message = 'Installed; reboot required'
+          } else {
+            $result.message = 'Installed successfully'
+          }
+          $result.installed = $true
+          $result | ConvertTo-Json -Compress
+      register: _openssh_install_result
+      changed_when: "not (_openssh_install_result.output[0] | from_json).already_installed"
+
+    - name: "OpenSSH | Set sshd service to automatic and start"
+      ansible.windows.win_service:
+        name: sshd
+        start_mode: auto
+        state: started
+
+    - name: "OpenSSH | Ensure firewall rule exists"
+      ansible.windows.win_powershell:
+        script: |
+          $rule = Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue
+          if (-not $rule) {
+            New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' `
+              -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow -ErrorAction Stop
+            'created'
+          } elseif (-not $rule.Enabled) {
+            Enable-NetFirewallRule -Name 'OpenSSH-Server-In-TCP'
+            'enabled'
+          } else {
+            'exists'
+          }
+      register: _openssh_fw_result
+      changed_when: "_openssh_fw_result.output[0] != 'exists'"
+
+    - name: "OpenSSH | Set default shell to PowerShell"
+      ansible.windows.win_regedit:
+        path: 'HKLM:\SOFTWARE\OpenSSH'
+        name: DefaultShell
+        data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        type: string
+      when: windows_openssh_default_shell == 'powershell'
+
+    - name: "OpenSSH | Deploy managed sshd_config"
+      ansible.windows.win_template:
+        src: "{{ role_path }}/templates/sshd_config.j2"
+        dest: 'C:\ProgramData\ssh\sshd_config'
+      register: _openssh_config_result
+      when: windows_openssh_manage_config | bool
+
+    - name: "OpenSSH | Restart sshd after config change"
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when:
+        - windows_openssh_manage_config | bool
+        - _openssh_config_result is changed
+
+    - name: "OpenSSH | Set ACL on administrators_authorized_keys"
+      ansible.windows.win_powershell:
+        script: |
+          $keyFile = 'C:\ProgramData\ssh\administrators_authorized_keys'
+          if (-not (Test-Path $keyFile)) { New-Item -Path $keyFile -ItemType File -Force | Out-Null }
+          $acl = Get-Acl $keyFile
+          $acl.SetAccessRuleProtection($true, $false)
+          $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            'BUILTIN\Administrators', 'FullControl', 'Allow')
+          $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            'NT AUTHORITY\SYSTEM', 'FullControl', 'Allow')
+          $acl.SetAccessRule($adminRule)
+          $acl.SetAccessRule($systemRule)
+          Set-Acl $keyFile $acl
+          'configured'
+      register: _openssh_acl_result
+      changed_when: "_openssh_acl_result.output[0] == 'configured'"
+      when: windows_openssh_allow_pubkey | bool
+
+  rescue:
+    - name: "OpenSSH | Mark failure"
+      ansible.builtin.set_fact:
+        _openssh_failed: true
+      changed_when: false
+
+  always:
+    - name: "OpenSSH | Emit telemetry"
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "windows/openssh"
+        _ncs_emit_payload:
+          install: "{{ _openssh_install_result.output[0] | default('{}') | from_json }}"
+          failed: "{{ _openssh_failed | bool }}"

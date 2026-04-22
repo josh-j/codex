@@ -1,0 +1,18 @@
+---
+# internal/aci/playbooks/apic_collect.yml
+# Gather fabric health, faults, link utilization, and OSPF state from
+# every APIC in the inventory. The resulting raw_apic.yaml artifacts are
+# consumed by ncs-reporter to produce the ACI dashboard and alerts.
+#
+# Usage:
+#   ansible-playbook internal.aci.apic_collect -i inventory/production
+
+- name: "Phase 2: ACI Collect (APIC telemetry)"
+  hosts: "{{ aci_target_hosts | default('aci_apics') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  tags: ["aci", "audit"]
+  roles:
+    - role: internal.aci.apic
+      vars:
+        ncs_action: collect

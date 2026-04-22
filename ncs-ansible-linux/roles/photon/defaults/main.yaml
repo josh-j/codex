@@ -1,0 +1,6 @@
+---
+# internal.linux.photon : defaults/main.yaml
+
+photon_skip_export: false
+photon_stig_enable_audit: true
+photon_stig_enable_hardening: false

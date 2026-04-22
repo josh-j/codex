@@ -1,0 +1,221 @@
+---
+# internal.vmware.esxi : tasks/collect.yaml
+# Collects ESXi infrastructure data: datacenters, clusters, datastores, per-host health.
+
+- name: ESXi Collect
+  block:
+    - name: ESXi Collect | Bootstrap shared collection state
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_collection
+      vars:
+        vmware_collection_raw_placeholders:
+          _raw_datacenters: {}
+          _raw_clusters: {}
+          _raw_datastores: {}
+          _raw_host_facts: {}
+          _raw_host_nics: {}
+          _raw_host_services: {}
+          _raw_host_records: []
+
+    - name: Inventory | Query Datacenters
+      community.vmware.vmware_datacenter_info:
+      register: _raw_datacenters
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: esxi_collect_datacenters | default(true) | bool
+
+    - name: Inventory | Extract Datacenter list
+      ansible.builtin.set_fact:
+        _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
+      changed_when: false
+      when: esxi_collect_datacenters | default(true) | bool
+
+    - name: Inventory | Query Compute (Clusters & Hosts)
+      vmware.vmware.cluster_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_clusters
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - esxi_collect_compute | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
+    - name: Inventory | Query Storage (Datastores)
+      community.vmware.vmware_datastore_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters }}"
+      register: _raw_datastores
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      retries: 2
+      delay: 5
+      until: _raw_datastores is succeeded
+      when:
+        - esxi_collect_storage | default(true) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
+    - name: Per-Host | Collect health data
+      when: esxi_collect_per_host | default(true) | bool
+      block:
+        - name: Per-Host | Build host list from cluster data
+          ansible.builtin.set_fact:
+            _all_esxi_hosts: >-
+              {{
+                _raw_clusters.results | default([])
+                | selectattr('clusters', 'defined')
+                | map(attribute='clusters')
+                | map('dict2items') | flatten
+                | map(attribute='value')
+                | selectattr('hosts', 'defined')
+                | map(attribute='hosts') | flatten
+                | map(attribute='name') | list
+              }}
+          changed_when: false
+
+        # Synchronous per-host queries. We previously dispatched these
+        # via async+poll:0 to fan out across forks, but ansible-core
+        # 2.20's async_status action plugin raises "Action failed:
+        # Unknown error" on intermediate (finished: false) polls
+        # regardless of async/delay/retries tuning, so the reap step
+        # never sees finished: true. Running the modules synchronously
+        # in a loop is ~2–3 min per vcsa but reliable; vcsa-level
+        # parallelism (play forks across vcsa-* inventory hosts) still
+        # applies.
+        - name: Per-Host | Collect host facts
+          community.vmware.vmware_host_facts:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          loop_control:
+            label: "{{ item }}"
+          register: _raw_host_facts
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          when: _all_esxi_hosts | length > 0
+
+        - name: Per-Host | Collect NIC info
+          community.vmware.vmware_host_vmnic_info:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          loop_control:
+            label: "{{ item }}"
+          register: _raw_host_nics
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          when: _all_esxi_hosts | length > 0
+
+        - name: Per-Host | Collect service info
+          community.vmware.vmware_host_service_info:
+            esxi_hostname: "{{ item }}"
+          loop: "{{ _all_esxi_hosts }}"
+          loop_control:
+            label: "{{ item }}"
+          register: _raw_host_services
+          delegate_to: localhost
+          no_log: true
+          failed_when: false
+          changed_when: false
+          when: _all_esxi_hosts | length > 0
+
+        # Fold the three result sets into the shape emit's
+        # per_host_split (name_key: "item") expects — each entry carries
+        # facts + nics + services pre-joined, and the reporter's
+        # assemble_esxi_hosts script reads one list. Write to a fresh
+        # variable (_raw_host_records) rather than reusing an input
+        # register: ansible-core 2.20 resolves templates lazily, and a
+        # self-referential set_fact can re-read its own post-assignment
+        # value so the fold emits stale entries at emit time.
+        - name: Per-Host | Fold results into per-host records
+          ansible.builtin.set_fact:
+            _raw_host_records: >-
+                {%- set out = [] -%}
+                {#- ansible-core 2.20 wraps templated values in
+                    _AnsibleLazyTemplateDict which can't be used as dict
+                    keys; | string forces a concrete str before insert. #}
+                {%- set nics_by = {} -%}
+                {%- for j in (_raw_host_nics.results | default([])) -%}
+                  {%- set name = (j.item | default('')) | string -%}
+                  {%- set host_nics_map = (j.hosts_vmnic_info | default({})) -%}
+                  {%- set _ = nics_by.update({name: host_nics_map.get(name, {})}) -%}
+                {%- endfor -%}
+                {%- set svcs_by = {} -%}
+                {%- for j in (_raw_host_services.results | default([])) -%}
+                  {%- set name = (j.item | default('')) | string -%}
+                  {%- set host_svcs_map = (j.host_service_info | default({})) -%}
+                  {%- set _ = svcs_by.update({name: host_svcs_map.get(name, [])}) -%}
+                {%- endfor -%}
+                {%- for j in (_raw_host_facts.results | default([])) -%}
+                  {%- set name = (j.item | default('')) | string -%}
+                  {%- if name -%}
+                    {%- set _ = out.append({
+                      'item': name,
+                      'ansible_facts': j.ansible_facts | default({}),
+                      'nics': nics_by.get(name, {}),
+                      'services': svcs_by.get(name, []),
+                    }) -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {{ out }}
+          changed_when: false
+          when: _all_esxi_hosts | length > 0
+
+  always:
+    - name: Assemble raw ESXi infrastructure context
+      ansible.builtin.set_fact:
+        vmware_raw_esxi:
+          datacenters_info: "{{ _raw_datacenters | default({}) }}"
+          clusters_info: "{{ _raw_clusters | default({}) }}"
+          datastores_info:
+            datastores: >-
+              {{
+                _raw_datastores.results | default([])
+                | selectattr('datastores', 'defined')
+                | map(attribute='datastores')
+                | flatten | list
+              }}
+          hosts_info:
+            host_facts: "{{ _raw_host_records | default([]) }}"
+          config: "{{ (vcenter | default({})).config | default({}) }}"
+      changed_when: false
+      no_log: true
+
+    - name: "ESXi | Emit collection telemetry"
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect_esxi:
+            platform_dir: "vmware/esxi"
+            report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
+            payload: "{{ vmware_raw_esxi }}"
+            per_host_split:
+              list_path: "hosts_info.host_facts"
+              name_key: "item"
+            config:
+              vmware_cpu_critical_pct: "{{ vmware_cpu_critical_pct | default(90) }}"
+              vmware_memory_critical_pct: "{{ vmware_memory_critical_pct | default(90) }}"
+              vmware_datastore_free_critical_pct: "{{ vmware_datastore_free_critical_pct | default(10) }}"
+              vmware_datastore_free_warning_pct: "{{ vmware_datastore_free_warning_pct | default(15) }}"
+            # Hierarchical report layout. The collector's per_host_split
+            # router appends slug(datacenter)/slug(cluster)/<hostname>
+            # after the base tree_path, landing each ESXi host at
+            # vsphere/<vc-slug>/<dc-slug>/<cluster-slug>/<hostname>/raw.yaml.
+            tree_path:
+              - vsphere
+              - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+            tree_path_host_keys:
+              - datacenter
+              - cluster
+        per_host: true
+      when: vmware_raw_esxi is defined
+      changed_when: false
+      no_log: true

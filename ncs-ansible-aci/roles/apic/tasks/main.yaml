@@ -1,0 +1,18 @@
+---
+# internal.aci.apic : tasks/main.yaml
+
+- name: "ACI | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "ACI | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: ACI
+    _ncs_default_action: collect
+    _ncs_allowed_profiles: []
+    _ncs_allowed_operations: []
+    _dispatch_map:
+      _default_: collect

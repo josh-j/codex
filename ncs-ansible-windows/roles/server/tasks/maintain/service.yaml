@@ -1,0 +1,55 @@
+---
+# internal.windows.server : tasks/service.yaml
+# Remote service management — list, start, stop, restart.
+
+- name: "Service | List services"
+  ansible.windows.win_powershell:
+    script: |
+      param([string]$ServiceName)
+      if ($ServiceName -eq '*') {
+        $services = Get-Service | Select-Object Name, DisplayName,
+          @{N='Status';E={[string]$_.Status}},
+          @{N='StartType';E={[string]$_.StartType}}
+      } else {
+        $services = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue |
+          Select-Object Name, DisplayName,
+          @{N='Status';E={[string]$_.Status}},
+          @{N='StartType';E={[string]$_.StartType}}
+      }
+      @($services) | ConvertTo-Json -Compress
+    parameters:
+      ServiceName: "{{ windows_service_name }}"
+  register: _service_list_result
+  when: windows_service_action == 'list'
+  changed_when: false
+
+- name: "Service | Start service"
+  ansible.windows.win_service:
+    name: "{{ windows_service_name }}"
+    state: started
+  when: windows_service_action == 'start'
+  register: _service_start_result
+
+- name: "Service | Stop service"
+  ansible.windows.win_service:
+    name: "{{ windows_service_name }}"
+    state: stopped
+  when: windows_service_action == 'stop'
+  register: _service_stop_result
+
+- name: "Service | Restart service"
+  ansible.windows.win_service:
+    name: "{{ windows_service_name }}"
+    state: restarted
+  when: windows_service_action == 'restart'
+  register: _service_restart_result
+
+- name: "Service | Emit telemetry"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "windows/service"
+    _ncs_emit_payload:
+      action: "{{ windows_service_action }}"
+      service_name: "{{ windows_service_name }}"
+      list: "{{ _service_list_result.output[0] | default('[]') | from_json }}"

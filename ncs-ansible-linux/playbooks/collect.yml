@@ -1,0 +1,6 @@
+---
+# internal/linux/playbooks/collect.yml
+# Canonical fleet-level collect. Ubuntu is the only Linux flavour with a
+# collect verb today; photon's role is STIG-only.
+
+- ansible.builtin.import_playbook: ubuntu_collect.yml

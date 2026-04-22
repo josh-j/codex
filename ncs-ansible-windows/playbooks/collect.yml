@@ -1,0 +1,6 @@
+---
+# internal/windows/playbooks/collect.yml
+# Canonical fleet-level collect. Server is the standard compute path;
+# domain operations live behind their own explicit playbook.
+
+- ansible.builtin.import_playbook: server_collect.yml

@@ -1,0 +1,18 @@
+---
+# internal.windows.domain : ops/dns_zones.yaml
+
+- name: "DNS Zones | Query DNS server zones"
+  ansible.windows.win_powershell:
+    script: |
+      Get-DnsServerZone | Select-Object ZoneName, ZoneType, IsReverseLookupZone,
+        IsDsIntegrated, IsAutoCreated, DynamicUpdate, ReplicationScope
+  register: _dns_zones
+
+- name: "DNS Zones | Store results"
+  ansible.builtin.set_fact:
+    domain_dns_zones_results: "{{ _dns_zones.output }}"
+  changed_when: false
+
+- name: "DNS Zones | Display count"
+  ansible.builtin.debug:
+    msg: "Found {{ domain_dns_zones_results | length }} DNS zones"

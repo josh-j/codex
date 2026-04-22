@@ -1,0 +1,40 @@
+---
+# internal.aci.apic : tasks/_enrich_util.yaml
+#
+# Include-tasks helper: enrich one imdata list of eqpt*HistTotal15min
+# envelopes into a flat list of report-ready rows. Drops port-channel
+# aggregates, filters by threshold, joins the description map,
+# regex-decodes the DN, deduplicates by interface label (keeping the
+# row with the highest utilMax), sorts, and truncates.
+#
+# Required vars:
+#   _util_raw          — list of imdata entries (one per port)
+#   _util_wrapper      — the per-class wrapper key (e.g. "eqptIngrTotalHist15min")
+#   _util_output_fact  — name of the fact to write the enriched list to
+# Optional vars:
+#   aci_util_threshold (default 25), aci_util_top_n (default 10)
+
+- name: "ACI | Enrich util rows → {{ _util_output_fact }}"
+  ansible.builtin.set_fact:
+    "{{ _util_output_fact }}": >-
+      {%- set out = [] -%}
+      {%- for item in _util_raw -%}
+        {%- set a = item[_util_wrapper].attributes -%}
+        {%- set dn = a.dn | default('') -%}
+        {%- set util_avg = a.utilAvg | default(0) | float -%}
+        {%- if dn and dn is not search('\[Po\d+\]')
+               and util_avg > (aci_util_threshold | default(25) | float) -%}
+          {%- set _ = out.append({
+            'dn': dn,
+            'utilAvg': util_avg,
+            'utilMax': a.utilMax | default(0) | float,
+            'interface_label': dn | regex_replace('^.*/(node-\d+)/.*?\[(.*?)\]/.*$', 'leaf \1 \2'),
+            'description': (_aci_description_map | default({})).get(dn | regex_search('^.*\]'), 'N/A')
+          }) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ (out
+          | sort(attribute='utilMax', reverse=true)
+          | unique(attribute='interface_label')
+          | list)[:aci_util_top_n | default(10) | int] }}
+  changed_when: false

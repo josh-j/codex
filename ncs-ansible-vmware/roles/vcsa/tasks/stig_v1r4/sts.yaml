@@ -1,0 +1,875 @@
+---
+
+- name: "STS | Create backup timestamp"
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d-%H-%M-%S') }}"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "STS | Backup config files"
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ item }}"
+    dest: "/tmp/ansible-vcsa-sts-backups-{{ backup_timestamp }}/"
+    mode: preserve
+  loop:
+    - "{{ var_server_xml_path }}"
+    - "{{ var_web_xml_path }}"
+    - "{{ var_logging_props_path }}"
+    - "{{ var_catalina_props_path }}"
+    - "{{ var_syslog_conf_path }}"
+  changed_when: false
+  register: backupresult
+  failed_when:
+    - backupresult.msg is defined
+    - "'not found' not in backupresult.msg"
+  when:
+    - run_create_backups | default(create_backups | default(true)) | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCST-70-000006 | Normalize logging.properties"
+  ansible.builtin.lineinfile:
+    path: "{{ var_logging_props_path }}"
+    regexp: '^{{ item.option | regex_escape() }}\\s*=.*$'
+    line: "{{ item.option }} = {{ item.value }}"
+    insertbefore: BOF
+    state: present
+    mode: "0600"
+  loop:
+    - { option: "handlers", value: "{{ var_logging_props_handlers }}" }
+    - { option: ".handlers", value: "{{ var_logging_props_dothandlers }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.level", value: "{{ var_logging_props_level }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.directory", value: "{{ var_logging_props_directory }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.prefix", value: "{{ var_logging_props_prefix }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.bufferSize", value: "{{ var_logging_props_buffersize }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.formatter", value: "{{ var_logging_props_formatter }}" }
+    - { option: "1catalina.org.apache.juli.FileHandler.maxDays", value: "{{ var_logging_props_maxdays }}" }
+    - { option: "org.apache.catalina.startup.Catalina.handlers", value: "{{ var_logging_props_handlers2 }}" }
+  when:
+    - run_logging_properties | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000011/000018/000028/000029 | Deploy compliant catalina.properties"
+  ansible.builtin.template:
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/sts_catalina.properties"
+    dest: "{{ var_catalina_props_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - (run_catalina_props_package_access | bool) or
+      (run_catalina_props_init_failure | bool) or
+      (run_catalina_props_ports | bool) or
+      (run_catalina_properties_shutdownport | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000012 | Remove prohibited MIME mappings"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: "{{ item }}"
+    state: absent
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+  loop:
+    - '/x:web-app/x:mime-mapping[x:extension="csh"]'
+    - '/x:web-app/x:mime-mapping[x:extension="sh"]'
+    - '/x:web-app/x:mime-mapping[x:extension="shar"]'
+    - '/x:web-app/x:mime-mapping[x:extension="ksh"]'
+  when:
+    - run_removed_mime_mappings | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000013 | Ensure JSP servlet mappings"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: "{{ item.xpath }}"
+    value: "{{ item.value }}"
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: present
+  loop:
+    - { xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[1]', value: '{{ var_web_xml_servlet_jsp_url_pattern1 }}' }
+    - { xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="jsp"]/x:url-pattern[2]', value: '{{ var_web_xml_servlet_jsp_url_pattern2 }}' }
+  when:
+    - run_java_servlet | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000005/000020 | Normalize connector and access log attributes"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      python3 - <<'PY'
+      import xml.etree.ElementTree as ET
+
+      path = "{{ var_server_xml_path }}"
+      tree = ET.parse(path)
+      root = tree.getroot()
+      connector = root.find('./Service/Connector[@port="${bio-custom.http.port}"]')
+      access = root.find('./Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]')
+
+      access.set(
+          "pattern",
+          "%t %I [RemoteIP] %{X-Forwarded-For}i %u [Request] %h:%{remote}p to local %{local}p - %H %m %U%q    [Response] %s - %b bytes    [Perf] process %Dms / commit %Fms / conn [%X]",
+      )
+      connector.set("URIEncoding", "UTF-8")
+
+      tree.write(path, encoding="UTF-8", xml_declaration=True)
+      PY
+  when:
+    - (run_access_valve_pattern | bool) or (run_uri_encoding | bool)
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000017 | Discover non-compliant STS files"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      find {{ var_sts_web_path }} -xdev -type f -a '(' -not -user root -o -not -group root ')' -print
+  register: _sts_bad_files
+  changed_when: false
+  when: run_web_files_permissions | bool
+
+- name: "VCST-70-000017 | Correct STS file ownership"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    owner: root
+    group: root
+  loop: "{{ _sts_bad_files.stdout_lines | default([]) }}"
+  when:
+    - run_web_files_permissions | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "VCST-70-000021 | Normalize setCharacterEncodingFilter"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      python3 - <<'PY'
+      import xml.etree.ElementTree as ET
+
+      path = "{{ var_web_xml_path }}"
+      ns_uri = "http://java.sun.com/xml/ns/javaee"
+      ns = {"x": ns_uri}
+      ET.register_namespace("", ns_uri)
+
+      tree = ET.parse(path)
+      root = tree.getroot()
+
+      for node in list(root.findall('./x:filter-mapping[x:filter-name="setCharacterEncodingFilter"]', ns)):
+          root.remove(node)
+      for node in list(root.findall('./x:filter[x:filter-name="setCharacterEncodingFilter"]', ns)):
+          root.remove(node)
+
+      tag = lambda name: "{" + ns_uri + "}" + name
+
+      filter_node = ET.Element(tag("filter"))
+      ET.SubElement(filter_node, tag("filter-name")).text = "setCharacterEncodingFilter"
+      ET.SubElement(filter_node, tag("filter-class")).text = "org.apache.catalina.filters.SetCharacterEncodingFilter"
+      init_encoding = ET.SubElement(filter_node, tag("init-param"))
+      ET.SubElement(init_encoding, tag("param-name")).text = "encoding"
+      ET.SubElement(init_encoding, tag("param-value")).text = "UTF-8"
+      init_ignore = ET.SubElement(filter_node, tag("init-param"))
+      ET.SubElement(init_ignore, tag("param-name")).text = "ignore"
+      ET.SubElement(init_ignore, tag("param-value")).text = "true"
+      ET.SubElement(filter_node, tag("async-supported")).text = "true"
+
+      mapping_node = ET.Element(tag("filter-mapping"))
+      ET.SubElement(mapping_node, tag("filter-name")).text = "setCharacterEncodingFilter"
+      ET.SubElement(mapping_node, tag("url-pattern")).text = "/*"
+
+      root.append(filter_node)
+      root.append(mapping_node)
+      tree.write(path, encoding="UTF-8", xml_declaration=True)
+      PY
+  when:
+    - run_web_filter | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000023 | Normalize listings init-param"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="listings"]/x:param-value'
+    value: "false"
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: present
+  when:
+    - run_web_remove_listings | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000024 | Normalize ErrorReportValve text"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      python3 - <<'PY'
+      import re
+      from pathlib import Path
+
+      path = Path("{{ var_server_xml_path }}")
+      text = path.read_text()
+      text = re.sub(
+          r'<Valve className="org\.apache\.catalina\.valves\.ErrorReportValve"[^>]*/>',
+          '<Valve className="org.apache.catalina.valves.ErrorReportValve" showReport="false" showServerInfo="false"/>',
+          text,
+          count=1,
+      )
+      path.write_text(text)
+      PY
+  when:
+    - run_web_error_page | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000031 | Remove readonly init-param"
+  community.general.xml:
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="readonly"]'
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: absent
+  when:
+    - run_web_remove_readonly | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart sts
+
+- name: "VCST-70-000013 | Capture JSP servlet mapping"
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=".*"//g' | xmllint --xpath '/web-app/servlet-mapping/servlet-name[text()="jsp"]/parent::servlet-mapping' - 2>/dev/null || true
+  register: _vcst_013_mapping_cmd
+  changed_when: false
+  check_mode: false
+
+- name: "VCST-70-000013 | Stage JSP servlet mapping"
+  ansible.builtin.set_fact:
+    _vcst_013_mapping: "{{ _vcst_013_mapping_cmd.stdout | default('') }}"
+
+- name: "VCST-70-000021 | Capture filter-mapping block"
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=".*"//g' | xmllint --xpath '/web-app/filter-mapping/filter-name[text()="setCharacterEncodingFilter"]/parent::filter-mapping' - 2>/dev/null || true
+  register: _vcst_021_mapping_cmd
+  changed_when: false
+  check_mode: false
+
+- name: "VCST-70-000021 | Capture filter block"
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=".*"//g' | xmllint --xpath '/web-app/filter/filter-name[text()="setCharacterEncodingFilter"]/parent::filter' - 2>/dev/null || true
+  register: _vcst_021_filter_cmd
+  changed_when: false
+  check_mode: false
+
+- name: "VCST-70-000021 | Stage filter blocks"
+  ansible.builtin.set_fact:
+    _vcst_021_mapping: "{{ _vcst_021_mapping_cmd.stdout | default('') }}"
+    _vcst_021_filter: "{{ _vcst_021_filter_cmd.stdout | default('') }}"
+
+- name: "VCST-70-000023 | Capture listings init-param"
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=".*"//g' | xmllint --xpath '//param-name[text()="listings"]/parent::init-param' - 2>/dev/null || true
+  register: _vcst_023_listings_cmd
+  changed_when: false
+  check_mode: false
+
+- name: "VCST-70-000023 | Stage listings init-param"
+  ansible.builtin.set_fact:
+    _vcst_023_listings: "{{ _vcst_023_listings_cmd.stdout | default('') }}"
+
+- name: "VCST-70-000031 | Capture readonly probe"
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=".*"//g' | xmllint --xpath '/web-app/servlet/servlet-name[text()="default"]/../init-param/param-name[text()="readonly"]/../param-value[text()="false"]' - 2>&1 || true
+  register: _vcst_031_readonly_cmd
+  changed_when: false
+  check_mode: false
+
+- name: "VCST-70-000031 | Stage readonly probe"
+  ansible.builtin.set_fact:
+    _vcst_031_readonly: "{{ _vcst_031_readonly_cmd.stdout | default('') }}"
+
+- name: "VCST-70-000050 | Deploy vmware-services-sso-services.conf"
+  ansible.builtin.template:
+    src: "{{ _ncs_task_root }}/stig_v1r4/templates/vmware-services-sso-services.conf"
+    dest: "{{ var_syslog_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: true
+  when:
+    - run_sts_syslog_config | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+  notify:
+    - restart syslog
+
+- name: "VCST-70-000050 | Restore packaged mtime"
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -eu
+      epoch="$(rpm -q --dump VMware-visl-integration | grep '/etc/vmware-syslog/vmware-services-sso-services.conf' | awk 'NR==1{print $3}')"
+      test -n "$epoch"
+      touch -d "@$epoch" "{{ var_syslog_conf_path }}"
+  when:
+    - run_sts_syslog_config | bool
+    - vmware_stig_enable_hardening | default(false) | bool
+
+- name: "stigrule_VCST-70-000001"
+  internal.core.stig:
+    _stig_id: VCST-70-000001
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_connection_timeout | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@connectionTimeout' '{{ var_server_xml_path }}' 2>/dev/null || true)" = ' connectionTimeout="60000"'
+    path: "{{ var_server_xml_path }}"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: connectionTimeout
+    value: "{{ var_server_xml_connectiontimeout }}"
+    state: present
+
+- name: "stigrule_VCST-70-000002"
+  internal.core.stig:
+    _stig_id: VCST-70-000002
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_max_threads | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Executor[@name="tomcatThreadPool"]/@maxThreads' '{{ var_server_xml_path }}' 2>/dev/null || true)" = ' maxThreads="150"'
+    path: "{{ var_server_xml_path }}"
+    xpath: '/Server/Service/Executor[@name="tomcatThreadPool"]'
+    attribute: maxThreads
+    value: "{{ var_server_xml_maxthreads }}"
+    state: present
+
+- name: "stigrule_VCST-70-000003"
+  internal.core.stig:
+    _stig_id: VCST-70-000003
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_max_post_size | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxPostSize' '{{ var_server_xml_path }}' 2>&1 || true)" = 'XPath set is empty'
+    path: "{{ var_server_xml_path }}"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@maxPostSize'
+    state: absent
+
+- name: "stigrule_VCST-70-000004"
+  internal.core.stig:
+    _stig_id: VCST-70-000004
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_http_only | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '/web-app/session-config/cookie-config/http-only' - 2>/dev/null || true)" = '<http-only>true</http-only>'
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:session-config/x:cookie-config/x:http-only'
+    value: "{{ var_web_xml_http_only }}"
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: present
+
+- name: "stigrule_VCST-70-000005"
+  internal.core.stig:
+    _stig_id: VCST-70-000005
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_access_valve_pattern | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.AccessLogValve"]/@pattern' '{{ var_server_xml_path }}' 2>/dev/null || true)" = ' pattern="%t %I [RemoteIP] %{X-Forwarded-For}i %u [Request] %h:%{remote}p to local %{local}p - %H %m %U%q    [Response] %s - %b bytes    [Perf] process %Dms / commit %Fms / conn [%X]"'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000006"
+  internal.core.stig:
+    _stig_id: VCST-70-000006
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_logging_properties | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        grep -Fxq 'handlers = {{ var_logging_props_handlers }}' '{{ var_logging_props_path }}'
+        grep -Fxq '.handlers = {{ var_logging_props_dothandlers }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.level = {{ var_logging_props_level }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.directory = {{ var_logging_props_directory }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.prefix = {{ var_logging_props_prefix }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.bufferSize = {{ var_logging_props_buffersize }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.formatter = {{ var_logging_props_formatter }}' '{{ var_logging_props_path }}'
+        grep -Fxq '1catalina.org.apache.juli.FileHandler.maxDays = {{ var_logging_props_maxdays }}' '{{ var_logging_props_path }}'
+        grep -Fxq 'org.apache.catalina.startup.Catalina.handlers = {{ var_logging_props_handlers2 }}' '{{ var_logging_props_path }}'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000007"
+  internal.core.stig:
+    _stig_id: VCST-70-000007
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_logs_permissions | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(find '{{ var_sts_logs_path }}' -xdev -type f -a '(' -perm -o+w -o -not -user root -o -not -group root ')' -exec ls -ld {} \; 2>/dev/null || true)"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000008"
+  internal.core.stig:
+    _stig_id: VCST-70-000008
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(rpm -V vmware-identity-sts 2>/dev/null | grep '^..5......' | grep -v -E '\.properties|\.xml|\.conf' || true)"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000009"
+  internal.core.stig:
+    _stig_id: VCST-70-000009
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(ls -A /usr/lib/vmware-sso/vmware-sts/webapps/*.war 2>/dev/null || true)" = '/usr/lib/vmware-sso/vmware-sts/webapps/ROOT.war'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000010"
+  internal.core.stig:
+    _stig_id: VCST-70-000010
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_user_database_realm | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(grep UserDatabaseRealm '{{ var_server_xml_path }}' || true)"
+    path: "{{ var_server_xml_path }}"
+    xpath: /Server/Service/Engine/Realm
+    state: absent
+
+- name: "stigrule_VCST-70-000011"
+  internal.core.stig:
+    _stig_id: VCST-70-000011
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_package_access | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(grep 'package.access' '{{ var_catalina_props_path }}' || true)" = 'package.access=sun.,org.apache.catalina.,org.apache.coyote.,org.apache.tomcat.,org.apache.jasper.'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000012"
+  internal.core.stig:
+    _stig_id: VCST-70-000012
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_removed_mime_mappings | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(grep -En '(x-csh<)|(x-sh<)|(x-shar<)|(x-ksh<)' '{{ var_web_xml_path }}' || true)"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000013"
+  internal.core.stig:
+    _stig_id: VCST-70-000013
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_java_servlet | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate_expr:
+      - var: _vcst_013_mapping
+        contains: '<url-pattern>*.jsp</url-pattern>'
+      - var: _vcst_013_mapping
+        contains: '<url-pattern>*.jspx</url-pattern>'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000014"
+  internal.core.stig:
+    _stig_id: VCST-70-000014
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_remove_webdav | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(grep -n 'webdav' '{{ var_web_xml_path }}' || true)"
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet-mapping[x:servlet-name="webdav"]/..'
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: absent
+
+- name: "stigrule_VCST-70-000015"
+  internal.core.stig:
+    _stig_id: VCST-70-000015
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_mem_leak_prevention | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        grep -Fq 'JreMemoryLeakPreventionListener' '{{ var_server_xml_path }}'
+    path: "{{ var_server_xml_path }}"
+    xpath: '/Server/Listener[@className="org.apache.catalina.core.JreMemoryLeakPreventionListener"]'
+    state: present
+
+- name: "stigrule_VCST-70-000016"
+  internal.core.stig:
+    _stig_id: VCST-70-000016
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(find /usr/lib/vmware-sso/vmware-sts/webapps/ -type l -ls 2>/dev/null || true)"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000017"
+  internal.core.stig:
+    _stig_id: VCST-70-000017
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: true
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(find {{ var_sts_web_path }} -xdev -type f -a '(' -not -user root -o -not -group root ')' -exec ls -ld {} \; 2>/dev/null || true)"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000018"
+  internal.core.stig:
+    _stig_id: VCST-70-000018
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_init_failure | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        grep -Fq 'org.apache.catalina.startup.EXIT_ON_INIT_FAILURE=true' '{{ var_catalina_props_path }}'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000019"
+  internal.core.stig:
+    _stig_id: VCST-70-000019
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_accept_count | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@acceptCount' '{{ var_server_xml_path }}' 2>/dev/null || true)" = ' acceptCount="100"'
+    path: "{{ var_server_xml_path }}"
+    xpath: '/Server/Service/Connector[@port="${bio-custom.http.port}"]'
+    attribute: acceptCount
+    value: "{{ var_server_xml_acceptcount }}"
+    state: present
+
+- name: "stigrule_VCST-70-000020"
+  internal.core.stig:
+    _stig_id: VCST-70-000020
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_uri_encoding | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Connector[@port="${bio-custom.http.port}"]/@URIEncoding' '{{ var_server_xml_path }}' 2>/dev/null || true)" = ' URIEncoding="UTF-8"'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000021"
+  internal.core.stig:
+    _stig_id: VCST-70-000021
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_filter | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate_expr:
+      - var: _vcst_021_mapping
+        contains: '<filter-name>setCharacterEncodingFilter</filter-name>'
+      - var: _vcst_021_mapping
+        contains: '<url-pattern>/*</url-pattern>'
+      - var: _vcst_021_filter
+        contains: '<filter-name>setCharacterEncodingFilter</filter-name>'
+      - var: _vcst_021_filter
+        contains: '<filter-class>org.apache.catalina.filters.SetCharacterEncodingFilter</filter-class>'
+      - var: _vcst_021_filter
+        contains: '<param-name>encoding</param-name>'
+      - var: _vcst_021_filter
+        contains: '<param-value>UTF-8</param-value>'
+      - var: _vcst_021_filter
+        contains: '<param-name>ignore</param-name>'
+      - var: _vcst_021_filter
+        contains: '<param-value>true</param-value>'
+      - var: _vcst_021_filter
+        contains: '<async-supported>true</async-supported>'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000022"
+  internal.core.stig:
+    _stig_id: VCST-70-000022
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_welcome_file | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        welcome="$(xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '/web-app/welcome-file-list' - 2>/dev/null || true)"
+        grep -Fq '<welcome-file>index.html</welcome-file>' <<<"$welcome"
+        grep -Fq '<welcome-file>index.htm</welcome-file>' <<<"$welcome"
+        grep -Fq '<welcome-file>index.jsp</welcome-file>' <<<"$welcome"
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000023"
+  internal.core.stig:
+    _stig_id: VCST-70-000023
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_remove_listings | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate_expr:
+      - var: _vcst_023_listings
+        contains: '<param-name>listings</param-name>'
+      - var: _vcst_023_listings
+        contains: '<param-value>false</param-value>'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000024"
+  internal.core.stig:
+    _stig_id: VCST-70-000024
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_error_page | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --xpath '/Server/Service/Engine/Host/Valve[@className="org.apache.catalina.valves.ErrorReportValve"]' '{{ var_server_xml_path }}' 2>/dev/null || true)" = '<Valve className="org.apache.catalina.valves.ErrorReportValve" showReport="false" showServerInfo="false"/>'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000025"
+  internal.core.stig:
+    _stig_id: VCST-70-000025
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_allow_trace | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(grep 'allowTrace=\"true\"' '{{ var_server_xml_path }}' || true)"
+    path: "{{ var_server_xml_path }}"
+    xpath: /Server/Service/Connector/@allowTrace
+    state: absent
+
+- name: "stigrule_VCST-70-000026"
+  internal.core.stig:
+    _stig_id: VCST-70-000026
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_web_remove_debug | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        node="$(xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '//param-name[text()=\"debug\"]/parent::init-param' - 2>/dev/null || true)"
+        test -z "$node" || grep -Fq '<param-value>0</param-value>' <<<"$node"
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:servlet[x:servlet-name="default"]/x:init-param[x:param-name="debug"]/x:param-value'
+    value: "0"
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: present
+
+- name: "stigrule_VCST-70-000028"
+  internal.core.stig:
+    _stig_id: VCST-70-000028
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_props_ports | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        ports="$(grep 'bio' '{{ var_catalina_props_path }}' || true)"
+        grep -Fq 'bio-custom.http.port=7080' <<<"$ports"
+        grep -Fq 'bio-custom.https.port=8443' <<<"$ports"
+        grep -Fq 'bio-ssl-localhost.https.port=7444' <<<"$ports"
+        if grep -Fq 'bio-ssl-clientauth.https.port=3128' <<<"$ports"; then
+          :
+        else
+          test -z "$(rpm -q vmware-identity-sts --qf '%{VERSION}-%{RELEASE}\n' 2>/dev/null | grep -E '^(7\.0\.[0-2]|7\.0\.3-[0-9]{1,3})' || true)"
+        fi
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000029"
+  internal.core.stig:
+    _stig_id: VCST-70-000029
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_catalina_properties_shutdownport | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(grep 'base.shutdown.port' '{{ var_catalina_props_path }}' || true)" = 'base.shutdown.port=-1'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000030"
+  internal.core.stig:
+    _stig_id: VCST-70-000030
+    _stig_apply: community.general.xml
+    _stig_manage: "{{ run_web_cookie_secure | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_notify: [restart sts]
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test "$(xmllint --format '{{ var_web_xml_path }}' | sed '2 s/xmlns=\".*\"//g' | xmllint --xpath '/web-app/session-config/cookie-config/secure' - 2>/dev/null || true)" = '<secure>true</secure>'
+    path: "{{ var_web_xml_path }}"
+    xpath: '/x:web-app/x:session-config/x:cookie-config/x:secure'
+    value: "{{ var_web_xml_cookie_secure }}"
+    namespaces:
+      x: http://java.sun.com/xml/ns/javaee
+    state: present
+
+- name: "stigrule_VCST-70-000031"
+  internal.core.stig:
+    _stig_id: VCST-70-000031
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_web_remove_readonly | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate_expr:
+      - var: _vcst_031_readonly
+        equals: 'XPath set is empty'
+    cmd: "true"
+
+- name: "stigrule_VCST-70-000050"
+  internal.core.stig:
+    _stig_id: VCST-70-000050
+    _stig_apply: ansible.builtin.shell
+    _stig_audit_only: true
+    _stig_manage: "{{ run_sts_syslog_config | bool }}"
+    _stig_use_check_mode_probe: false
+    _stig_validate: ansible.builtin.shell
+    _stig_validate_args:
+      executable: /bin/bash
+      cmd: |
+        set -eu
+        test -z "$(rpm -V VMware-visl-integration 2>/dev/null | grep vmware-services-sso-services.conf | grep '^..5......' || true)"
+    cmd: "true"

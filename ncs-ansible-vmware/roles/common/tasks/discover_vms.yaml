@@ -1,0 +1,48 @@
+---
+# Query vCenter for VMs, filter, and build datacenter map.
+#
+# Input:  ansible_host (vCenter endpoint), vmware_username, vmware_password
+#         _vmware_discovery_hostname (optional override for hostname)
+#         vm_stig_exclude_pattern (optional regex, default '^$')
+#         vm_stig_target_vms (optional — skips discovery if pre-populated)
+# Output: vm_stig_target_vms (list of VM names), vm_datacenter_map (dict)
+
+- name: "Discover all VMs on vCenter"
+  community.vmware.vmware_vm_info:
+    hostname: "{{ _vmware_discovery_hostname | default(inventory_hostname) }}"
+    username: "{{ vmware_username }}"
+    password: "{{ vmware_password }}"
+    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+  register: _vcenter_vms
+  when: vm_stig_target_vms | default([]) | length == 0
+
+- name: "Filter discovered VM list"
+  ansible.builtin.set_fact:
+    _filtered_vms: >-
+      {{ _vcenter_vms.virtual_machines | default([])
+         | rejectattr('guest_name', 'match', '^vCLS-')
+         | rejectattr('guest_name', 'match', vm_stig_exclude_pattern | default('^$'))
+         | list }}
+  when:
+    - vm_stig_target_vms | default([]) | length == 0
+    - _vcenter_vms.virtual_machines is defined
+
+- name: "Set VM target list from discovery"
+  ansible.builtin.set_fact:
+    vm_stig_target_vms: "{{ _filtered_vms | map(attribute='guest_name') | list }}"
+  when: vm_stig_target_vms | default([]) | length == 0
+
+- name: "Build VM-to-datacenter map"
+  ansible.builtin.set_fact:
+    vm_datacenter_map: >-
+      {{ dict(_filtered_vms | map(attribute='guest_name')
+         | zip(_filtered_vms | map(attribute='datacenter'))) }}
+  when:
+    - vm_datacenter_map is not defined
+    - _filtered_vms is defined
+
+- name: "Validate VM target list"
+  ansible.builtin.assert:
+    that:
+      - vm_stig_target_vms | default([]) | length > 0
+    fail_msg: "No VMs discovered or provided. Check vCenter connectivity or set vm_stig_target_vms explicitly."

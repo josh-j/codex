@@ -1,0 +1,15 @@
+---
+# internal/windows/playbooks/domain_collect.yml
+# Run AD information gathering from a domain-joined Windows host.
+#
+# Usage:
+#   ansible-playbook internal.windows.domain_collect -l windows_servers --limit 1
+#   ansible-playbook internal.windows.domain_collect -e 'ncs_operation=privileged_groups'
+
+- name: "Domain | AD Audit"
+  hosts: "{{ domain_target_hosts | default('windows_servers') }}"
+  gather_facts: false
+  roles:
+    - role: internal.windows.domain
+      vars:
+        ncs_action: collect

@@ -1,0 +1,19 @@
+---
+# checks/health/disk.yaml — Disk space via Win32_LogicalDisk
+
+- name: "Health | Disk | Gather disk space"
+  ansible.windows.win_powershell:
+    script: |
+      $disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
+        Select-Object DeviceID, VolumeName,
+          @{N='SizeGB';E={[math]::Round($_.Size/1GB,2)}},
+          @{N='FreeGB';E={[math]::Round($_.FreeSpace/1GB,2)}},
+          @{N='UsedPct';E={[math]::Round((($_.Size - $_.FreeSpace) / $_.Size) * 100, 1)}}
+      @($disks) | ConvertTo-Json -Compress
+  register: _health_disk_result
+  changed_when: false
+
+- name: "Health | Disk | Stage results"
+  ansible.builtin.set_fact:
+    _health_disk: "{{ _health_disk_result.output[0] | from_json | default([]) }}"
+  changed_when: false

@@ -1,0 +1,26 @@
+# >>>
+# label: VM STIG Audit
+# is_read_only: true
+# options:
+#   vm_stig_target_hosts: text = vcsa | Target vCenter | Inventory host or group targeting the vCenter to query
+# <<<
+---
+# internal/vmware/playbooks/vm_stig_audit.yml
+- name: "Phase 2b | VM STIG Audit (per vCenter)"
+  hosts: "{{ vm_stig_target_hosts | default('vcsa') }}"
+  connection: local
+  gather_facts: false
+  become: false
+  tags: ["vmware", "stig", "audit", "vm"]
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Discover and validate VM targets"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: discover_vms
+  roles:
+    - role: internal.vmware.vm
+      vars:
+        ncs_action: audit
+        ncs_profile: stig

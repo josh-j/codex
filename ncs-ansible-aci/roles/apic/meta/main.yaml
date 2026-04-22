@@ -1,0 +1,11 @@
+---
+# internal.aci.apic : meta/main.yaml
+galaxy_info:
+  role_name: apic
+  author: NCS
+  description: Cisco ACI APIC data collection for NCS telemetry lake.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+dependencies:
+  - role: internal.core.dispatch
+  - role: internal.core.emit

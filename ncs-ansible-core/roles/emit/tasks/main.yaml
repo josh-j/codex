@@ -1,0 +1,43 @@
+---
+# internal.core.emit : tasks/main.yaml
+#
+# Standardized telemetry emitter for ncs_collector.
+# Wraps set_stats with a consistent ncs_collect schema.
+#
+# Required vars:
+#   _ncs_emit_platform  — Platform dir path (e.g. "linux/ubuntu", "vmware/esxi")
+#   _ncs_emit_payload   — Data dict to persist
+#
+# Optional vars:
+#   _ncs_emit_config          — Thresholds/config dict (written to config.yaml)
+#   _ncs_emit_skip            — Skip emission (default: false)
+#   _ncs_emit_per_host_split  — Per-host split config for multi-host payloads
+#   _ncs_emit_tree_path       — List of slug segments for the hierarchical
+#                               report layout. When provided, ncs_collector
+#                               writes raw.yaml to
+#                               <reports_root>/<*tree_path>/raw.yaml instead
+#                               of the legacy platform/<platform_dir>/<host>/
+#                               layout. Leave unset for legacy behavior.
+#   _ncs_emit_raw_filename     — Override the raw bundle's filename (only
+#                               honored when _ncs_emit_tree_path is set).
+#                               Use when multiple bundles share a tree node
+#                               (e.g. VMware's vm role co-locates with vcsa).
+
+- name: "Emit telemetry | {{ _ncs_emit_platform }}"
+  ansible.builtin.set_stats:
+    data:
+      ncs_collect: >-
+        {{
+          {
+            'platform_dir': _ncs_emit_platform,
+            'report_directory': ncs_config.report_directory | default('/srv/samba/reports'),
+            'payload': _ncs_emit_payload,
+          }
+          | combine({'config': _ncs_emit_config} if _ncs_emit_config is defined and _ncs_emit_config else {})
+          | combine({'per_host_split': _ncs_emit_per_host_split} if _ncs_emit_per_host_split is defined and _ncs_emit_per_host_split else {})
+          | combine({'tree_path': _ncs_emit_tree_path} if _ncs_emit_tree_path is defined and _ncs_emit_tree_path else {})
+          | combine({'raw_filename': _ncs_emit_raw_filename} if _ncs_emit_raw_filename is defined and _ncs_emit_raw_filename else {})
+        }}
+    per_host: true
+  when: not (_ncs_emit_skip | default(false) | bool)
+  changed_when: false
