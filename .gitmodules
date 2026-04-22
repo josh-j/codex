@@ -1,0 +1,15 @@
+[submodule "ncs-ansible-core"]
+	path = ncs-ansible-core
+	url = file:///home/sio/ncs-ansible-core
+[submodule "ncs-ansible-vmware"]
+	path = ncs-ansible-vmware
+	url = file:///home/sio/ncs-ansible-vmware
+[submodule "ncs-ansible-linux"]
+	path = ncs-ansible-linux
+	url = file:///home/sio/ncs-ansible-linux
+[submodule "ncs-ansible-windows"]
+	path = ncs-ansible-windows
+	url = file:///home/sio/ncs-ansible-windows
+[submodule "ncs-ansible-aci"]
+	path = ncs-ansible-aci
+	url = file:///home/sio/ncs-ansible-aci
