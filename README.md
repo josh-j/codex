@@ -70,7 +70,8 @@ Both live under `ncs-ansible/`:
 
 ## Further Reading
 
-- [Architecture Diagram](ncs-ansible/docs/MERMAID_ARCH.md)
-- [STIG Migration Workflow](ncs-ansible/docs/STIG_MIGRATION_WORKFLOW.md)
-- [OpenSSH + Kerberos](ncs-ansible/docs/OPENSSH_KERBEROS.md)
-- [Lab Access](ncs-ansible/docs/LAB_ACCESS.md)
+- [Architecture Diagram](docs/MERMAID_ARCH.md)
+- [`internal.core.stig` Reference](docs/INTERNAL_CORE_STIG.md)
+- [Scheduling & Alert Actions](docs/SCHEDULING_AND_ALERT_ACTIONS.md)
+- [OpenSSH + Kerberos](docs/OPENSSH_KERBEROS.md)
+- [Dev runbooks](docs/_dev/) — STIG migration workflow, release process, bug postmortem

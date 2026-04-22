@@ -23,3 +23,6 @@ ncs-console/App/ncs-icon.ico
 
 # Claude Code
 .claude/
+
+# Operator-only, never commit
+docs/LAB_ACCESS.md
