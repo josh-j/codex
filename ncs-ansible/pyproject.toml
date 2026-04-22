@@ -22,6 +22,7 @@ dev = [
     "pytest",
     "basedpyright",
     "ansible-lint",
+    "types-pyyaml>=6.0.12.20260408",
 ]
 
 [tool.uv.sources]
@@ -52,6 +53,12 @@ exclude = [
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
+exclude = [
+    "collections",
+    "collections_vcsa",
+    ".venv",
+    ".venv-vcsa",
+]
 reportExplicitAny = false
 reportAny = false
 reportUnknownMemberType = false

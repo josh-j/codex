@@ -115,7 +115,7 @@ def _parse_host_facts(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _merge_nics(host: dict[str, Any], host_nics: dict[str, Any]) -> None:
+def _merge_nics(host: dict[str, Any], host_nics: dict[str, Any] | None) -> None:
     """Merge per-host vmnic info (already keyed to this host) into the record."""
     if not isinstance(host_nics, dict):
         return

@@ -7,27 +7,38 @@ import yaml
 from fixtures._assemble_contracts import ESXI_DATA_KEYS, VCENTER_DATA_KEYS, VM_DATA_KEYS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-VMWARE_ROOT = REPO_ROOT / "collections" / "ansible_collections" / "internal" / "vmware"
+VMWARE_ROOT = REPO_ROOT / "ncs-ansible" / "collections" / "ansible_collections" / "internal" / "vmware"
 
 
 def _read_yaml(relative_path: str) -> dict:
-    return yaml.safe_load((REPO_ROOT / relative_path).read_text(encoding="utf-8")) or {}
+    return yaml.safe_load((REPO_ROOT / "ncs-ansible" / relative_path).read_text(encoding="utf-8")) or {}
 
 
 def _extract_actions_from_main_yaml(main_yaml_path: Path) -> list[str]:
-    """Extract valid actions from the inline assert block in main.yaml.
+    """Extract the list of valid action routes the role declares to dispatch.
 
-    The current role pattern validates actions via an ``assert`` task with
-    ``_ncs_requested_action in ['collect', 'audit', ...]``.
+    The current role pattern passes the set of allowed actions to
+    ``internal.core.dispatch`` as ``_ncs_action_routes:`` (a YAML list).
+    The legacy pattern used an inline ``assert`` with
+    ``_ncs_requested_action in [...]``; still honored for compatibility.
     """
     import re
 
     content = main_yaml_path.read_text(encoding="utf-8")
-    match = re.search(r"_ncs_requested_action\s+in\s+\[([^\]]+)\]", content)
-    if not match:
-        return []
-    raw = match.group(1)
-    return [a.strip().strip("'\"") for a in raw.split(",")]
+
+    routes_match = re.search(r"_ncs_action_routes:\s*\n((?:\s*-\s*[^\n]+\n)+)", content)
+    if routes_match:
+        return [
+            line.strip().lstrip("-").strip().strip("'\"")
+            for line in routes_match.group(1).splitlines()
+            if line.strip().startswith("-")
+        ]
+
+    legacy_match = re.search(r"_ncs_requested_action\s+in\s+\[([^\]]+)\]", content)
+    if legacy_match:
+        return [a.strip().strip("'\"") for a in legacy_match.group(1).split(",")]
+
+    return []
 
 
 def test_vmware_supported_actions_match_task_files() -> None:

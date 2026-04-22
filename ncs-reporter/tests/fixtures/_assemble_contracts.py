@@ -9,12 +9,22 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
-    task_file = REPO_ROOT / relative_path
-    tasks = yaml.safe_load(task_file.read_text(encoding="utf-8")) or []
+def _walk_tasks(tasks: object):
+    """Yield every task dict in a task list, descending into block/rescue/always."""
+    if not isinstance(tasks, list):
+        return
     for task in tasks:
         if not isinstance(task, dict):
             continue
+        yield task
+        for nested_key in ("block", "rescue", "always"):
+            yield from _walk_tasks(task.get(nested_key))
+
+
+def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
+    task_file = REPO_ROOT / relative_path
+    tasks = yaml.safe_load(task_file.read_text(encoding="utf-8")) or []
+    for task in _walk_tasks(tasks):
         payload = task.get("ansible.builtin.set_fact")
         if not isinstance(payload, dict) or fact_name not in payload:
             continue
@@ -25,17 +35,17 @@ def _extract_set_fact_keys(relative_path: str, fact_name: str) -> set[str]:
 
 
 VCENTER_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vcsa/tasks/collect/assemble.yaml",
+    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vcsa/tasks/collect.yaml",
     "vmware_raw_vcenter",
 )
 
 ESXI_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/esxi/tasks/collect/assemble.yaml",
+    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/esxi/tasks/collect.yaml",
     "vmware_raw_esxi",
 )
 
 VM_DATA_KEYS = _extract_set_fact_keys(
-    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vm/tasks/collect/assemble.yaml",
+    "ncs-ansible/collections/ansible_collections/internal/vmware/roles/vm/tasks/collect.yaml",
     "vmware_raw_vm",
 )
 

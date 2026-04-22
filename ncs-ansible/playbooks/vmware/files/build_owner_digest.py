@@ -130,7 +130,7 @@ def main(argv: list[str]) -> int:
 
     owner_issues: dict[str, dict[str, Any]] = {}
     owner_vcenters: dict[str, set[str]] = {}
-    orphans = {"no_owner_email": [], "missing_owner_desc": []}
+    orphans: dict[str, list[dict[str, Any]]] = {"no_owner_email": [], "missing_owner_desc": []}
 
     bundles = _find_bundles(args.platform_root)
     if not bundles:
