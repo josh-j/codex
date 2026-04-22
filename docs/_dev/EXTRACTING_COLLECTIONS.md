@@ -1,5 +1,14 @@
 # Extracting `internal.*` Collections To Local Sibling Repos
 
+> **Status: historical.** The one-time extraction this runbook
+> describes was performed and later reversed: the five built-in
+> collections are now tracked subdirectories of this umbrella (see
+> `ncs-ansible-{core,linux,vmware,windows,aci}/`). For the current
+> release workflow see [`COLLECTION_RELEASES.md`](COLLECTION_RELEASES.md);
+> for the directory contract see
+> [`docs/COLLECTION_LAYOUT.md`](../COLLECTION_LAYOUT.md). This doc is
+> kept for git-archaeology purposes only.
+
 This runbook splits the four NCS collections out of the `ncs-ansible`
 monorepo into independent git repos **on local disk only** — no Galaxy,
 no GitHub, no GitLab, no remote of any kind. The app repo then consumes

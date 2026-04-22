@@ -6,19 +6,21 @@ The root directory is kept as `codex/` on disk for now; logically it is the `ncs
 
 ## Layout
 
-Each sub-project is either a tracked subdirectory (`ncs-ansible/`, `ncs-reporter/`, `ncs-console/`, `ncs-ansible-collection-template/`) or a git submodule for collections that publish on their own release train (`ncs-ansible-{core,vmware,linux,windows,aci}`).
+Every sub-project is a tracked subdirectory of this repo. The five built-in `internal.*` collections live alongside the orchestrator; a plain `git clone` pulls everything.
 
 | Path | Kind | What it is |
 |---|---|---|
-| `ncs-ansible/` | subdir | Ansible app layer — playbooks, inventory, `Justfile`, collection consumer ([README](ncs-ansible/README.md) if added) |
-| `ncs-ansible-core/` | submodule | `internal.core` collection — `ncs_collector` callback, shared plugins |
-| `ncs-ansible-vmware/` | submodule | `internal.vmware` — vCenter / ESXi / VM audit + STIG |
-| `ncs-ansible-linux/` | submodule | `internal.linux` — Ubuntu / Photon audit + STIG |
-| `ncs-ansible-windows/` | submodule | `internal.windows` — Server / AD audit + STIG |
-| `ncs-ansible-aci/` | submodule | `internal.aci` — Cisco ACI audit |
-| `ncs-ansible-collection-template/` | subdir | Scaffold for new collection repos |
+| `ncs-ansible/` | subdir | Ansible app layer — playbooks, inventory, `Justfile`, collection consumer |
+| `ncs-ansible-core/` | subdir | `internal.core` collection — `ncs_collector` callback, `stig`/`pwsh` plugins |
+| `ncs-ansible-vmware/` | subdir | `internal.vmware` — vCenter / ESXi / VM audit + STIG |
+| `ncs-ansible-linux/` | subdir | `internal.linux` — Ubuntu / Photon audit + STIG |
+| `ncs-ansible-windows/` | subdir | `internal.windows` — Server / AD audit + STIG |
+| `ncs-ansible-aci/` | subdir | `internal.aci` — Cisco ACI audit |
+| `ncs-ansible-collection-template/` | subdir | Scaffold for new collections |
 | `ncs-reporter/` | subdir | Standalone Python reporting CLI ([README](ncs-reporter/README.md)) |
 | `ncs-console/` | subdir | PowerShell/WPF operator console ([README](ncs-console/README.md)) |
+| `docs/` | subdir | Architecture, references, dev runbooks under `_dev/` |
+| `prompts/` | subdir | Reusable agent prompts for repetitive authoring tasks |
 
 ## Pipeline
 
@@ -34,26 +36,31 @@ Stage 2 — Report (ncs-reporter)
 
 The stages are decoupled — reports can be re-rendered from existing artifacts without re-auditing hosts.
 
-## Cloning
-
-The collection submodules use `file://` URLs (their source repos live outside this tree). Clone with:
-
-```bash
-git -c protocol.file.allow=always clone --recurse-submodules <url>
-# …or after a plain clone:
-git -c protocol.file.allow=always submodule update --init
-```
-
 ## Quick Start
 
 ```bash
-cd ncs-ansible
+git clone <url>
+cd codex/ncs-ansible
 just setup-all    # venvs + collections + SMB share
 just --list       # every Justfile recipe
 just site         # full audit + report pipeline
 ```
 
-See `ncs-ansible/README.md` (when present) or `ncs-ansible/Justfile` for the full command surface. Reporter-only workflows live under `ncs-reporter/` (see its README).
+See `ncs-ansible/Justfile` for the full command surface. Reporter-only workflows live under `ncs-reporter/` (see its README).
+
+## Testing a collection standalone
+
+Each `internal.*` collection ships a `tests/` harness that works without the orchestrator:
+
+```bash
+cd ncs-ansible-linux
+cp -r tests/inventory.example tests/inventory
+echo 'change-me' > tests/.vault_pass
+# populate tests/inventory/hosts.yml with a lab host; see tests/README.md
+just test         # dry-run ubuntu_collect against the lab
+```
+
+Full contract: [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md).
 
 ## Common Commands
 
