@@ -15,7 +15,7 @@ ncs-console/App/ncs-icon.ico
 # Community collections elsewhere in this dir remain tracked; only the
 # locally-installed internal collections are ignored.
 # Note: collections/vendor/ (committed tarballs) is NOT in this rule.
-collections/ansible_collections/internal/
+**/collections/ansible_collections/internal/
 
 # Secrets
 .env

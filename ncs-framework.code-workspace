@@ -1,13 +1,20 @@
 {
 	"folders": [
-		{
-			"path": "."
-		}
+		{ "name": "ncs-framework", "path": "." },
+		{ "name": "ncs-ansible", "path": "ncs-ansible" },
+		{ "name": "ncs-ansible-core", "path": "ncs-ansible-core" },
+		{ "name": "ncs-ansible-vmware", "path": "ncs-ansible-vmware" },
+		{ "name": "ncs-ansible-linux", "path": "ncs-ansible-linux" },
+		{ "name": "ncs-ansible-windows", "path": "ncs-ansible-windows" },
+		{ "name": "ncs-ansible-aci", "path": "ncs-ansible-aci" },
+		{ "name": "ncs-ansible-collection-template", "path": "ncs-ansible-collection-template" },
+		{ "name": "ncs-reporter", "path": "ncs-reporter" },
+		{ "name": "ncs-console", "path": "ncs-console" }
 	],
 	"settings": {
 		"yaml.schemas": {
 			"./ncs-reporter/schemas/report_schema.json": [
-				"ncs_configs/ncs-reporter/*.yaml",
+				"ncs-ansible/ncs_configs/ncs-reporter/*.yaml",
 				"!**/*_base_alerts.yaml",
 				"!**/*_base_fields.yaml",
 				"!**/*_base_widgets.yaml"

@@ -5,9 +5,9 @@ set dotenv-load := true
 # Ensure ncs_collector callback can find platform configs
 export NCS_REPO_ROOT := justfile_directory()
 
-# (ncs-console's own Justfile lives at ncs-console/Justfile; `just mod`
+# (ncs-console's own Justfile lives at ../ncs-console/Justfile; `just mod`
 #  to mount it here needs a newer just release than some deployment
-#  hosts carry, so reach it directly: `cd ncs-console && just <recipe>`.)
+#  hosts carry, so reach it directly: `cd ../ncs-console && just <recipe>`.)
 
 # --- Variables ---
 python           := if path_exists(".venv/bin/python3") == "true" { ".venv/bin/python3" } else { "python3" }
@@ -418,7 +418,7 @@ lint:
 
 # Lint ncs-reporter YAML configs for style conventions
 lint-configs:
-    {{ python }} ncs-reporter/scripts/lint_configs.py
+    {{ python }} ../ncs-reporter/scripts/lint_configs.py
 
 # Auto-format python code
 format:
@@ -447,7 +447,7 @@ ansible-lint:
 
 # Regenerate JSON Schema for YAML editor autocomplete
 schema:
-    cd ncs-reporter && {{ python }} generate_schema.py
+    cd ../ncs-reporter && {{ python }} generate_schema.py
 
 # =============================================================================
 # Fleet Audits (non-STIG health/compliance collection)

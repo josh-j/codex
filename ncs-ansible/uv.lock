@@ -871,7 +871,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ansible-core", specifier = ">=2.16" },
-    { name = "ncs-reporter", editable = "ncs-reporter" },
+    { name = "ncs-reporter", editable = "../ncs-reporter" },
     { name = "pykerberos", marker = "extra == 'kerberos'" },
     { name = "pyvmomi" },
     { name = "requests" },
@@ -890,7 +890,7 @@ dev = [
 [[package]]
 name = "ncs-reporter"
 version = "0.1.0"
-source = { editable = "ncs-reporter" }
+source = { editable = "../ncs-reporter" }
 dependencies = [
     { name = "click" },
     { name = "jinja2" },
