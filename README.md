@@ -48,6 +48,77 @@ just site         # full audit + report pipeline
 
 See `ncs-ansible/Justfile` for the full command surface. Reporter-only workflows live under `ncs-reporter/` (see its README).
 
+## Authoring your own collection
+
+Third-party platforms plug into NCS as their own collection. The orchestrator (`ncs-ansible/`) consumes them exactly like the built-in five — `internal.core` provides the shared callback and STIG wrapper, and your collection ships its roles, playbooks, and reporter configs.
+
+1. **Scaffold from the template.** Copy `ncs-ansible-collection-template/` out next to the orchestrator (either inside this umbrella or as a sibling checkout):
+
+   ```bash
+   cp -r ncs-ansible-collection-template ../ncs-ansible-netbox
+   cd ../ncs-ansible-netbox
+   # Replace __COLLECTION_NAME__ with your platform name
+   sed -i 's/__COLLECTION_NAME__/netbox/g' galaxy.yml README.md meta/*
+   ```
+
+2. **Wire the pieces.** The template already ships the right shape:
+   - `galaxy.yml` — set `name:` and keep `dependencies: { internal.core: ">=1.0.0,<2.0.0" }`.
+   - `roles/<platform>/` — at least one role, using the `ncs_action` / `ncs_profile` / `ncs_operation` contract so `internal.core.dispatch` can route to it. See `HELPERS.md` in the template.
+   - `playbooks/<platform>_collect.yml` — emits `raw_*.yaml` via the `ncs_collector` callback (inherited from `internal.core`).
+   - `plugins/` — optional filter/action/callback plugins specific to your platform.
+
+3. **Collection-local test harness.** The template carries a `tests/` skeleton; populate it exactly like the built-ins:
+
+   ```bash
+   cp -r tests/inventory.example tests/inventory
+   echo 'change-me' > tests/.vault_pass
+   # edit tests/inventory/hosts.yml and any tests/inventory/group_vars/
+   just test                    # --check dry-run against your lab
+   ```
+
+   See [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md) for the full contract.
+
+4. **Reporter configs for your collection.** Drop them under `ncs-ansible-<yours>/ncs_configs/`:
+
+   ```
+   ncs-ansible-netbox/ncs_configs/
+   ├── netbox.yaml                     # schema + alerts for your bundle
+   ├── scripts/<helper>.py             # optional custom normalizers
+   └── cklb_skeletons/…                # optional DISA CKLB templates
+   ```
+
+   Add your collection's config dir to the orchestrator's `ncs-ansible/ncs_configs/config.yaml`:
+
+   ```yaml
+   extra_config_dirs:
+     # existing built-ins…
+     - ../../ncs-ansible-netbox/ncs_configs
+   ```
+
+5. **Plug into the orchestrator.** Build the collection tarball and add it to `ncs-ansible/requirements.yml`:
+
+   ```bash
+   cd ncs-ansible-netbox
+   just build                                  # emits dist/internal-netbox-0.1.0.tar.gz
+   cp dist/internal-netbox-0.1.0.tar.gz ../ncs-ansible/collections/vendor/
+   # add to requirements.yml under the existing tarball block:
+   #   - name: "./collections/vendor/internal-netbox-0.1.0.tar.gz"
+   #     type: file
+   cd ../ncs-ansible
+   just install-collections
+   ```
+
+   Or during active development, switch `requirements.yml` to Mode B (sibling-dir references) — the comment block at the top of that file documents both.
+
+6. **Invoke it.** Your collection's playbooks are now callable from the orchestrator by FQCN:
+
+   ```bash
+   cd ncs-ansible
+   just run-fqcn internal.netbox.netbox_collect   # or ansible-playbook <fqcn> -i inventory/production
+   ```
+
+Reporter will pick up your `ncs_configs/` via the `extra_config_dirs` entry on the next `ncs-reporter all` run.
+
 ## Testing a collection standalone
 
 Each `internal.*` collection ships a `tests/` harness that works without the orchestrator:
