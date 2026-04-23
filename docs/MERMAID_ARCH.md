@@ -2,61 +2,64 @@
 
 ```mermaid
 graph TB
-    subgraph NCS["NCS — Non-Core Services"]
+    subgraph NCS["NCS - Non-Core Services"]
 
         subgraph Console["ncs-console (Operator GUI)"]
-            WPF["WPF MainWindow<br/>(WebView2)"]
-            Actions["actions.yml<br/>(Action Registry)"]
-            Settings["Settings & Preflight"]
+            WPF["WPF MainWindow<br>(WebView2)"]
+            Actions["actions.yml<br>(Action Registry)"]
+            Settings["Settings and Preflight"]
             Execution["Execution Module"]
             WPF --> Actions
             Actions --> Execution
             Settings --> Execution
         end
 
-        subgraph Ansible["ncs-ansible (Collection & Playbook Engine)"]
+        subgraph Ansible["ncs-ansible (Collection and Playbook Engine)"]
             subgraph Playbooks["Playbooks"]
                 Site["site.yml (Orchestrator)"]
-                PlatA["platform-a/ playbooks"]
-                PlatB["platform-b/ playbooks"]
-                PlatN["platform-n/ playbooks"]
+                PlatA["platform-a playbooks"]
+                PlatB["platform-b playbooks"]
+                PlatN["platform-n playbooks"]
                 Site --> PlatA
                 Site --> PlatB
                 Site --> PlatN
             end
 
             subgraph Collections["Internal Collections"]
-                Core["internal.core<br/>— ncs_collector callback<br/>— action plugins<br/>— filter plugins"]
-                CollA["internal.(platform-a)<br/>— platform roles"]
-                CollB["internal.(platform-b)<br/>— platform roles"]
-                CollN["internal.(platform-n)<br/>— platform roles"]
-                TplColl["internal.template<br/>— scaffold for new collections"]
+                Core["internal.core<br>- ncs_collector callback<br>- action plugins<br>- filter plugins"]
+                CollA["internal.platform-a<br>- platform roles"]
+                CollB["internal.platform-b<br>- platform roles"]
+                CollN["internal.platform-n<br>- platform roles"]
+                TplColl["internal.template<br>- scaffold for new collections"]
             end
 
             Playbooks -->|"uses roles"| Collections
-            Core -->|"emits raw_*.yaml"| Artifacts["Telemetry Lake<br/>(raw_*.yaml artifacts)"]
+            Core -->|"emits raw_*.yaml"| Artifacts["Telemetry Lake<br>(raw_*.yaml artifacts)"]
         end
 
         subgraph Reporter["ncs-reporter (Reporting Engine)"]
             CLI["CLI (Click entry point)"]
-            Configs["configs/<br/>(YAML report schemas)"]
-            Norm["normalization/<br/>— schema-driven transforms<br/>— alert evaluation"]
-            Agg["aggregation<br/>(multi-host rollup)"]
-            VM_["view models<br/>(Pydantic contracts)"]
-            Render["renderers + templates<br/>(HTML / custom formats)"]
-            Export["export modules<br/>(pluggable output formats)"]
+            Configs["configs/<br>(YAML report schemas)"]
+            Norm["normalization/<br>- schema-driven transforms<br>- alert evaluation"]
+            Agg["aggregation<br>(multi-host rollup)"]
+            VMod["view models<br>(Pydantic contracts)"]
+            Render["renderers + templates<br>(HTML / custom formats)"]
+            Export["export modules<br>(pluggable output formats)"]
 
-            CLI --> Norm --> Agg --> VM_ --> Render
+            CLI --> Norm
+            Norm --> Agg
+            Agg --> VMod
+            VMod --> Render
             CLI --> Export
             Configs --> Norm
         end
 
         Console -->|"launches playbooks"| Ansible
         Artifacts -->|"consumed by"| Reporter
-        Reporter -->|"outputs"| Reports["Reports & Artifacts"]
+        Reporter -->|"outputs"| Reports["Reports and Artifacts"]
     end
 
-    Targets["Managed Infrastructure<br/>(any platform reachable by Ansible)"]
+    Targets["Managed Infrastructure<br>(any platform reachable by Ansible)"]
     Ansible <-->|"SSH / WinRM / API"| Targets
 ```
 
