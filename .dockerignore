@@ -1,0 +1,69 @@
+# Build context for the ncs-framework control-node image.
+# Keep this tight — the context is the whole umbrella repo, so anything
+# not needed by the Dockerfile should be excluded to keep builds fast
+# and to avoid accidentally baking customer state into the image.
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Pre-existing venvs on the host (image builds its own)
+**/.venv/
+**/.venv-vcsa/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+
+# Build outputs (image rebuilds collections + reporter wheel fresh)
+**/dist/
+**/build/
+**/*.egg-info/
+
+# Resolved vcsa collections tree — rebuilt inside the image via
+# ansible-galaxy collection install.
+ncs-ansible/collections_vcsa/ansible_collections/
+# Main-venv collection install dir — same deal.
+ncs-ansible/collections/ansible_collections/
+
+# Customer/runtime state that must NEVER land in an image layer
+ncs-ansible/.vaultpass
+ncs-ansible/.env
+ncs-ansible/.env.local
+**/vault.yaml.cleartext
+# Inventory is always bind-mounted at /ncs/inventory; nothing under
+# ncs-ansible/inventory/ should ship in the image.
+ncs-ansible/inventory/
+
+# Generated reports / scratch
+/srv/
+**/reports/
+ncs-ansible/failing.txt
+ncs-ansible/still_failing.txt
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docs and top-level markdown don't belong in the image
+/docs/
+/prompts/
+/README.md
+/CLAUDE.md
+**/CLAUDE.md
+*.code-workspace
+
+# Sibling projects the image does not ship
+ncs-console/
+ncs-ansible-collection-template/
+
+# uv/pip caches
+.uv-cache/
+/tmp/uv-cache/

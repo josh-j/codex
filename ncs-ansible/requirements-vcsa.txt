@@ -1,0 +1,11 @@
+# VCSA venv pip deps (ansible-core 2.15 on Python 3.11, for VCSA appliances
+# whose managed-node Python is 3.7). Consumed by both the host-side
+# `just setup-vcsa-venv` recipe and the container builder stage.
+#
+# Keep this list minimal — VCSA-specific collections (community.vmware,
+# vmware.vmware, community.general) are installed separately via
+# ansible-galaxy, not via pip.
+ansible-core>=2.15,<2.16
+pyvmomi
+pykerberos
+requests

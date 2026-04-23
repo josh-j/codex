@@ -112,7 +112,7 @@ setup-vcsa-venv:
     rm -rf .venv-vcsa
     UV_CACHE_DIR=/tmp/uv-cache uv venv --python 3.11 .venv-vcsa
     UV_CACHE_DIR=/tmp/uv-cache VIRTUAL_ENV=$(pwd)/.venv-vcsa uv pip install \
-        'ansible-core>=2.15,<2.16' pyvmomi pykerberos requests
+        -r requirements-vcsa.txt
     # Python 3.7-compatible community collections in separate path.
     # vmware.vmware pinned to <2.0.0: latest requires ansible-core >=2.17,
     # but VCSA venv is locked to 2.15 for Python 3.7 managed nodes.
@@ -891,3 +891,98 @@ schedule-log name:
 # Manually trigger a scheduled playbook immediately
 schedule-run-now name:
     systemctl start ncs-{{ name }}.service
+
+# =============================================================================
+# Container image (ncs-framework control node)
+# =============================================================================
+#
+# Registry comes from NCS_DOCKER_REGISTRY (load .env via set dotenv-load).
+# Leave it unset for local-only builds; docker-push refuses to run without it.
+# Build context is the umbrella repo root (one dir above this Justfile).
+
+docker_image      := "ncs/control-node"
+docker_dockerfile := "../Dockerfile"
+docker_context    := ".."
+
+# Build the control-node image. Optional tag arg (default: "dev").
+#
+#   just docker-build               # -> ncs/control-node:dev
+#   just docker-build v2026.04.0    # -> ncs/control-node:v2026.04.0 + :latest
+docker-build tag="dev":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rev=$(git -C "{{ docker_context }}" rev-parse --short HEAD 2>/dev/null || echo unknown)
+    echo "→ Building {{ docker_image }}:{{ tag }} (rev=${rev})"
+    docker build \
+        -f "{{ docker_dockerfile }}" \
+        -t "{{ docker_image }}:{{ tag }}" \
+        --build-arg "IMAGE_VERSION={{ tag }}" \
+        --build-arg "IMAGE_REVISION=${rev}" \
+        "{{ docker_context }}"
+    if [ "{{ tag }}" != "dev" ]; then
+        docker tag "{{ docker_image }}:{{ tag }}" "{{ docker_image }}:latest"
+    fi
+    docker image ls "{{ docker_image }}" --format 'table {{{{.Repository}}}}:{{{{.Tag}}}}\t{{{{.Size}}}}\t{{{{.CreatedAt}}}}'
+
+# Push to the registry defined by $NCS_DOCKER_REGISTRY (e.g. registry.example.com).
+# `docker login` must already have succeeded against that registry.
+#
+#   NCS_DOCKER_REGISTRY=registry.example.com just docker-push v2026.04.0
+docker-push tag="dev":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "${NCS_DOCKER_REGISTRY:-}" ]; then
+        echo "NCS_DOCKER_REGISTRY not set — refusing to push." >&2
+        echo "  set it in .env or inline: NCS_DOCKER_REGISTRY=registry.example.com just docker-push ..." >&2
+        exit 2
+    fi
+    remote="${NCS_DOCKER_REGISTRY}/{{ docker_image }}"
+    echo "→ Pushing ${remote}:{{ tag }}"
+    docker tag "{{ docker_image }}:{{ tag }}" "${remote}:{{ tag }}"
+    docker push "${remote}:{{ tag }}"
+    if [ "{{ tag }}" != "dev" ]; then
+        docker tag "{{ docker_image }}:{{ tag }}" "${remote}:latest"
+        docker push "${remote}:latest"
+    fi
+
+# Run the image against the current checkout as a dev-mode smoke test.
+# Mounts the orchestrator's inventory/vault/configs/reports + user's ~/.ssh.
+# `just docker-run audit-linux` -> invokes `just audit-linux` inside the container.
+docker-run +args="--list":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    reports_host="${NCS_REPORTS_DIR:-{{ reports_dir }}}"
+    mkdir -p "${reports_host}"
+    extra_configs=()
+    if [ -n "${NCS_CONFIGS_OVERRIDE:-}" ] && [ -d "${NCS_CONFIGS_OVERRIDE}" ]; then
+        extra_configs+=(-v "${NCS_CONFIGS_OVERRIDE}:/ncs/configs:ro")
+    fi
+    docker run --rm -it \
+        -v "$(pwd)/inventory/production:/ncs/inventory:ro" \
+        -v "$(pwd)/.vaultpass:/ncs/vaultpass:ro" \
+        -v "${reports_host}:/ncs/reports" \
+        -v "${HOME}/.ssh:/ncs/ssh:ro" \
+        "${extra_configs[@]}" \
+        --user "$(id -u):$(id -g)" \
+        "{{ docker_image }}:dev" {{ args }}
+
+# Post-build verification — runs ncs-ansible/docker/smoke.sh (baked into the
+# image at /usr/local/bin/ncs-smoke) in a single container.
+docker-smoke tag="dev":
+    docker run --rm --entrypoint /usr/local/bin/ncs-smoke "{{ docker_image }}:{{ tag }}"
+
+# Drop into an interactive bash shell inside the image with the standard mounts.
+# Useful for poking at collections / venv / playbook resolution.
+docker-shell:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    reports_host="${NCS_REPORTS_DIR:-{{ reports_dir }}}"
+    mkdir -p "${reports_host}"
+    docker run --rm -it \
+        -v "$(pwd)/inventory/production:/ncs/inventory:ro" \
+        -v "$(pwd)/.vaultpass:/ncs/vaultpass:ro" \
+        -v "${reports_host}:/ncs/reports" \
+        -v "${HOME}/.ssh:/ncs/ssh:ro" \
+        --user "$(id -u):$(id -g)" \
+        --entrypoint /bin/bash \
+        "{{ docker_image }}:dev"
