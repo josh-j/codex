@@ -12,10 +12,10 @@ Every sub-project is a tracked subdirectory of this repo. The five built-in `int
 |---|---|---|
 | `ncs-ansible/` | subdir | Ansible app layer — playbooks, inventory, `Justfile`, collection consumer |
 | `ncs-ansible-core/` | subdir | `internal.core` collection — `ncs_collector` callback, `stig`/`pwsh` plugins |
-| `ncs-ansible-vmware/` | subdir | `internal.vmware` — vCenter / ESXi / VM audit + STIG |
-| `ncs-ansible-linux/` | subdir | `internal.linux` — Ubuntu / Photon audit + STIG |
-| `ncs-ansible-windows/` | subdir | `internal.windows` — Server / AD audit + STIG |
-| `ncs-ansible-aci/` | subdir | `internal.aci` — Cisco ACI audit |
+| `ncs-ansible-vmware/` | subdir | `internal.vmware` — vCenter / ESXi / VM collect + STIG |
+| `ncs-ansible-linux/` | subdir | `internal.linux` — Ubuntu / Photon collect + STIG |
+| `ncs-ansible-windows/` | subdir | `internal.windows` — Server / AD collect + STIG |
+| `ncs-ansible-aci/` | subdir | `internal.aci` — Cisco ACI collect |
 | `ncs-ansible-collection-template/` | subdir | Scaffold for new collections |
 | `ncs-reporter/` | subdir | Standalone Python reporting CLI ([README](ncs-reporter/README.md)) |
 | `ncs-console/` | subdir | PowerShell/WPF operator console ([README](ncs-console/README.md)) |
