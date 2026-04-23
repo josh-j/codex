@@ -5,6 +5,13 @@ set dotenv-load := true
 # Ensure ncs_collector callback can find platform configs
 export NCS_REPO_ROOT := justfile_directory()
 
+# Corporate SSL-inspection proxy compatibility — tell uv to use the OS
+# trust store instead of its bundled rustls certs. Harmless when no
+# proxy is in play. The Python-side SSL_CERT_FILE / REQUESTS_CA_BUNDLE
+# vars are set conditionally inside the setup recipes below (exporting
+# them empty would break OpenSSL on hosts without the Debian CA bundle).
+export UV_NATIVE_TLS := "1"
+
 # (ncs-console's own Justfile lives at ../ncs-console/Justfile; `just mod`
 #  to mount it here needs a newer just release than some deployment
 #  hosts carry, so reach it directly: `cd ../ncs-console && just <recipe>`.)
@@ -109,6 +116,13 @@ setup-main-venv:
 setup-vcsa-venv:
     #!/usr/bin/env bash
     set -euo pipefail
+    # uv-installed CPython ships its own CA bundle — point Python at the
+    # OS trust store so ansible-galaxy verifies through a corporate SSL-
+    # inspection proxy.
+    if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+        export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+        export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    fi
     rm -rf .venv-vcsa
     UV_CACHE_DIR=/tmp/uv-cache uv venv --python 3.11 .venv-vcsa
     UV_CACHE_DIR=/tmp/uv-cache VIRTUAL_ENV=$(pwd)/.venv-vcsa uv pip install \
@@ -143,6 +157,12 @@ setup-vcsa-venv:
 setup-collections:
     #!/usr/bin/env bash
     set -euo pipefail
+    # Same CA-bundle export as setup-vcsa-venv: main venv's Python also
+    # ships a standalone CA bundle that misses corporate MITM proxy roots.
+    if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+        export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+        export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    fi
     echo "Installing collections for main venv..."
     .venv/bin/ansible-galaxy collection install ansible.posix community.vmware community.general --force
     echo "✓ Main collections installed"
