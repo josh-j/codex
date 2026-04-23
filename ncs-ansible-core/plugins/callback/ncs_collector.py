@@ -143,6 +143,7 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
         for _ in range(max_up + 1):
             for marker in (
                 os.path.join(cur, "collections", "ansible_collections"),
+                os.path.join(cur, "ncs_configs"),
                 os.path.join(cur, "files", "ncs-reporter_configs"),
             ):
                 if os.path.isdir(marker):
@@ -270,22 +271,44 @@ def _load_platforms_contract(
         else:
             platforms = path_contract.load_platforms_config_file(explicit_cfg)
     else:
-        candidates = [repo_root]
         platforms: list[dict[str, Any]] = []
         searched: list[str] = []
-        for root in candidates:
-            cfg_path = os.path.join(root, "files", "ncs-reporter_configs", "platforms.yaml")
-            if os.path.isfile(cfg_path):
-                platforms = path_contract.load_platforms_config_file(cfg_path)
-                break
-            schema_dir = os.path.join(root, "files", "ncs-reporter_configs")
-            if os.path.isdir(schema_dir):
-                platforms = _load_platforms_from_schema_dir(schema_dir)
-                if platforms:
-                    break
-            searched.append(schema_dir)
 
-        # Last resort: try the ncs-reporter package's bundled configs directly
+        # Preferred: ncs_configs/ alongside the orchestrator. config.yaml
+        # (if present) enumerates each collection's ncs_configs/ via
+        # extra_config_dirs — we fan out and merge their schemas.
+        primary_dir = os.path.join(repo_root, "ncs_configs")
+        if os.path.isdir(primary_dir):
+            schema_dirs = [primary_dir]
+            index_path = os.path.join(primary_dir, "config.yaml")
+            if os.path.isfile(index_path):
+                try:
+                    with open(index_path, encoding="utf-8") as f:
+                        index = yaml.safe_load(f) or {}
+                except Exception:
+                    index = {}
+                for rel in index.get("extra_config_dirs", []) or []:
+                    if not isinstance(rel, str):
+                        continue
+                    resolved = rel if os.path.isabs(rel) else os.path.normpath(os.path.join(primary_dir, rel))
+                    if os.path.isdir(resolved):
+                        schema_dirs.append(resolved)
+            for d in schema_dirs:
+                platforms.extend(_load_platforms_from_schema_dir(d))
+                searched.append(d)
+
+        # Legacy single-file contract (pre-split orchestrator)
+        if not platforms:
+            legacy_cfg = os.path.join(repo_root, "files", "ncs-reporter_configs", "platforms.yaml")
+            if os.path.isfile(legacy_cfg):
+                platforms = path_contract.load_platforms_config_file(legacy_cfg)
+            else:
+                legacy_dir = os.path.join(repo_root, "files", "ncs-reporter_configs")
+                if os.path.isdir(legacy_dir):
+                    platforms = _load_platforms_from_schema_dir(legacy_dir)
+                searched.append(legacy_dir)
+
+        # Last resort: ncs-reporter package's bundled configs
         if not platforms:
             try:
                 import ncs_reporter  # noqa: F811
