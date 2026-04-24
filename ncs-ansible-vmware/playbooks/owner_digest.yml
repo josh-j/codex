@@ -20,9 +20,10 @@
   become: false
 
   vars:
-    ncs_repo_path: "{{ lookup('env', 'NCS_REPO_ROOT') | default(playbook_dir + '/../..', true) }}"
-    platform_root: "{{ ncs_platform_root | default('/srv/samba/reports/platform') }}"
-    scripts_dir: "{{ ncs_repo_path }}/../ncs-ansible-vmware/ncs_configs/scripts"
+    # Playbook lives at ncs-ansible-vmware/playbooks/owner_digest.yml;
+    # ncs_configs/scripts/ sits alongside it under the collection root.
+    platform_root: "{{ ncs_platform_root | default(lookup('env', 'NCS_REPORT_DIRECTORY') | default('/srv/samba/reports/data', true)) }}"
+    scripts_dir: "{{ playbook_dir }}/../ncs_configs/scripts"
     owner_digest_exe: "{{ playbook_dir }}/files/build_owner_digest.py"
     age_days: "{{ ncs_digest_snapshot_age_days | default(7) | int }}"
     dry_run: "{{ dry_run | default(false) | bool }}"

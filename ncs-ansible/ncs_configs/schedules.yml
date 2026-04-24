@@ -27,7 +27,7 @@ schedules:
 
   - name: owner-digest
     description: "Email VMware VM owners about backup/ownership compliance issues"
-    playbook: playbooks/vmware/owner_digest.yml
+    playbook: internal.vmware.owner_digest
     calendar: "Tue,Thu 09:00:00"
     enabled: false
     notify_on_failure: true

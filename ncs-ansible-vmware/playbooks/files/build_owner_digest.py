@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build a per-owner VMware compliance digest from collected raw_vm.yaml bundles.
+"""Build a per-owner VMware compliance digest from collected raw bundles.
 
-Reads every `<platform_root>/vmware/vm/*/raw_vm.yaml`, classifies each VM via
-the same `get_vms_list()` function the reporter uses, then groups findings by
-VM owner email. Emits a JSON document consumed by `owner_digest.yml`:
+Reads every `<platform_root>/vsphere/<vc-slug>/raw.vm.yaml` (one per
+vCenter — produced by the tree-layout collector), classifies each VM via
+the same `get_vms_list()` function the reporter uses, then groups findings
+by VM owner email. Emits a JSON document consumed by `owner_digest.yml`:
 
     {
       "owner_issues": {
@@ -55,7 +56,13 @@ def _import_get_vms_list(scripts_dir: Path):
 
 
 def _find_bundles(platform_root: Path) -> list[Path]:
-    return sorted((platform_root / "vmware" / "vm").glob("*/raw_vm.yaml"))
+    """Locate vCenter VM bundles under the tree-layout share.
+
+    Each vCenter emits one raw.vm.yaml under
+    ``<platform_root>/vsphere/<vc-slug>/raw.vm.yaml`` (carrying the full
+    ``virtual_machines`` list for that vCenter).
+    """
+    return sorted((platform_root / "vsphere").glob("*/raw.vm.yaml"))
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -134,7 +141,7 @@ def main(argv: list[str]) -> int:
 
     bundles = _find_bundles(args.platform_root)
     if not bundles:
-        sys.stderr.write(f"no raw_vm.yaml bundles under {args.platform_root}/vmware/vm\n")
+        sys.stderr.write(f"no raw.vm.yaml bundles under {args.platform_root}/vsphere/*/\n")
         return 1
 
     get_vms_list = _import_get_vms_list(args.scripts_dir)
