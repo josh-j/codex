@@ -41,9 +41,21 @@
       ansible.builtin.set_fact:
         vcsa_collect_failed: true
         vcsa_connectivity_error: "vCenter {{ ansible_host }} is unreachable (HTTP {{ _vc_reachability.status | default('Timeout') }})"
-        vmware_raw_vcenter: {}
+        vmware_raw_vcenter:
+          collect_failed: true
+          connectivity_error: "vCenter {{ ansible_host }} is unreachable (HTTP {{ _vc_reachability.status | default('Timeout') }})"
       changed_when: false
     - name: Export failure state
-      ansible.builtin.include_tasks: collect/export.yaml
+      ansible.builtin.set_stats:
+        data:
+          ncs_collect_vcenter:
+            platform_dir: "vmware/vcsa"
+            report_directory: "{{ ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports')) }}"
+            payload: "{{ vmware_raw_vcenter }}"
+            config: {}
+            tree_path:
+              - vsphere
+              - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+        per_host: true
     - name: Stop execution for this vCenter
       ansible.builtin.meta: end_host
