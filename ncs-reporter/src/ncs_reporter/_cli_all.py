@@ -450,6 +450,12 @@ def _render_stig_and_cklb(
 @click.command("all")
 @click.option("--platform-root", required=True, type=click.Path(exists=True))
 @click.option("--reports-root", required=True, type=click.Path())
+@click.option(
+    "--bundle-root",
+    default=None,
+    type=click.Path(),
+    help="Where raw.yaml tree bundles live. Defaults to --reports-root when omitted.",
+)
 @click.option("--report-stamp")
 @click.option("--config-dir", default=None, type=click.Path(exists=True, file_okay=False, dir_okay=True))
 @click.option("--extra-config-dir", "-S", multiple=True, metavar="DIR")
@@ -458,6 +464,7 @@ def _render_stig_and_cklb(
 def all_cmd(
     platform_root: str,
     reports_root: str,
+    bundle_root: str | None,
     report_stamp: str | None,
     config_dir: str | None,
     extra_config_dir: tuple[str, ...],
@@ -467,6 +474,7 @@ def all_cmd(
     """Run full aggregation and rendering for all platforms and the site dashboard."""
     p_root = Path(platform_root)
     r_root = Path(reports_root)
+    b_root = Path(bundle_root) if bundle_root else r_root
     r_root.mkdir(parents=True, exist_ok=True)
 
     # Step 0: Resolve configuration
@@ -492,7 +500,7 @@ def all_cmd(
     # from those tree bundles so the full site dashboard renders instead of
     # a bare landing-page fallback (ncs-console fetches site.html via SCP
     # and expects the dashboard shape).
-    _merge_tree_bundles_into_global(r_root, global_data, global_inventory_index)
+    _merge_tree_bundles_into_global(b_root, global_data, global_inventory_index)
     # Step 1b′: Merge STIG artifacts from report_dir paths.
     # ncs_collector writes STIG results to platform/{report_dir}/ which may
     # differ from the input_dir used by platform aggregation above.
@@ -519,7 +527,7 @@ def all_cmd(
         # search_index.js are written from the tree output so downstream
         # verifiers see the same landing-page + search contract either way.
         try:
-            tree_roots, _tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+            tree_roots, _tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Hierarchical tree render failed: %s", exc)
             click.echo(f"--- Tree render failed: {exc} ---", err=True)
@@ -554,7 +562,7 @@ def all_cmd(
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
 
     # Step 2: Hierarchical tree render — the one and only page layer.
-    tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+    tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
 
     # Step 3: Site dashboard + search index. Tree host URLs are the source
     # of truth for search-index entries now that legacy platform/<p>/<host>/
@@ -580,10 +588,14 @@ def _render_inventory_trees(
     all_platform_data: dict[str, dict[str, Any]],
     extra_dirs: tuple[str, ...],
     common_vars: dict[str, Any],
+    *,
+    bundle_root: Path | None = None,
 ) -> tuple[list[tuple[str, str, Path, list[str]]], dict[str, str]]:
     """Render the hierarchical inventory trees (vSphere + flat products).
 
-    Writes HTML under ``<reports_root>/platform/<product-slug>/…``.
+    Reads raw ``raw.yaml`` bundles from ``bundle_root`` (defaults to
+    ``r_root`` when omitted). Writes rendered HTML under
+    ``<r_root>/<product-slug>/…``.
 
     Returns
     -------
@@ -594,6 +606,7 @@ def _render_inventory_trees(
             every host/leaf node written, so the site dashboard + search
             index can link directly to tree pages.
     """
+    b_root = bundle_root or r_root
     from ._report_context import ReportContext
     from .models.tree import build_flat_inventory_tree, build_vsphere_tree
     from .view_models.tree_render import render_tree
@@ -615,7 +628,7 @@ def _render_inventory_trees(
     # then overlay tree-layout raw.yaml files written by the new
     # tree_path-aware collector. The tree layout wins when both exist.
     vcenter_bundles, esxi_bundles, vm_bundles = _collect_vsphere_bundles(all_platform_data)
-    tree_vcenters, tree_esxi, tree_vms = _collect_vsphere_bundles_from_tree(r_root)
+    tree_vcenters, tree_esxi, tree_vms = _collect_vsphere_bundles_from_tree(b_root)
     vcenter_bundles.update(tree_vcenters)
     esxi_bundles.update(tree_esxi)
     vm_bundles.update(tree_vms)
@@ -639,7 +652,7 @@ def _render_inventory_trees(
         ("aci", "ACI", "raw_aci", "aci"),
     ):
         host_bundles = _collect_host_bundles(all_platform_data, raw_key)
-        host_bundles.update(_collect_flat_inventory_from_tree(r_root, product_slug))
+        host_bundles.update(_collect_flat_inventory_from_tree(b_root, product_slug))
         if not host_bundles:
             continue
         if schema_name not in schemas:

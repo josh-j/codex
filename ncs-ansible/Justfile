@@ -27,11 +27,13 @@ vcsa_playbook    := "ANSIBLE_CONFIG=ansible-vcsa.cfg " + (if path_exists(".venv-
 reporter_config_dir := "ncs_configs"
 inventory_file   := "inventory/production/"
 reports_dir      := "/srv/samba/reports"
-# Single working directory under the share: collector writes raw.yaml
-# bundles here, reporter reads them from the same tree and writes HTML
-# pages next to each bundle. No separate rendered/ dir, no platform/
-# intermediate — everything the Samba export needs sits under data/.
+# Split the share into a read side (collector telemetry) and a write
+# side (reporter HTML). rendered/ and data/ sit as peers under the
+# share root so a consumer scp-mirroring only the HTML pulls rendered/,
+# while a re-render from existing telemetry reads data/ without
+# touching rendered pages.
 data_dir         := reports_dir + "/data"
+rendered_dir     := reports_dir + "/rendered"
 platform_root    := data_dir      # alias for callers still referencing the old name
 groups_json      := data_dir + "/inventory_groups.json"
 
@@ -823,7 +825,7 @@ dump-inventory:
 report:
     #!/usr/bin/env bash
     set -euo pipefail
-    mkdir -p {{ data_dir }}
+    mkdir -p {{ data_dir }} {{ rendered_dir }}
     if command -v {{ ansible_inventory }} >/dev/null 2>&1; then
         {{ ansible_inventory }} -i {{ inventory_file }} --list --output {{ groups_json }}
         echo "✓ Inventory written to {{ groups_json }}"
@@ -831,8 +833,9 @@ report:
     {{ ncs_reporter }} all \
         --config-dir {{ reporter_config_dir }} \
         --platform-root {{ data_dir }} \
-        --reports-root {{ data_dir }}
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ data_dir }}
+        --reports-root {{ rendered_dir }} \
+        --bundle-root {{ data_dir }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ rendered_dir }}
 
 # Generate reports with custom paths
 report-custom custom_platform_root custom_reports_root custom_groups:
@@ -850,11 +853,12 @@ report-stig input output="reports/stig":
 report-cklb input output="reports/cklb":
     {{ ncs_reporter }} cklb --input {{ input }} --output-dir {{ output }}
 
-# Verify generated artifacts are complete
-verify-report-artifacts report_root=data_dir:
+# Verify generated artifacts are complete (rendered HTML side)
+verify-report-artifacts report_root=rendered_dir:
     {{ python }} scripts/verify_report_artifacts.py --report-root {{ report_root }}
 
-# Validate STIG callback emission coverage by target type
+# Validate STIG callback emission coverage by target type (reads raw.yaml
+# bundles from the data side by default).
 verify-stig-emission report_root=data_dir required_targets="vcsa,esxi,vm,windows,ubuntu,photon" min_hosts="1":
     {{ python }} scripts/verify_report_artifacts.py \
         --report-root {{ report_root }} \
