@@ -513,7 +513,8 @@ def all_cmd(
             click.echo(f"--- Tree render failed: {exc} ---", err=True)
             return
         if not any(r_root.iterdir()):
-            click.echo("No platform data or STIG artifacts found; nothing to render.")
+            click.echo("No platform data or STIG artifacts found; writing empty site + search stubs.")
+            _write_empty_site_and_search(r_root, common_vars)
             return
         _write_tree_only_site_and_search(r_root, tree_roots, common_vars)
         return
@@ -678,6 +679,29 @@ def _write_tree_only_site_and_search(
         encoding="utf-8",
     )
     click.echo(f"Tree-only site landing written at {r_root}/site.html ({len(search_index)} searchable hosts)")
+
+
+def _write_empty_site_and_search(r_root: Path, common_vars: dict[str, Any]) -> None:
+    """Emit placeholder site.html + search_index.js for an empty fleet.
+
+    Runs when neither the legacy aggregation nor the tree layout produced
+    any data (e.g. a freshly-wiped reports share before the next
+    collection pass). Keeps the ``ncs-reporter all`` contract intact so
+    downstream verifiers and ncs-console don't trip on a missing
+    landing page when there's simply nothing to report yet.
+    """
+    stamp = common_vars.get("report_stamp", "")
+    site_html = (
+        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>NCS Reports</title></head>\n"
+        "<body>\n<h1>NCS Reports</h1>\n"
+        f"<p>No fleet data yet{(' — ' + stamp) if stamp else ''}.</p>\n"
+        "<p>Run <code>just site-collect</code> (or <code>just site</code>) to populate telemetry, then re-render with <code>just report</code>.</p>\n"
+        "</body></html>\n"
+    )
+    r_root.mkdir(parents=True, exist_ok=True)
+    (r_root / "site.html").write_text(site_html, encoding="utf-8")
+    (r_root / "search_index.js").write_text("window.NCS_SEARCH_INDEX = [];", encoding="utf-8")
+    click.echo(f"Empty-state site + search stubs written at {r_root}/site.html")
 
 
 def _collect_vsphere_bundles(
