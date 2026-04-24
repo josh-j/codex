@@ -171,3 +171,26 @@ widgets:
         value: "{{ driver }}"
       - name: Switch
         value: "{{ switch }}"
+
+  - type: table
+    name: "Virtual Machines"
+    slug: esxi_vms
+    when: (virtual_machines | length) > 0
+    rows: "{{ virtual_machines }}"
+    columns:
+      - name: VM
+        value: "{{ guest_name }}"
+      - name: Power
+        value: "{{ power_state }}"
+        as: status-badge
+      - name: Tools
+        value: "{{ tools_status }}"
+        as: status-badge
+      - name: IP
+        value: "{{ ip_address }}"
+      - name: vCPU
+        value: "{{ allocated.cpu }}"
+      - name: Memory (MB)
+        value: "{{ allocated.memory }}"
+      - name: Owner
+        value: "{{ owner_email }}"
