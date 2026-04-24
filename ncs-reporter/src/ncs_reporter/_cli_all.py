@@ -135,13 +135,18 @@ def _augment_platforms_from_schemas(
     extra_dirs: tuple[str, ...],
     p_root: Path,
 ) -> None:
-    """Discover schemas not already in *platforms* and append synthetic entries in-place."""
+    """Discover schemas not already in *platforms* and append synthetic entries in-place.
+
+    ``p_root`` is no longer a gating factor — with legacy platform/<p>/<host>/
+    rendering retired, we always register every discoverable schema so the
+    platform registry (and therefore the site dashboard + search) can see
+    tree-hydrated hosts regardless of whether their legacy input_dir exists.
+    """
+    del p_root  # retained for backwards-compatible callers
     configured_platforms = {p["platform"] for p in platforms}
     custom_seen: set[str] = set()
     for _schema in discover_schemas(extra_dirs=extra_dirs).values():
         if _schema.platform in configured_platforms or _schema.platform in custom_seen:
-            continue
-        if not (p_root / _schema.platform).is_dir():
             continue
         custom_seen.add(_schema.platform)
         platforms.append({
