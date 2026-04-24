@@ -217,6 +217,21 @@ function Get-NcsLocalManifest {
     return $manifest
 }
 
+function ConvertTo-NcsScpLocalPath {
+    <#
+    Normalize a local path so scp.exe on Windows parses it as a local
+    destination rather than a remote spec. scp treats the first `:` in an
+    argument as the user@host separator, so paths like `C:/Users/...` get
+    mis-parsed; it also stumbles on mixed `/` and `\` separators and on
+    relative paths with spaces. Resolve to an absolute, all-backslash form
+    and prefix with `\\?\` if needed to survive scp's argv handling.
+    #>
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $full = [IO.Path]::GetFullPath($Path)
+    return $full.Replace('/', [IO.Path]::DirectorySeparatorChar)
+}
+
 function Invoke-NcsSshFileFetch {
     <#
     scp a single remote file into the local path, creating parent dirs as
@@ -234,6 +249,8 @@ function Invoke-NcsSshFileFetch {
         [System.IO.Directory]::CreateDirectory($localDir) | Out-Null
     }
 
+    $localScpPath = ConvertTo-NcsScpLocalPath -Path $LocalFile
+
     $args = [System.Collections.Generic.List[string]]::new()
     $args.Add("-p")   # preserve mtime so manifest comparisons converge on the next run
     $args.Add("-P")
@@ -241,7 +258,7 @@ function Invoke-NcsSshFileFetch {
     Add-NcsSshCommonOptions -Arguments $args -Settings $Settings
     Add-NcsSshAuthOptions   -Arguments $args -Settings $Settings
     $args.Add("{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $RemoteFile)
-    $args.Add($LocalFile)
+    $args.Add($localScpPath)
 
     return Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $args -Environment (Get-NcsSshEnvironment -Settings $Settings) -TimeoutMs $TimeoutMs
 }

@@ -526,7 +526,7 @@ function Invoke-NcsReportMirrorFull {
 
     $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $Settings.RemoteReportsPath
     $arguments.Add($remoteSpec)
-    $arguments.Add($cacheParent)
+    $arguments.Add((ConvertTo-NcsScpLocalPath -Path $cacheParent))
 
     $mirror = Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $arguments -Environment $environment -TimeoutMs 180000
     if ($mirror.ExitCode -eq 0) {
