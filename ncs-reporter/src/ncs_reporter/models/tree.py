@@ -328,12 +328,7 @@ def build_flat_inventory_tree(
         slug=inventory_slug,
         title=title,
         schema_name="inventory_root",
-        # Flat inventory trees stay at <reports_root>/<slug>/ so they don't
-        # collide with the legacy platform/<slug>/<host>/<host>.html per-host
-        # pages — the tree render runs after the legacy render and would
-        # otherwise overwrite them with a breadcrumb pointing at the tree
-        # product page instead of the <platform>_inventory fleet page.
-        node_path=NodePath.product(inventory_slug),
+        node_path=NodePath(("platform", inventory_slug)),
     )
     raw_key = f"raw_{host_schema_name}"
     hosts_summary: list[dict[str, Any]] = []

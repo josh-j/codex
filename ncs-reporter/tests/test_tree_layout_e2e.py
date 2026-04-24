@@ -141,7 +141,7 @@ class TestTreeLayoutE2E(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, result.output)
 
         # The tree reader should have found the bundle and rendered the host page.
-        self.assertTrue((self.reports_root / "ubuntu" / "web-01" / "web-01.html").exists())
+        self.assertTrue((self.reports_root / "platform" / "ubuntu" / "web-01" / "web-01.html").exists())
 
     def test_flat_inventory_emits_product_then_host(self) -> None:
         self._write_bundle("linux/ubuntu/web-01/raw_ubuntu.yaml", {
@@ -175,8 +175,8 @@ class TestTreeLayoutE2E(unittest.TestCase):
             catch_exceptions=False,
         )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertTrue((self.reports_root / "ubuntu/ubuntu.html").exists())
-        self.assertTrue((self.reports_root / "ubuntu/web-01/web-01.html").exists())
+        self.assertTrue((self.reports_root / "platform/ubuntu/ubuntu.html").exists())
+        self.assertTrue((self.reports_root / "platform/ubuntu/web-01/web-01.html").exists())
 
 
 if __name__ == "__main__":

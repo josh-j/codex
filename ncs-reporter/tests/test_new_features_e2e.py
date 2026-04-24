@@ -11,6 +11,7 @@ from click.testing import CliRunner
 from ncs_reporter.cli import main
 
 
+@unittest.skip("legacy platform/<p>/<schema>_inventory.html + platform/<p>/<host>/<host>.html output no longer generated; see tree layout assertions in test_tree_layout_e2e.py")
 class TestNewFeaturesE2E(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()

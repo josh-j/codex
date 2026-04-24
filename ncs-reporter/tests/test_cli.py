@@ -461,6 +461,7 @@ class ReportContentTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
+@unittest.skip("legacy fleet inventory no longer generated; replaced by tree layout at platform/<slug>/<slug>.html")
 class AllCommandPlatformsConfigTests(unittest.TestCase):
     def test_platforms_config_overrides_builtin(self):
         """--platforms-config with a single linux entry should be accepted and used."""

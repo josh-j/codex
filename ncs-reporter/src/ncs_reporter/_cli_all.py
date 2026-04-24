@@ -340,6 +340,7 @@ def _render_site_and_search(
     global_inventory_index: dict[str, str],
     platforms_by_report_dir: dict[str, dict[str, Any]],
     generated_fleet_dirs: set[str] | None = None,
+    tree_host_urls: dict[str, str] | None = None,
 ) -> None:
     """Render the site dashboard and generate the search index."""
     # Site dashboard
@@ -358,21 +359,27 @@ def _render_site_and_search(
         (r_root / _FILENAME_SITE_HEALTH).write_text(content)
         click.echo(f"Global dashboard generated at {r_root}/{_FILENAME_SITE_HEALTH}")
 
-    # Search index
+    # Search index — prefer actual tree URLs (what the renderer wrote) over
+    # the legacy path template, which no longer corresponds to any file.
+    tree_host_urls = tree_host_urls or {}
     search_index = []
     for hostname, rep_dir in global_inventory_index.items():
-        platform_cfg = platforms_by_report_dir.get(rep_dir)
-        if not platform_cfg:
-            continue
-        path_templates = dict(platform_cfg["paths"])
-        search_url = render_template(
-            path_templates["report_search_entry"],
-            report_dir=rep_dir,
-            schema_name=str(platform_cfg.get("schema_name") or platform_cfg["platform"]),
-            hostname=hostname,
-            target_type="",
-            report_stamp=common_vars["report_stamp"],
-        )
+        tree_url = tree_host_urls.get(hostname)
+        if tree_url:
+            search_url = tree_url
+        else:
+            platform_cfg = platforms_by_report_dir.get(rep_dir)
+            if not platform_cfg:
+                continue
+            path_templates = dict(platform_cfg["paths"])
+            search_url = render_template(
+                path_templates["report_search_entry"],
+                report_dir=rep_dir,
+                schema_name=str(platform_cfg.get("schema_name") or platform_cfg["platform"]),
+                hostname=hostname,
+                target_type="",
+                report_stamp=common_vars["report_stamp"],
+            )
         search_index.append({
             "h": hostname,
             "u": search_url,
@@ -507,7 +514,7 @@ def all_cmd(
         # search_index.js are written from the tree output so downstream
         # verifiers see the same landing-page + search contract either way.
         try:
-            tree_roots = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+            tree_roots, _tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Hierarchical tree render failed: %s", exc)
             click.echo(f"--- Tree render failed: {exc} ---", err=True)
@@ -541,33 +548,26 @@ def all_cmd(
     if stig_host_views:
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
 
-    # Step 2: Parallel platform rendering
-    _render_platforms(render_tasks, common_vars, global_inventory_index, generated_fleet_dirs, stig_host_views, has_stig_fleet=has_stig_fleet)
+    # Step 2: Hierarchical tree render — the one and only page layer.
+    tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
 
-    # Step 3: Site dashboard + search index
+    # Step 3: Site dashboard + search index. Tree host URLs are the source
+    # of truth for search-index entries now that legacy platform/<p>/<host>/
+    # host.html pages are no longer generated.
     _render_site_and_search(
         r_root, global_data, global_changed,
         common_vars, global_inventory_index, platforms_by_report_dir,
         generated_fleet_dirs,
+        tree_host_urls=tree_host_urls,
     )
 
-    # Step 4 & 5: CKLB export + STIG fleet rendering
+    # Step 4 & 5: CKLB export + STIG fleet rendering (tree-layout still feeds these)
     _render_stig_and_cklb(
         r_root, global_hosts, global_changed, all_hosts_state,
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
     )
-
-    # Step 6: Hierarchical tree-tier render (additive alongside legacy output)
-    try:
-        _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
-    except Exception as exc:  # noqa: BLE001
-        # Tree rendering is strictly additive while the layout refactor is
-        # in flight; if it fails for any reason, surface the error but don't
-        # fail the whole CLI run — the legacy report output above is still
-        # valid and this preserves behavior for existing consumers.
-        logger.exception("Hierarchical tree render failed: %s", exc)
-        click.echo(f"--- Tree render failed: {exc} (legacy reports unaffected) ---", err=True)
+    _ = tree_roots
 
 
 def _render_inventory_trees(
@@ -575,16 +575,19 @@ def _render_inventory_trees(
     all_platform_data: dict[str, dict[str, Any]],
     extra_dirs: tuple[str, ...],
     common_vars: dict[str, Any],
-) -> list[tuple[str, str, Path, list[str]]]:
+) -> tuple[list[tuple[str, str, Path, list[str]]], dict[str, str]]:
     """Render the hierarchical inventory trees (vSphere + flat products).
 
-    Additive pass — coexists with the legacy platform/fleet/host HTML until
-    the legacy path is removed in Phase D. Writes HTML under
-    ``<reports_root>/<product-slug>/…``.
+    Writes HTML under ``<reports_root>/platform/<product-slug>/…``.
 
-    Returns one (slug, title, root_html, host_ids) tuple per rendered
-    product so the tree-only branch can assemble the top-level site
-    landing page and search index without re-walking the filesystem.
+    Returns
+    -------
+    (rendered, host_urls)
+        rendered: one (slug, title, root_html, host_ids) tuple per rendered
+            product, for callers that want to enumerate tree roots.
+        host_urls: ``{hostname: html_path_relative_to_r_root}`` mapping for
+            every host/leaf node written, so the site dashboard + search
+            index can link directly to tree pages.
     """
     from ._report_context import ReportContext
     from .models.tree import build_flat_inventory_tree, build_vsphere_tree
@@ -594,6 +597,14 @@ def _render_inventory_trees(
     env = get_jinja_env()
     ctx = ReportContext(report_stamp=common_vars.get("report_stamp", ""))
     rendered: list[tuple[str, str, Path, list[str]]] = []
+    host_urls: dict[str, str] = {}
+
+    def _record_host_urls(root_node: Any) -> None:
+        for node in root_node.walk():
+            if node.tier not in ("host", "esxi_host"):
+                continue
+            rel = node.node_path.resolve_under(r_root).relative_to(r_root) / f"{node.slug}.html"
+            host_urls.setdefault(str(node.title or node.slug), rel.as_posix())
 
     # vSphere tree: start from whatever the legacy aggregation built,
     # then overlay tree-layout raw.yaml files written by the new
@@ -614,6 +625,7 @@ def _render_inventory_trees(
         click.echo(f"--- Inventory tree: vsphere ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
         if written:
             rendered.append(("vsphere", "vSphere", written[0], sorted(esxi_bundles) + sorted(vm_bundles)))
+            _record_host_urls(vsphere_root)
 
     for product_slug, product_title, raw_key, schema_name in (
         ("ubuntu", "Ubuntu", "raw_ubuntu", "ubuntu"),
@@ -638,7 +650,8 @@ def _render_inventory_trees(
         click.echo(f"--- Inventory tree: {product_slug} ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
         if written:
             rendered.append((product_slug, product_title, written[0], sorted(host_bundles)))
-    return rendered
+            _record_host_urls(root)
+    return rendered, host_urls
 
 
 def _write_tree_only_site_and_search(

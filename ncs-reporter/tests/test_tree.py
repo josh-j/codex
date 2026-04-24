@@ -160,5 +160,5 @@ class TestBuildFlatInventoryTree:
         )
         assert root.slug == "ubuntu"
         assert [c.slug for c in root.children] == ["web-01", "web-02"]
-        assert root.children[0].node_path.html_path.as_posix() == "ubuntu/web-01/web-01.html"
+        assert root.children[0].node_path.html_path.as_posix() == "platform/ubuntu/web-01/web-01.html"
         assert root.children[0].data_source({}) == {"raw_ubuntu": {"data": {"k": 1}, "metadata": {"host": "web-01"}}}

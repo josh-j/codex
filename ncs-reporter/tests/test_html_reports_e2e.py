@@ -15,6 +15,7 @@ def _has_attr(html: str, attr: str, value: str) -> bool:
     return f'{attr}="{value}"' in html or f"{attr}={value}" in html
 
 
+@unittest.skip("legacy platform/<p>/<schema>_inventory.html + platform/<p>/<host>/<host>.html output no longer generated; see tree layout assertions in test_tree_layout_e2e.py")
 class TestHtmlReportsE2E(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()

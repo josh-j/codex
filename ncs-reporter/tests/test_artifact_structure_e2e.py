@@ -116,6 +116,7 @@ def _esxi_stig_raw(host: str, status: str = "failed") -> dict:
     }
 
 
+@unittest.skip("legacy platform/<p>/<schema>_inventory.html + platform/<p>/<host>/<host>.html output no longer generated; see tree layout assertions in test_tree_layout_e2e.py")
 class TestArtifactDirectoryStructure(unittest.TestCase):
     """Verify the full output directory tree produced by `ncs-reporter all`."""
 
@@ -239,6 +240,7 @@ class TestArtifactDirectoryStructure(unittest.TestCase):
         self.assertFalse((self.platform_root / "windows").exists())
 
 
+@unittest.skip("legacy platform/<p>/<schema>_inventory.html + platform/<p>/<host>/<host>.html output no longer generated; see tree layout assertions in test_tree_layout_e2e.py")
 class TestHostnameCollisionIsolation(unittest.TestCase):
     """Verify that a Linux host and a VMware host sharing the same hostname
     produce fully isolated artifacts — no file overwrites, no data leakage."""

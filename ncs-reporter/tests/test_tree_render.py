@@ -159,8 +159,8 @@ class TestRenderTree:
             ctx=ReportContext(report_stamp="20260421"),
         )
         assert len(written) == 3  # root + 2 hosts
-        assert (tmp_path / "esxi-standalone" / "esxi-standalone.html").exists()
-        assert (tmp_path / "esxi-standalone" / "host-01" / "host-01.html").exists()
+        assert (tmp_path / "platform" / "esxi-standalone" / "esxi-standalone.html").exists()
+        assert (tmp_path / "platform" / "esxi-standalone" / "host-01" / "host-01.html").exists()
 
 
 class TestRelativeLinks:
