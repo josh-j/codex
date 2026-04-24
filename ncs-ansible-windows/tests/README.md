@@ -30,7 +30,7 @@ changes against the lab.
 
 - `windows_servers` — the managed Windows Server fleet. The default
   connection template is SSH + Kerberos/GSSAPI; see the monorepo's
-  [OpenSSH + Kerberos doc](../../docs/OPENSSH_KERBEROS.md) for the
+  [OpenSSH + Kerberos doc](../../docs/ops/OPENSSH_KERBEROS.md) for the
   server-side prerequisites.
 
 The `domain` role's playbooks (`domain_collect.yml`, etc.) target
@@ -43,4 +43,4 @@ static group is required for lab smoke tests.
 
 ## Relationship to the orchestrator
 
-See `docs/COLLECTION_LAYOUT.md` in the monorepo root.
+See `docs/collections/COLLECTION_LAYOUT.md` in the monorepo root.

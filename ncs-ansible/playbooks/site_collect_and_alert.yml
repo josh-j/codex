@@ -6,7 +6,7 @@
 # Pairs the clock-driven scheduler (schedules.yml → systemd timers) with
 # the state-driven alert trigger (ncs-reporter fire-on-alerts) so that
 # detection and reaction run on the same cadence without manual CLI
-# invocation. See docs/SCHEDULING_AND_ALERT_ACTIONS.md for the design.
+# invocation. See docs/ncs-reporter-config/SCHEDULING_AND_ALERT_ACTIONS.md for the design.
 
 # Phase 1: collect raw_*.yaml across every platform
 - ansible.builtin.import_playbook: site_collect_only.yml

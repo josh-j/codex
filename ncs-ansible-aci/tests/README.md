@@ -37,4 +37,4 @@ test-apply` drops `--check` (note: `apic_collect` is read-only, so
 
 ## Relationship to the orchestrator
 
-See `docs/COLLECTION_LAYOUT.md` in the monorepo root.
+See `docs/collections/COLLECTION_LAYOUT.md` in the monorepo root.

@@ -5,7 +5,7 @@
 # so `ncs-reporter all --config-dir ncs_configs` still discovers every
 # config and skeleton.
 #
-# See docs/COLLECTION_LAYOUT.md for the full contract.
+# See docs/collections/COLLECTION_LAYOUT.md for the full contract.
 
 extra_config_dirs:
   - ../../ncs-ansible-linux/ncs_configs

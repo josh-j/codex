@@ -38,5 +38,5 @@ The monorepo's `ncs-ansible/` orchestrator has its own production
 inventory at `ncs-ansible/inventory/production/` and its own vault
 password at `ncs-ansible/.vaultpass`. That world is completely separate
 from this one — running `just test` here never reads from there, and
-vice versa. See `docs/COLLECTION_LAYOUT.md` in the monorepo root for
+vice versa. See `docs/collections/COLLECTION_LAYOUT.md` in the monorepo root for
 the full split.

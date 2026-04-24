@@ -54,4 +54,4 @@ self-contained smoke playbooks are tracked.
 
 The monorepo's `ncs-ansible/` orchestrator has its own production
 inventory and vault; neither reads from the other. See
-`docs/COLLECTION_LAYOUT.md` in the monorepo root for the split.
+`docs/collections/COLLECTION_LAYOUT.md` in the monorepo root for the split.

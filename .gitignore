@@ -30,6 +30,6 @@ CLAUDE.md
 docs/LAB_ACCESS.md
 docs/_dev/
 
-# Per-collection test inventory + vault password — see docs/COLLECTION_LAYOUT.md
+# Per-collection test inventory + vault password — see docs/collections/COLLECTION_LAYOUT.md
 ncs-ansible-*/tests/inventory/
 ncs-ansible-*/tests/.vault_pass

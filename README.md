@@ -80,7 +80,7 @@ Third-party platforms plug into NCS as their own collection. The orchestrator (`
    just test                    # --check dry-run against your lab
    ```
 
-   See [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md) for the full contract.
+   See [`docs/collections/COLLECTION_LAYOUT.md`](docs/collections/COLLECTION_LAYOUT.md) for the full contract.
 
 4. **Reporter configs for your collection.** Drop them under `ncs-ansible-<yours>/ncs_configs/`:
 
@@ -135,7 +135,7 @@ echo 'change-me' > tests/.vault_pass
 just test         # dry-run ubuntu_collect against the lab
 ```
 
-Full contract: [`docs/COLLECTION_LAYOUT.md`](docs/COLLECTION_LAYOUT.md).
+Full contract: [`docs/collections/COLLECTION_LAYOUT.md`](docs/collections/COLLECTION_LAYOUT.md).
 
 ## Common Commands
 
@@ -152,8 +152,9 @@ Both live under `ncs-ansible/`:
 
 ## Further Reading
 
-- [Architecture Diagram](docs/MERMAID_ARCH.md)
-- [`internal.core.stig` Reference](docs/INTERNAL_CORE_STIG.md)
-- [Collection Layout (inventory + vault)](docs/COLLECTION_LAYOUT.md)
-- [Scheduling & Alert Actions](docs/SCHEDULING_AND_ALERT_ACTIONS.md)
-- [OpenSSH + Kerberos](docs/OPENSSH_KERBEROS.md)
+- [Architecture Diagram](docs/architecture/MERMAID_ARCH.md)
+- [`internal.core.stig` Reference](docs/collections/INTERNAL_CORE_STIG.md)
+- [Collection Layout (inventory + vault)](docs/collections/COLLECTION_LAYOUT.md)
+- [Scheduling & Alert Actions](docs/ncs-reporter-config/SCHEDULING_AND_ALERT_ACTIONS.md)
+- [OpenSSH + Kerberos](docs/ops/OPENSSH_KERBEROS.md)
+- [Control-node container image](docs/ops/DOCKER.md)
