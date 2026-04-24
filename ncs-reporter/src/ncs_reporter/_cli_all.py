@@ -475,6 +475,12 @@ def all_cmd(
     click.echo("--- Aggregating Global State ---")
     all_hosts_state = p_root / "all_hosts_state.yaml"
     global_data = _merge_platform_data(all_platform_data)
+    # Step 1b: If the collector skipped the legacy platform/<p>/<h>/raw_*.yaml
+    # layout and only wrote the hierarchical tree layout, hydrate global_data
+    # from those tree bundles so the full site dashboard renders instead of
+    # a bare landing-page fallback (ncs-console fetches site.html via SCP
+    # and expects the dashboard shape).
+    _merge_tree_bundles_into_global(r_root, global_data)
     # Step 1b′: Merge STIG artifacts from report_dir paths.
     # ncs_collector writes STIG results to platform/{report_dir}/ which may
     # differ from the input_dir used by platform aggregation above.
@@ -780,3 +786,49 @@ def _collect_flat_inventory_from_tree(
         if data is not None:
             result[host_dir.name] = data
     return result
+
+
+# Map tree-layout product slugs onto the raw_<key> the legacy aggregation
+# uses. ESXi hosts come from the vSphere tree's leaf raw.yaml files; flat
+# products map one-to-one.
+_TREE_HOST_SOURCES: tuple[tuple[str, str], ...] = (
+    ("ubuntu", "raw_ubuntu"),
+    ("photon", "raw_photon"),
+    ("windows", "raw_windows"),
+    ("aci", "raw_aci"),
+)
+
+
+def _merge_tree_bundles_into_global(reports_root: Path, global_data: dict[str, Any]) -> None:
+    """Hydrate ``global_data['hosts']`` with tree-layout raw bundles.
+
+    When the collector emits only the hierarchical tree layout, the legacy
+    aggregation feeding ``_merge_platform_data`` sees nothing and the site
+    dashboard would otherwise skip. Each tree bundle is wrapped in the
+    legacy ``raw_<type>: {data: ...}`` shape, deep-merged into any existing
+    host entry, and run through ``normalize_host_bundle`` so downstream
+    rendering treats it identically to a bundle loaded from the legacy
+    platform/<p>/<host>/ layout.
+    """
+    if not reports_root.is_dir():
+        return
+    touched: set[str] = set()
+
+    _vcenters, esxi_bundles, _vms = _collect_vsphere_bundles_from_tree(reports_root)
+    for hostname, data in esxi_bundles.items():
+        entry = global_data["hosts"].setdefault(hostname, {})
+        deep_merge(entry, {"raw_esxi": {"data": data}})
+        touched.add(hostname)
+
+    for product_slug, raw_key in _TREE_HOST_SOURCES:
+        for hostname, data in _collect_flat_inventory_from_tree(reports_root, product_slug).items():
+            entry = global_data["hosts"].setdefault(hostname, {})
+            deep_merge(entry, {raw_key: {"data": data}})
+            touched.add(hostname)
+
+    if not touched:
+        return
+    for hostname in touched:
+        global_data["hosts"][hostname] = normalize_host_bundle(hostname, global_data["hosts"][hostname])
+    global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
+    click.echo(f"  Hydrated {len(touched)} host(s) from tree-layout bundles.")
