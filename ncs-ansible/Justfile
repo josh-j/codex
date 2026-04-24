@@ -34,7 +34,6 @@ reports_dir      := "/srv/samba/reports"
 # touching rendered pages.
 data_dir         := reports_dir + "/data"
 rendered_dir     := reports_dir + "/rendered"
-platform_root    := data_dir      # alias for callers still referencing the old name
 groups_json      := data_dir + "/inventory_groups.json"
 
 # Inject data_dir into every ansible-playbook invocation so the
@@ -817,7 +816,7 @@ refresh-esxi-inventory:
 
 # Dump inventory groups JSON to disk
 dump-inventory:
-    @mkdir -p {{ platform_root }}
+    @mkdir -p {{ data_dir }}
     {{ ansible_inventory }} -i {{ inventory_file }} --list --output {{ groups_json }}
     @echo "✓ Inventory written to {{ groups_json }}"
 

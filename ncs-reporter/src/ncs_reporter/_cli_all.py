@@ -562,7 +562,7 @@ def all_cmd(
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
 
     # Step 2: Hierarchical tree render — the one and only page layer.
-    tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
+    _tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
 
     # Step 3: Site dashboard + search index. Tree host URLs are the source
     # of truth for search-index entries now that legacy platform/<p>/<host>/
@@ -580,7 +580,6 @@ def all_cmd(
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
     )
-    _ = tree_roots
 
 
 def _render_inventory_trees(
