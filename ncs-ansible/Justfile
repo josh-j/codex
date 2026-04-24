@@ -27,8 +27,19 @@ vcsa_playbook    := "ANSIBLE_CONFIG=ansible-vcsa.cfg " + (if path_exists(".venv-
 reporter_config_dir := "ncs_configs"
 inventory_file   := "inventory/production/"
 reports_dir      := "/srv/samba/reports"
-platform_root    := reports_dir + "/platform"
-groups_json      := platform_root + "/inventory_groups.json"
+# Single working directory under the share: collector writes raw.yaml
+# bundles here, reporter reads them from the same tree and writes HTML
+# pages next to each bundle. No separate rendered/ dir, no platform/
+# intermediate — everything the Samba export needs sits under data/.
+data_dir         := reports_dir + "/data"
+platform_root    := data_dir      # alias for callers still referencing the old name
+groups_json      := data_dir + "/inventory_groups.json"
+
+# Inject data_dir into every ansible-playbook invocation so the
+# ncs_collector callback writes bundles under data_dir/<tree_path>/raw.yaml
+# without touching each recipe. NCS_REPORT_DIRECTORY is the callback's
+# env-var override (see ncs-ansible-core/plugins/callback/ncs_collector.py).
+export NCS_REPORT_DIRECTORY := data_dir
 vaultpass        := ".vaultpass"
 
 # --- Default ---
@@ -812,16 +823,16 @@ dump-inventory:
 report:
     #!/usr/bin/env bash
     set -euo pipefail
-    mkdir -p {{ platform_root }}
+    mkdir -p {{ data_dir }}
     if command -v {{ ansible_inventory }} >/dev/null 2>&1; then
         {{ ansible_inventory }} -i {{ inventory_file }} --list --output {{ groups_json }}
         echo "✓ Inventory written to {{ groups_json }}"
     fi
     {{ ncs_reporter }} all \
         --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ platform_root }} \
-        --reports-root {{ reports_dir }}
-    {{ python }} scripts/verify_report_artifacts.py --report-root {{ reports_dir }}
+        --platform-root {{ data_dir }} \
+        --reports-root {{ data_dir }}
+    {{ python }} scripts/verify_report_artifacts.py --report-root {{ data_dir }}
 
 # Generate reports with custom paths
 report-custom custom_platform_root custom_reports_root custom_groups:
@@ -840,11 +851,11 @@ report-cklb input output="reports/cklb":
     {{ ncs_reporter }} cklb --input {{ input }} --output-dir {{ output }}
 
 # Verify generated artifacts are complete
-verify-report-artifacts report_root=reports_dir:
+verify-report-artifacts report_root=data_dir:
     {{ python }} scripts/verify_report_artifacts.py --report-root {{ report_root }}
 
 # Validate STIG callback emission coverage by target type
-verify-stig-emission report_root=reports_dir required_targets="vcsa,esxi,vm,windows,ubuntu,photon" min_hosts="1":
+verify-stig-emission report_root=data_dir required_targets="vcsa,esxi,vm,windows,ubuntu,photon" min_hosts="1":
     {{ python }} scripts/verify_report_artifacts.py \
         --report-root {{ report_root }} \
         --require-targets "{{ required_targets }}" \

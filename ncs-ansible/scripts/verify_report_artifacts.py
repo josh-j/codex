@@ -32,10 +32,6 @@ def verify_basic(report_root: Path) -> list[str]:
     if not search_index.is_file():
         errors.append(f"Missing search index: {search_index}")
 
-    platform_dir = report_root / "platform"
-    if not platform_dir.is_dir():
-        errors.append(f"Missing platform directory: {platform_dir}")
-
     html_files = _find_html(report_root)
     if not html_files:
         errors.append("No HTML reports found anywhere under report root")
@@ -59,11 +55,11 @@ def verify_stig_targets(
     if not stig_root_reports:
         errors.append("Missing STIG inventory report")
 
-    # Scan for raw_stig_*.yaml files to build a map of target_type -> hostnames
-    platform_dir = report_root / "platform"
+    # Scan for raw_stig_*.yaml files to build a map of target_type -> hostnames.
+    # Bundles live co-located with their rendered HTML under <report_root>/<product>/…
     target_hosts: dict[str, set[str]] = {}
 
-    for raw_stig in platform_dir.rglob("raw_stig_*.yaml"):
+    for raw_stig in report_root.rglob("raw_stig_*.yaml"):
         # Filename pattern: raw_stig_{target_type}.yaml
         target_type = raw_stig.stem.removeprefix("raw_stig_")
         hostname = raw_stig.parent.name

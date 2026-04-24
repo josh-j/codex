@@ -157,7 +157,7 @@ def build_vsphere_tree(
         slug="vsphere",
         title="vSphere",
         schema_name="vsphere",
-        node_path=NodePath(("platform", "vsphere")),
+        node_path=NodePath.product("vsphere"),
     )
     # vSphere root IS the "vCenter Appliances" overview — it lists every
     # vCenter directly with links to each vCenter host report. No
@@ -328,7 +328,7 @@ def build_flat_inventory_tree(
         slug=inventory_slug,
         title=title,
         schema_name="inventory_root",
-        node_path=NodePath(("platform", inventory_slug)),
+        node_path=NodePath.product(inventory_slug),
     )
     raw_key = f"raw_{host_schema_name}"
     hosts_summary: list[dict[str, Any]] = []

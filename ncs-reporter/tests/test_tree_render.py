@@ -129,13 +129,13 @@ class TestRenderTree:
         )
         # vsphere + vcenter + dc + 2 esxi = 5
         assert len(written) >= 5
-        vsphere_html = tmp_path / "platform" / "vsphere" / "vsphere.html"
+        vsphere_html = tmp_path / "vsphere" / "vsphere.html"
         assert vsphere_html.exists()
         content = vsphere_html.read_text()
         assert "vSphere" in content
         assert "breadcrumb-current" in content
 
-        dc_html = tmp_path / "platform" / "vsphere" / "vc-prod-01" / "dc-east" / "dc-east.html"
+        dc_html = tmp_path / "vsphere" / "vc-prod-01" / "dc-east" / "dc-east.html"
         assert dc_html.exists()
         dc_content = dc_html.read_text()
         assert "DC-East" in dc_content
@@ -159,8 +159,8 @@ class TestRenderTree:
             ctx=ReportContext(report_stamp="20260421"),
         )
         assert len(written) == 3  # root + 2 hosts
-        assert (tmp_path / "platform" / "esxi-standalone" / "esxi-standalone.html").exists()
-        assert (tmp_path / "platform" / "esxi-standalone" / "host-01" / "host-01.html").exists()
+        assert (tmp_path / "esxi-standalone" / "esxi-standalone.html").exists()
+        assert (tmp_path / "esxi-standalone" / "host-01" / "host-01.html").exists()
 
 
 class TestRelativeLinks:
@@ -182,5 +182,5 @@ class TestRelativeLinks:
         assert vsphere_crumb["href"].count("..") == 2
 
         site_crumb = view["nav"]["breadcrumbs"][0]
-        # DC dir is 4 segments deep (platform/vsphere/vc/dc); site.html is at the report root.
-        assert site_crumb["href"] == "../../../../site.html"
+        # DC dir is 3 segments deep (vsphere/vc/dc); site.html is at the report root.
+        assert site_crumb["href"] == "../../../site.html"
