@@ -411,6 +411,14 @@ function Test-NcsSmbAccess {
 }
 
 function Invoke-NcsReportMirror {
+    <#
+    Pulls <host>:$RemoteReportsPath into $LocalRoot. Uses a single-ssh tar
+    pipe instead of recursive scp — scp opens a fresh transfer per file,
+    so fleets with thousands of per-host HTMLs pay thousands of round-
+    trips. One tar stream cuts that to a single RTT plus wire time.
+    Gzip is on by default because report output is text-dense and the
+    bandwidth win dominates the CPU cost on modern control nodes.
+    #>
     param(
         [Parameter(Mandatory)]
         [NcsConsoleSettings] $Settings,
@@ -428,20 +436,13 @@ function Invoke-NcsReportMirror {
     }
     [System.IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
 
-    $arguments = [System.Collections.Generic.List[string]]::new()
-    $arguments.Add("-r")
-    $arguments.Add("-P")
-    $arguments.Add([string] $Settings.SshPort)
-    Add-NcsSshCommonOptions -Arguments $arguments -Settings $Settings
-    Add-NcsSshAuthOptions -Arguments $arguments -Settings $Settings
+    $mirror = Invoke-NcsSshTarPipe `
+        -Settings        $Settings `
+        -RemoteSourceDir $Settings.RemoteReportsPath `
+        -LocalExtractDir $cacheParent `
+        -Compress `
+        -TimeoutMs       180000
 
-    $environment = Get-NcsSshEnvironment -Settings $Settings
-
-    $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $Settings.RemoteReportsPath
-    $arguments.Add($remoteSpec)
-    $arguments.Add($cacheParent)
-
-    $mirror = Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $arguments -Environment $environment -TimeoutMs 180000
     if ($mirror.ExitCode -eq 0) {
         $incomingRoot = Join-Path -Path $cacheParent -ChildPath ([IO.Path]::GetFileName($Settings.RemoteReportsPath))
         if (-not (Test-Path -LiteralPath $incomingRoot)) {
@@ -2262,7 +2263,7 @@ function Show-NcsConsoleApp {
             return $true
         }
         $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
-        if ([string]::IsNullOrWhiteSpace($message)) { $message = "scp.exe failed to mirror reports." }
+        if ([string]::IsNullOrWhiteSpace($message)) { $message = "ssh+tar mirror failed." }
         & $setReportStatus $message.Trim() $true
         return $false
     }

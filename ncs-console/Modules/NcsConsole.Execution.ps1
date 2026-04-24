@@ -157,6 +157,121 @@ function Get-NcsSshTarget {
     return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
 }
 
+function Invoke-NcsSshTarPipe {
+    <#
+    .SYNOPSIS
+    Stream a remote directory over ssh via tar pipe into a local directory.
+
+    .DESCRIPTION
+    Replaces recursive scp. scp opens a fresh SSH operation per file; tar
+    streams the whole tree through one ssh session, cutting RTTs to one
+    regardless of file count. Optional -Compress wraps the pipe in gzip
+    (CPU-for-bandwidth trade; usually a win for text-heavy reports).
+
+    Executes: ssh … user@host "tar -C <parent> -c[z]f - <basename>" | tar -x[z]f - -C <LocalExtractDir>
+    #>
+    param(
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)] [string] $RemoteSourceDir,
+        [Parameter(Mandatory)] [string] $LocalExtractDir,
+        [switch] $Compress,
+        [int] $TimeoutMs = 180000
+    )
+
+    $parent = Split-Path -Parent $RemoteSourceDir
+    $basename = Split-Path -Leaf $RemoteSourceDir
+    if ([string]::IsNullOrWhiteSpace($parent)) { $parent = "/" }
+
+    $remoteMode = if ($Compress) { "czf" } else { "cf" }
+    $localMode  = if ($Compress) { "xzf" } else { "xf" }
+    $escapedParent = $parent   -replace "'", "'\''"
+    $escapedBase   = $basename -replace "'", "'\''"
+    $remoteCmd = "tar -C '$escapedParent' -$remoteMode - '$escapedBase'"
+
+    $sshArgs = [System.Collections.Generic.List[string]]::new()
+    $sshArgs.Add("-p")
+    $sshArgs.Add([string] $Settings.SshPort)
+    $sshArgs.Add("-T")
+    Add-NcsSshCommonOptions -Arguments $sshArgs -Settings $Settings
+    Add-NcsSshAuthOptions -Arguments $sshArgs -Settings $Settings
+    # SSH-level compression off: we either handle it in tar (-z) or skip entirely.
+    $sshArgs.Add("-o"); $sshArgs.Add("Compression=no")
+    $sshArgs.Add((Get-NcsSshTarget -Settings $Settings))
+    $sshArgs.Add($remoteCmd)
+
+    $sshEnv = Get-NcsSshEnvironment -Settings $Settings
+
+    $sshPsi = [System.Diagnostics.ProcessStartInfo]::new()
+    $sshPsi.FileName = "ssh.exe"
+    $sshPsi.RedirectStandardInput  = $true
+    $sshPsi.RedirectStandardOutput = $true
+    $sshPsi.RedirectStandardError  = $true
+    $sshPsi.UseShellExecute        = $false
+    foreach ($a in $sshArgs) { $sshPsi.ArgumentList.Add($a) }
+    if ($sshEnv) {
+        foreach ($k in $sshEnv.Keys) { $sshPsi.Environment[$k] = [string] $sshEnv[$k] }
+    }
+
+    $tarPsi = [System.Diagnostics.ProcessStartInfo]::new()
+    $tarPsi.FileName = "tar.exe"
+    $tarPsi.RedirectStandardInput  = $true
+    $tarPsi.RedirectStandardOutput = $true
+    $tarPsi.RedirectStandardError  = $true
+    $tarPsi.UseShellExecute        = $false
+    foreach ($a in @("-$localMode", "-", "-C", $LocalExtractDir)) { $tarPsi.ArgumentList.Add($a) }
+
+    $ssh = [System.Diagnostics.Process]::new()
+    $ssh.StartInfo = $sshPsi
+    $tar = [System.Diagnostics.Process]::new()
+    $tar.StartInfo = $tarPsi
+
+    try {
+        [void] $ssh.Start()
+        [void] $tar.Start()
+        # ssh auth happens via SSH_ASKPASS / agent; stdin is not the channel.
+        $ssh.StandardInput.Close()
+
+        # Binary-safe pump: ssh.stdout -> tar.stdin.
+        $pump = [System.Threading.Tasks.Task]::Run([Action]{
+            $buffer = New-Object byte[] 65536
+            $inStream  = $ssh.StandardOutput.BaseStream
+            $outStream = $tar.StandardInput.BaseStream
+            try {
+                while (($read = $inStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    $outStream.Write($buffer, 0, $read)
+                }
+            } finally {
+                $outStream.Close()
+            }
+        })
+
+        $sshErrTask = $ssh.StandardError.ReadToEndAsync()
+        $tarErrTask = $tar.StandardError.ReadToEndAsync()
+        $tarOutTask = $tar.StandardOutput.ReadToEndAsync()
+
+        if (-not $ssh.WaitForExit($TimeoutMs)) {
+            $ssh.Kill($true); $tar.Kill($true)
+            throw "ssh.exe timed out after $($TimeoutMs / 1000) seconds."
+        }
+        if (-not $tar.WaitForExit($TimeoutMs)) {
+            $tar.Kill($true)
+            throw "tar.exe timed out after $($TimeoutMs / 1000) seconds."
+        }
+        $pump.Wait()
+
+        $stdErr = ($sshErrTask.GetAwaiter().GetResult() + $tarErrTask.GetAwaiter().GetResult()).Trim()
+        $exit   = if ($ssh.ExitCode -ne 0) { $ssh.ExitCode } else { $tar.ExitCode }
+        return [pscustomobject]@{
+            ExitCode = $exit
+            StdOut   = $tarOutTask.GetAwaiter().GetResult()
+            StdErr   = $stdErr
+        }
+    } finally {
+        $ssh.Dispose()
+        $tar.Dispose()
+    }
+}
+
 function New-NcsSshAskPassEnvironment {
     param(
         [Parameter(Mandatory)]

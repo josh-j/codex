@@ -95,11 +95,11 @@ function Test-NcsRemotePreflight {
             Message = if ($null -eq (Get-Command -Name "ssh.exe" -ErrorAction SilentlyContinue)) { "OpenSSH client is not available in PATH." } else { "ssh.exe found." }
         },
         @{
-            Id = "scp-client"
+            Id = "tar-client"
             Stage = "local"
-            Name = "Local SCP client"
-            Passed = $null -ne (Get-Command -Name "scp.exe" -ErrorAction SilentlyContinue)
-            Message = if ($null -eq (Get-Command -Name "scp.exe" -ErrorAction SilentlyContinue)) { "OpenSSH scp.exe is not available in PATH." } else { "scp.exe found." }
+            Name = "Local tar client"
+            Passed = $null -ne (Get-Command -Name "tar.exe" -ErrorAction SilentlyContinue)
+            Message = if ($null -eq (Get-Command -Name "tar.exe" -ErrorAction SilentlyContinue)) { "tar.exe (bsdtar) is not available in PATH. Ships with Windows 10 1803+ / Windows 11." } else { "tar.exe found." }
         }
     )
 
@@ -186,7 +186,7 @@ function Test-NcsRemotePreflight {
     if ($result.IsReady -and $Settings.ReportDeliveryMode -ne [NcsReportDeliveryMode]::Scp) {
         try {
             $smb = Test-NcsSmbAccess -Settings $Settings
-            $smbMessage = if ($smb.Accessible) { "SMB share accessible: $($smb.UncRoot)" } else { "SMB unavailable, will use SCP: $($smb.Error)" }
+            $smbMessage = if ($smb.Accessible) { "SMB share accessible: $($smb.UncRoot)" } else { "SMB unavailable, will use ssh+tar: $($smb.Error)" }
             $smbCheck = New-NcsPreflightCheck -Id "smb-access" -Stage "network" -Name "SMB share" -Passed $smb.Accessible -Message $smbMessage
             $result.Checks.Add($smbCheck)
         } catch {
