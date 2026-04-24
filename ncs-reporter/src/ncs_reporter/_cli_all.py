@@ -496,17 +496,20 @@ def all_cmd(
     if not global_data["hosts"]:
         # Legacy aggregation is empty. Tree-layout raw bundles may still
         # exist directly under reports_root (collector emitting only to the
-        # hierarchical layout); render those and return. No site dashboard,
-        # no STIG fleet report — those still depend on the legacy
-        # global_data until the tree renderer absorbs them.
+        # hierarchical layout); render those and return. No STIG fleet
+        # report (still tied to the legacy global_data), but site.html /
+        # search_index.js are written from the tree output so downstream
+        # verifiers see the same landing-page + search contract either way.
         try:
-            _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
+            tree_roots = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Hierarchical tree render failed: %s", exc)
             click.echo(f"--- Tree render failed: {exc} ---", err=True)
             return
         if not any(r_root.iterdir()):
             click.echo("No platform data or STIG artifacts found; nothing to render.")
+            return
+        _write_tree_only_site_and_search(r_root, tree_roots, common_vars)
         return
 
     global_changed = force or not hosts_unchanged(global_data, str(all_hosts_state))
@@ -565,12 +568,16 @@ def _render_inventory_trees(
     all_platform_data: dict[str, dict[str, Any]],
     extra_dirs: tuple[str, ...],
     common_vars: dict[str, Any],
-) -> None:
+) -> list[tuple[str, str, Path, list[str]]]:
     """Render the hierarchical inventory trees (vSphere + flat products).
 
     Additive pass — coexists with the legacy platform/fleet/host HTML until
     the legacy path is removed in Phase D. Writes HTML under
     ``<reports_root>/<product-slug>/…``.
+
+    Returns one (slug, title, root_html, host_ids) tuple per rendered
+    product so the tree-only branch can assemble the top-level site
+    landing page and search index without re-walking the filesystem.
     """
     from ._report_context import ReportContext
     from .models.tree import build_flat_inventory_tree, build_vsphere_tree
@@ -579,6 +586,7 @@ def _render_inventory_trees(
     schemas = discover_schemas(extra_dirs=extra_dirs)
     env = get_jinja_env()
     ctx = ReportContext(report_stamp=common_vars.get("report_stamp", ""))
+    rendered: list[tuple[str, str, Path, list[str]]] = []
 
     # vSphere tree: start from whatever the legacy aggregation built,
     # then overlay tree-layout raw.yaml files written by the new
@@ -597,6 +605,8 @@ def _render_inventory_trees(
         )
         written = render_tree(vsphere_root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
         click.echo(f"--- Inventory tree: vsphere ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
+        if written:
+            rendered.append(("vsphere", "vSphere", written[0], sorted(esxi_bundles) + sorted(vm_bundles)))
 
     for product_slug, product_title, raw_key, schema_name in (
         ("ubuntu", "Ubuntu", "raw_ubuntu", "ubuntu"),
@@ -619,6 +629,49 @@ def _render_inventory_trees(
         )
         written = render_tree(root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
         click.echo(f"--- Inventory tree: {product_slug} ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
+        if written:
+            rendered.append((product_slug, product_title, written[0], sorted(host_bundles)))
+    return rendered
+
+
+def _write_tree_only_site_and_search(
+    r_root: Path,
+    tree_roots: list[tuple[str, str, Path, list[str]]],
+    common_vars: dict[str, Any],
+) -> None:
+    """Emit site.html + search_index.js from tree-only output.
+
+    The legacy site dashboard depends on an aggregated global_data that
+    doesn't exist when the collector emits only the tree layout, so we
+    render a minimal landing page listing each product's tree root and
+    a search index seeded from the tree's host IDs. This keeps the
+    ``ncs-reporter all`` contract (site.html + search_index.js always
+    written) intact for downstream verifiers and link-back breadcrumbs.
+    """
+    if not tree_roots:
+        return
+    stamp = common_vars.get("report_stamp", "")
+    items_html: list[str] = []
+    search_index: list[dict[str, str]] = []
+    for slug, title, root_html, host_ids in tree_roots:
+        rel = root_html.relative_to(r_root).as_posix()
+        items_html.append(f'  <li><a href="{rel}">{title}</a> — {len(host_ids)} host(s)</li>')
+        for host in host_ids:
+            search_index.append({"h": host, "u": rel, "p": slug})
+    site_html = (
+        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>NCS Reports</title></head>\n"
+        "<body>\n<h1>NCS Reports</h1>\n"
+        f"<p>Tree-layout render{(' — ' + stamp) if stamp else ''}.</p>\n"
+        "<ul>\n"
+        + "\n".join(items_html)
+        + "\n</ul>\n</body></html>\n"
+    )
+    (r_root / "site.html").write_text(site_html, encoding="utf-8")
+    (r_root / "search_index.js").write_text(
+        "window.NCS_SEARCH_INDEX = " + json.dumps(search_index, separators=(",", ":")) + ";",
+        encoding="utf-8",
+    )
+    click.echo(f"Tree-only site landing written at {r_root}/site.html ({len(search_index)} searchable hosts)")
 
 
 def _collect_vsphere_bundles(
