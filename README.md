@@ -155,6 +155,6 @@ Both live under `ncs-ansible/`:
 - [Architecture Diagram](docs/architecture/MERMAID_ARCH.md)
 - [`internal.core.stig` Reference](docs/collections/INTERNAL_CORE_STIG.md)
 - [Collection Layout (inventory + vault)](docs/collections/COLLECTION_LAYOUT.md)
-- [Scheduling & Alert Actions](docs/ncs-reporter-config/SCHEDULING_AND_ALERT_ACTIONS.md)
+- [ncs-reporter config reference](docs/ncs-reporter-config/README.md) — schema, fields, alerts, widgets, scheduling
 - [OpenSSH + Kerberos](docs/ops/OPENSSH_KERBEROS.md)
 - [Control-node container image](docs/ops/DOCKER.md)
