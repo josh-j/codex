@@ -159,24 +159,17 @@ def build_vsphere_tree(
         schema_name="vsphere",
         node_path=NodePath(("platform", "vsphere")),
     )
-    # Under the vSphere root we group all vCenter appliances into a single
-    # "vcsa" overview page; individual vCenter host reports hang off that,
-    # with datacenter children that link directly to ESXi hosts (no cluster
-    # navigation tier — cluster/datacenter membership stays on each host's
-    # row via the cluster column).
-    vcsa_group = root.find_or_add_child(
-        "vcsa",
-        tier="vcenter_fleet",
-        schema_name="vcsa_fleet",
-        title="vCenter Appliances",
-    )
+    # vSphere root IS the "vCenter Appliances" overview — it lists every
+    # vCenter directly with links to each vCenter host report. No
+    # intermediate vcsa_fleet tier; datacenter children of each vCenter
+    # list their ESXi hosts with cluster as a column.
 
     vcenter_summaries: list[dict[str, Any]] = []
 
     for vc_host, vc_data in sorted(vcenter_bundles.items()):
         vc_slug = slugify(vc_host)
         vc_bundle = {"raw_vcsa": {"data": vc_data, "metadata": {"host": vc_host}}}
-        vc_node = vcsa_group.find_or_add_child(
+        vc_node = root.find_or_add_child(
             vc_slug,
             tier="vcenter",
             schema_name="vcsa",
@@ -190,7 +183,7 @@ def build_vsphere_tree(
 
         vcenter_summaries.append({
             "title": vc_host,
-            "report_url": f"vcsa/{vc_slug}/{vc_slug}.html",
+            "report_url": f"{vc_slug}/{vc_slug}.html",
             "version": vc_data.get("appliance_version", ""),
             "health": vc_data.get("appliance_health_overall", "unknown"),
             "alert_counts": {"critical": 0, "warning": 0},
@@ -204,15 +197,13 @@ def build_vsphere_tree(
         len(_as_list((vm_bundles.get(host) or {}).get("virtual_machines")))
         for host in vcenter_bundles
     )
-    overview = {
+    root.data_source = _static_source({
         "vcenters": vcenter_summaries,
         "datacenter_count": total_datacenters,
         "esxi_host_count": total_esxi,
         "vm_count": total_vms,
         "vcenter_count": len(vcenter_summaries),
-    }
-    root.data_source = _static_source(overview)
-    vcsa_group.data_source = _static_source(overview)
+    })
 
     return root
 

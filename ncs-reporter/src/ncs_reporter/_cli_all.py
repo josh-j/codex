@@ -480,7 +480,7 @@ def all_cmd(
     # from those tree bundles so the full site dashboard renders instead of
     # a bare landing-page fallback (ncs-console fetches site.html via SCP
     # and expects the dashboard shape).
-    _merge_tree_bundles_into_global(r_root, global_data)
+    _merge_tree_bundles_into_global(r_root, global_data, global_inventory_index)
     # Step 1b′: Merge STIG artifacts from report_dir paths.
     # ncs_collector writes STIG results to platform/{report_dir}/ which may
     # differ from the input_dir used by platform aggregation above.
@@ -812,18 +812,24 @@ def _collect_flat_inventory_from_tree(
     return result
 
 
-# Map tree-layout product slugs onto the raw_<key> the legacy aggregation
-# uses. ESXi hosts come from the vSphere tree's leaf raw.yaml files; flat
-# products map one-to-one.
-_TREE_HOST_SOURCES: tuple[tuple[str, str], ...] = (
-    ("ubuntu", "raw_ubuntu"),
-    ("photon", "raw_photon"),
-    ("windows", "raw_windows"),
-    ("aci", "raw_aci"),
+# Map tree-layout product slugs onto (raw_<key>, legacy report_dir) pairs.
+# ESXi hosts come from the vSphere tree's leaf raw.yaml files; flat products
+# map one-to-one. report_dir is what the site view reads to build per-host
+# report_url links, so it must match the legacy platform/<report_dir>/
+# convention the URL templates expect.
+_TREE_HOST_SOURCES: tuple[tuple[str, str, str], ...] = (
+    ("ubuntu", "raw_ubuntu", "linux/ubuntu"),
+    ("photon", "raw_photon", "linux/photon"),
+    ("windows", "raw_windows", "windows"),
+    ("aci", "raw_aci", "aci/apic"),
 )
 
 
-def _merge_tree_bundles_into_global(reports_root: Path, global_data: dict[str, Any]) -> None:
+def _merge_tree_bundles_into_global(
+    reports_root: Path,
+    global_data: dict[str, Any],
+    global_inventory_index: dict[str, str],
+) -> None:
     """Hydrate ``global_data['hosts']`` with tree-layout raw bundles.
 
     When the collector emits only the hierarchical tree layout, the legacy
@@ -832,7 +838,8 @@ def _merge_tree_bundles_into_global(reports_root: Path, global_data: dict[str, A
     legacy ``raw_<type>: {data: ...}`` shape, deep-merged into any existing
     host entry, and run through ``normalize_host_bundle`` so downstream
     rendering treats it identically to a bundle loaded from the legacy
-    platform/<p>/<host>/ layout.
+    platform/<p>/<host>/ layout. Also populates ``global_inventory_index``
+    so the site view and search index can find per-host report URLs.
     """
     if not reports_root.is_dir():
         return
@@ -842,12 +849,14 @@ def _merge_tree_bundles_into_global(reports_root: Path, global_data: dict[str, A
     for hostname, data in esxi_bundles.items():
         entry = global_data["hosts"].setdefault(hostname, {})
         deep_merge(entry, {"raw_esxi": {"data": data}})
+        global_inventory_index.setdefault(hostname, "vmware/esxi")
         touched.add(hostname)
 
-    for product_slug, raw_key in _TREE_HOST_SOURCES:
+    for product_slug, raw_key, report_dir in _TREE_HOST_SOURCES:
         for hostname, data in _collect_flat_inventory_from_tree(reports_root, product_slug).items():
             entry = global_data["hosts"].setdefault(hostname, {})
             deep_merge(entry, {raw_key: {"data": data}})
+            global_inventory_index.setdefault(hostname, report_dir)
             touched.add(hostname)
 
     if not touched:

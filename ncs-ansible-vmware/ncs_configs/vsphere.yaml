@@ -9,11 +9,9 @@ config:
   platform: vsphere
   extra_inventory_widget_columns:
     - name: vCenters
-      value: "{{ vcenters | length }}"
+      value: "{{ vcenter_count }}"
     - name: Datacenters
       value: "{{ datacenter_count }}"
-    - name: Clusters
-      value: "{{ cluster_count }}"
     - name: ESXi Hosts
       value: "{{ esxi_host_count }}"
 
@@ -27,22 +25,21 @@ widgets:
     name: "Fleet Footprint"
     cards:
       - name: vCenters
-        value: "{{ vcenters | length }}"
+        value: "{{ vcenter_count }}"
       - name: Datacenters
         value: "{{ datacenter_count }}"
-      - name: Clusters
-        value: "{{ cluster_count }}"
       - name: ESXi Hosts
         value: "{{ esxi_host_count }}"
       - name: VMs
         value: "{{ vm_count }}"
 
   - type: table
-    name: "vCenters"
-    when: (vcenters | length) > 0
+    name: "vCenter Appliances"
+    slug: vcenter_appliances
+    when: vcenter_count > 0
     rows: "{{ vcenters }}"
     columns:
-      - name: vCenter
+      - name: Appliance
         value: "{{ title }}"
         link_field: report_url
       - name: Version
@@ -50,11 +47,7 @@ widgets:
       - name: Health
         value: "{{ health }}"
         as: status-badge
-      - name: Critical
-        value: "{{ alert_counts.critical }}"
-      - name: Warning
-        value: "{{ alert_counts.warning }}"
       - name: Datacenters
         value: "{{ datacenter_count }}"
-      - name: Clusters
-        value: "{{ cluster_count }}"
+      - name: ESXi Hosts
+        value: "{{ esxi_host_count }}"

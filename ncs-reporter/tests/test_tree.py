@@ -99,15 +99,11 @@ class TestBuildVsphereTree:
             vm_bundles=vm_bundles,
         )
 
-        # vsphere → vcsa (fleet) → vc → 2 datacenters → ESXi hosts
+        # vsphere → vc → 2 datacenters → ESXi hosts (no vcsa fleet tier)
         assert root.slug == "vsphere"
-        assert [c.slug for c in root.children] == ["vcsa"]
+        assert [c.slug for c in root.children] == ["vc-prod-01"]
 
-        vcsa_group = root.children[0]
-        assert vcsa_group.tier == "vcenter_fleet"
-        assert [c.slug for c in vcsa_group.children] == ["vc-prod-01"]
-
-        vc = vcsa_group.children[0]
+        vc = root.children[0]
         assert [c.slug for c in vc.children] == ["dc-east", "dc-west"]
 
         dc_east = vc.children[0]
@@ -137,7 +133,7 @@ class TestBuildVsphereTree:
             },
             vm_bundles={"vc-01": {"virtual_machines": []}},
         )
-        dc_node = root.children[0].children[0].children[0]
+        dc_node = root.children[0].children[0]
         dc_data = dc_node.data_source({})
         assert [row["title"] for row in dc_data["esxi_hosts"]] == ["esxi-01", "esxi-02"]
         assert [row["cluster"] for row in dc_data["esxi_hosts"]] == ["CL-A", "CL-B"]
@@ -149,8 +145,8 @@ class TestBuildVsphereTree:
             esxi_bundles={"esxi-01": {"cluster": "CL-A", "datacenter": "DC1"}},
             vm_bundles={"vc-01": {"virtual_machines": []}},
         )
-        esxi_node = root.children[0].children[0].children[0].children[0]
-        assert esxi_node.node_path.html_path.as_posix() == "platform/vsphere/vcsa/vc-01/dc1/esxi-01/esxi-01.html"
+        esxi_node = root.children[0].children[0].children[0]
+        assert esxi_node.node_path.html_path.as_posix() == "platform/vsphere/vc-01/dc1/esxi-01/esxi-01.html"
 
 
 class TestBuildFlatInventoryTree:

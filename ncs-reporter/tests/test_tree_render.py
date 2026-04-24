@@ -27,7 +27,7 @@ from conftest import CONFIGS_DIR
 def schemas() -> dict:
     return {
         name: load_schema_from_file(CONFIGS_DIR / f"{name}.yaml")
-        for name in ("vsphere", "datacenter", "vcsa_fleet")
+        for name in ("vsphere", "datacenter", "vcsa")
     }
 
 
@@ -68,8 +68,8 @@ def synthetic_vsphere_tree() -> ReportNode:
 
 
 def _dc_node(tree: ReportNode) -> ReportNode:
-    # vsphere → vcsa → vc → dc
-    return tree.children[0].children[0].children[0]
+    # vsphere → vc → dc
+    return tree.children[0].children[0]
 
 
 def _esxi_leaf(tree: ReportNode) -> ReportNode:
@@ -88,17 +88,16 @@ class TestBuildTreeNodeView:
         dc = _dc_node(synthetic_vsphere_tree)
         view = build_tree_node_view(dc, schema=schemas["datacenter"])
         crumbs = [c["text"] for c in view["nav"]["breadcrumbs"]]
-        # Site → vSphere → vCenter Appliances → vc-prod-01 → DC-East
+        # Site → vSphere → vc-prod-01 → DC-East
         assert crumbs[0] == "Site"
         assert crumbs[1] == "vSphere"
-        assert crumbs[2] == "vCenter Appliances"
         assert crumbs[-1] == "DC-East"
 
     def test_descendant_rollup_surfaces_child_alert_counts(self, schemas, synthetic_vsphere_tree, esxi_schema):
         """Root's children block carries each child's descendant alert counts."""
         from ncs_reporter.view_models.tree_render import _compute_tree_state
 
-        all_schemas = {**schemas, "vcsa": schemas["vsphere"], "esxi": esxi_schema}
+        all_schemas = {**schemas, "esxi": esxi_schema}
         state = _compute_tree_state(synthetic_vsphere_tree, all_schemas)
 
         root_entry = state[id(synthetic_vsphere_tree)]
@@ -108,14 +107,18 @@ class TestBuildTreeNodeView:
             assert id(child) in state
 
     def test_children_block_populated(self, schemas, synthetic_vsphere_tree):
-        vcsa_group = synthetic_vsphere_tree.children[0]
-        view = build_tree_node_view(vcsa_group, schema=schemas["vcsa_fleet"])
+        # vSphere root directly lists its vCenter children.
+        view = build_tree_node_view(synthetic_vsphere_tree, schema=schemas["vsphere"])
         assert len(view["nav"]["children"]) == 1  # one vCenter
 
 
 class TestRenderTree:
     def test_writes_one_html_per_node(self, tmp_path: Path, schemas, esxi_schema, synthetic_vsphere_tree):
         env = get_jinja_env()
+        # Map the vcsa schema name to the simpler vsphere schema so the
+        # synthetic bundle (which omits alarm_count / backup_schedules /
+        # etc.) still renders cleanly — the real vcsa.yaml expects that
+        # richer shape and isn't under test here.
         all_schemas = {**schemas, "vcsa": schemas["vsphere"], "esxi": esxi_schema}
         written = render_tree(
             synthetic_vsphere_tree,
@@ -124,7 +127,7 @@ class TestRenderTree:
             output_root=tmp_path,
             ctx=ReportContext(report_stamp="20260421"),
         )
-        # vsphere + vcsa group + vcenter + dc + 2 esxi = 6
+        # vsphere + vcenter + dc + 2 esxi = 5
         assert len(written) >= 5
         vsphere_html = tmp_path / "platform" / "vsphere" / "vsphere.html"
         assert vsphere_html.exists()
@@ -132,7 +135,7 @@ class TestRenderTree:
         assert "vSphere" in content
         assert "breadcrumb-current" in content
 
-        dc_html = tmp_path / "platform" / "vsphere" / "vcsa" / "vc-prod-01" / "dc-east" / "dc-east.html"
+        dc_html = tmp_path / "platform" / "vsphere" / "vc-prod-01" / "dc-east" / "dc-east.html"
         assert dc_html.exists()
         dc_content = dc_html.read_text()
         assert "DC-East" in dc_content
@@ -162,22 +165,22 @@ class TestRenderTree:
 
 class TestRelativeLinks:
     def test_child_link_is_relative_not_absolute(self, schemas, synthetic_vsphere_tree):
-        vc = synthetic_vsphere_tree.children[0].children[0]
+        vc = synthetic_vsphere_tree.children[0]
         view = build_tree_node_view(vc, schema=schemas["vsphere"])
         child_urls = [c["url"] for c in view["nav"]["children"]]
-        # vCenter page at vsphere/vcsa/vc-prod-01/vc-prod-01.html;
-        # DC at vsphere/vcsa/vc-prod-01/dc-east/dc-east.html → relative: dc-east/dc-east.html
+        # vCenter page at platform/vsphere/vc-prod-01/vc-prod-01.html;
+        # DC at platform/vsphere/vc-prod-01/dc-east/dc-east.html → relative: dc-east/dc-east.html
         assert child_urls == ["dc-east/dc-east.html"]
 
     def test_ancestor_link_ascends(self, schemas, synthetic_vsphere_tree):
         dc = _dc_node(synthetic_vsphere_tree)
         view = build_tree_node_view(dc, schema=schemas["datacenter"])
-        # Breadcrumbs: [Site, vSphere, vCenter Appliances, vc-prod-01, DC-East].
-        # vSphere ascends three levels inside the vsphere subtree (dc → vc → vcsa → vsphere).
+        # Breadcrumbs: [Site, vSphere, vc-prod-01, DC-East].
+        # vSphere ascends two levels inside the vsphere subtree (dc → vc → vsphere).
         vsphere_crumb = view["nav"]["breadcrumbs"][1]
         assert vsphere_crumb["href"].endswith("vsphere.html")
-        assert vsphere_crumb["href"].count("..") == 3
+        assert vsphere_crumb["href"].count("..") == 2
 
         site_crumb = view["nav"]["breadcrumbs"][0]
-        # DC dir is 5 segments deep (platform/vsphere/vcsa/vc/dc); site.html is at the report root.
-        assert site_crumb["href"] == "../../../../../site.html"
+        # DC dir is 4 segments deep (platform/vsphere/vc/dc); site.html is at the report root.
+        assert site_crumb["href"] == "../../../../site.html"

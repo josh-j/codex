@@ -83,9 +83,8 @@ class TestTreeLayoutE2E(unittest.TestCase):
         # Every tier must produce <dir>/<slug>.html — no hardcoded filenames.
         expected = [
             Path("platform/vsphere/vsphere.html"),
-            Path("platform/vsphere/vcsa/vcsa.html"),
-            Path("platform/vsphere/vcsa/vc-lab/vc-lab.html"),
-            Path("platform/vsphere/vcsa/vc-lab/dc-east/dc-east.html"),
+            Path("platform/vsphere/vc-lab/vc-lab.html"),
+            Path("platform/vsphere/vc-lab/dc-east/dc-east.html"),
         ]
         for rel in expected:
             self.assertTrue(
@@ -94,11 +93,11 @@ class TestTreeLayoutE2E(unittest.TestCase):
             )
 
         # Deep breadcrumb: datacenter page references its ancestors' reports.
-        dc_html = (self.reports_root / "platform/vsphere/vcsa/vc-lab/dc-east/dc-east.html").read_text()
+        dc_html = (self.reports_root / "platform/vsphere/vc-lab/dc-east/dc-east.html").read_text()
         self.assertIn("DC-East", dc_html)
         self.assertIn("breadcrumb-current", dc_html)
-        # Relative link up 3 levels to vsphere.html
-        self.assertIn("../../../vsphere.html", dc_html)
+        # Relative link up 2 levels to vsphere.html
+        self.assertIn("../../vsphere.html", dc_html)
 
     def test_reporter_reads_tree_raw_paths(self) -> None:
         """Bundles written only under reports_root/<inventory>/… are picked up."""
