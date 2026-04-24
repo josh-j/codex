@@ -157,119 +157,93 @@ function Get-NcsSshTarget {
     return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
 }
 
-function Invoke-NcsSshTarPipe {
+function Get-NcsRemoteManifest {
     <#
-    .SYNOPSIS
-    Stream a remote directory over ssh via tar pipe into a local directory.
-
-    .DESCRIPTION
-    Replaces recursive scp. scp opens a fresh SSH operation per file; tar
-    streams the whole tree through one ssh session, cutting RTTs to one
-    regardless of file count. Optional -Compress wraps the pipe in gzip
-    (CPU-for-bandwidth trade; usually a win for text-heavy reports).
-
-    Executes: ssh … user@host "tar -C <parent> -c[z]f - <basename>" | tar -x[z]f - -C <LocalExtractDir>
+    Returns a hashtable keyed by POSIX-relative path for every regular file
+    under $RemoteSourceDir, with values @{ Size=<bytes>; Mtime=<epoch> }.
+    Used by the incremental mirror to decide which files to pull.
     #>
     param(
         [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
         [Parameter(Mandatory)] [string] $RemoteSourceDir,
-        [Parameter(Mandatory)] [string] $LocalExtractDir,
-        [switch] $Compress,
-        [int] $TimeoutMs = 180000
+        [int] $TimeoutMs = 60000
     )
 
-    $parent = Split-Path -Parent $RemoteSourceDir
-    $basename = Split-Path -Leaf $RemoteSourceDir
-    if ([string]::IsNullOrWhiteSpace($parent)) { $parent = "/" }
+    $escaped = $RemoteSourceDir -replace "'", "'\''"
+    $remoteCmd = "find '$escaped' -type f -printf '%P`t%s`t%T@`n'"
 
-    $remoteMode = if ($Compress) { "czf" } else { "cf" }
-    $localMode  = if ($Compress) { "xzf" } else { "xf" }
-    $escapedParent = $parent   -replace "'", "'\''"
-    $escapedBase   = $basename -replace "'", "'\''"
-    $remoteCmd = "tar -C '$escapedParent' -$remoteMode - '$escapedBase'"
+    $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $remoteCmd
+    $env       = Get-NcsSshEnvironment  -Settings $Settings
+    $result    = Invoke-NcsToolCommand  -FilePath "ssh.exe" -Arguments $arguments -Environment $env -TimeoutMs $TimeoutMs
 
-    $sshArgs = [System.Collections.Generic.List[string]]::new()
-    $sshArgs.Add("-p")
-    $sshArgs.Add([string] $Settings.SshPort)
-    $sshArgs.Add("-T")
-    Add-NcsSshCommonOptions -Arguments $sshArgs -Settings $Settings
-    Add-NcsSshAuthOptions -Arguments $sshArgs -Settings $Settings
-    # SSH-level compression off: we either handle it in tar (-z) or skip entirely.
-    $sshArgs.Add("-o"); $sshArgs.Add("Compression=no")
-    $sshArgs.Add((Get-NcsSshTarget -Settings $Settings))
-    $sshArgs.Add($remoteCmd)
-
-    $sshEnv = Get-NcsSshEnvironment -Settings $Settings
-
-    $sshPsi = [System.Diagnostics.ProcessStartInfo]::new()
-    $sshPsi.FileName = "ssh.exe"
-    $sshPsi.RedirectStandardInput  = $true
-    $sshPsi.RedirectStandardOutput = $true
-    $sshPsi.RedirectStandardError  = $true
-    $sshPsi.UseShellExecute        = $false
-    foreach ($a in $sshArgs) { $sshPsi.ArgumentList.Add($a) }
-    if ($sshEnv) {
-        foreach ($k in $sshEnv.Keys) { $sshPsi.Environment[$k] = [string] $sshEnv[$k] }
+    if ($result.ExitCode -ne 0) {
+        return [pscustomobject]@{ ExitCode = $result.ExitCode; Manifest = $null; StdErr = $result.StdErr }
     }
 
-    $tarPsi = [System.Diagnostics.ProcessStartInfo]::new()
-    $tarPsi.FileName = "tar.exe"
-    $tarPsi.RedirectStandardInput  = $true
-    $tarPsi.RedirectStandardOutput = $true
-    $tarPsi.RedirectStandardError  = $true
-    $tarPsi.UseShellExecute        = $false
-    foreach ($a in @("-$localMode", "-", "-C", $LocalExtractDir)) { $tarPsi.ArgumentList.Add($a) }
-
-    $ssh = [System.Diagnostics.Process]::new()
-    $ssh.StartInfo = $sshPsi
-    $tar = [System.Diagnostics.Process]::new()
-    $tar.StartInfo = $tarPsi
-
-    try {
-        [void] $ssh.Start()
-        [void] $tar.Start()
-        # ssh auth happens via SSH_ASKPASS / agent; stdin is not the channel.
-        $ssh.StandardInput.Close()
-
-        # Binary-safe pump: ssh.stdout -> tar.stdin.
-        $pump = [System.Threading.Tasks.Task]::Run([Action]{
-            $buffer = New-Object byte[] 65536
-            $inStream  = $ssh.StandardOutput.BaseStream
-            $outStream = $tar.StandardInput.BaseStream
-            try {
-                while (($read = $inStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                    $outStream.Write($buffer, 0, $read)
-                }
-            } finally {
-                $outStream.Close()
-            }
-        })
-
-        $sshErrTask = $ssh.StandardError.ReadToEndAsync()
-        $tarErrTask = $tar.StandardError.ReadToEndAsync()
-        $tarOutTask = $tar.StandardOutput.ReadToEndAsync()
-
-        if (-not $ssh.WaitForExit($TimeoutMs)) {
-            $ssh.Kill($true); $tar.Kill($true)
-            throw "ssh.exe timed out after $($TimeoutMs / 1000) seconds."
+    $manifest = @{}
+    foreach ($line in $result.StdOut -split "`r?`n") {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $parts = $line -split "`t", 3
+        if ($parts.Length -ne 3) { continue }
+        $manifest[$parts[0]] = @{
+            Size  = [int64] $parts[1]
+            Mtime = [double] $parts[2]
         }
-        if (-not $tar.WaitForExit($TimeoutMs)) {
-            $tar.Kill($true)
-            throw "tar.exe timed out after $($TimeoutMs / 1000) seconds."
-        }
-        $pump.Wait()
-
-        $stdErr = ($sshErrTask.GetAwaiter().GetResult() + $tarErrTask.GetAwaiter().GetResult()).Trim()
-        $exit   = if ($ssh.ExitCode -ne 0) { $ssh.ExitCode } else { $tar.ExitCode }
-        return [pscustomobject]@{
-            ExitCode = $exit
-            StdOut   = $tarOutTask.GetAwaiter().GetResult()
-            StdErr   = $stdErr
-        }
-    } finally {
-        $ssh.Dispose()
-        $tar.Dispose()
     }
+    return [pscustomobject]@{ ExitCode = 0; Manifest = $manifest; StdErr = "" }
+}
+
+function Get-NcsLocalManifest {
+    <#
+    Scan $LocalRoot and return the same shape as Get-NcsRemoteManifest.
+    Local mtimes come back as unix epoch seconds to stay comparable with the
+    remote `find -printf '%T@'` output.
+    #>
+    param(
+        [Parameter(Mandatory)] [string] $LocalRoot
+    )
+
+    $manifest = @{}
+    if (-not (Test-Path -LiteralPath $LocalRoot)) { return $manifest }
+    $rootFull = (Resolve-Path -LiteralPath $LocalRoot).Path.TrimEnd('\','/')
+    $epoch = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)
+    foreach ($fi in Get-ChildItem -LiteralPath $LocalRoot -File -Recurse -Force -ErrorAction SilentlyContinue) {
+        $rel = $fi.FullName.Substring($rootFull.Length).TrimStart('\','/').Replace('\','/')
+        $manifest[$rel] = @{
+            Size  = [int64] $fi.Length
+            Mtime = ($fi.LastWriteTimeUtc - $epoch).TotalSeconds
+        }
+    }
+    return $manifest
+}
+
+function Invoke-NcsSshFileFetch {
+    <#
+    scp a single remote file into the local path, creating parent dirs as
+    needed. Returns the underlying Invoke-NcsToolCommand result.
+    #>
+    param(
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)] [string] $RemoteFile,
+        [Parameter(Mandatory)] [string] $LocalFile,
+        [int] $TimeoutMs = 60000
+    )
+
+    $localDir = Split-Path -Parent $LocalFile
+    if ($localDir -and -not (Test-Path -LiteralPath $localDir)) {
+        [System.IO.Directory]::CreateDirectory($localDir) | Out-Null
+    }
+
+    $args = [System.Collections.Generic.List[string]]::new()
+    $args.Add("-p")   # preserve mtime so manifest comparisons converge on the next run
+    $args.Add("-P")
+    $args.Add([string] $Settings.SshPort)
+    Add-NcsSshCommonOptions -Arguments $args -Settings $Settings
+    Add-NcsSshAuthOptions   -Arguments $args -Settings $Settings
+    $args.Add("{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $RemoteFile)
+    $args.Add($LocalFile)
+
+    return Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $args -Environment (Get-NcsSshEnvironment -Settings $Settings) -TimeoutMs $TimeoutMs
 }
 
 function New-NcsSshAskPassEnvironment {

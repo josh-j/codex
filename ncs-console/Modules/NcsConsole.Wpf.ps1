@@ -412,12 +412,90 @@ function Test-NcsSmbAccess {
 
 function Invoke-NcsReportMirror {
     <#
-    Pulls <host>:$RemoteReportsPath into $LocalRoot. Uses a single-ssh tar
-    pipe instead of recursive scp — scp opens a fresh transfer per file,
-    so fleets with thousands of per-host HTMLs pay thousands of round-
-    trips. One tar stream cuts that to a single RTT plus wire time.
-    Gzip is on by default because report output is text-dense and the
-    bandwidth win dominates the CPU cost on modern control nodes.
+    Pulls <host>:$RemoteReportsPath into $LocalRoot using a hybrid strategy:
+
+    - Cold cache or missing remote manifest → recursive scp into a staging
+      dir, atomic swap. Correct baseline; no assumptions about prior state.
+    - Warm cache → diff a remote `find` manifest against the local cache
+      and scp only files new-or-changed by size/mtime, plus delete local
+      files that no longer exist remotely.
+    - If the diff covers a large fraction of the tree, skip the per-file
+      loop and do one recursive scp instead — per-file ssh session
+      overhead dominates at scale.
+
+    Uses only scp/ssh from Windows OpenSSH; no tar, no rsync.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)]
+        [string] $LocalRoot
+    )
+
+    $cacheParent = Split-Path -Parent $LocalRoot
+    if (-not (Test-Path -LiteralPath $cacheParent)) {
+        [System.IO.Directory]::CreateDirectory($cacheParent) | Out-Null
+    }
+
+    if (-not (Test-Path -LiteralPath $LocalRoot)) {
+        return Invoke-NcsReportMirrorFull -Settings $Settings -LocalRoot $LocalRoot
+    }
+
+    $remoteLookup = Get-NcsRemoteManifest -Settings $Settings -RemoteSourceDir $Settings.RemoteReportsPath
+    if ($remoteLookup.ExitCode -ne 0 -or $null -eq $remoteLookup.Manifest) {
+        return Invoke-NcsReportMirrorFull -Settings $Settings -LocalRoot $LocalRoot
+    }
+    $remote = $remoteLookup.Manifest
+    $local  = Get-NcsLocalManifest -LocalRoot $LocalRoot
+
+    $toFetch = [System.Collections.Generic.List[string]]::new()
+    foreach ($rel in $remote.Keys) {
+        $r = $remote[$rel]
+        $l = $local[$rel]
+        if ($null -eq $l `
+            -or $l.Size -ne $r.Size `
+            -or [math]::Abs($l.Mtime - $r.Mtime) -gt 1.0) {
+            $toFetch.Add($rel)
+        }
+    }
+    $toDelete = [System.Collections.Generic.List[string]]::new()
+    foreach ($rel in $local.Keys) {
+        if (-not $remote.ContainsKey($rel)) { $toDelete.Add($rel) }
+    }
+
+    $fullThreshold = [math]::Max(50, [int]($remote.Count * 0.5))
+    if ($toFetch.Count -ge $fullThreshold) {
+        return Invoke-NcsReportMirrorFull -Settings $Settings -LocalRoot $LocalRoot
+    }
+
+    if ($toFetch.Count -eq 0 -and $toDelete.Count -eq 0) {
+        return [pscustomobject]@{ ExitCode = 0; StdOut = "reports already in sync ($($remote.Count) files)"; StdErr = "" }
+    }
+
+    $errors = [System.Collections.Generic.List[string]]::new()
+    foreach ($rel in $toFetch) {
+        $remoteFile = ("{0}/{1}" -f $Settings.RemoteReportsPath.TrimEnd('/'), $rel)
+        $localFile  = Join-Path -Path $LocalRoot -ChildPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        $fetch = Invoke-NcsSshFileFetch -Settings $Settings -RemoteFile $remoteFile -LocalFile $localFile
+        if ($fetch.ExitCode -ne 0) {
+            $errors.Add("scp ${rel}: $($fetch.StdErr)".Trim())
+        }
+    }
+    foreach ($rel in $toDelete) {
+        $localFile = Join-Path -Path $LocalRoot -ChildPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        Remove-Item -LiteralPath $localFile -Force -ErrorAction SilentlyContinue
+    }
+
+    $exit   = if ($errors.Count -gt 0) { 1 } else { 0 }
+    $stdout = "incremental sync: fetched $($toFetch.Count), deleted $($toDelete.Count), unchanged $($remote.Count - $toFetch.Count)"
+    return [pscustomobject]@{ ExitCode = $exit; StdOut = $stdout; StdErr = ($errors -join "`n") }
+}
+
+function Invoke-NcsReportMirrorFull {
+    <#
+    Recursive scp into a staging dir and atomic swap. Used for the first
+    cold-cache sync and whenever the incremental diff is so large that a
+    bulk transfer is faster than many individual scps.
     #>
     param(
         [Parameter(Mandatory)]
@@ -436,13 +514,21 @@ function Invoke-NcsReportMirror {
     }
     [System.IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
 
-    $mirror = Invoke-NcsSshTarPipe `
-        -Settings        $Settings `
-        -RemoteSourceDir $Settings.RemoteReportsPath `
-        -LocalExtractDir $cacheParent `
-        -Compress `
-        -TimeoutMs       180000
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    $arguments.Add("-r")
+    $arguments.Add("-p")
+    $arguments.Add("-P")
+    $arguments.Add([string] $Settings.SshPort)
+    Add-NcsSshCommonOptions -Arguments $arguments -Settings $Settings
+    Add-NcsSshAuthOptions -Arguments $arguments -Settings $Settings
 
+    $environment = Get-NcsSshEnvironment -Settings $Settings
+
+    $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $Settings.RemoteReportsPath
+    $arguments.Add($remoteSpec)
+    $arguments.Add($cacheParent)
+
+    $mirror = Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $arguments -Environment $environment -TimeoutMs 180000
     if ($mirror.ExitCode -eq 0) {
         $incomingRoot = Join-Path -Path $cacheParent -ChildPath ([IO.Path]::GetFileName($Settings.RemoteReportsPath))
         if (-not (Test-Path -LiteralPath $incomingRoot)) {
@@ -463,6 +549,7 @@ function Invoke-NcsReportMirror {
 
     return $mirror
 }
+
 
 function Get-NcsXamlControlMap {
     param(
@@ -2263,7 +2350,7 @@ function Show-NcsConsoleApp {
             return $true
         }
         $message = @($mirror.StdErr, $mirror.StdOut) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
-        if ([string]::IsNullOrWhiteSpace($message)) { $message = "ssh+tar mirror failed." }
+        if ([string]::IsNullOrWhiteSpace($message)) { $message = "Report mirror failed." }
         & $setReportStatus $message.Trim() $true
         return $false
     }
