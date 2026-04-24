@@ -5,10 +5,12 @@
 # the parent vCenter's raw_vcsa bundle, scoped to this datacenter.
 #
 # Inputs carried by the node's data_source (see models/tree.py):
-#   datacenter_name : str
-#   clusters        : dict[str, dict]  — this DC's clusters
-#   datastores      : list[dict]        — datastores in this DC
-#   dvswitches      : list[dict]        — distributed switches (currently DC-wide)
+#   datacenter_name  : str
+#   clusters         : dict[str, dict]   — this DC's clusters
+#   datastores       : list[dict]         — datastores in this DC
+#   dvswitches       : list[dict]         — distributed switches (currently DC-wide)
+#   esxi_hosts       : list[dict]         — per-ESXi rows (title/cluster/report_url/health)
+#   esxi_host_count  : int                — len(esxi_hosts)
 #
 # Storage Policies are not yet collected; the section renders empty when the
 # data is absent, which is the intended behavior.
@@ -27,8 +29,6 @@ vars:
     type: list
   cluster_count:
     compute: "{{ clusters_list | length }}"
-  esxi_host_count:
-    compute: "{{ clusters_list | map(attribute='host_count') | sum }}"
 
 alerts: []
 
@@ -45,6 +45,21 @@ widgets:
         value: "{{ datastores | length }}"
       - name: Distributed Switches
         value: "{{ dvswitches | length }}"
+
+  - type: table
+    name: "ESXi Hosts"
+    slug: dc_esxi_hosts
+    when: esxi_host_count > 0
+    rows: "{{ esxi_hosts }}"
+    columns:
+      - name: Host
+        value: "{{ title }}"
+        link_field: report_url
+      - name: Cluster
+        value: "{{ cluster }}"
+      - name: Health
+        value: "{{ health }}"
+        as: status-badge
 
   - type: table
     name: "Compute — Clusters"

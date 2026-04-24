@@ -27,7 +27,7 @@ from conftest import CONFIGS_DIR
 def schemas() -> dict:
     return {
         name: load_schema_from_file(CONFIGS_DIR / f"{name}.yaml")
-        for name in ("vsphere", "datacenter", "cluster")
+        for name in ("vsphere", "datacenter", "vcsa_fleet")
     }
 
 
@@ -67,40 +67,40 @@ def synthetic_vsphere_tree() -> ReportNode:
     )
 
 
-class TestBuildTreeNodeView:
-    def test_cluster_node_evaluates_compute_fields(self, schemas, synthetic_vsphere_tree):
-        cluster = synthetic_vsphere_tree.children[0].children[0].children[0]
-        view = build_tree_node_view(cluster, schema=schemas["cluster"], ctx=ReportContext(report_stamp="20260421"))
-        fields_via_widgets = {w.get("slug"): w for w in view["widgets"]}
-        kpi = fields_via_widgets["cluster_kpis"]
-        cards = {c["name"]: c["value"] for c in kpi["cards"]}
-        assert str(cards["VMs"]) == "1"
-        assert str(cards["Powered On"]) == "1"
+def _dc_node(tree: ReportNode) -> ReportNode:
+    # vsphere → vcsa → vc → dc
+    return tree.children[0].children[0].children[0]
 
+
+def _esxi_leaf(tree: ReportNode) -> ReportNode:
+    return _dc_node(tree).children[0]
+
+
+class TestBuildTreeNodeView:
     def test_datacenter_node_renders_compute_sections(self, schemas, synthetic_vsphere_tree):
-        dc = synthetic_vsphere_tree.children[0].children[0]
+        dc = _dc_node(synthetic_vsphere_tree)
         view = build_tree_node_view(dc, schema=schemas["datacenter"], ctx=ReportContext(report_stamp="20260421"))
         widget_names = [w.get("name") for w in view["widgets"]]
         assert "Compute — Clusters" in widget_names
         assert "Storage — Datastores" in widget_names
 
     def test_breadcrumbs_walk_ancestors(self, schemas, synthetic_vsphere_tree):
-        cluster = synthetic_vsphere_tree.children[0].children[0].children[0]
-        view = build_tree_node_view(cluster, schema=schemas["cluster"])
+        dc = _dc_node(synthetic_vsphere_tree)
+        view = build_tree_node_view(dc, schema=schemas["datacenter"])
         crumbs = [c["text"] for c in view["nav"]["breadcrumbs"]]
-        # Site → vSphere → vc-prod-01 → DC-East → CL-A
+        # Site → vSphere → vCenter Appliances → vc-prod-01 → DC-East
         assert crumbs[0] == "Site"
         assert crumbs[1] == "vSphere"
-        assert crumbs[-1] == "CL-A"
+        assert crumbs[2] == "vCenter Appliances"
+        assert crumbs[-1] == "DC-East"
 
     def test_descendant_rollup_surfaces_child_alert_counts(self, schemas, synthetic_vsphere_tree, esxi_schema):
-        """vSphere root's children block carries each vCenter's descendant alert counts."""
+        """Root's children block carries each child's descendant alert counts."""
         from ncs_reporter.view_models.tree_render import _compute_tree_state
 
         all_schemas = {**schemas, "vcsa": schemas["vsphere"], "esxi": esxi_schema}
         state = _compute_tree_state(synthetic_vsphere_tree, all_schemas)
 
-        # Root's own entry carries fields, alerts, and rollup.
         root_entry = state[id(synthetic_vsphere_tree)]
         assert set(root_entry) == {"fields", "alerts", "rollup"}
         assert set(root_entry["rollup"].keys()) == {"critical", "warning", "info"}
@@ -108,9 +108,9 @@ class TestBuildTreeNodeView:
             assert id(child) in state
 
     def test_children_block_populated(self, schemas, synthetic_vsphere_tree):
-        vc = synthetic_vsphere_tree.children[0]
-        view = build_tree_node_view(vc, schema=schemas["vsphere"])  # using vsphere schema for smoke
-        assert len(view["nav"]["children"]) == 1  # one datacenter
+        vcsa_group = synthetic_vsphere_tree.children[0]
+        view = build_tree_node_view(vcsa_group, schema=schemas["vcsa_fleet"])
+        assert len(view["nav"]["children"]) == 1  # one vCenter
 
 
 class TestRenderTree:
@@ -124,21 +124,20 @@ class TestRenderTree:
             output_root=tmp_path,
             ctx=ReportContext(report_stamp="20260421"),
         )
-        assert len(written) >= 5  # vsphere + vcenter + dc + cluster + 2 esxi
+        # vsphere + vcsa group + vcenter + dc + 2 esxi = 6
+        assert len(written) >= 5
         vsphere_html = tmp_path / "vsphere" / "vsphere.html"
         assert vsphere_html.exists()
         content = vsphere_html.read_text()
         assert "vSphere" in content
         assert "breadcrumb-current" in content
-        assert 'id="tree-children"' in content or "no children" in content.lower() or "vc-prod-01" in content
 
-        cluster_html = tmp_path / "vsphere" / "vc-prod-01" / "dc-east" / "cl-a" / "cl-a.html"
-        assert cluster_html.exists()
-        cluster_content = cluster_html.read_text()
-        assert "CL-A" in cluster_content
+        dc_html = tmp_path / "vsphere" / "vcsa" / "vc-prod-01" / "dc-east" / "dc-east.html"
+        assert dc_html.exists()
+        dc_content = dc_html.read_text()
+        assert "DC-East" in dc_content
 
     def test_flat_inventory_tree_round_trip(self, tmp_path: Path, esxi_schema):
-        # Flat inventory using a simple schema — render the inventory root + two child nodes.
         root = build_flat_inventory_tree(
             inventory_slug="esxi-standalone",
             title="ESXi (Standalone Smoke)",
@@ -163,22 +162,22 @@ class TestRenderTree:
 
 class TestRelativeLinks:
     def test_child_link_is_relative_not_absolute(self, schemas, synthetic_vsphere_tree):
-        vc = synthetic_vsphere_tree.children[0]
+        vc = synthetic_vsphere_tree.children[0].children[0]
         view = build_tree_node_view(vc, schema=schemas["vsphere"])
         child_urls = [c["url"] for c in view["nav"]["children"]]
-        # vCenter page is at vsphere/vc-prod-01/vc-prod-01.html; DC is at
-        # vsphere/vc-prod-01/dc-east/dc-east.html → relative URL: dc-east/dc-east.html
+        # vCenter page at vsphere/vcsa/vc-prod-01/vc-prod-01.html;
+        # DC at vsphere/vcsa/vc-prod-01/dc-east/dc-east.html → relative: dc-east/dc-east.html
         assert child_urls == ["dc-east/dc-east.html"]
 
     def test_ancestor_link_ascends(self, schemas, synthetic_vsphere_tree):
-        cluster = synthetic_vsphere_tree.children[0].children[0].children[0]
-        view = build_tree_node_view(cluster, schema=schemas["cluster"])
-        # Breadcrumbs: [Site, vSphere, vc-prod-01, DC-East, CL-A].
-        # vSphere is second; it should ascend three levels to the tree root.
+        dc = _dc_node(synthetic_vsphere_tree)
+        view = build_tree_node_view(dc, schema=schemas["datacenter"])
+        # Breadcrumbs: [Site, vSphere, vCenter Appliances, vc-prod-01, DC-East].
+        # vSphere should ascend three levels to the tree root.
         vsphere_crumb = view["nav"]["breadcrumbs"][1]
         assert vsphere_crumb["href"].endswith("vsphere.html")
         assert vsphere_crumb["href"].count("..") == 3
 
         site_crumb = view["nav"]["breadcrumbs"][0]
-        # Cluster dir is 4 levels deep; site.html is at the report root.
+        # DC dir is 4 segments deep (vsphere/vcsa/vc/dc); site.html is at the report root.
         assert site_crumb["href"] == "../../../../site.html"

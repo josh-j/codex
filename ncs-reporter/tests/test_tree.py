@@ -99,47 +99,49 @@ class TestBuildVsphereTree:
             vm_bundles=vm_bundles,
         )
 
-        # vSphere → one vCenter → two datacenters → three clusters → four ESXi hosts
+        # vsphere → vcsa (fleet) → vc → 2 datacenters → ESXi hosts
         assert root.slug == "vsphere"
-        assert [c.slug for c in root.children] == ["vc-prod-01"]
+        assert [c.slug for c in root.children] == ["vcsa"]
 
-        vc = root.children[0]
+        vcsa_group = root.children[0]
+        assert vcsa_group.tier == "vcenter_fleet"
+        assert [c.slug for c in vcsa_group.children] == ["vc-prod-01"]
+
+        vc = vcsa_group.children[0]
         assert [c.slug for c in vc.children] == ["dc-east", "dc-west"]
 
         dc_east = vc.children[0]
-        assert [c.slug for c in dc_east.children] == ["cluster-a", "cluster-b"]
-
-        cluster_a = dc_east.children[0]
-        assert [c.slug for c in cluster_a.children] == ["esxi-01-lab", "esxi-02-lab"]
+        assert [c.slug for c in dc_east.children] == ["esxi-01-lab", "esxi-02-lab", "esxi-03-lab"]
 
         # Each ESXi node's data is filtered to its own VMs
-        esxi_01 = cluster_a.children[0]
+        esxi_01 = dc_east.children[0]
         esxi_bundle = esxi_01.data_source({})
         vms = esxi_bundle["raw_esxi"]["data"]["virtual_machines"]
         assert [v["guest_name"] for v in vms] == ["web-01"]
 
-    def test_cluster_data_filters_vms_by_cluster(self) -> None:
+    def test_datacenter_surfaces_esxi_rows_with_cluster_column(self) -> None:
         root = build_vsphere_tree(
             vcenter_bundles={
                 "vc-01": {
-                    "clusters": {"CL-A": {"datacenter": "DC1"}},
+                    "clusters": {
+                        "CL-A": {"datacenter": "DC1"},
+                        "CL-B": {"datacenter": "DC1"},
+                    },
                     "datastores": [],
                     "dvswitches": [],
                 },
             },
-            esxi_bundles={},
-            vm_bundles={
-                "vc-01": {
-                    "virtual_machines": [
-                        {"guest_name": "vm-in", "cluster": "CL-A", "esxi_host": ""},
-                        {"guest_name": "vm-out", "cluster": "OTHER", "esxi_host": ""},
-                    ],
-                },
+            esxi_bundles={
+                "esxi-01": {"cluster": "CL-A", "datacenter": "DC1"},
+                "esxi-02": {"cluster": "CL-B", "datacenter": "DC1"},
             },
+            vm_bundles={"vc-01": {"virtual_machines": []}},
         )
-        cluster = root.children[0].children[0].children[0]
-        cluster_data = cluster.data_source({})
-        assert [v["guest_name"] for v in cluster_data["virtual_machines"]] == ["vm-in"]
+        dc_node = root.children[0].children[0].children[0]
+        dc_data = dc_node.data_source({})
+        assert [row["title"] for row in dc_data["esxi_hosts"]] == ["esxi-01", "esxi-02"]
+        assert [row["cluster"] for row in dc_data["esxi_hosts"]] == ["CL-A", "CL-B"]
+        assert dc_data["esxi_host_count"] == 2
 
     def test_node_paths_derive_from_tree_structure(self) -> None:
         root = build_vsphere_tree(
@@ -148,7 +150,7 @@ class TestBuildVsphereTree:
             vm_bundles={"vc-01": {"virtual_machines": []}},
         )
         esxi_node = root.children[0].children[0].children[0].children[0]
-        assert esxi_node.node_path.html_path.as_posix() == "vsphere/vc-01/dc1/cl-a/esxi-01/esxi-01.html"
+        assert esxi_node.node_path.html_path.as_posix() == "vsphere/vcsa/vc-01/dc1/esxi-01/esxi-01.html"
 
 
 class TestBuildFlatInventoryTree:
