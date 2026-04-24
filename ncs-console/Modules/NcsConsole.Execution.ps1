@@ -154,7 +154,7 @@ function Get-NcsSshTarget {
         [NcsConsoleSettings] $Settings
     )
 
-    return "{0}@{1}" -f $Settings.SshUser, $Settings.SshHost
+    return "$($Settings.SshUser)@$($Settings.SshHost)"
 }
 
 function Get-NcsRemoteManifest {
@@ -173,8 +173,8 @@ function Get-NcsRemoteManifest {
     $remoteCmd = "find '$escaped' -type f -printf '%P`t%s`t%T@`n'"
 
     $arguments = Get-NcsSshArgumentList -Settings $Settings -RemoteCommand $remoteCmd
-    $env       = Get-NcsSshEnvironment  -Settings $Settings
-    $result    = Invoke-NcsToolCommand  -FilePath "ssh.exe" -Arguments $arguments -Environment $env -TimeoutMs $TimeoutMs
+    $sshEnv    = Get-NcsSshEnvironment  -Settings $Settings
+    $result    = Invoke-NcsToolCommand  -FilePath "ssh.exe" -Arguments $arguments -Environment $sshEnv -TimeoutMs $TimeoutMs
 
     if ($result.ExitCode -ne 0) {
         return [pscustomobject]@{ ExitCode = $result.ExitCode; Manifest = $null; StdErr = $result.StdErr }
@@ -251,16 +251,18 @@ function Invoke-NcsSshFileFetch {
 
     $localScpPath = ConvertTo-NcsScpLocalPath -Path $LocalFile
 
-    $args = [System.Collections.Generic.List[string]]::new()
-    $args.Add("-p")   # preserve mtime so manifest comparisons converge on the next run
-    $args.Add("-P")
-    $args.Add([string] $Settings.SshPort)
-    Add-NcsSshCommonOptions -Arguments $args -Settings $Settings
-    Add-NcsSshAuthOptions   -Arguments $args -Settings $Settings
-    $args.Add("{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $RemoteFile)
-    $args.Add($localScpPath)
+    # Note: avoid `$args` as a local name — it shadows PowerShell's
+    # automatic argv array and confuses downstream binders.
+    $scpArgs = [System.Collections.Generic.List[string]]::new()
+    $scpArgs.Add("-p")   # preserve mtime so manifest comparisons converge on the next run
+    $scpArgs.Add("-P")
+    $scpArgs.Add([string] $Settings.SshPort)
+    Add-NcsSshCommonOptions -Arguments $scpArgs -Settings $Settings
+    Add-NcsSshAuthOptions   -Arguments $scpArgs -Settings $Settings
+    $scpArgs.Add("$(Get-NcsSshTarget -Settings $Settings):$RemoteFile")
+    $scpArgs.Add($localScpPath)
 
-    return Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $args -Environment (Get-NcsSshEnvironment -Settings $Settings) -TimeoutMs $TimeoutMs
+    return Invoke-NcsToolCommand -FilePath "scp.exe" -Arguments $scpArgs -Environment (Get-NcsSshEnvironment -Settings $Settings) -TimeoutMs $TimeoutMs
 }
 
 function New-NcsSshAskPassEnvironment {

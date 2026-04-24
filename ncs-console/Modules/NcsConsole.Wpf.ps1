@@ -474,7 +474,7 @@ function Invoke-NcsReportMirror {
 
     $errors = [System.Collections.Generic.List[string]]::new()
     foreach ($rel in $toFetch) {
-        $remoteFile = ("{0}/{1}" -f $Settings.RemoteReportsPath.TrimEnd('/'), $rel)
+        $remoteFile = "$($Settings.RemoteReportsPath.TrimEnd('/'))/$rel"
         $localFile  = Join-Path -Path $LocalRoot -ChildPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
         $fetch = Invoke-NcsSshFileFetch -Settings $Settings -RemoteFile $remoteFile -LocalFile $localFile
         if ($fetch.ExitCode -ne 0) {
@@ -508,7 +508,7 @@ function Invoke-NcsReportMirrorFull {
     if (-not (Test-Path -LiteralPath $cacheParent)) {
         [System.IO.Directory]::CreateDirectory($cacheParent) | Out-Null
     }
-    $stagingRoot = "{0}.staging" -f $LocalRoot
+    $stagingRoot = "$LocalRoot.staging"
     if (Test-Path -LiteralPath $stagingRoot) {
         Remove-Item -LiteralPath $stagingRoot -Recurse -Force
     }
@@ -524,7 +524,7 @@ function Invoke-NcsReportMirrorFull {
 
     $environment = Get-NcsSshEnvironment -Settings $Settings
 
-    $remoteSpec = "{0}:{1}" -f (Get-NcsSshTarget -Settings $Settings), $Settings.RemoteReportsPath
+    $remoteSpec = "$(Get-NcsSshTarget -Settings $Settings):$($Settings.RemoteReportsPath)"
     $arguments.Add($remoteSpec)
     $arguments.Add((ConvertTo-NcsScpLocalPath -Path $cacheParent))
 
