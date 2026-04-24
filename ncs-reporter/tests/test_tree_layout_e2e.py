@@ -82,10 +82,10 @@ class TestTreeLayoutE2E(unittest.TestCase):
 
         # Every tier must produce <dir>/<slug>.html — no hardcoded filenames.
         expected = [
-            Path("vsphere/vsphere.html"),
-            Path("vsphere/vcsa/vcsa.html"),
-            Path("vsphere/vcsa/vc-lab/vc-lab.html"),
-            Path("vsphere/vcsa/vc-lab/dc-east/dc-east.html"),
+            Path("platform/vsphere/vsphere.html"),
+            Path("platform/vsphere/vcsa/vcsa.html"),
+            Path("platform/vsphere/vcsa/vc-lab/vc-lab.html"),
+            Path("platform/vsphere/vcsa/vc-lab/dc-east/dc-east.html"),
         ]
         for rel in expected:
             self.assertTrue(
@@ -94,7 +94,7 @@ class TestTreeLayoutE2E(unittest.TestCase):
             )
 
         # Deep breadcrumb: datacenter page references its ancestors' reports.
-        dc_html = (self.reports_root / "vsphere/vcsa/vc-lab/dc-east/dc-east.html").read_text()
+        dc_html = (self.reports_root / "platform/vsphere/vcsa/vc-lab/dc-east/dc-east.html").read_text()
         self.assertIn("DC-East", dc_html)
         self.assertIn("breadcrumb-current", dc_html)
         # Relative link up 3 levels to vsphere.html

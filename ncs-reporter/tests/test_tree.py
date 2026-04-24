@@ -150,7 +150,7 @@ class TestBuildVsphereTree:
             vm_bundles={"vc-01": {"virtual_machines": []}},
         )
         esxi_node = root.children[0].children[0].children[0].children[0]
-        assert esxi_node.node_path.html_path.as_posix() == "vsphere/vcsa/vc-01/dc1/esxi-01/esxi-01.html"
+        assert esxi_node.node_path.html_path.as_posix() == "platform/vsphere/vcsa/vc-01/dc1/esxi-01/esxi-01.html"
 
 
 class TestBuildFlatInventoryTree:

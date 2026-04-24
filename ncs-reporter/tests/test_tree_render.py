@@ -126,13 +126,13 @@ class TestRenderTree:
         )
         # vsphere + vcsa group + vcenter + dc + 2 esxi = 6
         assert len(written) >= 5
-        vsphere_html = tmp_path / "vsphere" / "vsphere.html"
+        vsphere_html = tmp_path / "platform" / "vsphere" / "vsphere.html"
         assert vsphere_html.exists()
         content = vsphere_html.read_text()
         assert "vSphere" in content
         assert "breadcrumb-current" in content
 
-        dc_html = tmp_path / "vsphere" / "vcsa" / "vc-prod-01" / "dc-east" / "dc-east.html"
+        dc_html = tmp_path / "platform" / "vsphere" / "vcsa" / "vc-prod-01" / "dc-east" / "dc-east.html"
         assert dc_html.exists()
         dc_content = dc_html.read_text()
         assert "DC-East" in dc_content
@@ -173,11 +173,11 @@ class TestRelativeLinks:
         dc = _dc_node(synthetic_vsphere_tree)
         view = build_tree_node_view(dc, schema=schemas["datacenter"])
         # Breadcrumbs: [Site, vSphere, vCenter Appliances, vc-prod-01, DC-East].
-        # vSphere should ascend three levels to the tree root.
+        # vSphere ascends three levels inside the vsphere subtree (dc → vc → vcsa → vsphere).
         vsphere_crumb = view["nav"]["breadcrumbs"][1]
         assert vsphere_crumb["href"].endswith("vsphere.html")
         assert vsphere_crumb["href"].count("..") == 3
 
         site_crumb = view["nav"]["breadcrumbs"][0]
-        # DC dir is 4 segments deep (vsphere/vcsa/vc/dc); site.html is at the report root.
-        assert site_crumb["href"] == "../../../../site.html"
+        # DC dir is 5 segments deep (platform/vsphere/vcsa/vc/dc); site.html is at the report root.
+        assert site_crumb["href"] == "../../../../../site.html"

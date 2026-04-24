@@ -132,9 +132,13 @@ def build_tree_node_view(
     # when this node isn't the root itself (root pages don't need a self-link).
     breadcrumbs: list[dict[str, Any]] = []
     if not node.is_root:
-        # The page's directory has node.depth + 1 segments below the report
-        # root, so that many "../" are needed to reach site.html.
-        breadcrumbs.append({"text": "Site", "href": "../" * (node.depth + 1) + "site.html"})
+        # The page's directory has len(node_path.segments) segments below the
+        # report root (one per tier, including the "platform/" umbrella), so
+        # that many "../" are needed to reach site.html.
+        breadcrumbs.append({
+            "text": "Site",
+            "href": "../" * len(node.node_path.segments) + "site.html",
+        })
     for ancestor in node.ancestors():
         breadcrumbs.append({"text": ancestor.title, "href": _relative_to(ancestor, node)})
     breadcrumbs.append({"text": node.title, "href": None})
