@@ -530,6 +530,59 @@ class StigConfig(BaseModel):
     rule_prefix_to_platform: dict[str, str] = Field(default_factory=dict)
 
 
+class TreeLevel(BaseModel):
+    """One tier in a hierarchical product tree.
+
+    The reporter walks each level in declaration order: bundles whose
+    on-disk path resolves to this level get instantiated as ``ReportNode``s
+    with the named tier and schema. ``parent_tier`` says which previous
+    level's nodes are this level's parents — when omitted the level
+    attaches directly to the product root.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tier: str
+    schema_name: str = Field(validation_alias=AliasChoices("schema_name", "schema"))
+    bundle_key: str  # e.g. "raw_vcsa", "raw_esxi" — the dict key on the host bundle
+    parent_tier: str | None = None
+    children_label: str | None = None  # column label for "sub-count" on children widget
+
+
+class TreeSpec(BaseModel):
+    """Declarative tree shape for a product. Lives on an inventory-tier
+    schema (``vsphere.yaml``, etc.) and replaces hand-rolled tree builders.
+
+    The reporter walks ``<reports_root>/<root_slug>/`` and uses the
+    collector-written tree_path on disk to slot each bundle into its
+    declared level.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    root_slug: str
+    root_title: str = ""
+    levels: list[TreeLevel] = Field(default_factory=list)
+
+
+class InlineEvaluationSpec(BaseModel):
+    """Run another schema against a synthetic seed built from this node's
+    data. The resulting alerts merge into the host node's own alerts and
+    propagate up via the existing descendant-rollup pass.
+
+    Lets a schema like ``esxi.yaml`` declare "also evaluate ``vm.yaml``
+    against my ``virtual_machines`` list" without the reporter knowing
+    anything about either schema's contents.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_name: str = Field(validation_alias=AliasChoices("schema_name", "schema"))
+    # Seed values can include Jinja expressions referencing the host
+    # node's bundle, e.g. "{{ raw_esxi.data.virtual_machines }}".
+    seed_template: dict[str, Any] = Field(default_factory=dict)
+
+
 class ReportSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -555,6 +608,8 @@ class ReportSchema(BaseModel):
     split_field: str | None = None
     split_name_key: str = "name"
     stig: StigConfig = Field(default_factory=StigConfig)
+    tree: TreeSpec | None = None
+    inline_evaluations: list[InlineEvaluationSpec] = Field(default_factory=list)
 
     # Track where this schema was loaded from (set post-load, not from YAML)
     _source_path: str | None = None

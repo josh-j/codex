@@ -81,9 +81,9 @@
             <span class="widget-title">
                 NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}
                 {% if available_alerts %}
-                <details class="alert-rules-help">
-                    <summary class="alert-rules-help-trigger" title="Show all available alert rules" aria-label="Show all available alert rules">?</summary>
-                    <div class="alert-rules-help-popover">
+                <span class="alert-rules-help" tabindex="0" aria-haspopup="true">
+                    <span class="alert-rules-help-trigger" title="Show all available alert rules" aria-label="Show all available alert rules">?</span>
+                    <div class="alert-rules-help-popover" role="tooltip">
                         <div class="alert-rules-help-title">Available alert rules ({{ available_alerts | length }})</div>
                         <table class="alert-rules-help-table">
                             <thead>
@@ -100,7 +100,7 @@
                             </tbody>
                         </table>
                     </div>
-                </details>
+                </span>
                 {% endif %}
             </span>
             <button class="widget-toggle" aria-expanded="true" aria-label="Collapse NCS Alerts"></button>

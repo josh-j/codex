@@ -99,45 +99,22 @@ class TestBuildVsphereTree:
             vm_bundles=vm_bundles,
         )
 
-        # vsphere → vc → 2 datacenters → ESXi hosts (no vcsa fleet tier)
+        # vsphere → vc → ESXi hosts (datacenter tier consolidated under vCenter).
         assert root.slug == "vsphere"
         assert [c.slug for c in root.children] == ["vc-prod-01"]
 
         vc = root.children[0]
-        assert [c.slug for c in vc.children] == ["dc-east", "dc-west"]
-
-        dc_east = vc.children[0]
-        assert [c.slug for c in dc_east.children] == ["esxi-01-lab", "esxi-02-lab", "esxi-03-lab"]
+        # All four ESXi hosts attach directly to the vCenter — datacenter
+        # info is now a column on each host row, not a tier.
+        assert [c.slug for c in vc.children] == [
+            "esxi-01-lab", "esxi-02-lab", "esxi-03-lab", "esxi-04-lab",
+        ]
 
         # Each ESXi node's data is filtered to its own VMs
-        esxi_01 = dc_east.children[0]
+        esxi_01 = vc.children[0]
         esxi_bundle = esxi_01.data_source({})
         vms = esxi_bundle["raw_esxi"]["data"]["virtual_machines"]
         assert [v["guest_name"] for v in vms] == ["web-01"]
-
-    def test_datacenter_surfaces_esxi_rows_with_cluster_column(self) -> None:
-        root = build_vsphere_tree(
-            vcenter_bundles={
-                "vc-01": {
-                    "clusters": {
-                        "CL-A": {"datacenter": "DC1"},
-                        "CL-B": {"datacenter": "DC1"},
-                    },
-                    "datastores": [],
-                    "dvswitches": [],
-                },
-            },
-            esxi_bundles={
-                "esxi-01": {"cluster": "CL-A", "datacenter": "DC1"},
-                "esxi-02": {"cluster": "CL-B", "datacenter": "DC1"},
-            },
-            vm_bundles={"vc-01": {"virtual_machines": []}},
-        )
-        dc_node = root.children[0].children[0]
-        dc_data = dc_node.data_source({})
-        assert [row["title"] for row in dc_data["esxi_hosts"]] == ["esxi-01", "esxi-02"]
-        assert [row["cluster"] for row in dc_data["esxi_hosts"]] == ["CL-A", "CL-B"]
-        assert dc_data["esxi_host_count"] == 2
 
     def test_list_form_clusters_normalize_to_dict(self) -> None:
         # The collector emits clusters as a list-of-dicts (each with a `name`).
@@ -170,8 +147,8 @@ class TestBuildVsphereTree:
             esxi_bundles={"esxi-01": {"cluster": "CL-A", "datacenter": "DC1"}},
             vm_bundles={"vc-01": {"virtual_machines": []}},
         )
-        esxi_node = root.children[0].children[0].children[0]
-        assert esxi_node.node_path.html_path.as_posix() == "vsphere/vc-01/dc1/esxi-01/esxi-01.html"
+        esxi_node = root.children[0].children[0]
+        assert esxi_node.node_path.html_path.as_posix() == "vsphere/vc-01/esxi-01/esxi-01.html"
 
 
 class TestBuildFlatInventoryTree:

@@ -80,11 +80,13 @@ class TestTreeLayoutE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, result.output)
 
-        # Every tier must produce <dir>/<slug>.html — no hardcoded filenames.
+        # Tree shape after the datacenter-tier consolidation:
+        # vsphere → vCenter → ESXi (datacenter info is a column on each
+        # ESXi row, not a tier). Without ESXi bundles in this fixture,
+        # only the product root + vCenter pages render.
         expected = [
             Path("vsphere/vsphere.html"),
             Path("vsphere/vc-lab/vc-lab.html"),
-            Path("vsphere/vc-lab/dc-east/dc-east.html"),
         ]
         for rel in expected:
             self.assertTrue(
@@ -92,21 +94,17 @@ class TestTreeLayoutE2E(unittest.TestCase):
                 f"missing tree node html: {rel}",
             )
 
-        # Deep breadcrumb: datacenter page references its ancestors' reports
-        # and uses the shared ``_breadcrumb_bar.html.j2`` macro so it gets
-        # the same Site link + Select Product dropdown + search bar that
-        # the site dashboard has. The macro renders the active leaf as a
-        # ``<strong>`` inside the .breadcrumb container.
-        dc_html = (self.reports_root / "vsphere/vc-lab/dc-east/dc-east.html").read_text()
-        self.assertIn("DC-East", dc_html)
-        self.assertIn('class="breadcrumb"', dc_html)
-        # Relative link up 3 levels to site.html (one segment per tier).
-        self.assertIn("../../../site.html", dc_html)
-        # The tree root link goes through the Select Product dropdown
-        # rather than a separate vsphere ancestor crumb. Path is
-        # back_to_root + "<slug>/<slug>.html" — three levels up from
-        # dc-east, then into ``vsphere/vsphere.html``.
-        self.assertIn("../../../vsphere/vsphere.html", dc_html)
+        # vCenter page uses the shared breadcrumb macro and links back to
+        # site.html / vsphere.html with the right relative path.
+        vc_html = (self.reports_root / "vsphere/vc-lab/vc-lab.html").read_text()
+        self.assertIn("vc-lab", vc_html)
+        self.assertIn('class="breadcrumb"', vc_html)
+        # vc-lab.html is at depth 2 (vsphere/vc-lab/), so Site Dashboard
+        # is two levels up.
+        self.assertIn("../../site.html", vc_html)
+        # The tree root link comes from the Select Product dropdown:
+        # back_to_root + "<slug>/<slug>.html".
+        self.assertIn("../../vsphere/vsphere.html", vc_html)
 
     def test_reporter_reads_tree_raw_paths(self) -> None:
         """Bundles written only under reports_root/<inventory>/… are picked up."""

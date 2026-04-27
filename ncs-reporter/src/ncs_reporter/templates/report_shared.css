@@ -1165,13 +1165,13 @@ details[open] > .details-box {
   gap: var(--space-8);
 }
 
-/* Inline ? trigger inside a widget titlebar that opens a <details>
-   popover listing alert rules. The popover is absolutely positioned
-   so it floats over the widget body without pushing layout. */
+/* Hover-triggered popover for the NCS Alerts widget's "?" icon. Same
+   pattern as ``.nav-tree:hover .nav-dropdown`` — pure CSS, no JS. */
 .alert-rules-help {
   display: inline-block;
   margin-left: var(--space-8);
   position: relative;
+  cursor: help;
 }
 .alert-rules-help-trigger {
   display: inline-flex;
@@ -1185,18 +1185,11 @@ details[open] > .details-box {
   color: var(--text-muted);
   font-size: var(--text-tiny);
   font-weight: 700;
-  cursor: pointer;
   user-select: none;
-  list-style: none;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.alert-rules-help-trigger::-webkit-details-marker { display: none; }
-.alert-rules-help-trigger:hover {
-  background: var(--surface-hover);
-  border-color: var(--line-hover);
-  color: var(--text);
-}
-.alert-rules-help[open] .alert-rules-help-trigger {
+.alert-rules-help:hover .alert-rules-help-trigger,
+.alert-rules-help:focus-within .alert-rules-help-trigger {
   background: var(--surface-active);
   color: var(--text-active);
   border-color: var(--line-focus);
@@ -1213,7 +1206,24 @@ details[open] > .details-box {
   background: var(--surface);
   box-shadow: var(--shadow-md);
   padding: var(--space-10) var(--space-12);
+  display: none;
 }
+.alert-rules-help:hover .alert-rules-help-popover,
+.alert-rules-help:focus-within .alert-rules-help-popover {
+  display: block;
+}
+/* Invisible bridge between trigger and popover so a brief mouse-out
+   while crossing the gap doesn't dismiss the popover. */
+.alert-rules-help::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: var(--space-10);
+  display: none;
+}
+.alert-rules-help:hover::after { display: block; }
 .alert-rules-help-title {
   font-size: var(--text-xs);
   text-transform: uppercase;

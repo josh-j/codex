@@ -176,104 +176,65 @@ def build_tree_node_view(
     active_slug = root_node.slug
     active_title = root_node.title or active_slug
     if tree_products:
-        items = [
-            {
-                "text": p["name"],
-                "href": back_to_root + p["report"],
-                "active": p["slug"] == active_slug,
-                "css_class": "",
-            }
-            for p in tree_products
-        ]
-        breadcrumbs.append({
-            "type": "dropdown",
-            "text": active_title,
-            "href": back_to_root + f"{active_slug}/{active_slug}.html" if not node.is_root else None,
-            "group_label": "Products",
-            "scrollable": False,
-            "items": items,
-        })
-    # Ancestors with siblings render as dropdowns so operators can hop
-    # sideways (e.g. between vCenters or datacenters) without leaving
-    # the breadcrumb. The tree root is omitted — covered by the
-    # Select Product dropdown above.
+        breadcrumbs.append(_dropdown_crumb(
+            text=active_title,
+            group_label="Products",
+            href=back_to_root + f"{active_slug}/{active_slug}.html" if not node.is_root else None,
+            items=[
+                {
+                    "text": p["name"],
+                    "href": back_to_root + p["report"],
+                    "active": p["slug"] == active_slug,
+                    "css_class": "",
+                }
+                for p in tree_products
+            ],
+        ))
+    # Ancestors with siblings → sibling dropdown; otherwise a plain link.
+    # Tree root is omitted (covered by Select Product above).
     for ancestor in node.ancestors():
         if ancestor is root_node:
             continue
         siblings = (ancestor.parent.children if ancestor.parent else [])
         if len(siblings) > 1:
-            items = [
-                {
-                    "text": s.title or s.slug,
-                    "href": _relative_to(s, node),
-                    "active": s is ancestor,
-                    "css_class": "",
-                }
-                for s in siblings
-            ]
-            breadcrumbs.append({
-                "type": "dropdown",
-                "text": ancestor.title,
-                "href": _relative_to(ancestor, node),
-                "group_label": (ancestor.tier or "").replace("_", " ").title() + "s",
-                "scrollable": False,
-                "items": items,
-            })
+            breadcrumbs.append(_dropdown_crumb(
+                text=ancestor.title,
+                group_label=_tier_label(ancestor.tier) + "s",
+                href=_relative_to(ancestor, node),
+                items=[_dropdown_item(s, node, active=s is ancestor) for s in siblings],
+            ))
         else:
             breadcrumbs.append({
                 "type": "link",
                 "text": ancestor.title,
                 "href": _relative_to(ancestor, node),
             })
-    # Current node renders as a dropdown when it has siblings (peer
-    # navigation), label otherwise. Skip the product root — covered above.
+    # Current node renders as a peer-navigation dropdown when it has siblings.
     if not node.is_root:
         node_siblings = node.parent.children if node.parent else []
         if len(node_siblings) > 1:
-            items = [
-                {
-                    "text": s.title or s.slug,
-                    "href": _relative_to(s, node) if s is not node else "#",
-                    "active": s is node,
-                    "css_class": "",
-                }
-                for s in node_siblings
-            ]
-            breadcrumbs.append({
-                "type": "dropdown",
-                "text": node.title,
-                "group_label": (node.tier or "").replace("_", " ").title() + "s",
-                "scrollable": False,
-                "items": items,
-            })
+            breadcrumbs.append(_dropdown_crumb(
+                text=node.title,
+                group_label=_tier_label(node.tier) + "s",
+                items=[_dropdown_item(s, node, active=s is node) for s in node_siblings],
+            ))
         else:
             breadcrumbs.append({"type": "label", "text": node.title})
 
-    # Drill-down dropdown for children — lets operators jump to a child
-    # page directly from the breadcrumb instead of returning to the body.
+    # Drill-down dropdown for children.
     if node.children:
         child_tiers = sorted({c.tier or "" for c in node.children})
         child_label = (
-            (child_tiers[0].replace("_", " ").title() + "s")
+            _tier_label(child_tiers[0]) + "s"
             if len(child_tiers) == 1 and child_tiers[0]
             else "Children"
         )
-        items = [
-            {
-                "text": c.title or c.slug,
-                "href": _relative_to(c, node),
-                "active": False,
-                "css_class": "",
-            }
-            for c in node.children
-        ]
-        breadcrumbs.append({
-            "type": "dropdown",
-            "text": "Select " + (child_label[:-1] if child_label.endswith("s") else child_label),
-            "group_label": child_label,
-            "scrollable": True,
-            "items": items,
-        })
+        breadcrumbs.append(_dropdown_crumb(
+            text="Select " + (child_label[:-1] if child_label.endswith("s") else child_label),
+            group_label=child_label,
+            scrollable=True,
+            items=[_dropdown_item(c, node, active=False) for c in node.children],
+        ))
 
     breadcrumbs.append({"type": "search", "search_root": back_to_root or "./"})
 
@@ -312,6 +273,88 @@ def build_tree_node_view(
             "descendant_rollup": ((node_state or {}).get(id(node), {}).get("rollup", {"critical": 0, "warning": 0, "info": 0})),
         },
     }
+
+
+def _tier_label(tier: str | None) -> str:
+    """Title-cased tier label, e.g. ``esxi_host`` → ``Esxi Host``."""
+    return (tier or "").replace("_", " ").title()
+
+
+def _dropdown_item(target: ReportNode, origin: ReportNode, *, active: bool) -> dict[str, Any]:
+    """Anchor a dropdown item at *origin*; ``href`` is ``#`` when target is origin."""
+    return {
+        "text": target.title or target.slug,
+        "href": "#" if target is origin else _relative_to(target, origin),
+        "active": active,
+        "css_class": "",
+    }
+
+
+def _dropdown_crumb(
+    *,
+    text: str,
+    items: list[dict[str, Any]],
+    group_label: str,
+    href: str | None = None,
+    scrollable: bool = False,
+) -> dict[str, Any]:
+    """Build a typed dropdown crumb consumed by ``_breadcrumb_bar.html.j2``."""
+    crumb: dict[str, Any] = {
+        "type": "dropdown",
+        "text": text,
+        "group_label": group_label,
+        "scrollable": scrollable,
+        "items": items,
+    }
+    if href is not None:
+        crumb["href"] = href
+    return crumb
+
+
+def _inline_evaluations_for(schema: Any) -> list[Any]:
+    """Return the schema's declared inline_evaluations (or an empty list)."""
+    if schema is None:
+        return []
+    return list(getattr(schema, "inline_evaluations", []) or [])
+
+
+def _resolve_inline_seed(template: Any, ctx: dict[str, Any]) -> dict[str, Any]:
+    """Resolve a YAML-declared seed template against the host node's bundle.
+
+    ``template`` is the raw dict from the schema's
+    ``inline_evaluations[*].seed_template``. Strings containing Jinja
+    tags (e.g. ``"{{ raw_esxi.data.virtual_machines }}"``) are rendered
+    against *ctx*; non-string and non-Jinja leaf values pass through.
+    """
+    from jinja2 import Environment
+
+    env = Environment(autoescape=False)
+    return _resolve_template_value(template, ctx, env)
+
+
+def _resolve_template_value(value: Any, ctx: dict[str, Any], env: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _resolve_template_value(v, ctx, env) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_resolve_template_value(item, ctx, env) for item in value]
+    if isinstance(value, str) and "{{" in value:
+        try:
+            rendered = env.from_string(value).render(**ctx)
+        except Exception:
+            return value
+        # Coerce numeric-looking strings to Python literals where safe so
+        # downstream filter expressions get the original list/int/dict
+        # back instead of a stringified copy.
+        if rendered.startswith(("[", "{")):
+            try:
+                import ast
+                return ast.literal_eval(rendered)
+            except (ValueError, SyntaxError):
+                return rendered
+        if rendered.isdigit():
+            return int(rendered)
+        return rendered
+    return value
 
 
 _AVAILABLE_ALERTS_CACHE: dict[int, tuple[dict[str, Any], ...]] = {}
@@ -413,10 +456,6 @@ def _build_children_section(
         crit = int(child_rollup.get("critical", 0) or 0)
         warn = int(child_rollup.get("warning", 0) or 0)
         info = int(child_rollup.get("info", 0) or 0)
-        # Single "NCS Alerts" cell rendering ``info/warn/crit`` with each
-        # segment colored by severity (gray/yellow/red). The ``severity-
-        # tally`` cell type is rendered by generic_tree_node.html.j2 as
-        # three colored spans separated by slashes.
         rows.append([
             {
                 "value": child.title or child.slug,
@@ -484,10 +523,22 @@ def _compute_tree_state(
         schema = schemas_by_name.get(node.schema_name)
         fields: dict[str, Any] = {}
         alerts: list[dict[str, Any]] = []
-        if schema is not None:
-            seed = node.data_source({}) if node.data_source else {}
-            if isinstance(seed, dict):
-                fields, alerts = _eval_fields_and_alerts(schema, seed)
+        node_seed = node.data_source({}) if node.data_source else {}
+        if schema is not None and isinstance(node_seed, dict):
+            fields, alerts = _eval_fields_and_alerts(schema, node_seed)
+        # Run any ``inline_evaluations`` declared on this node's schema —
+        # additional schemas to evaluate against a per-node synthetic
+        # seed. Replaces the old vmware-specific "if node.tier ==
+        # 'esxi_host', also evaluate vm.yaml" branch with a generic,
+        # schema-driven mechanism.
+        for inline in _inline_evaluations_for(schema):
+            inline_schema = schemas_by_name.get(inline.schema_name)
+            if inline_schema is None or not isinstance(node_seed, dict):
+                continue
+            inline_seed = _resolve_inline_seed(inline.seed_template, node_seed)
+            _inline_fields, inline_alerts = _eval_fields_and_alerts(inline_schema, inline_seed)
+            if inline_alerts:
+                alerts = list(alerts) + list(inline_alerts)
         rollup = {"critical": 0, "warning": 0, "info": 0}
         for a in alerts:
             sev = str(a.get("severity", "")).lower()

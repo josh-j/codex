@@ -15,6 +15,23 @@ config:
     - name: ESXi Hosts
       value: "{{ esxi_host_count }}"
 
+# Tree shape — declarative replacement for the old hardcoded
+# build_vsphere_tree() Python. The reporter walks <reports_root>/vsphere/
+# and instantiates one ReportNode per raw.yaml using the matching level.
+tree:
+  root_slug: vsphere
+  root_title: vSphere
+  levels:
+    - tier: vcenter
+      schema: vcsa
+      bundle_key: raw_vcsa
+      children_label: ESXi Hosts
+    - tier: esxi_host
+      schema: esxi
+      bundle_key: raw_esxi
+      parent_tier: vcenter
+      children_label: VMs
+
 vars: {}
 
 alerts: []
@@ -50,9 +67,6 @@ widgets:
             value: "{{ cluster_count }}"
           - name: ESXi Hosts
             value: "{{ esxi_host_count }}"
-          - name: NCS Alerts
-            value: "{{ ncs_alerts }}"
-            as: severity-tally
 
       - name: "ESXi Hosts"
         when: esxi_host_count > 0

@@ -16,6 +16,25 @@ config:
       value: "{{ mem_used_pct }}"
     - name: VMs
       value: "{{ vm_count }}"
+
+# Run the vm.yaml schema's alert rules against this host's slice of the
+# vCenter VM bundle so VM-level alerts (snapshot age, missing backup
+# tags, powered-off VMs, …) surface on each ESXi page. Replaces the
+# vSphere-specific Python branch in tree_render.py:_compute_tree_state.
+inline_evaluations:
+  - schema: vm
+    seed_template:
+      raw_vm:
+        data:
+          virtual_machines: "{{ raw_esxi.data.virtual_machines | default([]) }}"
+          vms_info_raw:
+            virtual_machines: "{{ raw_esxi.data.virtual_machines | default([]) }}"
+          vm_count: "{{ (raw_esxi.data.virtual_machines | default([])) | length }}"
+          snapshots_raw: []
+          infra_patterns: []
+          datacenters: []
+          config: {}
+
 vars:
   # All raw_esxi.data.* fields are auto-imported from the collector payload.
   # Only computed/derived vars and metadata need explicit declaration.
