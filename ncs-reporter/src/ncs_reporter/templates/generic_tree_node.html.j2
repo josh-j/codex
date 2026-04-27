@@ -36,6 +36,7 @@
     {% set nav = view.get('nav', {}) %}
     {% set summary = view.get('summary', {}) %}
     {% set alerts = view.get('alerts', []) %}
+    {% set available_alerts = view.get('available_alerts', []) %}
     {% set widgets = view.get('widgets', []) %}
     {% set children = nav.get('children', []) %}
     {% set health = view.get('health', 'UNKNOWN') %}
@@ -47,19 +48,12 @@
 <body>
 <div class="page-wrap">
 
-    {# Breadcrumb trail — every tree node carries its own ancestor chain #}
-    <nav class="breadcrumb-bar">
-        {% for crumb in nav.get('breadcrumbs', []) %}
-            {% if crumb.get('href') %}
-                <a href="{{ crumb.href }}">{{ crumb.text }}</a>
-            {% else %}
-                <span class="breadcrumb-current">{{ crumb.text }}</span>
-            {% endif %}
-            {% if not loop.last %}<span class="breadcrumb-sep"> › </span>{% endif %}
-        {% endfor %}
-    </nav>
+    {# Breadcrumb trail — typed crumbs (link/label/dropdown/search) shared
+       with the site dashboard via ``_breadcrumb_bar.html.j2``. #}
+    {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
-    <div class="page-header">
+    <div class="page-header page-header-standalone">
         <div>
             <h1>{{ meta.get('display_name', 'Report') }} &mdash; <code>{{ meta.get('title', meta.get('slug', '')) }}</code></h1>
             <span class="page-subtitle">Tier: {{ meta.get('tier', '') | upper }}</span>
@@ -69,48 +63,70 @@
             {% elif health == 'WARNING' %}<span class="health-warn">WARNING</span>
             {% elif health == 'CRITICAL' %}<span class="health-crit">CRITICAL</span>
             {% else %}<span class="health-unk">{{ health }}</span>{% endif %}
-            <br>{{ meta.get('report_date', report_date | default('')) }}
+            {% set _date = meta.get('report_date') or report_date | default('') %}
+            {% if _date %}<br>{{ _date }}{% endif %}
         </div>
     </div>
 
-    {# Children-of-this-node navigation block — only shown when the node has descendants #}
-    {% if children %}
-    <div class="widget" id="tree-children">
+    {# Page reading flow: alerts → child navigation → detail widgets.
+       Alerts and details are split out of the widget loop so children
+       can sit between them. #}
+    {% set _alert_widgets = widgets | selectattr('type', 'equalto', 'alert_panel') | list %}
+    {% set _other_widgets = widgets | rejectattr('type', 'equalto', 'alert_panel') | list %}
+
+    {% if alerts %}
+    {% for widget in _alert_widgets %}
+    <div class="widget widget-alert" id="{{ widget.slug }}">
         <div class="widget-titlebar">
-            <span class="widget-title">{{ children | length }} {{ 'child' if children | length == 1 else 'children' }}</span>
+            <span class="widget-title">
+                NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}
+                {% if available_alerts %}
+                <details class="alert-rules-help">
+                    <summary class="alert-rules-help-trigger" title="Show all available alert rules" aria-label="Show all available alert rules">?</summary>
+                    <div class="alert-rules-help-popover">
+                        <div class="alert-rules-help-title">Available alert rules ({{ available_alerts | length }})</div>
+                        <table class="alert-rules-help-table">
+                            <thead>
+                                <tr><th>Severity</th><th>Category</th><th>Message</th></tr>
+                            </thead>
+                            <tbody>
+                            {% for r in available_alerts %}
+                                <tr>
+                                    <td class="sv-{{ r.severity | lower }}">{{ r.severity }}</td>
+                                    <td class="subtle-text">{{ r.category }}</td>
+                                    <td>{{ r.message }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+                {% endif %}
+            </span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse NCS Alerts"></button>
         </div>
-        <div class="widget-body widget-table-view">
+        <div class="widget-body">
             <table>
-                <thead>
-                    <tr>
-                        <th class="sortable">Name</th>
-                        <th class="sortable">Tier</th>
-                        <th class="sortable">Sub-nodes</th>
-                        <th class="sortable">Critical</th>
-                        <th class="sortable">Warning</th>
-                    </tr>
-                </thead>
+                <thead><tr><th class="th-severity">Severity</th><th class="th-category">Category</th><th>Message</th></tr></thead>
                 <tbody>
-                {% for child in children %}
-                    {% set rollup = child.get('rollup', {}) %}
-                    {% set c_crit = rollup.get('critical', 0) %}
-                    {% set c_warn = rollup.get('warning', 0) %}
-                    <tr class="row-interactive">
-                        <td><a href="{{ child.url }}" class="link-strong">{{ child.title }}</a></td>
-                        <td class="nowrap subtle-text">{{ child.tier }}</td>
-                        <td>{{ child.child_count }}</td>
-                        <td>{% if c_crit > 0 %}<span class="sv-critical">{{ c_crit }}</span>{% else %}0{% endif %}</td>
-                        <td>{% if c_warn > 0 %}<span class="sv-warning">{{ c_warn }}</span>{% else %}0{% endif %}</td>
+                {% for a in alerts %}
+                    <tr class="alert-{{ a.severity | lower }}">
+                        <td class="severity-cell sv-{{ a.severity | lower }}">{{ a.severity }}</td>
+                        <td class="alert-category subtle-text">{{ a.category }}</td>
+                        <td>{% if a.origin %}<strong>{{ a.origin }}</strong> &mdash; {% endif %}{{ a.message }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    {% endfor %}
     {% endif %}
 
+    {# Children-of-this-node navigation block — only shown when the node has descendants #}
+
     <div class="widget-grid-container">
-    {% for widget in widgets %}
+    {% for widget in _other_widgets %}
         {% set w_width = widget.get('layout', {}).get('width', 'full') %}
         {% set flex_basis = '100%' %}
         {% if w_width == 'half' %}{% set flex_basis = 'calc(50% - 7px)' %}
@@ -121,7 +137,7 @@
         <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
             <div class="widget-titlebar">
                 {% if widget.type == 'alert_panel' %}
-                <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+                <span class="widget-title">NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
                 {% else %}
                 <span class="widget-title">{{ widget.name }}</span>
                 {% endif %}
@@ -230,6 +246,70 @@
             </table>
             {% else %}
             <div class="no-data">No rows.</div>
+            {% endif %}
+
+            {% elif widget.type == 'inventory' %}
+            {% if widget.get('sections', []) or widget.get('cards', []) %}
+            {% if widget.get('cards', []) %}
+            <div class="inventory-footprint">
+            {% for card in widget.cards %}
+                <span class="inventory-footprint-pair">
+                    <span class="inventory-footprint-pair-value{% if card.color and card.color != 'auto' %} stat-card-{{ card.color }}{% endif %}">{{ card.value }}</span>
+                    <span class="inventory-footprint-pair-label">{{ card.name }}</span>
+                </span>
+            {% endfor %}
+            </div>
+            {% endif %}
+            <div class="widget-body widget-subgroup inventory-subgroup">
+            {% if widget.get('sections', []) %}
+            {% for section in widget.sections %}
+                <div class="widget">
+                    <div class="widget-titlebar">
+                        <span class="widget-title">{{ section.name }} <span class="widget-title-meta">({{ section.row_count }})</span></span>
+                        <button class="widget-toggle" aria-expanded="true" aria-label="Collapse {{ section.name }}"></button>
+                    </div>
+                    <div class="widget-body widget-table-view">
+                        <table>
+                            <thead>
+                                <tr>{% for col in section.columns %}<th class="sortable">{{ col.name }}</th>{% endfor %}</tr>
+                            </thead>
+                            <tbody>
+                            {% for row in section.rows %}
+                                <tr class="row-interactive">
+                                {% for cell in row %}
+                                    <td class="{{ cell.css_class | default('') }}">
+                                    {% if cell.link %}<a href="{{ cell.link }}" class="link-strong">{% endif %}
+                                    {% if cell.as == 'status-badge' %}
+                                        {{ render_badge(cell.value) }}
+                                    {% elif cell.as == 'severity-tally' %}
+                                        {# info/warning/critical tally: three colored spans
+                                           separated by slashes. Empty/zero buckets dim out. #}
+                                        {% set _t = cell.value %}
+                                        {% set _i = _t.get('info', 0) | int %}
+                                        {% set _w = _t.get('warning', 0) | int %}
+                                        {% set _c = _t.get('critical', 0) | int %}
+                                        <span class="{{ 'sv-info' if _i else 'subtle-text' }}">{{ _i }}</span>
+                                        <span class="subtle-text">/</span>
+                                        <span class="{{ 'sv-warning' if _w else 'subtle-text' }}">{{ _w }}</span>
+                                        <span class="subtle-text">/</span>
+                                        <span class="{{ 'sv-critical' if _c else 'subtle-text' }}">{{ _c }}</span>
+                                    {% else %}
+                                        {{ cell.value }}
+                                    {% endif %}
+                                    {% if cell.link %}</a>{% endif %}
+                                    </td>
+                                {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endfor %}
+            {% endif %}
+            </div>
+            {% else %}
+            <div class="no-data">No inventory rows.</div>
             {% endif %}
 
             {% endif %}

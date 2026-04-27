@@ -36,7 +36,7 @@
 
     <div class="toc">
         <div class="toc-left">
-            {% if active_alerts %}<a href="#alerts">Active Alerts</a>{% endif %}
+            {% if active_alerts %}<a href="#alerts">NCS Alerts</a>{% endif %}
             <a href="#hosts">Host Status</a>
         </div>
     </div>
@@ -45,8 +45,8 @@
     {% if alert_groups %}
     <div class="widget widget-alert" id="alerts">
         <div class="widget-titlebar">
-            <span class="widget-title">Active Alerts &mdash; {{ active_alerts | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
-            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active Alerts"></button>
+            <span class="widget-title">NCS Alerts &mdash; {{ active_alerts | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse NCS Alerts"></button>
         </div>
         <div class="widget-body widget-table-view">
         <table>

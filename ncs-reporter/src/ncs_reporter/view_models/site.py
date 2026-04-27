@@ -29,6 +29,14 @@ def _get_schema_audit(bundle: dict[str, Any], *names: str) -> dict[str, Any] | N
     return None
 
 
+_STATUS_RANK = {"CRITICAL": 3, "WARNING": 2, "OK": 1, "UNKNOWN": 0}
+
+
+def _merge_status(a: str, b: str) -> str:
+    """Return whichever of *a* / *b* is the worse health status."""
+    return a if _STATUS_RANK.get(a, 0) >= _STATUS_RANK.get(b, 0) else b
+
+
 
 def build_site_dashboard_view(
     aggregated_hosts: dict[str, Any],
@@ -37,6 +45,8 @@ def build_site_dashboard_view(
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
     generated_fleet_dirs: set[str] | None = None,
+    tree_host_urls: dict[str, str] | None = None,
+    tree_products: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     from ncs_reporter.models.platforms_config import fleet_link_url, host_report_url
     reg = registry or default_registry()
@@ -50,9 +60,11 @@ def build_site_dashboard_view(
     )
 
     site_entries = reg.site_dashboard_entries()
+    tree_host_urls = tree_host_urls or {}
 
     host_report_dirs: dict[str, str] = {}
     hosts_per_audit_key: dict[str, int] = {}
+    hostnames_per_audit_key: dict[str, list[str]] = {}
     for hostname, bundle in _iter_hosts(aggregated_hosts):
         for entry in site_entries:
             audit_key = entry.site_audit_key
@@ -62,6 +74,7 @@ def build_site_dashboard_view(
             if not audit:
                 continue
             hosts_per_audit_key[audit_key] = hosts_per_audit_key.get(audit_key, 0) + 1
+            hostnames_per_audit_key.setdefault(audit_key, []).append(hostname)
             if hostname not in host_report_dirs:
                 host_report_dirs[hostname] = entry.report_dir
 
@@ -100,7 +113,10 @@ def build_site_dashboard_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": host_report_url(host_report_dirs[host], host) if host in host_report_dirs else "",
+                "node_report": (
+                    tree_host_urls.get(host)
+                    or (host_report_url(host_report_dirs[host], host) if host in host_report_dirs else "")
+                ),
                 "platform": alert.get("platform", ""),
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
@@ -118,34 +134,69 @@ def build_site_dashboard_view(
 
     totals = _count_alerts(all_alerts)
 
-    # Build platforms dict and nav tree dynamically from registry
+    # Per-schema entries that resolve to the same tree URL collapse into
+    # one row keyed by tree slug, with summed asset/alert counts.
     platforms_dict: dict[str, dict[str, Any]] = {}
+    tree_title_by_slug: dict[str, str] = {p["slug"]: p["name"] for p in (tree_products or [])}
     site_entries_with_assets: list[dict[str, Any]] = []
+
+    def _tree_platform_url(audit_key: str) -> str | None:
+        """Tree URL for the platform overview, derived from the first
+        segment of any host's tree URL (``vsphere/vc-x/.../h.html`` →
+        ``vsphere/vsphere.html``). None when no host has a tree URL."""
+        for host in hostnames_per_audit_key.get(audit_key, []):
+            url = tree_host_urls.get(host)
+            if url and "/" in url:
+                slug = url.split("/", 1)[0]
+                return f"{slug}/{slug}.html"
+        return None
 
     for entry in site_entries:
         p_name = entry.platform
         audit_key = entry.site_audit_key or p_name
         display = entry.display_name or p_name.capitalize()
-        fleet_link = entry.fleet_link or fleet_link_url(entry.report_dir, audit_key)
+        fleet_link = (
+            _tree_platform_url(audit_key)
+            or entry.fleet_link
+            or fleet_link_url(entry.report_dir, audit_key)
+        )
         asset_count = hosts_per_audit_key.get(audit_key, 0)
         audit_type_key = f"schema_{audit_key}"
         p_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == audit_type_key])
         p_status = aggregate_platform_status(all_alerts, audit_type_key)
 
-        platform_data: dict[str, Any] = {
-            "display_name": display,
-            "asset_count": asset_count,
-            "alert_count": p_counts["total"],
-            "status": {"raw": p_status},
-            "links": {"fleet_dashboard": fleet_link},
-        }
-        # Only include platforms that have generated reports
-        has_reports = generated_fleet_dirs is None or entry.report_dir in generated_fleet_dirs
-        if has_reports:
-            platforms_dict[audit_key] = platform_data
+        if to_int(asset_count) <= 0 and to_int(p_counts["total"]) <= 0:
+            continue
 
-        if to_int(asset_count) > 0 and has_reports:
-            site_entries_with_assets.append({"display_name": display, "fleet_link": fleet_link})
+        group_key = audit_key
+        merged_display = display
+        if fleet_link and "/" in fleet_link:
+            slug = fleet_link.split("/", 1)[0]
+            if slug in tree_title_by_slug:
+                group_key = slug
+                merged_display = tree_title_by_slug[slug]
+
+        existing = platforms_dict.get(group_key)
+        if existing is None:
+            platforms_dict[group_key] = {
+                "display_name": merged_display,
+                "asset_count": asset_count,
+                "alert_count": p_counts["total"],
+                "status": {"raw": p_status},
+                "links": {"fleet_dashboard": fleet_link},
+            }
+        else:
+            existing["asset_count"] = to_int(existing.get("asset_count", 0)) + asset_count
+            existing["alert_count"] = to_int(existing.get("alert_count", 0)) + p_counts["total"]
+            # Worst status wins for the merged row.
+            existing["status"]["raw"] = _merge_status(existing["status"]["raw"], p_status)
+            existing["display_name"] = merged_display
+
+        if to_int(asset_count) > 0:
+            # Dedupe by fleet_link so the Select Product dropdown shows
+            # one entry per tree.
+            if not any(e["fleet_link"] == fleet_link for e in site_entries_with_assets):
+                site_entries_with_assets.append({"display_name": merged_display, "fleet_link": fleet_link})
 
     # Build nav using NavBuilder
     from .nav_builder import NavBuilder

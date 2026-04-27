@@ -15,6 +15,12 @@
     {% set stig_fleet_totals = stig_fleet_meta.get('totals', {}) %}
     {% set stig_by_platform = stig_fleet_meta.get('by_platform', {}) %}
     {% set stig_top_findings = stig_fleet.get('findings_index', {}).get('top_findings', []) %}
+    {# Hide the STIG section entirely on collect-only runs (no audit yet).
+       ``stig_fleet_meta`` is always truthy because the FleetAccumulator is
+       pre-initialized with empty per-platform buckets, so we gate off real
+       data instead. #}
+    {% set _has_stig_data = (stig_fleet_totals.get('hosts', 0) | int > 0)
+                            or (stig_fleet_rows | length > 0) %}
     {% set alert_queue = site.get('alerts', []) %}
     {% set alert_groups = site.get('alert_groups', []) %}
     {% set infra = site.get('infra', {}) %}
@@ -42,10 +48,10 @@
 
     <div class="toc">
         <div class="toc-left">
-            {% if alert_groups %}<a href="#alerts">Active Alerts</a>{% endif %}
+            {% if alert_groups %}<a href="#alerts">NCS Alerts</a>{% endif %}
             <a href="#platforms">Inventory by Product</a>
             <a href="#inventory">Inventory Summary</a>
-            {% if stig_fleet_meta %}<a href="#stig">STIG Compliance</a>{% endif %}
+            {% if _has_stig_data %}<a href="#stig">STIG Compliance</a>{% endif %}
         </div>
     </div>
 
@@ -53,8 +59,8 @@
     {% if alert_groups %}
     <div class="widget widget-alert" id="alerts">
         <div class="widget-titlebar">
-            <span class="widget-title">Active Alerts &mdash; {{ alert_queue | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
-            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse Active Alerts"></button>
+            <span class="widget-title">NCS Alerts &mdash; {{ alert_queue | length }}{% if crit_count > 0 %} ({{ crit_count }} CRITICAL{% if warn_count > 0 %}, {{ warn_count }} WARNING{% endif %}){% endif %}</span>
+            <button class="widget-toggle" aria-expanded="true" aria-label="Collapse NCS Alerts"></button>
         </div>
         <div class="widget-body widget-table-view">
         <table>
@@ -172,7 +178,7 @@
     </div>
 
     {# --- STIG Compliance widget --- #}
-    {% if stig_fleet_meta %}
+    {% if _has_stig_data %}
     <div class="widget" id="stig">
         <div class="widget-titlebar">
             <span class="widget-title">
@@ -206,8 +212,14 @@
                     </div>
                 </div>
 
-                {# Subwidget: Platform Breakdown #}
-                {% if stig_by_platform %}
+                {# Subwidget: Platform Breakdown — only platforms with audited hosts #}
+                {% set _stig_platform_rows = [] %}
+                {% for _pname, _pdata in stig_by_platform.items() %}
+                {% if _pdata.get('hosts', 0) > 0 or _pdata.get('open', 0) > 0 %}
+                {% set _ = _stig_platform_rows.append((_pname, _pdata)) %}
+                {% endif %}
+                {% endfor %}
+                {% if _stig_platform_rows %}
                 <div class="widget">
                     <div class="widget-titlebar">
                         <span class="widget-title">Platform Open Findings</span>
@@ -218,7 +230,7 @@
                                 <tr><th>Platform</th><th class="th-hosts">Hosts</th><th class="th-open">Open</th></tr>
                             </thead>
                             <tbody>
-                                {% for platform_name, pdata in stig_by_platform.items() %}
+                                {% for platform_name, pdata in _stig_platform_rows %}
                                 <tr>
                                     <td class="platform-name"><strong>{{ platform_name }}</strong></td>
                                     <td>{{ pdata.get('hosts', 0) }}</td>

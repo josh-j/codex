@@ -592,6 +592,9 @@ def _compute_fleet_row(
 def _apply_fleet_delta(acc: FleetAccumulator, delta: FleetRowDelta) -> None:
     """Merge a FleetRowDelta into the accumulator."""
     p_name = delta.platform if delta.platform in acc.by_platform else "unknown"
+    if p_name not in acc.by_platform:
+        acc.by_platform[p_name] = {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0}
+        acc.platform_hosts[p_name] = set()
 
     acc.totals["findings_open"] += delta.open_count
     acc.totals["critical"] += delta.critical
@@ -676,7 +679,7 @@ def build_stig_fleet_view(
     nav_builder: NavBuilder | None = None,
 ) -> dict[str, Any]:
     reg = registry or default_registry()
-    _init_keys = {*reg.all_platform_names(), "unknown"}
+    _init_keys = set(reg.all_platform_names())
     acc = FleetAccumulator(
         by_platform={k: {"hosts": 0, "open": 0, "critical": 0, "warning": 0, "info": 0} for k in _init_keys},
         platform_hosts={k: set() for k in _init_keys},

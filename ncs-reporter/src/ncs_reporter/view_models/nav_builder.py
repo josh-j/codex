@@ -471,8 +471,8 @@ class NavBuilder:
         if tree_fleets:
             crumbs.append({
                 "type": "dropdown",
-                "text": "Select Fleet",
-                "group_label": "Fleets",
+                "text": "Select Product",
+                "group_label": "Products",
                 "scrollable": False,
                 "items": self._fleet_dropdown_items(tree_fleets, ""),
             })

@@ -177,9 +177,18 @@ def build_vsphere_tree(
             data_source=_static_source(vc_bundle),
         )
 
-        clusters = vc_data.get("clusters") or {}
-        if isinstance(clusters, dict):
-            _attach_datacenters_and_esxi(vc_node, clusters, vc_data, esxi_bundles, vm_bundles, vc_host)
+        clusters_raw = vc_data.get("clusters")
+        if isinstance(clusters_raw, list):
+            clusters = {
+                str(c["name"]): c
+                for c in clusters_raw
+                if isinstance(c, dict) and c.get("name")
+            }
+        elif isinstance(clusters_raw, dict):
+            clusters = clusters_raw
+        else:
+            clusters = {}
+        _attach_datacenters_and_esxi(vc_node, clusters, vc_data, esxi_bundles, vm_bundles, vc_host)
 
         vcenter_summaries.append({
             "title": vc_host,
@@ -197,8 +206,63 @@ def build_vsphere_tree(
         len(_as_list((vm_bundles.get(host) or {}).get("virtual_machines")))
         for host in vcenter_bundles
     )
+
+    # Flat per-tier rows so the vsphere root page can render dedicated
+    # "Datacenters", "ESXi Hosts", "Virtual Machines" tables alongside
+    # the vCenter Appliances widget — operators landing on vsphere.html
+    # want a one-shot inventory list without drilling down.
+    datacenters_flat: list[dict[str, Any]] = []
+    esxi_hosts_flat: list[dict[str, Any]] = []
+    virtual_machines_flat: list[dict[str, Any]] = []
+    for vc_node in root.children:
+        vc_data = vc_node.data_source({}).get("raw_vcsa", {}).get("data", {}) if vc_node.data_source else {}
+        vc_label = vc_node.title or vc_node.slug
+        for dc_node in vc_node.children:
+            dc_data = dc_node.data_source({}) if dc_node.data_source else {}
+            datacenters_flat.append({
+                "name": dc_node.title or dc_node.slug,
+                "vcenter": vc_label,
+                "report_url": f"{vc_node.slug}/{dc_node.slug}/{dc_node.slug}.html",
+                "esxi_host_count": len(dc_node.children),
+                "cluster_count": len((dc_data.get("clusters") or {})),
+                # Internal reference resolved by render_tree after the
+                # tree-state pass computes per-node alert rollups; the
+                # value gets replaced with an ``ncs_alerts`` dict.
+                "_node_ref": id(dc_node),
+            })
+            for esxi_node in dc_node.children:
+                esxi_data = esxi_node.data_source({}).get("raw_esxi", {}).get("data", {}) if esxi_node.data_source else {}
+                esxi_hosts_flat.append({
+                    "name": esxi_node.title or esxi_node.slug,
+                    "vcenter": vc_label,
+                    "datacenter": dc_node.title or dc_node.slug,
+                    "cluster": esxi_data.get("cluster") or "—",
+                    "report_url": f"{vc_node.slug}/{dc_node.slug}/{esxi_node.slug}/{esxi_node.slug}.html",
+                    "version": esxi_data.get("version", ""),
+                    "overall_status": esxi_data.get("overall_status", "unknown"),
+                    "_node_ref": id(esxi_node),
+                })
+                for vm in _as_list(esxi_data.get("virtual_machines")):
+                    if isinstance(vm, dict):
+                        virtual_machines_flat.append({
+                            "name": vm.get("guest_name") or vm.get("name") or "",
+                            "vcenter": vc_label,
+                            "datacenter": dc_node.title or dc_node.slug,
+                            "cluster": esxi_data.get("cluster") or "—",
+                            "esxi_host": esxi_node.title or esxi_node.slug,
+                            "esxi_host_url": (
+                                f"{vc_node.slug}/{dc_node.slug}/{esxi_node.slug}/{esxi_node.slug}.html"
+                            ),
+                            "power_state": vm.get("power_state", ""),
+                            "guest_os": vm.get("guest_fullname", ""),
+                            "ip_address": vm.get("ip_address", ""),
+                        })
+
     root.data_source = _static_source({
         "vcenters": vcenter_summaries,
+        "datacenters": datacenters_flat,
+        "esxi_hosts": esxi_hosts_flat,
+        "virtual_machines": virtual_machines_flat,
         "datacenter_count": total_datacenters,
         "esxi_host_count": total_esxi,
         "vm_count": total_vms,
@@ -260,7 +324,10 @@ def _attach_datacenters_and_esxi(
     for vm in all_vms:
         if not isinstance(vm, dict):
             continue
-        vms_by_host.setdefault(str(vm.get("esxi_host", "")).strip(), []).append(vm)
+        # The collector emits ``esxi_hostname`` (community.vmware naming);
+        # accept either spelling for forward-compatibility.
+        host_key = str(vm.get("esxi_hostname") or vm.get("esxi_host") or "").strip()
+        vms_by_host.setdefault(host_key, []).append(vm)
 
     # Union of DCs from clusters_by_dc and esxi_by_dc so a DC with hosts
     # but no clusters still gets a node.

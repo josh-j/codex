@@ -27,17 +27,70 @@
         _vcenter_datacenters: "{{ _raw_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
       changed_when: false
 
-    - name: Inventory | Query Workload (VMs)
+    # Tag enrichment depends on the vSphere Automation SDK
+    # (vmware-vapi-runtime + vmware-vcenter-* packages). On controllers
+    # without the SDK, ``show_tag: true`` makes vmware_vm_info raise an
+    # ImportError; with ``failed_when: false`` that surfaces silently as
+    # an empty ``virtual_machines: []``. Try with tags first; on failure,
+    # retry without tags so the rest of the bundle (VMs, attributes) is
+    # still collected. Tag-driven alerts (e.g. ``vms_no_backup_tags``)
+    # naturally degrade — they fire on missing tags, so an absent tag
+    # field skips them rather than misreporting.
+    # Tag enrichment depends on the vSphere Automation SDK
+    # (vmware-vapi-runtime + vmware-vcenter-* packages). On controllers
+    # without the SDK, ``show_tag: true`` makes vmware_vm_info raise an
+    # ImportError. We use ``ignore_errors`` (not ``failed_when: false``)
+    # so ``.failed`` reflects the real outcome and the fallback fires.
+    # Tag-driven alerts (e.g. ``vms_no_backup_tags``) naturally degrade —
+    # they fire on missing tags, so an absent tag field skips them
+    # rather than misreporting.
+    - name: Inventory | Query Workload (VMs) with tags
       community.vmware.vmware_vm_info:
         vm_type: vm
         show_attribute: true
         show_tag: true
-      register: _raw_vms
+      register: _raw_vms_tagged
+      delegate_to: localhost
+      no_log: true
+      ignore_errors: true
+      changed_when: false
+      when: vm_collect_workload | default(true) | bool
+
+    - name: Inventory | Query Workload (VMs) without tags (SDK fallback)
+      community.vmware.vmware_vm_info:
+        vm_type: vm
+        show_attribute: true
+        show_tag: false
+      register: _raw_vms_untagged
       delegate_to: localhost
       no_log: true
       failed_when: false
       changed_when: false
+      when:
+        - vm_collect_workload | default(true) | bool
+        - _raw_vms_tagged.failed | default(false) | bool
+
+    - name: Inventory | Select VM workload result
+      ansible.builtin.set_fact:
+        _raw_vms: >-
+          {{
+            _raw_vms_untagged
+            if (_raw_vms_tagged.failed | default(false) | bool)
+            else _raw_vms_tagged
+          }}
+      changed_when: false
+      no_log: true
       when: vm_collect_workload | default(true) | bool
+
+    - name: Inventory | Warn when VM tags are unavailable
+      ansible.builtin.debug:
+        msg: >-
+          vSphere Automation SDK not available on the controller; VM tag
+          enrichment skipped. Tag-based alerts (e.g. vms_no_backup_tags)
+          will not fire. Install vmware-vapi-runtime to enable.
+      when:
+        - vm_collect_workload | default(true) | bool
+        - _raw_vms_tagged.failed | default(false) | bool
 
     - name: Inventory | Query Snapshots
       community.vmware.vmware_all_snapshots_info:

@@ -167,16 +167,75 @@
 
     # --- Appliance ---
 
-    - name: Appliance | Gather system data
-      vmware.vmware.appliance_info:
-      register: _raw_appliance_health
+    # Version/build come from pyvmomi (community.vmware.vmware_about_info),
+    # which honors ``validate_certs: false`` for self-signed lab vCenters.
+    - name: Appliance | Gather about-info (version/build)
+      community.vmware.vmware_about_info:
+      register: _raw_appliance_about
       delegate_to: localhost
       no_log: true
       failed_when: false
-      retries: 2
-      delay: 5
-      until: _raw_appliance_health is succeeded
       changed_when: false
+      when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+
+    # Appliance health + uptime come from the vCenter REST API directly,
+    # not via ``vmware.vmware.appliance_info``: that module needs the
+    # vSphere Automation SDK and a trusted CA chain (validate_certs is
+    # not honored by the SDK's HTTP transport), so on lab vCenters with
+    # self-signed certs it fails silently and the appliance overview
+    # widget shows all-gray. The REST endpoints work with basic auth +
+    # ``validate_certs: false``.
+    - name: Appliance | REST session
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/session"
+        method: POST
+        url_username: "{{ vmware_username }}"
+        url_password: "{{ vmware_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        return_content: true
+        status_code: [200, 201]
+      register: _raw_vcsa_rest_session
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+
+    - name: Appliance | Gather REST appliance facts
+      ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/api/appliance/{{ item }}"
+        method: GET
+        headers:
+          vmware-api-session-id: "{{ _raw_vcsa_rest_session.json | default('') }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        return_content: true
+      loop:
+        - health/system
+        - health/load
+        - health/mem
+        - health/database-storage
+        - health/storage
+        - system/uptime
+      register: _raw_vcsa_rest_facts
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
+        - _raw_vcsa_rest_session.status | default(0) | int in [200, 201]
+
+    - name: Appliance | Index REST facts by endpoint
+      ansible.builtin.set_fact:
+        _vcsa_rest: >-
+          {{
+            (_raw_vcsa_rest_facts.results | default([]))
+            | selectattr('item', 'defined')
+            | items2dict(key_name='item', value_name='json')
+          }}
+      changed_when: false
+      no_log: true
       when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
 
     - name: Appliance | Get backup schedule
@@ -345,14 +404,24 @@
     - name: Assemble flat vCenter payload
       ansible.builtin.set_fact:
         vmware_raw_vcenter:
-          appliance_version: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.version | default('unknown') }}"
-          appliance_build: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.build_number | default('unknown') }}"
-          appliance_health_overall: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.overall | default('gray') }}"
-          appliance_health_cpu: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.cpu | default('gray') }}"
-          appliance_health_memory: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.memory | default('gray') }}"
-          appliance_health_database: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.database | default('gray') }}"
-          appliance_health_storage: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.health.storage | default('gray') }}"
-          appliance_uptime_seconds: "{{ ((_raw_appliance_health | default({})).appliance | default({})).summary.uptime | default(0) | float }}"
+          # Prefer pyvmomi about-info for version/build (works on
+          # self-signed lab vCenters); fall back to the SDK appliance
+          # health summary when pyvmomi data is missing.
+          appliance_version: "{{ ((_raw_appliance_about | default({})).about_info | default({})).version
+                                 | default(((_raw_appliance_health | default({})).appliance | default({})).summary.version | default('unknown')) }}"
+          appliance_build: "{{ ((_raw_appliance_about | default({})).about_info | default({})).build
+                                 | default(((_raw_appliance_health | default({})).appliance | default({})).summary.build_number | default('unknown')) }}"
+          # Health + uptime come from the REST API loop indexed by
+          # endpoint name (see ``Appliance | Index REST facts by endpoint``
+          # above). Each endpoint returns either a bare colour string
+          # (health/*) or a number/object (system/uptime). Defaults match
+          # the SDK fallback shape so reporter alerts behave the same.
+          appliance_health_overall: "{{ (_vcsa_rest | default({})).get('health/system') | default('gray') }}"
+          appliance_health_cpu: "{{ (_vcsa_rest | default({})).get('health/load') | default('gray') }}"
+          appliance_health_memory: "{{ (_vcsa_rest | default({})).get('health/mem') | default('gray') }}"
+          appliance_health_database: "{{ (_vcsa_rest | default({})).get('health/database-storage') | default('gray') }}"
+          appliance_health_storage: "{{ (_vcsa_rest | default({})).get('health/storage') | default('gray') }}"
+          appliance_uptime_seconds: "{{ (_vcsa_rest | default({})).get('system/uptime') | default(0) | float }}"
           ssh_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.ssh | default(false) | bool }}"
           shell_enabled: "{{ ((_raw_appliance_health | default({})).appliance | default({})).access.shell.enabled | default(false) | bool }}"
           ntp_mode: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.mode | default('unknown') }}"

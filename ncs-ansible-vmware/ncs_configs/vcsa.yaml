@@ -117,6 +117,7 @@ widgets:
 
   - type: table
     name: "Active vCenter Alarms"
+    when: alarm_count > 0
     rows: "{{ active_alarms }}"
     columns:
       - name: Alarm
@@ -130,26 +131,11 @@ widgets:
         value: "{{ time }}"
       - name: Description
         value: "{{ description }}"
-  - type: stat-cards
-    slug: inventory_kpis
-    name: "Infrastructure KPIs"
-    cards:
-      - name: Datacenters
-        value: "{{ datacenter_count }}"
-      - name: Clusters
-        value: "{{ cluster_count }}"
-      - name: ESXi Hosts
-        value: "{{ esxi_host_count }}"
-      - name: Datastores
-        value: "{{ datastore_count }}"
-      - name: DVSwitches
-        value: "{{ dvswitch_count }}"
-      - name: Resource Pools
-        value: "{{ resource_pool_count }}"
-      - name: Licenses
-        value: "{{ license_count }}"
-      - name: Alarms
-        value: "{{ alarm_count }}"
+  # The standalone "Infrastructure KPIs" stat-cards widget was retired —
+  # the inventory tier root (vSphere) shows the cross-vCenter footprint
+  # in its own Inventory widget, and per-vCenter details now live in the
+  # sectioned tables below + the auto-injected children section. Keeping
+  # both produced a redundant stat strip.
 
   - type: key-value
     name: "Appliance Overview"
@@ -177,8 +163,7 @@ widgets:
       - name: Uptime (days)
         value: "{{ appliance_uptime_days }}"
       - name: SSH Enabled
-        value: "{{ ssh_enabled }}"
-        as: status-badge
+        value: "{{ 'Yes' if ssh_enabled else 'No' }}"
       - name: NTP Mode
         value: "{{ ntp_mode }}"
       - name: Backup Schedules
@@ -231,13 +216,13 @@ widgets:
       - name: Name
         value: "{{ name }}"
       - name: CPU Reservation
-        value: "{{ runtime_cpu_reservation_used }}"
-      - name: CPU Limit
-        value: "{{ runtime_cpu_overall_usage }}"
-      - name: Memory Reservation
-        value: "{{ runtime_memory_reservation_used }}"
-      - name: Memory Limit
-        value: "{{ runtime_memory_overall_usage }}"
+        value: "{{ runtime_cpu_reservation_used }} MHz"
+      - name: CPU Usage
+        value: "{{ runtime_cpu_overall_usage }} MHz"
+      - name: Memory Reservation (GB)
+        value: "{{ '%.2f' | format(runtime_memory_reservation_used | int / 1073741824) }}"
+      - name: Memory Usage (GB)
+        value: "{{ '%.2f' | format(runtime_memory_overall_usage | int / 1073741824) }}"
   - type: table
     name: "Distributed Switches"
     when: dvswitch_count > 0
@@ -281,19 +266,6 @@ widgets:
         value: "{{ used }}"
       - name: Expiration
         value: "{{ expiration_date }}"
-  - type: table
-    name: "Extensions"
-    when: extension_count > 0
-    rows: "{{ extensions }}"
-    columns:
-      - name: Label
-        value: "{{ ext_label }}"
-      - name: Company
-        value: "{{ ext_company }}"
-      - name: Version
-        value: "{{ ext_version }}"
-      - name: Last Heartbeat
-        value: "{{ ext_last_heartbeat_time }}"
   - type: table
     name: "Content Libraries"
     when: content_library_count > 0

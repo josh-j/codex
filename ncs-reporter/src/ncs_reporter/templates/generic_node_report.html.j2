@@ -124,7 +124,7 @@
         <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
             <div class="widget-titlebar">
                 {% if widget.type == 'alert_panel' %}
-                <span class="widget-title">Active Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
+                <span class="widget-title">NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>
                 {% else %}
                 <span class="widget-title">{{ widget.name }}</span>
                 {% endif %}

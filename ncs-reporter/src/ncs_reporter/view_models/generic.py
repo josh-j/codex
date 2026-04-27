@@ -9,6 +9,7 @@ from ncs_reporter._report_context import ReportContext
 from ncs_reporter.models.report_schema import (
     AlertPanelWidget,
     GroupedTableWidget,
+    InventoryWidget,
     KeyValueWidget,
     MarkdownWidget,
     ProgressBarWidget,
@@ -91,9 +92,16 @@ def _render_table_cell(
                 cell_class = rule.css_class
                 break
 
-    if col.link_field and hosts_data:
+    if col.link_field:
         link_val = str(item.get(col.link_field) or "")
-        if link_val in hosts_data:
+        # Tree-layout pages emit ``link_field`` values that already contain
+        # a relative URL (e.g. ``vc-lab/dc-east/dc-east.html``). Use them
+        # verbatim — there's no host-to-platform lookup needed.
+        if link_val and ("/" in link_val or link_val.endswith(".html")):
+            link = link_val
+        elif hosts_data and link_val in hosts_data:
+            # Legacy host_report_url lookup for tables whose link_field
+            # holds a hostname.
             target_platform = hosts_data[link_val]
             if generated_fleet_dirs is not None and target_platform not in generated_fleet_dirs:
                 target_platform = ""
@@ -239,6 +247,63 @@ def _render_grouped_table(widget: GroupedTableWidget, fields: dict[str, Any], ct
     return _widget_base(widget, columns=[c.model_dump() for c in widget.columns], groups=groups)
 
 
+def _render_inventory(widget: InventoryWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render an InventoryWidget — optional stat-cards header + one-or-many
+    titled tables under one card.
+
+    Each section is a (name, columns, rows) triple. Sections whose
+    ``when`` clause evaluates falsy (or whose row list is empty) are
+    suppressed so a sparse inventory doesn't show empty sub-tables.
+    Stat cards are reused from the StatCardsWidget renderer so card
+    formatting / threshold colors stay identical to the legacy
+    ``stat_cards`` widget.
+    """
+    sections_rendered: list[dict[str, Any]] = []
+    for section in widget.sections:
+        if section.when and not evaluate_when(section.when, fields):
+            continue
+        rows = []
+        for item in _safe_rows(fields, section.rows_field):
+            if not isinstance(item, dict):
+                item = {"value": item}
+            rows.append(_render_row_cells(section.columns, item, ctx))
+        if not rows:
+            continue
+        sections_rendered.append({
+            "name": section.name,
+            "columns": [c.model_dump() for c in section.columns],
+            "rows": rows,
+            "row_count": len(rows),
+        })
+
+    cards_rendered: list[dict[str, Any]] = []
+    if widget.stat_cards:
+        # Reuse the stat-cards rendering path so threshold/format
+        # behavior matches the standalone widget.
+        import re as _re
+        field_specs = ctx.get("field_specs", {})
+        for card in widget.stat_cards:
+            resolved = _resolve_field_ref(card.value, fields)
+            display = _format_value(card.format, resolved) if card.format else str(resolved)
+            thresholds = card.thresholds
+            if thresholds is None:
+                var_match = _re.search(r"\{\{\s*(\w+)", str(card.value))
+                if var_match:
+                    spec = field_specs.get(var_match.group(1))
+                    if spec and hasattr(spec, "thresholds"):
+                        thresholds = spec.thresholds
+            resolved_color = card.color
+            if resolved_color == "auto" and thresholds is not None:
+                try:
+                    num_val = float(resolved)
+                except (ValueError, TypeError):
+                    num_val = 0.0
+                resolved_color = _resolve_threshold_color(num_val, thresholds)
+            cards_rendered.append({"name": card.name, "value": display, "color": resolved_color})
+
+    return _widget_base(widget, cards=cards_rendered, sections=sections_rendered)
+
+
 _WidgetHandler = Callable[[Any, dict[str, Any], dict[str, Any]], dict[str, Any]]
 
 # Dispatch dictionary mapping widget classes to their render handlers.
@@ -250,6 +315,7 @@ _WIDGET_DISPATCH: dict[type, _WidgetHandler] = {
     AlertPanelWidget: _render_alert_panel,
     StatCardsWidget: _render_stat_cards,
     GroupedTableWidget: _render_grouped_table,
+    InventoryWidget: _render_inventory,
 }
 
 

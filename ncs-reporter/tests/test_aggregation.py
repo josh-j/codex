@@ -1,10 +1,18 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 import yaml
 
-from ncs_reporter.aggregation import deep_merge, load_all_reports, read_report, write_output
+from ncs_reporter.aggregation import (
+    deep_merge,
+    load_all_reports,
+    normalize_host_bundle,
+    read_report,
+    write_output,
+)
+from ncs_reporter.schema_loader import discover_schemas
 
 
 class DeepMergeTests(unittest.TestCase):
@@ -227,6 +235,44 @@ class WriteOutputTests(unittest.TestCase):
             path = os.path.join(tmpdir, "a", "b", "c", "output.yaml")
             write_output({"test": True}, path)
             self.assertTrue(os.path.exists(path))
+
+
+class NormalizeHostBundleExtraDirsTests(unittest.TestCase):
+    """``normalize_host_bundle`` must honor ``extra_dirs`` so the ``all``
+    pipeline can attach ``schema_<name>`` keys when schemas come from
+    ``--config-dir`` rather than ``$NCS_REPORTER_CONFIG_DIR`` / cwd. Without
+    this, the site dashboard's per-platform widgets stay empty even when
+    raw bundles are present."""
+
+    def setUp(self) -> None:
+        # Each test installs a custom schema dir that's NOT in the env-var
+        # path, so we can prove the extra_dirs param is what made detection
+        # succeed. lru_cache must be cleared because the env-var path was
+        # already primed by conftest.
+        discover_schemas.cache_clear()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.addCleanup(discover_schemas.cache_clear)
+        schema_path = Path(self._tmp.name) / "myproduct.yaml"
+        schema_path.write_text(
+            "config:\n"
+            "  display_name: My Product\n"
+            "  platform: myproduct\n"
+        )
+
+    def test_extra_dirs_attaches_schema_key(self) -> None:
+        bundle = {"raw_myproduct": {"data": {"hostname": "h-01"}}}
+
+        # Without extra_dirs the schema isn't visible — env var path doesn't
+        # know about /tmp/.../myproduct.yaml — and no schema_* key lands.
+        plain = normalize_host_bundle("h-01", bundle)
+        self.assertNotIn("schema_myproduct", plain)
+
+        # Threading the same dir as extra_dirs makes detection succeed.
+        with_extras = normalize_host_bundle(
+            "h-01", bundle, extra_dirs=(self._tmp.name,)
+        )
+        self.assertIn("schema_myproduct", with_extras)
 
 
 if __name__ == "__main__":

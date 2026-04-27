@@ -111,10 +111,14 @@ class TestBuildSiteDashboardView:
         assert view["security"]["stig_fleet"]["fleet"]["totals"]["hosts"] >= 1
 
     def test_no_groups_counts_from_actual_hosts(self):
+        # Only platforms with actual host bundles (or active alerts) appear
+        # in ``platforms_dict``. Tier-root and unrelated entries with zero
+        # assets are filtered out so ``Inventory by Product`` reflects what
+        # was actually collected, not the registry's full schema list.
         hosts = {"hosts": {"h1": _linux_bundle()}}
         view = build_site_dashboard_view(hosts)
         assert view["platforms"]["ubuntu"]["asset_count"] == 1
-        assert view["platforms"]["vcsa"]["asset_count"] == 0
+        assert "vcsa" not in view["platforms"]
 
     def test_alert_detail_and_affected_items_passed_through(self):
         alerts = [

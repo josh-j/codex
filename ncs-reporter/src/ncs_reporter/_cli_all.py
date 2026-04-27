@@ -7,6 +7,7 @@ import logging
 from collections import Counter as _Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -240,7 +241,10 @@ def _aggregate_platforms(
         # Load data and write state once per input_dir
         if p_input not in _loaded_platform_cache:
             click.echo(f"--- Processing Platform: {p_input} ---")
-            p_data = load_all_reports(str(p_dir), host_normalizer=normalize_host_bundle)
+            p_data = load_all_reports(
+                str(p_dir),
+                host_normalizer=partial(normalize_host_bundle, extra_dirs=extra_dirs),
+            )
             if not p_data or not p_data["hosts"]:
                 click.echo(f"No data for {p_input}, skipping.")
                 _loaded_platform_cache[p_input] = None
@@ -275,9 +279,11 @@ def _aggregate_platforms(
                 continue
 
         if p.get("render", True):
+            # render-task entries feed ``generated_fleet_dirs`` for downstream
+            # wiring even though the legacy platform/<report_dir>/ directory
+            # is no longer written (tree renderer owns all per-host output).
             from .models.platforms_config import PLATFORM_DIR_PREFIX as _PDP
             output_dir = r_root / _PDP / p["report_dir"]
-            output_dir.mkdir(parents=True, exist_ok=True)
             task: dict[str, Any] = {
                 "platform": p["platform"],
                 "hosts_data": p_data["hosts"],
@@ -344,8 +350,10 @@ def _render_site_and_search(
     common_vars: dict[str, Any],
     global_inventory_index: dict[str, str],
     platforms_by_report_dir: dict[str, dict[str, Any]],
+    runtime_registry: PlatformRegistry,
     generated_fleet_dirs: set[str] | None = None,
     tree_host_urls: dict[str, str] | None = None,
+    tree_products: list[dict[str, str]] | None = None,
 ) -> None:
     """Render the site dashboard and generate the search index."""
     # Site dashboard
@@ -357,7 +365,10 @@ def _render_site_and_search(
         site_view = build_site_dashboard_view(
             global_data,
             ctx=report_context(common_vars),
+            registry=runtime_registry,
             generated_fleet_dirs=generated_fleet_dirs,
+            tree_host_urls=tree_host_urls,
+            tree_products=tree_products,
         )
         env = get_jinja_env()
         content = env.get_template(_TEMPLATE_SITE).render(site_dashboard_view=site_view, **common_vars)
@@ -500,7 +511,7 @@ def all_cmd(
     # from those tree bundles so the full site dashboard renders instead of
     # a bare landing-page fallback (ncs-console fetches site.html via SCP
     # and expects the dashboard shape).
-    _merge_tree_bundles_into_global(b_root, global_data, global_inventory_index)
+    _merge_tree_bundles_into_global(b_root, global_data, global_inventory_index, extra_dirs=extra_dirs)
     # Step 1b′: Merge STIG artifacts from report_dir paths.
     # ncs_collector writes STIG results to platform/{report_dir}/ which may
     # differ from the input_dir used by platform aggregation above.
@@ -515,7 +526,7 @@ def all_cmd(
         # hosts already processed by _aggregate_platforms).
         for hostname in stig_artifacts:
             global_data["hosts"][hostname] = normalize_host_bundle(
-                hostname, global_data["hosts"][hostname]
+                hostname, global_data["hosts"][hostname], extra_dirs=extra_dirs
             )
         global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
 
@@ -527,7 +538,7 @@ def all_cmd(
         # search_index.js are written from the tree output so downstream
         # verifiers see the same landing-page + search contract either way.
         try:
-            tree_roots, _tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
+            tree_roots, _tree_host_urls, _tree_products = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Hierarchical tree render failed: %s", exc)
             click.echo(f"--- Tree render failed: {exc} ---", err=True)
@@ -562,7 +573,9 @@ def all_cmd(
         click.echo(f"  Built STIG views for {len(stig_host_views)} host(s).")
 
     # Step 2: Hierarchical tree render — the one and only page layer.
-    _tree_roots, tree_host_urls = _render_inventory_trees(r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root)
+    _tree_roots, tree_host_urls, tree_products = _render_inventory_trees(
+        r_root, all_platform_data, extra_dirs, common_vars, bundle_root=b_root,
+    )
 
     # Step 3: Site dashboard + search index. Tree host URLs are the source
     # of truth for search-index entries now that legacy platform/<p>/<host>/
@@ -570,8 +583,10 @@ def all_cmd(
     _render_site_and_search(
         r_root, global_data, global_changed,
         common_vars, global_inventory_index, platforms_by_report_dir,
+        runtime_registry,
         generated_fleet_dirs,
         tree_host_urls=tree_host_urls,
+        tree_products=tree_products,
     )
 
     # Step 4 & 5: CKLB export + STIG fleet rendering (tree-layout still feeds these)
@@ -589,7 +604,7 @@ def _render_inventory_trees(
     common_vars: dict[str, Any],
     *,
     bundle_root: Path | None = None,
-) -> tuple[list[tuple[str, str, Path, list[str]]], dict[str, str]]:
+) -> tuple[list[tuple[str, str, Path, list[str]]], dict[str, str], list[dict[str, str]]]:
     """Render the hierarchical inventory trees (vSphere + flat products).
 
     Reads raw ``raw.yaml`` bundles from ``bundle_root`` (defaults to
@@ -617,8 +632,12 @@ def _render_inventory_trees(
     host_urls: dict[str, str] = {}
 
     def _record_host_urls(root_node: Any) -> None:
+        # Include ``vcenter`` so the site dashboard can resolve a vCenter
+        # appliance (the "host" of the vcsa/vm schemas) to its tree page;
+        # without it, vcsa-maas-lab links fall back to the legacy
+        # ``platform/<report_dir>/...`` shape and 404.
         for node in root_node.walk():
-            if node.tier not in ("host", "esxi_host"):
+            if node.tier not in ("host", "esxi_host", "vcenter"):
                 continue
             rel = node.node_path.resolve_under(r_root).relative_to(r_root) / f"{node.slug}.html"
             host_urls.setdefault(str(node.title or node.slug), rel.as_posix())
@@ -632,17 +651,17 @@ def _render_inventory_trees(
     esxi_bundles.update(tree_esxi)
     vm_bundles.update(tree_vms)
 
+    # Two passes: assemble every tree root first (so ``tree_products``
+    # is complete and the breadcrumb's "Select Product" dropdown can
+    # cross-link them), then render each tree.
+    tree_specs: list[tuple[str, str, Any, list[str]]] = []
     if vcenter_bundles:
         vsphere_root = build_vsphere_tree(
             vcenter_bundles=vcenter_bundles,
             esxi_bundles=esxi_bundles,
             vm_bundles=vm_bundles,
         )
-        written = render_tree(vsphere_root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
-        click.echo(f"--- Inventory tree: vsphere ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
-        if written:
-            rendered.append(("vsphere", "vSphere", written[0], sorted(esxi_bundles) + sorted(vm_bundles)))
-            _record_host_urls(vsphere_root)
+        tree_specs.append(("vsphere", "vSphere", vsphere_root, sorted(esxi_bundles) + sorted(vm_bundles)))
 
     for product_slug, product_title, raw_key, schema_name in (
         ("ubuntu", "Ubuntu", "raw_ubuntu", "ubuntu"),
@@ -652,23 +671,32 @@ def _render_inventory_trees(
     ):
         host_bundles = _collect_host_bundles(all_platform_data, raw_key)
         host_bundles.update(_collect_flat_inventory_from_tree(b_root, product_slug))
-        if not host_bundles:
+        if not host_bundles or schema_name not in schemas:
             continue
-        if schema_name not in schemas:
-            continue
-        root = build_flat_inventory_tree(
+        flat_root = build_flat_inventory_tree(
             inventory_slug=product_slug,
             title=product_title,
             schema_name=schema_name,
             host_bundles=host_bundles,
             host_schema_name=schema_name,
         )
-        written = render_tree(root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx)
-        click.echo(f"--- Inventory tree: {product_slug} ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
+        tree_specs.append((product_slug, product_title, flat_root, sorted(host_bundles)))
+
+    tree_products = [
+        {"slug": slug, "name": title, "report": f"{slug}/{slug}.html"}
+        for slug, title, _, _ in tree_specs
+    ]
+
+    for slug, title, tree_root, host_ids in tree_specs:
+        written = render_tree(
+            tree_root, schemas_by_name=schemas, env=env, output_root=r_root, ctx=ctx,
+            tree_products=tree_products,
+        )
+        click.echo(f"--- Inventory tree: {slug} ({len(written)} node{'s' if len(written) != 1 else ''}) ---")
         if written:
-            rendered.append((product_slug, product_title, written[0], sorted(host_bundles)))
-            _record_host_urls(root)
-    return rendered, host_urls
+            rendered.append((slug, title, written[0], host_ids))
+            _record_host_urls(tree_root)
+    return rendered, host_urls, tree_products
 
 
 def _write_tree_only_site_and_search(
@@ -859,6 +887,8 @@ def _merge_tree_bundles_into_global(
     reports_root: Path,
     global_data: dict[str, Any],
     global_inventory_index: dict[str, str],
+    *,
+    extra_dirs: tuple[str, ...] = (),
 ) -> None:
     """Hydrate ``global_data['hosts']`` with tree-layout raw bundles.
 
@@ -892,6 +922,8 @@ def _merge_tree_bundles_into_global(
     if not touched:
         return
     for hostname in touched:
-        global_data["hosts"][hostname] = normalize_host_bundle(hostname, global_data["hosts"][hostname])
+        global_data["hosts"][hostname] = normalize_host_bundle(
+            hostname, global_data["hosts"][hostname], extra_dirs=extra_dirs
+        )
     global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
     click.echo(f"  Hydrated {len(touched)} host(s) from tree-layout bundles.")

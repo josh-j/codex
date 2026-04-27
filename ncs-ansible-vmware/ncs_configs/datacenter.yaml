@@ -33,34 +33,16 @@ vars:
 alerts: []
 
 widgets:
-  - type: stat-cards
-    slug: datacenter_kpis
-    name: "Datacenter Footprint"
-    cards:
-      - name: Clusters
-        value: "{{ cluster_count }}"
-      - name: ESXi Hosts
-        value: "{{ esxi_host_count }}"
-      - name: Datastores
-        value: "{{ datastores | length }}"
-      - name: Distributed Switches
-        value: "{{ dvswitches | length }}"
+  # The "Datacenter Footprint" stat-cards widget was retired — counts
+  # for clusters, ESXi hosts, datastores, and distributed switches are
+  # already in the auto-injected children section + the per-tier
+  # tables below, so the standalone strip duplicated info.
 
-  - type: table
-    name: "ESXi Hosts"
-    slug: dc_esxi_hosts
-    when: esxi_host_count > 0
-    rows: "{{ esxi_hosts }}"
-    columns:
-      - name: Host
-        value: "{{ title }}"
-        link_field: report_url
-      - name: Cluster
-        value: "{{ cluster }}"
-      - name: Health
-        value: "{{ health }}"
-        as: status-badge
-
+  # The "ESXi Hosts" listing is provided by the tree renderer's
+  # auto-generated children widget (Name/Tier/Sub-nodes/Critical/Warning),
+  # which carries the descendant alert rollup. Defining a second table
+  # here duplicated rows without adding meaningful info (the per-child
+  # health badge is captured by the rollup columns).
   - type: table
     name: "Compute — Clusters"
     when: cluster_count > 0

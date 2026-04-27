@@ -86,12 +86,42 @@ class TestBuildTreeNodeView:
 
     def test_breadcrumbs_walk_ancestors(self, schemas, synthetic_vsphere_tree):
         dc = _dc_node(synthetic_vsphere_tree)
-        view = build_tree_node_view(dc, schema=schemas["datacenter"])
-        crumbs = [c["text"] for c in view["nav"]["breadcrumbs"]]
-        # Site → vSphere → vc-prod-01 → DC-East
-        assert crumbs[0] == "Site"
-        assert crumbs[1] == "vSphere"
-        assert crumbs[-1] == "DC-East"
+        # Provide tree_products so the Select Product dropdown is included
+        # — without it, the tree root is omitted from the crumb trail
+        # (since it's normally represented by the dropdown).
+        view = build_tree_node_view(
+            dc, schema=schemas["datacenter"],
+            tree_products=[{"slug": "vsphere", "name": "vSphere", "report": "vsphere/vsphere.html"}],
+        )
+        # Typed crumbs (link/label/dropdown/search). Pull the readable
+        # text trail; the search bar at the end has no text.
+        labeled = [c["text"] for c in view["nav"]["breadcrumbs"] if "text" in c]
+        assert labeled[0] == "Site Dashboard"
+        # Second crumb is the dropdown trigger labeled with the active product.
+        assert labeled[1] == "vSphere"
+        # vc-prod-01 (the vCenter ancestor) and DC-East (the leaf) follow.
+        assert "vc-prod-01" in labeled
+        assert "DC-East" in labeled
+        # When the current node has children, a "Select <child-tier>"
+        # dropdown follows the leaf so operators can drill in from the
+        # breadcrumb. DC-East has esxi_host children in this fixture.
+        assert any("Select" in t for t in labeled)
+        assert view["nav"]["breadcrumbs"][-1]["type"] == "search"
+
+    def test_breadcrumbs_omit_tree_root_link_when_dropdown_covers_it(
+        self, schemas, synthetic_vsphere_tree,
+    ):
+        """When ``tree_products`` is given the active product is shown via
+        the Select Product dropdown; we don't also add it as a separate
+        ancestor link (that would be redundant)."""
+        dc = _dc_node(synthetic_vsphere_tree)
+        view = build_tree_node_view(
+            dc, schema=schemas["datacenter"],
+            tree_products=[{"slug": "vsphere", "name": "vSphere", "report": "vsphere/vsphere.html"}],
+        )
+        # No crumb of type 'link' should have text 'vSphere' — it's the dropdown.
+        link_texts = [c["text"] for c in view["nav"]["breadcrumbs"] if c.get("type") == "link"]
+        assert "vSphere" not in link_texts
 
     def test_descendant_rollup_surfaces_child_alert_counts(self, schemas, synthetic_vsphere_tree, esxi_schema):
         """Root's children block carries each child's descendant alert counts."""
@@ -101,8 +131,12 @@ class TestBuildTreeNodeView:
         state = _compute_tree_state(synthetic_vsphere_tree, all_schemas)
 
         root_entry = state[id(synthetic_vsphere_tree)]
-        assert set(root_entry) == {"fields", "alerts", "rollup"}
+        # ``descendant_alerts`` was added so parent pages can surface
+        # alerts fired on their descendants in their own NCS Alerts
+        # widget (with origin labels).
+        assert set(root_entry) == {"fields", "alerts", "rollup", "descendant_alerts"}
         assert set(root_entry["rollup"].keys()) == {"critical", "warning", "info"}
+        assert isinstance(root_entry["descendant_alerts"], list)
         for child in synthetic_vsphere_tree.children:
             assert id(child) in state
 
@@ -133,7 +167,9 @@ class TestRenderTree:
         assert vsphere_html.exists()
         content = vsphere_html.read_text()
         assert "vSphere" in content
-        assert "breadcrumb-current" in content
+        # Breadcrumb now uses the shared macro — class is .breadcrumb,
+        # active leaf is rendered inside <strong>.
+        assert 'class="breadcrumb"' in content
 
         dc_html = tmp_path / "vsphere" / "vc-prod-01" / "dc-east" / "dc-east.html"
         assert dc_html.exists()
@@ -174,13 +210,19 @@ class TestRelativeLinks:
 
     def test_ancestor_link_ascends(self, schemas, synthetic_vsphere_tree):
         dc = _dc_node(synthetic_vsphere_tree)
-        view = build_tree_node_view(dc, schema=schemas["datacenter"])
-        # Breadcrumbs: [Site, vSphere, vc-prod-01, DC-East].
-        # vSphere ascends two levels inside the vsphere subtree (dc → vc → vsphere).
-        vsphere_crumb = view["nav"]["breadcrumbs"][1]
-        assert vsphere_crumb["href"].endswith("vsphere.html")
-        assert vsphere_crumb["href"].count("..") == 2
+        # With tree_products provided, the tree-root link is exposed via
+        # the Select Product dropdown's ``href`` (clicking the trigger
+        # navigates to the product overview); ancestors below the root
+        # appear as separate link crumbs.
+        view = build_tree_node_view(
+            dc, schema=schemas["datacenter"],
+            tree_products=[{"slug": "vsphere", "name": "vSphere", "report": "vsphere/vsphere.html"}],
+        )
+        # The dropdown crumb's href points at the tree root from this depth.
+        dropdown_crumb = next(c for c in view["nav"]["breadcrumbs"] if c.get("type") == "dropdown")
+        assert dropdown_crumb["href"].endswith("vsphere/vsphere.html")
+        # DC dir is 3 segments deep (vsphere/vc/dc), so back_to_root is "../../../".
+        assert dropdown_crumb["href"] == "../../../vsphere/vsphere.html"
 
         site_crumb = view["nav"]["breadcrumbs"][0]
-        # DC dir is 3 segments deep (vsphere/vc/dc); site.html is at the report root.
         assert site_crumb["href"] == "../../../site.html"

@@ -373,6 +373,15 @@ tr.row-interactive:hover td {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
+/* Standalone variant for pages without a TOC widget directly below the
+   header (tree pages). Treat the header as a full widget card: rounded
+   on all four corners and matching bottom-margin so it sits in the same
+   spacing rhythm as the widgets that follow. */
+.page-header-standalone {
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-8);
+}
+
 .page-header h1 {
   margin: 0;
   font-size: var(--text-xl);
@@ -497,7 +506,7 @@ tr.row-interactive:hover td {
 }
 
 .breadcrumb {
-  margin: 0 0 var(--space-12);
+  margin: 0 0 var(--space-8);
   padding: 7px 11px;
   font-size: var(--text-sm);
   display: flex;
@@ -1156,10 +1165,119 @@ details[open] > .details-box {
   gap: var(--space-8);
 }
 
+/* Inline ? trigger inside a widget titlebar that opens a <details>
+   popover listing alert rules. The popover is absolutely positioned
+   so it floats over the widget body without pushing layout. */
+.alert-rules-help {
+  display: inline-block;
+  margin-left: var(--space-8);
+  position: relative;
+}
+.alert-rules-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.alert-rules-help-trigger::-webkit-details-marker { display: none; }
+.alert-rules-help-trigger:hover {
+  background: var(--surface-hover);
+  border-color: var(--line-hover);
+  color: var(--text);
+}
+.alert-rules-help[open] .alert-rules-help-trigger {
+  background: var(--surface-active);
+  color: var(--text-active);
+  border-color: var(--line-focus);
+}
+.alert-rules-help-popover {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  left: 0;
+  z-index: 1000;
+  min-width: 480px;
+  max-width: 720px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-10) var(--space-12);
+}
+.alert-rules-help-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--space-6);
+}
+.alert-rules-help-table { width: 100%; font-size: var(--text-sm); }
+.alert-rules-help-table th { padding: var(--space-4) var(--space-8); }
+.alert-rules-help-table td { padding: var(--space-4) var(--space-8); }
+
+/* Inventory widget body uses ``--surface`` (matches outer widget) so
+   it doesn't visually inset relative to the surrounding card. The
+   per-section nested tables inside flip to ``--surface-alt`` so each
+   section reads as a distinct chunk against the body. */
+.inventory-subgroup {
+  background: var(--surface);
+}
+.inventory-subgroup > .widget > .widget-titlebar,
+.inventory-subgroup > .widget > .widget-body {
+  background: var(--surface-alt);
+}
+/* Hover/zebra rows on inventory tables stay legible against the alt
+   background — bump them one step further than the default. */
+.inventory-subgroup > .widget > .widget-body tr.row-interactive:hover td {
+  background: var(--surface-hover);
+}
+
+/* "Footprint" stat-row inside the Inventory widget — render as a
+   compact subheader strip (one tight row of label: value pairs) so the
+   stat cards don't dominate the panel. Used when ``stat-cards-row`` is
+   inside the ``inventory-footprint`` wrapper. */
+.inventory-footprint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  align-items: baseline;
+  padding: var(--space-6) var(--space-12);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.inventory-footprint-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-6);
+}
+.inventory-footprint-pair-value {
+  color: var(--text-strong);
+  font-weight: 600;
+  font-size: var(--text-base);
+}
+.inventory-footprint-pair-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--text-tiny);
+}
+
 .stat-card {
-  flex: 1 1 110px;
-  min-width: 90px;
-  padding: var(--space-16) var(--space-14);
+  flex: 1 1 90px;
+  min-width: 80px;
+  padding: var(--space-10) var(--space-12);
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   background: var(--surface-alt);
@@ -1172,15 +1290,15 @@ details[open] > .details-box {
 }
 
 .stat-card-value {
-  font-size: 32px;
-  font-weight: 300;
+  font-size: 22px;
+  font-weight: 400;
   line-height: 1.1;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-2);
   letter-spacing: -0.02em;
 }
 
 .stat-card-label {
-  font-size: var(--text-xs);
+  font-size: var(--text-tiny);
   color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;

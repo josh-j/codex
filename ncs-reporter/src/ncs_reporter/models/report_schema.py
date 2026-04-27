@@ -280,7 +280,7 @@ class KeyValueField(BaseModel):
     name: str
     value: JinjaValueRef
     format: str | None = None
-    as_: Literal["status-badge"] | None = Field(default=None, alias="as")
+    as_: Literal["status-badge", "severity-tally"] | None = Field(default=None, alias="as")
 
 
 class KeyValueWidget(BaseModel):
@@ -305,7 +305,7 @@ class TableColumn(BaseModel):
 
     name: str
     value: JinjaValueRef
-    as_: Literal["status-badge"] | None = Field(default=None, alias="as")
+    as_: Literal["status-badge", "severity-tally"] | None = Field(default=None, alias="as")
     format: str | None = None
     link_field: str | None = None
     style_rules: list[StyleRule] = Field(default_factory=list)
@@ -392,6 +392,49 @@ class GroupedTableWidget(BaseModel):
     columns: list[TableColumn]
 
 
+class InventorySection(BaseModel):
+    """One section of an Inventory widget — a labelled table-of-rows.
+
+    Each section is rendered as a collapsible sub-widget under the
+    parent Inventory widget. The section title shows the row count
+    so an operator can see ``vCenters (1) · Datacenters (1) · ESXi
+    Hosts (2) · Virtual Machines (3)`` at a glance without
+    expanding each one.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
+    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
+    columns: list[TableColumn]
+
+
+class InventoryWidget(BaseModel):
+    """One-or-many subtable inventory widget — replaces the old pattern of
+    declaring separate ``type: table`` and ``type: stat_cards`` widgets
+    for the same scope.
+
+    Layout: optional aggregate ``stat_cards`` header (Footprint / KPIs)
+    above one-or-more named ``sections``. Empty sections (where the
+    ``rows`` field resolves to an empty list, or whose ``when`` clause
+    is falsy) are suppressed automatically so a sparse environment
+    doesn't show empty sub-tables.
+
+    A single-section inventory is valid — at that point it's just a
+    table with a stat-cards header. The point of the widget type is
+    that the *count* of sections is a property of the page, not of
+    the widget."""
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str = ""
+    name: str
+    type: Literal["inventory"]
+    layout: WidgetLayout = Field(default_factory=WidgetLayout)
+    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
+    stat_cards: list[StatCardSpec] = Field(default_factory=list)
+    sections: list[InventorySection] = Field(default_factory=list)
+
+
 ReportWidget = Annotated[
     Union[
         KeyValueWidget,
@@ -401,6 +444,7 @@ ReportWidget = Annotated[
         MarkdownWidget,
         StatCardsWidget,
         GroupedTableWidget,
+        InventoryWidget,
     ],
     Field(discriminator="type"),
 ]

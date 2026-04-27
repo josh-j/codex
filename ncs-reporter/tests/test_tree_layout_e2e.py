@@ -92,12 +92,21 @@ class TestTreeLayoutE2E(unittest.TestCase):
                 f"missing tree node html: {rel}",
             )
 
-        # Deep breadcrumb: datacenter page references its ancestors' reports.
+        # Deep breadcrumb: datacenter page references its ancestors' reports
+        # and uses the shared ``_breadcrumb_bar.html.j2`` macro so it gets
+        # the same Site link + Select Product dropdown + search bar that
+        # the site dashboard has. The macro renders the active leaf as a
+        # ``<strong>`` inside the .breadcrumb container.
         dc_html = (self.reports_root / "vsphere/vc-lab/dc-east/dc-east.html").read_text()
         self.assertIn("DC-East", dc_html)
-        self.assertIn("breadcrumb-current", dc_html)
-        # Relative link up 2 levels to vsphere.html
-        self.assertIn("../../vsphere.html", dc_html)
+        self.assertIn('class="breadcrumb"', dc_html)
+        # Relative link up 3 levels to site.html (one segment per tier).
+        self.assertIn("../../../site.html", dc_html)
+        # The tree root link goes through the Select Product dropdown
+        # rather than a separate vsphere ancestor crumb. Path is
+        # back_to_root + "<slug>/<slug>.html" — three levels up from
+        # dc-east, then into ``vsphere/vsphere.html``.
+        self.assertIn("../../../vsphere/vsphere.html", dc_html)
 
     def test_reporter_reads_tree_raw_paths(self) -> None:
         """Bundles written only under reports_root/<inventory>/… are picked up."""

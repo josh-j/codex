@@ -186,13 +186,23 @@ def load_all_reports(
     return aggregated
 
 
-def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, Any]:
+def normalize_host_bundle(
+    hostname: str,
+    bundle: dict[str, Any],
+    *,
+    extra_dirs: tuple[str, ...] = (),
+) -> dict[str, Any]:
     """
     Normalizes a host bundle if it contains raw data.
 
     Platform normalization is entirely schema-driven.  STIG normalization retains
     its bespoke Python path because the STIG data model is orthogonal to the
     health-report schema system.
+
+    ``extra_dirs`` is forwarded to ``detect_schemas_for_bundle`` so callers
+    that loaded their schemas via ``--config-dir`` / ``-S`` can normalize
+    bundles against that same schema set instead of falling back to the
+    cwd-relative / env-var discovery path.
     """
     output = dict(bundle)
 
@@ -211,7 +221,7 @@ def normalize_host_bundle(hostname: str, bundle: dict[str, Any]) -> dict[str, An
         output[k] = normalized_stig.model_dump()
 
     # Schema-driven normalization for all other platforms
-    for schema in detect_schemas_for_bundle(output):
+    for schema in detect_schemas_for_bundle(output, extra_dirs=extra_dirs):
         result = normalize_from_schema(schema, output)
         output[f"schema_{schema.name}"] = result
 

@@ -139,6 +139,31 @@ class TestBuildVsphereTree:
         assert [row["cluster"] for row in dc_data["esxi_hosts"]] == ["CL-A", "CL-B"]
         assert dc_data["esxi_host_count"] == 2
 
+    def test_list_form_clusters_normalize_to_dict(self) -> None:
+        # The collector emits clusters as a list-of-dicts (each with a `name`).
+        # Earlier code only accepted dict-of-dicts and silently dropped DCs.
+        root = build_vsphere_tree(
+            vcenter_bundles={
+                "vc-01": {
+                    "clusters": [
+                        {"name": "CL-A", "datacenter": "DC1"},
+                        {"name": "CL-B", "datacenter": "DC1"},
+                    ],
+                    "datastores": [],
+                    "dvswitches": [],
+                },
+            },
+            esxi_bundles={
+                "esxi-01": {"cluster": "CL-A", "datacenter": "DC1"},
+                "esxi-02": {"cluster": "CL-B", "datacenter": "DC1"},
+            },
+            vm_bundles={"vc-01": {"virtual_machines": []}},
+        )
+        platform = root.data_source({})
+        assert platform["vcenter_count"] == 1
+        assert platform["datacenter_count"] == 1
+        assert platform["esxi_host_count"] == 2
+
     def test_node_paths_derive_from_tree_structure(self) -> None:
         root = build_vsphere_tree(
             vcenter_bundles={"vc-01": {"clusters": {"CL-A": {"datacenter": "DC1"}}, "datastores": [], "dvswitches": []}},

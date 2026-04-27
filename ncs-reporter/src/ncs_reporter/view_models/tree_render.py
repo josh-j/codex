@@ -80,6 +80,7 @@ def build_tree_node_view(
     schema: ReportSchema,
     ctx: ReportContext | None = None,
     node_state: dict[int, dict[str, Any]] | None = None,
+    tree_products: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single tree node.
 
@@ -97,11 +98,15 @@ def build_tree_node_view(
     if cached is not None:
         fields = cached["fields"]
         alerts = cached["alerts"]
+        descendant_alerts = cached.get("descendant_alerts", [])
     else:
         seed = node.data_source({}) if node.data_source else {}
         if not isinstance(seed, dict):
             seed = {}
         fields, alerts = _eval_fields_and_alerts(schema, seed)
+        descendant_alerts = []
+
+    alerts = list(alerts) + list(descendant_alerts)
 
     alerts.sort(key=lambda a: (
         _SEVERITY_ORDER.get(a.get("severity", "INFO"), 3),
@@ -122,26 +127,155 @@ def build_tree_node_view(
         if rendered is not None:
             widgets_rendered.append(rendered)
 
+    # Auto-injected children section: merged into the schema's inventory
+    # widget when one exists, otherwise prepended as a synthetic widget,
+    # so every page with children has exactly one Inventory card.
+    if node.children:
+        children_section = _build_children_section(node, node_state)
+        existing_inventory = next(
+            (w for w in widgets_rendered if w.get("type") == "inventory"),
+            None,
+        )
+        if existing_inventory is not None:
+            existing_inventory.setdefault("sections", []).insert(0, children_section)
+        else:
+            widgets_rendered.insert(0, {
+                "slug": "tree-children",
+                "name": "Inventory",
+                "type": "inventory",
+                "layout": {"width": "full"},
+                "cards": [],
+                "sections": [children_section],
+            })
+
     rc = ctx or ReportContext()
     crit = sum(1 for a in alerts if a.get("severity") == "CRITICAL")
     warn = sum(1 for a in alerts if a.get("severity") == "WARNING")
     info = sum(1 for a in alerts if a.get("severity") == "INFO")
     health = "CRITICAL" if crit else "WARNING" if warn else "OK"
 
-    # Breadcrumb: Site → <ancestors…> → current. Site link is only added
-    # when this node isn't the root itself (root pages don't need a self-link).
+    available_alerts = _available_alerts_for_schema(schema)
+
+    # Typed breadcrumb crumbs (link/label/dropdown/search) — same shape
+    # the site dashboard uses, so ``_breadcrumb_bar.html.j2`` renders
+    # both. One ``../`` per node-path segment lands ``Site Dashboard``
+    # at the report root from any depth (including the product root).
+    back_to_root = "../" * len(node.node_path.segments)
     breadcrumbs: list[dict[str, Any]] = []
-    if not node.is_root:
-        # The page's directory has len(node_path.segments) segments below the
-        # report root (one per tier, including the "platform/" umbrella), so
-        # that many "../" are needed to reach site.html.
+    breadcrumbs.append({
+        "type": "link",
+        "text": "Site Dashboard",
+        "href": back_to_root + "site.html",
+        "icon": "home",
+    })
+    # The active product appears once as the dropdown trigger, not also
+    # as an ancestor link — skip the tree root in the ancestor walk below.
+    root_node = node
+    while root_node.parent is not None:
+        root_node = root_node.parent
+    active_slug = root_node.slug
+    active_title = root_node.title or active_slug
+    if tree_products:
+        items = [
+            {
+                "text": p["name"],
+                "href": back_to_root + p["report"],
+                "active": p["slug"] == active_slug,
+                "css_class": "",
+            }
+            for p in tree_products
+        ]
         breadcrumbs.append({
-            "text": "Site",
-            "href": "../" * len(node.node_path.segments) + "site.html",
+            "type": "dropdown",
+            "text": active_title,
+            "href": back_to_root + f"{active_slug}/{active_slug}.html" if not node.is_root else None,
+            "group_label": "Products",
+            "scrollable": False,
+            "items": items,
         })
+    # Ancestors with siblings render as dropdowns so operators can hop
+    # sideways (e.g. between vCenters or datacenters) without leaving
+    # the breadcrumb. The tree root is omitted — covered by the
+    # Select Product dropdown above.
     for ancestor in node.ancestors():
-        breadcrumbs.append({"text": ancestor.title, "href": _relative_to(ancestor, node)})
-    breadcrumbs.append({"text": node.title, "href": None})
+        if ancestor is root_node:
+            continue
+        siblings = (ancestor.parent.children if ancestor.parent else [])
+        if len(siblings) > 1:
+            items = [
+                {
+                    "text": s.title or s.slug,
+                    "href": _relative_to(s, node),
+                    "active": s is ancestor,
+                    "css_class": "",
+                }
+                for s in siblings
+            ]
+            breadcrumbs.append({
+                "type": "dropdown",
+                "text": ancestor.title,
+                "href": _relative_to(ancestor, node),
+                "group_label": (ancestor.tier or "").replace("_", " ").title() + "s",
+                "scrollable": False,
+                "items": items,
+            })
+        else:
+            breadcrumbs.append({
+                "type": "link",
+                "text": ancestor.title,
+                "href": _relative_to(ancestor, node),
+            })
+    # Current node renders as a dropdown when it has siblings (peer
+    # navigation), label otherwise. Skip the product root — covered above.
+    if not node.is_root:
+        node_siblings = node.parent.children if node.parent else []
+        if len(node_siblings) > 1:
+            items = [
+                {
+                    "text": s.title or s.slug,
+                    "href": _relative_to(s, node) if s is not node else "#",
+                    "active": s is node,
+                    "css_class": "",
+                }
+                for s in node_siblings
+            ]
+            breadcrumbs.append({
+                "type": "dropdown",
+                "text": node.title,
+                "group_label": (node.tier or "").replace("_", " ").title() + "s",
+                "scrollable": False,
+                "items": items,
+            })
+        else:
+            breadcrumbs.append({"type": "label", "text": node.title})
+
+    # Drill-down dropdown for children — lets operators jump to a child
+    # page directly from the breadcrumb instead of returning to the body.
+    if node.children:
+        child_tiers = sorted({c.tier or "" for c in node.children})
+        child_label = (
+            (child_tiers[0].replace("_", " ").title() + "s")
+            if len(child_tiers) == 1 and child_tiers[0]
+            else "Children"
+        )
+        items = [
+            {
+                "text": c.title or c.slug,
+                "href": _relative_to(c, node),
+                "active": False,
+                "css_class": "",
+            }
+            for c in node.children
+        ]
+        breadcrumbs.append({
+            "type": "dropdown",
+            "text": "Select " + (child_label[:-1] if child_label.endswith("s") else child_label),
+            "group_label": child_label,
+            "scrollable": True,
+            "items": items,
+        })
+
+    breadcrumbs.append({"type": "search", "search_root": back_to_root or "./"})
 
     return {
         "meta": {
@@ -161,6 +295,7 @@ def build_tree_node_view(
             "info_count": info,
         },
         "alerts": alerts,
+        "available_alerts": available_alerts,
         "widgets": widgets_rendered,
         "nav": {
             "breadcrumbs": breadcrumbs,
@@ -176,6 +311,132 @@ def build_tree_node_view(
             ],
             "descendant_rollup": ((node_state or {}).get(id(node), {}).get("rollup", {"critical": 0, "warning": 0, "info": 0})),
         },
+    }
+
+
+_AVAILABLE_ALERTS_CACHE: dict[int, tuple[dict[str, Any], ...]] = {}
+
+
+def _available_alerts_for_schema(schema: Any) -> tuple[dict[str, Any], ...]:
+    """All alert rules defined on a schema, materialized once per schema
+    and shared across every tree node that uses it. Cache is keyed by
+    object identity (Pydantic models are unhashable, so an LRU cache
+    won't take them; the cache lives only as long as the render pass)."""
+    if schema is None or not getattr(schema, "alerts", None):
+        return ()
+    cached = _AVAILABLE_ALERTS_CACHE.get(id(schema))
+    if cached is not None:
+        return cached
+    rules = tuple(
+        {
+            "id": rule.id,
+            "category": rule.category,
+            "severity": rule.severity,
+            "message": rule.msg,
+            "when": rule.when,
+        }
+        for rule in schema.alerts
+    )
+    _AVAILABLE_ALERTS_CACHE[id(schema)] = rules
+    return rules
+
+
+def _attach_alert_rollups(root: ReportNode, state: dict[int, dict[str, Any]]) -> None:
+    """Resolve ``_node_ref`` markers on inventory-row dicts into
+    ``ncs_alerts`` rollup dicts.
+
+    Rows are kept idempotent across re-renders: ``_node_ref`` stays on
+    the row (the first call resolves it; subsequent calls overwrite the
+    same ``ncs_alerts`` field with the latest rollup), so a second
+    render in the same process gets fresh numbers instead of silently
+    inheriting stale ones from the first.
+    """
+    for node in root.walk():
+        if node.data_source is None:
+            continue
+        seed = node.data_source({})
+        if not isinstance(seed, dict):
+            continue
+        for value in seed.values():
+            if not isinstance(value, list):
+                continue
+            for row in value:
+                if not isinstance(row, dict):
+                    continue
+                ref = row.get("_node_ref")
+                if ref is None:
+                    continue
+                rollup = (state.get(ref) or {}).get("rollup") or {}
+                row["ncs_alerts"] = {
+                    "info": int(rollup.get("info", 0) or 0),
+                    "warning": int(rollup.get("warning", 0) or 0),
+                    "critical": int(rollup.get("critical", 0) or 0),
+                }
+
+
+_CHILD_GRANDCHILD_LABELS = {
+    "esxi_host": "VMs",
+    "datacenter": "ESXi Hosts",
+    "vcenter": "Datacenters",
+    "cluster": "ESXi Hosts",
+}
+
+
+def _build_children_section(
+    node: ReportNode,
+    node_state: dict[int, dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Build the auto children section that lives inside the page's
+    Inventory widget. Title reflects the child tier, and the third column
+    is named after the *grandchild* tier (e.g. ``VMs`` when children are
+    ESXi hosts) — same conventions the standalone children block used to
+    follow before the Inventory consolidation."""
+    child_tiers = sorted({c.tier or "" for c in node.children})
+    if len(child_tiers) == 1 and child_tiers[0]:
+        tier = child_tiers[0]
+        tier_label = tier.replace("_", " ").title()
+        section_name = f"{len(node.children)} {tier_label}{'' if len(node.children) == 1 else 's'}"
+    else:
+        section_name = (
+            f"{len(node.children)} {'child' if len(node.children) == 1 else 'children'}"
+        )
+        tier = ""
+    grandchild_label = _CHILD_GRANDCHILD_LABELS.get(tier, "Sub-nodes")
+    columns = [
+        {"name": "Name"},
+        {"name": grandchild_label},
+        {"name": "NCS Alerts"},
+    ]
+    rows = []
+    for child in node.children:
+        child_rollup = (node_state or {}).get(id(child), {}).get("rollup", {}) or {}
+        crit = int(child_rollup.get("critical", 0) or 0)
+        warn = int(child_rollup.get("warning", 0) or 0)
+        info = int(child_rollup.get("info", 0) or 0)
+        # Single "NCS Alerts" cell rendering ``info/warn/crit`` with each
+        # segment colored by severity (gray/yellow/red). The ``severity-
+        # tally`` cell type is rendered by generic_tree_node.html.j2 as
+        # three colored spans separated by slashes.
+        rows.append([
+            {
+                "value": child.title or child.slug,
+                "as": None,
+                "link": _relative_to(child, node),
+                "css_class": "",
+            },
+            {"value": len(child.children), "as": None, "link": None, "css_class": ""},
+            {
+                "value": {"info": info, "warning": warn, "critical": crit},
+                "as": "severity-tally",
+                "link": None,
+                "css_class": "",
+            },
+        ])
+    return {
+        "name": section_name,
+        "columns": columns,
+        "rows": rows,
+        "row_count": len(rows),
     }
 
 
@@ -232,11 +493,27 @@ def _compute_tree_state(
             sev = str(a.get("severity", "")).lower()
             if sev in rollup:
                 rollup[sev] += 1
+        # Per-node descendant_alerts list — a parent's NCS Alerts widget
+        # surfaces them with an ``origin`` tag so operators can see which
+        # descendant fired without drilling down.
+        descendant_alerts: list[dict[str, Any]] = []
         for child in node.children:
-            child_rollup = state.get(id(child), {}).get("rollup", {})
+            child_state = state.get(id(child), {})
+            child_rollup = child_state.get("rollup", {})
             for k in rollup:
                 rollup[k] += child_rollup.get(k, 0)
-        state[id(node)] = {"fields": fields, "alerts": alerts, "rollup": rollup}
+            # Tag each child's own alerts with the child as origin (only
+            # once; deeper descendants already carry a deeper origin set
+            # from their own state entry).
+            for a in child_state.get("alerts", []):
+                descendant_alerts.append({**a, "origin": child.title or child.slug})
+            descendant_alerts.extend(child_state.get("descendant_alerts", []))
+        state[id(node)] = {
+            "fields": fields,
+            "alerts": alerts,
+            "rollup": rollup,
+            "descendant_alerts": descendant_alerts,
+        }
     return state
 
 
@@ -248,17 +525,27 @@ def render_tree(
     output_root: Path,
     ctx: ReportContext | None = None,
     template_name: str = "generic_tree_node.html.j2",
+    tree_products: list[dict[str, str]] | None = None,
 ) -> list[Path]:
     """Render every node in *root*'s subtree, returning the list of HTML paths written."""
     tpl = env.get_template(template_name)
     tree_state = _compute_tree_state(root, schemas_by_name)
+    # Resolve ``_node_ref`` markers on flat-list rows (``datacenters``,
+    # ``esxi_hosts``, …) into ``ncs_alerts`` rollup dicts so schema-
+    # defined inventory sections can render an "NCS Alerts" column with
+    # the same severity-tally treatment used by the auto-children
+    # section. Done here (post tree-state) because rollups aren't
+    # known until every node's schema has been evaluated.
+    _attach_alert_rollups(root, tree_state)
     written: list[Path] = []
     for node in root.walk():
         schema = schemas_by_name.get(node.schema_name)
         if schema is None:
             logger.warning("no schema for tree-node %s (tier=%s)", node.slug, node.tier)
             continue
-        view = build_tree_node_view(node, schema=schema, ctx=ctx, node_state=tree_state)
+        view = build_tree_node_view(
+            node, schema=schema, ctx=ctx, node_state=tree_state, tree_products=tree_products,
+        )
         out_path = node.node_path.resolve_under(output_root) / f"{node.slug}.html"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         content = tpl.render(

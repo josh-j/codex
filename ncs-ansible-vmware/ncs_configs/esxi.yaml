@@ -101,7 +101,6 @@ widgets:
     fields:
       - name: Connection State
         value: "{{ connection_state }}"
-        as: status-badge
       - name: Overall Status
         value: "{{ overall_status }}"
         as: status-badge
@@ -114,10 +113,12 @@ widgets:
       - name: Build
         value: "{{ build }}"
       - name: Maintenance Mode
-        value: "{{ in_maintenance_mode }}"
-        as: status-badge
+        value: "{{ 'Yes' if in_maintenance_mode else 'No' }}"
       - name: Lockdown Mode
-        value: "{{ lockdown_mode }}"
+        # Render the SDK enum verbatim ("normal", "strict", "disabled")
+        # so operators can tell which mode is active. "unknown" surfaces
+        # only when the API call failed.
+        value: "{{ lockdown_mode | default('unknown') }}"
   - type: stat-cards
     slug: resource_kpis
     name: "Resource Utilization"
@@ -129,22 +130,28 @@ widgets:
         value: "{{ mem_used_pct | round(0) }}%"
       - name: VMs
         value: "{{ vm_count }}"
-      - name: Uptime (days)
-        value: "{{ uptime_days | round(0) }}"
+      - name: Uptime
+        # Format helpfully across the typical range:
+        #   < 1 hour:  "<1h"     (lab boots, fresh restarts)
+        #   < 1 day:   "Nh"      (recent restarts)
+        #   ≥ 1 day:   "Nd"      (steady-state hosts)
+        value: >-
+          {% set s = (uptime_seconds | default(0) | int) %}
+          {% if s < 3600 %}<1h
+          {% elif s < 86400 %}{{ (s / 3600) | round(0, 'floor') | int }}h
+          {% else %}{{ (s / 86400) | round(0, 'floor') | int }}d
+          {% endif %}
 
   - type: key-value
     name: "Security & Services"
     layout: half
     fields:
       - name: SSH Enabled
-        value: "{{ ssh_enabled }}"
-        as: status-badge
+        value: "{{ 'Yes' if ssh_enabled else 'No' }}"
       - name: Shell Enabled
-        value: "{{ shell_enabled }}"
-        as: status-badge
+        value: "{{ 'Yes' if shell_enabled else 'No' }}"
       - name: NTP Running
-        value: "{{ ntp_running }}"
-        as: status-badge
+        value: "{{ 'Yes' if ntp_running else 'No' }}"
 
   - type: table
     name: "Datastores"
@@ -158,6 +165,7 @@ widgets:
         value: "{{ free }}"
   - type: table
     name: "Physical NICs"
+    when: (nics | length) > 0
     rows: "{{ nics }}"
     columns:
       - name: Device
