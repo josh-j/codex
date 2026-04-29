@@ -11,7 +11,7 @@ from typing import Any
 import pydantic
 import yaml
 
-from ncs_reporter.models.report_schema import PlatformSpec, ReportSchema
+from ncs_reporter.models.report_schema import ReportSchema
 
 logger = logging.getLogger(__name__)
 
@@ -127,22 +127,22 @@ def _resolve_includes(data: dict[str, Any], root_path: Path) -> dict[str, Any]:
             local_items = []
 
         # Start with included list, then merge local items by id
-        merged = list(included)
+        merged_items = list(included)
         for local_item in local_items:
             if not isinstance(local_item, dict) or "id" not in local_item:
-                merged.append(local_item)
+                merged_items.append(local_item)
                 continue
             # Find matching id in included items and replace
             replaced = False
-            for i, inc_item in enumerate(merged):
+            for i, inc_item in enumerate(merged_items):
                 if isinstance(inc_item, dict) and inc_item.get("id") == local_item["id"]:
-                    merged[i] = local_item
+                    merged_items[i] = local_item
                     replaced = True
                     break
             if not replaced:
-                merged.append(local_item)
+                merged_items.append(local_item)
 
-        result[section_key] = merged
+        result[section_key] = merged_items
 
     return result
 
@@ -157,7 +157,8 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
             return None
 
         # Skip fragment files (used via $include) — they lack a platform, config, or name key.
-        config_block = data.get("config") if isinstance(data.get("config"), dict) else {}
+        raw_config = data.get("config")
+        config_block: dict[str, Any] = raw_config if isinstance(raw_config, dict) else {}
         if "name" not in data and "platform" not in data and "platform" not in config_block:
             logger.debug("Skipping %s: missing 'name'/'platform'/'config.platform' (likely a fragment)", path)
             return None
@@ -517,7 +518,7 @@ def validate_schema_paths(schema: ReportSchema, example_bundle: dict[str, Any]) 
     path resolves to None against the example data (i.e. the path is broken).
     Compute and script fields are skipped — they cannot be validated statically.
     """
-    from ncs_reporter.normalization.schema_driven import resolve_field
+    from ncs_reporter.normalization._fields import resolve_field
 
     errors: dict[str, str] = {}
     for name, spec in schema.fields.items():
@@ -545,10 +546,12 @@ def build_platform_entries_from_schemas(
     # Process renderable schemas first so they become the primary entry
     # for their input_dir (they carry the richest metadata).
     platform_schemas = [s for s in schemas.values() if s.platform_spec is not None]
-    platform_schemas.sort(key=lambda s: (not s.platform_spec.render,))
+    platform_schemas.sort(key=lambda s: (not (s.platform_spec.render if s.platform_spec is not None else False),))
 
     for schema in platform_schemas:
-        spec: PlatformSpec = schema.platform_spec  # type: ignore[assignment]
+        spec = schema.platform_spec
+        if spec is None:
+            continue
 
         platform_name = spec.name or schema.platform or schema.name
         input_dir = spec.input_dir or schema.platform or schema.name

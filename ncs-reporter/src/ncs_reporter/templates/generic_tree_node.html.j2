@@ -75,8 +75,9 @@
     {% set _other_widgets = widgets | rejectattr('type', 'equalto', 'alert_panel') | list %}
 
     {% if alerts %}
+    {% set _alert_sev_class = 'severity-crit' if crit > 0 else 'severity-warn' if warn > 0 else 'severity-info' %}
     {% for widget in _alert_widgets %}
-    <div class="widget widget-alert" id="{{ widget.slug }}">
+    <div class="widget widget-alert {{ _alert_sev_class }}" id="{{ widget.slug }}">
         <div class="widget-titlebar">
             <span class="widget-title">
                 NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}
@@ -134,7 +135,8 @@
         {% elif w_width == 'quarter' %}{% set flex_basis = 'calc(25% - 10.5px)' %}
         {% endif %}
 
-        <div class="widget {{ 'widget-alert' if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
+        {% set _w_alert_sev = ('severity-crit' if crit > 0 else 'severity-warn' if warn > 0 else 'severity-info') if widget.type == 'alert_panel' else '' %}
+        <div class="widget {{ 'widget-alert ' + _w_alert_sev if widget.type == 'alert_panel' else '' }}" id="{{ widget.slug }}" style="flex: 1 1 {{ flex_basis }}; min-width: 300px; margin-bottom: 0;">
             <div class="widget-titlebar">
                 {% if widget.type == 'alert_panel' %}
                 <span class="widget-title">NCS Alerts &mdash; {{ summary.get('total', 0) }}{% if crit > 0 %} ({{ crit }} CRITICAL{% if warn > 0 %}, {{ warn }} WARNING{% endif %}){% endif %}</span>

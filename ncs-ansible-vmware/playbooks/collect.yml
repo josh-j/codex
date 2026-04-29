@@ -16,12 +16,12 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   roles:
+    # vcsa owns vCenter-wide data (VMs, snapshots, tags, infra patterns);
+    # esxi role collects host-only facts. The reporter joins them at
+    # render time via esxi.yaml's inline_evaluation parent lookup.
     - role: internal.vmware.vcsa
       vars:
         ncs_action: collect
     - role: internal.vmware.esxi
-      vars:
-        ncs_action: collect
-    - role: internal.vmware.vm
       vars:
         ncs_action: collect

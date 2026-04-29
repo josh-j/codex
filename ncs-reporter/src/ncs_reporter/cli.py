@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import click
 import yaml
@@ -212,7 +213,7 @@ def _parse_cooldown(cooldown: str) -> float:
     return val * {"d": 86400, "h": 3600, "m": 60, "s": 1}[unit]
 
 
-def _load_alert_state(state_path: str) -> dict:
+def _load_alert_state(state_path: str) -> dict[str, Any]:
     """Load alert state from YAML file."""
     from pathlib import Path
     p = Path(state_path)
@@ -222,7 +223,7 @@ def _load_alert_state(state_path: str) -> dict:
     return {}
 
 
-def _save_alert_state(state_path: str, state: dict) -> None:
+def _save_alert_state(state_path: str, state: dict[str, Any]) -> None:
     """Save alert state to YAML file."""
     from pathlib import Path
     Path(state_path).parent.mkdir(parents=True, exist_ok=True)
@@ -279,10 +280,10 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, proje
     fired_alert_ids: set[str] = set()
     failures = 0
 
-    for schema in matched:
-        click.echo(f"Schema: {schema.name}")
-        fields, _coverage = extract_fields(schema, bundle)
-        alerts = build_schema_alerts(schema, fields)
+    for matched_schema in matched:
+        click.echo(f"Schema: {matched_schema.name}")
+        fields, _coverage = extract_fields(matched_schema, bundle)
+        alerts = build_schema_alerts(matched_schema, fields)
 
         # Track which alert IDs fired this run (for clear-on-resolve)
         current_fired = {a["id"] for a in alerts}

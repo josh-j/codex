@@ -2,18 +2,24 @@
 # ESXi target routing for --limit support.
 # Use as pre_tasks in playbooks targeting "vcsa:esxi_hosts".
 #
-# Input:  group_names (automatic), ansible_limit (automatic)
+# Input:  group_names (automatic), ansible_play_hosts_all (automatic),
+#         ansible_limit (automatic),
 #         esxi_stig_target_hosts (optional — skips discovery if pre-populated)
 # Output: esxi_stig_target_hosts (list), or meta: end_host for phantom ESXi hosts
 #
 # Behavior:
-#   ESXi hosts without --limit → end_host (vCenter handles discovery)
-#   ESXi hosts with --limit → set themselves as sole target
-#   vCenter hosts → discover ESXi targets from API
+#   When the same play also targets a vCenter, the phantom esxi_hosts entries
+#   defer to vCenter-driven discovery so each physical host is audited exactly
+#   once (otherwise inventory-keyed and vCenter-discovered audits double up
+#   with subtly different results — cert / hostname checks behave differently
+#   when targeted by hostname vs IP). Phantom esxi_hosts only self-target when
+#   no vCenter is in the play (e.g. ``-l esxi_hosts`` alone).
 
-- name: "Skip ESXi phantom hosts (vCenter handles discovery)"
+- name: "Skip phantom ESXi entries when a vCenter is in the play (dedup)"
   meta: end_host
-  when: "'esxi_hosts' in group_names and ansible_limit is not defined"
+  when:
+    - "'esxi_hosts' in group_names"
+    - groups.get('vcsa', []) | intersect(ansible_play_hosts_all | default([])) | length > 0
 
 - name: "Set ESXi target from inventory"
   ansible.builtin.set_fact:

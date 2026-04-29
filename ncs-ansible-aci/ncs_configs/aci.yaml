@@ -1,4 +1,13 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+tree:
+  root_slug: aci
+  root_title: ACI
+  root_schema: inventory_root
+  levels:
+    - tier: host
+      schema: aci
+      bundle_key: raw_aci
+
 config:
   display_name: "Cisco ACI"
   platform: aci/apic

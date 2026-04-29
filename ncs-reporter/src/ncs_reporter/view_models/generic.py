@@ -292,7 +292,7 @@ def _render_inventory(widget: InventoryWidget, fields: dict[str, Any], ctx: dict
                     spec = field_specs.get(var_match.group(1))
                     if spec and hasattr(spec, "thresholds"):
                         thresholds = spec.thresholds
-            resolved_color = card.color
+            resolved_color: str = card.color
             if resolved_color == "auto" and thresholds is not None:
                 try:
                     num_val = float(resolved)

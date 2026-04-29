@@ -62,6 +62,7 @@ class NodePath:
     """
 
     __slots__ = ("_segments",)
+    _segments: tuple[str, ...]
 
     def __init__(self, segments: Iterable[str]) -> None:
         seg_tuple = tuple(segments)

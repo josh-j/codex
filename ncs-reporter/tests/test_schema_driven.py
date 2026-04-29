@@ -334,7 +334,7 @@ class TestSchemaModelValidation:
             {
                 "name": "alias_test",
                 "platform": "test",
-                "name": "Alias Test",
+                "display_name": "Alias Test",
                 "detection": {"any": ["raw_test"]},
                 "fields": {
                     "hostname": {"from": "raw_test.data.hostname", "default": "unknown"},
@@ -577,7 +577,6 @@ class TestComputeFields:
 
 class TestVcsaSchema:
     def test_vcsa_schema_loads_and_validates(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
         schema_path = CONFIGS_DIR / "vcsa.yaml"
@@ -593,7 +592,6 @@ class TestVcsaSchema:
         assert s.fields["appliance_uptime_days"].compute is not None
 
     def test_vcsa_schema_fires_on_synthetic_bundle(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
@@ -643,7 +641,6 @@ class TestVcsaSchema:
 
 class TestEsxiHealthSchema:
     def test_esxi_schema_loads_and_validates(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
         schema_path = CONFIGS_DIR / "esxi.yaml"
@@ -656,7 +653,6 @@ class TestEsxiHealthSchema:
         assert "uptime_days" in s.fields  # computed field IS declared
 
     def test_esxi_schema_fires_on_per_host_bundle(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 
@@ -692,7 +688,6 @@ class TestEsxiHealthSchema:
 
 class TestVmHealthSchema:
     def test_vm_schema_loads_and_validates(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
 
         schema_path = CONFIGS_DIR / "vm.yaml"
@@ -706,7 +701,6 @@ class TestVmHealthSchema:
         assert "powered_off_vms" in s.fields
 
     def test_vm_schema_fires_on_synthetic_bundle(self) -> None:
-        from pathlib import Path
         from ncs_reporter.schema_loader import load_schema_from_file
         from ncs_reporter.normalization.schema_driven import normalize_from_schema
 

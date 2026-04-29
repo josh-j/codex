@@ -10,8 +10,6 @@ config:
   extra_inventory_widget_columns:
     - name: vCenters
       value: "{{ vcenter_count }}"
-    - name: Datacenters
-      value: "{{ datacenter_count }}"
     - name: ESXi Hosts
       value: "{{ esxi_host_count }}"
 
@@ -31,6 +29,15 @@ tree:
       bundle_key: raw_esxi
       parent_tier: vcenter
       children_label: VMs
+  # Cross-vCenter rollups for the root page. The vcsa role emits
+  # ``esxi_hosts`` and ``virtual_machines`` summary lists into each
+  # vCenter's raw_vcsa.data; the reporter unions them across child
+  # vCenters and exposes them on the root's data_source. No Python.
+  merge_from_children:
+    - field: esxi_hosts
+      from: raw_vcsa.data.esxi_hosts
+    - field: virtual_machines
+      from: raw_vcsa.data.virtual_machines
 
 vars: {}
 
@@ -47,49 +54,24 @@ widgets:
     stat_cards:
       - name: vCenters
         value: "{{ vcenter_count }}"
-      - name: Datacenters
-        value: "{{ datacenter_count }}"
       - name: ESXi Hosts
         value: "{{ esxi_host_count }}"
       - name: VMs
-        value: "{{ vm_count }}"
+        value: "{{ virtual_machines_count }}"
     sections:
-      - name: "Datacenters"
-        when: datacenter_count > 0
-        rows: "{{ datacenters }}"
-        columns:
-          - name: Datacenter
-            value: "{{ name }}"
-            link_field: report_url
-          - name: vCenter
-            value: "{{ vcenter }}"
-          - name: Clusters
-            value: "{{ cluster_count }}"
-          - name: ESXi Hosts
-            value: "{{ esxi_host_count }}"
-
       - name: "ESXi Hosts"
-        when: esxi_host_count > 0
+        when: esxi_hosts_count > 0
         rows: "{{ esxi_hosts }}"
         columns:
           - name: Host
             value: "{{ name }}"
-            link_field: report_url
           - name: Datacenter
             value: "{{ datacenter }}"
           - name: Cluster
             value: "{{ cluster }}"
-          - name: Version
-            value: "{{ version }}"
-          - name: Status
-            value: "{{ overall_status }}"
-            as: status-badge
-          - name: NCS Alerts
-            value: "{{ ncs_alerts }}"
-            as: severity-tally
 
       - name: "Virtual Machines"
-        when: vm_count > 0
+        when: virtual_machines_count > 0
         rows: "{{ virtual_machines }}"
         columns:
           - name: VM
@@ -101,8 +83,5 @@ widgets:
             value: "{{ guest_os }}"
           - name: ESXi Host
             value: "{{ esxi_host }}"
-            link_field: esxi_host_url
-          - name: Datacenter
-            value: "{{ datacenter }}"
           - name: IP Address
             value: "{{ ip_address }}"

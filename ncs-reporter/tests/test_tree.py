@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import yaml
+
 from ncs_reporter.models.node_path import NodePath
+from ncs_reporter.models.report_schema import TreeLevel, TreeSpec
 from ncs_reporter.models.tree import (
     ReportNode,
-    build_flat_inventory_tree,
-    build_vsphere_tree,
+    build_tree_from_spec,
 )
 
 
@@ -60,107 +64,77 @@ class TestReportNode:
         assert [a.slug for a in cluster.ancestors()] == ["vsphere", "vc-01", "dc-east"]
 
 
-class TestBuildVsphereTree:
-    def test_assembles_full_hierarchy(self) -> None:
-        vcenter_bundles = {
-            "vc-prod-01": {
-                "appliance_version": "7.0.3",
-                "clusters": {
-                    "Cluster-A": {"datacenter": "DC-East", "ha_enabled": True, "host_count": 2},
-                    "Cluster-B": {"datacenter": "DC-East", "ha_enabled": False, "host_count": 1},
-                    "Cluster-C": {"datacenter": "DC-West", "ha_enabled": True, "host_count": 1},
-                },
-                "datastores": [
-                    {"name": "ds-A1", "datacenter": "DC-East"},
-                    {"name": "ds-C1", "datacenter": "DC-West"},
-                ],
-                "dvswitches": [{"name": "dvs-east"}],
-            },
-        }
-        esxi_bundles = {
-            "esxi-01.lab": {"cluster": "Cluster-A", "datacenter": "DC-East"},
-            "esxi-02.lab": {"cluster": "Cluster-A", "datacenter": "DC-East"},
-            "esxi-03.lab": {"cluster": "Cluster-B", "datacenter": "DC-East"},
-            "esxi-04.lab": {"cluster": "Cluster-C", "datacenter": "DC-West"},
-        }
-        vm_bundles = {
-            "vc-prod-01": {
-                "virtual_machines": [
-                    {"guest_name": "web-01", "cluster": "Cluster-A", "esxi_host": "esxi-01.lab"},
-                    {"guest_name": "web-02", "cluster": "Cluster-A", "esxi_host": "esxi-02.lab"},
-                    {"guest_name": "db-01", "cluster": "Cluster-B", "esxi_host": "esxi-03.lab"},
-                ],
-            },
-        }
+def _vsphere_spec() -> TreeSpec:
+    """Two-tier spec matching ``vsphere.yaml``: vCenter → ESXi host."""
+    return TreeSpec(
+        root_slug="vsphere",
+        root_title="vSphere",
+        levels=[
+            TreeLevel(tier="vcenter", schema="vcsa", bundle_key="raw_vcsa"),
+            TreeLevel(tier="esxi_host", schema="esxi", bundle_key="raw_esxi", parent_tier="vcenter"),
+        ],
+    )
 
-        root = build_vsphere_tree(
-            vcenter_bundles=vcenter_bundles,
-            esxi_bundles=esxi_bundles,
-            vm_bundles=vm_bundles,
-        )
 
-        # vsphere → vc → ESXi hosts (datacenter tier consolidated under vCenter).
+def _write_raw(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump({"metadata": {"host": path.parent.name}, "data": data}))
+
+
+class TestBuildTreeFromSpec:
+    def test_assembles_two_tier_hierarchy(self, tmp_path: Path) -> None:
+        _write_raw(tmp_path / "vsphere/vc-prod-01/raw.yaml", {"appliance_version": "7.0.3"})
+        for host in ("esxi-01-lab", "esxi-02-lab", "esxi-03-lab"):
+            _write_raw(tmp_path / "vsphere/vc-prod-01" / host / "raw.yaml",
+                       {"cluster": "CL-A", "datacenter": "DC-East"})
+
+        root = build_tree_from_spec(_vsphere_spec(), bundles_root=tmp_path)
+        assert root is not None
         assert root.slug == "vsphere"
         assert [c.slug for c in root.children] == ["vc-prod-01"]
 
         vc = root.children[0]
-        # All four ESXi hosts attach directly to the vCenter — datacenter
-        # info is now a column on each host row, not a tier.
-        assert [c.slug for c in vc.children] == [
-            "esxi-01-lab", "esxi-02-lab", "esxi-03-lab", "esxi-04-lab",
-        ]
-
-        # Each ESXi node's data is filtered to its own VMs
+        assert [c.slug for c in vc.children] == ["esxi-01-lab", "esxi-02-lab", "esxi-03-lab"]
+        # Each ESXi node carries its own data bundle.
         esxi_01 = vc.children[0]
         esxi_bundle = esxi_01.data_source({})
-        vms = esxi_bundle["raw_esxi"]["data"]["virtual_machines"]
-        assert [v["guest_name"] for v in vms] == ["web-01"]
+        assert esxi_bundle["raw_esxi"]["data"]["cluster"] == "CL-A"
 
-    def test_list_form_clusters_normalize_to_dict(self) -> None:
-        # The collector emits clusters as a list-of-dicts (each with a `name`).
-        # Earlier code only accepted dict-of-dicts and silently dropped DCs.
-        root = build_vsphere_tree(
-            vcenter_bundles={
-                "vc-01": {
-                    "clusters": [
-                        {"name": "CL-A", "datacenter": "DC1"},
-                        {"name": "CL-B", "datacenter": "DC1"},
-                    ],
-                    "datastores": [],
-                    "dvswitches": [],
-                },
-            },
-            esxi_bundles={
-                "esxi-01": {"cluster": "CL-A", "datacenter": "DC1"},
-                "esxi-02": {"cluster": "CL-B", "datacenter": "DC1"},
-            },
-            vm_bundles={"vc-01": {"virtual_machines": []}},
-        )
-        platform = root.data_source({})
-        assert platform["vcenter_count"] == 1
-        assert platform["datacenter_count"] == 1
-        assert platform["esxi_host_count"] == 2
+    def test_returns_none_when_product_dir_absent(self, tmp_path: Path) -> None:
+        root = build_tree_from_spec(_vsphere_spec(), bundles_root=tmp_path)
+        assert root is None
 
-    def test_node_paths_derive_from_tree_structure(self) -> None:
-        root = build_vsphere_tree(
-            vcenter_bundles={"vc-01": {"clusters": {"CL-A": {"datacenter": "DC1"}}, "datastores": [], "dvswitches": []}},
-            esxi_bundles={"esxi-01": {"cluster": "CL-A", "datacenter": "DC1"}},
-            vm_bundles={"vc-01": {"virtual_machines": []}},
-        )
+    def test_node_paths_derive_from_tree_structure(self, tmp_path: Path) -> None:
+        _write_raw(tmp_path / "vsphere/vc-01/raw.yaml", {"clusters": []})
+        _write_raw(tmp_path / "vsphere/vc-01/esxi-01/raw.yaml",
+                   {"cluster": "CL-A", "datacenter": "DC1"})
+
+        root = build_tree_from_spec(_vsphere_spec(), bundles_root=tmp_path)
+        assert root is not None
         esxi_node = root.children[0].children[0]
         assert esxi_node.node_path.html_path.as_posix() == "vsphere/vc-01/esxi-01/esxi-01.html"
 
 
-class TestBuildFlatInventoryTree:
-    def test_each_host_becomes_a_child(self) -> None:
-        root = build_flat_inventory_tree(
-            inventory_slug="ubuntu",
-            title="Ubuntu",
-            schema_name="ubuntu_inventory",
-            host_bundles={"web-01": {"k": 1}, "web-02": {"k": 2}},
-            host_schema_name="ubuntu",
+class TestFlatInventoryFromSpec:
+    """Flat products use a single-level tree spec with ``root_schema:
+    inventory_root`` so they share the generic builder."""
+
+    def test_one_level_spec_emits_flat_hosts(self, tmp_path: Path) -> None:
+        spec = TreeSpec(
+            root_slug="ubuntu",
+            root_title="Ubuntu",
+            root_schema="inventory_root",
+            levels=[TreeLevel(tier="host", schema="ubuntu", bundle_key="raw_ubuntu")],
         )
+        for host in ("web-01", "web-02"):
+            _write_raw(tmp_path / "ubuntu" / host / "raw.yaml", {"k": 1})
+        root = build_tree_from_spec(spec, bundles_root=tmp_path)
+        assert root is not None
         assert root.slug == "ubuntu"
+        assert root.schema_name == "inventory_root"
         assert [c.slug for c in root.children] == ["web-01", "web-02"]
         assert root.children[0].node_path.html_path.as_posix() == "ubuntu/web-01/web-01.html"
-        assert root.children[0].data_source({}) == {"raw_ubuntu": {"data": {"k": 1}, "metadata": {"host": "web-01"}}}
+        # Generic tier rollup populates root.data_source with the host list.
+        agg = root.data_source({})
+        assert agg["host_count"] == 2
+        assert {h["name"] for h in agg["hosts"]} == {"web-01", "web-02"}

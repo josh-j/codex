@@ -103,10 +103,10 @@ def _compile_template(template: str) -> Any:
 class _NumericUndefined(Undefined):
     """Undefined that acts as ``0`` in arithmetic — for compute/list_map expressions."""
 
-    def __int__(self) -> int:
+    def __int__(self) -> int:  # type: ignore[override]
         return 0
 
-    def __float__(self) -> float:
+    def __float__(self) -> float:  # type: ignore[override]
         return 0.0
 
     def __bool__(self) -> bool:
@@ -130,13 +130,13 @@ class _NumericUndefined(Undefined):
     def __rmul__(self, o: Any) -> Any:
         return 0
 
-    def __truediv__(self, o: Any) -> float:
+    def __truediv__(self, o: Any) -> float:  # type: ignore[override]
         return 0.0
 
-    def __rtruediv__(self, o: Any) -> float:
+    def __rtruediv__(self, o: Any) -> float:  # type: ignore[override]
         return 0.0
 
-    def __neg__(self) -> int:
+    def __neg__(self) -> int:  # type: ignore[override]
         return 0
 
 

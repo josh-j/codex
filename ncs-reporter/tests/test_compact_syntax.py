@@ -281,16 +281,12 @@ class TestListAggregation:
 class TestIncludeAlerts:
     def test_include_alerts_loads(self):
         """Photon config loads alerts via $include."""
-        from pathlib import Path
-
         path = CONFIGS_DIR / "photon.yaml"
         schema = load_schema_from_file(path)
         assert len(schema.alerts) == 9
 
     def test_include_widgets_loads(self):
         """Photon config loads widgets via $include."""
-        from pathlib import Path
-
         path = CONFIGS_DIR / "photon.yaml"
         schema = load_schema_from_file(path)
         assert len(schema.widgets) == 5  # alert_panel is auto-injected, not declared
@@ -366,8 +362,6 @@ class TestRoundTrip:
 
     def test_builtin_windows_loads(self):
         """The compact windows.yaml loads without errors."""
-        from pathlib import Path
-
         path = CONFIGS_DIR / "windows.yaml"
         schema = load_schema_from_file(path)
         assert schema.name == "windows"

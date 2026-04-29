@@ -95,6 +95,8 @@
   --alert-crit-bg: rgba(242, 73, 92, 0.06);
   --alert-warn-bg: rgba(255, 152, 48, 0.06);
   --alert-warn-border: rgba(255, 152, 48, 0.20);
+  --alert-ok-bg: rgba(115, 191, 105, 0.06);
+  --alert-ok-border: rgba(115, 191, 105, 0.20);
 
   /* Colors: Gradients */
   --grad-header: #181b1f;
@@ -177,6 +179,8 @@
   --alert-crit-bg: rgba(196, 64, 64, 0.06);
   --alert-warn-bg: rgba(184, 116, 42, 0.06);
   --alert-warn-border: rgba(184, 116, 42, 0.16);
+  --alert-ok-bg: rgba(61, 140, 86, 0.06);
+  --alert-ok-border: rgba(61, 140, 86, 0.16);
   --grad-header: #dde0e7;
   --grad-toc: #dde0e7;
   --grad-widget-hdr: #d8dbe2;
@@ -744,6 +748,17 @@ tr.row-interactive:hover td {
   color: var(--text-stig-hover);
 }
 
+.nav-dropdown .dropdown-disabled {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ==========================================================================
    Components & Utilities
    ========================================================================== */
@@ -1060,6 +1075,20 @@ tr.row-interactive:hover td {
 .widget-alert .widget-body {
   border-color: var(--widget-alert-hdr-border);
 }
+
+.widget-alert.severity-warn .widget-titlebar {
+  background: var(--alert-warn-bg);
+  border-color: var(--alert-warn-border);
+}
+.widget-alert.severity-warn .widget-title { color: var(--warn); }
+.widget-alert.severity-warn .widget-body { border-color: var(--alert-warn-border); }
+
+.widget-alert.severity-info .widget-titlebar {
+  background: var(--alert-ok-bg);
+  border-color: var(--alert-ok-border);
+}
+.widget-alert.severity-info .widget-title { color: var(--ok); }
+.widget-alert.severity-info .widget-body { border-color: var(--alert-ok-border); }
 
 /* ==========================================================================
    Groups & Details

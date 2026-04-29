@@ -3,6 +3,11 @@
     Renders a list of typed crumb dicts produced by NavBuilder.
     Crumb types: link, label, dropdown, search.
 -#}
+{% macro dropdown_item(item) -%}
+{%- set _cls = ((('active ' if item.active else '') ~ (item.css_class or '')) | trim) -%}
+{% if item.href %}<a href="{{ item.href }}"{% if _cls %} class="{{ _cls }}"{% endif %}{% if item.get('tooltip') %} title="{{ item.tooltip }}"{% endif %}>{{ item.text }}</a>{% else %}<span class="{{ ('dropdown-disabled ' ~ (item.css_class or '')) | trim }}"{% if item.get('tooltip') %} title="{{ item.tooltip }}"{% endif %}>{{ item.text }}</span>{% endif %}
+{%- endmacro %}
+
 {% macro breadcrumb_bar(crumbs) %}
 {% if crumbs %}
 <div class="breadcrumb">
@@ -21,10 +26,14 @@
         {% if crumb.get('href') %}<a href="{{ crumb.href }}" class="tree-label">{{ crumb.text }}</a>{% else %}<span class="tree-label">{{ crumb.text }}</span>{% endif %}
         <span class="tree-trigger">&#9660;</span>
         <div class="nav-dropdown{{ ' nav-dropdown-scroll' if crumb.get('scrollable') else '' }}">
-            <div class="dropdown-group">{{ crumb.group_label }}</div>
-            {% for item in crumb.get('items', []) %}
-            <a href="{{ item.href }}"{% if item.active or item.css_class %} class="{{ 'active' if item.active else '' }} {{ item.css_class or '' }}"{% endif %}>{{ item.text }}</a>
-            {% endfor %}
+            {% if crumb.get('items') %}
+            {% if crumb.group_label %}<div class="dropdown-group">{{ crumb.group_label }}</div>{% endif %}
+            {% for item in crumb.get('items', []) %}{{ dropdown_item(item) }}{% endfor %}
+            {% endif %}
+            {% if crumb.get('history_items') %}
+            <div class="dropdown-group"{% if crumb.get('history_path') %} data-history-path="{{ crumb.history_path }}"{% endif %}>History</div>
+            {% for item in crumb.history_items %}{{ dropdown_item(item) }}{% endfor %}
+            {% endif %}
         </div>
     </div>
 

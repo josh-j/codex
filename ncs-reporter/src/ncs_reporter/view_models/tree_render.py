@@ -20,6 +20,7 @@ from typing import Any
 
 from ncs_reporter.models.report_schema import AlertPanelWidget, ReportSchema
 from ncs_reporter.models.tree import ReportNode
+from ncs_reporter.pipeline.history import _history_items_for_path
 from ncs_reporter.normalization._when import eval_compute
 from ncs_reporter.normalization.schema_driven import build_schema_alerts, normalize_from_schema
 
@@ -27,6 +28,22 @@ from .._report_context import ReportContext
 from .generic import _SEVERITY_ORDER, _render_widget
 
 logger = logging.getLogger(__name__)
+
+
+def _inline_seed_env() -> Any:
+    """Lazily-built Jinja env reused across every inline-evaluation
+    seed render — autoescape off, no custom filters, identical config
+    every time, so caching it avoids a constructor call per node."""
+    global _INLINE_SEED_ENV
+    env = _INLINE_SEED_ENV
+    if env is None:
+        from jinja2 import Environment
+        env = Environment(autoescape=False)
+        _INLINE_SEED_ENV = env
+    return env
+
+
+_INLINE_SEED_ENV: Any | None = None
 
 
 def _looks_like_bundle(data: dict[str, Any]) -> bool:
@@ -81,6 +98,9 @@ def build_tree_node_view(
     ctx: ReportContext | None = None,
     node_state: dict[int, dict[str, Any]] | None = None,
     tree_products: list[dict[str, str]] | None = None,
+    schemas_by_name: dict[str, ReportSchema] | None = None,
+    stamp_prefix: str = "",
+    history_stamps: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a template context dict for a single tree node.
 
@@ -131,7 +151,7 @@ def build_tree_node_view(
     # widget when one exists, otherwise prepended as a synthetic widget,
     # so every page with children has exactly one Inventory card.
     if node.children:
-        children_section = _build_children_section(node, node_state)
+        children_section = _build_children_section(node, node_state, schemas_by_name)
         existing_inventory = next(
             (w for w in widgets_rendered if w.get("type") == "inventory"),
             None,
@@ -156,11 +176,11 @@ def build_tree_node_view(
 
     available_alerts = _available_alerts_for_schema(schema)
 
-    # Typed breadcrumb crumbs (link/label/dropdown/search) — same shape
-    # the site dashboard uses, so ``_breadcrumb_bar.html.j2`` renders
-    # both. One ``../`` per node-path segment lands ``Site Dashboard``
-    # at the report root from any depth (including the product root).
-    back_to_root = "../" * len(node.node_path.segments)
+    # ``stamp_prefix`` is "" for the live tree or "history/<stamp>/" for
+    # archived pages — its trailing slashes count the extra ``../``s
+    # needed to escape back to the report root.
+    extra_depth = stamp_prefix.count("/")
+    back_to_root = "../" * (len(node.node_path.segments) + extra_depth)
     breadcrumbs: list[dict[str, Any]] = []
     breadcrumbs.append({
         "type": "link",
@@ -175,7 +195,21 @@ def build_tree_node_view(
         root_node = root_node.parent
     active_slug = root_node.slug
     active_title = root_node.title or active_slug
+    # Per-crumb history items: every node along the path-from-root-to-current
+    # gets a History sub-dropdown answering "what did this specific node look
+    # like at stamp X?". Crumbs without sibling navigation become dropdowns
+    # whose only purpose is to surface history; existing sibling dropdowns
+    # gain a History group below their primary items.
+    def _history_for(target_html_path: str) -> list[dict[str, Any]]:
+        return _history_items_for_path(
+            html_path=target_html_path,
+            stamps=history_stamps or [],
+            current_stamp_prefix=stamp_prefix,
+            back_to_root=back_to_root,
+        )
+
     if tree_products:
+        active_html_path = root_node.node_path.html_path.as_posix()
         breadcrumbs.append(_dropdown_crumb(
             text=active_title,
             group_label="Products",
@@ -189,19 +223,35 @@ def build_tree_node_view(
                 }
                 for p in tree_products
             ],
+            history_items=_history_for(active_html_path),
+            history_path=active_html_path,
         ))
-    # Ancestors with siblings → sibling dropdown; otherwise a plain link.
+    # Ancestors with siblings → sibling dropdown; otherwise a history-only
+    # dropdown so each crumb remains independently selectable across stamps.
     # Tree root is omitted (covered by Select Product above).
     for ancestor in node.ancestors():
         if ancestor is root_node:
             continue
         siblings = (ancestor.parent.children if ancestor.parent else [])
+        ancestor_html_path = ancestor.node_path.html_path.as_posix()
+        ancestor_history = _history_for(ancestor_html_path)
         if len(siblings) > 1:
             breadcrumbs.append(_dropdown_crumb(
                 text=ancestor.title,
                 group_label=_tier_label(ancestor.tier) + "s",
                 href=_relative_to(ancestor, node),
                 items=[_dropdown_item(s, node, active=s is ancestor) for s in siblings],
+                history_items=ancestor_history,
+                history_path=ancestor_html_path,
+            ))
+        elif ancestor_history:
+            breadcrumbs.append(_dropdown_crumb(
+                text=ancestor.title,
+                group_label=None,
+                href=_relative_to(ancestor, node),
+                items=[],
+                history_items=ancestor_history,
+                history_path=ancestor_html_path,
             ))
         else:
             breadcrumbs.append({
@@ -209,14 +259,28 @@ def build_tree_node_view(
                 "text": ancestor.title,
                 "href": _relative_to(ancestor, node),
             })
-    # Current node renders as a peer-navigation dropdown when it has siblings.
+    # Current node renders as a peer-navigation dropdown when it has siblings;
+    # otherwise as a history-only dropdown (or a plain label when there's no
+    # history either).
     if not node.is_root:
         node_siblings = node.parent.children if node.parent else []
+        node_html_path = node.node_path.html_path.as_posix()
+        node_history = _history_for(node_html_path)
         if len(node_siblings) > 1:
             breadcrumbs.append(_dropdown_crumb(
                 text=node.title,
                 group_label=_tier_label(node.tier) + "s",
                 items=[_dropdown_item(s, node, active=s is node) for s in node_siblings],
+                history_items=node_history,
+                history_path=node_html_path,
+            ))
+        elif node_history:
+            breadcrumbs.append(_dropdown_crumb(
+                text=node.title,
+                group_label=None,
+                items=[],
+                history_items=node_history,
+                history_path=node_html_path,
             ))
         else:
             breadcrumbs.append({"type": "label", "text": node.title})
@@ -294,11 +358,17 @@ def _dropdown_crumb(
     *,
     text: str,
     items: list[dict[str, Any]],
-    group_label: str,
+    group_label: str | None,
     href: str | None = None,
     scrollable: bool = False,
+    history_items: list[dict[str, Any]] | None = None,
+    history_path: str | None = None,
 ) -> dict[str, Any]:
-    """Build a typed dropdown crumb consumed by ``_breadcrumb_bar.html.j2``."""
+    """Build a typed dropdown crumb consumed by ``_breadcrumb_bar.html.j2``.
+
+    ``history_path`` is emitted as ``data-history-path`` so the orchestrator's
+    post-render patcher can rebuild the History sub-group in archived pages.
+    """
     crumb: dict[str, Any] = {
         "type": "dropdown",
         "text": text,
@@ -308,6 +378,10 @@ def _dropdown_crumb(
     }
     if href is not None:
         crumb["href"] = href
+    if history_items:
+        crumb["history_items"] = history_items
+    if history_path is not None:
+        crumb["history_path"] = history_path
     return crumb
 
 
@@ -325,11 +399,12 @@ def _resolve_inline_seed(template: Any, ctx: dict[str, Any]) -> dict[str, Any]:
     ``inline_evaluations[*].seed_template``. Strings containing Jinja
     tags (e.g. ``"{{ raw_esxi.data.virtual_machines }}"``) are rendered
     against *ctx*; non-string and non-Jinja leaf values pass through.
-    """
-    from jinja2 import Environment
 
-    env = Environment(autoescape=False)
-    return _resolve_template_value(template, ctx, env)
+    Callers may include ``parent`` in *ctx* to expose the enclosing
+    tier's bundle (e.g. ESXi pages reading ``parent.raw_vcsa.data.*``).
+    """
+    resolved = _resolve_template_value(template, ctx, _inline_seed_env())
+    return resolved if isinstance(resolved, dict) else {}
 
 
 def _resolve_template_value(value: Any, ctx: dict[str, Any], env: Any) -> Any:
@@ -342,10 +417,12 @@ def _resolve_template_value(value: Any, ctx: dict[str, Any], env: Any) -> Any:
             rendered = env.from_string(value).render(**ctx)
         except Exception:
             return value
-        # Coerce numeric-looking strings to Python literals where safe so
-        # downstream filter expressions get the original list/int/dict
-        # back instead of a stringified copy.
-        if rendered.startswith(("[", "{")):
+        # Coerce list/dict renders back to Python so downstream filters
+        # see the original sequence rather than a stringified copy.
+        # Numeric strings stay as-is; only Jinja calls expecting a
+        # collection trip the literal-eval branch.
+        stripped = rendered.lstrip()
+        if stripped.startswith(("[", "{")):
             try:
                 import ast
                 return ast.literal_eval(rendered)
@@ -417,34 +494,44 @@ def _attach_alert_rollups(root: ReportNode, state: dict[int, dict[str, Any]]) ->
                 }
 
 
-_CHILD_GRANDCHILD_LABELS = {
-    "esxi_host": "VMs",
-    "datacenter": "ESXi Hosts",
-    "vcenter": "Datacenters",
-    "cluster": "ESXi Hosts",
-}
+def _children_label_from_spec(
+    schemas_by_name: dict[str, ReportSchema] | None,
+    child_tier: str,
+) -> str | None:
+    """Look up the grandchild-column label for *child_tier* by scanning
+    every schema's ``tree.levels`` for a level matching the tier and
+    returning its declared ``children_label``. Returns ``None`` if
+    nothing's declared — the caller falls back to a generic placeholder."""
+    if not schemas_by_name or not child_tier:
+        return None
+    for schema in schemas_by_name.values():
+        if schema.tree is None:
+            continue
+        for level in schema.tree.levels:
+            if level.tier == child_tier and level.children_label:
+                return level.children_label
+    return None
 
 
 def _build_children_section(
     node: ReportNode,
     node_state: dict[int, dict[str, Any]] | None,
+    schemas_by_name: dict[str, ReportSchema] | None = None,
 ) -> dict[str, Any]:
     """Build the auto children section that lives inside the page's
     Inventory widget. Title reflects the child tier, and the third column
     is named after the *grandchild* tier (e.g. ``VMs`` when children are
-    ESXi hosts) — same conventions the standalone children block used to
-    follow before the Inventory consolidation."""
+    ESXi hosts) — resolved from the spec's ``children_label`` so labels
+    are pure config."""
     child_tiers = sorted({c.tier or "" for c in node.children})
     if len(child_tiers) == 1 and child_tiers[0]:
         tier = child_tiers[0]
         tier_label = tier.replace("_", " ").title()
-        section_name = f"{len(node.children)} {tier_label}{'' if len(node.children) == 1 else 's'}"
+        section_name = tier_label if len(node.children) == 1 else f"{tier_label}s"
     else:
-        section_name = (
-            f"{len(node.children)} {'child' if len(node.children) == 1 else 'children'}"
-        )
+        section_name = "Child" if len(node.children) == 1 else "Children"
         tier = ""
-    grandchild_label = _CHILD_GRANDCHILD_LABELS.get(tier, "Sub-nodes")
+    grandchild_label = _children_label_from_spec(schemas_by_name, tier) or "Sub-nodes"
     columns = [
         {"name": "Name"},
         {"name": grandchild_label},
@@ -535,7 +622,16 @@ def _compute_tree_state(
             inline_schema = schemas_by_name.get(inline.schema_name)
             if inline_schema is None or not isinstance(node_seed, dict):
                 continue
-            inline_seed = _resolve_inline_seed(inline.seed_template, node_seed)
+            parent_seed = (
+                node.parent.data_source({})
+                if node.parent is not None and node.parent.data_source is not None
+                else {}
+            )
+            if not isinstance(parent_seed, dict):
+                parent_seed = {}
+            inline_seed = _resolve_inline_seed(
+                inline.seed_template, {**node_seed, "parent": parent_seed},
+            )
             _inline_fields, inline_alerts = _eval_fields_and_alerts(inline_schema, inline_seed)
             if inline_alerts:
                 alerts = list(alerts) + list(inline_alerts)
@@ -577,17 +673,22 @@ def render_tree(
     ctx: ReportContext | None = None,
     template_name: str = "generic_tree_node.html.j2",
     tree_products: list[dict[str, str]] | None = None,
+    stamp_prefix: str = "",
+    history_stamps: list[dict[str, Any]] | None = None,
+    tree_state: dict[int, dict[str, Any]] | None = None,
 ) -> list[Path]:
-    """Render every node in *root*'s subtree, returning the list of HTML paths written."""
+    """Render every node in *root*'s subtree, returning the list of HTML paths written.
+
+    Pass *tree_state* when the caller already computed it (e.g. for a
+    parallel archive render of the same tree) to skip the per-node
+    schema-evaluation pass.
+    """
     tpl = env.get_template(template_name)
-    tree_state = _compute_tree_state(root, schemas_by_name)
-    # Resolve ``_node_ref`` markers on flat-list rows (``datacenters``,
-    # ``esxi_hosts``, …) into ``ncs_alerts`` rollup dicts so schema-
-    # defined inventory sections can render an "NCS Alerts" column with
-    # the same severity-tally treatment used by the auto-children
-    # section. Done here (post tree-state) because rollups aren't
-    # known until every node's schema has been evaluated.
-    _attach_alert_rollups(root, tree_state)
+    if tree_state is None:
+        tree_state = _compute_tree_state(root, schemas_by_name)
+        # Resolve ``_node_ref`` rows into rollup dicts after evaluation —
+        # only needed once per tree, so we skip when state was reused.
+        _attach_alert_rollups(root, tree_state)
     written: list[Path] = []
     for node in root.walk():
         schema = schemas_by_name.get(node.schema_name)
@@ -596,6 +697,8 @@ def render_tree(
             continue
         view = build_tree_node_view(
             node, schema=schema, ctx=ctx, node_state=tree_state, tree_products=tree_products,
+            schemas_by_name=schemas_by_name,
+            stamp_prefix=stamp_prefix, history_stamps=history_stamps,
         )
         out_path = node.node_path.resolve_under(output_root) / f"{node.slug}.html"
         out_path.parent.mkdir(parents=True, exist_ok=True)

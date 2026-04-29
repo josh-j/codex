@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build a per-owner VMware compliance digest from collected raw bundles.
 
-Reads every `<platform_root>/vsphere/<vc-slug>/raw.vm.yaml` (one per
-vCenter — produced by the tree-layout collector), classifies each VM via
+Reads every `<platform_root>/vsphere/<vc-slug>/raw.yaml` (one per
+vCenter — produced by the vcsa role, which is the single source of
+vCenter-wide VM/snapshot/infra-pattern data), classifies each VM via
 the same `get_vms_list()` function the reporter uses, then groups findings
 by VM owner email. Emits a JSON document consumed by `owner_digest.yml`:
 
@@ -56,13 +57,16 @@ def _import_get_vms_list(scripts_dir: Path):
 
 
 def _find_bundles(platform_root: Path) -> list[Path]:
-    """Locate vCenter VM bundles under the tree-layout share.
+    """Locate vCenter bundles under the tree-layout share.
 
-    Each vCenter emits one raw.vm.yaml under
-    ``<platform_root>/vsphere/<vc-slug>/raw.vm.yaml`` (carrying the full
-    ``virtual_machines`` list for that vCenter).
+    Each vCenter emits one ``raw.yaml`` under
+    ``<platform_root>/vsphere/<vc-slug>/raw.yaml`` (the vcsa role's
+    bundle, which carries the full ``virtual_machines``,
+    ``snapshots_raw``, ``vms_info_raw``, and ``infra_patterns`` lists
+    for that vCenter — the single source of truth for vCenter-wide
+    data).
     """
-    return sorted((platform_root / "vsphere").glob("*/raw.vm.yaml"))
+    return sorted((platform_root / "vsphere").glob("*/raw.yaml"))
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -141,7 +145,7 @@ def main(argv: list[str]) -> int:
 
     bundles = _find_bundles(args.platform_root)
     if not bundles:
-        sys.stderr.write(f"no raw.vm.yaml bundles under {args.platform_root}/vsphere/*/\n")
+        sys.stderr.write(f"no raw.yaml bundles under {args.platform_root}/vsphere/*/\n")
         return 1
 
     get_vms_list = _import_get_vms_list(args.scripts_dir)

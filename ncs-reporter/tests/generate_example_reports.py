@@ -172,7 +172,6 @@ def _write_raw_yaml(bundle: dict) -> None:
                     {
                         "id": item.get("id"),
                         "rule_id": item.get("id"),
-                        "name": host,
                         "status": item.get("status"),
                         "name": item.get("title"),
                         "severity": item.get("severity"),

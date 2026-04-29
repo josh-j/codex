@@ -448,6 +448,8 @@ def _split_hosts_data(
     result: dict[str, dict[str, Any]] = {}
     name_key = schema.split_name_key or "name"
     split_key = schema.split_field
+    if split_key is None:
+        return dict(hosts_data)
 
     for _parent_host, bundle in hosts_data.items():
         fields, _ = extract_fields(schema, bundle)

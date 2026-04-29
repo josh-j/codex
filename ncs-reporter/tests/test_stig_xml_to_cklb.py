@@ -90,7 +90,6 @@ def _stig_xml_row(
     return {
         "id": f"V-{rule_num}",
         "rule_id": f"V-{rule_num}",
-        "name": host,
         "status": status,
         "name": f"stigrule_{rule_num}_check",
         "severity": "medium",

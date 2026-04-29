@@ -440,7 +440,6 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
             {
                 "id": "V-256375",
                 "rule_id": "V-256375",
-                "name": "esxi-01.local",
                 "status": "failed",
                 "severity": "medium",
                 "name": "Lockdown Mode",

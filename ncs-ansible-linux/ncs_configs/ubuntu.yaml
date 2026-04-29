@@ -1,4 +1,13 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+tree:
+  root_slug: ubuntu
+  root_title: Ubuntu
+  root_schema: inventory_root
+  levels:
+    - tier: host
+      schema: ubuntu
+      bundle_key: raw_ubuntu
+
 config:
   platform: linux/ubuntu
   stig:

@@ -7,7 +7,7 @@ import minify_html
 
 def minify_html_doc(html: str) -> str:
     """Minify a complete HTML document."""
-    return minify_html.minify(  # type: ignore[no-any-return]
+    return minify_html.minify(
         html,
         minify_css=True,
         minify_js=True,
@@ -17,7 +17,7 @@ def minify_html_doc(html: str) -> str:
 
 def minify_css(css: str) -> str:
     """Minify a standalone CSS fragment."""
-    return minify_html.minify(  # type: ignore[no-any-return]
+    return minify_html.minify(
         f"<style>{css}</style>",
         minify_css=True,
     )[7:-8]  # strip <style>...</style> wrapper
@@ -25,7 +25,7 @@ def minify_css(css: str) -> str:
 
 def minify_js(js: str) -> str:
     """Minify a standalone JS fragment."""
-    return minify_html.minify(  # type: ignore[no-any-return]
+    return minify_html.minify(
         f"<script>{js}</script>",
         minify_css=False,
         minify_js=True,

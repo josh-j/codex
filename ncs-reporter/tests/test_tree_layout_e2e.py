@@ -34,8 +34,17 @@ class TestTreeLayoutE2E(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(data))
 
+    def _write_tree_bundle(self, rel: str, data: dict) -> None:
+        path = self.reports_root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(data))
+
     def test_vsphere_tree_emitted_at_expected_paths(self) -> None:
-        self._write_bundle("vmware/vcsa/vc-lab/raw_vcsa.yaml", {
+        # New tree layout: ncs_collector writes raw.yaml directly under
+        # <reports_root>/<product-slug>/<...tree_path...>/raw.yaml. The
+        # spec-driven builder discovers bundles by depth-walking that tree.
+        self.platform_root.mkdir(parents=True)
+        self._write_tree_bundle("vsphere/vc-lab/raw.yaml", {
             "metadata": {"host": "vc-lab", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
                 "appliance_version": "7.0.3",
@@ -151,7 +160,9 @@ class TestTreeLayoutE2E(unittest.TestCase):
         self.assertTrue((self.reports_root / "ubuntu" / "web-01" / "web-01.html").exists())
 
     def test_flat_inventory_emits_product_then_host(self) -> None:
-        self._write_bundle("linux/ubuntu/web-01/raw_ubuntu.yaml", {
+        # New tree layout for flat products: <reports_root>/<slug>/<host>/raw.yaml
+        self.platform_root.mkdir(parents=True)
+        self._write_tree_bundle("ubuntu/web-01/raw.yaml", {
             "metadata": {"host": "web-01", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
                 "hostname": "web-01",

@@ -2,7 +2,7 @@
 # playbooks/vmware/owner_digest.yml
 # Email VMware VM owners about their VMs' backup/ownership compliance issues.
 #
-# Reads raw_vm.yaml bundles collected by internal.vmware.vm_collect, groups
+# Reads vcsa raw.yaml bundles collected by internal.vmware.vcsa_collect, groups
 # findings by owner_email via scripts/build_owner_digest.py, and sends one
 # HTML digest per owner via community.general.mail.
 #

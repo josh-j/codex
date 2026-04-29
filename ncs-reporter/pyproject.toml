@@ -17,7 +17,11 @@ requires-python = ">=3.10"
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.39.3",
+    "mypy>=1.20.2",
     "pytest>=8.0",
+    "ruff>=0.15.12",
+    "types-pyyaml>=6.0.12.20260408",
 ]
 
 [project.scripts]
@@ -39,6 +43,8 @@ strict = true
 [tool.basedpyright]
 typeCheckingMode = "standard"
 include = ["src"]
+venvPath = "."
+venv = ".venv"
 reportExplicitAny = false
 reportAny = false
 reportUnknownMemberType = false

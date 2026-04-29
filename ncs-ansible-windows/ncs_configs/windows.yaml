@@ -1,4 +1,13 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+tree:
+  root_slug: windows
+  root_title: Windows Server
+  root_schema: inventory_root
+  levels:
+    - tier: host
+      schema: windows
+      bundle_key: raw_windows
+
 config:
   platform: windows
   stig:

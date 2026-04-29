@@ -562,7 +562,30 @@ class TreeSpec(BaseModel):
 
     root_slug: str
     root_title: str = ""
+    # Schema name used to render the product root page. Defaults to
+    # ``root_slug`` (e.g. vsphere → ``vsphere.yaml``). Flat products that
+    # don't ship a dedicated root schema set this to ``inventory_root``.
+    root_schema: str = ""
     levels: list[TreeLevel] = Field(default_factory=list)
+    # Cross-tier list unions exposed on the root's data_source. For each
+    # entry, the reporter walks the root's first-level children, resolves
+    # the dotted path inside each child's bundle, and concatenates the
+    # resulting lists. Lets a product surface aggregated tables (e.g.
+    # vSphere "All ESXi Hosts" / "All VMs") on the root page without any
+    # render-time Python.
+    merge_from_children: list["MergeFromChildrenSpec"] = Field(default_factory=list)
+
+
+class MergeFromChildrenSpec(BaseModel):
+    """One union directive for ``TreeSpec.merge_from_children``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str  # output key on root.data_source
+    from_: str = Field(  # dotted path inside each child's bundle
+        validation_alias=AliasChoices("from_", "from"),
+        serialization_alias="from",
+    )
 
 
 class InlineEvaluationSpec(BaseModel):
@@ -707,7 +730,10 @@ class ReportSchema(BaseModel):
     @model_validator(mode="after")
     def _cross_check_references(self) -> "ReportSchema":
         """Ensure all field references in alerts, widgets, and fleet columns exist in fields."""
-        self._derive_widget_slugs()
+        import re as _re
+        for widget in self.widgets:
+            if not widget.slug and hasattr(widget, "name"):
+                widget.slug = _re.sub(r"[^a-z0-9]+", "_", widget.name.lower()).strip("_")
 
         # Skip cross-reference check when path_prefix is set — vars are
         # auto-imported from the raw data at runtime, not all declared.

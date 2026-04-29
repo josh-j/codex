@@ -132,264 +132,11 @@ class ReportNode:
 # ---------------------------------------------------------------------------
 
 
-def build_vsphere_tree(
-    *,
-    vcenter_bundles: dict[str, dict[str, Any]],
-    esxi_bundles: dict[str, dict[str, Any]],
-    vm_bundles: dict[str, dict[str, Any]],
-) -> ReportNode:
-    """Materialize the vSphere → vCenter → Datacenter → Cluster → ESXi tree.
-
-    Parameters
-    ----------
-    vcenter_bundles:
-        Mapping of vCenter inventory hostname → ``raw_vcsa.data`` dict. Each
-        carries ``clusters`` (keyed by cluster name, with a ``datacenter``
-        field inside), ``datastores``, ``dvswitches``, etc.
-    esxi_bundles:
-        Mapping of ESXi hostname → ``raw_esxi.data`` dict. Each should
-        expose ``cluster`` and ``datacenter`` fields for tree placement.
-    vm_bundles:
-        Mapping of vCenter inventory hostname → ``raw_vm.data`` dict
-        (containing the ``virtual_machines`` list and ``snapshots_raw``).
-
-    Returns
-    -------
-    A ``ReportNode`` rooted at the ``vsphere`` inventory. The root's subtree
-    spans one child per vCenter bundle, etc.
-    """
-    root = ReportNode(
-        tier="inventory",
-        slug="vsphere",
-        title="vSphere",
-        schema_name="vsphere",
-        node_path=NodePath.product("vsphere"),
-    )
-    # vSphere root IS the "vCenter Appliances" overview — it lists every
-    # vCenter directly with links to each vCenter host report. No
-    # intermediate vcsa_fleet tier; datacenter children of each vCenter
-    # list their ESXi hosts with cluster as a column.
-
-    vcenter_summaries: list[dict[str, Any]] = []
-
-    for vc_host, vc_data in sorted(vcenter_bundles.items()):
-        vc_slug = slugify(vc_host)
-        vc_bundle = {"raw_vcsa": {"data": vc_data, "metadata": {"host": vc_host}}}
-        vc_node = root.find_or_add_child(
-            vc_slug,
-            tier="vcenter",
-            schema_name="vcsa",
-            title=vc_host,
-            data_source=_static_source(vc_bundle),
-        )
-
-        clusters_raw = vc_data.get("clusters")
-        if isinstance(clusters_raw, list):
-            clusters = {
-                str(c["name"]): c
-                for c in clusters_raw
-                if isinstance(c, dict) and c.get("name")
-            }
-        elif isinstance(clusters_raw, dict):
-            clusters = clusters_raw
-        else:
-            clusters = {}
-        _attach_datacenters_and_esxi(vc_node, clusters, vc_data, esxi_bundles, vm_bundles, vc_host)
-
-        # Datacenter count is derived from the unique ``datacenter`` field
-        # on the vCenter's clusters; the tree itself no longer carries a
-        # datacenter tier (vCenter → ESXi only).
-        dc_names = {
-            str(c.get("datacenter") or "").strip()
-            for c in clusters.values()
-            if isinstance(c, dict) and (c.get("datacenter") or "").strip()
-        }
-        vcenter_summaries.append({
-            "title": vc_host,
-            "report_url": f"{vc_slug}/{vc_slug}.html",
-            "version": vc_data.get("appliance_version", ""),
-            "health": vc_data.get("appliance_health_overall", "unknown"),
-            "alert_counts": {"critical": 0, "warning": 0},
-            "datacenter_count": len(dc_names),
-            "esxi_host_count": len(vc_node.children),
-        })
-
-    total_datacenters = sum(e["datacenter_count"] for e in vcenter_summaries)
-    total_esxi = sum(e["esxi_host_count"] for e in vcenter_summaries)
-    total_vms = sum(
-        len(_as_list((vm_bundles.get(host) or {}).get("virtual_machines")))
-        for host in vcenter_bundles
-    )
-
-    # Flat per-tier rows so the vsphere root page can render dedicated
-    # "Datacenters", "ESXi Hosts", "Virtual Machines" tables alongside
-    # the vCenter Appliances widget — operators landing on vsphere.html
-    # want a one-shot inventory list without drilling down.
-    datacenters_flat: list[dict[str, Any]] = []
-    esxi_hosts_flat: list[dict[str, Any]] = []
-    virtual_machines_flat: list[dict[str, Any]] = []
-    for vc_node in root.children:
-        vc_data = vc_node.data_source({}).get("raw_vcsa", {}).get("data", {}) if vc_node.data_source else {}
-        vc_label = vc_node.title or vc_node.slug
-        # Datacenters are not tree nodes anymore; reconstruct flat rows
-        # from the vCenter's clusters list (datacenter is a field on each
-        # cluster). The Inventory widget's "Datacenters" section still
-        # shows them with cluster/host counts.
-        clusters_iter = vc_data.get("clusters")
-        if isinstance(clusters_iter, list):
-            cluster_dicts = [c for c in clusters_iter if isinstance(c, dict)]
-        elif isinstance(clusters_iter, dict):
-            cluster_dicts = [c for c in clusters_iter.values() if isinstance(c, dict)]
-        else:
-            cluster_dicts = []
-        dc_index: dict[str, dict[str, int]] = {}
-        for cluster in cluster_dicts:
-            dc_name = str(cluster.get("datacenter") or "").strip()
-            if not dc_name:
-                continue
-            entry = dc_index.setdefault(dc_name, {"cluster_count": 0, "esxi_host_count": 0})
-            entry["cluster_count"] += 1
-            entry["esxi_host_count"] += int(cluster.get("host_count") or 0)
-        for dc_name, counts in sorted(dc_index.items()):
-            datacenters_flat.append({
-                "name": dc_name,
-                "vcenter": vc_label,
-                "report_url": f"{vc_node.slug}/{vc_node.slug}.html",
-                "esxi_host_count": counts["esxi_host_count"],
-                "cluster_count": counts["cluster_count"],
-            })
-        for esxi_node in vc_node.children:
-            esxi_data = esxi_node.data_source({}).get("raw_esxi", {}).get("data", {}) if esxi_node.data_source else {}
-            esxi_hosts_flat.append({
-                "name": esxi_node.title or esxi_node.slug,
-                "vcenter": vc_label,
-                "datacenter": esxi_data.get("datacenter") or "—",
-                "cluster": esxi_data.get("cluster") or "—",
-                "report_url": f"{vc_node.slug}/{esxi_node.slug}/{esxi_node.slug}.html",
-                "version": esxi_data.get("version", ""),
-                "overall_status": esxi_data.get("overall_status", "unknown"),
-                "_node_ref": id(esxi_node),
-            })
-            for vm in _as_list(esxi_data.get("virtual_machines")):
-                if isinstance(vm, dict):
-                    virtual_machines_flat.append({
-                        "name": vm.get("guest_name") or vm.get("name") or "",
-                        "vcenter": vc_label,
-                        "datacenter": esxi_data.get("datacenter") or "—",
-                        "cluster": esxi_data.get("cluster") or "—",
-                        "esxi_host": esxi_node.title or esxi_node.slug,
-                        "esxi_host_url": (
-                            f"{vc_node.slug}/{esxi_node.slug}/{esxi_node.slug}.html"
-                        ),
-                        "power_state": vm.get("power_state", ""),
-                        "guest_os": vm.get("guest_fullname", ""),
-                        "ip_address": vm.get("ip_address", ""),
-                    })
-
-    root.data_source = _static_source({
-        "vcenters": vcenter_summaries,
-        "datacenters": datacenters_flat,
-        "esxi_hosts": esxi_hosts_flat,
-        "virtual_machines": virtual_machines_flat,
-        "datacenter_count": total_datacenters,
-        "esxi_host_count": total_esxi,
-        "vm_count": total_vms,
-        "vcenter_count": len(vcenter_summaries),
-    })
-
-    return root
-
-
 def _static_source(data: dict[str, Any]) -> Callable[[dict[str, Any]], dict[str, Any]]:
     """Return a data_source callable that yields *data* regardless of input."""
     def _src(_aggregated: dict[str, Any]) -> dict[str, Any]:
         return data
     return _src
-
-
-def _attach_datacenters_and_esxi(
-    vc_node: ReportNode,
-    clusters: dict[str, dict[str, Any]],
-    vc_data: dict[str, Any],
-    esxi_bundles: dict[str, dict[str, Any]],
-    vm_bundles: dict[str, dict[str, Any]],
-    vc_host: str,
-) -> None:
-    """Attach ESXi hosts directly under a vCenter node.
-
-    The legacy ``vCenter → Datacenter → ESXi`` shape was flattened to
-    ``vCenter → ESXi`` — datacenter info (clusters, datastores,
-    dvswitches) is already on the vCenter's bundle and renders on the
-    vCenter page, so a separate datacenter tier was redundant. ESXi
-    rows still carry their datacenter name as a column for filter/sort.
-    """
-    vm_bundle = vm_bundles.get(vc_host, {})
-    all_vms = _as_list(vm_bundle.get("virtual_machines"))
-
-    vms_by_host: dict[str, list[dict[str, Any]]] = {}
-    for vm in all_vms:
-        if not isinstance(vm, dict):
-            continue
-        # The collector emits ``esxi_hostname`` (community.vmware naming);
-        # accept either spelling for forward-compatibility.
-        host_key = str(vm.get("esxi_hostname") or vm.get("esxi_host") or "").strip()
-        vms_by_host.setdefault(host_key, []).append(vm)
-
-    for esxi_host, esxi_data in sorted(esxi_bundles.items()):
-        if not isinstance(esxi_data, dict):
-            continue
-        esxi_vms = vms_by_host.get(esxi_host, [])
-        esxi_bundle = {
-            "raw_esxi": {
-                "data": {**esxi_data, "virtual_machines": esxi_vms},
-                "metadata": {"host": esxi_host},
-            },
-        }
-        vc_node.find_or_add_child(
-            slugify(esxi_host),
-            tier="esxi_host",
-            schema_name="esxi",
-            title=esxi_host,
-            data_source=_static_source(esxi_bundle),
-        )
-
-
-def build_flat_inventory_tree(
-    *,
-    inventory_slug: str,
-    title: str,
-    schema_name: str,
-    host_bundles: dict[str, dict[str, Any]],
-    host_schema_name: str,
-) -> ReportNode:
-    """Materialize a flat inventory tree (Ubuntu, Photon, Windows, ACI).
-
-    Each host becomes a direct child of the inventory root. Host data is
-    wrapped as a ``raw_<schema>`` bundle so the existing host schema's
-    path-based field extraction keeps working.
-    """
-    root = ReportNode(
-        tier="inventory",
-        slug=inventory_slug,
-        title=title,
-        schema_name="inventory_root",
-        node_path=NodePath.product(inventory_slug),
-    )
-    raw_key = f"raw_{host_schema_name}"
-    hosts_summary: list[dict[str, Any]] = []
-    for host, data in sorted(host_bundles.items()):
-        host_slug = slugify(host)
-        wrapped = {raw_key: {"data": data, "metadata": {"host": host}}}
-        root.find_or_add_child(
-            host_slug,
-            tier="host",
-            schema_name=host_schema_name,
-            title=host,
-            data_source=_static_source(wrapped),
-        )
-        hosts_summary.append({"title": host, "report_url": f"{host_slug}/{host_slug}.html"})
-    root.data_source = _static_source({"hosts": hosts_summary, "host_count": len(hosts_summary)})
-    return root
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +152,6 @@ def build_tree_from_spec(
     spec: Any,
     *,
     bundles_root: Path,
-    augment: Callable[[ReportNode, dict[str, Any]], None] | None = None,
 ) -> ReportNode | None:
     """Build a ``ReportNode`` tree by walking ``bundles_root/<root_slug>/``
     and matching each ``raw.yaml`` to a level declared on *spec*.
@@ -422,12 +168,6 @@ def build_tree_from_spec(
     earlier level a child attaches to; the parent's slug is taken from
     the segment at index 0 of the bundle's path (i.e. the first segment
     below the product root).
-
-    *augment* is an optional per-product hook that runs after a node is
-    placed in the tree, receiving the node and its raw data. The vSphere
-    schema uses it to splice per-host VMs in from a sibling ``raw.vm.yaml``
-    file. The hook lives in product-specific code (e.g. shipped alongside
-    the schema YAML), not in ncs-reporter.
     """
     if spec is None or not getattr(spec, "root_slug", None):
         return None
@@ -440,7 +180,7 @@ def build_tree_from_spec(
         tier="inventory",
         slug=root_slug,
         title=getattr(spec, "root_title", "") or root_slug,
-        schema_name=root_slug,
+        schema_name=getattr(spec, "root_schema", "") or root_slug,
         node_path=NodePath.product(root_slug),
     )
 
@@ -469,10 +209,10 @@ def build_tree_from_spec(
         if parent is None:
             continue
         host_slug = slugify(rel_segments[-1])
-        title = (
-            (data.get("metadata") or {}).get("host")
-            if isinstance(data, dict) else None
-        ) or rel_segments[-1]
+        # Use the directory segment as title so host_urls / tree_products /
+        # site dashboard all key against the same string; metadata.host may
+        # carry a dotted form that doesn't match the slugified inventory key.
+        title = rel_segments[-1]
         bundle_envelope = {
             level.bundle_key: {
                 "data": data.get("data") if isinstance(data.get("data"), dict) else data,
@@ -487,11 +227,49 @@ def build_tree_from_spec(
             data_source=_static_source(bundle_envelope),
         )
         nodes_by_segments[tuple(rel_segments)] = node
-        if augment is not None:
-            try:
-                augment(node, data)
-            except Exception:
-                logger.exception("augment hook failed for %s", raw_path)
+
+    # Generic per-tier rollup so the root page can render an Inventory
+    # widget driven purely by the spec. For each declared tier ``T``,
+    # expose ``<T>s: [...]`` (list of {title, report_url, _node_ref})
+    # and ``<T>_count`` on root.data_source. ``hosts`` / ``host_count``
+    # are also emitted as aliases for the deepest tier so legacy
+    # ``inventory_root.yaml`` widgets keep working.
+    rollup: dict[str, Any] = {}
+    for level in levels:
+        tier_nodes = [n for n in root.walk() if n.tier == level.tier]
+        rows = [
+            {
+                "title": n.title or n.slug,
+                "name": n.title or n.slug,
+                "report_url": "/".join(n.node_path.segments[1:]) + f"/{n.slug}.html",
+                "_node_ref": id(n),
+            }
+            for n in tier_nodes
+        ]
+        rollup[f"{level.tier}s"] = rows
+        rollup[f"{level.tier}_count"] = len(rows)
+    if levels:
+        deepest_tier = levels[-1].tier
+        rollup["hosts"] = rollup.get(f"{deepest_tier}s", [])
+        rollup["host_count"] = rollup.get(f"{deepest_tier}_count", 0)
+
+    # Cross-tier list unions: each ``merge_from_children`` directive
+    # concatenates a list field resolved by dotted path inside every
+    # first-level child's bundle.
+    from ..normalization._fields import resolve_field
+    for merge in (getattr(spec, "merge_from_children", None) or []):
+        if not merge.from_:
+            continue
+        union: list[Any] = []
+        for child in root.children:
+            bundle = child.data_source({}) if child.data_source else {}
+            value = resolve_field(merge.from_, bundle)
+            if isinstance(value, list):
+                union.extend(value)
+        rollup[merge.field] = union
+        rollup.setdefault(f"{merge.field}_count", len(union))
+
+    root.data_source = _static_source(rollup)
 
     return root
 

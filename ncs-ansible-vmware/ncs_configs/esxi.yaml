@@ -26,12 +26,29 @@ inline_evaluations:
     seed_template:
       raw_vm:
         data:
-          virtual_machines: "{{ raw_esxi.data.virtual_machines | default([]) }}"
+          # Pull VM/snapshot data from the parent vCenter's bundle
+          # (single source of truth — the vcsa role queries everything
+          # once per vCenter) and filter to this ESXi at render time.
+          virtual_machines: >-
+            {{ parent.raw_vcsa.data.virtual_machines | default([])
+               | selectattr('esxi_hostname', 'eq', raw_esxi.metadata.host) | list }}
           vms_info_raw:
-            virtual_machines: "{{ raw_esxi.data.virtual_machines | default([]) }}"
-          vm_count: "{{ (raw_esxi.data.virtual_machines | default([])) | length }}"
-          snapshots_raw: []
-          infra_patterns: []
+            virtual_machines: >-
+              {{ (parent.raw_vcsa.data.vms_info_raw | default({})).get('virtual_machines', [])
+                 | selectattr('esxi_hostname', 'eq', raw_esxi.metadata.host) | list }}
+          vm_count: >-
+            {{ (parent.raw_vcsa.data.virtual_machines | default([])
+               | selectattr('esxi_hostname', 'eq', raw_esxi.metadata.host) | list) | length }}
+          # Snapshots filtered to this host's VMs by name. The parent
+          # bundle ships the full vCenter snapshot list; the Jinja
+          # selectattr below partitions per-host without any Python.
+          snapshots_raw: >-
+            {%- set host_vm_names = parent.raw_vcsa.data.virtual_machines | default([])
+                | selectattr('esxi_hostname', 'eq', raw_esxi.metadata.host)
+                | map(attribute='guest_name') | list -%}
+            {{ parent.raw_vcsa.data.snapshots_raw | default([])
+               | selectattr('vm_name', 'in', host_vm_names) | list }}
+          infra_patterns: "{{ parent.raw_vcsa.data.infra_patterns | default([]) }}"
           datacenters: []
           config: {}
 

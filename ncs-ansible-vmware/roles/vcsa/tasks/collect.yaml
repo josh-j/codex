@@ -29,6 +29,10 @@
           _raw_content_libraries: {}
           _raw_tag_categories: {}
           _raw_tags: {}
+          _raw_vcsa_vms_tagged: {}
+          _raw_vcsa_vms_untagged: {}
+          _all_vcsa_vms: []
+          _raw_vcsa_snapshots: {}
 
     # --- Inventory ---
 
@@ -247,6 +251,72 @@
       no_log: true
       when: vcsa_collect_appliance | default(vcenter_collect_appliance | default(true)) | bool
 
+    # --- VM workload + snapshots ---
+    # vCenter-scoped queries. The reporter exposes this bundle to
+    # per-ESXi inline_evaluations via the ``parent`` Jinja primitive
+    # for per-host filtering; owner_digest.py reads from the same file.
+
+    - name: Inventory | Query VM workload (with tags)
+      community.vmware.vmware_vm_info:
+        vm_type: vm
+        show_attribute: true
+        show_tag: true
+      register: _raw_vcsa_vms_tagged
+      delegate_to: localhost
+      no_log: true
+      ignore_errors: true
+      changed_when: false
+      when: vcsa_collect_vms | default(true) | bool
+
+    - name: Inventory | Query VM workload (no tags fallback)
+      community.vmware.vmware_vm_info:
+        vm_type: vm
+        show_attribute: true
+        show_tag: false
+      register: _raw_vcsa_vms_untagged
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_vms | default(true) | bool
+        - _raw_vcsa_vms_tagged.failed | default(false) | bool
+
+    - name: Inventory | Select VM workload result
+      ansible.builtin.set_fact:
+        _all_vcsa_vms: >-
+          {{
+            (_raw_vcsa_vms_untagged.virtual_machines | default([]))
+            if (_raw_vcsa_vms_tagged.failed | default(false) | bool)
+            else (_raw_vcsa_vms_tagged.virtual_machines | default([]))
+          }}
+      changed_when: false
+      no_log: true
+      when: vcsa_collect_vms | default(true) | bool
+
+    - name: Inventory | Warn when VM tags are unavailable
+      ansible.builtin.debug:
+        msg: >-
+          vSphere Automation SDK not available on the controller; VM tag
+          enrichment skipped. Tag-based alerts (e.g. vms_no_backup_tags)
+          will not fire. Install vmware-vapi-runtime to enable.
+      when:
+        - vcsa_collect_vms | default(true) | bool
+        - _raw_vcsa_vms_tagged.failed | default(false) | bool
+
+    - name: Inventory | Query Snapshots (per datacenter)
+      community.vmware.vmware_all_snapshots_info:
+        datacenter: "{{ item }}"
+      loop: "{{ _vcenter_datacenters | default([]) }}"
+      register: _raw_vcsa_snapshots
+      delegate_to: localhost
+      no_log: true
+      failed_when: false
+      changed_when: false
+      when:
+        - vcsa_collect_snapshots | default(vcsa_collect_vms | default(true)) | bool
+        - _vcenter_datacenters | default([]) | length > 0
+
     # --- Alarms ---
 
     - name: Alarms | Get triggered alarms
@@ -310,6 +380,7 @@
                   "name": cname,
                   "datacenter": dc.item | default(""),
                   "host_count": hosts | length,
+                  "host_names": hosts | map(attribute='name') | list,
                   "ha_enabled": cdata.ha_enabled | default(false),
                   "drs_enabled": cdata.drs_enabled | default(false),
                   "cpu_usage_pct": (((res.cpuUsedMHz | default(0)) | float / cpu_cap) * 100) | round(1) if cpu_cap > 0 else 0,
@@ -347,6 +418,42 @@
         _cluster_count: "{{ _cluster_count_raw | int }}"
         _esxi_host_count: "{{ _esxi_host_count_raw | int }}"
       changed_when: false
+
+    - name: Build summary lists (esxi_hosts + virtual_machines)
+      ansible.builtin.set_fact:
+        _flat_esxi_hosts: >-
+          {%- set out = [] -%}
+          {%- for c in (_flat_clusters | default([])) -%}
+            {%- for h in (c.host_names | default([])) -%}
+              {%- set _ = out.append({
+                'name': h,
+                'cluster': c.name,
+                'datacenter': c.datacenter,
+              }) -%}
+            {%- endfor -%}
+          {%- endfor -%}
+          {{ out }}
+        _flat_virtual_machines: >-
+          {%- set out = [] -%}
+          {%- for vm in (_all_vcsa_vms | default([])) -%}
+            {%- set _ = out.append({
+              'name': vm.guest_name | default(vm.guest_fullname | default('')),
+              'guest_os': vm.guest_fullname | default(''),
+              'power_state': vm.power_state | default(''),
+              'ip_address': vm.ip_address | default(''),
+              'esxi_host': vm.esxi_hostname | default(''),
+            }) -%}
+          {%- endfor -%}
+          {{ out }}
+      changed_when: false
+      no_log: true
+
+    - name: Parse summary lists
+      ansible.builtin.set_fact:
+        _flat_esxi_hosts: "{{ _flat_esxi_hosts | from_yaml | default([]) }}"
+        _flat_virtual_machines: "{{ _flat_virtual_machines | from_yaml | default([]) }}"
+      changed_when: false
+      no_log: true
 
     - name: Flatten dvswitches, extensions, and content libraries
       ansible.builtin.set_fact:
@@ -428,7 +535,6 @@
           ntp_servers: "{{ ((_raw_appliance_health | default({})).appliance | default({})).time.time_sync.servers | default([]) }}"
           backup_schedules: "{{ (_raw_appliance_backup | default({})).schedules | default([]) }}"
           backup_schedule_count: "{{ ((_raw_appliance_backup | default({})).schedules | default([])) | length }}"
-          vcenter_count: 1
           datacenter_count: "{{ ((_raw_datacenters | default({})).datacenter_info | default([])) | length }}"
           cluster_count: "{{ _cluster_count | int }}"
           esxi_host_count: "{{ _esxi_host_count | int }}"
@@ -443,6 +549,29 @@
           tag_count: "{{ ((_raw_tags | default({})).tag_info | default([])) | length }}"
           alarm_count: "{{ ((_raw_alarms | default({})).alarms | default([])) | length }}"
           clusters: "{{ _flat_clusters }}"
+          esxi_hosts: "{{ _flat_esxi_hosts }}"
+          virtual_machines: "{{ _flat_virtual_machines }}"
+          vm_count: "{{ _flat_virtual_machines | length }}"
+          # Full raw VM payload (with tags/attributes intact) consumed
+          # by vm.yaml's get_vms_list.py classifier; the summary above
+          # is the lightweight shape used by the root inventory table.
+          vms_info_raw:
+            virtual_machines: "{{ _all_vcsa_vms | default([]) }}"
+          snapshots_raw: >-
+            {{
+              _raw_vcsa_snapshots.results | default([])
+              | selectattr('vmware_all_snapshots_info', 'defined')
+              | map(attribute='vmware_all_snapshots_info')
+              | flatten | list
+            }}
+          snapshot_count: >-
+            {{
+              (_raw_vcsa_snapshots.results | default([])
+              | selectattr('vmware_all_snapshots_info', 'defined')
+              | map(attribute='vmware_all_snapshots_info')
+              | flatten | list) | length
+            }}
+          infra_patterns: "{{ (vcenter | default({})).config.infrastructure_vm_patterns | default([]) }}"
           datastores: "{{ _flat_datastores }}"
           resource_pools: "{{ (_raw_resource_pools | default({})).resource_pool_info | default([]) }}"
           dvswitches: "{{ _flat_dvswitches }}"
