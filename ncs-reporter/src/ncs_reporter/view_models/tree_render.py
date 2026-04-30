@@ -1,9 +1,6 @@
 """Tree-tier rendering: walks a ``ReportNode`` tree and emits HTML per node.
 
-Currently this is the *additive* path — the main ``all`` command still runs
-the legacy platform/fleet/host render too. Once parity + fixtures land in a
-later phase, this becomes the primary renderer and the legacy path is
-removed.
+This is the primary inventory page renderer used by the ``all`` command.
 
 The single responsibility of this module: given a populated tree and the
 shared Jinja environment, materialize ``<node_path>/<slug>.html`` for every
@@ -58,7 +55,7 @@ def _eval_schema_fields(schema: ReportSchema, seed: dict[str, Any]) -> dict[str,
     """Evaluate *schema.fields* starting from *seed*.
 
     Tree-tier schemas use ``compute:`` and ``fallback:`` only (no ``path:``
-    or ``script:`` — tree nodes don't read Ansible raw-bundle keys). This is
+    or ``script:``; tree nodes don't read Ansible raw-bundle keys. This is
     a simplified variant of :func:`extract_fields` that skips the passes we
     don't need.
     """

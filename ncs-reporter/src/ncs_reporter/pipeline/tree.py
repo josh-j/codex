@@ -24,14 +24,12 @@ from ..view_models.tree_render import _attach_alert_rollups, _compute_tree_state
 
 def _render_inventory_trees(
     r_root: Path,
-    all_platform_data: dict[str, dict[str, Any]],
     extra_dirs: tuple[str, ...],
     common_vars: dict[str, Any],
     *,
     bundle_root: Path | None = None,
 ) -> tuple[list[tuple[str, str, Path, list[str]]], dict[str, str], list[dict[str, str]]]:
     """Render the hierarchical inventory trees (vSphere + flat products)."""
-    del all_platform_data  # retained for backwards-compatible callers
     b_root = bundle_root or r_root
 
     schemas = discover_schemas(extra_dirs=extra_dirs)
@@ -127,6 +125,57 @@ def _render_inventory_trees(
         _refresh_archive_history_dropdowns(r_root, history_for_render)
 
     return rendered, host_urls, tree_products
+
+
+def _read_raw_stig_artifact(path: Path) -> tuple[str, dict[str, Any]] | None:
+    """Read a tree-layout ``raw_stig_*.yaml`` artifact."""
+    try:
+        with path.open(encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    metadata_raw = raw.get("metadata")
+    metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+    audit_type = str(metadata.get("audit_type") or path.stem)
+    return audit_type, raw
+
+
+def _merge_tree_stig_artifacts_into_global(
+    reports_root: Path,
+    global_data: dict[str, Any],
+    *,
+    extra_dirs: tuple[str, ...] = (),
+) -> None:
+    """Hydrate ``global_data['hosts']`` with tree-layout STIG artifacts."""
+    if not reports_root.is_dir():
+        return
+    touched: set[str] = set()
+    for raw_path in sorted(reports_root.rglob("raw_stig_*.yaml")):
+        if HISTORY_DIR in raw_path.parts or "cklb" in raw_path.parts:
+            continue
+        loaded = _read_raw_stig_artifact(raw_path)
+        if loaded is None:
+            continue
+        audit_type, raw = loaded
+        metadata_raw = raw.get("metadata")
+        metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+        hostname = str(metadata.get("host") or raw_path.parent.name).strip()
+        if not hostname:
+            continue
+        entry = global_data["hosts"].setdefault(hostname, {})
+        deep_merge(entry, {audit_type: raw})
+        touched.add(hostname)
+
+    if not touched:
+        return
+    for hostname in touched:
+        global_data["hosts"][hostname] = normalize_host_bundle(
+            hostname, global_data["hosts"][hostname], extra_dirs=extra_dirs
+        )
+    global_data["metadata"]["fleet_stats"]["total_hosts"] = len(global_data["hosts"])
+    click.echo(f"  Hydrated {len(touched)} host(s) from tree-layout STIG artifacts.")
 
 
 def _read_bundle_data(path: Path) -> dict[str, Any] | None:

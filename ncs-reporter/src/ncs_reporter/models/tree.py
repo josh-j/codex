@@ -232,7 +232,7 @@ def build_tree_from_spec(
     # widget driven purely by the spec. For each declared tier ``T``,
     # expose ``<T>s: [...]`` (list of {title, report_url, _node_ref})
     # and ``<T>_count`` on root.data_source. ``hosts`` / ``host_count``
-    # are also emitted as aliases for the deepest tier so legacy
+    # are also emitted as aliases for the deepest tier so generic
     # ``inventory_root.yaml`` widgets keep working.
     rollup: dict[str, Any] = {}
     for level in levels:

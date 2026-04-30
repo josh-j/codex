@@ -2,8 +2,7 @@
 
 Exercises the full CLI with a synthetic fleet and asserts the generated
 directory shape matches the single naming rule (``<node>/<slug>.html``,
-``raw.yaml``, ``<slug>.stig.html`` etc.), independent of the legacy
-``platform/<report_dir>/…`` output.
+``raw.yaml``, ``<slug>.stig.html`` etc.).
 """
 
 from __future__ import annotations
@@ -117,8 +116,8 @@ class TestTreeLayoutE2E(unittest.TestCase):
 
     def test_reporter_reads_tree_raw_paths(self) -> None:
         """Bundles written only under reports_root/<inventory>/… are picked up."""
-        # Simulate what the new collector writes: no legacy platform/… files at all,
-        # only tree-layout raw.yaml files already materialized under reports_root.
+        # Simulate what the collector writes: tree-layout raw.yaml files
+        # already materialized under reports_root.
         (self.reports_root / "ubuntu" / "web-01").mkdir(parents=True)
         (self.reports_root / "ubuntu" / "web-01" / "raw.yaml").write_text(yaml.safe_dump({
             "metadata": {"host": "web-01", "timestamp": "2026-02-26T23:00:00Z"},

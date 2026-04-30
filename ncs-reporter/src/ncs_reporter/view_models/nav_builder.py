@@ -19,12 +19,10 @@ from typing import Any
 
 from ..models.platforms_config import (
     NAV_LABEL_STIG,
-    fleet_link_url,
     host_report_basename,
     stig_fleet_url,
 )
 from ..platform_registry import PlatformRegistry
-from .common import fleet_entries_for_dir
 
 
 class NavBuilder:
@@ -49,11 +47,6 @@ class NavBuilder:
         self._generated_fleet_dirs = generated_fleet_dirs
         self._has_stig_fleet = has_stig_fleet
         self._has_site_report = has_site_report
-        # When set, replaces the per-platform legacy fleet links with
-        # tree-product entries (e.g. "vSphere" → vsphere/vsphere.html).
-        # Tree-only renders no longer write the legacy ``_inventory.html``
-        # pages, so this prevents the STIG fleet nav from advertising
-        # broken links.
         self._tree_products = tree_products or []
 
         # Pre-compute immutable indices.
@@ -108,16 +101,8 @@ class NavBuilder:
         """Fleet navigation links used by all templates."""
         back = self._back_to_root(from_dir, is_node=is_node)
         fleets: list[dict[str, str]] = []
-        if self._tree_products:
-            for p in self._tree_products:
-                fleets.append({"name": p["name"], "report": back + p["report"]})
-        else:
-            for plt_dir in self._platform_dirs:
-                for label, schema_name in fleet_entries_for_dir(plt_dir):
-                    fleets.append({
-                        "name": label,
-                        "report": fleet_link_url(plt_dir, schema_name, back),
-                    })
+        for p in self._tree_products:
+            fleets.append({"name": p["name"], "report": back + p["report"]})
         if self._has_stig_fleet:
             fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url(back)})
         return fleets
@@ -153,8 +138,7 @@ class NavBuilder:
 
     @staticmethod
     def _normalize_product_label(label: str | None) -> str:
-        """Strip the legacy ``" Fleet"`` suffix so labels read as product
-        names. Falls back to ``"Inventory"`` when nothing usable is left."""
+        """Return a product label, falling back to ``"Inventory"``."""
         return str(label or "").replace(" Fleet", "").strip() or "Inventory"
 
     @staticmethod
@@ -418,16 +402,8 @@ class NavBuilder:
         nav["search_root"] = self._search_root(nav)
         tree_fleets: list[dict[str, str]] = []
 
-        if self._tree_products:
-            for p in self._tree_products:
-                tree_fleets.append({"name": p["name"], "report": p["report"]})
-        else:
-            for plt_dir in self._platform_dirs:
-                for label, schema_name in fleet_entries_for_dir(plt_dir):
-                    tree_fleets.append({
-                        "name": label,
-                        "report": fleet_link_url(plt_dir, schema_name),
-                    })
+        for p in self._tree_products:
+            tree_fleets.append({"name": p["name"], "report": p["report"]})
 
         tree_fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url()})
         nav["tree_fleets"] = tree_fleets

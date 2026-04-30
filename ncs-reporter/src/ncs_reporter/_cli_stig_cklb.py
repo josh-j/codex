@@ -32,7 +32,7 @@ def _resolve_skeleton_path(
     """Resolve a skeleton file path using a layered search.
 
     Resolution order:
-      1. --skeleton-dir / bare filename  (legacy explicit CLI override)
+      1. --skeleton-dir / bare filename  (explicit CLI override)
       2. --config-dir / path-from-schema (supports subdirs like cklb_skeletons/)
       3. Any extra_config_dirs / path-from-schema (per-collection configs)
       4. Package builtins / bare filename (bundled VMware/Photon skeletons)
@@ -197,14 +197,14 @@ def stig(input_file: str, output_dir: str, report_stamp: str | None, config_dir:
 @click.command()
 @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
 @click.option("--output-dir", "-o", required=True, type=click.Path())
-@click.option("--skeleton-dir", type=click.Path(exists=True), help="Legacy: explicit skeleton directory override.")
+@click.option("--skeleton-dir", type=click.Path(exists=True), help="Explicit skeleton directory override.")
 @click.option("--config-dir", type=click.Path(exists=True, file_okay=False),
               help="Config directory containing platform configs and skeleton files.")
 def cklb(input_file: str, output_dir: str, skeleton_dir: str | None, config_dir: str | None) -> None:
     """Generate CKLB artifacts for STIG results.
 
     Skeleton resolution order:
-      1. --skeleton-dir (legacy explicit override, bare filename)
+      1. --skeleton-dir (explicit override, bare filename)
       2. --config-dir + path from stig_platform_to_checklist (e.g. cklb_skeletons/foo.cklb)
       3. Package builtins in src/ncs_reporter/cklb_skeletons/ (bare filename)
     """

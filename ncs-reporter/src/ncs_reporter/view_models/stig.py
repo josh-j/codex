@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from .._cklb import load_cklb_lookup
 from .._report_context import ReportContext
-from ..pathing import rel_href, render_template
+from ..pathing import rel_href
 from ..platform_registry import PlatformRegistry, default_registry
 from ..primitives import canonical_stig_status as _canonical_stig_status
 from .common import _iter_hosts, _status_from_health, build_meta, canonical_severity, safe_list
@@ -53,6 +53,7 @@ def collect_stig_entries(
     hosts_data: dict[str, Any],
     stamp: str,
     registry: PlatformRegistry,
+    tree_host_urls: dict[str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, str]]]]:
     """Enumerate hosts_data and collect STIG audit entries + report index.
 
@@ -63,6 +64,7 @@ def collect_stig_entries(
     stig_entries: list[dict[str, Any]] = []
     all_stig_reports: dict[str, list[dict[str, str]]] = {}
     _path_cache: dict[int, dict[str, str]] = {}
+    host_urls = tree_host_urls or {}
 
     for hostname, bundle in hosts_data.items():
         if not isinstance(bundle, dict):
@@ -87,14 +89,11 @@ def collect_stig_entries(
             if eid not in _path_cache:
                 _path_cache[eid] = entry.paths.model_dump()
             path_templates = _path_cache[eid]
-            host_report_abs = render_template(
-                path_templates["report_stig_host"],
-                report_dir=report_dir,
-                schema_name="",
-                hostname=hostname,
-                target_type=target_type,
-                report_stamp=stamp,
-            )
+            tree_host_url = host_urls.get(hostname)
+            if tree_host_url:
+                host_report_abs = str(Path(tree_host_url).with_name(f"{hostname}_stig_{target_type}.html"))
+            else:
+                host_report_abs = f"stig/{target_type or 'unknown'}/{hostname}/{hostname}_stig_{target_type}.html"
             host_rel_dir = str(Path(host_report_abs).parent).replace("\\", "/")
 
             se = {
@@ -550,6 +549,7 @@ def _compute_fleet_row(
     host_view: dict[str, Any],
     *,
     registry: PlatformRegistry,
+    tree_host_urls: dict[str, str] | None = None,
 ) -> FleetRowDelta:
     """Compute fleet-row data for one audit-type result (pure function)."""
     target = host_view["target"]
@@ -565,7 +565,12 @@ def _compute_fleet_row(
     )
     link_base = registry.link_base_for_target(resolved_base_type or t_type)
     stamped_name = f"{hostname}_stig_{t_type}.html"
-    target_link = f"{link_base}/{hostname}/{stamped_name}"
+    tree_url = (tree_host_urls or {}).get(hostname)
+    target_link = (
+        str(Path(tree_url).with_name(stamped_name))
+        if tree_url
+        else f"{link_base}/{hostname}/{stamped_name}"
+    )
 
     return FleetRowDelta(
         hostname=hostname,
@@ -677,6 +682,7 @@ def build_stig_fleet_view(
     registry: PlatformRegistry | None = None,
     cklb_dir: Any = None,
     nav_builder: NavBuilder | None = None,
+    tree_host_urls: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     reg = registry or default_registry()
     _init_keys = set(reg.all_platform_names())
@@ -709,6 +715,7 @@ def build_stig_fleet_view(
             delta = _compute_fleet_row(
                 hostname, audit_type, host_view,
                 registry=reg,
+                tree_host_urls=tree_host_urls,
             )
             _apply_fleet_delta(acc, delta)
 

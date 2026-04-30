@@ -69,7 +69,7 @@ def resolve_config_dir(
     Supported layouts:
       1. <config_dir>/platforms.yaml + <config_dir>/*.yaml configs
       2. <config_dir>/configs/platforms.yaml + <config_dir>/configs/*.yaml configs
-      3. <config_dir>/schemas/platforms.yaml (deprecated, backward compat)
+      3. <config_dir>/schemas/platforms.yaml
     """
     resolved_schema_dirs = list(extra_config_dir)
     resolved_platforms = platforms_config

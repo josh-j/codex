@@ -225,9 +225,9 @@ def discover_schemas(extra_dirs: tuple[str, ...] = ()) -> dict[str, ReportSchema
       1. extra_dirs (callers / tests can inject custom paths; typically from --config-dir)
       2. $NCS_REPORTER_CONFIG_DIR (colon-separated list, if set)
       3. ./configs/  (CWD-relative, preferred)
-      4. ./schemas/  (CWD-relative, deprecated fallback)
+      4. ./schemas/  (CWD-relative project schemas)
       5. ~/.config/ncs_reporter/configs/
-      6. ~/.config/ncs_reporter/schemas/  (deprecated fallback)
+      6. ~/.config/ncs_reporter/schemas/
     """
     result: dict[str, ReportSchema] = {}
 

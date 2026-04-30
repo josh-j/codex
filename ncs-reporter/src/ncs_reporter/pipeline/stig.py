@@ -24,6 +24,7 @@ def _render_stig_and_cklb(
     runtime_registry: PlatformRegistry,
     config_dir: str | None,
     tree_products: list[dict[str, str]] | None = None,
+    tree_host_urls: dict[str, str] | None = None,
 ) -> None:
     """Generate CKLB artifacts and render STIG fleet reports."""
     if not global_changed:
@@ -54,5 +55,6 @@ def _render_stig_and_cklb(
             registry=runtime_registry,
             has_site_report=True,
             tree_products=tree_products,
+            tree_host_urls=tree_host_urls,
         )
         click.echo("STIG fleet reports and CKLB artifacts generated.")

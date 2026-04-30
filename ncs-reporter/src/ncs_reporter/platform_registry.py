@@ -113,9 +113,7 @@ class PlatformRegistry:
 
     def host_exclude_set(self) -> set[str]:
         """Build the set of directory/file names to skip when walking host dirs."""
-        from ncs_reporter.models.platforms_config import PLATFORM_DIR_PREFIX
         structural = {
-            PLATFORM_DIR_PREFIX,
             "all_hosts_state.yaml",
         }
         for e in self._entries:
@@ -189,10 +187,7 @@ class PlatformRegistry:
 
     def link_base_for_target(self, target_type: str) -> str:
         """Return the report_dir path prefix for a given STIG target type."""
-        from ncs_reporter.models.platforms_config import platform_dir_url
-        e = self._tt_lookup.get(target_type.lower())
-        report_dir = e.report_dir if e else target_type
-        return platform_dir_url(report_dir)
+        return f"stig/{target_type.lower() or 'unknown'}"
 
     def platform_to_report_dir(self, platform: str) -> str | None:
         """Return the primary report_dir for a platform (first renderable entry)."""
@@ -231,4 +226,3 @@ def default_registry() -> PlatformRegistry:
     entry_dicts = build_platform_entries_from_schemas(schemas)
     entries = [PlatformEntry.model_validate(e) for e in entry_dicts] if entry_dicts else []
     return PlatformRegistry(entries)
-

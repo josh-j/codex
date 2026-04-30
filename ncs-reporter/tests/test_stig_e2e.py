@@ -24,9 +24,10 @@ class TestStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vcsa" / "esxi-01"
+        self.host_dir = self.reports_root / "stig" / "esxi" / "esxi-01"
         self.host_dir.mkdir(parents=True)
-        self.reports_root.mkdir(parents=True)
+        self.platform_root.mkdir(parents=True)
+        self.reports_root.mkdir(parents=True, exist_ok=True)
 
         # Skeleton dir (actual repo path)
         self.skeleton_dir = Path(__file__).parent.parent / "src" / "ncs_reporter" / "cklb_skeletons"
@@ -58,7 +59,7 @@ class TestStigE2E(unittest.TestCase):
 
     def _write_groups(self):
         groups = {"all": ["esxi-01"], "vcenters": [], "esxi_hosts": ["esxi-01"]}
-        groups_path = self.platform_root / "inventory_groups.json"
+        groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
 
@@ -83,7 +84,7 @@ class TestStigE2E(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         # Verify Finding in aggregated state
-        fleet_state_path = self.platform_root / "all_hosts_state.yaml"
+        fleet_state_path = self.reports_root / "all_hosts_state.yaml"
         self.assertTrue(fleet_state_path.exists())
         with open(fleet_state_path) as f:
             state = yaml.safe_load(f)
@@ -162,18 +163,17 @@ class TestStigE2E(unittest.TestCase):
         self.assertIn("esxi-01", fleet_content)
         self.assertTrue(_has_attr(fleet_content, "href", "site.html"))
         # vcsa fleet link only appears when vcsa health data exists
-        self.assertTrue(_has_attr(fleet_content, "href", "platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html"))
+        self.assertTrue(_has_attr(fleet_content, "href", "stig/esxi/esxi-01/esxi-01_stig_esxi.html"))
         self.assertTrue(_has_attr(fleet_content, "data-root", "./"))
 
-        # Host report: reports_root/platform/vmware/esxi/esxi-01/esxi-01_stig_esxi.html
-        host_report = self.reports_root / "platform" / "vmware" / "esxi" / "esxi-01" / "esxi-01_stig_esxi.html"
+        host_report = self.reports_root / "stig" / "esxi" / "esxi-01" / "esxi-01_stig_esxi.html"
 
         self.assertTrue(host_report.exists(), "STIG host report should exist")
         host_content = host_report.read_text()
         self.assertIn("esxi-01", host_content)
-        self.assertTrue(_has_attr(host_content, "href", "../../../../site.html"))
-        self.assertTrue(_has_attr(host_content, "href", "../../../../site.stig.html"))
-        self.assertTrue(_has_attr(host_content, "data-root", "../../../../"))
+        self.assertTrue(_has_attr(host_content, "href", "../../../site.html"))
+        self.assertTrue(_has_attr(host_content, "href", "../../../site.stig.html"))
+        self.assertTrue(_has_attr(host_content, "data-root", "../../../"))
         self.assertTrue(
             "open" in host_content or "not_a_finding" in host_content,
             "Host STIG report should contain status indicators",
@@ -189,9 +189,10 @@ class TestVmStigE2E(unittest.TestCase):
         # Setup structure
         self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
-        self.host_dir = self.platform_root / "vmware" / "vcsa" / "vc-01"
+        self.host_dir = self.reports_root / "stig" / "vm" / "vc-01"
         self.host_dir.mkdir(parents=True)
-        self.reports_root.mkdir(parents=True)
+        self.platform_root.mkdir(parents=True)
+        self.reports_root.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         self.test_dir.cleanup()
@@ -221,7 +222,7 @@ class TestVmStigE2E(unittest.TestCase):
 
     def _write_groups(self):
         groups = {"all": ["vc-01"], "vcenters": ["vc-01"], "esxi_hosts": []}
-        groups_path = self.platform_root / "inventory_groups.json"
+        groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
 
@@ -246,7 +247,7 @@ class TestVmStigE2E(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
         # Verify Finding in aggregated state
-        fleet_state_path = self.platform_root / "all_hosts_state.yaml"
+        fleet_state_path = self.reports_root / "all_hosts_state.yaml"
         self.assertTrue(fleet_state_path.exists())
         with open(fleet_state_path) as f:
             state = yaml.safe_load(f)
@@ -310,7 +311,7 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
 
     def test_vcsa_stig_report_renders_under_vmware_vcsa(self):
         host = "vcsa-01.local"
-        host_dir = self.platform_root / "vmware" / "vcsa" / host
+        host_dir = self.reports_root / "stig" / "vcsa" / host
         host_dir.mkdir(parents=True)
 
         raw_data = {
@@ -334,7 +335,8 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             yaml.dump(raw_data, f)
 
         groups = {"all": [host], "vcenters": [host]}
-        groups_path = self.platform_root / "inventory_groups.json"
+        self.platform_root.mkdir(parents=True)
+        groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
 
@@ -352,12 +354,12 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
-        host_report = self.reports_root / "platform" / "vmware" / "vcsa" / host / f"{host}_stig_vcsa.html"
-        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under vmware/vcsa")
+        host_report = self.reports_root / "stig" / "vcsa" / host / f"{host}_stig_vcsa.html"
+        self.assertTrue(host_report.exists(), "VCSA STIG host report should exist under stig/vcsa")
 
     def test_photon_stig_report_renders_under_linux_photon(self):
         host = "photon-01.local"
-        host_dir = self.platform_root / "linux" / "photon" / host
+        host_dir = self.reports_root / "stig" / "photon" / host
         host_dir.mkdir(parents=True)
 
         raw_data = {
@@ -381,7 +383,8 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             yaml.dump(raw_data, f)
 
         groups = {"all": [host], "photon_servers": [host], "ubuntu_servers": []}
-        groups_path = self.platform_root / "inventory_groups.json"
+        self.platform_root.mkdir(parents=True)
+        groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
 
@@ -399,5 +402,5 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0, f"CLI failed: {result.output}")
 
-        host_report = self.reports_root / "platform" / "linux" / "photon" / host / f"{host}_stig_photon.html"
-        self.assertTrue(host_report.exists(), "Photon STIG host report should exist under linux/photon")
+        host_report = self.reports_root / "stig" / "photon" / host / f"{host}_stig_photon.html"
+        self.assertTrue(host_report.exists(), "Photon STIG host report should exist under stig/photon")

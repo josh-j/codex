@@ -12,10 +12,8 @@ from ncs_reporter.pathing import validate_template
 # Canonical filenames and prefixes (single source of truth)
 # ---------------------------------------------------------------------------
 
-PLATFORM_DIR_PREFIX = "platform"
 FILENAME_SITE_HEALTH = "site.html"
 FILENAME_STIG_FLEET = "site.stig.html"
-FILENAME_FLEET_SUFFIX = "_inventory.html"
 
 
 def host_report_basename(hostname: str) -> str:
@@ -35,21 +33,8 @@ TEMPLATE_SITE = "site_health_report.html.j2"
 TEMPLATE_STIG_HOST = "stig_host_report.html.j2"
 TEMPLATE_STIG_FLEET = "stig_fleet_report.html.j2"
 
-def fleet_link_url(report_dir: str, schema_name: str, back_to_root: str = "") -> str:
-    """Build a fleet report URL from components."""
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{schema_name}{FILENAME_FLEET_SUFFIX}"
-
-
-def host_report_url(report_dir: str, hostname: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{host_report_basename(hostname)}"
-
-
-def host_report_historical_url(report_dir: str, hostname: str, report_stamp: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{host_report_historical_basename(hostname, report_stamp)}"
-
-
-def stig_host_url(report_dir: str, hostname: str, target_type: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/{hostname}_stig_{target_type}.html"
+def stig_host_url(target_type: str, hostname: str, back_to_root: str = "") -> str:
+    return f"{back_to_root}stig/{target_type}/{hostname}/{hostname}_stig_{target_type}.html"
 
 
 def stig_fleet_url(back_to_root: str = "") -> str:
@@ -60,26 +45,17 @@ def site_report_url(back_to_root: str = "") -> str:
     return f"{back_to_root}{FILENAME_SITE_HEALTH}"
 
 
-def platform_dir_url(report_dir: str, back_to_root: str = "") -> str:
-    return f"{back_to_root}{PLATFORM_DIR_PREFIX}/{report_dir}"
-
-
-def raw_stig_artifact_path(report_dir: str, hostname: str, target_type: str) -> str:
-    return f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}/raw_stig_{target_type}.yaml"
-
-
-def host_node_rel_dir(report_dir: str, hostname: str) -> str:
-    """Directory that holds a host's reports, relative to the report root."""
-    return f"{PLATFORM_DIR_PREFIX}/{report_dir}/{hostname}"
+def raw_stig_artifact_path(hostname: str, target_type: str) -> str:
+    return f"stig/{target_type}/{hostname}/raw_stig_{target_type}.yaml"
 
 
 DEFAULT_PATH_TEMPLATES: dict[str, str] = {
-    "raw_stig_artifact": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/raw_stig_{{target_type}}.yaml",
-    "report_fleet": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{schema_name}}{FILENAME_FLEET_SUFFIX}",
-    "report_node_latest": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}.html",
-    "report_node_historical": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}_{{report_stamp}}.html",
-    "report_stig_host": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}_stig_{{target_type}}.html",
-    "report_search_entry": f"{PLATFORM_DIR_PREFIX}/{{report_dir}}/{{hostname}}/{{hostname}}.html",
+    "raw_stig_artifact": "stig/{target_type}/{hostname}/raw_stig_{target_type}.yaml",
+    "report_fleet": "{report_dir}/{schema_name}.html",
+    "report_node_latest": "{report_dir}/{hostname}/{hostname}.html",
+    "report_node_historical": "{report_dir}/{hostname}/{hostname}_{report_stamp}.html",
+    "report_stig_host": "stig/{target_type}/{hostname}/{hostname}_stig_{target_type}.html",
+    "report_search_entry": "{report_dir}/{hostname}/{hostname}.html",
     "report_site": FILENAME_SITE_HEALTH,
     "report_stig_fleet": FILENAME_STIG_FLEET,
 }
@@ -109,7 +85,7 @@ class PlatformPaths(BaseModel):
         validate_template(
             self.raw_stig_artifact,
             allowed=all_allowed,
-            required={"report_dir", "hostname", "target_type"},
+            required={"hostname", "target_type"},
             field_name="paths.raw_stig_artifact",
         )
         validate_template(
@@ -133,7 +109,7 @@ class PlatformPaths(BaseModel):
         validate_template(
             self.report_stig_host,
             allowed=all_allowed,
-            required={"report_dir", "hostname", "target_type"},
+            required={"hostname", "target_type"},
             field_name="paths.report_stig_host",
         )
         validate_template(
@@ -180,14 +156,6 @@ class PlatformEntry(BaseModel):
     def site_audit_key(self) -> str | None:
         if self.render and self.schema_names:
             return self.schema_names[0]
-        return None
-
-    @property
-    def fleet_link(self) -> str | None:
-        if self.render and self.report_dir:
-            schema = self.schema_names[0] if self.schema_names else self.platform
-            if schema:
-                return fleet_link_url(self.report_dir, schema)
         return None
 
     @model_validator(mode="before")

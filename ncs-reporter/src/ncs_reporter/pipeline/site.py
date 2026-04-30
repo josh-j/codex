@@ -9,7 +9,6 @@ from typing import Any
 import click
 
 from .._report_context import get_jinja_env, report_context
-from ..pathing import render_template
 from ..platform_registry import PlatformRegistry
 from ..view_models.site import build_site_dashboard_view
 
@@ -27,6 +26,7 @@ def _render_site_and_search(
     tree_products: list[dict[str, str]] | None = None,
 ) -> None:
     """Render the site dashboard and generate the search index."""
+    del platforms_by_report_dir
     if not global_changed:
         click.echo("--- Skipping Global Site Dashboard (unchanged) ---")
     else:
@@ -49,27 +49,14 @@ def _render_site_and_search(
 
     tree_host_urls = tree_host_urls or {}
     search_index = []
-    for hostname, rep_dir in global_inventory_index.items():
+    for hostname, product in global_inventory_index.items():
         tree_url = tree_host_urls.get(hostname)
-        if tree_url:
-            search_url = tree_url
-        else:
-            platform_cfg = platforms_by_report_dir.get(rep_dir)
-            if not platform_cfg:
-                continue
-            path_templates = dict(platform_cfg["paths"])
-            search_url = render_template(
-                path_templates["report_search_entry"],
-                report_dir=rep_dir,
-                schema_name=str(platform_cfg.get("schema_name") or platform_cfg["platform"]),
-                hostname=hostname,
-                target_type="",
-                report_stamp=common_vars["report_stamp"],
-            )
+        if not tree_url:
+            continue
         search_index.append({
             "h": hostname,
-            "u": search_url,
-            "p": rep_dir.split("/")[0] if "/" in rep_dir else rep_dir,
+            "u": tree_url,
+            "p": product.split("/")[0] if "/" in product else product,
         })
     (r_root / "search_index.js").write_text(
         "window.NCS_SEARCH_INDEX = " + json.dumps(search_index, separators=(",", ":")) + ";",

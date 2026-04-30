@@ -182,26 +182,19 @@ class TestBuildStigHostView:
         assert finding["title"] == "CKLB Title 9"
         assert finding["message"] == "Discuss 9"
 
-    def test_tree_fleets_filters_non_generated_platform_dirs(self):
-        hosts_data = {
-            "host-esxi": "vmware/esxi",
-            "host-vc": "vmware/vcsa",
-            "host-linux": "linux/ubuntu",
-        }
+    def test_tree_fleets_require_tree_products(self):
         view = build_stig_host_view(
             "host-esxi",
             "stig_esxi",
             _stig_payload([{"id": "V-001", "status": "open", "severity": "CAT_I"}]),
             nav_ctx=StigNavContext(
-                hosts_data=hosts_data,
-                generated_fleet_dirs={"vmware/vcsa", "linux/ubuntu"},
+                hosts_data={"host-esxi": "vmware/esxi"},
+                generated_fleet_dirs={"vmware/esxi"},
             ),
         )
-        reports = [f["report"] for f in view["nav"]["tree_fleets"]]
-        assert any("platform/vmware/vcsa/vcsa_inventory.html" in r for r in reports)
-        assert any("platform/linux/ubuntu/ubuntu_inventory.html" in r for r in reports)
+        assert view["nav"]["tree_fleets"] == [{"name": "STIG", "report": "../../../../site.stig.html"}]
 
-    def test_tree_products_replace_legacy_fleet_links_in_nav(self):
+    def test_tree_products_drive_stig_host_nav(self):
         nav_builder = NavBuilder(
             default_registry(),
             hosts_data={"host-esxi": "vmware/esxi"},
@@ -228,7 +221,6 @@ class TestBuildStigHostView:
         fleets = view["nav"]["tree_fleets"]
         assert {"name": "vSphere", "report": "../../../../vsphere/vsphere.html"} in fleets
         assert {"name": "Ubuntu", "report": "../../../../ubuntu/ubuntu.html"} in fleets
-        assert not any("platform/" in f["report"] for f in fleets)
         product_crumb = next(c for c in view["nav"]["breadcrumbs"] if c.get("group_label") == "Products")
         assert product_crumb["text"] == "STIG"
         assert {item["text"] for item in product_crumb["items"]} >= {"vSphere", "Ubuntu", "STIG"}
@@ -277,7 +269,7 @@ class TestBuildStigFleetView:
         view = build_stig_fleet_view(hosts)
         assert view["fleet"]["totals"]["hosts"] == 1
 
-    def test_tree_products_replace_legacy_fleet_links_in_fleet_nav(self):
+    def test_tree_products_drive_stig_fleet_nav(self):
         nav_builder = NavBuilder(
             default_registry(),
             generated_fleet_dirs={"vmware/esxi"},
@@ -306,7 +298,6 @@ class TestBuildStigFleetView:
         fleets = view["nav"]["tree_fleets"]
         assert {"name": "vSphere", "report": "vsphere/vsphere.html"} in fleets
         assert {"name": "Ubuntu", "report": "ubuntu/ubuntu.html"} in fleets
-        assert not any("platform/" in f["report"] for f in fleets)
         product_crumb = next(c for c in view["nav"]["breadcrumbs"] if c.get("group_label") == "Products")
         assert product_crumb["text"] == "STIG"
         assert {item["text"] for item in product_crumb["items"]} >= {"vSphere", "Ubuntu", "STIG"}

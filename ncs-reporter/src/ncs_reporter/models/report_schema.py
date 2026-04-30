@@ -107,7 +107,7 @@ class FieldSpec(BaseModel):
     def _normalise_script(cls, values: Any) -> Any:
         """Accept both flat and nested script forms.
 
-        Flat (legacy):
+        Flat:
             script: "foo.py"
             script_args: {k: v}
             script_timeout: 30
@@ -203,7 +203,7 @@ class ActionSpec(BaseModel):
     playbook: str | None = None  # Path to ansible playbook (relative to --project-dir)
     extra_vars: dict[str, Any] = Field(default_factory=dict)
     timeout: int = 120  # Seconds — ansible-playbook can be slow
-    command: str | None = None  # Raw shell command (legacy / escape-hatch)
+    command: str | None = None  # Raw shell command escape hatch
 
     @model_validator(mode="after")
     def _require_one(self) -> ActionSpec:

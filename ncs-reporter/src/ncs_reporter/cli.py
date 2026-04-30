@@ -9,16 +9,12 @@ from typing import Any
 import click
 import yaml
 
-from ._config import default_paths
 from ._report_context import (
     generate_timestamps,
     get_jinja_env,
-    load_hosts_data,
     load_yaml,
     report_context,
 )
-from ._renderers import PlatformRenderConfig, render_platform
-from .aggregation import load_all_reports, write_output
 from .platform_registry import default_registry
 from .schema_loader import discover_schemas
 from .view_models.generic import build_generic_node_view
@@ -72,51 +68,6 @@ def validate_config(platforms_config: str | None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Single-platform commands (linux, vmware, windows)
-# ---------------------------------------------------------------------------
-
-
-def _platform_command(platform: str, input_file: str, output_dir: str, report_stamp: str | None) -> None:
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-    hosts_data = load_hosts_data(input_file)
-    common_vars = generate_timestamps(report_stamp)
-    report_dir = default_registry().platform_to_report_dir(platform) or platform
-    render_platform(
-        platform,
-        hosts_data,
-        output_path,
-        common_vars,
-        config=PlatformRenderConfig(
-            report_dir=report_dir,
-            platform_paths=default_paths(),
-        ),
-    )
-    click.echo(f"Done! Reports generated in {output_dir}")
-
-
-def _register_platform_commands() -> None:
-    """Dynamically register per-platform CLI commands from the default registry."""
-    for p_name in default_registry().all_platform_names():
-        display = default_registry().platform_display_name(p_name)
-
-        @main.command(name=p_name)
-        @click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
-        @click.option("--output-dir", "-o", required=True, type=click.Path())
-        @click.option("--report-stamp", help="Report timestamp (YYYYMMDD).")
-        @click.pass_context
-        def _cmd(ctx: click.Context, input_file: str, output_dir: str, report_stamp: str | None,
-                 _platform: str = p_name, _display: str = display) -> None:
-            f"""Generate {_display} fleet and node reports."""
-            _platform_command(_platform, input_file, output_dir, report_stamp)
-
-        _cmd.__doc__ = f"Generate {display} fleet and node reports."
-
-
-_register_platform_commands()
-
-
-# ---------------------------------------------------------------------------
 # site
 # ---------------------------------------------------------------------------
 
@@ -139,26 +90,6 @@ def site(input_file: str, output_dir: str, report_stamp: str | None) -> None:
     content = env.get_template(TEMPLATE_SITE).render(site_dashboard_view=site_view, **common_vars)
     (output_path / FILENAME_SITE_HEALTH).write_text(content)
     click.echo(f"Done! Global dashboard generated in {output_dir}")
-
-
-# ---------------------------------------------------------------------------
-# collect
-# ---------------------------------------------------------------------------
-
-
-@main.command()
-@click.option("--report-dir", required=True, type=click.Path(exists=True))
-@click.option("--output", required=True, type=click.Path())
-@click.option("--filter", "audit_filter")
-def collect(report_dir: str, output: str, audit_filter: str | None) -> None:
-    """Aggregate host YAML reports into a single fleet state file."""
-    click.echo(f"Aggregating reports from {report_dir}...")
-    data = load_all_reports(report_dir, audit_filter=audit_filter)
-    if data:
-        write_output(data, output)
-        click.echo(f"Success: Aggregated {len(data['hosts'])} hosts into {output}")
-    else:
-        click.echo("Error: No data found or directory invalid.")
 
 
 # ---------------------------------------------------------------------------
@@ -375,14 +306,13 @@ def fire_on_alerts(input_file: str, hostname: str | None, state_file: str, proje
 # ---------------------------------------------------------------------------
 
 from ._cli_all import all_cmd  # noqa: E402
-from ._cli_platform import platform, schema  # noqa: E402
+from ._cli_platform import platform  # noqa: E402
 from ._cli_stig_cklb import cklb, stig, stig_apply  # noqa: E402
 
 main.add_command(all_cmd, "all")
 main.add_command(stig)
 main.add_command(cklb)
 main.add_command(platform)
-main.add_command(schema)
 main.add_command(stig_apply, "stig-apply")
 
 

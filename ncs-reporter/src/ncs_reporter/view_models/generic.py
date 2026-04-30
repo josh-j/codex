@@ -99,17 +99,6 @@ def _render_table_cell(
         # verbatim — there's no host-to-platform lookup needed.
         if link_val and ("/" in link_val or link_val.endswith(".html")):
             link = link_val
-        elif hosts_data and link_val in hosts_data:
-            # Legacy host_report_url lookup for tables whose link_field
-            # holds a hostname.
-            target_platform = hosts_data[link_val]
-            if generated_fleet_dirs is not None and target_platform not in generated_fleet_dirs:
-                target_platform = ""
-            if target_platform:
-                depth = len(current_platform_dir.split("/")) + 1 if current_platform_dir else 2
-                back_to_root = "../" * (depth + 1)
-                from ncs_reporter.models.platforms_config import host_report_url
-                link = host_report_url(target_platform, link_val, back_to_root)
 
     rendered_value = _format_value(col.format, value) if col.format else value
 
@@ -255,7 +244,7 @@ def _render_inventory(widget: InventoryWidget, fields: dict[str, Any], ctx: dict
     ``when`` clause evaluates falsy (or whose row list is empty) are
     suppressed so a sparse inventory doesn't show empty sub-tables.
     Stat cards are reused from the StatCardsWidget renderer so card
-    formatting / threshold colors stay identical to the legacy
+    formatting / threshold colors stay identical to the table
     ``stat_cards`` widget.
     """
     sections_rendered: list[dict[str, Any]] = []

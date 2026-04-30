@@ -413,7 +413,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
     """Integration-level test: run stig-apply --dry-run via Click test runner."""
 
     def _write_artifact(self, tmp_dir: str) -> Path:
-        """Artifact with explicit rule_version (legacy / ncs_collector format)."""
+        """Artifact with explicit rule_version from ncs_collector format."""
         rows = [
             {
                 "id": "V-256375",

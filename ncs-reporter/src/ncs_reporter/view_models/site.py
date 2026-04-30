@@ -48,7 +48,6 @@ def build_site_dashboard_view(
     tree_host_urls: dict[str, str] | None = None,
     tree_products: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    from ncs_reporter.models.platforms_config import fleet_link_url, host_report_url
     reg = registry or default_registry()
     all_alerts: list[dict[str, Any]] = []
     infra: dict[str, int] = {}
@@ -57,12 +56,12 @@ def build_site_dashboard_view(
         ctx=ctx,
         registry=reg,
         cklb_dir=cklb_dir,
+        tree_host_urls=tree_host_urls,
     )
 
     site_entries = reg.site_dashboard_entries()
     tree_host_urls = tree_host_urls or {}
 
-    host_report_dirs: dict[str, str] = {}
     hosts_per_audit_key: dict[str, int] = {}
     hostnames_per_audit_key: dict[str, list[str]] = {}
     for hostname, bundle in _iter_hosts(aggregated_hosts):
@@ -75,9 +74,6 @@ def build_site_dashboard_view(
                 continue
             hosts_per_audit_key[audit_key] = hosts_per_audit_key.get(audit_key, 0) + 1
             hostnames_per_audit_key.setdefault(audit_key, []).append(hostname)
-            if hostname not in host_report_dirs:
-                host_report_dirs[hostname] = entry.report_dir
-
             display = entry.display_name or entry.platform.capitalize()
             category = display
             audit_type_key = f"schema_{audit_key}"
@@ -113,10 +109,7 @@ def build_site_dashboard_view(
             _host_order.append(host)
             _host_groups[host] = {
                 "host": host,
-                "node_report": (
-                    tree_host_urls.get(host)
-                    or (host_report_url(host_report_dirs[host], host) if host in host_report_dirs else "")
-                ),
+                "node_report": tree_host_urls.get(host, ""),
                 "platform": alert.get("platform", ""),
                 "worst_severity": alert.get("severity", ""),
                 "alerts": [],
@@ -155,11 +148,7 @@ def build_site_dashboard_view(
         p_name = entry.platform
         audit_key = entry.site_audit_key or p_name
         display = entry.display_name or p_name.capitalize()
-        fleet_link = (
-            _tree_platform_url(audit_key)
-            or entry.fleet_link
-            or fleet_link_url(entry.report_dir, audit_key)
-        )
+        fleet_link = _tree_platform_url(audit_key) or ""
         asset_count = hosts_per_audit_key.get(audit_key, 0)
         audit_type_key = f"schema_{audit_key}"
         p_counts = _count_alerts([a for a in all_alerts if a.get("audit_type") == audit_type_key])

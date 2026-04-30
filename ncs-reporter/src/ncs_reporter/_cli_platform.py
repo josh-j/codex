@@ -6,14 +6,6 @@ import re
 from pathlib import Path
 
 import click
-import yaml
-
-from ._report_context import (
-    generate_timestamps,
-    get_jinja_env,
-    report_context,
-    write_report,
-)
 from ._schema_utils import annotated_template, schema_from_bundle, schema_template
 from .models.report_schema import ReportSchema
 from .schema_loader import (
@@ -22,7 +14,6 @@ from .schema_loader import (
     load_schema_from_file,
     validate_schema_paths,
 )
-from .view_models.generic import build_generic_fleet_view, build_generic_node_view
 
 
 # ---------------------------------------------------------------------------
@@ -171,66 +162,6 @@ def platform_init(name: str, from_bundle: Path | None, output: Path | None, anno
         click.echo(content)
 
 
-@platform.command("run")
-@click.argument("config_file", type=click.Path(exists=True, path_type=Path))
-@click.option("--input", "-i", "input_file", required=True, type=click.Path(exists=True))
-@click.option("--output-dir", "-o", required=True, type=click.Path())
-@click.option("--hostname", "-n", default="host", show_default=True)
-@click.option("--report-stamp")
-@click.option("--site-report", "site_report_href", default=None)
-def platform_run(
-    config_file: Path,
-    input_file: str,
-    output_dir: str,
-    hostname: str,
-    report_stamp: str | None,
-    site_report_href: str | None,
-) -> None:
-    """Run a single platform config report against a raw YAML bundle."""
-    try:
-        s = load_schema_from_file(config_file)
-    except ValueError as exc:
-        click.echo(f"ERROR: {exc}", err=True)
-        raise SystemExit(1)
-
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    with open(input_file) as f:
-        bundle = yaml.safe_load(f) or {}
-
-    from .models.platforms_config import (
-        FILENAME_FLEET_SUFFIX as _FFS,
-        TEMPLATE_NODE as _TN,
-        TEMPLATE_FLEET as _TF,
-        host_report_basename,
-    )
-    common_vars = generate_timestamps(report_stamp)
-    rc = report_context(common_vars)
-    env = get_jinja_env()
-    fleet_filename = f"{s.name}{_FFS}"
-    node_nav: dict[str, str] = {"fleet_report": f"../{fleet_filename}", "fleet_label": f"{s.display_name} Fleet"}
-    fleet_nav: dict[str, str] = {}
-    if site_report_href:
-        fleet_nav["site_report"] = site_report_href
-        node_nav["site_report"] = f"../{site_report_href}"
-
-    from .view_models.common import GenericNavContext
-    node_view = build_generic_node_view(s, hostname, bundle, ctx=rc, nav_ctx=GenericNavContext(nav=node_nav))
-    host_dir = output_path / hostname
-    host_dir.mkdir(exist_ok=True)
-    content = env.get_template(_TN).render(generic_node_view=node_view, **common_vars)
-    node_basename = host_report_basename(hostname)
-    write_report(host_dir, node_basename, content, common_vars["report_stamp"])
-    click.echo(f"Node report: {host_dir}/{node_basename}")
-
-    fleet_view = build_generic_fleet_view(s, {hostname: bundle}, ctx=rc, nav_ctx=GenericNavContext(nav=fleet_nav))
-    content = env.get_template(_TF).render(generic_fleet_view=fleet_view, **common_vars)
-    write_report(output_path, fleet_filename, content, common_vars["report_stamp"])
-    click.echo(f"Fleet report: {output_path}/{fleet_filename}")
-    click.echo("Done!")
-
-
 # ---------------------------------------------------------------------------
 # platform info subcommands
 # ---------------------------------------------------------------------------
@@ -360,19 +291,3 @@ def info_aliases() -> None:
     for alias, canonical, desc in aliases:
         click.echo(f"  {alias:20s} → {canonical:20s} {desc}")
 
-
-# ---------------------------------------------------------------------------
-# Deprecated alias — keep `schema` working with a warning
-# ---------------------------------------------------------------------------
-
-
-@click.group("schema", hidden=True)
-def schema() -> None:
-    """Deprecated: use 'platform' instead."""
-    click.echo("Warning: 'schema' command is deprecated, use 'platform' instead.", err=True)
-
-
-schema.add_command(platform_list, "list")
-schema.add_command(platform_validate, "validate")
-schema.add_command(platform_init, "init")
-schema.add_command(platform_run, "run")
