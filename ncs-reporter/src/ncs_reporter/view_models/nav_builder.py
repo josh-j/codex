@@ -42,12 +42,19 @@ class NavBuilder:
         generated_fleet_dirs: set[str] | None = None,
         has_stig_fleet: bool = False,
         has_site_report: bool = False,
+        tree_products: list[dict[str, str]] | None = None,
     ) -> None:
         self._reg = registry
         self._hosts_data = hosts_data or {}
         self._generated_fleet_dirs = generated_fleet_dirs
         self._has_stig_fleet = has_stig_fleet
         self._has_site_report = has_site_report
+        # When set, replaces the per-platform legacy fleet links with
+        # tree-product entries (e.g. "vSphere" → vsphere/vsphere.html).
+        # Tree-only renders no longer write the legacy ``_inventory.html``
+        # pages, so this prevents the STIG fleet nav from advertising
+        # broken links.
+        self._tree_products = tree_products or []
 
         # Pre-compute immutable indices.
         # Use generated_fleet_dirs as the authoritative list of platforms
@@ -101,12 +108,16 @@ class NavBuilder:
         """Fleet navigation links used by all templates."""
         back = self._back_to_root(from_dir, is_node=is_node)
         fleets: list[dict[str, str]] = []
-        for plt_dir in self._platform_dirs:
-            for label, schema_name in fleet_entries_for_dir(plt_dir):
-                fleets.append({
-                    "name": label,
-                    "report": fleet_link_url(plt_dir, schema_name, back),
-                })
+        if self._tree_products:
+            for p in self._tree_products:
+                fleets.append({"name": p["name"], "report": back + p["report"]})
+        else:
+            for plt_dir in self._platform_dirs:
+                for label, schema_name in fleet_entries_for_dir(plt_dir):
+                    fleets.append({
+                        "name": label,
+                        "report": fleet_link_url(plt_dir, schema_name, back),
+                    })
         if self._has_stig_fleet:
             fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url(back)})
         return fleets
@@ -132,13 +143,19 @@ class NavBuilder:
         """Convert a tree_fleets list into generic dropdown items."""
         return [
             {
-                "text": f"{f['name']} Fleet",
+                "text": f["name"],
                 "href": f["report"],
                 "active": f["name"] == active_fleet_name,
                 "css_class": "stig-link" if f["name"] == NAV_LABEL_STIG else "",
             }
             for f in tree_fleets
         ]
+
+    @staticmethod
+    def _normalize_product_label(label: str | None) -> str:
+        """Strip the legacy ``" Fleet"`` suffix so labels read as product
+        names. Falls back to ``"Inventory"`` when nothing usable is left."""
+        return str(label or "").replace(" Fleet", "").strip() or "Inventory"
 
     @staticmethod
     def _site_link_crumb(nav: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -215,19 +232,19 @@ class NavBuilder:
 
         tree_fleets = nav.get("tree_fleets", [])
         if tree_fleets:
-            fleet_label = str(nav.get("fleet_label") or "Fleet").replace(" Fleet", "")
+            fleet_label = self._normalize_product_label(nav.get("fleet_label"))
             crumbs.append({
                 "type": "dropdown",
-                "text": f"{fleet_label} Fleet",
+                "text": fleet_label,
                 "href": nav.get("fleet_report") or "#",
-                "group_label": "Fleets",
+                "group_label": "Products",
                 "scrollable": False,
                 "items": self._fleet_dropdown_items(tree_fleets, nav.get("fleet_label", "")),
             })
         elif nav.get("fleet_report"):
             crumbs.append({
                 "type": "link",
-                "text": nav.get("fleet_label", "Fleet Report"),
+                "text": self._normalize_product_label(nav.get("fleet_label")),
                 "href": nav["fleet_report"],
             })
 
@@ -264,17 +281,17 @@ class NavBuilder:
         if site_crumb:
             crumbs: list[dict[str, Any]] = [site_crumb]
             tree_fleets = nav["tree_fleets"]
-            label = (display_name or "Fleet").replace(" Fleet", "")
+            label = self._normalize_product_label(display_name)
             if tree_fleets:
                 crumbs.append({
                     "type": "dropdown",
-                    "text": f"{label} Fleet",
-                    "group_label": "Fleets",
+                    "text": label,
+                    "group_label": "Products",
                     "scrollable": False,
                     "items": self._fleet_dropdown_items(tree_fleets, display_name),
                 })
             else:
-                crumbs.append({"type": "label", "text": f"{label} Fleet"})
+                crumbs.append({"type": "label", "text": label})
 
             crumbs.append(self._search_crumb(nav["search_root"]))
             nav["breadcrumbs"] = crumbs
@@ -334,16 +351,16 @@ class NavBuilder:
         if tree_fleets:
             crumbs.append({
                 "type": "dropdown",
-                "text": "STIG Fleet",
+                "text": "STIG",
                 "href": nav.get("fleet_report") or "#",
-                "group_label": "Fleets",
+                "group_label": "Products",
                 "scrollable": False,
                 "items": self._fleet_dropdown_items(tree_fleets, NAV_LABEL_STIG),
             })
         elif nav.get("fleet_report"):
             crumbs.append({
                 "type": "link",
-                "text": nav.get("fleet_label", "STIG Fleet Dashboard"),
+                "text": nav.get("fleet_label", "STIG Dashboard"),
                 "href": nav["fleet_report"],
             })
 
@@ -401,12 +418,16 @@ class NavBuilder:
         nav["search_root"] = self._search_root(nav)
         tree_fleets: list[dict[str, str]] = []
 
-        for plt_dir in self._platform_dirs:
-            for label, schema_name in fleet_entries_for_dir(plt_dir):
-                tree_fleets.append({
-                    "name": label,
-                    "report": fleet_link_url(plt_dir, schema_name),
-                })
+        if self._tree_products:
+            for p in self._tree_products:
+                tree_fleets.append({"name": p["name"], "report": p["report"]})
+        else:
+            for plt_dir in self._platform_dirs:
+                for label, schema_name in fleet_entries_for_dir(plt_dir):
+                    tree_fleets.append({
+                        "name": label,
+                        "report": fleet_link_url(plt_dir, schema_name),
+                    })
 
         tree_fleets.append({"name": NAV_LABEL_STIG, "report": stig_fleet_url()})
         nav["tree_fleets"] = tree_fleets
@@ -419,13 +440,13 @@ class NavBuilder:
             if tree_fleets:
                 crumbs.append({
                     "type": "dropdown",
-                    "text": "STIG Fleet",
-                    "group_label": "Fleets",
+                    "text": "STIG",
+                    "group_label": "Products",
                     "scrollable": False,
                     "items": self._fleet_dropdown_items(tree_fleets, NAV_LABEL_STIG),
                 })
             else:
-                crumbs.append({"type": "label", "text": "STIG Fleet Compliance Overview"})
+                crumbs.append({"type": "label", "text": "STIG Compliance Overview"})
 
             if host_links:
                 crumbs.append({

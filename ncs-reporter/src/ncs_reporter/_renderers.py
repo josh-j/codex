@@ -312,6 +312,7 @@ def render_stig(
     generated_fleet_dirs: set[str] | None = None,
     registry: PlatformRegistry | None = None,
     has_site_report: bool = False,
+    tree_products: list[dict[str, str]] | None = None,
 ) -> None:
     """Render per-host STIG reports and the fleet overview.
 
@@ -334,6 +335,7 @@ def render_stig(
         generated_fleet_dirs=generated_fleet_dirs,
         has_stig_fleet=True,
         has_site_report=has_site_report,
+        tree_products=tree_products,
     )
 
     stig_entries, all_stig_reports = collect_stig_entries(hosts_data, stamp, reg)
@@ -417,6 +419,7 @@ def render_stig(
         generated_fleet_dirs=generated_fleet_dirs,
         cklb_dir=cklb_dir,
         nav_builder=stig_nav_builder,
+        registry=reg,
     )
     fleet_tpl = env.get_template(_TEMPLATE_STIG_FLEET)
     content = fleet_tpl.render(stig_fleet_view=fleet_view, **common_vars)
@@ -469,11 +472,16 @@ def _split_hosts_data(
 
 
 def _build_history(host_dir: Path, file_stem: str) -> list[dict[str, str]]:
-    """Scan host_dir for stamped report files and return sorted history entries."""
+    """Scan host_dir for stamped report files and return sorted history entries.
+
+    *file_stem* may contain ``.`` (e.g. ``10.78.0.10_stig_esxi``); ``Path.glob``
+    treats ``.`` literally, so we pass the raw stem to ``glob`` and only
+    use ``re.escape`` in the regex that extracts the date suffix.
+    """
     history: list[dict[str, str]] = []
-    pattern = f"{re.escape(file_stem)}_*.html"
-    for f in host_dir.glob(pattern):
-        m = re.search(rf"{re.escape(file_stem)}_(\d+)\.html", f.name)
+    stamp_re = re.compile(rf"{re.escape(file_stem)}_(\d+)\.html")
+    for f in host_dir.glob(f"{file_stem}_*.html"):
+        m = stamp_re.search(f.name)
         if m:
             date_str = m.group(1)
             display = (

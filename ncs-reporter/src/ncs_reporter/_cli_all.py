@@ -218,4 +218,5 @@ def all_cmd(
         r_root, global_hosts, global_changed, all_hosts_state,
         common_vars, global_inventory_index, generated_fleet_dirs,
         runtime_registry, config_dir,
+        tree_products=tree_products,
     )
