@@ -22,16 +22,10 @@ class TestTreeLayoutE2E(unittest.TestCase):
         self.runner = CliRunner()
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
-
-    def _write_bundle(self, rel: str, data: dict) -> None:
-        path = self.platform_root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(yaml.safe_dump(data))
 
     def _write_tree_bundle(self, rel: str, data: dict) -> None:
         path = self.reports_root / rel
@@ -42,7 +36,6 @@ class TestTreeLayoutE2E(unittest.TestCase):
         # New tree layout: ncs_collector writes raw.yaml directly under
         # <reports_root>/<product-slug>/<...tree_path...>/raw.yaml. The
         # spec-driven builder discovers bundles by depth-walking that tree.
-        self.platform_root.mkdir(parents=True)
         self._write_tree_bundle("vsphere/vc-lab/raw.yaml", {
             "metadata": {"host": "vc-lab", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
@@ -80,7 +73,6 @@ class TestTreeLayoutE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root", str(self.platform_root),
                 "--reports-root", str(self.reports_root),
                 "--report-stamp", "20260226",
             ],
@@ -140,14 +132,10 @@ class TestTreeLayoutE2E(unittest.TestCase):
             },
         }))
 
-        # Touch an empty platform_root so the CLI has something to scan.
-        self.platform_root.mkdir(parents=True)
-
         result = self.runner.invoke(
             main,
             [
                 "all",
-                "--platform-root", str(self.platform_root),
                 "--reports-root", str(self.reports_root),
                 "--report-stamp", "20260226",
             ],
@@ -160,7 +148,6 @@ class TestTreeLayoutE2E(unittest.TestCase):
 
     def test_flat_inventory_emits_product_then_host(self) -> None:
         # New tree layout for flat products: <reports_root>/<slug>/<host>/raw.yaml
-        self.platform_root.mkdir(parents=True)
         self._write_tree_bundle("ubuntu/web-01/raw.yaml", {
             "metadata": {"host": "web-01", "timestamp": "2026-02-26T23:00:00Z"},
             "data": {
@@ -185,7 +172,6 @@ class TestTreeLayoutE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root", str(self.platform_root),
                 "--reports-root", str(self.reports_root),
                 "--report-stamp", "20260226",
             ],

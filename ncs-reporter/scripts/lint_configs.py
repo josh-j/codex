@@ -8,7 +8,7 @@ Checks:
   - value: references must use Jinja2 delimiters ("{{ var }}")
   - human-readable keys (name:, display_name:, category:) with whitespace
     or punctuation must be double-quoted
-  - legacy keys (field:, header:, label:, title:, id:, warn_at:, crit_at:, [badge])
+  - retired keys (field:, header:, label:, title:, id:, warn_at:, crit_at:, [badge])
     are rejected — migrate to the renamed forms
 """
 
@@ -36,8 +36,8 @@ VALUE_LINE = re.compile(r'^\s+value:\s+(.+?)\s*$')
 # whitespace or non-identifier punctuation.
 QUOTED_KEY_LINE = re.compile(r'^\s+(name|display_name|category):\s+(.+?)\s*$')
 
-# Legacy keys rejected post-refactor. Maps each key → the new key authors should use.
-LEGACY_KEY_HINTS = {
+# Retired keys rejected post-refactor. Maps each key to the supported key authors should use.
+RETIRED_KEY_HINTS = {
     "field": "value",
     "header": "name",
     "label": "name (use quoted string)",
@@ -46,13 +46,13 @@ LEGACY_KEY_HINTS = {
     "warn_at": "warn_if_above",
     "crit_at": "crit_if_above",
 }
-LEGACY_KEY_LINE = re.compile(
-    r'^\s+(' + "|".join(LEGACY_KEY_HINTS) + r'):\s+'
+RETIRED_KEY_LINE = re.compile(
+    r'^\s+(' + "|".join(RETIRED_KEY_HINTS) + r'):\s+'
 )
 
 # Keys whose `field:` / `label:` / etc. usage is unrelated to widget schema and
-# should be allowed to pass the legacy-key check.
-LEGACY_EXEMPT_KEYS = {
+# should be allowed to pass the retired-key check.
+RETIRED_EXEMPT_KEYS = {
     "link_field",
     "rows_field",
     "label_field",
@@ -105,16 +105,16 @@ def lint_file(path: Path) -> list[str]:
                     f"'value: {raw}' → 'value: \"{{{{ {unquoted} }}}}\"'"
                 )
 
-        # Check for legacy keys (field, header, label, title, id, warn_at, crit_at)
-        m = LEGACY_KEY_LINE.match(line)
+        # Check for retired keys (field, header, label, title, id, warn_at, crit_at)
+        m = RETIRED_KEY_LINE.match(line)
         if m:
             key = m.group(1)
-            if key not in LEGACY_EXEMPT_KEYS:
+            if key not in RETIRED_EXEMPT_KEYS:
                 # Exclude when the key is a suffix of an exempt key on this line.
-                if not any(line.lstrip().startswith(f"{exempt}:") for exempt in LEGACY_EXEMPT_KEYS):
+                if not any(line.lstrip().startswith(f"{exempt}:") for exempt in RETIRED_EXEMPT_KEYS):
                     errors.append(
                         f"{path.name}:{i}: '{key}:' is no longer supported — "
-                        f"rename to '{LEGACY_KEY_HINTS[key]}:'"
+                        f"rename to '{RETIRED_KEY_HINTS[key]}:'"
                     )
 
         # Check human-readable keys are quoted when they contain whitespace or punctuation
@@ -129,7 +129,7 @@ def lint_file(path: Path) -> list[str]:
                         f"'{key}: {raw}' → '{key}: \"{raw}\"'"
                     )
 
-        # Legacy badge: true (replaced by `as: status-badge`)
+        # badge: true was replaced by `as: status-badge`
         if re.match(r"badge:\s*(true|false)\b", stripped):
             errors.append(
                 f"{path.name}:{i}: badge: true is no longer supported — use 'as: status-badge'"

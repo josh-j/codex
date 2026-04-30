@@ -251,44 +251,6 @@ def _infer_rule_version(row: dict[str, Any], group_id_map: dict[str, str] | None
     return ""
 
 
-def build_ansible_args(
-    *,
-    playbook: str,
-    inventory: str,
-    limit: str,
-    manage_var: str,
-    all_disabled_file: str,
-    esxi_host: str,
-    tags: list[str] | None = None,
-    skip_tags: list[str] | None = None,
-    extra_vars: tuple[str, ...] = (),
-) -> list[str]:
-    """Construct the ansible-playbook argument list for a single rule application.
-
-    Retained for backwards-compatibility and direct testing; the main
-    ``run_interactive_apply`` path now uses ``build_interactive_playbook`` instead.
-    """
-    cmd = [
-        "ansible-playbook",
-        playbook,
-        "-i",
-        inventory,
-        "-l",
-        limit,
-        f"-e@{all_disabled_file}",
-        f"-e{manage_var}=true",
-        "-eesxi_stig_enable_hardening=true",
-        f"-eesxi_stig_target_hosts=['{esxi_host}']",
-    ]
-    if tags:
-        cmd += ["--tags", ",".join(tags)]
-    if skip_tags:
-        cmd += ["--skip-tags", ",".join(skip_tags)]
-    for ev in extra_vars:
-        cmd += ["-e", ev]
-    return cmd
-
-
 def build_interactive_playbook(
     failing_rows: list[dict[str, Any]],
     metadata: dict[str, RuleMetadata],

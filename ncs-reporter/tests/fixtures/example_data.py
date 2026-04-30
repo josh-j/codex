@@ -143,7 +143,7 @@ def make_linux_bundle(hostname: str, ip: str, *, unhealthy: bool = True, variety
         world_writable: list[str] = [
             "/var/log/app/runtime.log",
             "/var/spool/custom/queue",
-            "/var/tmp/legacy-socket",
+            "/var/tmp/stale-socket",
         ]
         mounts: list[dict] = [
             # 47% used — OK

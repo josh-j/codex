@@ -1,104 +1,97 @@
 # Path Conventions
 
-This document explains the directory structures and path mapping logic used by `ncs-reporter` for consuming raw telemetry and generating HTML reports.
+`ncs-reporter` consumes collector-written tree bundles and renders static HTML
+reports into the same report root. There is no separate platform input root.
 
-## Canonical Source of Truth
+## Source Of Truth
 
-Pathing is defined by the user-owned `platforms.yaml` file.  
-`ncs-reporter`, collector-side exports, and downstream verifiers should resolve report paths from this YAML contract, not from hardcoded path assumptions.
+Product and report structure is declared in schema config. The important
+contract is each schema's `tree` block:
 
-Collector runtime is strict for STIG telemetry:
-- Every emitted `stig_target_type` must exist in `platforms.yaml` `target_types`.
-- If a target type is missing, callback persistence fails fast instead of guessing a path.
+- `root_slug`: top-level product directory, such as `vsphere` or `ubuntu`
+- `levels`: inventory tiers used to assemble product and child pages
+- `raw_path`: where the collector wrote the source `raw.yaml`
+- `report_path`: where the corresponding HTML page is rendered
 
-Each platform entry must include a `paths` block with these required templates:
+`platforms.yaml` remains the registry for product metadata, STIG target mapping,
+and template defaults. It is not a second directory structure.
 
-- `raw_stig_artifact`
-- `report_fleet`
-- `report_node_latest`
-- `report_node_historical`
-- `report_stig_host`
-- `report_search_entry`
-- `report_site`
-- `report_stig_fleet`
+## Input Structure
 
-Template placeholders are validated strictly. Required placeholders are:
+Collector output lives under `<REPORTS_ROOT>` as tree leaves:
 
-- `raw_stig_artifact`: `{report_dir}`, `{hostname}`, `{target_type}`
-- `report_fleet`: `{report_dir}`, `{schema_name}`
-- `report_node_latest`: `{report_dir}`, `{hostname}`
-- `report_node_historical`: `{report_dir}`, `{hostname}`, `{report_stamp}`
-- `report_stig_host`: `{report_dir}`, `{hostname}`, `{target_type}`
-- `report_search_entry`: `{report_dir}`, `{hostname}`
+```text
+<REPORTS_ROOT>/
+  vsphere/
+    vc-lab/
+      raw.yaml
+  ubuntu/
+    web-01/
+      raw.yaml
+  stig/
+    esxi/
+      esxi-01/
+        raw_stig_esxi.yaml
+```
 
-## 1. Input Structure (Telemetry Lake)
+The optional `--bundle-root` argument lets a run read bundles from a different
+tree while still writing HTML under `--reports-root`.
 
-`ncs-reporter` expects a "Telemetry Lake" directory structure, typically populated by `ncs-collector`. 
+## Output Structure
 
-**Pattern:** `<PLATFORM_ROOT>/{platform_category}/{sub_platform}/{hostname}/raw_{type}.yaml`
+Generated reports are static files under `<REPORTS_ROOT>`:
 
-| Platform | Category | Sub-Platform | Example Path |
-| :--- | :--- | :--- | :--- |
-| **Linux (Ubuntu)** | `linux` | `ubuntu` | `linux/ubuntu/web-01/raw_discovery.yaml` |
-| **Linux (Photon)** | `linux` | `photon` | `linux/photon/vcsa-01/raw_stig_photon.yaml` |
-| **VMware (vCenter/VCSA)** | `vmware` | `vcenter/vcsa` | `vmware/vcenter/vcsa/vc-prod/raw_vcenter.yaml` |
-| **VMware (ESXi)** | `vmware` | `esxi` | `vmware/esxi/esxi-01/raw_stig_esxi.yaml` |
-| **Windows** | `windows` | (none) | `windows/win-srv-01/raw_audit.yaml` |
+```text
+<REPORTS_ROOT>/
+  site.html
+  site.stig.html
+  search_index.js
+  all_hosts_state.yaml
+  vsphere/
+    vsphere.html
+    vc-lab/
+      vc-lab.html
+  ubuntu/
+    ubuntu.html
+    web-01/
+      web-01.html
+  stig/
+    esxi/
+      esxi-01/
+        esxi-01_stig_esxi.html
+  cklb/
+    esxi-01_esxi.cklb
+```
 
-## 2. Output Structure (HTML Reports)
+For inventory pages, the canonical rule is:
 
-Reports are rendered into a flat hierarchy to ensure predictable relative linking for the "Global Search" and breadcrumb features.
+```text
+<REPORTS_ROOT>/<product>/<tree...>/<node>/<node>.html
+```
 
-### Global Reports
-- `site.html`: The high-level site dashboard.
-- `site.stig.html`: The cross-platform STIG compliance dashboard.
-- `search_index.js`: The dynamic search database used by the UI.
+For STIG pages, the canonical rule is:
 
-### Inventory & Node Reports
-Reports are grouped by their "Report Directory" (which may differ slightly from the input directory for legacy/aggregation reasons).
+```text
+<REPORTS_ROOT>/stig/<target_type>/<hostname>/<hostname>_stig_<target_type>.html
+```
 
-**Pattern:** `<REPORTS_ROOT>/platform/{report_dir}/{hostname}/{hostname}.html`
+If a host also has a tree page, site navigation and search point at that tree
+page. The STIG-specific report remains under `stig/<target_type>/...`.
 
-| Component | Path |
-| :--- | :--- |
-| **Inventory Dashboard** (legacy fleet page) | `platform/{report_dir}/{schema_name}_inventory.html` |
-| **Latest Node Report** | `platform/{report_dir}/{hostname}/{hostname}.html` |
-| **Historical Node Report** | `platform/{report_dir}/{hostname}/{hostname}_{YYYYMMDD}.html` |
-| **Tree-tier Report** (vSphere, per-inventory) | `{inventory}/{…}/{node_slug}/{node_slug}.html` |
+## History Navigation
 
-### STIG Specific Reports
-STIG reports are nested according to the `target_type` of the audit.
+Historical node reports are written beside the current node report using the
+configured stamp:
 
-**Pattern:** `<REPORTS_ROOT>/platform/{platform_dir}/{hostname}/{hostname}_stig_{target_type}.html`
+```text
+<node>/<node>_<YYYYMMDD>.html
+```
 
-| Target Type | Platform Directory |
-| :--- | :--- |
-| `ubuntu`, `linux` | `platform/linux/ubuntu` |
-| `photon` | `platform/linux/photon` |
-| `vcsa`, `vcenter` | `platform/vmware/vcenter/vcsa` |
-| `vami`, `eam`, `lookup_svc`, `perfcharts`, `vcsa_photon_os`, `postgresql`, `rhttpproxy`, `sts`, `ui` | `platform/vmware/vcenter/vcsa` |
-| `esxi` | `platform/vmware/esxi` |
-| `vm` | `platform/vmware/vm` |
-| `windows` | `platform/windows` |
+The breadcrumb history dropdown is populated by scanning the node directory, so
+reports remain static and serverless.
 
-## 3. History Navigation
+## Relative Paths
 
-When `ncs-reporter` renders a node report, it performs a local filesystem scan of the destination directory. 
-
-1. It looks for files matching the pattern `{hostname}_*.html` (or `*_stig_*_*.html`).
-2. It extracts the date stamp from the filename.
-3. It populates the **History** dropdown in the breadcrumb bar with these links.
-
-This allows the reports to remain completely static (serverless) while still providing a way to navigate time-series data.
-
-## 4. Relative Path Resolution (`data-root`)
-
-Because the reports are static and intended to be viewed via `file://` or simple web servers, they rely heavily on relative paths. 
-
-The HTML templates include a `data-root` attribute on the search container which is calculated based on the directory depth:
-- **Site Report**: `data-root="./"`
-- **Inventory Report** (legacy per-platform fleet page): `data-root="../../"`
-- **Node Report**: `data-root="../../../"`
-- **STIG Node Report**: depth varies by target (for example, VCSA/component STIG under `platform/vmware/vcenter/vcsa/<host>/` uses `data-root="../../../../../"`).
-
-The JavaScript logic uses this `data-root` to correctly locate `search_index.js` and resolve global search results regardless of which page the user is currently viewing.
+Templates calculate `data-root` from the generated page location. This keeps
+`search_index.js`, breadcrumbs, and cross-report links working when the reports
+are served from a static web server or opened directly from disk.

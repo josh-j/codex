@@ -93,9 +93,7 @@ def _esxi_leaf(tree: ReportNode) -> ReportNode:
     return _vc_node(tree).children[0]
 
 
-# Backwards-compat alias for tests still written around a "dc-ish" node;
-# all four assertions referring to a "DC" peer were rewritten to point
-# at ESXi, but the breadcrumb tests still need *some* deep node.
+# Breadcrumb tests need a deep node; the current vSphere tree uses ESXi leaves.
 _deep_node = _esxi_leaf
 
 

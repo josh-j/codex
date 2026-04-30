@@ -15,9 +15,8 @@ from ncs_reporter.models.report_schema import ReportSchema
 
 logger = logging.getLogger(__name__)
 
-# User-level config directories (prefer configs/, fall back to schemas/)
+# User-level config directory.
 _USER_CONFIGS_DIR = Path.home() / ".config" / "ncs_reporter" / "configs"
-_USER_SCHEMAS_DIR_LEGACY = Path.home() / ".config" / "ncs_reporter" / "schemas"
 
 
 def _resolve_refs(node: Any, root_path: Path) -> Any:
@@ -227,7 +226,6 @@ def discover_schemas(extra_dirs: tuple[str, ...] = ()) -> dict[str, ReportSchema
       3. ./configs/  (CWD-relative, preferred)
       4. ./schemas/  (CWD-relative project schemas)
       5. ~/.config/ncs_reporter/configs/
-      6. ~/.config/ncs_reporter/schemas/
     """
     result: dict[str, ReportSchema] = {}
 
@@ -242,7 +240,6 @@ def discover_schemas(extra_dirs: tuple[str, ...] = ()) -> dict[str, ReportSchema
     _scan_dir(Path("configs"), result)
     _scan_dir(Path("schemas"), result)
     _scan_dir(_USER_CONFIGS_DIR, result)
-    _scan_dir(_USER_SCHEMAS_DIR_LEGACY, result)
 
     return result
 

@@ -41,13 +41,11 @@ check:
 test:
     {{ python }} -m pytest tests
 
-# Run full end-to-end simulation (all platforms + global site)
-# Example: just run-all /srv/samba/reports/platform /srv/samba/reports platform/inventory_groups.json
-run-all platform_root reports_root groups:
+# Run full tree render.
+# Example: just run-all /srv/samba/reports
+run-all reports_root:
     {{ python }} -m ncs_reporter.cli all \
-        --platform-root {{ platform_root }} \
-        --reports-root {{ reports_root }} \
-        --groups {{ groups }}
+        --reports-root {{ reports_root }}
 
 # Generate STIG compliance reports (fleet + node)
 stig input output="reports/stig":
@@ -57,35 +55,23 @@ stig input output="reports/stig":
 cklb input output="reports/cklb":
     {{ python }} -m ncs_reporter.cli cklb --input {{ input }} --output-dir {{ output }}
 
-# Generate global site health dashboard
-site input groups output="reports":
-    {{ python }} -m ncs_reporter.cli site --input {{ input }} --groups {{ groups }} --output-dir {{ output }}
-
-# Generate linux fleet report
-linux input output="reports/platform/ubuntu":
-    {{ python }} -m ncs_reporter.cli linux --input {{ input }} --output-dir {{ output }}
-
-# Generate vmware fleet report
-vmware input output="reports/platform/vmware":
-    {{ python }} -m ncs_reporter.cli vmware --input {{ input }} --output-dir {{ output }}
-
-# Generate windows fleet report
-windows input output="reports/platform/windows":
-    {{ python }} -m ncs_reporter.cli windows --input {{ input }} --output-dir {{ output }}
+# Generate global site health dashboard from an aggregated state file
+site input output="reports":
+    {{ python }} -m ncs_reporter.cli site --input {{ input }} --output-dir {{ output }}
 
 # Generate a single node report from raw YAML
 node platform input hostname output=".":
     {{ python }} -m ncs_reporter.cli node --platform {{ platform }} --input {{ input }} --hostname {{ hostname }} --output-dir {{ output }}
 
-# Apply ESXi STIG rules interactively, one rule at a time (MUTATING)
+# Apply STIG rules interactively (MUTATING)
 # Example: just stig-apply artifacts/vcenter1/raw_stig_esxi.yaml vcenter1 esxi-01.local
-stig-apply artifact limit esxi_host:
-    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --esxi-host {{ esxi_host }}
+stig-apply artifact limit target_host:
+    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --target-host {{ target_host }}
 
 # Dry-run stig-apply: print generated ansible commands without executing
 # Example: just stig-apply-dry artifacts/vcenter1/raw_stig_esxi.yaml vcenter1 esxi-01.local
-stig-apply-dry artifact limit esxi_host:
-    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --esxi-host {{ esxi_host }} --skip-snapshot --dry-run
+stig-apply-dry artifact limit target_host:
+    {{ python }} -m ncs_reporter.cli stig-apply {{ artifact }} --limit {{ limit }} --target-host {{ target_host }} --skip-snapshot --dry-run
 
 # Clean up temporary build/cache artifacts
 clean:

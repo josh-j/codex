@@ -42,11 +42,9 @@ def _vmware_keys(role: str, fact: str) -> set[str]:
 VCENTER_DATA_KEYS = _vmware_keys("vcsa", "vmware_raw_vcenter")
 ESXI_DATA_KEYS = _vmware_keys("esxi", "vmware_raw_esxi")
 
-# ``internal.vmware.vm`` collection is now a compatibility no-op; VM inventory
-# is sourced from the vCenter bundle and may be projected into ``raw_vm`` by
-# reporter schemas.  Keep the public raw_vm payload keys explicit so schema and
-# documentation tests continue to guard that compatibility surface without
-# depending on the retired role task.
+# VM inventory is sourced from the vCenter bundle and may be projected into
+# ``raw_vm`` by reporter schemas. Keep the public raw_vm payload keys explicit
+# so schema and documentation tests do not depend on the retired role task.
 VM_DATA_KEYS: set[str] = {
     "datacenters",
     "virtual_machines",

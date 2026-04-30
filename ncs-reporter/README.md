@@ -16,8 +16,7 @@ Stage 2 — Report (ncs-reporter)
 
 ## User-Friendly YAML Schema Keys
 
-Custom report schemas now accept concise aliases in addition to canonical keys.
-Existing schema files continue to work unchanged.
+Custom report schemas accept concise aliases in addition to canonical keys.
 
 | Canonical key | Alias |
 |---|---|
@@ -55,20 +54,19 @@ just setup-tools  # installs ncs-reporter system-wide (editable)
 
 ## CLI Commands
 
-### `all` — Full fleet render
+### `all` — Full tree render
 
-Aggregates all platform directories and renders every report type in one pass.
+Reads collector-written tree bundles and renders every report type in one pass.
 
 ```bash
 ncs-reporter all \
-  --platform-root /srv/reports/platform \
   --reports-root  /srv/reports
 ```
 
 | Option | Description |
 |---|---|
-| `--platform-root` | Root directory containing platform subdirs (e.g. `ubuntu/`, `vmware/`, `windows/`) |
-| `--reports-root` | Output directory for generated HTML |
+| `--reports-root` | Output directory for generated HTML and default input root for `raw.yaml` bundles |
+| `--bundle-root` | Optional separate input root for collector-written tree bundles |
 | `--report-stamp` | Override date stamp (YYYYMMDD); defaults to today |
 | `--config-dir` | Custom config directory (overrides built-in configs) |
 | `--extra-config-dir` / `-S` | Additional config directories (repeatable) |
@@ -89,18 +87,8 @@ ncs-reporter validate-config --platforms-config platforms.yaml
 
 ```bash
 ncs-reporter site \
-  --input  /srv/reports/platform/all_hosts_state.yaml \
+  --input  /srv/reports/all_hosts_state.yaml \
   --output-dir /srv/reports
-```
-
----
-
-### `linux` / `vmware` / `windows` — Platform fleet reports
-
-```bash
-ncs-reporter linux   --input linux_fleet_state.yaml   --output-dir reports/platform/ubuntu
-ncs-reporter vmware  --input vmware_fleet_state.yaml  --output-dir reports/platform/vmware
-ncs-reporter windows --input windows_fleet_state.yaml --output-dir reports/platform/windows
 ```
 
 ---
@@ -123,7 +111,7 @@ Renders per-host STIG reports and a fleet overview from an aggregated state file
 
 ```bash
 ncs-reporter stig \
-  --input    /srv/reports/platform/all_hosts_state.yaml \
+  --input    /srv/reports/all_hosts_state.yaml \
   --output-dir reports/stig
 ```
 
@@ -135,20 +123,8 @@ Generates `.cklb` files for import into STIG Viewer.
 
 ```bash
 ncs-reporter cklb \
-  --input      /srv/reports/platform/all_hosts_state.yaml \
+  --input      /srv/reports/all_hosts_state.yaml \
   --output-dir reports/cklb
-```
-
----
-
-### `collect` — Aggregate raw host YAMLs
-
-Walks a directory of per-host raw YAML artifacts and merges them into a single fleet state file.
-
-```bash
-ncs-reporter collect \
-  --report-dir /srv/reports/platform/vmware \
-  --output     vmware_fleet_state.yaml
 ```
 
 ---
@@ -183,14 +159,11 @@ Subcommands for working with platform config files:
 | `platform list` | List all discovered platform configs and their source paths |
 | `platform validate <file>` | Validate a config file with comprehensive checks (field references, scripts, paths) |
 | `platform init --name <name>` | Generate a starter config template (optionally `--from-bundle` or `--annotated`) |
-| `platform run <file>` | Test-render a config against a raw YAML bundle |
 | `platform info widgets` | List available widget types |
 | `platform info conditions` | List alert condition operators |
 | `platform info transforms` | List pipe transforms for field paths |
 | `platform info types` | List field types and default fallbacks |
 | `platform info aliases` | List YAML shorthand aliases |
-
-> **Note:** The `schema` command group is a deprecated alias for `platform`.
 
 ---
 
@@ -251,7 +224,6 @@ ESXi command pattern:
 | `--limit` | *(required)* | Ansible `--limit` value (e.g. `vcenter1`) |
 | `--target-type` | auto | Override target type (`esxi`, `vm`, `vcsa`, `photon`, `ubuntu`) |
 | `--target-host` | auto | Override target host used for host-scoped vars |
-| `--esxi-host` | auto | Legacy alias for `--target-host` (ESXi mode) |
 | `--inventory` | `inventory/production/` | Inventory path |
 | `--skip-snapshot` | off | Skip the pre-hardening snapshot phase |
 | `-e` / `--extra-vars` | — | Extra vars passed to every ansible invocation (repeatable) |

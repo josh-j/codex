@@ -21,12 +21,9 @@ class TestStigE2E(unittest.TestCase):
         self.test_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.test_dir.name)
 
-        # Setup structure
-        self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
         self.host_dir = self.reports_root / "stig" / "esxi" / "esxi-01"
         self.host_dir.mkdir(parents=True)
-        self.platform_root.mkdir(parents=True)
         self.reports_root.mkdir(parents=True, exist_ok=True)
 
         # Skeleton dir (actual repo path)
@@ -72,8 +69,6 @@ class TestStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -110,8 +105,6 @@ class TestStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -145,8 +138,6 @@ class TestStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -186,12 +177,9 @@ class TestVmStigE2E(unittest.TestCase):
         self.test_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.test_dir.name)
 
-        # Setup structure
-        self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
         self.host_dir = self.reports_root / "stig" / "vm" / "vc-01"
         self.host_dir.mkdir(parents=True)
-        self.platform_root.mkdir(parents=True)
         self.reports_root.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
@@ -235,8 +223,6 @@ class TestVmStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -271,8 +257,6 @@ class TestVmStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -302,7 +286,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
         self.runner = CliRunner()
         self.test_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.test_dir.name)
-        self.platform_root = self.root / "platform"
         self.reports_root = self.root / "reports"
         self.reports_root.mkdir(parents=True)
 
@@ -335,7 +318,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             yaml.dump(raw_data, f)
 
         groups = {"all": [host], "vcenters": [host]}
-        self.platform_root.mkdir(parents=True)
         groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
@@ -344,8 +326,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",
@@ -383,7 +363,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             yaml.dump(raw_data, f)
 
         groups = {"all": [host], "photon_servers": [host], "ubuntu_servers": []}
-        self.platform_root.mkdir(parents=True)
         groups_path = self.reports_root / "inventory_groups.json"
         with open(groups_path, "w") as f:
             json.dump(groups, f)
@@ -392,8 +371,6 @@ class TestAdditionalTargetStigE2E(unittest.TestCase):
             main,
             [
                 "all",
-                "--platform-root",
-                str(self.platform_root),
                 "--reports-root",
                 str(self.reports_root),
                 "--report-stamp",

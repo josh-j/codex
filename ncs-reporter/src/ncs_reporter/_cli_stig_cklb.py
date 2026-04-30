@@ -237,7 +237,6 @@ def cklb(input_file: str, output_dir: str, skeleton_dir: str | None, config_dir:
 @click.option("--limit", required=True)
 @click.option("--target-type", default="")
 @click.option("--target-host", default="")
-@click.option("--esxi-host", default="", help="Legacy alias for --target-host.")
 @click.option("--skip-snapshot", is_flag=True)
 @click.option("--post-audit", is_flag=True)
 @click.option("--extra-vars", "-e", "extra_vars", multiple=True)
@@ -248,7 +247,6 @@ def stig_apply(
     limit: str,
     target_type: str,
     target_host: str,
-    esxi_host: str,
     skip_snapshot: bool,
     post_audit: bool,
     extra_vars: tuple[str, ...],
@@ -276,7 +274,7 @@ def stig_apply(
             f"Unsupported target type '{normalized}'. Supported: {', '.join(sorted(SUPPORTED_TARGET_TYPES))}."
         )
 
-    effective_host = target_host or esxi_host or infer_target_host(raw)
+    effective_host = target_host or infer_target_host(raw)
     if normalized == "esxi":
         if not effective_host:
             raise click.ClickException("ESXi apply requires --target-host.")

@@ -11,7 +11,6 @@ import yaml
 from ncs_reporter._stig_apply import (
     RULE_REQUIRED_VARS,
     RuleMetadata,
-    build_ansible_args,
     build_generic_apply_args,
     build_group_id_map,
     build_interactive_playbook,
@@ -297,66 +296,6 @@ class TestInferRuleVersion(unittest.TestCase):
         self.assertEqual(_infer_rule_version(row, gmap), "ESXI-70-000005")
 
 
-class TestBuildAnsibleArgs(unittest.TestCase):
-    def test_basic_structure(self) -> None:
-        args = build_ansible_args(
-            playbook="internal.vmware.vmware_stig_remediate",
-            inventory="inventory/production/",
-            limit="vcenter1",
-            manage_var="esxi_70_000001_manage",
-            all_disabled_file="/tmp/disabled.yaml",
-            esxi_host="esxi-01.local",
-        )
-        self.assertIn("ansible-playbook", args)
-        self.assertIn("internal.vmware.vmware_stig_remediate", args)
-        self.assertIn("-l", args)
-        self.assertIn("vcenter1", args)
-        self.assertIn("-e@/tmp/disabled.yaml", args)
-        self.assertIn("-eesxi_70_000001_manage=true", args)
-        self.assertIn("-eesxi_stig_enable_hardening=true", args)
-        self.assertIn("-eesxi_stig_target_hosts=['esxi-01.local']", args)
-
-    def test_skip_tags_included(self) -> None:
-        args = build_ansible_args(
-            playbook="p.yml",
-            inventory="i.yaml",
-            limit="vc1",
-            manage_var="esxi_70_000001_manage",
-            all_disabled_file="/tmp/d.yaml",
-            esxi_host="esxi-01.local",
-            skip_tags=["snapshot", "vm"],
-        )
-        idx = args.index("--skip-tags")
-        self.assertEqual(args[idx + 1], "snapshot,vm")
-
-    def test_extra_vars_appended(self) -> None:
-        args = build_ansible_args(
-            playbook="p.yml",
-            inventory="i.yaml",
-            limit="vc1",
-            manage_var="esxi_70_000001_manage",
-            all_disabled_file="/tmp/d.yaml",
-            esxi_host="esxi-01.local",
-            extra_vars=("foo=bar", "baz=qux"),
-        )
-        # Each extra var should appear after a '-e' flag
-        pairs = [(args[i], args[i + 1]) for i in range(len(args) - 1) if args[i] == "-e"]
-        extra_values = [v for _, v in pairs]
-        self.assertIn("foo=bar", extra_values)
-        self.assertIn("baz=qux", extra_values)
-
-    def test_esxi_stig_target_hosts_in_args(self) -> None:
-        args = build_ansible_args(
-            playbook="p.yml",
-            inventory="i.yaml",
-            limit="vc1",
-            manage_var="esxi_70_000035_manage",
-            all_disabled_file="/tmp/d.yaml",
-            esxi_host="esxi-02.site1.local",
-        )
-        self.assertIn("-eesxi_stig_target_hosts=['esxi-02.site1.local']", args)
-
-
 class TestGenericTargetHelpers(unittest.TestCase):
     def test_detect_target_type_from_target_type_field(self) -> None:
         raw = {"target_type": "photon", "metadata": {"audit_type": "stig_photon"}, "data": []}
@@ -471,7 +410,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
@@ -501,7 +440,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
@@ -527,7 +466,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--dry-run",
                 ],
@@ -551,7 +490,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
@@ -596,7 +535,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
@@ -620,7 +559,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",
@@ -657,7 +596,7 @@ class TestStigApplyCLIDryRun(unittest.TestCase):
                     str(artifact),
                     "--limit",
                     "vcenter1",
-                    "--esxi-host",
+                    "--target-host",
                     "esxi-01.local",
                     "--skip-snapshot",
                     "--dry-run",

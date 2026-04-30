@@ -6,8 +6,6 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import AfterValidator, AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# Re-export for backwards compatibility with tests that import from here
-# (the actual evaluation now lives in normalization/_when.py)
 __all__ = ["ActionSpec", "AlertRule", "FieldSpec", "ReportSchema", "ReportWidget", "ScriptSpec", "StyleRule"]
 
 
@@ -231,17 +229,6 @@ class AlertRule(BaseModel):
     msg: str = Field(validation_alias=AliasChoices("msg", "message"))
     items: str | None = None  # Jinja2 expression returning a filtered list for affected_items
     suppress_if: str | list[str] | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _normalise_action(cls, values: Any) -> Any:
-        """Coerce bare-string action to ``{"command": str}`` for backward compat."""
-        if not isinstance(values, dict):
-            return values
-        raw = values.get("action")
-        if isinstance(raw, str):
-            values["action"] = {"command": raw}
-        return values
 
 
 # ---------------------------------------------------------------------------

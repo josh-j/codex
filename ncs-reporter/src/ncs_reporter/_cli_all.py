@@ -83,7 +83,6 @@ def _resolve_effective_config(
 
 
 @click.command("all")
-@click.option("--platform-root", required=True, type=click.Path(exists=True))
 @click.option("--reports-root", required=True, type=click.Path())
 @click.option(
     "--bundle-root",
@@ -97,7 +96,6 @@ def _resolve_effective_config(
 @click.option("--platforms-config", "-P", default=None, type=click.Path(exists=True))
 @click.option("--force", is_flag=True, default=False, help="Force re-render even if data is unchanged.")
 def all_cmd(
-    platform_root: str,
     reports_root: str,
     bundle_root: str | None,
     report_stamp: str | None,
@@ -106,8 +104,7 @@ def all_cmd(
     platforms_config: str | None,
     force: bool,
 ) -> None:
-    """Run full aggregation and rendering for all platforms and the site dashboard."""
-    del platform_root
+    """Run full tree aggregation and render the site dashboard."""
     r_root = Path(reports_root)
     b_root = Path(bundle_root) if bundle_root else r_root
     r_root.mkdir(parents=True, exist_ok=True)
