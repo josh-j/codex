@@ -332,6 +332,16 @@ vendor-collections: build-collections-all
 install-collections:
     #!/usr/bin/env bash
     set -euo pipefail
+    ca_bundle=""
+    if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+        ca_bundle=/etc/ssl/certs/ca-certificates.crt
+    else
+        ca_bundle="$({{ python }} -c 'import ssl; print(ssl.get_default_verify_paths().cafile or "")')"
+    fi
+    if [ -n "$ca_bundle" ] && [ -f "$ca_bundle" ]; then
+        export SSL_CERT_FILE="$ca_bundle"
+        export REQUESTS_CA_BUNDLE="$ca_bundle"
+    fi
     .venv/bin/ansible-galaxy collection install -r requirements.yml \
         --collections-path collections/ --force
     echo "✓ collections installed from requirements.yml"
