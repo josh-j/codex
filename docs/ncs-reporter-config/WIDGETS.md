@@ -14,7 +14,7 @@ Every widget accepts:
 | `layout` | Optional layout hint (`full`, `half`, `third`). Defaults to `full`. |
 | `when` | Jinja2 boolean — widget is omitted entirely when false. |
 
-`when:` is the right tool for "hide this table if there's no data" — don't use it for per-row filtering, that's what `list_filter` / column-level `when` are for.
+`when:` is the right tool for "hide this table if there's no data" — don't use it for per-row filtering, which belongs in the field producer's `normalize: list: include_where:` (see [FIELDS.md](FIELDS.md)).
 
 ## stat-cards
 

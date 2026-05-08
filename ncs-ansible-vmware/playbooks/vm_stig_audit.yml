@@ -6,6 +6,13 @@
 # <<<
 ---
 # internal/vmware/playbooks/vm_stig_audit.yml
+#
+# Sequential per-vCenter audit. The role iterates over vm_stig_target_vms
+# (auto-discovered from the vCenter) within a single play.
+#
+# For large fleets (≳ 50 VMs at one site), prefer ``vm_stig_audit_parallel.yml``,
+# which uses dynamic add_host + ``strategy: free`` for per-VM concurrency.
+
 - name: "Phase 2b | VM STIG Audit (per vCenter)"
   hosts: "{{ vm_stig_target_hosts | default('vcsa') }}"
   connection: local
@@ -15,6 +22,23 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   pre_tasks:
+    - name: Resolve VM targets from vSphere graph
+      internal.vmware.vsphere_graph_targets_info:
+        report_directory: "{{ lookup('env', 'NCS_REPORT_DIRECTORY') | default(ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports/data')), true) }}"
+        target_type: vm
+      register: _graph_vm_targets
+      delegate_to: localhost
+      changed_when: false
+      when: vm_stig_target_vms | default([]) | length == 0
+
+    - name: Use graph-selected VM targets
+      ansible.builtin.set_fact:
+        vm_stig_target_vms: "{{ _graph_vm_targets.targets }}"
+      changed_when: false
+      when:
+        - vm_stig_target_vms | default([]) | length == 0
+        - _graph_vm_targets.targets | default([]) | length > 0
+
     - name: "Discover and validate VM targets"
       ansible.builtin.include_role:
         name: internal.vmware.common

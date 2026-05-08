@@ -161,7 +161,7 @@ EXAMPLES = '''
 try:
     import pyrax
     HAS_PYRAX = True
-except ImportError:
+except ImportError as e:
     HAS_PYRAX = False
 
 from ansible.module_utils.basic import AnsibleModule

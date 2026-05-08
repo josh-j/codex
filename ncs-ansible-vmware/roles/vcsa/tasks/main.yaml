@@ -8,27 +8,11 @@
 
 - name: "VCSA | Dispatch"
   module_defaults:
-    group/community.vmware.vmware:
-      hostname: "{{ ansible_host }}"
-      username: "{{ vmware_username }}"
-      password: "{{ vmware_password }}"
-      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
-    group/vmware.vmware.vmware:
-      hostname: "{{ ansible_host }}"
-      username: "{{ vmware_username }}"
-      password: "{{ vmware_password }}"
-      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
-    internal.vmware.vmware_triggered_alarms_info:
-      hostname: "{{ ansible_host }}"
-      username: "{{ vmware_username }}"
-      password: "{{ vmware_password }}"
-      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    group/community.vmware.vmware: "{{ _vmware_creds }}"
+    group/vmware.vmware.vmware: "{{ _vmware_creds }}"
+    internal.vmware.vmware_triggered_alarms_info: "{{ _vmware_creds }}"
     internal.core.stig:
-      _stig_module_defaults:
-        hostname: "{{ ansible_host }}"
-        username: "{{ vmware_username }}"
-        password: "{{ vmware_password }}"
-        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+      _stig_module_defaults: "{{ _vmware_creds }}"
   block:
     - name: "VCSA | Include dispatcher"
       ansible.builtin.include_role:

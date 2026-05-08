@@ -17,7 +17,7 @@ from .history import (
     _refresh_history_index,
     _write_stamp_manifest,
 )
-from ..models.tree import build_tree_from_spec
+from ..models.tree import build_tree_from_folders, build_tree_from_spec
 from ..schema_loader import discover_schemas
 from ..view_models.tree_render import _attach_alert_rollups, _compute_tree_state, render_tree
 
@@ -47,6 +47,29 @@ def _render_inventory_trees(
 
     tree_specs: list[tuple[str, str, Any, list[str]]] = []
     seen_roots: set[str] = set()
+
+    product_dirs = sorted((p for p in b_root.iterdir() if p.is_dir()), key=lambda p: p.name) if b_root.is_dir() else []
+    for product_dir in product_dirs:
+        slug = product_dir.name
+        schema = schemas.get(slug)
+        if schema is None:
+            continue
+        title = schema.display_name or slug
+        root_schema = slug if slug == "vsphere" else "inventory_root"
+        tree_root = build_tree_from_folders(
+            slug,
+            root_title=title,
+            root_schema=root_schema,
+            bundles_root=b_root,
+        )
+        if tree_root is None:
+            continue
+        seen_roots.add(slug)
+        host_ids = sorted(n.title or n.slug for n in tree_root.walk() if not n.is_root)
+        tree_specs.append((slug, title, tree_root, host_ids))
+
+    # Compatibility path for products that still declare a tree but whose
+    # root directory was not discovered above.
     for schema in schemas.values():
         if schema.tree is None:
             continue
@@ -194,7 +217,7 @@ def _read_bundle_data(path: Path) -> dict[str, Any] | None:
 def _collect_tree_leaf_bundles(
     reports_root: Path,
     root_slug: str,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, tuple[dict[str, Any], str]]:
     """Return ``raw.yaml`` data for every leaf bundle under one product root."""
     product_dir = reports_root / root_slug
     if not product_dir.is_dir():
@@ -203,14 +226,41 @@ def _collect_tree_leaf_bundles(
     parent_dirs = {p.parent for p in all_paths}
     ancestor_dirs = {a for d in parent_dirs for a in d.parents}
     leaf_dirs = parent_dirs - ancestor_dirs
-    leaf_bundles: dict[str, dict[str, Any]] = {}
+    leaf_bundles: dict[str, tuple[dict[str, Any], str]] = {}
     for raw_path in all_paths:
         if raw_path.parent not in leaf_dirs:
             continue
         data = _read_bundle_data(raw_path)
         if data is not None:
-            leaf_bundles[raw_path.parent.name] = data
+            raw = _read_yaml(raw_path)
+            bundle_key = _bundle_key_from_raw(raw, default=f"raw_{root_slug}")
+            leaf_bundles[raw_path.parent.name] = (data, bundle_key)
     return leaf_bundles
+
+
+def _read_yaml(path: Path) -> dict[str, Any]:
+    try:
+        with path.open(encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _bundle_key_from_raw(raw: dict[str, Any], *, default: str) -> str:
+    metadata_raw = raw.get("metadata")
+    metadata: dict[str, Any] = metadata_raw if isinstance(metadata_raw, dict) else {}
+    audit_type = str(metadata.get("audit_type") or "").strip()
+    if audit_type.startswith("raw_"):
+        return audit_type
+    raw_type = str(metadata.get("raw_type") or "").strip()
+    if raw_type:
+        return f"raw_{raw_type}"
+    return default
+
+
+def _schema_name_from_bundle_key(bundle_key: str) -> str:
+    return bundle_key[4:] if bundle_key.startswith("raw_") else bundle_key
 
 
 def _merge_tree_bundles_into_global(
@@ -226,20 +276,14 @@ def _merge_tree_bundles_into_global(
     touched: set[str] = set()
 
     schemas = discover_schemas(extra_dirs=extra_dirs)
-    seen_roots: set[str] = set()
 
-    for schema in schemas.values():
-        if schema.tree is None or not schema.tree.levels:
+    for product_dir in sorted(p for p in reports_root.iterdir() if p.is_dir()):
+        root_slug = product_dir.name
+        if root_slug not in schemas:
             continue
-        spec = schema.tree
-        if spec.root_slug in seen_roots:
-            continue
-        seen_roots.add(spec.root_slug)
-        leaf_level = spec.levels[-1]
-        leaf_bundle_key = leaf_level.bundle_key
-        leaf_schema = schemas.get(leaf_level.schema_name)
-        leaf_report_dir = (leaf_schema.platform if leaf_schema else "") or spec.root_slug
-        for hostname, data in _collect_tree_leaf_bundles(reports_root, spec.root_slug).items():
+        for hostname, (data, leaf_bundle_key) in _collect_tree_leaf_bundles(reports_root, root_slug).items():
+            leaf_schema = schemas.get(_schema_name_from_bundle_key(leaf_bundle_key))
+            leaf_report_dir = (leaf_schema.platform if leaf_schema else "") or root_slug
             entry = global_data["hosts"].setdefault(hostname, {})
             deep_merge(entry, {leaf_bundle_key: {"data": data}})
             global_inventory_index.setdefault(hostname, leaf_report_dir)

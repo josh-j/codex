@@ -27,6 +27,31 @@ from ncs_reporter.normalization.schema_driven import (
 # ---------------------------------------------------------------------------
 
 
+def _make_schema(
+    fields: dict[str, FieldSpec],
+    *,
+    name: str = "t",
+    platform: str = "test",
+    display_name: str | None = None,
+    detection_keys: tuple[str, ...] = ("x",),
+    alerts: list[AlertRule] | None = None,
+) -> ReportSchema:
+    """Compact builder for `ReportSchema(...)` test fixtures.
+
+    Most tests in this module care only about the `fields=` payload;
+    this helper hides the per-test name/platform/display_name/detection
+    boilerplate.
+    """
+    return ReportSchema(
+        name=name,
+        platform=platform,
+        display_name=display_name or name.replace("_", " ").title(),
+        detection=DetectionSpec(keys_any=list(detection_keys)),
+        fields=fields,
+        alerts=alerts or [],
+    )
+
+
 def _simple_schema() -> ReportSchema:
     return ReportSchema(
         name="test_app",
@@ -114,11 +139,8 @@ class TestFieldExtraction:
         assert fields["interface_list"] == []
 
     def test_type_coercion_str_to_int(self) -> None:
-        schema = ReportSchema(
+        schema = _make_schema(
             name="coerce_test",
-            platform="test",
-            display_name="Coerce Test",
-            detection=DetectionSpec(keys_any=["x"]),
             fields={"count": FieldSpec(path="count", type="int", fallback=0)},
         )
         fields, _ = extract_fields(schema, {"count": "42"})
@@ -571,6 +593,739 @@ class TestComputeFields:
 
 
 # ---------------------------------------------------------------------------
+# Template fields
+# ---------------------------------------------------------------------------
+
+
+class TestTemplateFields:
+    def test_template_field_returns_native_list_and_compute_can_reference_it(self) -> None:
+        schema = _make_schema(
+            name="template_test",
+            fields={
+                "items": FieldSpec(
+                    template="{% set out = [] %}{% for i in raw_items %}{% set _ = out.append({'name': i.name, 'value': i.value}) %}{% endfor %}{{ out }}",
+                    type="list",
+                ),
+                "item_count": FieldSpec(compute="{{ items | length }}", type="int"),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {"raw_template_test": {"data": {"raw_items": [{"name": "a", "value": 1}], "x": True}}},
+        )
+
+        assert fields["items"] == [{"name": "a", "value": 1}]
+        assert fields["item_count"] == 1
+
+    def test_template_field_helpers(self) -> None:
+        schema = _make_schema(
+            name="template_helpers_test",
+            fields={
+                "value": FieldSpec(
+                    template="{{ {'picked': coalesce('', none, 'fallback'), 'truth': truthy('yes'), 'mapped': lookup('Weekly', {'Weekly': 7}, -1)} }}",
+                    type="dict",
+                )
+            },
+        )
+
+        fields, _ = extract_fields(schema, {"x": True})
+
+        assert fields["value"] == {"picked": "fallback", "truth": True, "mapped": 7}
+
+    def test_template_field_cannot_have_path_too(self) -> None:
+        with pytest.raises(ValueError):
+            FieldSpec(path="a.b", template="{{ a }}", type="str")
+
+
+# ---------------------------------------------------------------------------
+# Normalize DSL fields
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeFields:
+    def test_normalize_field_shapes_lists_and_counts(self) -> None:
+        schema = _make_schema(
+            name="normalize_test",
+            fields={
+                "items": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": {"flatten": "raw_groups[].items[]"},
+                            "include_source": False,
+                            "exclude_match_any": {"field": "name", "patterns": ["^infra-"]},
+                            "map": {
+                                "name": "name",
+                                "owner": {
+                                    "get": {
+                                        "source": {"index": {"source": "owners", "key": "name", "value": "email"}},
+                                        "key": "name",
+                                        "default": "",
+                                    }
+                                },
+                            },
+                        }
+                    },
+                    type="list",
+                ),
+                "item_count": FieldSpec(normalize={"count": "items"}, type="int"),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_normalize_test": {
+                    "data": {
+                        "x": True,
+                        "owners": [{"name": "app-1", "email": "owner@example.com"}],
+                        "raw_groups": [{"items": [{"name": "app-1"}, {"name": "infra-vcenter"}]}],
+                    }
+                }
+            },
+        )
+
+        assert fields["items"] == [{"name": "app-1", "owner": "owner@example.com"}]
+        assert fields["item_count"] == 1
+
+    def test_normalize_field_can_expand_parent_child_maps(self) -> None:
+        schema = _make_schema(
+            name="expand_test",
+            fields={
+                "hosts": FieldSpec(
+                    normalize={
+                        "list": {
+                            "for_each": "cluster_results",
+                            "expand": "clusters",
+                            "include_source": False,
+                            "map": {
+                                "cluster": "item.key",
+                                "datacenter": "parent.item",
+                                "host_names": {"pluck": {"source": "item.value.hosts", "path": "name"}},
+                            },
+                        }
+                    },
+                    type="list",
+                )
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_expand_test": {
+                    "data": {
+                        "x": True,
+                        "cluster_results": [
+                            {
+                                "item": "DC1",
+                                "clusters": {
+                                    "ClusterA": {"hosts": [{"name": "esxi-01"}, {"name": "esxi-02"}]},
+                                },
+                            }
+                        ],
+                    }
+                }
+            },
+        )
+
+        assert fields["hosts"] == [{"cluster": "ClusterA", "datacenter": "DC1", "host_names": ["esxi-01", "esxi-02"]}]
+
+    def test_normalize_list_supports_include_and_exclude_where(self) -> None:
+        schema = _make_schema(
+            name="where_test",
+            fields={
+                "powered_on": FieldSpec(
+                    normalize={"list": {"source": "vms", "include_where": {"power_state": "on"}}},
+                    type="list",
+                ),
+                "real_vms": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "vms",
+                            "exclude_where": {"name": {"op": "matches", "value": "^infra-"}},
+                        }
+                    },
+                    type="list",
+                ),
+                "big_vms": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "vms",
+                            "include_where": [
+                                {"power_state": "on"},
+                                {"field": "memory_gb", "op": "gt", "value": 8},
+                            ],
+                        }
+                    },
+                    type="list",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_where_test": {
+                    "data": {
+                        "x": True,
+                        "vms": [
+                            {"name": "app-1", "power_state": "on", "memory_gb": 16},
+                            {"name": "app-2", "power_state": "off", "memory_gb": 4},
+                            {"name": "infra-vcenter", "power_state": "on", "memory_gb": 32},
+                        ],
+                    }
+                }
+            },
+        )
+
+        assert [v["name"] for v in fields["powered_on"]] == ["app-1", "infra-vcenter"]
+        assert [v["name"] for v in fields["real_vms"]] == ["app-1", "app-2"]
+        assert [v["name"] for v in fields["big_vms"]] == ["app-1", "infra-vcenter"]
+
+    def test_normalize_for_each_accepts_dict_source(self) -> None:
+        schema = _make_schema(
+            name="dict_for_each",
+            fields={
+                "users": FieldSpec(
+                    normalize={
+                        "list": {
+                            "for_each": "passwd",
+                            "include_source": False,
+                            "map": {
+                                "name": "item.key",
+                                "uid": "item.value.1",
+                                "shell": "item.value.5",
+                            },
+                        }
+                    },
+                    type="list",
+                )
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_dict_for_each": {
+                    "data": {
+                        "x": True,
+                        "passwd": {
+                            "alice": ["x", "1001", "1001", "Alice", "/home/alice", "/bin/bash"],
+                            "bob": ["x", "1002", "1002", "Bob", "/home/bob", "/bin/zsh"],
+                        },
+                    }
+                }
+            },
+        )
+
+        names = sorted(u["name"] for u in fields["users"])
+        assert names == ["alice", "bob"]
+        alice = next(u for u in fields["users"] if u["name"] == "alice")
+        assert alice["uid"] == "1001"
+        assert alice["shell"] == "/bin/bash"
+
+    def test_normalize_predicate_combinators(self) -> None:
+        schema = _make_schema(
+            name="combinator_test",
+            fields={
+                "kept_any": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "rows",
+                            "exclude_where": {
+                                "any": [
+                                    {"role": "system"},
+                                    {"field": "name", "op": "matches", "value": "^bot-"},
+                                ]
+                            },
+                        }
+                    },
+                    type="list",
+                ),
+                "kept_not": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "rows",
+                            "include_where": {"not": {"role": "system"}},
+                        }
+                    },
+                    type="list",
+                ),
+                "kept_all": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "rows",
+                            "include_where": {
+                                "all": [
+                                    {"role": "user"},
+                                    {"field": "uid", "op": "gt", "value": 1000},
+                                ]
+                            },
+                        }
+                    },
+                    type="list",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_combinator_test": {
+                    "data": {
+                        "x": True,
+                        "rows": [
+                            {"name": "alice", "role": "user", "uid": 1500},
+                            {"name": "bob", "role": "user", "uid": 500},
+                            {"name": "bot-cron", "role": "user", "uid": 2000},
+                            {"name": "daemon", "role": "system", "uid": 1},
+                        ],
+                    }
+                }
+            },
+        )
+
+        assert {r["name"] for r in fields["kept_any"]} == {"alice", "bob"}
+        assert {r["name"] for r in fields["kept_not"]} == {"alice", "bob", "bot-cron"}
+        assert {r["name"] for r in fields["kept_all"]} == {"alice", "bot-cron"}
+
+    def test_normalize_slice_op(self) -> None:
+        schema = _make_schema(
+            name="slice_test",
+            fields={
+                "first_three": FieldSpec(
+                    normalize={"slice": {"source": "events", "stop": 3}},
+                    type="list",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {"raw_slice_test": {"data": {"x": True, "events": [1, 2, 3, 4, 5]}}},
+        )
+        assert fields["first_three"] == [1, 2, 3]
+
+    def test_normalize_sort_unique_merge_defined(self) -> None:
+        schema = _make_schema(
+            name="ops_test",
+            fields={
+                "sorted_desc": FieldSpec(
+                    normalize={"sort": {"source": "rows", "by": "score", "reverse": True}},
+                    type="list",
+                ),
+                "unique_by_label": FieldSpec(
+                    normalize={"unique": {"source": "sorted_desc", "by": "label"}},
+                    type="list",
+                ),
+                "merged": FieldSpec(
+                    normalize={"merge": ["overrides", "defaults"]},
+                    type="dict",
+                ),
+                "has_overrides": FieldSpec(
+                    normalize={"defined": "overrides"},
+                    type="bool",
+                ),
+                "missing": FieldSpec(
+                    normalize={"defined": "not_present_anywhere"},
+                    type="bool",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_ops_test": {
+                    "data": {
+                        "x": True,
+                        "rows": [
+                            {"label": "a", "score": 5},
+                            {"label": "b", "score": 9},
+                            {"label": "a", "score": 2},
+                            {"label": "c", "score": 7},
+                        ],
+                        "defaults": {"timeout": 30, "retries": 3},
+                        "overrides": {"timeout": 60},
+                    }
+                }
+            },
+        )
+
+        # sort by score desc
+        assert [r["score"] for r in fields["sorted_desc"]] == [9, 7, 5, 2]
+        # unique by label, keeping first occurrence (which is the highest-score for that label)
+        assert [r["label"] for r in fields["unique_by_label"]] == ["b", "c", "a"]
+        # merge: overrides win over defaults
+        assert fields["merged"] == {"timeout": 60, "retries": 3}
+        assert fields["has_overrides"] is True
+        assert fields["missing"] is False
+
+    def test_normalize_defined_predicate_in_list(self) -> None:
+        schema = _make_schema(
+            name="defined_pred",
+            fields={
+                "with_owner": FieldSpec(
+                    normalize={
+                        "list": {
+                            "source": "rows",
+                            "include_where": {"defined": "owner_email"},
+                        }
+                    },
+                    type="list",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_defined_pred": {
+                    "data": {
+                        "x": True,
+                        "rows": [
+                            {"name": "a", "owner_email": "a@x"},
+                            {"name": "b"},
+                            {"name": "c", "owner_email": None},
+                        ],
+                    }
+                }
+            },
+        )
+        assert {r["name"] for r in fields["with_owner"]} == {"a"}
+
+    def test_normalize_if_op(self) -> None:
+        schema = _make_schema(
+            name="if_op_test",
+            fields={
+                "count_with_fallback": FieldSpec(
+                    normalize={
+                        "first_of": [
+                            {"if": {"defined": "vcenters"}, "then": {"count": "vcenters"}},
+                            {"const": 1},
+                        ]
+                    },
+                    type="int",
+                ),
+            },
+        )
+
+        # Tree mode: vcenters present (even if empty list, 0 count is meaningful).
+        fields_tree, _ = extract_fields(schema, {"raw_if_op_test": {"data": {"x": True, "vcenters": []}}})
+        assert fields_tree["count_with_fallback"] == 0
+
+        fields_tree2, _ = extract_fields(
+            schema, {"raw_if_op_test": {"data": {"x": True, "vcenters": [{"a": 1}, {"b": 2}]}}}
+        )
+        assert fields_tree2["count_with_fallback"] == 2
+
+        # Standalone: vcenters undefined → falls back to const 1.
+        fields_solo, _ = extract_fields(schema, {"raw_if_op_test": {"data": {"x": True}}})
+        assert fields_solo["count_with_fallback"] == 1
+
+    def test_normalize_regex_replace_op(self) -> None:
+        schema = _make_schema(
+            name="regex_replace_test",
+            fields={
+                "interface_label": FieldSpec(
+                    normalize={
+                        "regex_replace": {
+                            "value": "dn",
+                            "pattern": r"^.*/(node-\d+)/.*?\[(.*?)\]/.*$",
+                            "replacement": r"leaf \1 \2",
+                        }
+                    },
+                    type="str",
+                ),
+                "scrubbed_count": FieldSpec(
+                    normalize={
+                        "regex_replace": {
+                            "value": "log_line",
+                            "pattern": r"\d+",
+                            "replacement": "<n>",
+                            "count": 1,
+                        }
+                    },
+                    type="str",
+                ),
+                "case_insensitive_redact": FieldSpec(
+                    normalize={
+                        "regex_replace": {
+                            "value": "msg",
+                            "pattern": "ERROR",
+                            "replacement": "[redacted]",
+                            "ignorecase": True,
+                        }
+                    },
+                    type="str",
+                ),
+            },
+        )
+
+        fields, _ = extract_fields(
+            schema,
+            {
+                "raw_regex_replace_test": {
+                    "data": {
+                        "x": True,
+                        "dn": "topology/pod-1/node-101/sys/phys-[eth1/1]/CDeqptIngrTotalHist15min",
+                        "log_line": "saw 42 widgets and 7 gizmos",
+                        "msg": "An error occurred and another Error too",
+                    }
+                }
+            },
+        )
+        assert fields["interface_label"] == "leaf node-101 eth1/1"
+        # count=1: only the first numeric group is replaced.
+        assert fields["scrubbed_count"] == "saw <n> widgets and 7 gizmos"
+        # Both "error" and "Error" replaced (case-insensitive).
+        assert fields["case_insensitive_redact"] == "An [redacted] occurred and another [redacted] too"
+
+    def test_topological_ordering_resolves_forward_references(self) -> None:
+        """Compute → normalize → compute → template chain. Each producer
+        runs exactly once because the topological pass orders by
+        declared-field dependency, not declaration order."""
+        from ncs_reporter.normalization.schema_driven import _producer_order
+
+        schema = _make_schema(
+            name="topo",
+            fields={
+                # Declared in reverse dependency order — the pass must
+                # reorder to: rows → counts → total.
+                "total": FieldSpec(compute="counts.total", type="int"),
+                "counts": FieldSpec(
+                    normalize={"object": {"total": {"count": "rows"}}},
+                    type="dict",
+                ),
+                "rows": FieldSpec(template="{{ raw_rows }}", type="list"),
+            },
+        )
+        order = _producer_order(schema)
+        # `rows` must come before `counts`, which must come before `total`.
+        assert order.index("rows") < order.index("counts") < order.index("total")
+
+        fields, _ = extract_fields(
+            schema,
+            {"raw_topo": {"data": {"x": True, "raw_rows": [{"a": 1}, {"a": 2}, {"a": 3}]}}},
+        )
+        assert fields["rows"] == [{"a": 1}, {"a": 2}, {"a": 3}]
+        assert fields["counts"] == {"total": 3}
+        assert fields["total"] == 3
+
+    def test_topological_ordering_tolerates_cycles(self) -> None:
+        """Cyclic deps fall through to declaration-order evaluation; the
+        legacy double-pass behaved similarly. Guarantee: no crash, both
+        fields evaluate to a numeric value (Undefined → 0 via the
+        NumericUndefined arithmetic env)."""
+        from ncs_reporter.normalization.schema_driven import _producer_order
+
+        schema = _make_schema(
+            name="cyc",
+            fields={
+                "a": FieldSpec(compute="{{ b + 1 }}", type="int"),
+                "b": FieldSpec(compute="{{ a + 1 }}", type="int"),
+            },
+        )
+        assert set(_producer_order(schema)) == {"a", "b"}
+        fields, _ = extract_fields(schema, {"raw_cyc": {"data": {"x": True}}})
+        # Cyclic eval doesn't crash — both fields land at the
+        # NumericUndefined-derived fallback (0 + 1 = 1).
+        assert isinstance(fields["a"], int)
+        assert isinstance(fields["b"], int)
+
+    def test_normalize_field_cannot_have_path_too(self) -> None:
+        with pytest.raises(ValueError):
+            FieldSpec(path="a.b", normalize={"count": "items"}, type="int")
+
+
+# ---------------------------------------------------------------------------
+# aci.yaml schema round-trip validation
+# ---------------------------------------------------------------------------
+
+
+class TestAciSchema:
+    def test_aci_schema_loads_and_validates(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+
+        schema_path = CONFIGS_DIR / "aci.yaml"
+        s = load_schema_from_file(schema_path)
+        assert s.platform == "aci"
+        for name in ("active_faults", "ospf_down", "critical_fault_count", "active_fault_count"):
+            spec = s.fields[name]
+            assert spec.normalize is not None, f"{name} should be normalize-driven"
+            assert spec.compute is None and spec.template is None
+
+    def test_aci_schema_normalizes_raw_collector_bundle(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = CONFIGS_DIR / "aci.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "raw_apic": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "apic_short": "tyfq-apic1",
+                    "audit_failed": False,
+                    "health_results": [
+                        {"imdata": [{"fabricHealthTotal": {"attributes": {"cur": "92"}}}]},
+                        {"imdata": [{"healthInst": {"attributes": {"cur": "88"}}}]},
+                    ],
+                    "faults": [
+                        {"faultInst": {"attributes": {"severity": "critical", "descr": "link down", "dn": "topology/pod-1/node-101/fault-F1"}}},
+                        {"faultInst": {"attributes": {"severity": "major", "descr": "memory pressure", "dn": "topology/pod-1/node-102/fault-F2"}}},
+                        {"faultInst": {"attributes": {"severity": "warning", "descr": "noise", "dn": "topology/pod-1/node-103/fault-F3"}}},
+                    ],
+                    "cleared_faults": [
+                        {"faultInst": {"attributes": {"severity": "warning", "descr": "TCA: ingress drop on eth1/1", "dn": "x"}}},
+                        {"faultInst": {"attributes": {"severity": "warning", "descr": "policy applied", "dn": "y"}}},
+                    ],
+                    "ospf": [
+                        {"ospfAdjEp": {"attributes": {"operSt": "full", "peerIp": "10.0.0.1", "dn": "a"}}},
+                        {"ospfAdjEp": {"attributes": {"operSt": "exstart", "peerIp": "10.0.0.2", "dn": "b"}}},
+                    ],
+                    "ingress_high_util": [
+                        {"interface_label": "eth1/1", "utilMax": 80, "utilAvg": 30},
+                        {"interface_label": "eth1/2", "utilMax": 30, "utilAvg": 10},
+                    ],
+                    "egress_high_util": [],
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fields = result["fields"]
+
+        assert fields["fabric_health_score"] == 92
+        assert fields["tenant_health_score"] == 88
+        assert len(fields["active_faults"]) == 3
+        assert fields["active_fault_count"] == 3
+        assert fields["critical_fault_count"] == 1
+        assert fields["major_fault_count"] == 1
+        assert fields["warning_fault_count"] == 1
+        # The TCA ingress-drop entry is rejected; only the policy-applied entry remains.
+        assert len(fields["recent_cleared_faults"]) == 1
+        assert fields["recent_cleared_faults"][0]["descr"] == "policy applied"
+        assert fields["ospf_down_count"] == 1
+        assert fields["ospf_down"][0]["operSt"] == "exstart"
+        assert fields["critical_ingress_util"] == 1
+        assert fields["critical_egress_util"] == 0
+
+        fired = {a["id"] for a in result["alerts"]}
+        assert "active_critical_faults" in fired
+        assert "active_major_faults" in fired
+        assert "ospf_peers_down" in fired
+        assert "link_utilization_critical_ingress" in fired
+
+    def test_aci_schema_normalizes_raw_responses_bundle(self) -> None:
+        """Verifies the schema can consume a *raw* `aci_responses_raw`
+        bundle — i.e. the shape the playbook will produce once the
+        `_aci_by_name`/`_aci_description_map` set_facts are stripped.
+        """
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = CONFIGS_DIR / "aci.yaml"
+        s = load_schema_from_file(schema_path)
+
+        # Mirror what `_aci_responses.results` looks like: a list of
+        # ansible-uri results, each with `item.name` and `json` payload.
+        responses = [
+            {"item": {"name": "fabric_health"}, "json": {"imdata": [{"fabricHealthTotal": {"attributes": {"cur": "92"}}}]}},
+            {"item": {"name": "tenant_health"}, "json": {"imdata": [{"healthInst": {"attributes": {"cur": "88"}}}]}},
+            {"item": {"name": "faults"}, "json": {"imdata": [
+                {"faultInst": {"attributes": {"severity": "critical", "descr": "link down", "dn": "topology/pod-1/node-101/fault-F1"}}},
+                {"faultInst": {"attributes": {"severity": "major", "descr": "memory pressure", "dn": "topology/pod-1/node-102/fault-F2"}}},
+            ]}},
+            {"item": {"name": "cleared_faults"}, "json": {"imdata": [
+                {"faultInst": {"attributes": {"severity": "warning", "descr": "policy applied", "dn": "y"}}},
+            ]}},
+            {"item": {"name": "ospf"}, "json": {"imdata": [
+                {"ospfAdjEp": {"attributes": {"operSt": "full", "peerIp": "10.0.0.1", "dn": "a"}}},
+                {"ospfAdjEp": {"attributes": {"operSt": "exstart", "peerIp": "10.0.0.2", "dn": "b"}}},
+            ]}},
+        ]
+        bundle = {
+            "raw_apic": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "apic_short": "tyfq-apic1",
+                    "audit_failed": False,
+                    "aci_responses_raw": responses,
+                    # Enrichment helper still pre-builds these:
+                    "ingress_high_util": [],
+                    "egress_high_util": [],
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fields = result["fields"]
+
+        assert fields["fabric_health_score"] == 92
+        assert fields["tenant_health_score"] == 88
+        assert fields["active_fault_count"] == 2
+        assert fields["critical_fault_count"] == 1
+        assert fields["major_fault_count"] == 1
+        assert fields["ospf_down_count"] == 1
+        assert fields["recent_cleared_faults"][0]["descr"] == "policy applied"
+
+    def test_aci_schema_derives_util_enrichment_from_raw_imdata(self) -> None:
+        """Verifies that the schema reproduces what `_enrich_util.yaml`
+        used to do (filter port-channel aggregates, threshold utilAvg,
+        regex-decode interface_label, look up description, sort+unique+top-N).
+        """
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = CONFIGS_DIR / "aci.yaml"
+        s = load_schema_from_file(schema_path)
+
+        # 4 ports: one port-channel (drop), one below threshold (drop),
+        # two over threshold; one port appears twice with different utilMax
+        # to test sort-then-unique keeps the higher.
+        ingress = [
+            {"eqptIngrTotalHist15min": {"attributes": {"dn": "topology/pod-1/node-101/sys/phys-[Po10]/CDeqptIngrTotalHist15min", "utilAvg": "60", "utilMax": "70"}}},
+            {"eqptIngrTotalHist15min": {"attributes": {"dn": "topology/pod-1/node-101/sys/phys-[eth1/1]/CDeqptIngrTotalHist15min", "utilAvg": "50", "utilMax": "60"}}},
+            {"eqptIngrTotalHist15min": {"attributes": {"dn": "topology/pod-1/node-101/sys/phys-[eth1/1]/CDeqptIngrTotalHist15min", "utilAvg": "40", "utilMax": "80"}}},
+            {"eqptIngrTotalHist15min": {"attributes": {"dn": "topology/pod-1/node-101/sys/phys-[eth1/2]/CDeqptIngrTotalHist15min", "utilAvg": "10", "utilMax": "10"}}},
+            {"eqptIngrTotalHist15min": {"attributes": {"dn": "topology/pod-1/node-102/sys/phys-[eth1/3]/CDeqptIngrTotalHist15min", "utilAvg": "30", "utilMax": "30"}}},
+        ]
+        interfaces = [
+            {"l1PhysIf": {"attributes": {"dn": "topology/pod-1/node-101/sys/phys-[eth1/1]", "descr": "uplink to spine-1"}}},
+            {"l1PhysIf": {"attributes": {"dn": "topology/pod-1/node-102/sys/phys-[eth1/3]", "descr": "uplink to spine-2"}}},
+        ]
+        responses = [
+            {"item": {"name": "ingress"}, "json": {"imdata": ingress}},
+            {"item": {"name": "egress"}, "json": {"imdata": []}},
+            {"item": {"name": "interfaces"}, "json": {"imdata": interfaces}},
+        ]
+        bundle = {
+            "raw_apic": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "apic_short": "tyfq-apic1",
+                    "audit_failed": False,
+                    "aci_responses_raw": responses,
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        rows = result["fields"]["ingress_high_util"]
+        # Po10 dropped (port-channel), eth1/2 dropped (below threshold).
+        assert {r["interface_label"] for r in rows} == {"leaf node-101 eth1/1", "leaf node-102 eth1/3"}
+        # eth1/1 appears once after unique-by-interface; sort-by-utilMax desc kept the 80 entry.
+        eth11 = next(r for r in rows if r["interface_label"] == "leaf node-101 eth1/1")
+        assert eth11["utilMax"] == 80.0
+        assert eth11["description"] == "uplink to spine-1"
+        # Sort puts the higher utilMax first.
+        assert rows[0]["utilMax"] >= rows[-1]["utilMax"]
+
+
+# ---------------------------------------------------------------------------
 # vcsa.yaml schema round-trip validation
 # ---------------------------------------------------------------------------
 
@@ -638,6 +1393,101 @@ class TestVcsaSchema:
         # Overall health should be CRITICAL
         assert result["health"] == "CRITICAL"
 
+    def test_vcsa_schema_normalizes_raw_collector_bundle(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+
+        schema_path = CONFIGS_DIR / "vcsa.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "raw_vcsa": {
+                "metadata": {"timestamp": "2026-02-27T00:00:00Z"},
+                "data": {
+                    "appliance_about": {"about_info": {"version": "8.0.3", "build": "24022515"}},
+                    "appliance_rest": {
+                        "health/system": "yellow",
+                        "health/load": "green",
+                        "health/mem": "green",
+                        "health/database-storage": "green",
+                        "health/storage": "green",
+                        "system/uptime": 172800,
+                    },
+                    "appliance_health": {
+                        "appliance": {
+                            "access": {"ssh": True, "shell": {"enabled": "False"}},
+                            "time": {"time_sync": {"mode": "NTP", "servers": ["time.example"]}},
+                        }
+                    },
+                    "appliance_backup": {"schedules": []},
+                    "datacenters_raw": {"datacenter_info": [{"name": "DC1"}]},
+                    "clusters_raw": {
+                        "results": [
+                            {
+                                "item": "DC1",
+                                "clusters": {
+                                    "ClusterA": {
+                                        "hosts": [{"name": "esxi-01"}, {"name": "esxi-02"}],
+                                        "ha_enabled": True,
+                                        "drs_enabled": False,
+                                        "resource_summary": {
+                                            "cpuCapacityMHz": 1000,
+                                            "cpuUsedMHz": 250,
+                                            "memCapacityMB": 2000,
+                                            "memUsedMB": 500,
+                                        },
+                                    }
+                                },
+                            }
+                        ]
+                    },
+                    "datastores_raw": {
+                        "results": [
+                            {
+                                "datastores": [
+                                    {
+                                        "name": "ds1",
+                                        "capacity": 1073741824,
+                                        "freeSpace": 268435456,
+                                        "type": "VMFS",
+                                        "accessible": True,
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "vms_raw": [
+                        {
+                            "guest_name": "vm1",
+                            "guest_fullname": "Ubuntu Linux",
+                            "power_state": "poweredOn",
+                            "ip_address": "10.0.0.10",
+                            "esxi_hostname": "esxi-01",
+                        }
+                    ],
+                    "snapshots_raw": {"results": [{"vmware_all_snapshots_info": [{"vm_name": "vm1"}]}]},
+                    "alarms_raw": {"alarms": [{"severity": "warning"}]},
+                    "infra_patterns": [],
+                    "config": {},
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fields = result["fields"]
+
+        assert fields["appliance_version"] == "8.0.3"
+        assert fields["cluster_count"] == 1
+        assert fields["esxi_host_count"] == 2
+        assert fields["datastore_count"] == 1
+        assert fields["datastores"][0]["used_pct"] == 75.0
+        assert fields["vm_count"] == 1
+        assert fields["snapshot_count"] == 1
+        assert fields["alarm_count"] == 1
+        fired = {a["id"] for a in result["alerts"]}
+        assert "appliance_health_yellow" in fired
+        assert "ssh_enabled" in fired
+        assert "no_backup_schedule" in fired
+
 
 class TestEsxiHealthSchema:
     def test_esxi_schema_loads_and_validates(self) -> None:
@@ -694,11 +1544,14 @@ class TestVmHealthSchema:
         s = load_schema_from_file(schema_path)
         assert s.name == "vm"
         assert s.platform == "vmware"
-        compute_exprs = {f.compute for f in s.fields.values() if f.compute}
-        assert any("selectattr" in c for c in compute_exprs)
         assert "virtual_machines" in s.fields
+        assert s.fields["virtual_machines"].normalize is not None
         assert "snapshot_count" in s.fields
         assert "powered_off_vms" in s.fields
+        # All VM filter chains migrated to normalize:list+include_where.
+        assert s.fields["powered_off_vms"].normalize is not None
+        assert s.fields["powered_off_vms"].compute is None
+        assert s.fields["aged_snapshots"].normalize is not None
 
     def test_vm_schema_fires_on_synthetic_bundle(self) -> None:
         from ncs_reporter.schema_loader import load_schema_from_file
@@ -742,6 +1595,212 @@ class TestVmHealthSchema:
         fired = {a["id"] for a in result["alerts"]}
         # vm_tools_not_running fires (poweredOn + toolsNotRunning)
         assert "vm_tools_not_running" in fired
+
+
+class TestWindowsSchema:
+    def test_windows_schema_consumes_pre_shaped_bundle(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = CONFIGS_DIR / "windows.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "raw_windows": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "ccm_service_state": "running",
+                    "configmgr_apps": [],
+                    "apps_to_update": [],
+                    "installed_apps": [],
+                    "update_results": [],
+                    "health_hostname": "winsrv01",
+                    "health_os_name": "Windows Server 2022",
+                    "health_uptime_hours": 240.5,
+                    "health_disk": [],
+                    "health_memory_used_pct": 60,
+                    "health_cpu_load_pct": 25,
+                    "health_services": [],
+                    "health_network": [],
+                    "health_reboot_pending": False,
+                    "health_reboot_reasons": [],
+                    "health_event_count": 0,
+                    "health_events": [],
+                    "health_secure_channel": "OK",
+                    "health_software_versions": [],
+                    "vuln_total_findings": 0,
+                    "vuln_remediated": 0,
+                    "vuln_open": 0,
+                    "vuln_findings": [],
+                    "kb_detection": [],
+                    "kb_install_results": [],
+                    "audit_failed": False,
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        assert result["fields"]["health_uptime_hours"] == 240.5
+        assert result["fields"]["ccm_service_state"] == "running"
+        assert result["fields"]["health_reboot_pending"] is False
+
+    def test_windows_schema_consumes_raw_register_subtrees(self) -> None:
+        """Verifies the post-strip shape: the playbook emits raw
+        `_health_os_info`/`_health_memory_cpu`/etc. subtrees and the
+        schema's `first_of` chain extracts the typed fields.
+        """
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import normalize_from_schema
+
+        schema_path = CONFIGS_DIR / "windows.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "raw_windows": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "_ccm_service": {"state": "running"},
+                    "_health_os_info": {"hostname": "winsrv02", "os_name": "Windows Server 2022", "uptime_hours": 100},
+                    "_health_memory_cpu": {"memory_used_pct": 90, "cpu_load_pct": 40},
+                    "_health_reboot_pending": {"reboot_pending": True, "reasons": ["Component-Based Servicing"]},
+                    "_health_event_logs": {"event_count": 5, "events": [{"id": "1234"}]},
+                    "_health_secure_channel": {"secure_channel": "FAILED"},
+                    "_vuln_results": {"total_findings": 3, "remediated": 1, "open": 2, "findings": [{"id": "v1"}]},
+                    "configmgr_apps": [],
+                    "apps_to_update": [],
+                    "installed_apps": [],
+                    "update_results": [],
+                    "health_disk": [{"DeviceID": "C:", "SizeGB": 100, "FreeGB": 10, "UsedPct": 90}],
+                    "health_services": [],
+                    "health_network": [],
+                    "health_software_versions": [],
+                    "kb_detection": [],
+                    "kb_install_results": [],
+                    "audit_failed": False,
+                },
+            }
+        }
+
+        result = normalize_from_schema(s, bundle)
+        fields = result["fields"]
+        assert fields["ccm_service_state"] == "running"
+        assert fields["health_hostname"] == "winsrv02"
+        assert fields["health_uptime_hours"] == 100.0
+        assert fields["health_memory_used_pct"] == 90.0
+        assert fields["health_reboot_pending"] is True
+        assert fields["health_reboot_reasons"] == ["Component-Based Servicing"]
+        assert fields["health_event_count"] == 5
+        assert fields["health_secure_channel"] == "FAILED"
+        assert fields["vuln_open"] == 2
+
+        fired = {a["id"] for a in result["alerts"]}
+        # Disk usage > 80% fires
+        assert "disk_space_warning" in fired
+        # Memory > 85% fires
+        assert "memory_high" in fired
+        # Reboot pending == 1 (True coerces to int 1)
+        assert "reboot_pending" in fired
+        # Secure channel == FAILED
+        assert "secure_channel_failed" in fired
+        # Critical events > 0
+        assert "critical_events" in fired
+        # vuln_open > 0
+        assert "open_vulnerabilities" in fired
+
+
+class TestUbuntuSchema:
+    def test_ubuntu_schema_loads_and_users_field_is_normalize(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+
+        schema_path = CONFIGS_DIR / "ubuntu.yaml"
+        s = load_schema_from_file(schema_path)
+        # users was previously a `script:` field; must now be normalize-driven.
+        users_spec = s.fields["users"]
+        assert users_spec.script is None
+        assert users_spec.normalize is not None
+        # disks was previously list_filter/list_map; must now be normalize.
+        disks_spec = s.fields["disks"]
+        assert disks_spec.normalize is not None
+        # non_standard_user_count must derive via normalize:count.
+        ns_count_spec = s.fields["non_standard_user_count"]
+        assert ns_count_spec.normalize is not None
+        assert ns_count_spec.compute is None
+
+    def test_ubuntu_schema_users_and_non_standard_users(self) -> None:
+        from ncs_reporter.schema_loader import load_schema_from_file
+        from ncs_reporter.normalization.schema_driven import extract_fields
+
+        schema_path = CONFIGS_DIR / "ubuntu.yaml"
+        s = load_schema_from_file(schema_path)
+
+        bundle = {
+            "raw_ubuntu": {
+                "metadata": {"timestamp": "2026-05-02T00:00:00Z"},
+                "data": {
+                    "ansible_facts": {
+                        "hostname": "u-01",
+                        "kernel": "5.15",
+                        "distribution": "Ubuntu",
+                        "distribution_version": "24.04",
+                    },
+                    "epoch_seconds": 86400 * 20000,
+                    "getent_passwd": {
+                        "root": ["x", "0", "0", "root", "/root", "/bin/bash"],
+                        "daemon": ["x", "1", "1", "daemon", "/usr/sbin", "/usr/sbin/nologin"],
+                        "alice": ["x", "1001", "1001", "Alice", "/home/alice", "/bin/bash"],
+                        "bob": ["x", "12345", "12345", "Bob", "/home/bob", "/bin/zsh"],
+                        "nobody": ["x", "65534", "65534", "nobody", "/nonexistent", "/usr/sbin/nologin"],
+                    },
+                    "shadow_raw": {
+                        "stdout_lines": [
+                            "alice:$6$abc:19500:0:99999:7:::",
+                            "bob::19000:0:99999:7:::",
+                            "# comment",
+                            "",
+                        ]
+                    },
+                    "getent_group": {
+                        "root": ["x", "0", ""],
+                        "users": ["x", "100", "alice,bob"],
+                        "alice": ["x", "1001", ""],
+                        "nobody": ["x", "65534", ""],
+                    },
+                    "mounts": [
+                        {"mount": "/", "device": "/dev/sda1", "fstype": "ext4", "size_total": 10737418240, "size_available": 5368709120},
+                        {"mount": "/run", "device": "tmpfs", "fstype": "tmpfs", "size_total": 1048576, "size_available": 1048576},
+                        {"mount": "/snap/loop", "device": "/dev/loop0", "fstype": "squashfs", "size_total": 1024, "size_available": 0},
+                    ],
+                },
+            }
+        }
+
+        fields, _ = extract_fields(s, bundle)
+
+        users_by_name = {u["name"]: u for u in fields["users"]}
+        assert {"root", "daemon", "alice", "bob", "nobody"} <= set(users_by_name)
+        assert users_by_name["alice"]["uid"] == "1001"
+        assert users_by_name["alice"]["shell"] == "/bin/bash"
+        assert users_by_name["alice"]["password_age_days"] == 20000 - 19500
+        # bob has no shadow hash but a last_change → still computes age.
+        assert users_by_name["bob"]["password_age_days"] == 20000 - 19000
+        # root has no shadow line at all.
+        assert users_by_name["root"]["password_age_days"] == -1
+
+        ns_users = {u["name"] for u in fields["non_standard_users"]}
+        # alice (1001) and bob (12345) are operator-managed; root/daemon/nobody filtered out.
+        assert ns_users == {"alice", "bob"}
+        assert fields["non_standard_user_count"] == 2
+
+        ns_groups = {g["name"] for g in fields["non_standard_groups"]}
+        # alice (1001) only — root/users/nobody have system-account or 65534 GIDs.
+        assert ns_groups == {"alice"}
+        assert fields["non_standard_group_count"] == 1
+
+        # disks: tmpfs + /dev/loop excluded, only ext4 root remains.
+        assert len(fields["disks"]) == 1
+        root_disk = fields["disks"][0]
+        assert root_disk["fstype"] == "ext4"
+        assert root_disk["used_pct"] == pytest.approx(50.0)
 
 
 class TestPhotonSchema:
@@ -841,26 +1900,58 @@ class TestScriptFields:
         result = normalize_from_schema(schema, raw)
         assert any(a["id"] == "aged" for a in result["alerts"])
 
+    def test_script_extract_key_does_not_change_cache_key(self, tmp_path: Path) -> None:
+        script = tmp_path / "bundle.py"
+        counter = tmp_path / "count.txt"
+        script.write_text(
+            "\n".join(
+                [
+                    "import json",
+                    "import pathlib",
+                    "import sys",
+                    f"counter = pathlib.Path({str(counter)!r})",
+                    "counter.write_text(str(int(counter.read_text() or '0') + 1) if counter.exists() else '1')",
+                    "print(json.dumps({'alpha': 1, 'beta': 2}))",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        schema = _make_schema(
+            name="script_cache_test",
+            fields={
+                "alpha": FieldSpec(script=str(script), script_args={"_extract_key": "alpha"}, type="int"),
+                "beta": FieldSpec(script=str(script), script_args={"_extract_key": "beta"}, type="int"),
+            },
+        )
+
+        fields, _ = extract_fields(schema, {"x": True})
+
+        assert fields["alpha"] == 1
+        assert fields["beta"] == 2
+        assert counter.read_text(encoding="utf-8") == "1"
+
     def test_script_sentinel_on_missing_script(self) -> None:
         """If the script cannot be found, extract_fields returns the sentinel."""
         schema = self._schema_with_script("nonexistent_script_xyz.py")
         fields, _ = extract_fields(schema, {"snapshots": [], "collected_at": ""})
         assert fields["aged_count"] == -1  # sentinel (int field, script not found = broken)
 
-    def test_filter_mounts_script(self) -> None:
-        from ncs_reporter.models.report_schema import DetectionSpec, FieldSpec, ListFilterSpec, ReportSchema
-
-        schema = ReportSchema(
+    def test_filter_mounts_via_normalize(self) -> None:
+        """The retired ListFilterSpec / list_filter pair was replaced by
+        the `normalize: list:` DSL with `exclude_where`. This test pins
+        the equivalent expression."""
+        schema = _make_schema(
             name="mounts_test",
-            platform="linux",
-            display_name="Mounts Test",
-            detection=DetectionSpec(keys_any=["x"]),
             fields={
-                "mounts": FieldSpec(path="raw_mounts", type="list", fallback=[]),
+                "raw_mounts": FieldSpec(path="raw_mounts", type="list", fallback=[]),
                 "real_mounts": FieldSpec(
-                    path="raw_mounts",
+                    normalize={
+                        "list": {
+                            "source": "raw_mounts",
+                            "exclude_where": {"field": "fstype", "op": "in", "value": ["tmpfs", "squashfs"]},
+                        }
+                    },
                     type="list",
-                    list_filter=ListFilterSpec(exclude={"fstype": ["tmpfs", "squashfs"]}),
                     fallback=[],
                 ),
             },
@@ -871,7 +1962,7 @@ class TestScriptFields:
                 {"device": "tmpfs", "fstype": "tmpfs", "mountpoint": "/tmp"},
                 {"device": "loop0", "fstype": "squashfs", "mountpoint": "/snap/core"},
                 {"device": "/dev/sdb1", "fstype": "xfs", "mountpoint": "/data"},
-            ]
+            ],
         }
         fields, _ = extract_fields(schema, raw)
         assert len(fields["real_mounts"]) == 2
@@ -885,11 +1976,17 @@ class TestScriptFields:
         s = load_schema_from_file(schema_path)
         assert "snapshots" in s.fields
         spec = s.fields["snapshots"]
-        assert spec.script is not None
-        assert spec.script.path == "normalize_snapshots.py"
+        assert spec.normalize is not None
         aged_alert = next((a for a in s.alerts if a.id == "aged_snapshots"), None)
         assert aged_alert is not None
         assert aged_alert.items is not None and "snapshots" in aged_alert.items
+
+    def test_vmware_configs_do_not_use_scripts(self) -> None:
+        configs_dir = Path(__file__).resolve().parents[2] / "ncs-ansible-vmware" / "ncs_configs"
+        for schema_path in configs_dir.glob("*.yaml"):
+            text = schema_path.read_text(encoding="utf-8")
+            assert "script:" not in text
+            assert "script_bundles:" not in text
 
 
 # ---------------------------------------------------------------------------

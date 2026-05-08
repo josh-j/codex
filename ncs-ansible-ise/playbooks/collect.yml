@@ -1,0 +1,4 @@
+---
+# Compatibility entry point for generic collection runners.
+
+- import_playbook: ise_collect.yml

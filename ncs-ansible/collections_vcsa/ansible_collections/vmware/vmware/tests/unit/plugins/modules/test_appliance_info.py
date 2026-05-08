@@ -7,7 +7,7 @@ import pytest
 from ansible_collections.vmware.vmware.plugins.modules import appliance_info
 
 from ...common.utils import (
-    run_module, ModuleTestCase
+    AnsibleExitJson, ModuleTestCase, set_module_args,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -27,9 +27,14 @@ class TestApplianceInfo(ModuleTestCase):
     def test_gather(self, mocker):
         self.__prepare(mocker)
 
-        result = run_module(
-            module_entry=appliance_info.main,
-            module_args={}
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
         )
 
-        assert result["changed"] is False
+        with pytest.raises(AnsibleExitJson) as c:
+            appliance_info.main()
+
+        assert c.value.args[0]["changed"] is False

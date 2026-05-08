@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.rest import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._rest import (
     VmwareRestClient
 )
 from ...common.utils import set_module_args
@@ -12,10 +12,10 @@ class TestModuleRestBase():
 
     def __prepare(self, mocker):
         mocker.patch.object(VmwareRestClient, 'connect_to_api', return_value=mocker.Mock())
-        with set_module_args():
-            module = mocker.Mock()
-            module.params = {"hostname": "a", "username": "b", "password": "c"}
-            self.base = ModuleRestBase(module=module)
+        set_module_args()
+        module = mocker.Mock()
+        module.params = {"hostname": "a", "username": "b", "password": "c"}
+        self.base = ModuleRestBase(module=module)
 
     def test_get_vm_by_name(self, mocker):
         self.__prepare(mocker)

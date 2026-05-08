@@ -12,3 +12,4 @@ extra_config_dirs:
   - ../../ncs-ansible-vmware/ncs_configs
   - ../../ncs-ansible-windows/ncs_configs
   - ../../ncs-ansible-aci/ncs_configs
+  - ../../ncs-ansible-ise/ncs_configs

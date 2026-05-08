@@ -29,62 +29,54 @@
     cmd: |
       set -o pipefail
 
-      # 1. Use PowerCLI to ensure SSH is running + firewall allows us
-      ssh_state=$(pwsh -NoProfile -Command "
+      # Single pwsh session that opens the SSH firewall, starts SSH if
+      # needed, fetches `sshd -T`, then restores both. Replaces the prior
+      # pwsh→ssh→pwsh dance — pwsh + PowerCLI startup is ~5s; doing it
+      # twice was ~10s of pure overhead per host.
+      output=$(timeout 90 pwsh -NoProfile -Command "
+      \$ProgressPreference = 'SilentlyContinue'
       {{ _pwsh_preamble }}
-      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' -ErrorAction SilentlyContinue;
-      if (-not \$vmhost) { \$vmhost = Get-VMHost | Select-Object -First 1 };
-      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' -ErrorAction SilentlyContinue
+      if (-not \$vmhost) { \$vmhost = Get-VMHost | Select-Object -First 1 }
+      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2
 
-      # Capture and temporarily allow all IPs on SSH firewall ruleset
-      \$sshFw = \$esxcli.network.firewall.ruleset.allowedip.list.Invoke(@{rulesetid='sshServer'});
-      \$origAllIp = (\$sshFw | Where-Object { \$_.AllowedIPAddresses -eq 'All' }) -ne \$null;
+      # Open SSH firewall (record original state for restore)
+      \$sshFw = \$esxcli.network.firewall.ruleset.allowedip.list.Invoke(@{rulesetid='sshServer'})
+      \$origAllIp = (\$sshFw | Where-Object { \$_.AllowedIPAddresses -eq 'All' }) -ne \$null
       if (-not \$origAllIp) {
-        \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$true}) | Out-Null;
-        Write-Host 'FW_OPENED';
-      } else {
-        Write-Host 'FW_ALREADY_OPEN';
+        \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$true}) | Out-Null
       }
 
-      # Start SSH if needed
-      \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' };
+      # Start SSH service (record original state for restore)
+      \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' }
+      \$origSshRunning = \$svc.Running
       if (-not \$svc.Running) {
-        Start-VMHostService -HostService \$svc -Confirm:\$false | Out-Null;
-        Start-Sleep -Seconds 3;
-        Write-Host 'STARTED';
-      } else {
-        Write-Host 'ALREADY_RUNNING';
+        Start-VMHostService -HostService \$svc -Confirm:\$false | Out-Null
+        Start-Sleep -Seconds 3
       }
-      " | tr -d '\r' | tail -1)
 
-      # 2. Fetch sshd config via SSH
-      config=$(sshpass -e ssh \
-        -o StrictHostKeyChecking=no \
-        -o ConnectTimeout=10 \
-        -o PubkeyAuthentication=no \
-        {{ vault_vcenter_ssh_username | default('root') }}@{{ _current_esxi_host }} \
-        '/usr/lib/vmware/openssh/bin/sshd -T' 2>/dev/null)
-      ssh_rc=$?
+      # Fetch sshd config — sshpass picks SSHPASS from inherited env.
+      \$sshOut = & sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o PubkeyAuthentication=no '{{ vault_vcenter_ssh_username | default('root') }}@{{ _current_esxi_host }}' '/usr/lib/vmware/openssh/bin/sshd -T' 2>\$null
+      \$sshRc = \$LASTEXITCODE
 
-      # 3. Restore SSH service and firewall state
-      pwsh -NoProfile -Command "
-      {{ _pwsh_preamble }}
-      \$vmhost = Get-VMHost -Name '{{ _current_esxi_host }}' -ErrorAction SilentlyContinue;
-      if (-not \$vmhost) { \$vmhost = Get-VMHost | Select-Object -First 1 };
-      \$esxcli = Get-EsxCli -VMHost \$vmhost -V2;
+      Write-Output '===SSHD-OUTPUT-BEGIN==='
+      if (\$sshRc -eq 0 -and \$sshOut) { Write-Output \$sshOut } else { Write-Output 'SSHD_GATHER_FAILED' }
+      Write-Output '===SSHD-OUTPUT-END==='
 
-      # Restore SSH firewall
-      \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$false}) | Out-Null;
-
-      # Stop SSH if we started it
-      \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' };
-      if (\$svc.Running) {
-        Stop-VMHostService -HostService \$svc -Confirm:\$false | Out-Null;
+      # Restore firewall + SSH service to their original states.
+      if (-not \$origAllIp) {
+        \$esxcli.network.firewall.ruleset.set.Invoke(@{rulesetid='sshServer'; allowedall=\$false}) | Out-Null
       }
-      " | tr -d '\r' > /dev/null 2>&1
+      if (-not \$origSshRunning) {
+        \$svc = Get-VMHostService -VMHost \$vmhost | Where-Object { \$_.Key -eq 'TSM-SSH' }
+        Stop-VMHostService -HostService \$svc -Confirm:\$false | Out-Null
+      }
+      " | tr -d '\r')
 
-      # 4. Output the config (or fail)
-      if [ $ssh_rc -eq 0 ] && [ -n "$config" ]; then
+      # Extract just the sshd config from between the markers.
+      config=$(echo "$output" | awk '/^===SSHD-OUTPUT-BEGIN===$/{flag=1; next} /^===SSHD-OUTPUT-END===$/{flag=0} flag')
+
+      if [ -n "$config" ] && [ "$config" != "SSHD_GATHER_FAILED" ]; then
         echo "$config"
       else
         echo "SSHD_GATHER_FAILED" >&2

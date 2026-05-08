@@ -78,8 +78,7 @@ options:
   search_paths:
     description:
       - Specify a list of paths that should be searched recursively for VMware objects.
-      - This effectively allows you to only include objects in certain datacenters, clusters, or folders. The path must
-        be a valid vSphere inventory or folder path. Valid paths depend on the object type (vm, network, host, datastore).
+      - This effectively allows you to only include objects in certain datacenters, clusters, or folders.
       - >-
         Filtering is done before the initial object gathering query. If you have a large number of VMware objects, specifying
         a subset of paths to search can help speed up the inventory plugin.
@@ -119,13 +118,4 @@ options:
     elements: list
     default: []
     aliases: ['filters']
-  rename_reserved_variables:
-    description:
-      - If true, the plugin will rename the reserved variables to avoid potential conflicts with ansible-core and resolve warnings.
-        Variables will be prefixed with 'vmware_inventory_'.
-      - Some variables have names that were maintained for backwards compatibility with older versions of the plugins, but are
-        now reserved by ansible-core and cause warnings.
-      - "Affected host variables include: name, and tags."
-    default: false
-    type: bool
 '''

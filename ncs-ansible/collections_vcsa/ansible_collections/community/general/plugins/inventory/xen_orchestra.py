@@ -94,7 +94,7 @@ try:
 
     if LooseVersion(websocket.__version__) <= LooseVersion('1.0.0'):
         raise ImportError
-except ImportError:
+except ImportError as e:
     HAS_WEBSOCKET = False
 
 

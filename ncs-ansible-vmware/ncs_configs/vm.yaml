@@ -21,24 +21,119 @@ config:
 
 vars:
   # All raw_vm.data.* fields are auto-imported from the collector payload.
-  # Only scripts and computes need explicit declaration.
+  # Only declarative normalization and computes need explicit declaration.
 
   virtual_machines:
-    script:
-      run: "get_vms_list.py"
-      args:
-        exclude_patterns: "{{ infra_patterns }}"
     type: list
+    normalize:
+      list:
+        source:
+          first_of:
+            - vms_info_raw.virtual_machines
+            - virtual_machines
+        include_source: false
+        exclude_match_any:
+          field: guest_name
+          patterns: infra_patterns
+        map:
+          guest_name: {first_of: [guest_name, {const: Unknown}]}
+          uuid: {first_of: [uuid, {const: ""}]}
+          power_state: {first_of: [power_state, {const: Unknown}]}
+          guest_os: {first_of: [guest_fullname, guest_os, {const: Unknown}]}
+          tools_status: {first_of: [tools_status, {const: unknown}]}
+          esxi_host: {first_of: [esxi_hostname, esxi_host, {const: N/A}]}
+          cluster: {first_of: [cluster, {const: N/A}]}
+          datacenter: {first_of: [datacenter, {const: N/A}]}
+          ip_address: {first_of: [ip_address, {const: N/A}]}
+          tags: {first_of: [tags, {const: []}]}
+          owner_tag_obj:
+            find:
+              source: tags
+              where: {category_name: Owner}
+              default: {}
+          backup_tag_obj:
+            find:
+              source: tags
+              where: {category_name: Backup Schedule}
+              default: {}
+          email_tag_obj:
+            find:
+              source: tags
+              where: {category_name: Owner Email}
+              default: {}
+          backup_info:
+            first_of:
+              - attributes.Last Dell PowerProtect Backup
+              - attributes.Last Backup
+              - attributes.LastBackup
+              - attributes.backup_date
+              - {const: ""}
+          backup_schedule: {first_of: [backup_tag_obj.name, {const: None}]}
+          last_backup_at:
+            regex_search:
+              value: backup_info
+              pattern: "EndTime=(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)"
+          days_since_backup:
+            age_days:
+              value: last_backup_at
+              default: -1
+          backup_expected_days:
+            lookup:
+              value: backup_schedule
+              map: {Daily: 1, Weekly: 7, Monthly: 30}
+              default: -1
+          backup_never:
+            expr: "{{ backup_expected_days > 0 and not last_backup_at }}"
+          backup_overdue:
+            expr: "{{ backup_expected_days > 0 and last_backup_at and days_since_backup > (backup_expected_days + 1) }}"
+          owner_name:
+            first_of:
+              - attributes.Owner Name
+              - attributes.OwnerName
+              - {const: ""}
+          owner_email:
+            first_of:
+              - attributes.Owner Email
+              - attributes.OwnerEmail
+              - attributes.owner_email
+              - email_tag_obj.name
+              - {const: ""}
+          owner_tag: {first_of: [owner_tag_obj.name, {const: ""}]}
+          owner_description: {first_of: [owner_tag_obj.description, {const: ""}]}
+          allocated:
+            object:
+              cpu: {first_of: [num_cpu, {const: 0}]}
+              memory: {first_of: [memory_mb, {const: 0}]}
 
   snapshot_age_days: 7
 
   snapshots:
-    script:
-      run: "normalize_snapshots.py"
-      args:
-        mode: list
-        age_days: 7
     type: list
+    normalize:
+      list:
+        source:
+          first_of:
+            - {flatten: "snapshots_raw.results[].vmware_all_snapshots_info[]"}
+            - snapshots_raw
+        map:
+          owner_email:
+            get:
+              source:
+                index:
+                  source: virtual_machines
+                  key: guest_name
+                  value: owner_email
+              key: vm_name
+              default: ""
+          days_old:
+            age_days:
+              value:
+                first_of:
+                  - creation_time
+                  - createTime
+              reference: collected_at
+              round: 1
+              default: -1
 
   snapshot_count:
     thresholds:
@@ -46,74 +141,115 @@ vars:
       crit_if_above: 10
 
   powered_off_vms:
-    compute: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOff') | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where: {power_state: poweredOff}
     type: list
 
   powered_on_vms:
-    compute: "{{ virtual_machines | selectattr('power_state', 'eq', 'poweredOn') | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where: {power_state: poweredOn}
     type: list
 
   vms_tools_not_running:
-    compute: "{{ powered_on_vms | selectattr('tools_status', 'eq', 'toolsNotRunning') | list }}"
+    normalize:
+      list:
+        source: powered_on_vms
+        include_where: {tools_status: toolsNotRunning}
     type: list
 
   vms_tools_not_installed:
-    compute: "{{ powered_on_vms | selectattr('tools_status', 'eq', 'toolsNotInstalled') | list }}"
+    normalize:
+      list:
+        source: powered_on_vms
+        include_where: {tools_status: toolsNotInstalled}
     type: list
 
   aged_snapshots:
-    compute: "{{ snapshots | selectattr('days_old', 'ge', snapshot_age_days) | list }}"
+    normalize:
+      list:
+        source: snapshots
+        include_where: {field: days_old, op: ge, value: {path: snapshot_age_days}}
     type: list
 
   vms_never_backup:
-    compute: "{{ virtual_machines | selectattr('backup_never', 'equalto', true) | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where: {backup_never: true}
     type: list
 
   vms_no_backup_tags:
-    compute: "{{ virtual_machines | selectattr('backup_expected_days', 'equalto', -1) | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where: {backup_expected_days: -1}
     type: list
 
   vms_overdue_backup:
-    compute: "{{ virtual_machines | selectattr('backup_overdue', 'equalto', true) | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where: {backup_overdue: true}
     type: list
 
   vms_no_owner_email:
-    compute: "{{ virtual_machines | rejectattr('owner_email', 'match', '^.+@.+\\..+$') | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        exclude_where: {field: owner_email, op: matches, value: '^.+@.+\..+$'}
     type: list
 
   vms_missing_owner_desc:
-    compute: "{{ virtual_machines | selectattr('owner_tag', 'ne', '') | selectattr('owner_description', 'equalto', '') | list }}"
+    normalize:
+      list:
+        source: virtual_machines
+        include_where:
+          - {field: owner_tag, op: ne, value: ''}
+          - {owner_description: ''}
     type: list
 
   powered_off_vm_count:
-    compute: "{{ powered_off_vms | length }}"
+    normalize: {count: powered_off_vms}
+    type: int
     thresholds:
       warn_if_above: 1
       crit_if_above: 5
 
   vms_tools_not_running_count:
-    compute: "{{ vms_tools_not_running | length }}"
+    normalize: {count: vms_tools_not_running}
+    type: int
 
   vms_tools_not_installed_count:
-    compute: "{{ vms_tools_not_installed | length }}"
+    normalize: {count: vms_tools_not_installed}
+    type: int
 
   aged_snapshot_count:
-    compute: "{{ aged_snapshots | length }}"
+    normalize: {count: aged_snapshots}
+    type: int
 
   vms_never_backup_count:
-    compute: "{{ vms_never_backup | length }}"
+    normalize: {count: vms_never_backup}
+    type: int
 
   vms_no_backup_tags_count:
-    compute: "{{ vms_no_backup_tags | length }}"
+    normalize: {count: vms_no_backup_tags}
+    type: int
 
   vms_overdue_backup_count:
-    compute: "{{ vms_overdue_backup | length }}"
+    normalize: {count: vms_overdue_backup}
+    type: int
 
   vms_no_owner_email_count:
-    compute: "{{ vms_no_owner_email | length }}"
+    normalize: {count: vms_no_owner_email}
+    type: int
 
   vms_missing_owner_desc_count:
-    compute: "{{ vms_missing_owner_desc | length }}"
+    normalize: {count: vms_missing_owner_desc}
+    type: int
 
 # ---------------------------------------------------------------------------
 # Alerts

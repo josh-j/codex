@@ -39,6 +39,7 @@ Exported by `internal.vmware.vcsa` with `ncs_action: collect`. The assemble task
 | `tag_count` | int | Number of tags. |
 | `alarm_count` | int | Number of active triggered alarms. |
 | `clusters` | list | Flattened cluster list with usage metrics. |
+| `esxi_hosts` | list | Flattened ESXi host list with `{name, folder}` entries. |
 | `datastores` | list | Flattened datastore list. |
 | `resource_pools` | list | Resource pool entries. |
 | `dvswitches` | list | Distributed virtual switch entries. |

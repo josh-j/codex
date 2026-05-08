@@ -1,0 +1,194 @@
+---
+# internal.ise.ise : tasks/endpoint_coa.yaml
+#
+# Send ISE MnT CoA by resolving an endpoint selector to a MAC address and
+# session context. This is intentionally separate from read-only one-offs.
+
+- name: "ISE CoA | Normalize inputs"
+  ansible.builtin.set_fact:
+    _ise_coa_lookup: "{{ ise_lookup | default('') | trim }}"
+    _ise_coa_action: "{{ ise_coa_action | default('reauth_default') | trim }}"
+    _ise_coa_server_override: "{{ ise_coa_server | default('') | trim }}"
+    _ise_coa_nad_ip_override: "{{ ise_nad_ip | default('') | trim }}"
+    _ise_coa_destination_ip_override: "{{ ise_destination_ip | default(ise_endpoint_ip | default('')) | trim }}"
+    _ise_coa_confirm: "{{ ise_coa_confirm | default('') | trim }}"
+    _ise_coa_collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _ise_coa_stamp: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+    _ise_coa_reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/one_offs/ise"
+  changed_when: false
+
+- name: "ISE CoA | Validate required inputs"
+  ansible.builtin.assert:
+    that:
+      - _ise_coa_lookup | length > 0
+      - _ise_coa_confirm == 'COA'
+      - _ise_coa_action in ['reauth_default', 'reauth_last', 'reauth_rerun', 'disconnect_default', 'disconnect_bounce', 'disconnect_shutdown']
+    fail_msg: >-
+      Endpoint CoA requires ise_lookup, ise_coa_confirm=COA, and a valid
+      ise_coa_action.
+
+- name: "ISE CoA | Get endpoint inventory"
+  cisco.ise.endpoints_info: &ise_common_args
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_coa_endpoints_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE CoA | Get active sessions"
+  cisco.ise.mnt_session_active_list_info:
+    <<: *ise_common_args
+  register: _ise_coa_active_sessions_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE CoA | Shape candidates"
+  ansible.builtin.set_fact:
+    _ise_coa_endpoint_rows: "{{ _ise_coa_endpoints_raw | ise_result_rows | ise_endpoint_rows }}"
+    _ise_coa_session_rows: "{{ _ise_coa_active_sessions_raw | ise_result_rows | ise_auth_rows }}"
+  changed_when: false
+
+- name: "ISE CoA | Resolve endpoint candidates"
+  ansible.builtin.set_fact:
+    _ise_coa_candidates: >-
+      {{
+        _ise_coa_endpoint_rows
+        | ise_coa_candidates(_ise_coa_session_rows, _ise_coa_lookup)
+      }}
+  changed_when: false
+
+- name: "ISE CoA | Require a resolved endpoint"
+  ansible.builtin.assert:
+    that:
+      - _ise_coa_candidates | length > 0
+      - (_ise_coa_candidates[0].mac | default('')) | length > 0
+    fail_msg: >-
+      No endpoint/session candidate with a MAC address matched
+      '{{ _ise_coa_lookup }}'. Use a MAC address directly or run Endpoint
+      Lookup first.
+
+- name: "ISE CoA | Select target and action"
+  ansible.builtin.set_fact:
+    _ise_coa_target: "{{ _ise_coa_candidates[0] }}"
+    _ise_coa_kind: "{{ 'Reauth' if _ise_coa_action.startswith('reauth_') else 'Disconnect' }}"
+    _ise_coa_type: >-
+      {{
+        {
+          'reauth_default': 0,
+          'reauth_last': 1,
+          'reauth_rerun': 2,
+          'disconnect_default': 0,
+          'disconnect_bounce': 1,
+          'disconnect_shutdown': 2
+        }[_ise_coa_action]
+      }}
+  changed_when: false
+
+- name: "ISE CoA | Resolve API path values"
+  ansible.builtin.set_fact:
+    _ise_coa_server: "{{ _ise_coa_server_override | default(_ise_coa_target.server | default(''), true) }}"
+    _ise_coa_mac: "{{ _ise_coa_target.mac | upper }}"
+    _ise_coa_nad_ip: "{{ _ise_coa_nad_ip_override | default(_ise_coa_target.nad_ip | default(''), true) }}"
+    _ise_coa_destination_ip: "{{ _ise_coa_destination_ip_override | default(_ise_coa_target.destination_ip_address | default(''), true) }}"
+  changed_when: false
+
+- name: "ISE CoA | Require CoA serverhostname"
+  ansible.builtin.assert:
+    that:
+      - _ise_coa_server | length > 0
+    fail_msg: >-
+      CoA requires the ISE serverhostname/PSN value. The active session did
+      not expose one, so provide ise_coa_server.
+
+- name: "ISE CoA | Build CoA URL"
+  ansible.builtin.set_fact:
+    _ise_coa_base_url: >-
+      https://{{ ise_hostname }}/admin/API/mnt/CoA/{{ _ise_coa_kind }}/{{ _ise_coa_server }}/{{ _ise_coa_mac }}/{{ _ise_coa_type }}
+    _ise_coa_context_path: >-
+      {{ '/' ~ _ise_coa_nad_ip ~ '/' ~ _ise_coa_destination_ip
+         if (_ise_coa_nad_ip | length > 0 and _ise_coa_destination_ip | length > 0)
+         else '' }}
+  changed_when: false
+
+- name: "ISE CoA | Join CoA URL"
+  ansible.builtin.set_fact:
+    _ise_coa_url: "{{ _ise_coa_base_url ~ _ise_coa_context_path }}"
+  changed_when: false
+
+- name: "ISE CoA | Show target"
+  ansible.builtin.debug:
+    msg:
+      action: "{{ _ise_coa_action }}"
+      url: "{{ _ise_coa_url | regex_replace('/admin/API/mnt/CoA/.+$', '/admin/API/mnt/CoA/...') }}"
+      selected_target: "{{ _ise_coa_target }}"
+      candidate_count: "{{ _ise_coa_candidates | length }}"
+
+- name: "ISE CoA | Send CoA request"
+  ansible.builtin.uri:
+    url: "{{ _ise_coa_url }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    return_content: true
+    status_code:
+      - 200
+    headers:
+      Accept: application/xml
+  register: _ise_coa_result
+  changed_when: _ise_coa_result.status == 200
+
+- name: "ISE CoA | Result"
+  ansible.builtin.debug:
+    msg:
+      status: "{{ _ise_coa_result.status | default('unknown') }}"
+      changed: "{{ _ise_coa_result.changed | default(false) }}"
+      response: "{{ _ise_coa_result.content | default('') }}"
+
+- name: "ISE CoA | Build report"
+  ansible.builtin.set_fact:
+    _ise_coa_report:
+      title: "Endpoint CoA"
+      collected_at: "{{ _ise_coa_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      action: "{{ _ise_coa_action }}"
+      status: "{{ _ise_coa_result.status | default('unknown') }}"
+      selected_target: "{{ _ise_coa_target }}"
+      response:
+        content: "{{ _ise_coa_result.content | default('') }}"
+  changed_when: false
+
+- name: "ISE CoA | Ensure report directory exists"
+  ansible.builtin.file:
+    path: "{{ _ise_coa_reports_root }}"
+    state: directory
+    mode: "0755"
+
+- name: "ISE CoA | Write HTML report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_coa_reports_root }}/{{ _ise_coa_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-coa.html
+    mode: "0644"
+    content: "{{ _ise_coa_report | ise_one_off_html }}"
+  register: _ise_coa_html_artifact
+
+- name: "ISE CoA | Write CSV report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_coa_reports_root }}/{{ _ise_coa_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-coa.csv
+    mode: "0644"
+    content: "{{ _ise_coa_report | ise_one_off_csv }}"
+
+- name: "ISE CoA | Publish report path"
+  ansible.builtin.debug:
+    msg: >-
+      NCS_REPORT: one_offs/ise/{{ _ise_coa_html_artifact.dest | basename }}

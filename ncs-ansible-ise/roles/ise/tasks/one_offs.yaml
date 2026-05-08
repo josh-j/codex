@@ -1,0 +1,447 @@
+---
+# internal.ise.ise : tasks/one_offs.yaml
+#
+# Operator-focused, read-only ISE lookups for ncs-console.
+
+- name: "ISE One-Off | Normalize inputs"
+  ansible.builtin.set_fact:
+    _ise_one_off_operation: "{{ ncs_operation | default('endpoint_lookup') }}"
+    _ise_lookup: "{{ ise_lookup | default('') | trim }}"
+    _ise_nad_query: "{{ ise_nad_query | default('') | trim }}"
+    _ise_port_query: "{{ ise_port_query | default('') | trim }}"
+    _ise_username_query: "{{ ise_username_query | default('') | trim }}"
+    _ise_policy_query: "{{ ise_policy_query | default('') | trim }}"
+    _ise_one_off_seconds: "{{ ise_seconds | default(86400) | int }}"
+    _ise_one_off_records: "{{ ise_records | default(100) | int }}"
+    _ise_one_off_repeat_threshold: "{{ ise_endpoint_repeat_counter_threshold | default(3) | int }}"
+    _ise_one_off_collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _ise_one_off_stamp: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+    _ise_one_off_reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/one_offs/ise"
+  changed_when: false
+
+- name: "ISE One-Off | Show request"
+  ansible.builtin.debug:
+    msg:
+      operation: "{{ _ise_one_off_operation }}"
+      endpoint_lookup: "{{ _ise_lookup }}"
+      nad_query: "{{ _ise_nad_query }}"
+      port_query: "{{ _ise_port_query }}"
+      username_query: "{{ _ise_username_query }}"
+      policy_query: "{{ _ise_policy_query }}"
+      seconds: "{{ _ise_one_off_seconds }}"
+      records: "{{ _ise_one_off_records }}"
+      repeat_threshold: "{{ _ise_one_off_repeat_threshold }}"
+
+- name: "ISE One-Off | Get endpoints"
+  cisco.ise.endpoints_info: &ise_common_args
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_one_off_endpoints_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
+
+- name: "ISE One-Off | Get network devices"
+  cisco.ise.network_device_info:
+    <<: *ise_common_args
+  register: _ise_one_off_network_devices_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history']
+
+- name: "ISE One-Off | Get active sessions"
+  cisco.ise.mnt_session_active_list_info:
+    <<: *ise_common_args
+  register: _ise_one_off_active_sessions_raw
+  changed_when: false
+  failed_when: false
+  when: >-
+    _ise_one_off_operation in [
+      'endpoint_lookup',
+      'switch_lookup',
+      'port_endpoint_report',
+      'endpoint_timeline',
+      'nad_troubleshooting',
+      'nad_port_history'
+    ]
+
+- name: "ISE One-Off | Get recent authentication status"
+  cisco.ise.mnt_athentication_status_info:
+    <<: *ise_common_args
+    SECONDS: "{{ _ise_one_off_seconds }}"
+    RECORDS: "{{ _ise_one_off_records }}"
+  register: _ise_one_off_auth_status_raw
+  changed_when: false
+  failed_when: false
+  when: >-
+    _ise_one_off_operation in [
+      'endpoint_lookup',
+      'switch_lookup',
+      'port_endpoint_report',
+      'user_auth_history',
+      'failed_auth_summary',
+      'endpoint_timeline',
+      'policy_hit_explorer',
+      'nad_troubleshooting',
+      'nad_port_history',
+      'policy_object_detail'
+    ]
+
+- name: "ISE One-Off | Get session by MAC"
+  cisco.ise.mnt_session_by_mac_info:
+    <<: *ise_common_args
+    mac: "{{ _ise_lookup }}"
+  register: _ise_one_off_session_by_mac_raw
+  changed_when: false
+  failed_when: false
+  when:
+    - _ise_one_off_operation in ['endpoint_lookup', 'endpoint_timeline']
+    - _ise_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+
+- name: "ISE One-Off | Get session by username"
+  cisco.ise.mnt_session_by_username_info:
+    <<: *ise_common_args
+    username: "{{ _ise_username_query }}"
+  register: _ise_one_off_session_by_username_raw
+  changed_when: false
+  failed_when: false
+  when:
+    - _ise_one_off_operation == 'user_auth_history'
+    - _ise_username_query | length > 0
+
+- name: "ISE One-Off | Get authentication failure reasons"
+  cisco.ise.mnt_failure_reasons_info:
+    <<: *ise_common_args
+  register: _ise_one_off_failure_reasons_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['failed_auth_summary', 'nad_troubleshooting']
+
+- name: "ISE One-Off | Get authorization profiles"
+  cisco.ise.authorization_profile_info:
+    <<: *ise_common_args
+  register: _ise_one_off_authorization_profiles_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
+
+- name: "ISE One-Off | Get downloadable ACLs"
+  cisco.ise.downloadable_acl_info:
+    <<: *ise_common_args
+  register: _ise_one_off_downloadable_acls_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
+
+- name: "ISE One-Off | Get allowed protocols"
+  cisco.ise.allowed_protocols_info:
+    <<: *ise_common_args
+  register: _ise_one_off_allowed_protocols_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
+
+- name: "ISE One-Off | Get filter policies"
+  cisco.ise.filter_policy_info:
+    <<: *ise_common_args
+  register: _ise_one_off_filter_policies_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation == 'policy_object_detail'
+
+- name: "ISE One-Off | Shape lookup data"
+  ansible.builtin.set_fact:
+    _ise_one_off_endpoint_rows: >-
+      {{
+        _ise_one_off_endpoints_raw | default({}) | ise_result_rows | ise_endpoint_rows
+      }}
+    _ise_one_off_network_device_rows: >-
+      {{
+        _ise_one_off_network_devices_raw | default({}) | ise_result_rows | ise_network_device_rows
+      }}
+    _ise_one_off_session_rows: >-
+      {{
+        _ise_one_off_active_sessions_raw | default({}) | ise_result_rows | ise_auth_rows
+      }}
+    _ise_one_off_auth_rows: >-
+      {{
+        _ise_one_off_auth_status_raw | default({}) | ise_result_rows | ise_auth_rows
+      }}
+    _ise_one_off_session_by_mac_rows: >-
+      {{
+        _ise_one_off_session_by_mac_raw | default({}) | ise_result_rows | ise_auth_rows
+      }}
+    _ise_one_off_session_by_username_rows: >-
+      {{
+        _ise_one_off_session_by_username_raw | default({}) | ise_result_rows | ise_auth_rows
+      }}
+    _ise_one_off_failure_reason_rows: >-
+      {{
+        _ise_one_off_failure_reasons_raw | default({}) | ise_result_rows
+      }}
+    _ise_one_off_authorization_profile_rows: >-
+      {{
+        _ise_one_off_authorization_profiles_raw | default({}) | ise_result_rows
+      }}
+    _ise_one_off_downloadable_acl_rows: >-
+      {{
+        _ise_one_off_downloadable_acls_raw | default({}) | ise_result_rows
+      }}
+    _ise_one_off_allowed_protocol_rows: >-
+      {{
+        _ise_one_off_allowed_protocols_raw | default({}) | ise_result_rows
+      }}
+    _ise_one_off_filter_policy_rows: >-
+      {{
+        _ise_one_off_filter_policies_raw | default({}) | ise_result_rows
+      }}
+  changed_when: false
+
+- name: "ISE One-Off | Build endpoint lookup report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Endpoint Lookup"
+      query: "{{ _ise_lookup }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      endpoints: "{{ _ise_one_off_endpoint_rows | ise_search_rows(_ise_lookup) | ise_limit_rows(25) }}"
+      active_or_recent_sessions: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_search_rows(_ise_lookup))
+            + (_ise_one_off_auth_rows | ise_search_rows(_ise_lookup))
+            + _ise_one_off_session_by_mac_rows
+          ) | ise_limit_rows(50)
+        }}
+  changed_when: false
+  when: _ise_one_off_operation == 'endpoint_lookup'
+
+- name: "ISE One-Off | Build endpoint risk report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Endpoint Risk Report"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      repeat_threshold: "{{ _ise_one_off_repeat_threshold }}"
+      default_policy_endpoints: "{{ _ise_one_off_endpoint_rows | ise_default_policy_rows | ise_limit_rows(50) }}"
+      high_repeat_counter_endpoints: "{{ _ise_one_off_endpoint_rows | ise_high_repeat_rows(_ise_one_off_repeat_threshold) | ise_limit_rows(50) }}"
+      randomized_mac_endpoints: "{{ _ise_one_off_endpoint_rows | ise_randomized_mac_rows | ise_limit_rows(50) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'endpoint_risk_report'
+
+- name: "ISE One-Off | Build switch lookup report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Switch Lookup"
+      query: "{{ _ise_nad_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      network_devices: "{{ _ise_one_off_network_device_rows | ise_search_rows(_ise_nad_query) | ise_limit_rows(25) }}"
+      active_or_recent_sessions: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_nad_rows(_ise_nad_query))
+            + (_ise_one_off_auth_rows | ise_nad_rows(_ise_nad_query))
+          ) | ise_limit_rows(75)
+        }}
+  changed_when: false
+  when: _ise_one_off_operation == 'switch_lookup'
+
+- name: "ISE One-Off | Build NAD port endpoint report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "NAD Port Endpoint Report"
+      nad_query: "{{ _ise_nad_query }}"
+      port_query: "{{ _ise_port_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | ise_search_rows(_ise_nad_query) | ise_limit_rows(25) }}"
+      endpoints_on_port: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+            + (_ise_one_off_auth_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+          ) | ise_limit_rows(100)
+        }}
+  changed_when: false
+  when: _ise_one_off_operation == 'port_endpoint_report'
+
+- name: "ISE One-Off | Build user authentication history report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "User Auth History"
+      username: "{{ _ise_username_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      user_session_detail: "{{ _ise_one_off_session_by_username_rows | ise_limit_rows(25) }}"
+      recent_authentications: "{{ _ise_one_off_auth_rows | ise_search_rows(_ise_username_query) | ise_limit_rows(75) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'user_auth_history'
+
+- name: "ISE One-Off | Build failed authentication summary"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Failed Auth Summary"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      failure_reasons: "{{ _ise_one_off_failure_reason_rows | ise_limit_rows(50) }}"
+      recent_failures: "{{ _ise_one_off_auth_rows | ise_failure_rows | ise_limit_rows(100) }}"
+      top_failure_reasons_from_recent_auth: "{{ _ise_one_off_auth_rows | ise_failure_summary }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'failed_auth_summary'
+
+- name: "ISE One-Off | Build endpoint timeline report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Endpoint Timeline"
+      query: "{{ _ise_lookup }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      endpoint_candidates: "{{ _ise_one_off_endpoint_rows | ise_search_rows(_ise_lookup) | ise_limit_rows(25) }}"
+      active_sessions: "{{ _ise_one_off_session_rows | ise_search_rows(_ise_lookup) | ise_limit_rows(50) }}"
+      mac_session_detail: "{{ _ise_one_off_session_by_mac_rows | ise_limit_rows(25) }}"
+      timeline: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_search_rows(_ise_lookup))
+            + (_ise_one_off_auth_rows | ise_search_rows(_ise_lookup))
+            + _ise_one_off_session_by_mac_rows
+          ) | ise_timeline_rows | ise_limit_rows(150)
+        }}
+  changed_when: false
+  when: _ise_one_off_operation == 'endpoint_timeline'
+
+- name: "ISE One-Off | Build policy hit explorer report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Policy Hit Explorer"
+      query: "{{ _ise_policy_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      auth_hits: "{{ _ise_one_off_auth_rows | ise_policy_hit_rows(_ise_policy_query) | ise_limit_rows(150) }}"
+      authorization_profiles: "{{ _ise_one_off_authorization_profile_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      downloadable_acls: "{{ _ise_one_off_downloadable_acl_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      allowed_protocols: "{{ _ise_one_off_allowed_protocol_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'policy_hit_explorer'
+
+- name: "ISE One-Off | Build NAD troubleshooting report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "NAD Troubleshooting"
+      nad_query: "{{ _ise_nad_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | ise_search_rows(_ise_nad_query) | ise_limit_rows(25) }}"
+      active_sessions: "{{ _ise_one_off_session_rows | ise_nad_rows(_ise_nad_query) | ise_limit_rows(100) }}"
+      recent_authentications: "{{ _ise_one_off_auth_rows | ise_nad_rows(_ise_nad_query) | ise_limit_rows(150) }}"
+      recent_failures: "{{ _ise_one_off_auth_rows | ise_nad_rows(_ise_nad_query) | ise_failure_rows | ise_limit_rows(100) }}"
+      top_failure_ports: "{{ _ise_one_off_auth_rows | ise_nad_rows(_ise_nad_query) | ise_port_failure_summary }}"
+      failure_reasons: "{{ _ise_one_off_failure_reason_rows | ise_limit_rows(50) }}"
+      coa_anc_candidates: "{{ _ise_one_off_session_rows | ise_nad_rows(_ise_nad_query) | ise_limit_rows(50) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_troubleshooting'
+
+- name: "ISE One-Off | Build NAD port history report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "NAD Port History"
+      nad_query: "{{ _ise_nad_query }}"
+      port_query: "{{ _ise_port_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | ise_search_rows(_ise_nad_query) | ise_limit_rows(25) }}"
+      endpoint_history: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+            + (_ise_one_off_auth_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+          ) | ise_port_history_rows(_ise_one_off_endpoint_rows)
+        }}
+      port_timeline: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+            + (_ise_one_off_auth_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+          ) | ise_timeline_rows | ise_limit_rows(200)
+        }}
+      port_failures: >-
+        {{
+          (
+            (_ise_one_off_session_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+            + (_ise_one_off_auth_rows | ise_port_rows(_ise_nad_query, _ise_port_query))
+          ) | ise_failure_rows | ise_limit_rows(100)
+        }}
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_port_history'
+
+- name: "ISE One-Off | Build policy object detail report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Policy Object Detail"
+      query: "{{ _ise_policy_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      authorization_profiles: "{{ _ise_one_off_authorization_profile_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      downloadable_acls: "{{ _ise_one_off_downloadable_acl_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      allowed_protocols: "{{ _ise_one_off_allowed_protocol_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      filter_policies: "{{ _ise_one_off_filter_policy_rows | ise_search_rows(_ise_policy_query) | ise_limit_rows(50) }}"
+      recent_auth_hits: "{{ _ise_one_off_auth_rows | ise_policy_hit_rows(_ise_policy_query) | ise_limit_rows(150) }}"
+      hit_summary: "{{ _ise_one_off_auth_rows | ise_policy_hit_rows(_ise_policy_query) | ise_policy_hit_summary }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'policy_object_detail'
+
+- name: "ISE One-Off | Print report"
+  ansible.builtin.debug:
+    var: _ise_one_off_report
+
+- name: "ISE One-Off | Build artifact paths"
+  ansible.builtin.set_fact:
+    _ise_one_off_artifact_slug: >-
+      {{
+        (
+          _ise_one_off_operation ~ '-' ~
+          (_ise_lookup | default(_ise_nad_query, true) | default(_ise_username_query, true) | default(_ise_policy_query, true))
+        )
+        | lower
+        | regex_replace('[^a-z0-9._-]+', '-')
+        | regex_replace('(^-+|-+$)', '')
+      }}
+    _ise_one_off_artifact_base: >-
+      {{ _ise_one_off_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}
+  changed_when: false
+
+- name: "ISE One-Off | Ensure report directory exists"
+  ansible.builtin.file:
+    path: "{{ _ise_one_off_reports_root }}"
+    state: directory
+    mode: "0755"
+
+- name: "ISE One-Off | Write HTML report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_one_off_reports_root }}/{{ _ise_one_off_artifact_base }}-{{ _ise_one_off_artifact_slug }}.html
+    mode: "0644"
+    content: "{{ _ise_one_off_report | ise_one_off_html }}"
+  register: _ise_one_off_html_artifact
+
+- name: "ISE One-Off | Write CSV report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_one_off_reports_root }}/{{ _ise_one_off_artifact_base }}-{{ _ise_one_off_artifact_slug }}.csv
+    mode: "0644"
+    content: "{{ _ise_one_off_report | ise_one_off_csv }}"
+  register: _ise_one_off_csv_artifact
+
+- name: "ISE One-Off | Publish report path"
+  ansible.builtin.debug:
+    msg: >-
+      NCS_REPORT: one_offs/ise/{{ _ise_one_off_html_artifact.dest | basename }}

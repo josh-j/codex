@@ -96,15 +96,31 @@ Each built-in collection owns the reporter schemas, CKLB skeletons, and helper s
 | `ncs-ansible/ncs_configs/inventory_root.yaml` | Cross-platform inventory-root schema |
 | `ncs-ansible-core/ncs_configs/` | (empty — core has no reporter configs) |
 | `ncs-ansible-linux/ncs_configs/*.yaml` | `linux_base_*`, `ubuntu`, `photon` schemas |
-| `ncs-ansible-linux/ncs_configs/scripts/user_inventory.py` | Linux helper script referenced by `linux_base_fields.yaml` |
 | `ncs-ansible-linux/ncs_configs/cklb_skeletons/…` | Ubuntu CKLB skeleton |
 | `ncs-ansible-vmware/ncs_configs/*.yaml` | `vm`, `esxi`, `vcsa`, `vsphere`, `cluster`, `datacenter` schemas |
-| `ncs-ansible-vmware/ncs_configs/scripts/*.py` | VMware helper scripts (`get_vms_list`, `count_vm_compliance`, `normalize_snapshots`, `assemble_esxi_hosts`) |
 | `ncs-ansible-vmware/ncs_configs/cklb_skeletons/…` | vSphere 7 CKLB skeletons (includes `vca_photon_os` — also referenced by `linux/photon.yaml`) |
 | `ncs-ansible-windows/ncs_configs/windows.yaml` | Windows schema |
 | `ncs-ansible-aci/ncs_configs/aci.yaml` | ACI schema |
 
-The reporter resolves schemas, scripts, and CKLB skeletons relative to each config file's own directory, so `cklb_skeletons/foo.json` inside `vcsa.yaml` finds the file next to it in the vmware collection. `$include: "linux_base_fields.yaml"` inside `ubuntu.yaml` resolves to the sibling in the linux collection. Invoke the reporter with `--config-dir ncs-ansible/ncs_configs` and the orchestrator's `config.yaml` fans out to every collection's dir.
+The reporter resolves schemas and CKLB skeletons relative to each config file's own directory, so `cklb_skeletons/foo.json` inside `vcsa.yaml` finds the file next to it in the vmware collection. `$include: "linux_base_fields.yaml"` inside `ubuntu.yaml` resolves to the sibling in the linux collection. Invoke the reporter with `--config-dir ncs-ansible/ncs_configs` and the orchestrator's `config.yaml` fans out to every collection's dir.
+
+### Normalization belongs in the schema
+
+Each collection's reporter schema owns *all* shaping of its raw collector
+output via the `normalize:` DSL — flattening, mapping, filtering, counts,
+fallbacks. New configs default to `normalize:` over `compute:` filter
+chains, ad-hoc Python helpers under `ncs_configs/scripts/`, or large
+Jinja `template:` blocks. See
+[`docs/ncs-reporter-config/NORMALIZE_DSL_ROLLOUT.md`](../ncs-reporter-config/NORMALIZE_DSL_ROLLOUT.md)
+for the full migration plan and the per-collection patterns.
+
+The collect playbooks (`roles/<sub_platform>/tasks/collect.yaml`) emit
+raw collector output; transforming `set_fact` blocks (`selectattr`,
+`items2dict`, `map(attribute=…)`) belong in the schema, not the
+playbook. A repo-wide guardrail
+(`ncs-reporter/tests/test_normalize_dsl_guardrails.py`) fails CI if a
+`script:` or `template:` field is added to any `ncs_configs/*.yaml`
+without an entry in its allowlist.
 
 ## Don't do these
 

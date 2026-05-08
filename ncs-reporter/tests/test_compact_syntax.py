@@ -196,84 +196,6 @@ class TestExpandCompactSyntax:
 
 
 # ---------------------------------------------------------------------------
-# List aggregation
-# ---------------------------------------------------------------------------
-
-
-class TestListAggregation:
-    def test_any_where_match(self):
-        from ncs_reporter.normalization._fields import _apply_any_where
-
-        items = [{"status": "active"}, {"status": "disabled"}, {"status": "active"}]
-        assert _apply_any_where(items, {"status": "disabled"}) is True
-
-    def test_any_where_no_match(self):
-        from ncs_reporter.normalization._fields import _apply_any_where
-
-        items = [{"status": "active"}, {"status": "active"}]
-        assert _apply_any_where(items, {"status": "disabled"}) is False
-
-    def test_any_where_empty(self):
-        from ncs_reporter.normalization._fields import _apply_any_where
-
-        assert _apply_any_where([], {"status": "disabled"}) is False
-
-    def test_all_where_match(self):
-        from ncs_reporter.normalization._fields import _apply_all_where
-
-        items = [{"status": "active"}, {"status": "active"}]
-        assert _apply_all_where(items, {"status": "active"}) is True
-
-    def test_all_where_no_match(self):
-        from ncs_reporter.normalization._fields import _apply_all_where
-
-        items = [{"status": "active"}, {"status": "disabled"}]
-        assert _apply_all_where(items, {"status": "active"}) is False
-
-    def test_all_where_empty(self):
-        from ncs_reporter.normalization._fields import _apply_all_where
-
-        assert _apply_all_where([], {"status": "active"}) is True
-
-    def test_sum_field(self):
-        from ncs_reporter.normalization._fields import _apply_sum_field
-
-        items = [{"cpu": 25.0}, {"cpu": 30.5}, {"cpu": 44.5}]
-        assert _apply_sum_field(items, "cpu") == 100.0
-
-    def test_sum_field_missing_values(self):
-        from ncs_reporter.normalization._fields import _apply_sum_field
-
-        items = [{"cpu": 10}, {"other": 20}, {"cpu": 30}]
-        assert _apply_sum_field(items, "cpu") == 40.0
-
-    def test_sum_field_empty(self):
-        from ncs_reporter.normalization._fields import _apply_sum_field
-
-        assert _apply_sum_field([], "cpu") == 0.0
-
-    def test_aggregation_mutual_exclusion(self):
-        from ncs_reporter.models.report_schema import FieldSpec
-
-        with pytest.raises(Exception, match="mutually exclusive"):
-            FieldSpec(path=".x", count_where={"a": 1}, any_where={"b": 2})
-
-    def test_any_where_in_pipeline(self):
-        from ncs_reporter.normalization._fields import _apply_list_processing
-
-        class FakeSpec:
-            list_filter = None
-            list_map = {}
-            count_where = None
-            any_where = {"enabled": False}
-            all_where = None
-            sum_field = None
-
-        items = [{"enabled": True}, {"enabled": False}]
-        assert _apply_list_processing(items, FakeSpec()) is True
-
-
-# ---------------------------------------------------------------------------
 # $include for alerts/widgets
 # ---------------------------------------------------------------------------
 
@@ -283,13 +205,13 @@ class TestIncludeAlerts:
         """Photon config loads alerts via $include."""
         path = CONFIGS_DIR / "photon.yaml"
         schema = load_schema_from_file(path)
-        assert len(schema.alerts) == 9
+        assert len(schema.alerts) == 13
 
     def test_include_widgets_loads(self):
         """Photon config loads widgets via $include."""
         path = CONFIGS_DIR / "photon.yaml"
         schema = load_schema_from_file(path)
-        assert len(schema.widgets) == 5  # alert_panel is auto-injected, not declared
+        assert len(schema.widgets) == 15  # alert_panel is auto-injected, not declared
 
     def test_include_with_local_override(self):
         """$local items with matching id replace included items."""
@@ -365,6 +287,11 @@ class TestRoundTrip:
         path = CONFIGS_DIR / "windows.yaml"
         schema = load_schema_from_file(path)
         assert schema.name == "windows"
-        assert len(schema.fields) == 0  # all fields auto-imported (collected_at from metadata)
+        # Fields are now declared explicitly with type:/fallback: so the
+        # schema absorbs the type coercion the playbook used to do via
+        # _win_raw_payload's `default(...)` casts.
+        assert "ccm_service_state" in schema.fields
+        assert "health_uptime_hours" in schema.fields
+        assert schema.fields["health_uptime_hours"].type == "float"
         assert len(schema.alerts) == 9
         assert len(schema.widgets) == 12  # alert_panel is auto-injected

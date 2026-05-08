@@ -5,83 +5,87 @@
 # supplies `vcenters` as a list of child-node summaries (slug, title,
 # health, alert_counts, report_url) before rendering.
 config:
-  display_name: "vSphere"
-  platform: vsphere
-  extra_inventory_widget_columns:
-    - name: vCenters
-      value: "{{ vcenter_count }}"
-    - name: ESXi Hosts
-      value: "{{ esxi_host_count }}"
+    display_name: "vSphere"
+    platform: vsphere
+    extra_inventory_widget_columns:
+        - name: vCenters
+          value: "{{ vcenter_count }}"
+        - name: ESXi Hosts
+          value: "{{ esxi_host_count }}"
 
-# Tree shape — declarative replacement for the old hardcoded
-# build_vsphere_tree() Python. The reporter walks <reports_root>/vsphere/
-# and instantiates one ReportNode per raw.yaml using the matching level.
-tree:
-  root_slug: vsphere
-  root_title: vSphere
-  levels:
-    - tier: vcenter
-      schema: vcsa
-      bundle_key: raw_vcsa
-      children_label: ESXi Hosts
-    - tier: esxi_host
-      schema: esxi
-      bundle_key: raw_esxi
-      parent_tier: vcenter
-      children_label: VMs
-  # Cross-vCenter rollups for the root page. The vcsa role emits
-  # ``esxi_hosts`` and ``virtual_machines`` summary lists into each
-  # vCenter's raw_vcsa.data; the reporter unions them across child
-  # vCenters and exposes them on the root's data_source. No Python.
-  merge_from_children:
-    - field: esxi_hosts
-      from: raw_vcsa.data.esxi_hosts
-    - field: virtual_machines
-      from: raw_vcsa.data.virtual_machines
-
-vars: {}
+vars:
+    # Tree mode renders these pages with `vcenters`/`hosts`/`vms` provided
+    # by the tree assembler; standalone mode has none of those defined,
+    # in which case the counts collapse to a sensible footprint of "1".
+    # `if: {defined: ...}` skips the branch when the source is missing,
+    # rather than letting `first_of` stop at a `count` of 0.
+    vcenter_count:
+        normalize:
+            first_of:
+                - { if: { defined: vcenters }, then: { count: vcenters } }
+                - { const: 1 }
+        type: int
+    esxi_host_count:
+        normalize:
+            first_of:
+                - { path: metadata.counts.hosts }
+                - { if: { defined: hosts }, then: { count: hosts } }
+                - { if: { defined: esxi_hosts }, then: { count: esxi_hosts } }
+                - { const: 0 }
+        type: int
+    virtual_machines_count:
+        normalize:
+            first_of:
+                - { path: metadata.counts.vms }
+                - { if: { defined: vms }, then: { count: vms } }
+                - {
+                      if: { defined: virtual_machines },
+                      then: { count: virtual_machines },
+                  }
+                - { const: 0 }
+        type: int
 
 alerts: []
 
 widgets:
-  # Single Inventory widget: stat-card header (the old "Product
-  # Footprint") + auto-injected children section (auto-injected by
-  # the tree renderer) + the flat per-tier subtables. One panel,
-  # consistent across every tree page.
-  - type: inventory
-    slug: vsphere_inventory
-    name: "Inventory"
-    stat_cards:
-      - name: vCenters
-        value: "{{ vcenter_count }}"
-      - name: ESXi Hosts
-        value: "{{ esxi_host_count }}"
-      - name: VMs
-        value: "{{ virtual_machines_count }}"
-    sections:
-      - name: "ESXi Hosts"
-        when: esxi_hosts_count > 0
-        rows: "{{ esxi_hosts }}"
-        columns:
-          - name: Host
-            value: "{{ name }}"
-          - name: Datacenter
-            value: "{{ datacenter }}"
-          - name: Cluster
-            value: "{{ cluster }}"
+    # Single Inventory widget: stat-card header (the old "Product
+    # Footprint") + auto-injected children section (auto-injected by
+    # the tree renderer) + the flat per-tier subtables. One panel,
+    # consistent across every tree page.
+    - type: inventory
+      slug: vsphere_inventory
+      name: "Inventory"
+      stat_cards:
+          - name: vCenters
+            value: "{{ vcenter_count }}"
+          - name: ESXi Hosts
+            value: "{{ esxi_host_count }}"
+          - name: VMs
+            value: "{{ virtual_machines_count }}"
+      sections:
+          - name: "ESXi Hosts"
+            when: esxi_host_count > 0
+            rows: "{{ esxi_hosts }}"
+            columns:
+                - name: Host
+                  value: "{{ name }}"
+                - name: Datacenter
+                  value: "{{ datacenter }}"
+                - name: Cluster
+                  value: "{{ cluster }}"
 
-      - name: "Virtual Machines"
-        when: virtual_machines_count > 0
-        rows: "{{ virtual_machines }}"
-        columns:
-          - name: VM
-            value: "{{ name }}"
-          - name: Power
-            value: "{{ power_state }}"
-            as: status-badge
-          - name: Guest OS
-            value: "{{ guest_os }}"
-          - name: ESXi Host
-            value: "{{ esxi_host }}"
-          - name: IP Address
-            value: "{{ ip_address }}"
+          - name: "Virtual Machines"
+            when: virtual_machines_count > 0
+            rows: "{{ virtual_machines }}"
+            columns:
+                - name: VM
+                  value: "{{ name }}"
+                - name: Power
+                  value: "{{ power_state }}"
+                  as: status-badge
+                - name: Guest OS
+                  value: "{{ guest_os }}"
+                - name: ESXi Host
+                  value: "{{ esxi_host }}"
+                - name: IP Address
+                  value: "{{ ip_address }}"

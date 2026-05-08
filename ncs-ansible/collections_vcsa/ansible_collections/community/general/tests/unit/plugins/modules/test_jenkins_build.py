@@ -57,7 +57,7 @@ class JenkinsBuildMock():
             instance = JenkinsMock()
             response = JenkinsMock.get_build_info(instance, 'host-delete', 1234)
             return response
-        except jenkins.JenkinsException:
+        except jenkins.JenkinsException as e:
             response = {}
             response["result"] = "ABSENT"
             return response

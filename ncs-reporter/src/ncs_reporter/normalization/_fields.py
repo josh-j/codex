@@ -7,13 +7,38 @@ import logging
 import re as _re
 import subprocess
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from ncs_reporter.primitives import safe_list, to_int
+from ncs_reporter.primitives import safe_list
 
-from ._when import _parse_iso, eval_expression
+from ._when import _parse_iso
 from ._transforms import _PARAM_TRANSFORMS, _TRANSFORMS
+
+
+def traverse(obj: Any, segments: Iterable[str]) -> Any:
+    """Walk dotted segments, treating numeric segments as list indices.
+
+    Returns ``None`` for missing dict keys, out-of-range list indices, or
+    scalar dead ends. Empty segments are skipped (so trailing/leading
+    dots in a path are tolerated).
+
+    Shared between ``resolve_field`` (Jinja-aware bundle traversal) and
+    the DSL's ``_path_get`` (item/parent traversal in normalize specs).
+    """
+    current = obj
+    for segment in segments:
+        if not segment:
+            continue
+        if isinstance(current, dict):
+            current = current.get(segment)
+        elif isinstance(current, list) and segment.lstrip("-").isdigit():
+            idx = int(segment)
+            current = current[idx] if -len(current) <= idx < len(current) else None
+        else:
+            return None
+    return current
 
 logger = logging.getLogger(__name__)
 
@@ -196,19 +221,7 @@ def resolve_field(path: str, raw: dict[str, Any]) -> Any:
     path_part = parts[0].strip()
     transforms = parts[1:] if len(parts) > 1 else []
 
-    obj: Any = raw
-    for segment in path_part.split("."):
-        segment = segment.strip()
-        if not segment:
-            continue
-        if isinstance(obj, dict):
-            obj = obj.get(segment)
-        elif isinstance(obj, list) and segment.lstrip("-").isdigit():
-            idx = to_int(segment)
-            obj = obj[idx] if -len(obj) <= idx < len(obj) else None
-        else:
-            obj = None
-            break
+    obj: Any = traverse(raw, (seg.strip() for seg in path_part.split(".")))
 
     for t in transforms:
         obj = _apply_transform(obj, t, path)
@@ -306,119 +319,3 @@ def _coerce(value: Any, type_name: str, fallback: Any) -> Any:
         return fallback
 
 
-def _matches_filter_rules(item: dict[str, Any], rules: dict[str, list[str]]) -> bool:
-    """Check if a dict item matches any filter rule (field → pattern list)."""
-    for field_name, patterns in rules.items():
-        val = str(item.get(field_name) or "")
-        for pat in patterns:
-            if pat.startswith("^"):
-                if _re.search(pat, val):
-                    return True
-            else:
-                if pat.lower() == val.lower():
-                    return True
-    return False
-
-
-def _apply_list_filter(items: list[Any], filter_spec: Any) -> list[Any]:
-    """Apply list_filter (exclude/include) to a list of dicts."""
-    result: list[Any] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if _matches_filter_rules(item, filter_spec.exclude):
-            continue
-        if filter_spec.include and not _matches_filter_rules(item, filter_spec.include):
-            continue
-        result.append(item)
-    return result
-
-
-def _apply_list_map(items: list[Any], map_spec: dict[str, str]) -> list[Any]:
-    """Apply list_map expressions to each item in a list, adding computed fields."""
-    result: list[Any] = []
-    for item in items:
-        if not isinstance(item, dict):
-            result.append(item)
-            continue
-        enriched = dict(item)
-        for field_name, expression in map_spec.items():
-            try:
-                enriched[field_name] = round(eval_expression(expression, enriched), 2)
-            except Exception:
-                logger.debug("list_map expression '%s' failed for field '%s': %s", expression, field_name, item, exc_info=True)
-                enriched[field_name] = 0.0
-        result.append(enriched)
-    return result
-
-
-def _item_matches(item: dict[str, Any], conditions: dict[str, Any]) -> bool:
-    """Check if a dict item matches all field=value conditions (case-insensitive for strings)."""
-    for field_name, expected in conditions.items():
-        val = item.get(field_name)
-        if isinstance(val, str) and isinstance(expected, str):
-            if val.lower() != expected.lower():
-                return False
-        elif val != expected:
-            return False
-    return True
-
-
-def _apply_count_where(items: list[Any], conditions: dict[str, Any]) -> int:
-    """Count list items where all field=value conditions match."""
-    return sum(1 for item in items if isinstance(item, dict) and _item_matches(item, conditions))
-
-
-def _apply_any_where(items: list[Any], conditions: dict[str, Any]) -> bool:
-    """True if ANY list item matches all field=value conditions."""
-    return any(isinstance(item, dict) and _item_matches(item, conditions) for item in items)
-
-
-def _apply_all_where(items: list[Any], conditions: dict[str, Any]) -> bool:
-    """True if ALL dict items match all field=value conditions. Empty list → True."""
-    dict_items = [item for item in items if isinstance(item, dict)]
-    return all(_item_matches(item, conditions) for item in dict_items)
-
-
-def _apply_sum_field(items: list[Any], field_name: str) -> float:
-    """Sum a numeric field across all dict items in the list."""
-    total = 0.0
-    for item in items:
-        if isinstance(item, dict):
-            val = item.get(field_name)
-            if val is not None:
-                try:
-                    total += float(val)
-                except (TypeError, ValueError):
-                    pass
-    return total
-
-
-def _apply_list_processing(value: Any, spec: Any) -> Any:
-    """Apply list_filter, list_map, and aggregation to a resolved value."""
-    items = value if isinstance(value, list) else []
-    has_aggregation = spec.count_where is not None or spec.any_where is not None or spec.all_where is not None or spec.sum_field is not None
-    has_list_ops = spec.list_filter is not None or spec.list_map
-
-    if not has_aggregation and not has_list_ops:
-        return value
-
-    # Step 1: apply list_filter if present
-    if spec.list_filter is not None:
-        items = _apply_list_filter(items, spec.list_filter)
-
-    # Step 2: aggregation (mutually exclusive, returns non-list)
-    if spec.count_where is not None:
-        return _apply_count_where(items, spec.count_where)
-    if spec.any_where is not None:
-        return _apply_any_where(items, spec.any_where)
-    if spec.all_where is not None:
-        return _apply_all_where(items, spec.all_where)
-    if spec.sum_field is not None:
-        return _apply_sum_field(items, spec.sum_field)
-
-    # Step 3: list_map (non-aggregating, returns list)
-    if spec.list_map:
-        items = _apply_list_map(items, spec.list_map)
-
-    return items

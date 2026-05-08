@@ -104,3 +104,48 @@ def test_evaluate_expr_preserves_existing_operator_behavior() -> None:
 
     assert passed is True
     assert details["mode"] == "ENABLE"
+
+
+def test_resolve_var_prefers_first_non_empty_key() -> None:
+    """``_resolve_var`` returns the first key with a non-empty value.
+
+    The orchestrator's Phase 1a loop pushes ``_stig_active_target_type``
+    into ``apply.vars`` when the loop item carries a ``target_type`` field.
+    The action plugin checks this key before the role-level
+    ``_ncs_stig_target_type`` binding so each iteration's rules attribute
+    to the correct target_type — without this, VCSA's eight service
+    audits all collapsed into a single ``raw_stig_vcsa.yaml``.
+    """
+    action = _build_action("stigrule_VCEM-70-000001")
+
+    # Stub _templar — ``_resolve_var`` only calls template/check on Jinja-y
+    # strings. The simulated values here are plain strings so we never
+    # exercise that branch, but the attribute must exist.
+    class _NopTemplar:
+        @staticmethod
+        def is_possibly_template(val):
+            return False
+
+    action._templar = _NopTemplar()
+
+    keys = ("_stig_active_target_type", "_ncs_stig_target_type", "stig_target_type")
+
+    # Per-iteration override wins over role-level fallback.
+    task_vars = {
+        "_stig_active_target_type": "eam",
+        "_ncs_stig_target_type": "vcsa",
+        "stig_target_type": "vcsa",
+    }
+    assert action._resolve_var(task_vars, *keys) == "eam"
+
+    # Empty override → falls back to the role-level binding.
+    task_vars = {
+        "_stig_active_target_type": "",
+        "_ncs_stig_target_type": "vcsa",
+        "stig_target_type": "vcsa",
+    }
+    assert action._resolve_var(task_vars, *keys) == "vcsa"
+
+    # Bare role-level binding still works for callers that don't loop.
+    task_vars = {"_ncs_stig_target_type": "esxi"}
+    assert action._resolve_var(task_vars, *keys) == "esxi"

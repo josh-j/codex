@@ -11,6 +11,7 @@ about report filenames.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,22 +26,6 @@ from .._report_context import ReportContext
 from .generic import _SEVERITY_ORDER, _render_widget
 
 logger = logging.getLogger(__name__)
-
-
-def _inline_seed_env() -> Any:
-    """Lazily-built Jinja env reused across every inline-evaluation
-    seed render — autoescape off, no custom filters, identical config
-    every time, so caching it avoids a constructor call per node."""
-    global _INLINE_SEED_ENV
-    env = _INLINE_SEED_ENV
-    if env is None:
-        from jinja2 import Environment
-        env = Environment(autoescape=False)
-        _INLINE_SEED_ENV = env
-    return env
-
-
-_INLINE_SEED_ENV: Any | None = None
 
 
 def _looks_like_bundle(data: dict[str, Any]) -> bool:
@@ -336,9 +321,10 @@ def build_tree_node_view(
     }
 
 
-def _tier_label(tier: str | None) -> str:
+def _tier_label(tier: str | None, *, plural: bool = False) -> str:
     """Title-cased tier label, e.g. ``esxi_host`` → ``Esxi Host``."""
-    return (tier or "").replace("_", " ").title()
+    label = (tier or "").replace("_", " ").title()
+    return f"{label}s" if plural and label else label
 
 
 def _dropdown_item(target: ReportNode, origin: ReportNode, *, active: bool) -> dict[str, Any]:
@@ -382,56 +368,17 @@ def _dropdown_crumb(
     return crumb
 
 
-def _inline_evaluations_for(schema: Any) -> list[Any]:
-    """Return the schema's declared inline_evaluations (or an empty list)."""
-    if schema is None:
-        return []
-    return list(getattr(schema, "inline_evaluations", []) or [])
-
-
-def _resolve_inline_seed(template: Any, ctx: dict[str, Any]) -> dict[str, Any]:
-    """Resolve a YAML-declared seed template against the host node's bundle.
-
-    ``template`` is the raw dict from the schema's
-    ``inline_evaluations[*].seed_template``. Strings containing Jinja
-    tags (e.g. ``"{{ raw_esxi.data.virtual_machines }}"``) are rendered
-    against *ctx*; non-string and non-Jinja leaf values pass through.
-
-    Callers may include ``parent`` in *ctx* to expose the enclosing
-    tier's bundle (e.g. ESXi pages reading ``parent.raw_vcsa.data.*``).
-    """
-    resolved = _resolve_template_value(template, ctx, _inline_seed_env())
-    return resolved if isinstance(resolved, dict) else {}
-
-
-def _resolve_template_value(value: Any, ctx: dict[str, Any], env: Any) -> Any:
-    if isinstance(value, dict):
-        return {k: _resolve_template_value(v, ctx, env) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_resolve_template_value(item, ctx, env) for item in value]
-    if isinstance(value, str) and "{{" in value:
-        try:
-            rendered = env.from_string(value).render(**ctx)
-        except Exception:
-            return value
-        # Coerce list/dict renders back to Python so downstream filters
-        # see the original sequence rather than a stringified copy.
-        # Numeric strings stay as-is; only Jinja calls expecting a
-        # collection trip the literal-eval branch.
-        stripped = rendered.lstrip()
-        if stripped.startswith(("[", "{")):
-            try:
-                import ast
-                return ast.literal_eval(rendered)
-            except (ValueError, SyntaxError):
-                return rendered
-        if rendered.isdigit():
-            return int(rendered)
-        return rendered
-    return value
-
-
 _AVAILABLE_ALERTS_CACHE: dict[int, tuple[dict[str, Any], ...]] = {}
+
+
+_JINJA_VAR_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\s*\|[^}]*)?\s*\}\}")
+
+
+def _describe_alert_template(template: str) -> str:
+    """Convert an alert message template into a human-readable description
+    for the catalog popover by replacing ``{{ var | filter }}`` with
+    ``‹var›`` placeholders. Documentation, not evaluation — never raises."""
+    return _JINJA_VAR_RE.sub(lambda m: f"‹{m.group(1)}›", template)
 
 
 def _available_alerts_for_schema(schema: Any) -> tuple[dict[str, Any], ...]:
@@ -449,7 +396,7 @@ def _available_alerts_for_schema(schema: Any) -> tuple[dict[str, Any], ...]:
             "id": rule.id,
             "category": rule.category,
             "severity": rule.severity,
-            "message": rule.msg,
+            "message": _describe_alert_template(rule.msg),
             "when": rule.when,
         }
         for rule in schema.alerts
@@ -528,7 +475,11 @@ def _build_children_section(
     else:
         section_name = "Child" if len(node.children) == 1 else "Children"
         tier = ""
-    grandchild_label = _children_label_from_spec(schemas_by_name, tier) or "Sub-nodes"
+    grandchild_tiers = sorted({gc.tier or "" for child in node.children for gc in child.children})
+    if len(grandchild_tiers) == 1 and grandchild_tiers[0]:
+        grandchild_label = _tier_label(grandchild_tiers[0], plural=len(node.children) != 1)
+    else:
+        grandchild_label = _children_label_from_spec(schemas_by_name, tier) or "Sub-nodes"
     columns = [
         {"name": "Name"},
         {"name": grandchild_label},
@@ -610,28 +561,6 @@ def _compute_tree_state(
         node_seed = node.data_source({}) if node.data_source else {}
         if schema is not None and isinstance(node_seed, dict):
             fields, alerts = _eval_fields_and_alerts(schema, node_seed)
-        # Run any ``inline_evaluations`` declared on this node's schema —
-        # additional schemas to evaluate against a per-node synthetic
-        # seed. Replaces the old vmware-specific "if node.tier ==
-        # 'esxi_host', also evaluate vm.yaml" branch with a generic,
-        # schema-driven mechanism.
-        for inline in _inline_evaluations_for(schema):
-            inline_schema = schemas_by_name.get(inline.schema_name)
-            if inline_schema is None or not isinstance(node_seed, dict):
-                continue
-            parent_seed = (
-                node.parent.data_source({})
-                if node.parent is not None and node.parent.data_source is not None
-                else {}
-            )
-            if not isinstance(parent_seed, dict):
-                parent_seed = {}
-            inline_seed = _resolve_inline_seed(
-                inline.seed_template, {**node_seed, "parent": parent_seed},
-            )
-            _inline_fields, inline_alerts = _eval_fields_and_alerts(inline_schema, inline_seed)
-            if inline_alerts:
-                alerts = list(alerts) + list(inline_alerts)
         rollup = {"critical": 0, "warning": 0, "info": 0}
         for a in alerts:
             sev = str(a.get("severity", "")).lower()

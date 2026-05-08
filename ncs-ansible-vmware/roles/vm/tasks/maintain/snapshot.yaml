@@ -8,11 +8,7 @@
 
 - name: "VM Snapshot | Execute snapshots"
   module_defaults:
-    group/community.vmware.vmware:
-      hostname: "{{ ansible_host }}"
-      username: "{{ vmware_username }}"
-      password: "{{ vmware_password }}"
-      validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    group/community.vmware.vmware: "{{ _vmware_creds }}"
   block:
     - name: "VM Snapshot | Create pre-action snapshot for each VM"
       community.vmware.vmware_guest_snapshot:

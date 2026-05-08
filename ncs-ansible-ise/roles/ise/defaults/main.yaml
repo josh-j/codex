@@ -1,0 +1,41 @@
+---
+# internal.ise.ise : defaults/main.yaml
+
+# Cisco ISE API credentials. Override from inventory / group_vars / vault.
+ise_hostname: "{{ ansible_host | default(inventory_hostname) }}"
+ise_username: admin
+ise_password: ""
+ise_verify: false
+ise_version: "3.5.0"
+ise_wait_on_rate_limit: true
+ise_uses_api_gateway: true
+ise_uses_csrf_token: false
+ise_debug: false
+ise_single_request_timeout: 60
+
+# Skip telemetry emission (useful for ad-hoc runs).
+ise_skip_export: false
+
+# Optional high-cardinality inventory sections. Keep endpoints off by
+# default because large deployments can return a lot of data.
+ise_collect_network_devices: true
+ise_collect_endpoints: false
+ise_collect_guests: false
+ise_collect_trustsec: true
+ise_collect_certificates: true
+ise_collect_node_health: true
+ise_collect_backup_repository: true
+ise_collect_patches: true
+ise_collect_policy: true
+ise_collect_device_admin: true
+ise_collect_identity_sources: true
+ise_collect_sessions: true
+ise_collect_active_session_list: false
+
+# Optional lists for APIs that require a target. Leave empty to avoid
+# guessing deployment-specific node or repository names.
+ise_replication_nodes: []
+ise_repository_file_names: []
+ise_authentication_status_seconds: 3600
+ise_authentication_status_records: 25
+ise_endpoint_repeat_counter_threshold: 3

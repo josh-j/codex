@@ -56,3 +56,27 @@
   severity: WARNING
   when: world_writable_count > 0
   message: "{{ world_writable_count }} world-writable file(s) detected"
+
+- id: auditd_inactive
+  category: "Logging"
+  severity: WARNING
+  when: not audit_active
+  message: "auditd service is not running — security audit trail is incomplete"
+
+- id: syslog_inactive
+  category: "Logging"
+  severity: WARNING
+  when: not syslog_active
+  message: "no syslog daemon is running (rsyslog/syslog-ng) — system events may not be persisted"
+
+- id: recent_journal_critical
+  category: "Logging"
+  severity: WARNING
+  when: critical_journal_event_count > 0
+  message: "{{ critical_journal_event_count }} critical/error journal event(s) in the last 24h"
+
+- id: non_standard_user_count_high
+  category: "Inventory"
+  severity: INFO
+  when: non_standard_user_count > 5
+  message: "{{ non_standard_user_count }} non-standard user account(s) (UID ≥ 1000) — review for unauthorized accounts"

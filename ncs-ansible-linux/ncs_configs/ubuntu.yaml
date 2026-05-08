@@ -1,19 +1,12 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
-tree:
-  root_slug: ubuntu
-  root_title: Ubuntu
-  root_schema: inventory_root
-  levels:
-    - tier: host
-      schema: ubuntu
-      bundle_key: raw_ubuntu
-
 config:
   platform: linux/ubuntu
   stig:
     ansible_playbook:
       path: "internal.linux.ubuntu_stig_remediate"
       target_var: "ubuntu_target_hosts"
+    platform_to_checklist:
+      ubuntu: cklb_skeletons/U_CAN_Ubuntu_24-04_LTS_STIG_V1R4.cklb
     rule_prefix_to_platform:
       UBTU: ubuntu
       GEN: ubuntu

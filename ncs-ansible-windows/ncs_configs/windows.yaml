@@ -1,13 +1,4 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
-tree:
-  root_slug: windows
-  root_title: Windows Server
-  root_schema: inventory_root
-  levels:
-    - tier: host
-      schema: windows
-      bundle_key: raw_windows
-
 config:
   platform: windows
   stig:
@@ -28,8 +19,94 @@ config:
 # ---------------------------------------------------------------------------
 # Fields
 # ---------------------------------------------------------------------------
+#
+# Each field declares `type:` + a `first_of:` chain so the schema absorbs
+# type coercion and missing-value handling. The chain accepts either a
+# flat pre-shaped key or the raw register subtree (`_health_os_info`,
+# `_health_memory_cpu`, `_health_reboot_pending`, `_health_event_logs`,
+# `_health_secure_channel`, `_vuln_results`).
 
-# All raw_windows.data.* fields are auto-imported from the collector payload.
+vars:
+  # CCMExec service
+  ccm_service_state:
+    normalize: {first_of: [ccm_service_state, {path: _ccm_service.state}, {const: unknown}]}
+    type: str
+
+  # ConfigMgr applications
+  configmgr_apps: {normalize: {first_of: [configmgr_apps, {const: []}]}, type: list}
+  apps_to_update: {normalize: {first_of: [apps_to_update, {const: []}]}, type: list}
+  installed_apps: {normalize: {first_of: [installed_apps, {const: []}]}, type: list}
+  update_results: {normalize: {first_of: [update_results, {const: []}]}, type: list}
+
+  # Health — OS info
+  health_hostname:
+    normalize: {first_of: [health_hostname, {path: _health_os_info.hostname}, {const: ''}]}
+    type: str
+  health_os_name:
+    normalize: {first_of: [health_os_name, {path: _health_os_info.os_name}, {const: ''}]}
+    type: str
+  health_uptime_hours:
+    normalize: {first_of: [health_uptime_hours, {path: _health_os_info.uptime_hours}, {const: 0}]}
+    type: float
+
+  # Health — disk + memory + cpu
+  health_disk: {normalize: {first_of: [health_disk, {const: []}]}, type: list}
+  health_memory_used_pct:
+    normalize: {first_of: [health_memory_used_pct, {path: _health_memory_cpu.memory_used_pct}, {const: 0}]}
+    type: float
+  health_cpu_load_pct:
+    normalize: {first_of: [health_cpu_load_pct, {path: _health_memory_cpu.cpu_load_pct}, {const: 0}]}
+    type: float
+
+  # Health — services + network
+  health_services: {normalize: {first_of: [health_services, {const: []}]}, type: list}
+  health_network: {normalize: {first_of: [health_network, {const: []}]}, type: list}
+
+  # Health — reboot
+  health_reboot_pending:
+    normalize: {first_of: [health_reboot_pending, {path: _health_reboot_pending.reboot_pending}, {const: false}]}
+    type: bool
+  health_reboot_reasons:
+    normalize: {first_of: [health_reboot_reasons, {path: _health_reboot_pending.reasons}, {const: []}]}
+    type: list
+
+  # Health — events
+  health_event_count:
+    normalize: {first_of: [health_event_count, {path: _health_event_logs.event_count}, {const: 0}]}
+    type: int
+  health_events:
+    normalize: {first_of: [health_events, {path: _health_event_logs.events}, {const: []}]}
+    type: list
+
+  # Health — secure channel + software
+  health_secure_channel:
+    normalize: {first_of: [health_secure_channel, {path: _health_secure_channel.secure_channel}, {const: 'N/A'}]}
+    type: str
+  health_software_versions:
+    normalize: {first_of: [health_software_versions, {const: []}]}
+    type: list
+
+  # Vulnerability scan
+  vuln_total_findings:
+    normalize: {first_of: [vuln_total_findings, {path: _vuln_results.total_findings}, {const: 0}]}
+    type: int
+  vuln_remediated:
+    normalize: {first_of: [vuln_remediated, {path: _vuln_results.remediated}, {const: 0}]}
+    type: int
+  vuln_open:
+    normalize: {first_of: [vuln_open, {path: _vuln_results.open}, {const: 0}]}
+    type: int
+  vuln_findings:
+    normalize: {first_of: [vuln_findings, {path: _vuln_results.findings}, {const: []}]}
+    type: list
+
+  # KB status
+  kb_detection: {normalize: {first_of: [kb_detection, {const: []}]}, type: list}
+  kb_install_results: {normalize: {first_of: [kb_install_results, {const: []}]}, type: list}
+
+  audit_failed:
+    normalize: {first_of: [audit_failed, {const: false}]}
+    type: bool
 
 # ---------------------------------------------------------------------------
 # Alerts

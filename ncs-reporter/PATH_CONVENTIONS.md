@@ -5,13 +5,14 @@ reports into the same report root. There is no separate platform input root.
 
 ## Source Of Truth
 
-Product and report structure is declared in schema config. The important
-contract is each schema's `tree` block:
+Product and report structure is inferred from collector-written folders. The
+important contract is the first path segment names a product schema, and the
+remaining segments are the rendered inventory tree:
 
-- `root_slug`: top-level product directory, such as `vsphere` or `ubuntu`
-- `levels`: inventory tiers used to assemble product and child pages
-- `raw_path`: where the collector wrote the source `raw.yaml`
-- `report_path`: where the corresponding HTML page is rendered
+- top-level directory: product slug, such as `vsphere` or `ubuntu`
+- child directories: inventory nodes, such as host names or vSphere hierarchy
+- `raw.yaml`: the node's primary inventory bundle
+- `inventory.yaml`: optional vSphere graph bundle used to project child nodes
 
 `platforms.yaml` remains the registry for product metadata, STIG target mapping,
 and template defaults. It is not a second directory structure.

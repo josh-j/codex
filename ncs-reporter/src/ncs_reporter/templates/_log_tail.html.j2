@@ -1,0 +1,7 @@
+{# Shared macro for the log_tail widget — scrollable monospace block. #}
+
+{% macro log_tail_body(widget) %}
+<div class="widget-body log-tail-body">
+    <pre class="log-tail-pre" style="--log-tail-max-height: {{ widget.max_height }};">{{ widget.text }}</pre>
+</div>
+{% endmacro %}

@@ -1,0 +1,94 @@
+---
+vmware_task_catalog:
+  esxi.password_status:
+    id: esxi.password_status
+    label: ESXi Password Status
+    tier: 1
+    target_type: esxi
+    read_only: true
+    inputs:
+      - esxi_stig_target_hosts
+      - rotate_user
+    target_selector: esxi_stig_target_hosts
+    executor:
+      role: internal.vmware.esxi
+      ncs_action: audit
+      ncs_operation: password_status
+    emits_operation_event: true
+
+  esxi.password_rotate:
+    id: esxi.password_rotate
+    label: ESXi Password Rotate
+    tier: 2
+    target_type: esxi
+    read_only: false
+    inputs:
+      - esxi_stig_target_hosts
+      - rotate_user
+      - rotate_password
+    target_selector: esxi_stig_target_hosts
+    executor:
+      role: internal.vmware.esxi
+      ncs_action: remediate
+      ncs_operation: password_rotate
+    emits_operation_event: true
+
+  vcsa.password_status:
+    id: vcsa.password_status
+    label: VCSA Password Status
+    tier: 1
+    target_type: vcsa
+    read_only: true
+    inputs:
+      - rotate_user
+    target_selector: inventory_hostname
+    executor:
+      playbook_alias: vcsa_password_status
+    emits_operation_event: true
+
+  vcsa.password_rotate:
+    id: vcsa.password_rotate
+    label: VCSA Password Rotate
+    tier: 2
+    target_type: vcsa
+    read_only: false
+    inputs:
+      - rotate_user
+      - rotate_password
+    target_selector: inventory_hostname
+    executor:
+      playbook_alias: vcsa_password_rotate
+    emits_operation_event: true
+
+  vm.snapshot:
+    id: vm.snapshot
+    label: VM Snapshot
+    tier: 2
+    target_type: vm
+    read_only: false
+    inputs:
+      - vm_snapshot_targets
+      - vm_snapshot_name
+      - vm_snapshot_desc
+      - vm_snapshot_datacenter
+    target_selector: vm_snapshot_targets
+    executor:
+      role: internal.vmware.vm
+      ncs_action: remediate
+      ncs_operation: snapshot
+    emits_operation_event: true
+
+  vm.owner_digest:
+    id: vm.owner_digest
+    label: VM Owner Digest
+    tier: 1
+    target_type: vm
+    read_only: true
+    inputs:
+      - dry_run
+      - notify_powered_off
+    target_selector: vsphere_graph.vms
+    executor:
+      playbook_alias: owner_digest
+    emits_operation_event: true
+

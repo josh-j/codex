@@ -160,13 +160,13 @@ import os
 
 from urllib.parse import urlparse
 
+from ansible.module_utils.urls import open_url
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.common.text.converters import to_native
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import rest_compatible_argument_spec
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import rest_compatible_argument_spec
 
 try:
-    import requests
     from com.vmware.content.library.item_client import UpdateSessionModel
     from com.vmware.content.library_client import ItemModel
     from com.vmware.content.library.item.updatesession_client import (
@@ -246,7 +246,7 @@ class VmwareRemoteOvf(ModuleRestBase):
         file_map = {}
         ovf_dir = os.path.abspath(self.params['src'])
         for file_name in os.listdir(ovf_dir):
-            if file_name.endswith(('.ovf', '.vmdk', '.nvram')):
+            if file_name.endswith('.ovf') or file_name.endswith('.vmdk'):
                 file_map[file_name] = os.path.join(ovf_dir, file_name)
         if len(file_map) < 2:
             self.module.fail_json(msg="Unable to find both .ovf and .vmdk files in %s" % ovf_dir)
@@ -308,12 +308,9 @@ class VmwareRemoteOvf(ModuleRestBase):
                     'Content-Length': str(os.path.getsize(f_path)),
                     'Content-Type': 'text/ovf'
                 }
-                requests.post(
-                    url=file_info.upload_endpoint.uri,
-                    data=local_file,
-                    headers=headers,
-                    verify=self.params['validate_certs'],
-                    timeout=self.params['timeout']
+                open_url(
+                    method='POST', url=file_info.upload_endpoint.uri, data=local_file.read(),
+                    headers=headers, validate_certs=self.params['validate_certs'], timeout=self.params['timeout']
                 )
 
     def __wait_for_upload(self):
@@ -377,7 +374,7 @@ class VmwareRemoteOvf(ModuleRestBase):
             if self.source_is_url:
                 self.__wait_for_upload()
         except Exception as e:
-            self.module.fail_json(msg="Failed to complete upload of OVF to vCenter: %s" % to_native(e), file_map=file_map)
+            self.module.fail_json(msg="Failed to complete upload of OVF to vCenter: %s" % to_native(e))
         finally:
             self.__cleanup_transfer()
 

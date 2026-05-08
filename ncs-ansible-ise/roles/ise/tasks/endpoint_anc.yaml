@@ -1,0 +1,178 @@
+---
+# internal.ise.ise : tasks/endpoint_anc.yaml
+#
+# Apply or clear an ANC policy after resolving MAC/IP/hostname to a MAC.
+
+- name: "ISE ANC | Normalize inputs"
+  ansible.builtin.set_fact:
+    _ise_anc_lookup: "{{ ise_lookup | default('') | trim }}"
+    _ise_anc_action: "{{ ise_anc_action | default('apply') | trim }}"
+    _ise_anc_policy_name: "{{ ise_anc_policy_name | default('') | trim }}"
+    _ise_anc_confirm: "{{ ise_anc_confirm | default('') | trim }}"
+    _ise_anc_collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    _ise_anc_stamp: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+    _ise_anc_reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/one_offs/ise"
+  changed_when: false
+
+- name: "ISE ANC | Validate required inputs"
+  ansible.builtin.assert:
+    that:
+      - _ise_anc_lookup | length > 0
+      - _ise_anc_policy_name | length > 0
+      - _ise_anc_action in ['apply', 'clear']
+      - _ise_anc_confirm == 'ANC'
+    fail_msg: >-
+      Endpoint ANC requires ise_lookup, ise_anc_policy_name,
+      ise_anc_action=apply|clear, and ise_anc_confirm=ANC.
+
+- name: "ISE ANC | Get endpoint inventory"
+  cisco.ise.endpoints_info: &ise_common_args
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_anc_endpoints_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE ANC | Get active sessions"
+  cisco.ise.mnt_session_active_list_info:
+    <<: *ise_common_args
+  register: _ise_anc_active_sessions_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE ANC | Get ANC policies"
+  cisco.ise.anc_policy_info:
+    <<: *ise_common_args
+  register: _ise_anc_policies_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE ANC | Get current ANC endpoints"
+  cisco.ise.anc_endpoint_info:
+    <<: *ise_common_args
+  register: _ise_anc_endpoint_assignments_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE ANC | Shape candidates"
+  ansible.builtin.set_fact:
+    _ise_anc_endpoint_rows: "{{ _ise_anc_endpoints_raw | ise_result_rows | ise_endpoint_rows }}"
+    _ise_anc_session_rows: "{{ _ise_anc_active_sessions_raw | ise_result_rows | ise_auth_rows }}"
+    _ise_anc_policy_rows: "{{ _ise_anc_policies_raw | ise_result_rows }}"
+    _ise_anc_assignment_rows: "{{ _ise_anc_endpoint_assignments_raw | ise_result_rows }}"
+  changed_when: false
+
+- name: "ISE ANC | Resolve endpoint candidates"
+  ansible.builtin.set_fact:
+    _ise_anc_candidates: "{{ _ise_anc_endpoint_rows | ise_coa_candidates(_ise_anc_session_rows, _ise_anc_lookup) }}"
+  changed_when: false
+
+- name: "ISE ANC | Require a resolved endpoint"
+  ansible.builtin.assert:
+    that:
+      - _ise_anc_candidates | length > 0
+      - (_ise_anc_candidates[0].mac | default('')) | length > 0
+    fail_msg: >-
+      No endpoint/session candidate with a MAC address matched
+      '{{ _ise_anc_lookup }}'. Use a MAC address directly or run Endpoint
+      Lookup first.
+
+- name: "ISE ANC | Select target and build request"
+  ansible.builtin.set_fact:
+    _ise_anc_target: "{{ _ise_anc_candidates[0] }}"
+    _ise_anc_url: >-
+      https://{{ ise_hostname }}/ers/config/ancendpoint/{{ _ise_anc_action }}
+    _ise_anc_body:
+      ErsAncEndpoint:
+        macAddress: "{{ _ise_anc_candidates[0].mac | upper }}"
+        policyName: "{{ _ise_anc_policy_name }}"
+  changed_when: false
+
+- name: "ISE ANC | Show target"
+  ansible.builtin.debug:
+    msg:
+      action: "{{ _ise_anc_action }}"
+      policy: "{{ _ise_anc_policy_name }}"
+      selected_target: "{{ _ise_anc_target }}"
+      matching_policies: "{{ _ise_anc_policy_rows | ise_search_rows(_ise_anc_policy_name) }}"
+      current_assignments: "{{ _ise_anc_assignment_rows | ise_search_rows(_ise_anc_target.mac) }}"
+
+- name: "ISE ANC | Apply or clear endpoint policy"
+  ansible.builtin.uri:
+    url: "{{ _ise_anc_url }}"
+    method: PUT
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    return_content: true
+    body_format: json
+    body: "{{ _ise_anc_body }}"
+    status_code:
+      - 200
+      - 201
+      - 202
+      - 204
+    headers:
+      Accept: application/json
+      Content-Type: application/json
+      ERS-Media-Type: anc.ancendpoint.1.0
+  register: _ise_anc_result
+  changed_when: _ise_anc_result.status in [200, 201, 202, 204]
+
+- name: "ISE ANC | Build report"
+  ansible.builtin.set_fact:
+    _ise_anc_report:
+      title: "Endpoint ANC"
+      collected_at: "{{ _ise_anc_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      action: "{{ _ise_anc_action }}"
+      policy: "{{ _ise_anc_policy_name }}"
+      status: "{{ _ise_anc_result.status | default('unknown') }}"
+      selected_target: "{{ _ise_anc_target }}"
+      matching_policies: "{{ _ise_anc_policy_rows | ise_search_rows(_ise_anc_policy_name) }}"
+      current_assignments_before_action: "{{ _ise_anc_assignment_rows | ise_search_rows(_ise_anc_target.mac) }}"
+      response:
+        content: "{{ _ise_anc_result.content | default('') }}"
+  changed_when: false
+
+- name: "ISE ANC | Ensure report directory exists"
+  ansible.builtin.file:
+    path: "{{ _ise_anc_reports_root }}"
+    state: directory
+    mode: "0755"
+
+- name: "ISE ANC | Write HTML report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_anc_reports_root }}/{{ _ise_anc_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-anc.html
+    mode: "0644"
+    content: "{{ _ise_anc_report | ise_one_off_html }}"
+  register: _ise_anc_html_artifact
+
+- name: "ISE ANC | Write CSV report"
+  ansible.builtin.copy:
+    dest: >-
+      {{ _ise_anc_reports_root }}/{{ _ise_anc_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-anc.csv
+    mode: "0644"
+    content: "{{ _ise_anc_report | ise_one_off_csv }}"
+
+- name: "ISE ANC | Result"
+  ansible.builtin.debug:
+    msg:
+      status: "{{ _ise_anc_result.status | default('unknown') }}"
+      changed: "{{ _ise_anc_result.changed | default(false) }}"
+      response: "{{ _ise_anc_result.content | default('') }}"
+
+- name: "ISE ANC | Publish report path"
+  ansible.builtin.debug:
+    msg: >-
+      NCS_REPORT: one_offs/ise/{{ _ise_anc_html_artifact.dest | basename }}

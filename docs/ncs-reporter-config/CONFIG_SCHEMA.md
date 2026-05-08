@@ -63,7 +63,23 @@ widgets:
 
 Include files must contain **only** the referenced shape (a dict for `vars`, a list for `alerts` / `widgets`). Base files are conventionally named `<platform>_base_<section>.yaml` so the workspace schema (`ncs-framework.code-workspace`) can exclude them from the normal report-schema validation path — they aren't full reports on their own.
 
-An alert-only file (matching `*_base_alerts.yaml` or a standalone alert list) is validated against [`alert_list_schema.json`](../../ncs-reporter/schemas/) instead of the full report schema.
+An alert-only file (matching `*_base_alerts.yaml` or a standalone alert list) is validated against the bare-array branch of the unified schema's top-level `oneOf` rather than the full report schema.
+
+## JSON schema
+
+[`ncs-reporter/schemas/ncs_reporter_config_schema.json`](../../ncs-reporter/schemas/ncs_reporter_config_schema.json) is regenerated from the Pydantic models in `ncs_reporter.models.report_schema` via:
+
+```bash
+cd ncs-reporter && uv run python generate_schema.py
+```
+
+It serves three roles:
+
+1. **IDE autocomplete.** The `# yaml-language-server: $schema=...` pragma at the top of every collection's `*.yaml` points at this file (via the `.schemas/` symlink at the repo root). VS Code, Neovim with `yaml-language-server`, and JetBrains IDEs all surface key suggestions and warn on unknown fields.
+2. **Validation contract.** Editor warnings double as a lightweight schema check; the runtime Pydantic validator in `schema_loader.py` is authoritative.
+3. **DSL discoverability.** A typed `NormalizeSpec` definition in `$defs` lists every operator the [`normalize:`](FIELDS.md) DSL accepts (`first_of`, `list`, `pluck`, `sort`, `unique`, `slice`, `merge`, `defined`, `if`/`then`/`else`, `index`, `find`, `get`, `regex_search`, `age_days`, `lookup`, `truthy`, `count`, `flatten`, `path`/`from`, `const`, `expr`/`compute`, `template`). Adding a new operator? Update `_normalize_dsl.py` and `generate_schema.py::_build_normalize_spec()` together, then re-run the generator.
+
+The repo's `cd ncs-ansible && just lint-configs` invokes `scripts/lint_configs.py`, which loads each YAML and round-trips it through the Pydantic model. That catches mismatches between the JSON schema (used for editor support) and the model (used at runtime) — they're regenerated from the same source so they should stay in sync.
 
 ## File discovery
 

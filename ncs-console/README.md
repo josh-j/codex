@@ -10,6 +10,8 @@ V1 focuses on execution, not editing or reporting. The app can:
 - limit runs to a site or a specific Ansible host when the selected action supports it
 - stream stdout/stderr into a live console pane
 - sync and display generated HTML reports in the reports pane
+- auto-open one-off HTML artifacts when a playbook emits an `NCS_REPORT`
+  marker
 - validate SSH/repo/vault prerequisites before allowing a run
 - persist operator settings locally
 

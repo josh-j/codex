@@ -201,7 +201,7 @@ def rax_asg(module, cooldown=300, disk_config=None, files=None, flavor=None,
             f = open(user_data)
             user_data = f.read()
             f.close()
-        except Exception:
+        except Exception as e:
             module.fail_json(msg='Failed to load %s' % user_data)
 
     if state == 'present':
@@ -360,7 +360,7 @@ def rax_asg(module, cooldown=300, disk_config=None, files=None, flavor=None,
             sg = au.find(name=name)
             sg.delete()
             changed = True
-        except pyrax.exceptions.NotFound:
+        except pyrax.exceptions.NotFound as e:
             sg = {}
         except Exception as e:
             module.fail_json(msg='%s' % e.message)

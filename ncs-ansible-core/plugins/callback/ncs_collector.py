@@ -1,6 +1,5 @@
 # collections/ansible_collections/internal/core/plugins/callback/ncs_collector.py
 
-import hashlib
 import importlib.util
 import os
 import re
@@ -133,7 +132,24 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
     Checks both the real path (symlinks resolved) and the logical path
     (symlinks preserved) to handle setups where ``internal/`` is
     symlinked into ``collections/ansible_collections/``.
+
+    The ``ncs_configs/`` marker must contain at least one ``.yaml``
+    file — installed collections package an empty ``ncs_configs/``
+    (a ``.gitkeep`` placeholder) that would otherwise short-circuit
+    the walk and miss the orchestrator's schema-bearing dir.
     """
+
+    def _ncs_configs_has_schemas(d: str) -> bool:
+        if not os.path.isdir(d):
+            return False
+        try:
+            return any(
+                f.endswith((".yaml", ".yml")) and not f.startswith(".")
+                for f in os.listdir(d)
+            )
+        except OSError:
+            return False
+
     candidates = [os.path.realpath(start_dir)]
     logical = os.path.abspath(start_dir)
     if logical != candidates[0]:
@@ -141,13 +157,12 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
 
     for cur in candidates:
         for _ in range(max_up + 1):
-            for marker in (
-                os.path.join(cur, "collections", "ansible_collections"),
-                os.path.join(cur, "ncs_configs"),
-                os.path.join(cur, "files", "ncs-reporter_configs"),
-            ):
-                if os.path.isdir(marker):
-                    return cur
+            if os.path.isdir(os.path.join(cur, "collections", "ansible_collections")):
+                return cur
+            if _ncs_configs_has_schemas(os.path.join(cur, "ncs_configs")):
+                return cur
+            if os.path.isdir(os.path.join(cur, "files", "ncs-reporter_configs")):
+                return cur
             parent = os.path.dirname(cur)
             if parent == cur:
                 break
@@ -705,10 +720,6 @@ class CallbackModule(CallbackBase):
         if not rule_num:
             rule_num = self._extract_rule_number(task_name)
 
-        if not rule_num and target_type in {"vcsa", "vcenter"} and task_name:
-            digest = hashlib.sha1(task_name.encode("utf-8")).hexdigest()
-            rule_num = f"9{(int(digest[:8], 16) % 99999):05d}"
-
         if not rule_num:
             self._debug_stig_event(
                 "skip-no-rule",
@@ -1091,10 +1102,17 @@ class CallbackModule(CallbackBase):
             persisted += 1
 
         if persisted == 0:
+            # The split was opt-in (per_host_split was set in collect_data),
+            # so don't fall back to writing the parent payload here — that
+            # path is typically owned by another role's bundle (e.g. vcsa
+            # role's raw_vcenter at vsphere/<vc>/raw.yaml). Falling back
+            # would silently overwrite that role's data with this role's
+            # un-split parent payload. Warn loudly instead.
             self._display.warning(
-                f"[ncs_collector] per_host_split yielded no valid hosts for '{ansible_host}'"
+                f"[ncs_collector] per_host_split yielded no valid hosts for "
+                f"'{ansible_host}' — leaving the parent tree_path untouched "
+                f"to avoid clobbering another role's bundle."
             )
-            self._persist_single_host(ansible_host, collect_data)
         else:
             self._display.display(
                 f"[ncs_collector] Split '{ansible_host}' into {persisted} per-host entries",
@@ -1164,7 +1182,11 @@ class CallbackModule(CallbackBase):
             return val if isinstance(val, dict) else {}
 
         def _safe_list(val: Any) -> list:
-            return val if isinstance(val, list) else []
+            if isinstance(val, list):
+                return val
+            if isinstance(val, dict) and isinstance(val.get("results"), list):
+                return val["results"]
+            return []
 
         # Datastores from facts
         for ds in _safe_list(facts.get("ansible_datastore")):
@@ -1269,17 +1291,26 @@ class CallbackModule(CallbackBase):
         payload = collect_data.get("payload")
         config = collect_data.get("config")
         artifact_name = str(platform_dir).rsplit("/", 1)[-1]
+        artifact_kind = str(collect_data.get("artifact_kind") or "inventory").strip().lower()
+        if artifact_kind not in {"inventory", "events", "operation"}:
+            artifact_kind = "inventory"
+        artifact_id = str(collect_data.get("artifact_id") or "").strip()
 
         report_dir = collect_data.get("report_directory") or DEFAULT_REPORT_DIRECTORY
 
         tree_path = self._sanitize_tree_path(collect_data.get("tree_path"))
         if tree_path:
             host_rel = os.path.join(*tree_path)
-            raw_filename = self._sanitize_filename(collect_data.get("raw_filename")) or "raw.yaml"
+            default_raw_filename = {
+                "inventory": "raw.yaml",
+                "events": "events.yaml",
+                "operation": f"operation_{artifact_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.yaml",
+            }[artifact_kind]
+            raw_filename = self._sanitize_filename(collect_data.get("raw_filename")) or default_raw_filename
             config_filename = self._sanitize_filename(collect_data.get("config_filename")) or "config.yaml"
         else:
             host_rel = os.path.join("platform", str(platform_dir), str(host))
-            raw_filename = f"raw_{artifact_name}.yaml"
+            raw_filename = f"raw_{artifact_name}.yaml" if artifact_kind == "inventory" else f"{artifact_kind}_{artifact_name}.yaml"
             config_filename = "config.yaml"
 
         try:
@@ -1301,6 +1332,8 @@ class CallbackModule(CallbackBase):
                     "host": host,
                     "audit_type": f"raw_{artifact_name}",
                     "raw_type": artifact_name,
+                    "artifact_kind": artifact_kind,
+                    "artifact_id": artifact_id,
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "engine": "ncs_collector_callback",
                 },

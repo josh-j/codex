@@ -6,6 +6,13 @@
 # <<<
 ---
 # internal/vmware/playbooks/vm_stig_audit_parallel.yml
+#
+# Per-VM parallel audit. Uses ``register_vm_targets`` to populate a
+# synthetic ``_stig_vm_targets`` host group via add_host, then audits each
+# VM as its own Ansible host with ``strategy: free`` for concurrency.
+#
+# For one-shot runs against a small VM list, prefer the simpler
+# ``vm_stig_audit.yml`` (sequential per-vCenter).
 
 - name: "Phase 2b-pre | Discover VMs and build target list"
   hosts: "vcsa-{{ site | default('undefined') }}"

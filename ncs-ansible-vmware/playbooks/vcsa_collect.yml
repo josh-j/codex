@@ -1,12 +1,31 @@
 ---
 # internal/vmware/playbooks/vcsa_collect.yml
-# Read-only audit focused on vCenter appliance health and active alarms.
+#
+# Two-pass VCSA collection:
+#   1. vSphere graph (collect.yml) — emits the inventory tree (datacenters,
+#      clusters, hosts, VMs, datastores, networks, alarms, snapshots) to
+#      <reports>/vsphere/<vc>/inventory.yaml + events.yaml. Hosts are keyed
+#      by inventory hostname via the host_alias_map.
+#   2. Appliance-detail (vcsa role's collect.yaml) — emits the per-appliance
+#      detail (version/build/health/uptime/NTP/SSH/shell/backups/content
+#      libraries/extensions/licenses/tags/dvswitches/resource pools/alarms)
+#      to <reports>/vsphere/<vc>/raw.yaml. The vcsa.yaml schema and the
+#      appliance-overview widget consume those fields.
 
-- name: Phase 2a | vCenter Control Plane Audit
+- import_playbook: collect.yml
+
+- name: "vCenter | Appliance-detail collection"
   hosts: vcsa
   connection: local
   gather_facts: false
   become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  pre_tasks:
+    - name: "Resolve VMware connection parameters"
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_vcenter
   roles:
     - role: internal.vmware.vcsa
       vars:

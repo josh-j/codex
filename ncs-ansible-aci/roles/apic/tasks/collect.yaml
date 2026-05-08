@@ -53,35 +53,13 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: "ACI | Index responses by name"
-      ansible.builtin.set_fact:
-        _aci_by_name: >-
-          {{ dict(_aci_responses.results
-                  | map(attribute='item.name')
-                  | zip(_aci_responses.results | map(attribute='json'))) }}
-      changed_when: false
-
-    - name: "ACI | Build interface description map"
-      ansible.builtin.set_fact:
-        _aci_description_map: >-
-          {{ (_aci_by_name.interfaces | default({})).imdata | default([])
-             | map(attribute='l1PhysIf.attributes')
-             | items2dict(key_name='dn', value_name='descr') }}
-      changed_when: false
-
-    - name: "ACI | Enrich ingress utilization rows"
-      ansible.builtin.include_tasks: _enrich_util.yaml
-      vars:
-        _util_raw: "{{ (_aci_by_name.ingress | default({})).imdata | default([]) }}"
-        _util_wrapper: eqptIngrTotalHist15min
-        _util_output_fact: _aci_ingress_high_util
-
-    - name: "ACI | Enrich egress utilization rows"
-      ansible.builtin.include_tasks: _enrich_util.yaml
-      vars:
-        _util_raw: "{{ (_aci_by_name.egress | default({})).imdata | default([]) }}"
-        _util_wrapper: eqptEgrTotalHist15min
-        _util_output_fact: _aci_egress_high_util
+    # The previous `_aci_by_name` / `_aci_description_map` /
+    # `_enrich_util.yaml` shaping moved into the schema (see
+    # `ncs-ansible-aci/ncs_configs/aci.yaml`). The collect task now
+    # emits raw `_aci_responses.results` only; downstream
+    # `_aci_by_name`, description joins, port-channel filtering,
+    # threshold gating, regex DN decoding, dedupe-by-interface, and
+    # top-N truncation all happen in `normalize:` specs.
 
   rescue:
     - name: "ACI | Mark discovery as failed"
@@ -90,21 +68,16 @@
       changed_when: false
 
   always:
+    # Emit the raw `_aci_responses.results` list verbatim. All
+    # downstream shaping (index-by-name, description join, util
+    # enrichment, top-N) happens in the schema. See
+    # `ncs-ansible-aci/ncs_configs/aci.yaml`.
     - name: "ACI | Assemble flat discovery payload"
-      vars:
-        _by: "{{ _aci_by_name | default({}) }}"
       ansible.builtin.set_fact:
         _aci_raw_payload:
           apic_hostname: "{{ inventory_hostname }}"
           apic_short: "{{ inventory_hostname_short }}"
-          health_results:
-            - "{{ _by.fabric_health | default({}) }}"
-            - "{{ _by.tenant_health | default({}) }}"
-          faults: "{{ (_by.faults | default({})).imdata | default([]) }}"
-          cleared_faults: "{{ (_by.cleared_faults | default({})).imdata | default([]) }}"
-          ospf: "{{ (_by.ospf | default({})).imdata | default([]) }}"
-          ingress_high_util: "{{ _aci_ingress_high_util | default([]) }}"
-          egress_high_util: "{{ _aci_egress_high_util | default([]) }}"
+          aci_responses_raw: "{{ _aci_responses.results | default([]) }}"
           audit_failed: "{{ _discover_failed | bool }}"
       changed_when: false
 

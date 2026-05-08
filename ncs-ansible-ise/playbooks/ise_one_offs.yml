@@ -1,0 +1,122 @@
+---
+# internal/ise/playbooks/ise_one_offs.yml
+# Read-only Cisco ISE operator lookups intended for ncs-console profiles.
+#
+# >>>
+# label: Endpoint Lookup
+# operation: endpoint_lookup
+# is_read_only: true
+# options:
+#   ise_lookup: "text | Endpoint, MAC, IP, hostname, or username | Search endpoints, active sessions, and recent authentication rows"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 100 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Endpoint Risk Report
+# operation: endpoint_risk_report
+# is_read_only: true
+# options:
+#   ise_endpoint_repeat_counter_threshold: "text = 3 | Repeat Threshold | Flag endpoints with repeatCounter at or above this value"
+# ---
+# label: Switch Lookup
+# operation: switch_lookup
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Match ISE network devices and active/recent sessions"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 100 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Port Endpoint Report
+# operation: port_endpoint_report
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Switch/NAD name or IP to match"
+#   ise_port_query: "text | Port or Interface | Interface text such as GigabitEthernet1/0/10 or Gi1/0/10"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 250 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: User Auth History
+# operation: user_auth_history
+# is_read_only: true
+# options:
+#   ise_username_query: "text | Username | Username to query from MnT and recent authentication rows"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 100 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Failed Auth Summary
+# operation: failed_auth_summary
+# is_read_only: true
+# options:
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 250 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Endpoint CoA
+# operation: endpoint_coa
+# is_read_only: false
+# options:
+#   ise_lookup: "text | Endpoint, MAC, IP, or hostname | Endpoint selector. MAC is preferred; IP or hostname resolves through endpoint/session data"
+#   ise_coa_action: "select[reauth_default,reauth_last,reauth_rerun,disconnect_default,disconnect_bounce,disconnect_shutdown] = reauth_default | CoA Action"
+#   ise_coa_server: "text | PSN/MnT Session Server | Optional override for the CoA serverhostname path value"
+#   ise_nad_ip: "text | NAD IP Override | Optional override for NAS/NAD IP"
+#   ise_destination_ip: "text | Destination IP Override | Optional override for the CoA destination IP path value"
+#   ise_coa_confirm: "text | Type COA | Required safety confirmation; enter COA to execute"
+# ---
+# label: Endpoint Timeline
+# operation: endpoint_timeline
+# is_read_only: true
+# options:
+#   ise_lookup: "text | Endpoint, MAC, IP, hostname, or username | Build a chronological endpoint view"
+#   ise_seconds: "text = 604800 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 250 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Policy Hit Explorer
+# operation: policy_hit_explorer
+# is_read_only: true
+# options:
+#   ise_policy_query: "text | Rule or Profile | Match auth/authz rules, profiles, DACLs, or default policy markers"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 500 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Endpoint ANC
+# operation: endpoint_anc
+# is_read_only: false
+# options:
+#   ise_lookup: "text | Endpoint, MAC, IP, or hostname | Endpoint selector. Resolves to MAC before ANC apply/clear"
+#   ise_anc_action: "select[apply,clear] = apply | ANC Action"
+#   ise_anc_policy_name: "text | ANC Policy | Policy to apply or clear"
+#   ise_anc_confirm: "text | Type ANC | Required safety confirmation; enter ANC to execute"
+# ---
+# label: NAD Troubleshooting
+# operation: nad_troubleshooting
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Switch/NAD to troubleshoot"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 500 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: NAD Port History
+# operation: nad_port_history
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Switch/NAD name or IP to match"
+#   ise_port_query: "text | Port or Interface | Interface text such as GigabitEthernet1/0/10 or Gi1/0/10"
+#   ise_seconds: "text = 604800 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 1000 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
+# label: Policy Object Detail
+# operation: policy_object_detail
+# is_read_only: true
+# options:
+#   ise_policy_query: "text | Policy Object | AuthZ profile, DACL, allowed protocol, filter policy, or matched rule"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 500 | Max Records | Maximum recent authentication rows requested from MnT"
+# <<<
+
+- name: "Cisco ISE One-Off Lookups"
+  hosts: "{{ ise_target_hosts | default('ise_servers') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  tags: ["ise", "audit", "one_off"]
+  roles:
+    - role: internal.ise.ise
+      vars:
+        ncs_action: audit

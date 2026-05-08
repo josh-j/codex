@@ -1,13 +1,4 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
-tree:
-  root_slug: photon
-  root_title: Photon
-  root_schema: inventory_root
-  levels:
-    - tier: host
-      schema: photon
-      bundle_key: raw_photon
-
 config:
   display_name: "Photon OS"
   platform:

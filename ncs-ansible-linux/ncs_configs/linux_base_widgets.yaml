@@ -36,6 +36,66 @@
       format: "{value:.2f}"
 
 - type: key-value
+  name: "Hardware"
+  fields:
+    - name: System Vendor
+      value: "{{ system_vendor }}"
+    - name: Product Name
+      value: "{{ product_name }}"
+    - name: Product Serial
+      value: "{{ product_serial }}"
+    - name: Product Version
+      value: "{{ product_version }}"
+    - name: Form Factor
+      value: "{{ form_factor }}"
+    - name: Architecture
+      value: "{{ architecture }}"
+    - name: Machine ID
+      value: "{{ machine_id }}"
+    - name: Virtualization
+      value: "{{ (virtualization_role ~ ' (' ~ virtualization_type ~ ')') if (virtualization_role or virtualization_type) else '' }}"
+
+- type: key-value
+  name: "Motherboard / BIOS / Chassis"
+  fields:
+    - name: Board Vendor
+      value: "{{ board_vendor }}"
+    - name: Board Name
+      value: "{{ board_name }}"
+    - name: Board Serial
+      value: "{{ board_serial }}"
+    - name: Board Version
+      value: "{{ board_version }}"
+    - name: BIOS Vendor
+      value: "{{ bios_vendor }}"
+    - name: BIOS Version
+      value: "{{ bios_version }}"
+    - name: BIOS Date
+      value: "{{ bios_date }}"
+    - name: Chassis Vendor
+      value: "{{ chassis_vendor }}"
+    - name: Chassis Serial
+      value: "{{ chassis_serial }}"
+    - name: Chassis Asset Tag
+      value: "{{ chassis_asset_tag }}"
+
+- type: key-value
+  name: "CPU"
+  fields:
+    - name: Vendor
+      value: "{{ cpu_vendor }}"
+    - name: Model
+      value: "{{ cpu_model }}"
+    - name: Sockets
+      value: "{{ processor_count }}"
+    - name: Cores per Socket
+      value: "{{ processor_cores }}"
+    - name: Threads per Core
+      value: "{{ processor_threads_per_core }}"
+    - name: Logical CPUs (vCPUs)
+      value: "{{ processor_vcpus }}"
+
+- type: key-value
   name: "Memory"
   fields:
     - name: Total (MB)
@@ -63,6 +123,107 @@
       value: "{{ pending_updates_count }}"
     - name: Reboot Required
       value: "{{ reboot_pending }}"
+
+- type: table
+  name: "Failed Services"
+  rows: "{{ failed_services }}"
+  when: failed_services_count > 0
+  columns:
+    - name: Unit
+      value: "{{ value }}"
+
+- type: key-value
+  name: "Audit & Syslog Status"
+  fields:
+    - name: auditd state
+      value: "{{ audit_active | ternary('running', 'stopped') }}"
+    - name: auditd enabled at boot
+      value: "{{ audit_enabled | ternary('yes', 'no') }}"
+    - name: syslog daemon
+      value: "{{ syslog_daemon }}"
+    - name: syslog state
+      value: "{{ syslog_active | ternary('running', 'stopped') }}"
+
+- type: table
+  name: "Non-Standard Users (UID ≥ 1000)"
+  rows: "{{ non_standard_users }}"
+  when: non_standard_user_count > 0
+  columns:
+    - name: Name
+      value: "{{ name }}"
+    - name: UID
+      value: "{{ uid }}"
+    - name: GID
+      value: "{{ gid }}"
+    - name: Home
+      value: "{{ home }}"
+    - name: Shell
+      value: "{{ shell }}"
+    - name: Password Age (d)
+      value: "{{ password_age_days }}"
+
+- type: table
+  name: "Non-Standard Groups (GID ≥ 1000)"
+  rows: "{{ non_standard_groups }}"
+  when: non_standard_group_count > 0
+  columns:
+    - name: Name
+      value: "{{ key }}"
+    - name: GID
+      value: "{{ value.1 }}"
+    - name: Members
+      value: "{{ value.2 | default('') }}"
+
+- type: key-value
+  name: "SSH Server Configuration"
+  fields:
+    - name: PermitRootLogin
+      value: "{{ sshd_config.permitrootlogin | default('') }}"
+    - name: PasswordAuthentication
+      value: "{{ sshd_config.passwordauthentication | default('') }}"
+    - name: PubkeyAuthentication
+      value: "{{ sshd_config.pubkeyauthentication | default('') }}"
+    - name: PermitEmptyPasswords
+      value: "{{ sshd_config.permitemptypasswords | default('') }}"
+    - name: ChallengeResponseAuthentication
+      value: "{{ sshd_config.challengeresponseauthentication | default('') }}"
+    - name: KerberosAuthentication
+      value: "{{ sshd_config.kerberosauthentication | default('') }}"
+    - name: GSSAPIAuthentication
+      value: "{{ sshd_config.gssapiauthentication | default('') }}"
+    - name: X11Forwarding
+      value: "{{ sshd_config.x11forwarding | default('') }}"
+    - name: ClientAliveInterval
+      value: "{{ sshd_config.clientaliveinterval | default('') }}"
+    - name: ClientAliveCountMax
+      value: "{{ sshd_config.clientalivecountmax | default('') }}"
+    - name: MaxAuthTries
+      value: "{{ sshd_config.maxauthtries | default('') }}"
+    - name: LoginGraceTime
+      value: "{{ sshd_config.logingracetime | default('') }}"
+    - name: Port
+      value: "{{ sshd_config.port | default('') }}"
+
+- type: table
+  name: "Recent Journal Events (24h, warning+)"
+  rows: "{{ recent_journal_events }}"
+  when: recent_journal_event_count > 0
+  columns:
+    - name: Priority
+      value: "{{ PRIORITY | default('?') }}"
+      as: status-badge
+    - name: Time (epoch ms)
+      value: "{{ ((__REALTIME_TIMESTAMP | default('0')) | int) // 1000000 }}"
+    - name: Unit
+      value: "{{ SYSLOG_IDENTIFIER | default('') }}"
+    - name: Message
+      value: "{{ MESSAGE | default('') }}"
+- type: log_tail
+  name: "Authentication Log (last 200 lines)"
+  source: "{{ auth_log_lines | default([]) }}"
+  when: auth_log_line_count > 0
+  max_height: "420px"
+
 - type: table
   name: "Filesystems"
   rows: "{{ disks }}"

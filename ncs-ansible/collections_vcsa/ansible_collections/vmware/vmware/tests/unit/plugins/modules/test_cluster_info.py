@@ -8,12 +8,12 @@ from ansible_collections.vmware.vmware.plugins.modules.cluster_info import (
     ClusterInfo,
     main as module_main
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import (
     PyvmomiClient
 )
 
 from ...common.utils import (
-    run_module, ModuleTestCase
+    AnsibleExitJson, ModuleTestCase, set_module_args
 )
 from ...common.vmware_object_mocks import MockCluster
 
@@ -36,5 +36,11 @@ class TestClusterInfo(ModuleTestCase):
     def test_gather(self, mocker):
         self.__prepare(mocker)
 
-        result = run_module(module_entry=module_main, module_args={'cluster': 'foo'})
-        assert result["changed"] is False
+        set_module_args(
+            add_cluster=True,
+        )
+
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
+
+        assert c.value.args[0]["changed"] is False

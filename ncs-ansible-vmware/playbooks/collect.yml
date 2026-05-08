@@ -1,13 +1,8 @@
 ---
 # internal/vmware/playbooks/collect.yml
-# Comprehensive health and policy audit for VMware vCenter environments.
-# This playbook connects to vCenter APIs to analyze ESXi host states,
-# VM configuration drift, and virtual networking compliance.
-# It evaluates system health, license status, and resource distribution.
-# Findings are collected per-vCenter and normalized for infrastructure
-# dashboards, providing a high-level view of the virtualization layer.
+# Canonical vSphere graph collection.
 
-- name: Phase 2 | VMware Health & Compliance Audit
+- name: "vSphere | Collect graph"
   hosts: vcsa
   connection: local
   gather_facts: false
@@ -15,13 +10,85 @@
   strategy: linear
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-  roles:
-    # vcsa owns vCenter-wide data (VMs, snapshots, tags, infra patterns);
-    # esxi role collects host-only facts. The reporter joins them at
-    # render time via esxi.yaml's inline_evaluation parent lookup.
-    - role: internal.vmware.vcsa
+    # Resolve event window/limit from extra-vars or fall back to constants.
+    # Plain self-referencing defaults (``foo: "{{ foo | default(N) }}"``)
+    # trigger ansible-core 2.20's recursive-template detection because the
+    # lazy templater re-evaluates the var while resolving its own value.
+    _event_window_hours: "{{ lookup('vars', 'vmware_event_window_hours', default=24) | int }}"
+    _event_limit: "{{ lookup('vars', 'vmware_event_limit', default=500) | int }}"
+    _vc_slug: "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+    # Map vCenter-native host names (often IPs in lab/dev) to the
+    # operator-friendly inventory hostname so the resulting graph keys
+    # ESXi hosts by ``esxi01.maas-lab`` rather than ``10.78.0.10``.
+    _esxi_alias_map: >-
+      {%- set m = {} -%}
+      {%- for h in (groups['esxi_hosts'] | default([])) -%}
+        {%- set ip = (hostvars[h].ansible_host | default(h)) | string -%}
+        {%- set _ = m.update({ip: h}) -%}
+        {%- set _ = m.update({h: h}) -%}
+      {%- endfor -%}
+      {{ m }}
+
+  pre_tasks:
+    - name: Resolve VMware connection parameters
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_vcenter
+
+  tasks:
+    - name: Collect vSphere inventory graph
+      internal.vmware.vsphere_inventory_info:
+        hostname: "{{ ansible_host }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        host_alias_map: "{{ _esxi_alias_map }}"
+      register: _vsphere_inventory_result
+      no_log: true
+      changed_when: false
+
+    - name: Collect vSphere events
+      internal.vmware.vsphere_events_info:
+        hostname: "{{ ansible_host }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        window_hours: "{{ _event_window_hours }}"
+        limit: "{{ _event_limit }}"
+      register: _vsphere_events_result
+      no_log: true
+      changed_when: false
+      # Don't abort the play if events collection fails (e.g. ContentLibrary
+      # query errors on labs without a content library). The inventory graph
+      # is the primary artifact; events are an optional enrichment.
+      failed_when: false
+
+    - name: Emit vSphere graph artifact
+      ansible.builtin.include_role:
+        name: internal.core.emit
       vars:
-        ncs_action: collect
-    - role: internal.vmware.esxi
+        _ncs_emit_platform: "vmware/vsphere"
+        _ncs_emit_payload: "{{ _vsphere_inventory_result.vsphere_graph }}"
+        _ncs_emit_config: {}
+        _ncs_emit_tree_path:
+          - vsphere
+          - "{{ _vc_slug }}"
+        # Distinct filename so the graph artifact doesn't collide with the
+        # vcsa role's appliance-detail bundle at <tree>/raw.yaml.
+        _ncs_emit_raw_filename: inventory.yaml
+        _ncs_emit_artifact_kind: inventory
+        _ncs_emit_artifact_id: "{{ inventory_hostname }}-graph"
+
+    - name: Emit vSphere events artifact
+      ansible.builtin.include_role:
+        name: internal.core.emit
       vars:
-        ncs_action: collect
+        _ncs_emit_platform: "vmware/vsphere"
+        _ncs_emit_payload: "{{ _vsphere_events_result.vsphere_events }}"
+        _ncs_emit_tree_path:
+          - vsphere
+          - "{{ _vc_slug }}"
+        _ncs_emit_raw_filename: events.yaml
+        _ncs_emit_artifact_kind: events
+        _ncs_emit_artifact_id: "{{ inventory_hostname }}-events"
+      when: _vsphere_events_result.vsphere_events is defined

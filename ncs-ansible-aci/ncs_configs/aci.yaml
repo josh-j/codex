@@ -1,13 +1,4 @@
 # yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
-tree:
-  root_slug: aci
-  root_title: ACI
-  root_schema: inventory_root
-  levels:
-    - tier: host
-      schema: aci
-      bundle_key: raw_aci
-
 config:
   display_name: "Cisco ACI"
   platform: aci/apic
@@ -38,55 +29,193 @@ vars:
   site_label:
     compute: "{{ _site_map.get((apic_short | string)[:4] | lower, apic_short) }}"
 
+  # `aci_responses_raw` is a list of ansible-uri results
+  # ({item: {name: ...}, json: ...}); `_aci_by_name` reindexes by fetch
+  # name so downstream fields reference one canonical shape. The
+  # `item.item.name` path strips DSL's source-item prefix to reach the
+  # loop label.
+  _aci_by_name:
+    normalize:
+      first_of:
+        - {index: {source: aci_responses_raw, key: item.item.name, value: item.json}}
+        - {const: {}}
+    type: dict
+
   fabric_health_score:
-    path: ".health_results.0.imdata.0.fabricHealthTotal.attributes.cur"
+    normalize:
+      first_of:
+        - {path: health_results.0.imdata.0.fabricHealthTotal.attributes.cur}
+        - {path: _aci_by_name.fabric_health.imdata.0.fabricHealthTotal.attributes.cur}
+        - {const: -1}
     type: int
-    fallback: -1
 
   tenant_health_score:
-    path: ".health_results.1.imdata.0.healthInst.attributes.cur"
+    normalize:
+      first_of:
+        - {path: health_results.1.imdata.0.healthInst.attributes.cur}
+        - {path: _aci_by_name.tenant_health.imdata.0.healthInst.attributes.cur}
+        - {const: -1}
     type: int
-    fallback: -1
+
+  _faults_imdata:
+    normalize:
+      first_of:
+        - faults
+        - {path: _aci_by_name.faults.imdata}
+        - {const: []}
+    type: list
+
+  _cleared_faults_imdata:
+    normalize:
+      first_of:
+        - cleared_faults
+        - {path: _aci_by_name.cleared_faults.imdata}
+        - {const: []}
+    type: list
+
+  _ospf_imdata:
+    normalize:
+      first_of:
+        - ospf
+        - {path: _aci_by_name.ospf.imdata}
+        - {const: []}
+    type: list
 
   active_faults:
-    compute: "{{ faults | map(attribute='faultInst.attributes') | list }}"
+    normalize: {pluck: {source: _faults_imdata, path: faultInst.attributes}}
     type: list
 
   # TCA ingress-drop events are noisy environmental churn; APIC returns
   # cleared faults newest-first, so slicing after the reject is safe.
   recent_cleared_faults:
-    compute: >-
-      {{ (cleared_faults
-          | map(attribute='faultInst.attributes')
-          | rejectattr('descr', 'search', '(?i)TCA:\\s*ingress\\s*drop')
-          | list)[:5] }}
+    normalize:
+      slice:
+        source:
+          list:
+            source: {pluck: {source: _cleared_faults_imdata, path: faultInst.attributes}}
+            exclude_match_any: {field: descr, patterns: ['TCA:\s*ingress\s*drop']}
+        stop: 5
     type: list
 
   critical_fault_count:
-    compute: "{{ active_faults | selectattr('severity', 'eq', 'critical') | list | length }}"
+    normalize: {count: {list: {source: active_faults, include_where: {severity: critical}}}}
     type: int
   major_fault_count:
-    compute: "{{ active_faults | selectattr('severity', 'eq', 'major') | list | length }}"
+    normalize: {count: {list: {source: active_faults, include_where: {severity: major}}}}
     type: int
   warning_fault_count:
-    compute: "{{ active_faults | selectattr('severity', 'eq', 'warning') | list | length }}"
+    normalize: {count: {list: {source: active_faults, include_where: {severity: warning}}}}
     type: int
   active_fault_count:
-    compute: "{{ active_faults | length }}"
+    normalize: {count: active_faults}
     type: int
 
   ospf_down:
-    compute: "{{ ospf | map(attribute='ospfAdjEp.attributes') | rejectattr('operSt', 'eq', 'full') | list }}"
+    normalize:
+      list:
+        source: {pluck: {source: _ospf_imdata, path: ospfAdjEp.attributes}}
+        exclude_where: {operSt: full}
+    type: list
+
+  # --- Link utilization enrichment ---
+  # Pipeline: filter port-channel aggregates, threshold on utilAvg, join
+  # the description map, regex-decode the DN into "leaf <node> <intf>",
+  # dedupe by interface, sort by utilMax, top-N.
+
+  _aci_interfaces_imdata:
+    normalize:
+      first_of:
+        - {path: _aci_by_name.interfaces.imdata}
+        - {const: []}
+    type: list
+
+  _aci_description_map:
+    normalize:
+      first_of:
+        - aci_description_map
+        - {index: {source: _aci_interfaces_imdata, key: item.l1PhysIf.attributes.dn, value: item.l1PhysIf.attributes.descr}}
+        - {const: {}}
+    type: dict
+
+  # YAML anchor for the shared filter/sort/dedupe/top-N pipeline.
+  # `<<: *…` substitutes the anchored map; only the imdata source path
+  # and the per-direction wrapper key differ between ingress and egress.
+  ingress_high_util:
+    normalize: &_high_util_pipeline_ingress
+      first_of:
+        - ingress_high_util
+        - slice:
+            source:
+              unique:
+                source:
+                  sort:
+                    source:
+                      list:
+                        source: {pluck: {source: {path: _aci_by_name.ingress.imdata}, path: eqptIngrTotalHist15min.attributes}}
+                        include_where: &_high_util_filters
+                          - {field: dn, op: ne, value: ''}
+                          - {field: {expr: "{{ utilAvg | default(0) | float }}"}, op: gt, value: 25}
+                        exclude_where: &_high_util_excludes {field: dn, op: matches, value: '\[Po\d+\]'}
+                        map: &_high_util_map
+                          dn: dn
+                          utilAvg: {expr: "{{ utilAvg | default(0) | float }}"}
+                          utilMax: {expr: "{{ utilMax | default(0) | float }}"}
+                          interface_label:
+                            regex_replace:
+                              value: dn
+                              pattern: '^.*/(node-\d+)/.*?\[(.*?)\]/.*$'
+                              replacement: 'leaf \1 \2'
+                          description:
+                            get:
+                              source: _aci_description_map
+                              key:
+                                regex_search: {value: dn, pattern: '^.*\]'}
+                              default: 'N/A'
+                    by: utilMax
+                    reverse: true
+                by: interface_label
+            stop: 10
+        - {const: []}
+    type: list
+
+  egress_high_util:
+    normalize:
+      first_of:
+        - egress_high_util
+        - slice:
+            source:
+              unique:
+                source:
+                  sort:
+                    source:
+                      list:
+                        source: {pluck: {source: {path: _aci_by_name.egress.imdata}, path: eqptEgrTotalHist15min.attributes}}
+                        include_where: *_high_util_filters
+                        exclude_where: *_high_util_excludes
+                        map: *_high_util_map
+                    by: utilMax
+                    reverse: true
+                by: interface_label
+            stop: 10
+        - {const: []}
     type: list
   ospf_down_count:
-    compute: "{{ ospf_down | length }}"
+    normalize: {count: ospf_down}
     type: int
 
   critical_ingress_util:
-    compute: "{{ ingress_high_util | selectattr('utilMax', 'gt', 75) | list | length }}"
+    normalize:
+      count:
+        list:
+          source: ingress_high_util
+          include_where: {field: utilMax, op: gt, value: 75}
     type: int
   critical_egress_util:
-    compute: "{{ egress_high_util | selectattr('utilMax', 'gt', 75) | list | length }}"
+    normalize:
+      count:
+        list:
+          source: egress_high_util
+          include_where: {field: utilMax, op: gt, value: 75}
     type: int
 
 alerts:

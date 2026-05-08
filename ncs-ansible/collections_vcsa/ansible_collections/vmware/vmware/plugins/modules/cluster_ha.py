@@ -69,8 +69,6 @@ options:
     advanced_settings:
         description:
             - A dictionary of advanced HA settings.
-            - Allowed HA settings are more strict than VM allowed settings. If you get an error when managing them, compare
-              your settings against the vSphere HA Advanced Options documentation.
         default: {}
         type: dict
 
@@ -87,10 +85,9 @@ options:
         description:
             - The number of host failures that should be tolerated by the cluster.
             - The maximum is one less than the total number of hosts.
-            - If O(admission_control_policy) is V(dedicated_host), the default value is the number of dedicated failover hosts.
-            - For all other O(admission_control_policy) values, the default value is 1.
+            - Only used if O(admission_control_policy) is V(cluster_resource) or V(vm_slots).
         type: int
-        required: false
+        default: 1
 
     admission_control_cpu_reserve_percentage:
         description:
@@ -262,14 +259,6 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-cluster:
-    description:
-        - Information about the target cluster
-    returned: On success
-    type: dict
-    sample:
-        moid: cluster-79828,
-        name: test-cluster
 result:
     description:
         - Information about the HA config update task, if something changed
@@ -296,15 +285,15 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import (
     ModulePyvmomiBase
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import (
     TaskError,
     RunningTaskMonitor
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._advanced_settings import (
-    AdvancedSettings
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_type_utils import (
+    diff_dict_and_vmodl_options_set
 )
 from ansible.module_utils.common.text.converters import to_native
 
@@ -316,15 +305,15 @@ class VmwareCluster(ModulePyvmomiBase):
         datacenter = self.get_datacenter_by_name_or_moid(self.params.get('datacenter'), fail_on_missing=True)
         self.cluster = self.get_cluster_by_name_or_moid(self.params.get('cluster'), fail_on_missing=True, datacenter=datacenter)
         self._cached_ac_failover_hosts = list()
-
-        _user_settings = AdvancedSettings.from_py_dict(self.params.get('advanced_settings'), cast_all_values_to_str=True)
-        _live_settings = AdvancedSettings.from_vsphere_config(self.cluster.configurationEx.dasConfig.option)
-        self.changed_advanced_settings = _user_settings.difference(_live_settings)
+        self.changed_advanced_settings = diff_dict_and_vmodl_options_set(
+            self.params.get('advanced_settings'),
+            self.cluster.configurationEx.dasConfig.option
+        )
 
     @property
     def storage_pdl_response_mode(self):
         if self.params['storage_pdl_response_mode'] == 'restart':
-            return 'restartAggressive'
+            return 'restartAgressive'
         return self.params['storage_pdl_response_mode']
 
     @property
@@ -363,21 +352,6 @@ class VmwareCluster(ModulePyvmomiBase):
 
         return True
 
-    @property
-    def ac_failover_level(self):
-        """
-        Since this param requires admission_control_policy, we cannot have a default set in the module spec.
-        Instead, the default value is calculated depending on the policy type selected by the user, which
-        is mentioned in the param docs
-        """
-        if self.params.get('admission_control_failover_level'):
-            return self.params.get('admission_control_failover_level')
-
-        if self.params['admission_control_policy'] != 'dedicated_host':
-            return 1
-
-        return len(self.ac_failover_hosts)
-
     def check_apd_restart_params(self):
         if self.params['storage_apd_response']['mode'] in ('disabled', 'warning'):
             return False
@@ -414,7 +388,7 @@ class VmwareCluster(ModulePyvmomiBase):
         if self.__check_storage_config_diff(ha_config):
             return True
 
-        if not self.changed_advanced_settings.is_empty():
+        if self.changed_advanced_settings:
             return True
 
         return False
@@ -457,7 +431,7 @@ class VmwareCluster(ModulePyvmomiBase):
         if (
             vm_config.vmMonitoring != vm_params["mode"] or
             vm_config.failureInterval != vm_params["failure_interval"] or
-            vm_config.minUpTime != vm_params["minimum_uptime"] or
+            vm_config.minUpTime != vm_params.get["minimum_uptime"] or
             vm_config.maxFailures != vm_params["maximum_resets"] or
             vm_config.maxFailureWindow != vm_params["maximum_resets_window"]
         ):
@@ -479,7 +453,11 @@ class VmwareCluster(ModulePyvmomiBase):
         except AttributeError:
             return True
 
-        if ac_config.failoverLevel != self.ac_failover_level:
+        # check failover level, which is used by 2 out of the 3 policy types
+        if (
+            self.params.get("admission_control_policy") != 'dedicated_host' and
+            ac_config.failoverLevel != self.params.get('admission_control_failover_level')
+        ):
             return True
 
         policy_classes = {
@@ -488,9 +466,6 @@ class VmwareCluster(ModulePyvmomiBase):
             'dedicated_host': vim.cluster.FailoverHostAdmissionControlPolicy
         }
         if not isinstance(ac_config, policy_classes[self.params.get("admission_control_policy")]):
-            return True
-
-        if not ha_config.admissionControlEnabled:
             return True
 
         if self.params.get("admission_control_policy") == 'dedicated_host':
@@ -594,8 +569,8 @@ class VmwareCluster(ModulePyvmomiBase):
 
         self.__set_admission_control_config(cluster_config_spec)
 
-        if not self.changed_advanced_settings.is_empty():
-            cluster_config_spec.dasConfig.option = self.changed_advanced_settings.to_vsphere_config()
+        if self.changed_advanced_settings:
+            cluster_config_spec.dasConfig.option = self.changed_advanced_settings
 
         return cluster_config_spec
 
@@ -671,10 +646,12 @@ class VmwareCluster(ModulePyvmomiBase):
         cluster_config_spec.dasConfig.admissionControlEnabled = True
         if self.params.get('admission_control_policy') == 'vm_slots':
             ac_policy_spec = vim.cluster.FailoverLevelAdmissionControlPolicy()
+            ac_policy_spec.failoverLevel = self.params.get('admission_control_failover_level')
 
         elif self.params.get('admission_control_policy') == 'cluster_resource':
             ac_policy_spec = vim.cluster.FailoverResourcesAdmissionControlPolicy()
             ac_policy_spec.autoComputePercentages = self.ac_cluster_resource_auto_compute_percentages
+            ac_policy_spec.failoverLevel = self.params.get('admission_control_failover_level')
             if not self.ac_cluster_resource_auto_compute_percentages:
                 if self.params.get('admission_control_cpu_reserve_percentage'):
                     ac_policy_spec.cpuFailoverResourcesPercent = self.params.get('admission_control_cpu_reserve_percentage')
@@ -685,7 +662,6 @@ class VmwareCluster(ModulePyvmomiBase):
             ac_policy_spec = vim.cluster.FailoverHostAdmissionControlPolicy()
             ac_policy_spec.failoverHosts = self.ac_failover_hosts
 
-        ac_policy_spec.failoverLevel = self.ac_failover_level
         cluster_config_spec.dasConfig.admissionControlPolicy = ac_policy_spec
 
     def apply_ha_configuration(self):
@@ -700,15 +676,7 @@ class VmwareCluster(ModulePyvmomiBase):
         except (vmodl.RuntimeFault, vmodl.MethodFault)as vmodl_fault:
             self.module.fail_json(msg=to_native(vmodl_fault.msg))
         except TaskError as task_e:
-            if not self.changed_advanced_settings.is_empty():
-                try:
-                    self.module.fail_json(
-                        msg="One or more advanced settings are invalid. Please refer to the vSphere documentation.",
-                        invalid_settings=[e.value.strip() for e in task_e.parent_error.faultMessage[0].arg]
-                    )
-                except (KeyError, AttributeError):
-                    pass
-            self.module.fail_json(msg=to_native(task_e), task_e=task_e)
+            self.module.fail_json(msg=to_native(task_e))
         except Exception as generic_exc:
             self.module.fail_json(msg="Failed to update cluster due to exception %s" % to_native(generic_exc))
 
@@ -747,7 +715,7 @@ def main():
 
                 # HA Admission Control related parameters
                 admission_control_policy=dict(type='str', required=False, choices=['vm_slots', 'cluster_resource', 'dedicated_host']),
-                admission_control_failover_level=dict(type='int'),
+                admission_control_failover_level=dict(type='int', default=1),
                 admission_control_cpu_reserve_percentage=dict(type='int', required=False),
                 admission_control_memory_reserve_percentage=dict(type='int', required=False),
                 admission_control_dedicated_hosts=dict(type='list', elements='str', required=False),
@@ -766,27 +734,15 @@ def main():
         supports_check_mode=True,
         required_if=[
             ('admission_control_policy', 'dedicated_host', ('admission_control_dedicated_hosts',), False)
-        ],
-        required_by={
-            'admission_control_failover_level': 'admission_control_policy',
-            'admission_control_cpu_reserve_percentage': 'admission_control_policy',
-            'admission_control_memory_reserve_percentage': 'admission_control_policy',
-            'admission_control_dedicated_hosts': 'admission_control_policy',
-        }
+        ]
     )
 
     result = dict(
         changed=False,
-        result={},
-        cluster=dict(
-            name="",
-            moid=""
-        )
+        result={}
     )
 
     cluster_ha = VmwareCluster(module)
-    result['cluster']['name'] = cluster_ha.cluster.name
-    result['cluster']['moid'] = cluster_ha.cluster._GetMoId()
 
     config_is_different = cluster_ha.check_ha_config_diff()
     if config_is_different:

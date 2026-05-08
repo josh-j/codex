@@ -3,21 +3,11 @@ __metaclass__ = type
 
 import sys
 import pytest
-from pyVmomi import vim
 
-from ansible_collections.vmware.vmware.plugins.modules.cluster_vcls import (
-    VMwareClusterVcls,
-    main as module_main
-)
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import (
-    PyvmomiClient
-)
+from ansible_collections.vmware.vmware.plugins.modules import cluster_vcls
+
 from ...common.utils import (
-    run_module, ModuleTestCase
-)
-from ...common.vmware_object_mocks import (
-    create_mock_vsphere_object,
-    MockVsphereTask
+    AnsibleExitJson, ModuleTestCase, set_module_args,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -26,96 +16,31 @@ pytestmark = pytest.mark.skipif(
 
 
 class TestClusterVcls(ModuleTestCase):
+
     def __prepare(self, mocker):
-        self.test_cluster = create_mock_vsphere_object()
-        self.test_task = MockVsphereTask()
-        mocker.patch.object(PyvmomiClient, 'connect_to_api', return_value=(mocker.Mock(), mocker.Mock()))
-        mocker.patch.object(VMwareClusterVcls, 'get_datacenter_by_name_or_moid')
-        mocker.patch.object(VMwareClusterVcls, 'get_datastore_by_name_or_moid', return_value=mocker.Mock(spec=vim.Datastore))
-        mocker.patch.object(VMwareClusterVcls, 'get_cluster_by_name_or_moid', return_value=self.test_cluster)
+        init_mock = mocker.patch.object(cluster_vcls.VMwareClusterVcls, "__init__")
+        init_mock.return_value = None
 
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = []
-        self.test_cluster.ReconfigureComputeResource_Task.return_value = self.test_task
+        resolve_datastores_to_add_and_remove = mocker.patch.object(cluster_vcls.VMwareClusterVcls, "resolve_datastores_to_add_and_remove")
+        resolve_datastores_to_add_and_remove.return_value = ['ds1'], ['ds2'], ['ds1', 'ds3']
 
-    def test_add(self, mocker):
+        configure_vcls = mocker.patch.object(cluster_vcls.VMwareClusterVcls, "configure_vcls")
+        configure_vcls.return_value = {}
+
+    def test_gather(self, mocker):
         self.__prepare(mocker)
 
-        ds_to_add = ['ds1']
-
-        module_args = dict(
-            cluster='foo',
-            datastores_to_add=ds_to_add
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            datastores_to_add=['ds1'],
+            datastores_to_remove=['ds2'],
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert set(result["added_datastores"]) == set(ds_to_add)
-        assert len(result["removed_datastores"]) == 0
+        with pytest.raises(AnsibleExitJson) as c:
+            cluster_vcls.main()
 
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = [
-            create_mock_vsphere_object(name=ds_to_add[0])
-        ]
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is False
-        assert len(result["added_datastores"]) == 0
-        assert len(result["removed_datastores"]) == 0
-
-    def test_remove(self, mocker):
-        self.__prepare(mocker)
-
-        ds_to_remove = ['ds1']
-        module_args = dict(
-            cluster='foo',
-            datastores_to_remove=ds_to_remove
-        )
-
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is False
-        assert len(result["added_datastores"]) == 0
-        assert len(result["removed_datastores"]) == 0
-
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = [
-            create_mock_vsphere_object(name=ds_to_remove[0])
-        ]
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert len(result["added_datastores"]) == 0
-        assert set(result["removed_datastores"]) == set(ds_to_remove)
-
-    def test_absolute_list(self, mocker):
-        self.__prepare(mocker)
-
-        allowed_datastores = ['ds3']
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = [
-            create_mock_vsphere_object(name='ds1'),
-            create_mock_vsphere_object(name='ds2'),
-            create_mock_vsphere_object(name='ds3'),
-        ]
-
-        module_args = dict(
-            cluster='foo',
-            allowed_datastores=allowed_datastores
-        )
-
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert set(result["added_datastores"]) == set([])
-        assert set(result["removed_datastores"]) == set(['ds1', 'ds2'])
-
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = [
-            create_mock_vsphere_object(name='ds3'),
-        ]
-
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is False
-        assert set(result["added_datastores"]) == set([])
-        assert set(result["removed_datastores"]) == set([])
-
-        self.test_cluster.configurationEx.systemVMsConfig.allowedDatastores = [
-            create_mock_vsphere_object(name='ds1'),
-        ]
-
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert set(result["added_datastores"]) == set(allowed_datastores)
-        assert set(result["removed_datastores"]) == set(['ds1'])
+        assert c.value.args[0]["changed"] is True
+        assert c.value.args[0]["added_datastores"] == ['ds1']
+        assert c.value.args[0]["removed_datastores"] == ['ds2']

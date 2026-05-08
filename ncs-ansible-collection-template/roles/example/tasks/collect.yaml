@@ -5,6 +5,23 @@
 # your platform — REST calls (delegated to localhost), SSH facts, CLI
 # commands, etc. — then emit the result through internal.core.emit so
 # ncs-reporter can pick it up.
+#
+# Pattern: emit raw collector output, normalize in the schema.
+#   - This task should *flatten* registers into the bundle, not shape
+#     them. Filtering, indexing, joins, aggregations, threshold counts,
+#     and conditional fallbacks belong in
+#     ncs_configs/<schema>.yaml under each field's `normalize:` spec.
+#   - If a transform is genuinely needed for a *later* module call in
+#     the same play (e.g. a fan-out loop variable), keep it as a
+#     private fact prefixed with `_` so it isn't included in the
+#     emitted bundle.
+#   - Avoid `selectattr`, `items2dict`, `map(attribute=...)`, `| zip`,
+#     `dict2items`, and `rejectattr` in `set_fact` bodies — these are
+#     shaping smells that the repo-wide guardrail
+#     (ncs-reporter/tests/test_normalize_dsl_guardrails.py) flags.
+#
+# See: docs/ncs-reporter-config/NORMALIZE_DSL_ROLLOUT.md
+#      docs/ncs-reporter-config/FIELDS.md (`normalize:` reference)
 
 - name: "__COLLECTION_NAME__ | Gather system facts"
   ansible.builtin.setup:
@@ -12,6 +29,10 @@
       - min
   register: _example_facts
 
+# Flatten well-known facts the schema reads by bare name. Type
+# coercion + missing-value fallbacks live in the schema (`type:`,
+# `first_of:`, `fallback:`); we keep `default(...)` here only to guard
+# against constrained collectors that skip a fact subset.
 - name: "__COLLECTION_NAME__ | Build collection payload"
   ansible.builtin.set_fact:
     _example_payload:
@@ -25,6 +46,6 @@
   ansible.builtin.include_role:
     name: internal.core.emit
   vars:
-    emit_type: "raw_example"
-    emit_data: "{{ _example_payload }}"
-  when: not (__collection_name___skip_export | default(false) | bool)
+    _ncs_emit_platform: "__COLLECTION_NAME__"
+    _ncs_emit_payload: "{{ _example_payload }}"
+    _ncs_emit_skip: "{{ __collection_name___skip_export | default(false) }}"

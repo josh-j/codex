@@ -38,19 +38,21 @@ reboot_pending:
   path: ".reboot_stat.stat.exists"
   type: bool
 
-# --- Storage (needs list_filter + list_map) ---
+# --- Storage ---
 
 disks:
-  path: ".mounts"
+  normalize:
+    list:
+      source: mounts
+      exclude_where:
+        any:
+          - {field: fstype, op: in, value: [tmpfs, devtmpfs, squashfs, overlay, proc, sysfs, devpts]}
+          - {field: device, op: matches, value: '^/dev/loop'}
+      map:
+        total_gb: {expr: "{{ size_total | default(0) | float / 1073741824 }}"}
+        free_gb: {expr: "{{ size_available | default(0) | float / 1073741824 }}"}
+        used_pct: {expr: "{{ ((size_total | default(0) | float - size_available | default(0) | float) / size_total | default(1) | float * 100) if (size_total | default(0) | float) > 0 else 0 }}"}
   type: list
-  list_filter:
-    exclude:
-      fstype: [tmpfs, devtmpfs, squashfs, overlay, proc, sysfs, devpts]
-      device: ["^/dev/loop"]
-  list_map:
-    total_gb: "size_total / 1073741824"
-    free_gb: "size_available / 1073741824"
-    used_pct: "(size_total - size_available) / size_total * 100"
 
 # --- Security (transforms) ---
 
@@ -67,7 +69,128 @@ world_writable_count:
   path: ".world_writable.stdout_lines | len_if_list"
   type: int
 
+# Index shadow_lines into {username: last_change_days_since_epoch} so per-user
+# password_age_days lookups in the next field cost O(1) per row.
+shadow_map:
+  normalize:
+    index:
+      source:
+        list:
+          source: shadow_lines
+          include_source: false
+          exclude_where:
+            any:
+              - {field: item, op: matches, value: '^\s*$'}
+              - {field: item, op: matches, value: '^\s*#'}
+          map:
+            name: {expr: "{{ ((item | string).split(':') + ['', ''])[0] }}"}
+            last_change: {expr: "{{ ((item | string).split(':') + ['', '', '0'])[2] | int(0) }}"}
+      key: name
+      value: last_change
+  type: dict
+
+epoch_days:
+  compute: "{{ (epoch_seconds | default(0) | int) // 86400 }}"
+  type: int
+
 users:
-  script:
-    run: "user_inventory.py"
+  normalize:
+    list:
+      for_each: getent_passwd
+      include_source: false
+      map:
+        name: item.key
+        uid: item.value.1
+        gid: item.value.2
+        home: item.value.4
+        shell: item.value.5
+        password_age_days:
+          expr: "(epoch_days - (shadow_map.get(item.key, 0) | int(0))) if (shadow_map.get(item.key, 0) | int(0)) > 0 else -1"
   type: list
+
+# --- Non-standard users / groups ---
+#
+# Convention: UID/GID < 1000 are reserved for system accounts (1-3 digit
+# UIDs), UID/GID 65534 is "nobody", everything else is operator-managed.
+non_standard_users:
+  normalize:
+    list:
+      source: users
+      include_where: {field: uid, op: matches, value: '^[0-9]+$'}
+      exclude_where: {field: uid, op: matches, value: '^([0-9]{1,3}|65534)$'}
+  type: list
+non_standard_user_count:
+  normalize: {count: non_standard_users}
+  type: int
+
+# Groups are projected from getent_group (dict of name → [pw, gid, members]).
+non_standard_groups:
+  normalize:
+    list:
+      for_each: getent_group
+      include_source: false
+      include_where: {field: item.value.1, op: matches, value: '^[0-9]+$'}
+      exclude_where: {field: item.value.1, op: matches, value: '^([0-9]{1,3}|65534)$'}
+      map:
+        name: item.key
+        gid: item.value.1
+        members: item.value.2
+  type: list
+non_standard_group_count:
+  normalize: {count: non_standard_groups}
+  type: int
+
+# --- Audit + syslog status ---
+#
+# Pulled from ansible_facts.services (service_facts). Each unit entry
+# carries ``state`` (running/stopped) and ``status`` (enabled/disabled/
+# static/not-found). Compute the per-unit dict once, then derive flags.
+auditd_service:
+  compute: "{{ (service_states | default({})).get('auditd.service', {}) }}"
+rsyslog_service:
+  compute: "{{ (service_states | default({})).get('rsyslog.service', {}) }}"
+syslog_ng_service:
+  compute: "{{ (service_states | default({})).get('syslog-ng.service', {}) }}"
+audit_active:
+  compute: "{{ auditd_service.get('state', 'stopped') == 'running' }}"
+audit_enabled:
+  compute: "{{ auditd_service.get('status', 'disabled') == 'enabled' }}"
+syslog_active:
+  compute: "{{ rsyslog_service.get('state', '') == 'running' or syslog_ng_service.get('state', '') == 'running' }}"
+syslog_daemon:
+  compute: "{{ 'rsyslog' if rsyslog_service.get('state', '') == 'running' else ('syslog-ng' if syslog_ng_service.get('state', '') == 'running' else 'none') }}"
+
+# --- Hardware inventory ---
+#
+# ansible_facts.processor is a flat list shaped like:
+#   ['0', 'GenuineIntel', 'Intel(R) Xeon(R) ...', '1', 'GenuineIntel', '...']
+# (chip-index, vendor, model repeated for each logical CPU). Pull the
+# first vendor/model triple as the representative entry.
+cpu_vendor:
+  compute: "{{ processor[1] | default('') if (processor | length >= 3) else '' }}"
+cpu_model:
+  compute: "{{ processor[2] | default('') if (processor | length >= 3) else '' }}"
+
+# --- Authentication log tail ---
+#
+# Each line is capped at 500 chars so a runaway syslog message can't
+# bloat the rendered HTML (200 lines × 4KB worst case = 800KB).
+auth_log_lines:
+  compute: "{{ ((auth_log | default({})).stdout_lines | default([])) | map('truncate', 500, True, '…') | list }}"
+auth_log_line_count:
+  path: ".auth_log.stdout_lines | len_if_list"
+  type: int
+
+# journalctl --output=json emits one event per stdout line; each line
+# is a JSON object with PRIORITY/MESSAGE/SYSLOG_IDENTIFIER/__REALTIME_*.
+# Cap at 500 events so a noisy host doesn't blow up parse cost.
+recent_journal_events:
+  compute: "{{ ((journal_recent | default({})).stdout_lines | default([]))[:500]
+    | map('from_json')
+    | list }}"
+recent_journal_event_count:
+  compute: "{{ recent_journal_events | default([]) | length }}"
+# Pre-filtered count of err+ events (priority 0-3); referenced by both
+# the alert's `when` and `message` so the selectattr only runs once.
+critical_journal_event_count:
+  compute: "{{ recent_journal_events | default([]) | selectattr('PRIORITY', 'in', ['0','1','2','3']) | list | length }}"

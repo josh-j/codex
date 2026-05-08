@@ -2927,6 +2927,16 @@ function Show-NcsConsoleApp {
             # Confirm before running mutating actions
             $matchedAction = if ($script:ActionItemMap.ContainsKey($selectedPlaybook)) { $script:ActionItemMap[$selectedPlaybook] } else { $null }
             $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
+            if ($isMutating -and $matchedAction.ContainsKey('profiles')) {
+                $selectedOptions = Get-NcsActionOptionValues -Controls $controls
+                $selectedOperation = if ($selectedOptions.ContainsKey('ncs_operation')) { $selectedOptions['ncs_operation'] } else { "" }
+                $selectedProfile = @($matchedAction['profiles']) |
+                    Where-Object { $_.ContainsKey('operation') -and $_['operation'] -eq $selectedOperation } |
+                    Select-Object -First 1
+                if ($null -ne $selectedProfile) {
+                    $isMutating = $selectedProfile.ContainsKey('mutating') -and $selectedProfile['mutating'] -eq $true
+                }
+            }
             if ($isMutating) {
                 $confirmBox = [System.Windows.Window]::new()
                 $confirmBox.Title = ""
@@ -3054,6 +3064,16 @@ function Show-NcsConsoleApp {
                     $controls.ExitCodeTextBlock.Text = [string] $runResult.ExitCode
                     $controls.DurationTextBlock.Text = Format-NcsDuration -Duration $runResult.Duration
                     $controls.DetectedPathsListBox.ItemsSource = $runResult.DetectedPaths
+                    if ($runResult.Succeeded) {
+                        $reportLine = $runResult.OutputLines |
+                            Where-Object { $_ -match 'NCS_REPORT:\s*(\S+\.html)' } |
+                            Select-Object -Last 1
+                        if ($reportLine -and $reportLine -match 'NCS_REPORT:\s*(\S+\.html)') {
+                            $script:ReportsSynced = $false
+                            & $openReports
+                            & $loadReport $Matches[1]
+                        }
+                    }
                     Sync-NcsConsoleScroll -Controls $controls
                 }
             $state.CurrentHandle = $handle

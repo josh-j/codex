@@ -3,8 +3,8 @@ __metaclass__ = type
 
 import pytest
 
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import PyvmomiClient
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.errors import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import PyvmomiClient
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._errors import (
     ApiAccessError
 )
 
@@ -38,8 +38,8 @@ class TestPyvmomiClient():
             'password': 'a',
             'port': 443,
             'validate_certs': True,
-            'proxy_host': 'a',
-            'proxy_port': 443
+            'http_proxy_host': 'a',
+            'http_proxy_port': 443
         }
 
         PyvmomiClient(**init_args)

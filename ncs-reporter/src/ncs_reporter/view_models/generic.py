@@ -11,6 +11,7 @@ from ncs_reporter.models.report_schema import (
     GroupedTableWidget,
     InventoryWidget,
     KeyValueWidget,
+    LogTailWidget,
     MarkdownWidget,
     ProgressBarWidget,
     ReportSchema,
@@ -19,7 +20,7 @@ from ncs_reporter.models.report_schema import (
     TableWidget,
 )
 from ncs_reporter.constants import FLEET_ALERT_SEVERITIES
-from ncs_reporter.normalization._when import evaluate_when
+from ncs_reporter.normalization._when import _compile_template, evaluate_when
 from ncs_reporter.normalization.schema_driven import normalize_from_schema
 from ncs_reporter.view_models.common import GenericNavContext, _count_alerts, _iter_hosts, status_badge_meta
 
@@ -29,7 +30,6 @@ _SEVERITY_ORDER = {"CRITICAL": 0, "WARNING": 1, "INFO": 2}
 def _resolve_field_ref(field_ref: str, context: dict[str, Any]) -> Any:
     """Resolve a field reference — Jinja2 expression ({{ var }}) or bare field name."""
     if "{{" in field_ref:
-        from ncs_reporter.normalization._when import _compile_template
         try:
             return _compile_template(field_ref).render(**context)
         except Exception:
@@ -47,9 +47,19 @@ def _resolve_field_ref(field_ref: str, context: dict[str, Any]) -> Any:
 
 
 def _format_value(fmt: str | None, value: Any) -> str:
-    """Apply a format string to a value, returning str(value) on failure or no format."""
+    """Apply a format string to a value, returning str(value) on failure or no format.
+
+    Accepts both Python ``str.format`` syntax (``{value:.1f}``) and Jinja2
+    expressions (``{{ value | round(1) }}``). Jinja is detected by the
+    ``{{`` marker; everything else goes through ``.format()``.
+    """
     if not fmt:
         return str(value)
+    if "{{" in fmt:
+        try:
+            return str(_compile_template(fmt).render(value=value))
+        except Exception:
+            return str(value)
     try:
         if "{value" in fmt:
             return fmt.format(value=value)
@@ -190,6 +200,13 @@ def _render_markdown(widget: MarkdownWidget, fields: dict[str, Any], ctx: dict[s
     return _widget_base(widget, content=widget.content)
 
 
+def _render_log_tail(widget: LogTailWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Render a LogTailWidget — scrollable monospace block of log lines."""
+    raw = _resolve_field_ref(widget.source, fields)
+    text = "\n".join(str(line) for line in raw) if isinstance(raw, list) else str(raw or "")
+    return _widget_base(widget, text=text, max_height=widget.max_height)
+
+
 def _render_alert_panel(widget: AlertPanelWidget, fields: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
     """Render an AlertPanelWidget."""
     return _widget_base(widget, alerts=ctx.get("alerts", []))
@@ -301,6 +318,7 @@ _WIDGET_DISPATCH: dict[type, _WidgetHandler] = {
     TableWidget: _render_table,
     ProgressBarWidget: _render_progress_bar,
     MarkdownWidget: _render_markdown,
+    LogTailWidget: _render_log_tail,
     AlertPanelWidget: _render_alert_panel,
     StatCardsWidget: _render_stat_cards,
     GroupedTableWidget: _render_grouped_table,

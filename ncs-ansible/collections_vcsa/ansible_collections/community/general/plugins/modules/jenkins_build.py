@@ -206,7 +206,7 @@ class JenkinsBuild:
         try:
             response = self.server.get_build_info(self.name, self.build_number)
             return response
-        except jenkins.JenkinsException:
+        except jenkins.JenkinsException as e:
             response = {}
             response["result"] = "ABSENT"
             return response

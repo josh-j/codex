@@ -39,24 +39,6 @@ class ListFilterExclude(BaseModel):
     # (regex patterns start with ^). Items matching ANY exclude rule are removed.
 
 
-class ListFilterSpec(BaseModel):
-    """Declarative list filtering: exclude items by field value or pattern."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    exclude: dict[str, list[str]] = Field(default_factory=dict)
-    include: dict[str, list[str]] = Field(default_factory=dict)
-
-
-class CountWhereSpec(BaseModel):
-    """Count items in a list matching field=value filters (case-insensitive for strings)."""
-
-    model_config = ConfigDict(extra="allow")
-
-    # Each key is a field name, value is the required value.
-    # All conditions must match (AND). Count of matching items is the result.
-
-
 class ScriptSpec(BaseModel):
     """Nested script specification: path + optional args and timeout."""
 
@@ -85,20 +67,44 @@ class ThresholdSpec(BaseModel):
 class FieldSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # Exactly one of path / compute / script / const must be set.
+    # Exactly one of path / compute / normalize / template / script / const must be set.
     # path    — dot-notation traversal with optional pipe transform
     # compute — arithmetic expression using {field_name} references
+    # normalize — declarative data shaping DSL for objects/lists/scalars
+    # template — full Jinja template using current fields; preserves native values
     # script  — nested spec with path, args, timeout; receives JSON on stdin, returns JSON on stdout
     # const   — literal value (string, number, bool, list, dict) used as-is
-    path: str | None = Field(default=None, validation_alias=AliasChoices("path", "from"))
-    compute: str | None = Field(default=None, validation_alias=AliasChoices("compute", "expr"))
-    const: Any = Field(default=_SENTINEL_UNSET)
+    path: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("path", "from"),
+        description="Dotted-path lookup into the raw bundle, with optional `| transform` pipeline. Alias: `from`. See `FIELDS.md` § path.",
+    )
+    compute: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("compute", "expr"),
+        description="Jinja2 expression evaluated against other fields. Alias: `expr`. Use for one-line scalar derivations.",
+    )
+    normalize: dict[str, Any] | None = Field(
+        default=None,
+        description="Declarative DSL for shaping raw lists/dicts/scalars. Preferred over `compute` for multi-step or list-shaping logic. See `FIELDS.md` § normalize.",
+    )
+    template: str | None = Field(
+        default=None,
+        description="Multi-statement Jinja2 template. Lower-level fallback when `normalize:` cannot express the shape.",
+    )
+    const: Any = Field(
+        default=_SENTINEL_UNSET,
+        description="Hard-coded literal value (any type).",
+    )
 
-    @field_validator("compute", mode="before")
+    @field_validator("compute", "template", mode="before")
     @classmethod
-    def _coerce_compute(cls, v: Any) -> Any:
+    def _coerce_expression(cls, v: Any) -> Any:
         return str(v) if v is not None and not isinstance(v, str) else v
-    script: ScriptSpec | None = Field(default=None)
+    script: ScriptSpec | None = Field(
+        default=None,
+        description="Subprocess escape hatch — runs a Python helper from the collection's `ncs_configs/scripts/`. Avoid in new code; prefer `normalize:`.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -140,48 +146,38 @@ class FieldSpec(BaseModel):
 
     type: Literal[
         "str", "int", "float", "bool", "list", "dict", "bytes", "percentage", "datetime", "duration_seconds"
-    ] = "str"
-    fallback: Any = Field(default=_SENTINEL_UNSET, validation_alias=AliasChoices("fallback", "default"))
-    # Value used instead of fallback when the path is *provably broken* (i.e. does
-    # not resolve against the example bundle).  None means use a type-appropriate
-    # default: "ERROR" for str, -1 for int/float.  Set explicitly to override.
-    sentinel: Any = None
-
-    # Optional default format string applied during view model rendering
-    format: str | None = None
-
-    # --- List processing (applied after path/compute/script resolution) ---
-    # Filter list items by field values. Applied before list_map.
-    list_filter: ListFilterSpec | None = None
-    # Compute derived fields on each list item using arithmetic expressions.
-    # Keys are new field names, values are expressions using {item_field} refs.
-    list_map: dict[str, str] = Field(default_factory=dict)
-    # Count list items matching field=value conditions. Overrides the resolved
-    # value with the integer count. Useful for aggregation without scripts.
-    count_where: dict[str, Any] | None = None
-    # True if ANY list item matches all field=value conditions.
-    any_where: dict[str, Any] | None = None
-    # True if ALL list items match all field=value conditions.
-    all_where: dict[str, Any] | None = None
-    # Sum a numeric field across all list items (after list_filter if set).
-    sum_field: str | None = None
-    # Display thresholds for widgets that show this var (warn_if_above / crit_if_above).
-    thresholds: ThresholdSpec | None = None
+    ] = Field(
+        default="str",
+        description="Type coercion applied after the producer runs. Strict — failures fall through to `fallback:` or raise.",
+    )
+    fallback: Any = Field(
+        default=_SENTINEL_UNSET,
+        validation_alias=AliasChoices("fallback", "default"),
+        description="Value used when the producer returns nothing or coercion fails.",
+    )
+    sentinel: Any = Field(
+        default=None,
+        description="Marks 'not applicable' (e.g. `'N/A'`) — renders as that literal and is excluded from threshold evaluation.",
+    )
+    format: str | None = Field(
+        default=None,
+        description="Python f-string-style format applied for display only (e.g. `{:.1f}%`). Does not affect alert evaluation.",
+    )
+    thresholds: ThresholdSpec | None = Field(
+        default=None,
+        description="Numeric breakpoints — produces boolean companions `<field>_exceeds_warn` / `<field>_exceeds_crit` referenceable from alerts and widgets.",
+    )
 
     @model_validator(mode="after")
     def _require_one_source(self) -> "FieldSpec":
         has_const = self.const is not _SENTINEL_UNSET
-        sources = sum(x is not None for x in [self.path, self.compute, self.script]) + int(has_const)
+        sources = sum(x is not None for x in [self.path, self.compute, self.normalize, self.template, self.script]) + int(has_const)
         # Allow metadata-only vars (e.g., just thresholds on auto-imported data)
         has_metadata = self.thresholds is not None
         if sources == 0 and not has_metadata:
-            raise ValueError("FieldSpec requires one of: 'path', 'compute', 'script', 'const', or 'thresholds'")
+            raise ValueError("FieldSpec requires one of: 'path', 'compute', 'normalize', 'template', 'script', 'const', or 'thresholds'")
         if sources > 1:
-            raise ValueError("FieldSpec: 'path', 'compute', 'script', and 'const' are mutually exclusive")
-        # At most one aggregation mode
-        agg_count = sum(x is not None for x in [self.count_where, self.any_where, self.all_where, self.sum_field])
-        if agg_count > 1:
-            raise ValueError("FieldSpec: 'count_where', 'any_where', 'all_where', and 'sum_field' are mutually exclusive")
+            raise ValueError("FieldSpec: 'path', 'compute', 'normalize', 'template', 'script', and 'const' are mutually exclusive")
         # Auto-derive fallback from type when not explicitly set
         if self.fallback is _SENTINEL_UNSET:
             self.fallback = _TYPE_DEFAULT_FALLBACKS.get(self.type)
@@ -218,17 +214,37 @@ class ActionSpec(BaseModel):
 
 
 class AlertRule(BaseModel):
+    """Alert rule — fires when `when:` is truthy. See `ALERTS.md`."""
+
     model_config = ConfigDict(extra="forbid")
 
-    id: str
-    category: str
-    severity: Literal["CRITICAL", "WARNING", "INFO"] = "WARNING"
-    when: str  # Jinja2 expression evaluated against extracted fields
-    action: ActionSpec | None = None
-    cooldown: str = "7d"  # Minimum time between re-firing (e.g., "7d", "24h", "1h")
-    msg: str = Field(validation_alias=AliasChoices("msg", "message"))
-    items: str | None = None  # Jinja2 expression returning a filtered list for affected_items
-    suppress_if: str | list[str] | None = None
+    id: str = Field(description="Stable identifier for the alert. Used by `suppress_if:` and the alert rollup.")
+    category: str = Field(description="Free-text category shown in the alert panel header (e.g. 'Patching', 'Health', 'Faults').")
+    severity: Literal["CRITICAL", "WARNING", "INFO"] = Field(
+        default="WARNING",
+        description="CRITICAL / WARNING / INFO. Drives the report health rollup and color coding.",
+    )
+    when: str = Field(description="Jinja2 boolean expression — alert fires when truthy. Unquoted (Ansible convention).")
+    action: ActionSpec | None = Field(
+        default=None,
+        description="Action to invoke when the alert fires (e.g. `playbook` or `command`). See `SCHEDULING_AND_ALERT_ACTIONS.md`.",
+    )
+    cooldown: str = Field(
+        default="7d",
+        description="Minimum interval between successive action invocations for the same alert id (e.g. `7d`, `24h`, `1h`).",
+    )
+    msg: str = Field(
+        validation_alias=AliasChoices("msg", "message"),
+        description="Alert message template. Alias: `message`. Rendered against the per-host context.",
+    )
+    items: str | None = Field(
+        default=None,
+        description="Optional Jinja2 expression returning the list of affected items. Defaults to the first list-typed field referenced in `when:`.",
+    )
+    suppress_if: str | list[str] | None = Field(
+        default=None,
+        description="Alert id (or list of ids) — when any listed alert fires, this one is suppressed.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -238,8 +254,14 @@ class AlertRule(BaseModel):
 
 class WidgetLayout(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    width: Literal["full", "half", "third", "quarter"] = "full"
-    row: int | None = None
+    width: Literal["full", "half", "third", "quarter"] = Field(
+        default="full",
+        description="`full` / `half` / `third` / `quarter` — controls grid placement.",
+    )
+    row: int | None = Field(
+        default=None,
+        description="Row height hint for the widget.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -270,15 +292,24 @@ class KeyValueField(BaseModel):
     as_: Literal["status-badge", "severity-tally"] | None = Field(default=None, alias="as")
 
 
-class KeyValueWidget(BaseModel):
+class _BaseWidget(BaseModel):
+    """Common fields every widget shares — slug, name, layout, when.
+
+    Each subclass narrows ``type`` with its own ``Literal[...]`` so the
+    discriminator on ``ReportWidget`` still selects unambiguously."""
     model_config = ConfigDict(extra="forbid")
 
     slug: str = ""
     name: str
-    type: Literal["key_value"]
     layout: WidgetLayout = Field(default_factory=WidgetLayout)
     when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    fields: list[KeyValueField]
+
+
+class KeyValueWidget(_BaseWidget):
+    """Two-column label/value list. Use for host-identity blocks ('System Information', 'Memory & CPU')."""
+
+    type: Literal["key_value"] = Field(description="Widget kind — must be `key-value`. Renders a label/value list.")
+    fields: list[KeyValueField] = Field(description="List of `{name, value, ...}` entries — each is rendered as one label/value row.")
 
 
 class StyleRule(BaseModel):
@@ -290,59 +321,64 @@ class StyleRule(BaseModel):
 class TableColumn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str
-    value: JinjaValueRef
-    as_: Literal["status-badge", "severity-tally"] | None = Field(default=None, alias="as")
-    format: str | None = None
-    link_field: str | None = None
-    style_rules: list[StyleRule] = Field(default_factory=list)
+    name: str = Field(description="Column header text.")
+    value: JinjaValueRef = Field(description="Per-row Jinja2 expression resolving against each row dict (e.g. `\"{{ name }}\"`).")
+    as_: Literal["status-badge", "severity-tally"] | None = Field(
+        default=None,
+        alias="as",
+        description="Render hint: `status-badge` (color-coded chip), `severity-tally`.",
+    )
+    format: str | None = Field(default=None, description="Display format applied after `value:` resolves (e.g. `{:.1f}%`).")
+    link_field: str | None = Field(default=None, description="Field name whose value is used as the link target for this cell.")
+    style_rules: list[StyleRule] = Field(default_factory=list, description="Conditional CSS rules (e.g. apply `.sv-critical` when `value > 90`).")
 
 
-class TableWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class TableWidget(_BaseWidget):
+    """Tabular widget — one row per item in `rows:`, one column per `columns[]` entry. See `WIDGETS.md` § table."""
 
-    slug: str = ""
-    name: str
-    type: Literal["table"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
-    columns: list[TableColumn]
-
-
-class AlertPanelWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    slug: str = ""
-    name: str
-    type: Literal["alert_panel"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
+    type: Literal["table"] = Field(description="Widget kind — must be `table`.")
+    rows_field: str = Field(
+        validation_alias=AliasChoices("rows_field", "rows"),
+        description="Jinja2 expression returning the row list. Alias: `rows`.",
+    )
+    columns: list[TableColumn] = Field(description="Column definitions — each has `name`, `value`, optional `as`/`format`/`link_field`/`style_rules`.")
 
 
-class ProgressBarWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class AlertPanelWidget(_BaseWidget):
+    """Lists fired alerts with severity badges. Auto-injected by the renderer; declare explicitly to control placement."""
 
-    slug: str = ""
-    name: str
-    type: Literal["progress_bar"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    value: JinjaValueRef  # 0-100 percentage expression
-    value_label: str | None = None  # Optional secondary field name used for text label
-    color: Literal["auto", "green", "yellow", "red", "blue"] = "auto"
-    thresholds: ThresholdSpec | None = None
+    type: Literal["alert_panel"] = Field(description="Widget kind — must be `alert-panel`.")
 
 
-class MarkdownWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class ProgressBarWidget(_BaseWidget):
+    """Single horizontal bar with optional thresholds — useful for utilization metrics (CPU %, memory %, disk %)."""
 
-    slug: str = ""
-    name: str
-    type: Literal["markdown"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    content: str
+    type: Literal["progress_bar"] = Field(description="Widget kind — must be `progress-bar`.")
+    value: JinjaValueRef = Field(description="Jinja2 expression returning a numeric percentage 0–100.")
+    value_label: str | None = Field(default=None, description="Optional override for the bar's text label (default: `value`).")
+    color: Literal["auto", "green", "yellow", "red", "blue"] = Field(
+        default="auto",
+        description="Override the default green-bar color.",
+    )
+    thresholds: ThresholdSpec | None = Field(
+        default=None,
+        description="Numeric breakpoints (`warn_if_above`, `crit_if_above`) — colors the bar accordingly.",
+    )
+
+
+class MarkdownWidget(_BaseWidget):
+    """Free-form Markdown content. `{{ … }}` Jinja expressions render against the per-host context."""
+
+    type: Literal["markdown"] = Field(description="Widget kind — must be `markdown`.")
+    content: str = Field(description="Markdown body. Jinja2 expressions inside `{{ ... }}` are rendered against the per-host context.")
+
+
+class LogTailWidget(_BaseWidget):
+    """Fixed-height scrollable log tail — typically wraps `auth_log_lines` or `recent_journal_events`."""
+
+    type: Literal["log_tail"] = Field(description="Widget kind — must be `log-tail`. Renders a fixed-height scrollable log tail.")
+    source: JinjaValueRef = Field(description="Jinja2 expression returning the list of log lines (e.g. `\"{{ auth_log_lines }}\"`).")
+    max_height: str = Field(default="400px", description="Pixel height of the scroll viewport (default: 400px).")
 
 
 class StatCardSpec(BaseModel):
@@ -355,28 +391,23 @@ class StatCardSpec(BaseModel):
     thresholds: ThresholdSpec | None = None
 
 
-class StatCardsWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class StatCardsWidget(_BaseWidget):
+    """Row of headline stat cards rendered above other widgets. Each card shows a single label/value pair."""
 
-    slug: str = ""
-    name: str
-    type: Literal["stat_cards"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    cards: list[StatCardSpec]
+    type: Literal["stat_cards"] = Field(description="Widget kind — must be `stat-cards`.")
+    cards: list[StatCardSpec] = Field(description="Card definitions — each has `name`, `value`, optional `as`.")
 
 
-class GroupedTableWidget(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class GroupedTableWidget(_BaseWidget):
+    """Like `TableWidget` but rows are grouped under a sub-header derived from `group_by:`."""
 
-    slug: str = ""
-    name: str
-    type: Literal["grouped_table"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    rows_field: str = Field(validation_alias=AliasChoices("rows_field", "rows"))
-    group_by: str
-    columns: list[TableColumn]
+    type: Literal["grouped_table"] = Field(description="Widget kind — must be `grouped-table`.")
+    rows_field: str = Field(
+        validation_alias=AliasChoices("rows_field", "rows"),
+        description="Jinja2 expression returning the row list. Alias: `rows`.",
+    )
+    group_by: str = Field(description="Field on each row whose value forms the group header.")
+    columns: list[TableColumn] = Field(description="Column definitions for the inner table.")
 
 
 class InventorySection(BaseModel):
@@ -396,30 +427,18 @@ class InventorySection(BaseModel):
     columns: list[TableColumn]
 
 
-class InventoryWidget(BaseModel):
-    """One-or-many subtable inventory widget — replaces the old pattern of
-    declaring separate ``type: table`` and ``type: stat_cards`` widgets
-    for the same scope.
+class InventoryWidget(_BaseWidget):
+    """Inventory landing-page widget — stat-card header + tree-walker children section + per-tier subtables."""
 
-    Layout: optional aggregate ``stat_cards`` header (Footprint / KPIs)
-    above one-or-more named ``sections``. Empty sections (where the
-    ``rows`` field resolves to an empty list, or whose ``when`` clause
-    is falsy) are suppressed automatically so a sparse environment
-    doesn't show empty sub-tables.
-
-    A single-section inventory is valid — at that point it's just a
-    table with a stat-cards header. The point of the widget type is
-    that the *count* of sections is a property of the page, not of
-    the widget."""
-    model_config = ConfigDict(extra="forbid")
-
-    slug: str = ""
-    name: str
-    type: Literal["inventory"]
-    layout: WidgetLayout = Field(default_factory=WidgetLayout)
-    when: str | None = Field(default=None, validation_alias=AliasChoices("when", "visible_if"))
-    stat_cards: list[StatCardSpec] = Field(default_factory=list)
-    sections: list[InventorySection] = Field(default_factory=list)
+    type: Literal["inventory"] = Field(description="Widget kind — must be `inventory`. Renders a stat-card header plus a tree-walker-injected children section plus per-tier subtables.")
+    stat_cards: list[StatCardSpec] = Field(
+        default_factory=list,
+        description="Optional headline stat cards rendered above the children section.",
+    )
+    sections: list[InventorySection] = Field(
+        default_factory=list,
+        description="Per-tier subtables — each has `name`, `rows`, `columns`, optional `when`.",
+    )
 
 
 ReportWidget = Annotated[
@@ -429,6 +448,7 @@ ReportWidget = Annotated[
         AlertPanelWidget,
         ProgressBarWidget,
         MarkdownWidget,
+        LogTailWidget,
         StatCardsWidget,
         GroupedTableWidget,
         InventoryWidget,
@@ -443,10 +463,20 @@ ReportWidget = Annotated[
 
 
 class DetectionSpec(BaseModel):
+    """Rules that match a raw bundle to this schema."""
+
     model_config = ConfigDict(extra="forbid")
 
-    keys_any: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_any", "any"))
-    keys_all: list[str] = Field(default_factory=list, validation_alias=AliasChoices("keys_all", "all"))
+    keys_any: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("keys_any", "any"),
+        description="Match if *any* listed bundle key is present (e.g. `[raw_apic]`, `[raw_vcsa]`). Alias: `any`.",
+    )
+    keys_all: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("keys_all", "all"),
+        description="Match only if *all* listed bundle keys are present. Alias: `all`.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -537,12 +567,11 @@ class TreeLevel(BaseModel):
 
 
 class TreeSpec(BaseModel):
-    """Declarative tree shape for a product. Lives on an inventory-tier
-    schema (``vsphere.yaml``, etc.) and replaces hand-rolled tree builders.
+    """Deprecated declarative tree shape for a product.
 
-    The reporter walks ``<reports_root>/<root_slug>/`` and uses the
-    collector-written tree_path on disk to slot each bundle into its
-    declared level.
+    Current inventory trees are inferred from collector-written folders.
+    This model remains for backward compatibility with older configs and
+    direct callers of ``build_tree_from_spec``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -575,36 +604,46 @@ class MergeFromChildrenSpec(BaseModel):
     )
 
 
-class InlineEvaluationSpec(BaseModel):
-    """Run another schema against a synthetic seed built from this node's
-    data. The resulting alerts merge into the host node's own alerts and
-    propagate up via the existing descendant-rollup pass.
-
-    Lets a schema like ``esxi.yaml`` declare "also evaluate ``vm.yaml``
-    against my ``virtual_machines`` list" without the reporter knowing
-    anything about either schema's contents.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    schema_name: str = Field(validation_alias=AliasChoices("schema_name", "schema"))
-    # Seed values can include Jinja expressions referencing the host
-    # node's bundle, e.g. "{{ raw_esxi.data.virtual_machines }}".
-    seed_template: dict[str, Any] = Field(default_factory=dict)
-
-
 class ReportSchema(BaseModel):
+    """YAML-driven report schema for ncs_reporter (full report config)."""
+
     model_config = ConfigDict(extra="forbid")
 
-    name: str = ""  # derived from platform path if not set
-    platform: str = ""
+    name: str = Field(
+        default="",
+        description="Schema name (alphanumeric + underscore). Identifies the schema in logs and CLI flags.",
+    )
+    platform: str = Field(
+        default="",
+        description="Platform identifier — slash-separated for nested platforms (e.g. `vmware/vcsa`, `linux/ubuntu`, `aci/apic`). Becomes the join key between raw bundles, schemas, and the rendered report tree.",
+    )
     platform_spec: PlatformSpec | None = Field(default=None, exclude=True)
-    display_name: str = Field(default="", validation_alias=AliasChoices("display_name", "title"))
-    path_prefix: str | None = None
-    detection: DetectionSpec = Field(default_factory=DetectionSpec)  # auto-derived from name
-    fields: dict[str, FieldSpec] = Field(default_factory=dict, validation_alias=AliasChoices("fields", "vars"))
-    alerts: list[AlertRule] = Field(default_factory=list)
-    widgets: list[ReportWidget] = Field(default_factory=list)
+    display_name: str = Field(
+        default="",
+        validation_alias=AliasChoices("display_name", "title"),
+        description="Title shown in report headers and dashboards. Alias: `title`.",
+    )
+    path_prefix: str | None = Field(
+        default=None,
+        description="Override the default report-tree subdirectory. Most schemas leave this unset and inherit `<platform>/<hostname>/raw_*.yaml`.",
+    )
+    detection: DetectionSpec = Field(
+        default_factory=DetectionSpec,
+        description="Rules that match a raw bundle to this schema. See `docs/ncs-reporter-config/CONFIG_SCHEMA.md` § Detection.",
+    )
+    fields: dict[str, FieldSpec] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("fields", "vars"),
+        description="Field definitions — declared with `path`, `compute`, `normalize`, `template`, `script`, or `const`. Alias: `vars`. See `FIELDS.md`.",
+    )
+    alerts: list[AlertRule] = Field(
+        default_factory=list,
+        description="Alert rules — each with `id`, `severity`, `when`, `msg`. See `ALERTS.md`. Accepts `$include: <file>.yaml` to compose from a partial.",
+    )
+    widgets: list[ReportWidget] = Field(
+        default_factory=list,
+        description="Report-body widgets (stat-cards, key-value, table, grouped-table, alert-panel, progress-bar, markdown, log-tail, inventory). See `WIDGETS.md`. Accepts `$include`.",
+    )
     fleet_columns: list[FleetColumn] = Field(
         default_factory=list,
         validation_alias=AliasChoices(
@@ -613,16 +652,35 @@ class ReportSchema(BaseModel):
             "extra_product_widget_columns",
             "extra_fleet_widget_columns",
         ),
+        description="Extra columns to inject into the fleet/inventory landing page beyond the platform's defaults.",
     )
-    template_override: str | None = None
-    split_field: str | None = None
-    split_name_key: str = "name"
-    stig: StigConfig = Field(default_factory=StigConfig)
-    tree: TreeSpec | None = None
-    inline_evaluations: list[InlineEvaluationSpec] = Field(default_factory=list)
+    template_override: str | None = Field(
+        default=None,
+        description="Path to a Jinja2 template that replaces the default per-platform render template.",
+    )
+    split_field: str | None = Field(
+        default=None,
+        description="Bundle-key to split a multi-host raw payload by (used by per_host_split at emit time).",
+    )
+    split_name_key: str = Field(
+        default="name",
+        description="Inside each split shard, the key whose value names the resulting host file.",
+    )
+    stig: StigConfig = Field(
+        default_factory=StigConfig,
+        description="STIG-checklist wiring — only for platforms that ship a STIG remediation playbook.",
+    )
+    tree: TreeSpec | None = Field(
+        default=None,
+        description="Tree-rendering directives (legacy; most platforms inherit from `inventory_root.yaml`).",
+    )
 
-    # Track where this schema was loaded from (set post-load, not from YAML)
+    # Post-load private state — populated outside the YAML by the
+    # schema loader (`_source_path`, `_broken_paths`) and the
+    # extractor (`_producer_order`).
     _source_path: str | None = None
+    _broken_paths: frozenset[str] = frozenset()
+    _producer_order: list[str] | None = None
 
     @model_validator(mode="before")
     @classmethod

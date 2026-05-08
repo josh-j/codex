@@ -86,14 +86,6 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-cluster:
-    description:
-        - Information about the target cluster
-    returned: On success
-    type: dict
-    sample:
-        moid: cluster-79828,
-        name: test-cluster
 result:
     description:
         - Information about the DPM config update task, if something changed
@@ -120,18 +112,18 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import (
     ModulePyvmomiBase
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import (
     TaskError,
     RunningTaskMonitor
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._facts import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_facts import (
     ClusterFacts
 )
 
-from ansible.module_utils.common.text.converters import to_native
+from ansible.module_utils._text import to_native
 
 
 class VMwareCluster(ModulePyvmomiBase):
@@ -235,16 +227,10 @@ def main():
 
     result = dict(
         changed=False,
-        result={},
-        cluster=dict(
-            name="",
-            moid=""
-        )
+        result={}
     )
 
     cluster_dpm = VMwareCluster(module)
-    result['cluster']['name'] = cluster_dpm.cluster.name
-    result['cluster']['moid'] = cluster_dpm.cluster._GetMoId()
 
     config_is_different = cluster_dpm.check_dpm_config_diff()
     if config_is_different:

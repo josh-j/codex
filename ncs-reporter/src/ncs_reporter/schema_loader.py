@@ -167,7 +167,7 @@ def _load_schema_file(path: Path) -> ReportSchema | None:
         data = _expand_compact_syntax(data)
 
         schema = ReportSchema.model_validate(data)
-        object.__setattr__(schema, "_source_path", str(path))
+        schema._source_path = str(path)
         _attach_broken_paths(schema)
         return schema
     except Exception as exc:
@@ -184,11 +184,10 @@ def _attach_broken_paths(schema: ReportSchema) -> None:
     """
     example = load_example_bundle(schema)
     if example is None:
-        object.__setattr__(schema, "_broken_paths", frozenset())
         return
 
     broken = validate_schema_paths(schema, example)
-    object.__setattr__(schema, "_broken_paths", frozenset(broken.keys()))
+    schema._broken_paths = frozenset(broken.keys())
 
     for field_name, msg in broken.items():
         logger.warning("Schema '%s': %s", schema.name, msg)
@@ -408,7 +407,7 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
                 continue
             script = bundle.get("script")
             if isinstance(script, dict):
-                script_path = script.get("path", "")
+                script_path = script.get("path") or script.get("run", "")
                 base_args = dict(script.get("args", {}))
                 timeout = script.get("timeout", 30)
             else:
@@ -420,9 +419,11 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(spec, dict):
                     key = spec.get("key", field_name)
                     field_type = spec.get("type", "str")
+                    field_options = {k: v for k, v in spec.items() if k not in {"key", "type"}}
                 else:
                     key = str(spec)
                     field_type = "str"
+                    field_options = {}
                 entry: dict[str, Any] = {
                     "script": {
                         "path": script_path,
@@ -431,6 +432,7 @@ def _expand_compact_syntax(data: dict[str, Any]) -> dict[str, Any]:
                     },
                     "type": field_type,
                 }
+                entry.update(field_options)
                 fields[field_name] = entry
 
     return data
@@ -476,7 +478,7 @@ def load_schema_from_file(path: Path) -> ReportSchema:
         data = _expand_compact_syntax(data)
 
         schema = ReportSchema.model_validate(data)
-        object.__setattr__(schema, "_source_path", str(path))
+        schema._source_path = str(path)
         _attach_broken_paths(schema)
         return schema
     except pydantic.ValidationError as exc:

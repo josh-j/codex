@@ -324,20 +324,20 @@ def is_playbook_file(filename):
 
 
 def classify_collection_playbook(collection, filename):
-    """Given internal/<collection>/playbooks/<filename>, derive (segments, id, display_name).
+    """Given internal/<collection>/playbooks/<filename>, derive (segments, path, display_name).
 
     Segments are kept lowercase; NAME_MAP in to_output handles display casing.
     Files named <sub>_<name>.yml land under the sub-platform group when <sub>
     is in SUB_PLATFORMS[collection]; otherwise they bubble up to the collection group.
     """
     stem = os.path.splitext(filename)[0]
-    fqcn = "internal.{}.{}".format(collection, stem)
+    playbook_path = "collections/ansible_collections/internal/{}/playbooks/{}".format(collection, filename)
     subs = SUB_PLATFORMS.get(collection, set())
     if "_" in stem:
         first, rest = stem.split("_", 1)
         if first in subs:
-            return ([collection, first], fqcn, rest)
-    return ([collection], fqcn, stem)
+            return ([collection, first], playbook_path, rest)
+    return ([collection], playbook_path, stem)
 
 
 def add_playbook_file(path, playbook_id, segments, display_stem):
@@ -412,7 +412,9 @@ if os.path.isdir(app_base):
             stem = os.path.splitext(f)[0]
             add_playbook_file(path, playbook, ["Core"], stem)
 
-# 2. Collection playbooks: internal/<col>/playbooks/*.yml → FQCN internal.<col>.<stem>
+# 2. Collection playbooks: internal/<col>/playbooks/*.yml → repo-relative path.
+# ansible-playbook 2.19 does not execute collection playbooks by FQCN, so the
+# console stores the path it can pass to ansible-playbook and schedule checks.
 coll_root = os.path.join("collections", "ansible_collections", "internal")
 if os.path.isdir(coll_root):
     for collection in sorted(os.listdir(coll_root)):
@@ -425,8 +427,8 @@ if os.path.isdir(coll_root):
             path = os.path.join(pdir, f)
             if not os.path.isfile(path):
                 continue
-            segments, fqcn, display_stem = classify_collection_playbook(collection, f)
-            add_playbook_file(path, fqcn, ["Imported"] + segments, display_stem)
+            segments, playbook_id, display_stem = classify_collection_playbook(collection, f)
+            add_playbook_file(path, playbook_id, ["Imported"] + segments, display_stem)
 
 def to_output(tree):
     """Convert nested tree dict to output format with Group/Items/Children."""

@@ -1,0 +1,11 @@
+# Imports the monorepo's shared recipes when the monorepo is
+# alongside this repo; silently no-ops otherwise so the sibling works
+# in isolation.
+
+import? '../ncs-ansible/shared.just'
+
+# Collection-specific recipes below. See shared.just for
+# lint / yamllint / build / clean.
+
+test:       (_test_check "playbooks/ise_collect.yml")
+test-apply: (_test_apply "playbooks/ise_collect.yml")

@@ -659,6 +659,7 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
          "ha_enabled": False, "drs_enabled": False, "cpu_usage_pct": 6.2, "mem_usage_pct": 12.5},
     ]
     esxi_host_count = 4
+    _infra_patterns = ["^vCenter$", "^ESXi-.*$"]
 
     return {
         "raw_vcsa": {
@@ -712,8 +713,20 @@ def make_vcenter_bundle(hostname: str, *, unhealthy: bool = True) -> dict:
                 "tag_categories": [],
                 "tags": [],
                 "active_alarms": alarms,
+                # ESXi + VM inventory (shape matches collect.yaml's _flat_esxi_hosts /
+                # _flat_virtual_machines / vms_info_raw / snapshots_raw outputs).
+                "esxi_hosts": [
+                    {"name": f"esxi-{i:02d}.example.lab", "folder": "DC-Production/host/Prod-Cluster-01"}
+                    for i in range(1, esxi_host_count + 1)
+                ],
+                "virtual_machines": [],
+                "vm_count": 0,
+                "vms_info_raw": {"virtual_machines": []},
+                "snapshots_raw": [],
+                "snapshot_count": 0,
+                "infra_patterns": _infra_patterns,
                 # Config
-                "config": {"infrastructure_vm_patterns": ["^vCenter$", "^ESXi-.*$"]},
+                "config": {"infrastructure_vm_patterns": _infra_patterns},
             },
         }
     }

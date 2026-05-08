@@ -1,2 +1,3 @@
 ---
-test_cluster: cluster_test
+test_cluster: "{{ tiny_prefix }}_cluster_test"
+run_on_simulator: false

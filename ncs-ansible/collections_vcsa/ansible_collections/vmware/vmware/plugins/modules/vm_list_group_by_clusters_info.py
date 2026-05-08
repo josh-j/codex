@@ -116,7 +116,7 @@ vm_list_group_by_clusters_info:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import rest_compatible_argument_spec
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import rest_compatible_argument_spec
 
 
 class VmwareVMList(ModuleRestBase):
@@ -195,7 +195,12 @@ def main():
 
     vmware_vm_list_group_by_clusters_mgr = VmwareVMList(module)
     vm_list_group_by_clusters_info = vmware_vm_list_group_by_clusters_mgr.get_vm_list_group_by_clusters()
-    module.exit_json(changed=False, vm_list_group_by_clusters_info=vm_list_group_by_clusters_info)
+    # Till we will release the next major version 2.0.0 we should keep the deprecated module return value
+    if not module._name.endswith('_info'):
+        module.exit_json(changed=False, vm_list_group_by_clusters_info=vm_list_group_by_clusters_info,
+                         vm_list_group_by_clusters=vm_list_group_by_clusters_info)
+    else:
+        module.exit_json(changed=False, vm_list_group_by_clusters_info=vm_list_group_by_clusters_info)
 
 
 if __name__ == '__main__':

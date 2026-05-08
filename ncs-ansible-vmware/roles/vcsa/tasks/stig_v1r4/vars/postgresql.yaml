@@ -1,3 +1,67 @@
+---
+# internal.vmware.vcsa : tasks/stig_v1r4/vars/postgresql.yaml
+# Toggle flags (run_*) + variable bindings consumed by stig_v1r4/postgresql.yaml.
+# Loaded once per service from stig_service.yaml::include_vars.
+
+# =============================================================================
+# TOGGLE FLAGS
+# =============================================================================
+
+run_create_backups: true
+
+
+# VCPG-70-000002
+run_postgres_conf_log_line_prefix: true
+
+# VCPG-70-000003
+run_postgres_conf_file_permissions: true
+
+# VCPG-70-000004
+run_postgres_conf_log_truncate_on_rotation: true
+
+# VCPG-70-000005
+run_postgres_log_file_permissions: true
+
+# VCPG-70-000008
+run_postgres_conf_port: true
+
+# VCPG-70-000009
+run_postgres_hba_conf_local_trust: true
+
+# VCPG-70-000010
+run_postgres_conf_ps_encryption: true
+
+# VCPG-70-000011
+run_postgres_conf_ssl: true
+
+# VCPG-70-000012
+run_postgres_key_file_permissions: true
+
+# VCPG-70-000013
+run_postgres_conf_ssl_ciphers: true
+
+# VCPG-70-000014
+run_postgres_conf_write_log_entries: true
+
+# VCPG-70-000016
+run_postgres_conf_client_min_messages: true
+
+# VCPG-70-000017
+run_postgres_conf_logging_collector: true
+
+# VCPG-70-000018
+run_postgres_conf_log_destination: true
+
+# VCPG-70-000019
+run_postgres_syslog_config: true
+
+# VCPG-70-000020
+run_postgres_conf_log_timezone: true
+
+# =============================================================================
+# VARIABLES
+# =============================================================================
+
 # vPostgres
 # /storage/db/vpostgres/postgresql.conf
 var_postgres_conf_file: '/storage/db/vpostgres/postgresql.conf'

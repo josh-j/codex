@@ -22,6 +22,7 @@ author:
 
 requirements:
     - vSphere Automation SDK
+    - aiohttp
 
 seealso:
     - module: vmware.vmware.deploy_content_library_ovf
@@ -127,21 +128,20 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-vm:
-    description:
-        - Identifying information about the vm
-    returned: always
-    type: dict
-    sample: {
-        "vm": {
-            "moid": "vm-111111",
-            "name": "my-vm"
-        },
-    }
+vm_name:
+  description: The name of the vm, as specified by the input parameter vm_name
+  returned: always
+  type: str
+  sample: myvm
+vm_moid:
+  description: The MOID of the deployed VM
+  returned: when state is present
+  type: str
+  sample: vm-1000
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import rest_compatible_argument_spec
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import rest_compatible_argument_spec
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
 from ansible_collections.vmware.vmware.plugins.module_utils._module_deploy_vm_base import (
     ModuleVmDeployBase,
@@ -166,29 +166,31 @@ class VmwareContentDeployTemplate(ModuleVmDeployBase):
         self._library_item_id = self.params.get('library_item_id')
 
     def create_deploy_spec(self):
-        deploy_spec_args = dict(
-            name=self.params['vm_name'],
-            powered_on=self.params['power_on_after_deploy']
-        )
-
         placement_spec = TemplateLibraryItems.DeployPlacementSpec(folder=self.vm_folder._GetMoId())
         if self.params.get('esxi_host'):
-            placement_spec.host = self.placement_service.get_esxi_host()._GetMoId()
+            placement_spec.host = self.get_esxi_host_by_name_or_moid(
+                self.params['esxi_host'],
+                fail_on_missing=True
+            )._GetMoId()
 
         if self.resource_pool:
             placement_spec.resource_pool = self.resource_pool._GetMoId()
 
-        deploy_spec_args['placement'] = placement_spec
-
         if self.datastore:
-            deploy_spec_args['vm_home_storage'] = TemplateLibraryItems.DeploySpecVmHomeStorage(
+            vm_home_storage_spec = TemplateLibraryItems.DeploySpecVmHomeStorage(
                 datastore=to_native(self.datastore._GetMoId())
             )
-            deploy_spec_args['disk_storage'] = TemplateLibraryItems.DeploySpecDiskStorage(
+            disk_storage_spec = TemplateLibraryItems.DeploySpecDiskStorage(
                 datastore=to_native(self.datastore._GetMoId())
             )
 
-        return TemplateLibraryItems.DeploySpec(**deploy_spec_args)
+        return TemplateLibraryItems.DeploySpec(
+            name=self.params['vm_name'],
+            placement=placement_spec,
+            vm_home_storage=vm_home_storage_spec,
+            disk_storage=disk_storage_spec,
+            powered_on=self.params['power_on_after_deploy']
+        )
 
     def deploy(self, deploy_spec):
         try:

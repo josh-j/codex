@@ -119,7 +119,7 @@ def core(module):
     present_sshkeys = []
     try:
         present_sshkeys = extract_present_sshkeys(organization_json)
-    except (KeyError, IndexError):
+    except (KeyError, IndexError) as e:
         module.fail_json(changed=False, data="Error while extracting present SSH keys from API")
 
     if state in ('present',):

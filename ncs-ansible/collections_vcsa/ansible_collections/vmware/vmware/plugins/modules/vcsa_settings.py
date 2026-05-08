@@ -115,17 +115,6 @@ options:
           description:
             - Define password for the proxy server if proxy requires authentication.
           type: str
-        always_update_password:
-            description:
-                - If true and O(proxy[].password) is set, this module will always report a change and
-                  set the password value to O(proxy[].password) .
-                - If false, other properties are still checked for differences. If a difference is found,
-                  the value of O(proxy[].password) is still used.
-                - If O(proxy[].password) is unset, this parameter is ignored.
-                - This option is needed because there is no way to check the current password value and
-                  compare it against the desired password value.
-            default: true
-            type: bool
   dcui_enabled:
     description:
       - Enable/Disable state of Direct Console User Interface (DCUI TTY2).
@@ -250,22 +239,11 @@ vcsa_settings:
     "ssh_enabled": true,
     "timesync_mode": "ntp"
   }
-vcsa:
-  description:
-    - Identifying information about the appliance
-  returned: On success
-  type: dict
-  sample: {
-    "vcsa": {
-      "hostname": "my-appliance",
-      "port": 443
-    },
-  }
 '''
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import rest_compatible_argument_spec
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import rest_compatible_argument_spec
 
 
 class VmwareVcsaSettings(ModuleRestBase):
@@ -435,19 +413,11 @@ class VmwareVcsaSettings(ModuleRestBase):
 
         current = self.api_networking.Proxy.list()
         for p in proxy:
-            c = current[p['protocol']]
-            if p['enabled']:
-                change_required = any([
-                    c.enabled != p['enabled'],
-                    c.server != p['url'],
-                    c.port != p['port'],
-                    getattr(c, 'username', None) != p.get('username', None),
-                    p.get('password', None) is not None and p.get('always_update_password')
-                ])
-            else:
-                change_required = bool(c.enabled != p['enabled'])
+            if not p['enabled']:
+                continue
 
-            if change_required:
+            c = current[p['protocol']]
+            if c.server != p['url'] or c.port != p['port'] or c.username != p['username'] or p['password'] is not None or c.enabled != p['enabled']:
                 self.changed = True
                 if not self.module.check_mode:
                     current = self.api_networking.Proxy.set(
@@ -455,8 +425,8 @@ class VmwareVcsaSettings(ModuleRestBase):
                         config=self.api_networking.Proxy.Config(
                             server=p['url'],
                             port=p['port'],
-                            username=p.get('username', None),
-                            password=p.get('password', None),
+                            username=p['username'],
+                            password=p['password'],
                             enabled=p['enabled']
                         )
                     )
@@ -580,7 +550,6 @@ def main():
                 protocol=dict(type='str', required=True),
                 username=dict(type='str'),
                 password=dict(type='str', no_log=True),
-                always_update_password=dict(type='bool', default=True),
             )),
             dns_servers=dict(type='list', elements='str'),
             dns_domains=dict(type='list', elements='str'),
@@ -604,14 +573,7 @@ def main():
 
     vmware_system = VmwareVcsaSettings(module)
     vmware_system.vcsa_settings()
-    module.exit_json(
-        changed=vmware_system.changed,
-        vcsa_settings=vmware_system.info,
-        vcsa={
-            'hostname': module.params['hostname'],
-            'port': module.params['port']
-        }
-    )
+    module.exit_json(changed=vmware_system.changed, vcsa_settings=vmware_system.info)
 
 
 if __name__ == '__main__':

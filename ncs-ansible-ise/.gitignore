@@ -1,0 +1,10 @@
+*.tar.gz
+*.retry
+.cache/
+.ansible/
+.pytest_cache/
+__pycache__/
+build/
+dist/
+tests/inventory/
+tests/.vault_pass

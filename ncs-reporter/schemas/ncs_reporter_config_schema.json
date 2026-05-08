@@ -1,215 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NCS Reporter Config",
-  "description": "YAML-driven report schema for ncs_reporter. Accepts either a full report config (object) or a standalone alert list (array of AlertRule).",
-  "oneOf": [
-    {
-      "properties": {
-        "name": {
-          "default": "",
-          "title": "Name",
-          "type": "string"
-        },
-        "platform": {
-          "default": "",
-          "title": "Platform",
-          "type": "string"
-        },
-        "platform_spec": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PlatformSpec"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "display_name": {
-          "default": "",
-          "title": "Display Name",
-          "type": "string"
-        },
-        "path_prefix": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Path Prefix"
-        },
-        "detection": {
-          "$ref": "#/$defs/DetectionSpec"
-        },
-        "fields": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "$ref": "#/$defs/FieldSpec"
-              },
-              "title": "Fields",
-              "type": "object"
-            },
-            {
-              "type": "object",
-              "additionalProperties": true
-            }
-          ]
-        },
-        "alerts": {
-          "title": "Alerts",
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/AlertRule"
-              }
-            },
-            {
-              "type": "object",
-              "properties": {
-                "$include": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "widgets": {
-          "title": "Widgets",
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "discriminator": {
-                  "mapping": {
-                    "alert_panel": "#/$defs/AlertPanelWidget",
-                    "grouped_table": "#/$defs/GroupedTableWidget",
-                    "key_value": "#/$defs/KeyValueWidget",
-                    "markdown": "#/$defs/MarkdownWidget",
-                    "progress_bar": "#/$defs/ProgressBarWidget",
-                    "stat_cards": "#/$defs/StatCardsWidget",
-                    "table": "#/$defs/TableWidget"
-                  },
-                  "propertyName": "type"
-                },
-                "oneOf": [
-                  {
-                    "$ref": "#/$defs/KeyValueWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/TableWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/AlertPanelWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/ProgressBarWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/MarkdownWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/StatCardsWidget"
-                  },
-                  {
-                    "$ref": "#/$defs/GroupedTableWidget"
-                  }
-                ]
-              }
-            },
-            {
-              "type": "object",
-              "properties": {
-                "$include": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
-        "fleet_columns": {
-          "items": {
-            "$ref": "#/$defs/FleetColumn"
-          },
-          "title": "Fleet Columns",
-          "type": "array"
-        },
-        "template_override": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Template Override"
-        },
-        "split_field": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Split Field"
-        },
-        "split_name_key": {
-          "default": "name",
-          "title": "Split Name Key",
-          "type": "string"
-        },
-        "stig": {
-          "$ref": "#/$defs/StigConfig"
-        },
-        "title": {
-          "default": "",
-          "title": "Display Name",
-          "type": "string"
-        },
-        "vars": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "$ref": "#/$defs/FieldSpec"
-              },
-              "title": "Fields",
-              "type": "object"
-            },
-            {
-              "type": "object",
-              "additionalProperties": true
-            }
-          ]
-        },
-        "config": {
-          "type": "object",
-          "title": "Config",
-          "description": "Top-level config block (keys are merged into the schema root)."
-        }
-      },
-      "type": "object"
-    },
-    {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/AlertRule"
-      },
-      "description": "Standalone alert list \u2014 included via $include in main configs."
-    }
-  ],
+  "description": "YAML-driven report schema for ncs_reporter (full report config).",
   "$defs": {
     "ActionSpec": {
       "additionalProperties": false,
@@ -255,6 +47,7 @@
     },
     "AlertPanelWidget": {
       "additionalProperties": false,
+      "description": "Lists fired alerts with severity badges. Auto-injected by the renderer; declare explicitly to control placement.",
       "properties": {
         "slug": {
           "default": "",
@@ -264,14 +57,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string",
-          "enum": [
-            "alert_panel",
-            "alert-panel"
-          ]
         },
         "layout": {
           "anyOf": [
@@ -301,6 +86,15 @@
           ],
           "default": null,
           "title": "When"
+        },
+        "type": {
+          "description": "Widget kind \u2014 must be `alert-panel`.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "alert_panel",
+            "alert-panel"
+          ]
         }
       },
       "required": [
@@ -312,28 +106,46 @@
     },
     "AlertRule": {
       "additionalProperties": false,
+      "description": "Alert rule \u2014 fires when `when:` is truthy. See `ALERTS.md`.",
       "properties": {
         "id": {
+          "description": "Stable identifier for the alert. Used by `suppress_if:` and the alert rollup.",
           "title": "Id",
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "cpu_hot",
+            "disk_near_full"
+          ]
         },
         "category": {
+          "description": "Free-text category shown in the alert panel header (e.g. 'Patching', 'Health', 'Faults').",
           "title": "Category",
           "type": "string"
         },
         "severity": {
           "default": "WARNING",
+          "description": "CRITICAL / WARNING / INFO. Drives the report health rollup and color coding.",
           "enum": [
             "CRITICAL",
             "WARNING",
             "INFO"
           ],
           "title": "Severity",
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "CRITICAL",
+            "WARNING",
+            "INFO"
+          ]
         },
         "when": {
+          "description": "Jinja2 boolean expression \u2014 alert fires when truthy. Unquoted (Ansible convention).",
           "title": "When",
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "cpu_load_pct >= 90",
+            "disks | selectattr('used_pct', 'gt', 90) | list | length > 0"
+          ]
         },
         "action": {
           "anyOf": [
@@ -344,16 +156,22 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Action to invoke when the alert fires (e.g. `playbook` or `command`). See `SCHEDULING_AND_ALERT_ACTIONS.md`."
         },
         "cooldown": {
           "default": "7d",
+          "description": "Minimum interval between successive action invocations for the same alert id (e.g. `7d`, `24h`, `1h`).",
           "title": "Cooldown",
           "type": "string"
         },
         "msg": {
+          "description": "Alert message template. Alias: `message`. Rendered against the per-host context.",
           "title": "Msg",
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "CPU load {{ cpu_load_pct | round(1) }}% on {{ hostname }}"
+          ]
         },
         "items": {
           "anyOf": [
@@ -365,6 +183,7 @@
             }
           ],
           "default": null,
+          "description": "Optional Jinja2 expression returning the list of affected items. Defaults to the first list-typed field referenced in `when:`.",
           "title": "Items"
         },
         "suppress_if": {
@@ -383,14 +202,22 @@
             }
           ],
           "default": null,
+          "description": "Alert id (or list of ids) \u2014 when any listed alert fires, this one is suppressed.",
           "title": "Suppress If"
+        },
+        "message": {
+          "description": "Alert message template. Alias: `message`. Rendered against the per-host context.",
+          "title": "Msg",
+          "type": "string",
+          "examples": [
+            "CPU load {{ cpu_load_pct | round(1) }}% on {{ hostname }}"
+          ]
         }
       },
       "required": [
         "id",
         "category",
-        "when",
-        "msg"
+        "when"
       ],
       "title": "AlertRule",
       "type": "object"
@@ -415,8 +242,10 @@
     },
     "DetectionSpec": {
       "additionalProperties": false,
+      "description": "Rules that match a raw bundle to this schema.",
       "properties": {
         "keys_any": {
+          "description": "Match if *any* listed bundle key is present (e.g. `[raw_apic]`, `[raw_vcsa]`). Alias: `any`.",
           "items": {
             "type": "string"
           },
@@ -424,6 +253,7 @@
           "type": "array"
         },
         "keys_all": {
+          "description": "Match only if *all* listed bundle keys are present. Alias: `all`.",
           "items": {
             "type": "string"
           },
@@ -431,6 +261,7 @@
           "type": "array"
         },
         "any": {
+          "description": "Match if *any* listed bundle key is present (e.g. `[raw_apic]`, `[raw_vcsa]`). Alias: `any`.",
           "items": {
             "type": "string"
           },
@@ -438,6 +269,7 @@
           "type": "array"
         },
         "all": {
+          "description": "Match only if *all* listed bundle keys are present. Alias: `all`.",
           "items": {
             "type": "string"
           },
@@ -463,7 +295,12 @@
                 }
               ],
               "default": null,
-              "title": "Path"
+              "description": "Dotted-path lookup into the raw bundle, with optional `| transform` pipeline. Alias: `from`. See `FIELDS.md` \u00a7 path.",
+              "title": "Path",
+              "examples": [
+                "ansible_facts.hostname",
+                ".cpu.load_avg_1m | to_float"
+              ]
             },
             "compute": {
               "anyOf": [
@@ -475,9 +312,42 @@
                 }
               ],
               "default": null,
-              "title": "Compute"
+              "description": "Jinja2 expression evaluated against other fields. Alias: `expr`. Use for one-line scalar derivations.",
+              "title": "Compute",
+              "examples": [
+                "{{ uptime_seconds / 86400 }}",
+                "{{ (mem_total - mem_free) / mem_total * 100 }}"
+              ]
+            },
+            "normalize": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NormalizeSpec"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Declarative normalization DSL \u2014 see docs/ncs-reporter-config/FIELDS.md `normalize:` for the full operator reference."
+            },
+            "template": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Multi-statement Jinja2 template. Lower-level fallback when `normalize:` cannot express the shape.",
+              "title": "Template"
             },
             "const": {
+              "description": "Hard-coded literal value (any type).",
               "title": "Const"
             },
             "script": {
@@ -489,10 +359,12 @@
                   "type": "null"
                 }
               ],
-              "default": null
+              "default": null,
+              "description": "Subprocess escape hatch \u2014 runs a Python helper from the collection's `ncs_configs/scripts/`. Avoid in new code; prefer `normalize:`."
             },
             "type": {
               "default": "str",
+              "description": "Type coercion applied after the producer runs. Strict \u2014 failures fall through to `fallback:` or raise.",
               "enum": [
                 "str",
                 "int",
@@ -509,10 +381,12 @@
               "type": "string"
             },
             "fallback": {
+              "description": "Value used when the producer returns nothing or coercion fails.",
               "title": "Fallback"
             },
             "sentinel": {
               "default": null,
+              "description": "Marks 'not applicable' (e.g. `'N/A'`) \u2014 renders as that literal and is excluded from threshold evaluation.",
               "title": "Sentinel"
             },
             "format": {
@@ -525,76 +399,8 @@
                 }
               ],
               "default": null,
+              "description": "Python f-string-style format applied for display only (e.g. `{:.1f}%`). Does not affect alert evaluation.",
               "title": "Format"
-            },
-            "list_filter": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/ListFilterSpec"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            },
-            "list_map": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "title": "List Map",
-              "type": "object"
-            },
-            "count_where": {
-              "anyOf": [
-                {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Count Where"
-            },
-            "any_where": {
-              "anyOf": [
-                {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Any Where"
-            },
-            "all_where": {
-              "anyOf": [
-                {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "All Where"
-            },
-            "sum_field": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Sum Field"
             },
             "thresholds": {
               "anyOf": [
@@ -605,7 +411,8 @@
                   "type": "null"
                 }
               ],
-              "default": null
+              "default": null,
+              "description": "Numeric breakpoints \u2014 produces boolean companions `<field>_exceeds_warn` / `<field>_exceeds_crit` referenceable from alerts and widgets."
             },
             "from": {
               "anyOf": [
@@ -617,7 +424,12 @@
                 }
               ],
               "default": null,
-              "title": "Path"
+              "description": "Dotted-path lookup into the raw bundle, with optional `| transform` pipeline. Alias: `from`. See `FIELDS.md` \u00a7 path.",
+              "title": "Path",
+              "examples": [
+                "ansible_facts.hostname",
+                ".cpu.load_avg_1m | to_float"
+              ]
             },
             "expr": {
               "anyOf": [
@@ -629,7 +441,12 @@
                 }
               ],
               "default": null,
-              "title": "Compute"
+              "description": "Jinja2 expression evaluated against other fields. Alias: `expr`. Use for one-line scalar derivations.",
+              "title": "Compute",
+              "examples": [
+                "{{ uptime_seconds / 86400 }}",
+                "{{ (mem_total - mem_free) / mem_total * 100 }}"
+              ]
             }
           },
           "title": "FieldSpec",
@@ -674,6 +491,7 @@
     },
     "GroupedTableWidget": {
       "additionalProperties": false,
+      "description": "Like `TableWidget` but rows are grouped under a sub-header derived from `group_by:`.",
       "properties": {
         "slug": {
           "default": "",
@@ -683,14 +501,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string",
-          "enum": [
-            "grouped_table",
-            "grouped-table"
-          ]
         },
         "layout": {
           "anyOf": [
@@ -721,15 +531,27 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "description": "Widget kind \u2014 must be `grouped-table`.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "grouped_table",
+            "grouped-table"
+          ]
+        },
         "rows_field": {
+          "description": "Jinja2 expression returning the row list. Alias: `rows`.",
           "title": "Rows Field",
           "type": "string"
         },
         "group_by": {
+          "description": "Field on each row whose value forms the group header.",
           "title": "Group By",
           "type": "string"
         },
         "columns": {
+          "description": "Column definitions for the inner table.",
           "items": {
             "$ref": "#/$defs/TableColumn"
           },
@@ -737,6 +559,7 @@
           "type": "array"
         },
         "rows": {
+          "description": "Jinja2 expression returning the row list. Alias: `rows`.",
           "title": "Rows Field",
           "type": "string"
         }
@@ -748,6 +571,123 @@
         "columns"
       ],
       "title": "GroupedTableWidget",
+      "type": "object"
+    },
+    "InventorySection": {
+      "additionalProperties": false,
+      "description": "One section of an Inventory widget \u2014 a labelled table-of-rows.\n\nEach section is rendered as a collapsible sub-widget under the\nparent Inventory widget. The section title shows the row count\nso an operator can see ``vCenters (1) \u00b7 Datacenters (1) \u00b7 ESXi\nHosts (2) \u00b7 Virtual Machines (3)`` at a glance without\nexpanding each one.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When"
+        },
+        "rows_field": {
+          "title": "Rows Field",
+          "type": "string",
+          "description": "Alias for `rows_field:` \u2014 Jinja2 expression returning the row list."
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "title": "Rows Field",
+          "type": "string",
+          "description": "Alias for `rows_field:` \u2014 Jinja2 expression returning the row list."
+        }
+      },
+      "required": [
+        "name",
+        "columns"
+      ],
+      "title": "InventorySection",
+      "type": "object"
+    },
+    "InventoryWidget": {
+      "additionalProperties": false,
+      "description": "Inventory landing-page widget \u2014 stat-card header + tree-walker children section + per-tier subtables.",
+      "properties": {
+        "slug": {
+          "default": "",
+          "title": "Slug",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When"
+        },
+        "type": {
+          "const": "inventory",
+          "description": "Widget kind \u2014 must be `inventory`. Renders a stat-card header plus a tree-walker-injected children section plus per-tier subtables.",
+          "title": "Type",
+          "type": "string"
+        },
+        "stat_cards": {
+          "description": "Optional headline stat cards rendered above the children section.",
+          "items": {
+            "$ref": "#/$defs/StatCardSpec"
+          },
+          "title": "Stat Cards",
+          "type": "array"
+        },
+        "sections": {
+          "description": "Per-tier subtables \u2014 each has `name`, `rows`, `columns`, optional `when`.",
+          "items": {
+            "$ref": "#/$defs/InventorySection"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "title": "InventoryWidget",
       "type": "object"
     },
     "KeyValueField": {
@@ -776,7 +716,10 @@
         "as": {
           "anyOf": [
             {
-              "const": "status-badge",
+              "enum": [
+                "status-badge",
+                "severity-tally"
+              ],
               "type": "string"
             },
             {
@@ -796,6 +739,7 @@
     },
     "KeyValueWidget": {
       "additionalProperties": false,
+      "description": "Two-column label/value list. Use for host-identity blocks ('System Information', 'Memory & CPU').",
       "properties": {
         "slug": {
           "default": "",
@@ -805,14 +749,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string",
-          "enum": [
-            "key_value",
-            "key-value"
-          ]
         },
         "layout": {
           "anyOf": [
@@ -843,7 +779,17 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "description": "Widget kind \u2014 must be `key-value`. Renders a label/value list.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "key_value",
+            "key-value"
+          ]
+        },
         "fields": {
+          "description": "List of `{name, value, ...}` entries \u2014 each is rendered as one label/value row.",
           "items": {
             "$ref": "#/$defs/KeyValueField"
           },
@@ -859,36 +805,9 @@
       "title": "KeyValueWidget",
       "type": "object"
     },
-    "ListFilterSpec": {
+    "LogTailWidget": {
       "additionalProperties": false,
-      "description": "Declarative list filtering: exclude items by field value or pattern.",
-      "properties": {
-        "exclude": {
-          "additionalProperties": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "title": "Exclude",
-          "type": "object"
-        },
-        "include": {
-          "additionalProperties": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "title": "Include",
-          "type": "object"
-        }
-      },
-      "title": "ListFilterSpec",
-      "type": "object"
-    },
-    "MarkdownWidget": {
-      "additionalProperties": false,
+      "description": "Fixed-height scrollable log tail \u2014 typically wraps `auth_log_lines` or `recent_journal_events`.",
       "properties": {
         "slug": {
           "default": "",
@@ -897,11 +816,6 @@
         },
         "name": {
           "title": "Name",
-          "type": "string"
-        },
-        "type": {
-          "const": "markdown",
-          "title": "Type",
           "type": "string"
         },
         "layout": {
@@ -933,7 +847,85 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "description": "Widget kind \u2014 must be `log-tail`. Renders a fixed-height scrollable log tail.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "log_tail",
+            "log-tail"
+          ]
+        },
+        "source": {
+          "description": "Jinja2 expression returning the list of log lines (e.g. `\"{{ auth_log_lines }}\"`).",
+          "title": "Source",
+          "type": "string"
+        },
+        "max_height": {
+          "default": "400px",
+          "description": "Pixel height of the scroll viewport (default: 400px).",
+          "title": "Max Height",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "source"
+      ],
+      "title": "LogTailWidget",
+      "type": "object"
+    },
+    "MarkdownWidget": {
+      "additionalProperties": false,
+      "description": "Free-form Markdown content. `{{ \u2026 }}` Jinja expressions render against the per-host context.",
+      "properties": {
+        "slug": {
+          "default": "",
+          "title": "Slug",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetLayout"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "half",
+                "third",
+                "quarter"
+              ]
+            }
+          ],
+          "default": "full"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When"
+        },
+        "type": {
+          "const": "markdown",
+          "description": "Widget kind \u2014 must be `markdown`.",
+          "title": "Type",
+          "type": "string"
+        },
         "content": {
+          "description": "Markdown body. Jinja2 expressions inside `{{ ... }}` are rendered against the per-host context.",
           "title": "Content",
           "type": "string"
         }
@@ -944,6 +936,26 @@
         "content"
       ],
       "title": "MarkdownWidget",
+      "type": "object"
+    },
+    "MergeFromChildrenSpec": {
+      "additionalProperties": false,
+      "description": "One union directive for ``TreeSpec.merge_from_children``.",
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "from_": {
+          "title": "From",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "from_"
+      ],
+      "title": "MergeFromChildrenSpec",
       "type": "object"
     },
     "PlatformSpec": {
@@ -976,6 +988,7 @@
     },
     "ProgressBarWidget": {
       "additionalProperties": false,
+      "description": "Single horizontal bar with optional thresholds \u2014 useful for utilization metrics (CPU %, memory %, disk %).",
       "properties": {
         "slug": {
           "default": "",
@@ -985,14 +998,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string",
-          "enum": [
-            "progress_bar",
-            "progress-bar"
-          ]
         },
         "layout": {
           "anyOf": [
@@ -1023,7 +1028,17 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "description": "Widget kind \u2014 must be `progress-bar`.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "progress_bar",
+            "progress-bar"
+          ]
+        },
         "value": {
+          "description": "Jinja2 expression returning a numeric percentage 0\u2013100.",
           "title": "Value",
           "type": "string"
         },
@@ -1037,10 +1052,12 @@
             }
           ],
           "default": null,
+          "description": "Optional override for the bar's text label (default: `value`).",
           "title": "Value Label"
         },
         "color": {
           "default": "auto",
+          "description": "Override the default green-bar color.",
           "enum": [
             "auto",
             "green",
@@ -1060,7 +1077,8 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Numeric breakpoints (`warn_if_above`, `crit_if_above`) \u2014 colors the bar accordingly."
         }
       },
       "required": [
@@ -1164,6 +1182,7 @@
     },
     "StatCardsWidget": {
       "additionalProperties": false,
+      "description": "Row of headline stat cards rendered above other widgets. Each card shows a single label/value pair.",
       "properties": {
         "slug": {
           "default": "",
@@ -1173,14 +1192,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string",
-          "enum": [
-            "stat_cards",
-            "stat-cards"
-          ]
         },
         "layout": {
           "anyOf": [
@@ -1211,7 +1222,17 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "description": "Widget kind \u2014 must be `stat-cards`.",
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "stat_cards",
+            "stat-cards"
+          ]
+        },
         "cards": {
+          "description": "Card definitions \u2014 each has `name`, `value`, optional `as`.",
           "items": {
             "$ref": "#/$defs/StatCardSpec"
           },
@@ -1275,17 +1296,22 @@
       "additionalProperties": false,
       "properties": {
         "name": {
+          "description": "Column header text.",
           "title": "Name",
           "type": "string"
         },
         "value": {
+          "description": "Per-row Jinja2 expression resolving against each row dict (e.g. `\"{{ name }}\"`).",
           "title": "Value",
           "type": "string"
         },
         "as": {
           "anyOf": [
             {
-              "const": "status-badge",
+              "enum": [
+                "status-badge",
+                "severity-tally"
+              ],
               "type": "string"
             },
             {
@@ -1293,6 +1319,7 @@
             }
           ],
           "default": null,
+          "description": "Render hint: `status-badge` (color-coded chip), `severity-tally`.",
           "title": "As"
         },
         "format": {
@@ -1305,6 +1332,7 @@
             }
           ],
           "default": null,
+          "description": "Display format applied after `value:` resolves (e.g. `{:.1f}%`).",
           "title": "Format"
         },
         "link_field": {
@@ -1317,9 +1345,11 @@
             }
           ],
           "default": null,
+          "description": "Field name whose value is used as the link target for this cell.",
           "title": "Link Field"
         },
         "style_rules": {
+          "description": "Conditional CSS rules (e.g. apply `.sv-critical` when `value > 90`).",
           "items": {
             "$ref": "#/$defs/StyleRule"
           },
@@ -1336,6 +1366,7 @@
     },
     "TableWidget": {
       "additionalProperties": false,
+      "description": "Tabular widget \u2014 one row per item in `rows:`, one column per `columns[]` entry. See `WIDGETS.md` \u00a7 table.",
       "properties": {
         "slug": {
           "default": "",
@@ -1344,11 +1375,6 @@
         },
         "name": {
           "title": "Name",
-          "type": "string"
-        },
-        "type": {
-          "const": "table",
-          "title": "Type",
           "type": "string"
         },
         "layout": {
@@ -1380,11 +1406,19 @@
           "default": null,
           "title": "When"
         },
+        "type": {
+          "const": "table",
+          "description": "Widget kind \u2014 must be `table`.",
+          "title": "Type",
+          "type": "string"
+        },
         "rows_field": {
+          "description": "Jinja2 expression returning the row list. Alias: `rows`.",
           "title": "Rows Field",
           "type": "string"
         },
         "columns": {
+          "description": "Column definitions \u2014 each has `name`, `value`, optional `as`/`format`/`link_field`/`style_rules`.",
           "items": {
             "$ref": "#/$defs/TableColumn"
           },
@@ -1392,6 +1426,7 @@
           "type": "array"
         },
         "rows": {
+          "description": "Jinja2 expression returning the row list. Alias: `rows`.",
           "title": "Rows Field",
           "type": "string"
         }
@@ -1436,11 +1471,100 @@
       "title": "ThresholdSpec",
       "type": "object"
     },
+    "TreeLevel": {
+      "additionalProperties": false,
+      "description": "One tier in a hierarchical product tree.\n\nThe reporter walks each level in declaration order: bundles whose\non-disk path resolves to this level get instantiated as ``ReportNode``s\nwith the named tier and schema. ``parent_tier`` says which previous\nlevel's nodes are this level's parents \u2014 when omitted the level\nattaches directly to the product root.",
+      "properties": {
+        "tier": {
+          "title": "Tier",
+          "type": "string"
+        },
+        "schema_name": {
+          "title": "Schema Name",
+          "type": "string"
+        },
+        "bundle_key": {
+          "title": "Bundle Key",
+          "type": "string"
+        },
+        "parent_tier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Tier"
+        },
+        "children_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Children Label"
+        }
+      },
+      "required": [
+        "tier",
+        "schema_name",
+        "bundle_key"
+      ],
+      "title": "TreeLevel",
+      "type": "object"
+    },
+    "TreeSpec": {
+      "additionalProperties": false,
+      "description": "Deprecated declarative tree shape for a product.\n\nCurrent inventory trees are inferred from collector-written folders.\nThis model remains for backward compatibility with older configs and\ndirect callers of ``build_tree_from_spec``.",
+      "properties": {
+        "root_slug": {
+          "title": "Root Slug",
+          "type": "string"
+        },
+        "root_title": {
+          "default": "",
+          "title": "Root Title",
+          "type": "string"
+        },
+        "root_schema": {
+          "default": "",
+          "title": "Root Schema",
+          "type": "string"
+        },
+        "levels": {
+          "items": {
+            "$ref": "#/$defs/TreeLevel"
+          },
+          "title": "Levels",
+          "type": "array"
+        },
+        "merge_from_children": {
+          "items": {
+            "$ref": "#/$defs/MergeFromChildrenSpec"
+          },
+          "title": "Merge From Children",
+          "type": "array"
+        }
+      },
+      "required": [
+        "root_slug"
+      ],
+      "title": "TreeSpec",
+      "type": "object"
+    },
     "WidgetLayout": {
       "additionalProperties": false,
       "properties": {
         "width": {
           "default": "full",
+          "description": "`full` / `half` / `third` / `quarter` \u2014 controls grid placement.",
           "enum": [
             "full",
             "half",
@@ -1460,11 +1584,775 @@
             }
           ],
           "default": null,
+          "description": "Row height hint for the widget.",
           "title": "Row"
         }
       },
       "title": "WidgetLayout",
       "type": "object"
+    },
+    "OpValue": {
+      "description": "Any DSL value: string path, scalar, or another operator dict."
+    },
+    "NormalizeSpec": {
+      "title": "NormalizeSpec",
+      "description": "Declarative DSL for shaping raw collector output. Exactly one operator key per dict \u2014 see docs/ncs-reporter-config/FIELDS.md `normalize:` for the operator reference.",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "const": {}
+          },
+          "required": [
+            "const"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "from"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "flatten": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "flatten"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "template"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "expr": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expr"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "compute": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "compute"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "first_of": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/OpValue"
+              }
+            },
+            "default": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "first_of"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "object": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "object"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "list": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "for_each": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "expand": {
+                  "type": "string"
+                },
+                "include_source": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "include_where": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "exclude_where": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "exclude_match_any": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "patterns": {
+                      "type": "array"
+                    }
+                  }
+                },
+                "map": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "required": [
+            "list"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "count"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "pluck": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "path": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "pluck"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "truthy": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "truthy"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lookup": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "map": {
+                  "type": "object"
+                },
+                "default": {}
+              }
+            }
+          },
+          "required": [
+            "lookup"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "regex_search": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "ignorecase": {
+                  "type": "boolean"
+                },
+                "default": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "regex_search"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "regex_replace": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "replacement": {
+                  "type": "string"
+                },
+                "ignorecase": {
+                  "type": "boolean"
+                },
+                "count": {
+                  "type": "integer",
+                  "default": 0,
+                  "description": "Max replacements; 0 = all."
+                }
+              },
+              "required": [
+                "pattern",
+                "replacement"
+              ]
+            }
+          },
+          "required": [
+            "regex_replace"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "age_days": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "reference": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "round": {
+                  "type": "integer"
+                },
+                "default": {}
+              }
+            }
+          },
+          "required": [
+            "age_days"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "find": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "where": {
+                  "type": "object"
+                },
+                "default": {}
+              }
+            }
+          },
+          "required": [
+            "find"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "get": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "key": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "default": {}
+              }
+            }
+          },
+          "required": [
+            "get"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "index": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "key": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "value": {
+                  "$ref": "#/$defs/OpValue"
+                }
+              }
+            }
+          },
+          "required": [
+            "index"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "slice": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "start": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "stop": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "step": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "required": [
+            "slice"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sort": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "by": {
+                  "type": "string"
+                },
+                "reverse": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            }
+          },
+          "required": [
+            "sort"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unique": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "$ref": "#/$defs/OpValue"
+                },
+                "by": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "unique"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "merge": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "merge"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "defined": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "defined"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "if": {
+              "$ref": "#/$defs/OpValue"
+            },
+            "then": {
+              "$ref": "#/$defs/OpValue"
+            },
+            "else": {
+              "$ref": "#/$defs/OpValue"
+            }
+          },
+          "required": [
+            "if"
+          ]
+        }
+      ]
     }
-  }
+  },
+  "properties": {
+    "name": {
+      "default": "",
+      "description": "Schema name (alphanumeric + underscore). Identifies the schema in logs and CLI flags.",
+      "title": "Name",
+      "type": "string"
+    },
+    "platform": {
+      "default": "",
+      "description": "Platform identifier \u2014 slash-separated for nested platforms (e.g. `vmware/vcsa`, `linux/ubuntu`, `aci/apic`). Becomes the join key between raw bundles, schemas, and the rendered report tree.",
+      "title": "Platform",
+      "type": "string"
+    },
+    "platform_spec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlatformSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "display_name": {
+      "default": "",
+      "description": "Title shown in report headers and dashboards. Alias: `title`.",
+      "title": "Display Name",
+      "type": "string"
+    },
+    "path_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Override the default report-tree subdirectory. Most schemas leave this unset and inherit `<platform>/<hostname>/raw_*.yaml`.",
+      "title": "Path Prefix"
+    },
+    "detection": {
+      "$ref": "#/$defs/DetectionSpec",
+      "description": "Rules that match a raw bundle to this schema. See `docs/ncs-reporter-config/CONFIG_SCHEMA.md` \u00a7 Detection."
+    },
+    "fields": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldSpec"
+          },
+          "description": "Field definitions \u2014 declared with `path`, `compute`, `normalize`, `template`, `script`, or `const`. Alias: `vars`. See `FIELDS.md`.",
+          "title": "Fields",
+          "type": "object"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "alerts": {
+      "description": "Alert rules \u2014 each with `id`, `severity`, `when`, `msg`. See `ALERTS.md`. Accepts `$include: <file>.yaml` to compose from a partial.",
+      "title": "Alerts",
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AlertRule"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$include": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "examples": [
+        [
+          {
+            "id": "cpu_hot",
+            "category": "Health",
+            "severity": "CRITICAL",
+            "when": "cpu_load_pct >= 90",
+            "msg": "CPU load {{ cpu_load_pct | round(1) }}% on {{ hostname }}"
+          }
+        ]
+      ]
+    },
+    "widgets": {
+      "description": "Report-body widgets (stat-cards, key-value, table, grouped-table, alert-panel, progress-bar, markdown, log-tail, inventory). See `WIDGETS.md`. Accepts `$include`.",
+      "title": "Widgets",
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "alert_panel": "#/$defs/AlertPanelWidget",
+                "grouped_table": "#/$defs/GroupedTableWidget",
+                "inventory": "#/$defs/InventoryWidget",
+                "key_value": "#/$defs/KeyValueWidget",
+                "log_tail": "#/$defs/LogTailWidget",
+                "markdown": "#/$defs/MarkdownWidget",
+                "progress_bar": "#/$defs/ProgressBarWidget",
+                "stat_cards": "#/$defs/StatCardsWidget",
+                "table": "#/$defs/TableWidget"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/KeyValueWidget"
+              },
+              {
+                "$ref": "#/$defs/TableWidget"
+              },
+              {
+                "$ref": "#/$defs/AlertPanelWidget"
+              },
+              {
+                "$ref": "#/$defs/ProgressBarWidget"
+              },
+              {
+                "$ref": "#/$defs/MarkdownWidget"
+              },
+              {
+                "$ref": "#/$defs/LogTailWidget"
+              },
+              {
+                "$ref": "#/$defs/StatCardsWidget"
+              },
+              {
+                "$ref": "#/$defs/GroupedTableWidget"
+              },
+              {
+                "$ref": "#/$defs/InventoryWidget"
+              }
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$include": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "examples": [
+        [
+          {
+            "type": "stat-cards",
+            "cards": [
+              {
+                "name": "Uptime (d)",
+                "value": "{{ uptime_days | round(0) }}"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    "fleet_columns": {
+      "description": "Extra columns to inject into the fleet/inventory landing page beyond the platform's defaults.",
+      "items": {
+        "$ref": "#/$defs/FleetColumn"
+      },
+      "title": "Fleet Columns",
+      "type": "array"
+    },
+    "template_override": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path to a Jinja2 template that replaces the default per-platform render template.",
+      "title": "Template Override"
+    },
+    "split_field": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Bundle-key to split a multi-host raw payload by (used by per_host_split at emit time).",
+      "title": "Split Field"
+    },
+    "split_name_key": {
+      "default": "name",
+      "description": "Inside each split shard, the key whose value names the resulting host file.",
+      "title": "Split Name Key",
+      "type": "string"
+    },
+    "stig": {
+      "$ref": "#/$defs/StigConfig",
+      "description": "STIG-checklist wiring \u2014 only for platforms that ship a STIG remediation playbook."
+    },
+    "tree": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TreeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tree-rendering directives (legacy; most platforms inherit from `inventory_root.yaml`)."
+    },
+    "title": {
+      "default": "",
+      "description": "Title shown in report headers and dashboards. Alias: `title`.",
+      "title": "Display Name",
+      "type": "string"
+    },
+    "vars": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldSpec"
+          },
+          "description": "Field definitions \u2014 declared with `path`, `compute`, `normalize`, `template`, `script`, or `const`. Alias: `vars`. See `FIELDS.md`.",
+          "title": "Fields",
+          "type": "object"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ],
+      "description": "Alias for `fields:` \u2014 field definitions block.",
+      "examples": [
+        {
+          "uptime_days": {
+            "compute": "{{ uptime_seconds / 86400 }}"
+          },
+          "cpu_load_pct": {
+            "path": ".cpu.load_avg_1m",
+            "type": "float",
+            "thresholds": {
+              "warn_if_above": 70,
+              "crit_if_above": 90
+            }
+          }
+        }
+      ]
+    },
+    "config": {
+      "type": "object",
+      "title": "Config",
+      "description": "Top-level config block (keys are merged into the schema root).",
+      "examples": [
+        {
+          "platform": "myplatform",
+          "display_name": "My Platform",
+          "detection": {
+            "keys_any": [
+              "raw_myplatform"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "type": "object"
 }

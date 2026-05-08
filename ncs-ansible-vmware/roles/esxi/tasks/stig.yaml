@@ -17,4 +17,7 @@
       - "{{ esxi_stig_target_hosts | default([]) | length > 0 }}"
     _ncs_stig_phase1_loop: "{{ esxi_stig_target_hosts | unique | list }}"
     _ncs_stig_phase1_loop_var: _current_esxi_host
+    # Phase 2 verify excludes the vCenter (ansible_host). Defensive against
+    # operators who accidentally include vcenter in esxi_stig_target_hosts;
+    # ESXi rules can't run against vCenter and would fail-loud at apply time.
     _ncs_stig_phase2_loop: "{{ esxi_stig_target_hosts | difference([ansible_host]) | unique | list }}"

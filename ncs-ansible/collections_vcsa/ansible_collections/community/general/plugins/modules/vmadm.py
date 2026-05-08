@@ -564,7 +564,7 @@ def create_payload(module, uuid):
 
     try:
         vmdef_json = json.dumps(vmdef)
-    except Exception:
+    except Exception as e:
         module.fail_json(
             msg='Could not create valid JSON payload', exception=traceback.format_exc())
 

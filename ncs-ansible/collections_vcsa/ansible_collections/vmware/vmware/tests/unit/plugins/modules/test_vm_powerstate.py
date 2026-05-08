@@ -8,16 +8,13 @@ from ansible_collections.vmware.vmware.plugins.modules.vm_powerstate import (
     VmPowerstateModule,
     main as module_main
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import (
     PyvmomiClient
 )
 from ...common.utils import (
-    run_module, ModuleTestCase
+    AnsibleExitJson, ModuleTestCase, set_module_args,
 )
-from ...common.vmware_object_mocks import (
-    MockVsphereTask
-)
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import RunningTaskMonitor, VmQuestionHandler
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import RunningTaskMonitor, VmQuestionHandler
 
 pytestmark = pytest.mark.skipif(
     sys.version_info < (2, 7), reason="requires python2.7 or higher"
@@ -48,68 +45,91 @@ class TestVmPowerstate(ModuleTestCase):
     def test_no_change(self, mocker):
         self.__prepare(mocker)
 
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
             datacenter="DC0",
             folder="DC0/vm/e2e-qe",
             name="vm1",
-            state="powered-on"
+            state="powered-on",
+            validate_certs=False,
+            add_cluster=False
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is False
+        assert c.value.args[0]["changed"] is False
 
     def test_power_on(self, mocker):
         self.__prepare(mocker)
 
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
             datacenter="DC0",
             folder="DC0/vm/e2e-qe",
             name="vm1",
-            state="powered-on"
+            state="powered-on",
+            validate_certs=False,
+            add_cluster=False
         )
 
         mocker.patch.object(RunningTaskMonitor, 'wait_for_completion', return_value=(True, True))
         self.vm_mock.configure_mock(
             **{
-                "PowerOn.return_value": MockVsphereTask(),
+                "PowerOn.return_value": type('', (object,), {"info": type('', (object,), {"state": "success"})()})(),
                 "summary.runtime.powerState.lower.return_value": "poweredoff"
             }
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
+        assert c.value.args[0]["changed"] is True
 
     def test_power_off(self, mocker):
         self.__prepare(mocker)
 
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
             datacenter="DC0",
             folder="DC0/vm/e2e-qe",
             name="vm1",
-            state="powered-off"
+            state="powered-off",
+            validate_certs=False,
+            add_cluster=False
         )
 
         mocker.patch.object(RunningTaskMonitor, 'wait_for_completion', return_value=(True, True))
         self.vm_mock.configure_mock(
             **{
-                "PowerOff.return_value": MockVsphereTask()
+                "PowerOff.return_value": type('', (object,), {"info": type('', (object,), {"state": "success"})()})()
             }
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
+        assert c.value.args[0]["changed"] is True
 
     def test_scheduled_power_off(self, mocker):
         self.__prepare(mocker)
 
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
             datacenter="DC0",
             folder="DC0/vm/e2e-qe",
             name="vm1",
             state="powered-off",
+            validate_certs=False,
+            add_cluster=False,
             scheduled_at="09/03/2025 10:18",
             scheduled_task_name="task_00001",
             scheduled_task_description="Sample task to poweroff VM",
@@ -118,40 +138,7 @@ class TestVmPowerstate(ModuleTestCase):
 
         mocker.patch.object(VmPowerstateModule, 'is_vcenter', return_value=True)
 
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
-
-    def _side_effect_power_off_vm(self, *args, **kwargs):
-        self.vm_mock.summary.runtime.powerState = 'poweredoff'
-
-    def test_poll_vm_state_for_shutdown(self, mocker):
-        self.__prepare(mocker)
-
-        self.vm_mock.configure_mock(
-            **{
-                "ShutdownGuest.return_value": MockVsphereTask(),
-                "summary.runtime.powerState": 'poweredon',
-                "guest.toolsRunningStatus": 'guestToolsRunning'
-            }
-        )
-        mocker.patch.object(RunningTaskMonitor, 'wait_for_completion', return_value=(True, True))
-        module_args = dict(
-            datacenter="DC0",
-            folder="DC0/vm/e2e-qe",
-            name="vm1",
-            state="shutdown-guest",
-            timeout=1
-        )
-        run_module(module_entry=module_main, module_args=module_args, expect_success=False)
-
-        mock_time = mocker.patch('time.sleep', side_effect=self._side_effect_power_off_vm)
-        module_args = dict(
-            datacenter="DC0",
-            folder="DC0/vm/e2e-qe",
-            name="vm1",
-            state="shutdown-guest",
-            timeout=7
-        )
-        run_module(module_entry=module_main, module_args=module_args)
-        assert mock_time.call_count == 1
+        assert c.value.args[0]["changed"] is True

@@ -11,15 +11,14 @@ import yaml
 
 def schema_template(name: str) -> str:
     """Generate a minimal starter schema YAML template."""
-    return f"""name: {name}
+    return f"""# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+config:
+  platform: {name}
+  display_name: "{name.replace('_', ' ').title()}"
+  detection:
+    keys_any: [{name}_raw_data]
 
-detection:
-  keys_any: [{name}_raw_data]
-
-# Uncomment to reduce path repetition — paths starting with '.' are relative.
-# path_prefix: "{name}_raw_data.data"
-
-fields:
+vars:
   hostname:
     path: "{name}_raw_data.data.hostname"
     fallback: "unknown"
@@ -28,85 +27,55 @@ fields:
     path: "{name}_raw_data.data.some_metric"
     type: float
 
-  example_computed:
-    compute: "{{example_metric}} * 100"
+  example_pct:
+    compute: "{{{{ example_metric * 100 }}}}"
     type: float
+    thresholds:
+      warn_if_above: 80
+      crit_if_above: 90
 
 alerts:
-  - id: example_alert
-    category: "Example"
+  - id: example_high
+    category: "Capacity"
     severity: WARNING
-    condition:
-      op: gt
-      field: example_metric
-      threshold: 90.0
-    message: "Example metric is high: {{example_metric:.1f}}"
+    when: example_pct >= 80
+    msg: "Usage is high: {{{{ example_pct | round(1) }}}}%"
 
 widgets:
-  - name: "Active Alerts"
-    type: alert_panel
-
-  - name: "Overview"
-    type: key_value
-    fields:
-      - {{ name: "Hostname", value: "{{{{ hostname }}}}" }}
-      - {{ name: "Example Metric", value: "{{{{ example_metric }}}}" }}
+  - type: stat-cards
+    cards:
+      - name: Hostname
+        value: "{{{{ hostname }}}}"
+      - name: Example
+        value: "{{{{ example_pct | round(1) }}}}%"
 """
 
 
 def annotated_template(name: str) -> str:
     """Generate a verbose config template with examples of every feature."""
-    return f"""name: {name}
-# title: "Human-Readable Display Name"  # optional, auto-derived from name
+    return f"""# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+config:
+  platform: {name}
+  display_name: "{name.replace('_', ' ').title()}"
+  detection:
+    keys_any: [{name}_raw_data]      # match if ANY key exists in raw bundle
+    # keys_all: [key1, key2]         # match if ALL keys exist
 
-detection:
-  keys_any: [{name}_raw_data]       # match if ANY key exists in raw bundle
-  # keys_all: [key1, key2]          # match if ALL keys exist
-
-# Reduces path repetition — paths starting with '.' become relative.
-# path_prefix: "{name}_raw_data.data"
-
-fields:
-  # --- Path-based field (extract from raw data) ---
+vars:
+  # --- Path-based field ---
   hostname:
-    path: "{name}_raw_data.data.hostname"   # aliases: 'from'
-    fallback: "unknown"                     # aliases: 'default'
+    path: "{name}_raw_data.data.hostname"   # alias: 'from'
+    fallback: "unknown"                     # alias: 'default'
 
-  # --- Short-form path (string expands to path-only spec) ---
-  # os_name: "{name}_raw_data.data.os"
-
-  # --- Computed field (expression with {{field}} references) ---
+  # --- Computed field — Jinja2 expression over other fields ---
   example_pct:
-    compute: "({{example_used}} / {{example_total}}) * 100"  # aliases: 'expr'
+    compute: "{{{{ (example_used / example_total) * 100 }}}}"  # alias: 'expr'
     type: float
+    thresholds:
+      warn_if_above: 80
+      crit_if_above: 90
 
-  # --- Script field (runs a Python script) ---
-  # complex_data:
-  #   script:
-  #     path: "my_script.py"         # aliases: 'run'
-  #     args:                        # aliases: 'script_args'
-  #       source: "raw_data"
-  #     timeout: 30                  # aliases: 'script_timeout'
-  #   type: list
-
-  # --- List processing ---
-  # filtered_items:
-  #   path: ".items"
-  #   type: list
-  #   list_filter:
-  #     exclude:
-  #       status: [inactive, disabled]
-  #       name: ["^test_"]           # regex patterns start with ^
-  #     include:
-  #       type: [server]
-  #   list_map:
-  #     usage_pct: "({{used}} / {{total}}) * 100"
-  #
-  # item_count:
-  #   path: ".items"
-  #   count_where:
-  #     status: active
-
+  # --- Path leaves (used by the compute above) ---
   example_used:
     path: "{name}_raw_data.data.used"
     type: float
@@ -114,78 +83,70 @@ fields:
     path: "{name}_raw_data.data.total"
     type: float
 
+  # --- normalize: declarative shaping (see FIELDS.md § normalize) ---
+  # filtered_items:
+  #   type: list
+  #   normalize:
+  #     list:
+  #       source: items
+  #       include_where: {{type: server}}
+
+  # --- Script field (subprocess escape hatch — prefer normalize:) ---
+  # complex_data:
+  #   script:
+  #     path: "my_script.py"         # alias: 'run'
+  #     args: {{}}                    # alias: 'script_args'
+  #     timeout: 30                  # alias: 'script_timeout'
+  #   type: list
+
 alerts:
-  # --- Threshold alert ---
   - id: example_high
     category: "Capacity"
     severity: WARNING                # CRITICAL, WARNING, INFO
-    condition:
-      op: gt                         # gt, lt, gte, lte, eq, ne
-      field: example_pct
-      threshold: 80.0
-    message: "Usage is high: {{example_pct:.1f}}%"
-    # detail_fields: [example_used, example_total]
-    # affected_items_field: filtered_items
+    when: example_pct >= 80
+    msg: "Usage is high: {{{{ example_pct | round(1) }}}}%"
     # suppress_if: [other_alert_id]
 
-  # --- Other condition types (uncomment to use) ---
-  # - id: range_alert
-  #   severity: WARNING
-  #   condition:
-  #     op: range
-  #     field: example_pct
-  #     min: 75.0
-  #     max: 90.0
-  #
-  # - id: missing_data
-  #   severity: CRITICAL
-  #   condition:
-  #     op: not_exists
-  #     field: hostname
-  #
-  # - id: date_alert
-  #   severity: WARNING
-  #   condition:
-  #     op: age_gt                   # age_gt, age_lt, age_gte, age_lte
-  #     field: last_update
-  #     days: 30
-
 widgets:
-  # --- Alert panel (always recommended) ---
-  - name: "Active Alerts"
-    type: alert_panel
+  # --- Stat cards ---
+  - type: stat-cards
+    cards:
+      - name: Hostname
+        value: "{{{{ hostname }}}}"
+      - name: Usage
+        value: "{{{{ example_pct | round(1) }}}}%"
 
-  # --- Key-value pairs ---
-  - name: "Overview"
-    type: key_value
+  # --- Key/value list ---
+  - type: key-value
+    name: "Overview"
     fields:
-      - {{ name: "Hostname", value: "{{{{ hostname }}}}" }}
-      - {{ name: "Usage", value: "{{{{ example_pct }}}}", format: "{{value:.1f}}%" }}
-  # NOTE: every value: reference must be a Jinja2 expression: value: "{{{{ var_name }}}}".
-  # Optional `slug:` pins the stable id used for anchors; omit to auto-derive from name.
+      - name: Hostname
+        value: "{{{{ hostname }}}}"
+      - name: Usage
+        value: "{{{{ example_pct | round(1) }}}}%"
 
-  # --- Table ---
-  # - name: "Items"
-  #   type: table
+  # --- Table (per-row data) ---
+  # - type: table
+  #   name: "Items"
   #   rows: "{{{{ filtered_items }}}}"
   #   columns:
-  #     - {{ name: "Name", value: "{{{{ name }}}}" }}
-  #     - {{ name: "Status", value: "{{{{ status }}}}", as: status-badge }}
+  #     - name: Name
+  #       value: "{{{{ name }}}}"
+  #     - name: Status
+  #       value: "{{{{ status }}}}"
+  #       as: status-badge
 
   # --- Progress bar ---
-  # - name: "Usage"
-  #   type: progress_bar
+  # - type: progress-bar
+  #   name: "Usage"
   #   value: "{{{{ example_pct }}}}"
   #   thresholds:
   #     warn_if_above: 75
   #     crit_if_above: 90
 
-  # --- Stat cards ---
-  # - name: "Key Metrics"
-  #   type: stat_cards
-  #   cards:
-  #     - {{ value: "{{{{ item_count }}}}", name: "Total Items" }}
-  #     - {{ value: "{{{{ example_pct }}}}", name: "Usage %", format: "{{value:.0f}}" }}
+  # --- Alert panel — auto-injected by the renderer; declare to control placement ---
+  # - type: alert-panel
+  #   name: "Active Alerts"
 
   # --- Grouped table ---
   # - name: "By Status"

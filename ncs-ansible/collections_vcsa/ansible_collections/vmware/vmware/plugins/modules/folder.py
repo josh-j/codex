@@ -137,13 +137,13 @@ from ansible.module_utils.common.text.converters import to_native
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import (
     ModulePyvmomiBase
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._folder_paths import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_folder_paths import (
     prepend_datacenter_and_folder_type
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import (
     TaskError,
     RunningTaskMonitor
 )
@@ -261,7 +261,7 @@ class VmwareFolder(ModulePyvmomiBase):
                 continue
             try:
                 last_known_folder = last_known_folder.CreateFolder(path_part)
-            except vim.fault.InvalidName:
+            except vim.fault.InvalidName as e:
                 self.module.fail_json(msg="Failed to create folder %s because it has an invalid name." % path_part)
             except Exception as e:
                 self.module.fail_json(msg=("Failed to create folder due to unexpected error %s " % to_native(e)))

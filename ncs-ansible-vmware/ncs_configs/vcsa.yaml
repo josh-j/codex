@@ -23,18 +23,304 @@ config:
       ESXI: esxi
       VC: vcsa
       PH: photon
+      # Per-service prefixes used by the vcsa role's stig_v1r4 service loop.
+      # Each prefix maps to the per-service target_type so the callback's
+      # platform lookup recognizes structured rules tagged with these
+      # target_types and persists per-service raw_stig_*.yaml files.
+      VCEM: eam
+      VCLU: lookup_svc
+      VCPF: perfcharts
+      VCPG: postgresql
+      VCRP: rhttpproxy
+      VCST: sts
+      VCUI: ui
+      VCLD: vami
   extra_inventory_widget_columns:
     - name: Version
       value: "{{ appliance_version }}"
 vars:
-  # All raw_vcsa.data.* fields are auto-imported from the collector payload.
-  # Only computed/derived vars and display metadata need explicit declaration.
-  appliance_uptime_days:
-    compute: "{{ appliance_uptime_seconds / 86400 }}"
+  # Appliance
+  appliance_version:
+    normalize:
+      first_of: [appliance_version, appliance_about.about_info.version, appliance_health.appliance.summary.version]
+      default: unknown
+    type: str
+  appliance_build:
+    normalize:
+      first_of: [appliance_build, appliance_about.about_info.build, appliance_health.appliance.summary.build_number]
+      default: unknown
+    type: str
+  # Newer playbook emits `appliance_rest_results` (the raw uri results
+  # list); schema re-indexes it. Older playbook still emits the
+  # pre-shaped `appliance_rest` dict, which `first_of` falls back to.
+  _appliance_rest:
+    normalize:
+      first_of:
+        - appliance_rest
+        - {index: {source: appliance_rest_results, key: item.item, value: item.json}}
+        - {const: {}}
+    type: dict
+
+  appliance_health_overall:
+    normalize:
+      first_of: [appliance_health_overall, _appliance_rest.health/system, appliance_health.appliance.summary.health.overall]
+      default: gray
+    type: str
+  appliance_health_cpu:
+    normalize:
+      first_of: [appliance_health_cpu, _appliance_rest.health/load, appliance_health.appliance.summary.health.cpu]
+      default: gray
+    type: str
+  appliance_health_memory:
+    normalize:
+      first_of: [appliance_health_memory, _appliance_rest.health/mem, appliance_health.appliance.summary.health.memory]
+      default: gray
+    type: str
+  appliance_health_database:
+    normalize:
+      first_of: [appliance_health_database, _appliance_rest.health/database-storage, appliance_health.appliance.summary.health.database]
+      default: gray
+    type: str
+  appliance_health_storage:
+    normalize:
+      first_of: [appliance_health_storage, _appliance_rest.health/storage, appliance_health.appliance.summary.health.storage]
+      default: gray
+    type: str
+  appliance_uptime_seconds:
+    normalize:
+      first_of: [appliance_uptime_seconds, _appliance_rest.system/uptime, appliance_health.appliance.summary.uptime]
+      default: 0
+    type: float
+  ssh_enabled:
+    normalize:
+      truthy:
+        first_of: [ssh_enabled, appliance_health.appliance.access.ssh, {const: false}]
+    type: bool
+  shell_enabled:
+    normalize:
+      truthy:
+        first_of: [shell_enabled, appliance_health.appliance.access.shell.enabled, {const: false}]
+    type: bool
+  ntp_mode:
+    normalize:
+      first_of: [ntp_mode, appliance_health.appliance.time.time_sync.mode]
+      default: unknown
+    type: str
+  ntp_servers:
+    normalize:
+      first_of: [ntp_servers, appliance_health.appliance.time.time_sync.servers, {const: []}]
+    type: list
+  backup_schedules:
+    normalize:
+      first_of: [backup_schedules, appliance_backup.schedules, {const: []}]
+    type: list
+  backup_schedule_count:
+    normalize: {count: backup_schedules}
+    type: int
+
+  # Inventory
+  datastores:
+    normalize:
+      list:
+        source:
+          first_of:
+            - datastores
+            - {flatten: "datastores_raw.results[].datastores[]"}
+        include_source: false
+        map:
+          name: {first_of: [name, {const: ""}]}
+          type: {first_of: [type, {const: ""}]}
+          capacity_gb:
+            first_of:
+              - capacity_gb
+              - {expr: "{{ (capacity | default(0) | float / 1073741824) | round(1) }}"}
+          free_gb:
+            first_of:
+              - free_gb
+              - {expr: "{{ (freeSpace | default(0) | float / 1073741824) | round(1) }}"}
+          used_pct:
+            first_of:
+              - used_pct
+              - {expr: "{{ (((capacity | default(0) | float) - (freeSpace | default(0) | float)) / (capacity | default(1) | float) * 100) | round(1) if (capacity | default(0) | float) > 0 else 0.0 }}"}
+          accessible: {first_of: [accessible, {const: false}]}
+          maintenance_mode: {first_of: [maintenance_mode, maintenanceMode, {const: normal}]}
+    type: list
+  clusters:
+    normalize:
+      first_of:
+        - clusters
+        - list:
+            for_each: clusters_raw.results
+            expand: clusters
+            include_source: false
+            map:
+              name: item.key
+              datacenter: parent.item
+              host_count: {count: item.value.hosts}
+              host_names: {pluck: {source: item.value.hosts, path: name}}
+              ha_enabled: {first_of: [item.value.ha_enabled, {const: false}]}
+              drs_enabled: {first_of: [item.value.drs_enabled, {const: false}]}
+              cpu_usage_pct: {expr: "{{ (((item.value.resource_summary.cpuUsedMHz | default(0) | float) / (item.value.resource_summary.cpuCapacityMHz | default(1) | float)) * 100) | round(1) if (item.value.resource_summary.cpuCapacityMHz | default(0) | float) > 0 else 0.0 }}"}
+              mem_usage_pct: {expr: "{{ (((item.value.resource_summary.memUsedMB | default(0) | float) / (item.value.resource_summary.memCapacityMB | default(1) | float)) * 100) | round(1) if (item.value.resource_summary.memCapacityMB | default(0) | float) > 0 else 0.0 }}"}
+        - {const: []}
+    type: list
+  esxi_hosts:
+    normalize:
+      first_of:
+        - esxi_hosts
+        - list:
+            for_each: clusters
+            expand: host_names
+            include_source: false
+            map:
+              name: item
+              cluster: parent.name
+              datacenter: parent.datacenter
+        - {const: []}
+    type: list
+  virtual_machines:
+    normalize:
+      list:
+        source:
+          first_of:
+            - vms_raw
+            - {path: vms_tagged_raw.virtual_machines}
+            - {path: vms_untagged_raw.virtual_machines}
+            - vms_info_raw.virtual_machines
+            - virtual_machines
+        include_source: false
+        map:
+          name: {first_of: [guest_name, guest_fullname, name, {const: ""}]}
+          guest_os: {first_of: [guest_fullname, guest_os, {const: ""}]}
+          power_state: {first_of: [power_state, {const: ""}]}
+          ip_address: {first_of: [ip_address, {const: ""}]}
+          esxi_host: {first_of: [esxi_hostname, esxi_host, {const: ""}]}
+    type: list
+  vms_info_raw:
+    normalize:
+      object:
+        virtual_machines:
+          first_of:
+            - vms_raw
+            - {path: vms_tagged_raw.virtual_machines}
+            - {path: vms_untagged_raw.virtual_machines}
+            - vms_info_raw.virtual_machines
+            - {const: []}
+    type: dict
+  snapshots_raw:
+    normalize:
+      first_of:
+        - {flatten: "snapshots_raw.results[].vmware_all_snapshots_info[]"}
+        - snapshots_raw
+        - {const: []}
+    type: list
+  resource_pools:
+    normalize:
+      first_of: [resource_pools, resource_pools_raw.resource_pool_info, {const: []}]
+    type: list
+  dvswitches:
+    normalize:
+      list:
+        source:
+          first_of: [dvswitches, dvswitches_raw.distributed_virtual_switches]
+        include_source: false
+        map:
+          name: {first_of: [name, configure.settings.properties.general.name, configure.name, {const: ""}]}
+          num_ports: {first_of: [num_ports, configure.settings.properties.general.numPorts, {const: 0}]}
+          num_uplinks: {first_of: [num_uplinks, configure.settings.properties.general.numUplinks, {const: 0}]}
+          mtu: {first_of: [mtu, configure.settings.properties.advanced.maxMtu, {const: 0}]}
+          uuid: {first_of: [uuid, {const: ""}]}
+          vendor: {first_of: [vendor, configure.settings.properties.general.vendor, {const: ""}]}
+          version: {first_of: [version, configure.settings.properties.general.version, {const: ""}]}
+    type: list
+  dvs_portgroups:
+    normalize:
+      first_of:
+        - dvs_portgroups
+        - {flatten: "dvs_portgroups_raw.results[].dvs_portgroup_info[]"}
+        - {const: []}
+    type: list
+  licenses:
+    normalize:
+      first_of: [licenses, licenses_raw.licenses, {const: []}]
+    type: list
+  extensions:
+    normalize:
+      list:
+        source:
+          first_of: [extensions, extensions_raw.extension_info]
+        include_source: false
+        map:
+          ext_label: {first_of: [ext_label, extension_label, {const: ""}]}
+          ext_company: {first_of: [ext_company, extension_company, {const: ""}]}
+          ext_version: {first_of: [ext_version, extension_version, {const: ""}]}
+          ext_key: {first_of: [ext_key, extension_key, {const: ""}]}
+          ext_last_heartbeat_time: {first_of: [ext_last_heartbeat_time, extension_last_heartbeat_time, {const: ""}]}
+    type: list
+  content_libraries:
+    normalize:
+      list:
+        source:
+          first_of:
+            - content_libraries
+            - {flatten: "content_libraries_raw.results[].content_lib_details[]"}
+        include_source: false
+        map:
+          lib_name: {first_of: [lib_name, library_name, {const: ""}]}
+          lib_type: {first_of: [lib_type, library_type, {const: ""}]}
+          lib_description: {first_of: [lib_description, library_description, {const: ""}]}
+          lib_id: {first_of: [lib_id, library_id, {const: ""}]}
+    type: list
+  tag_categories:
+    normalize:
+      first_of: [tag_categories, tag_categories_raw.tag_category_info, {const: []}]
+    type: list
+  tags:
+    normalize:
+      first_of: [tags, tags_raw.tag_info, {const: []}]
+    type: list
+  active_alarms:
+    normalize:
+      first_of: [active_alarms, alarms_raw.alarms, {const: []}]
+    type: list
+  infra_patterns:
+    normalize:
+      first_of: [infra_patterns, config.infrastructure_vm_patterns, {const: []}]
+    type: list
+  config:
+    normalize:
+      first_of: [config, {const: {}}]
+    type: dict
+
+  datacenter_count:
+    normalize:
+      first_of: [datacenter_count, {count: datacenters_raw.datacenter_info}]
+      default: 0
+    type: int
+  cluster_count: {normalize: {count: clusters}, type: int}
+  esxi_host_count: {normalize: {count: esxi_hosts}, type: int}
+  datastore_count: {normalize: {count: datastores}, type: int}
+  resource_pool_count: {normalize: {count: resource_pools}, type: int}
+  dvswitch_count: {normalize: {count: dvswitches}, type: int}
+  dvs_portgroup_count: {normalize: {count: dvs_portgroups}, type: int}
+  license_count: {normalize: {count: licenses}, type: int}
+  extension_count: {normalize: {count: extensions}, type: int}
+  content_library_count:
+    normalize: {count: content_libraries}
+    type: int
+  tag_category_count: {normalize: {count: tag_categories}, type: int}
+  tag_count: {normalize: {count: tags}, type: int}
+  vm_count: {normalize: {count: virtual_machines}, type: int}
+  snapshot_count: {normalize: {count: snapshots_raw}, type: int}
   alarm_count:
+    normalize: {count: active_alarms}
+    type: int
     thresholds:
       warn_if_above: 1
       crit_if_above: 5
+
+  appliance_uptime_days:
+    compute: "{{ appliance_uptime_seconds / 86400 }}"
 
 alerts:
   - id: appliance_health_red

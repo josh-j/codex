@@ -804,8 +804,15 @@ class ActionModule(ActionBase):
             "target_host": self._resolve_var(
                 task_vars, "_ncs_stig_target_host", "stig_target_host", "inventory_hostname",
             ),
+            # ``_stig_active_target_type`` is the per-iteration override
+            # the orchestrator pushes via ``apply.vars`` when its Phase 1a
+            # loop carries a ``target_type`` field (VCSA's per-service
+            # loop). It's checked first because role-level bindings of
+            # ``_ncs_stig_target_type`` (e.g. ``vcsa``) win against
+            # set_fact at task-vars precedence; the new key has no role
+            # binding so the apply.vars value is always picked up.
             "target_type": str(self._resolve_var(
-                task_vars, "_ncs_stig_target_type", "stig_target_type",
+                task_vars, "_stig_active_target_type", "_ncs_stig_target_type", "stig_target_type",
             ) or "").lower(),
             "gate": gate or {},
             "probe": probe,

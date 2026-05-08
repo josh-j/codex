@@ -1,0 +1,44 @@
+---
+# internal.ise.ise : tasks/main.yaml
+
+- name: "ISE | Capture task root"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "ISE | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: ISE
+    _ncs_default_action: collect
+    _ncs_allowed_profiles: []
+    _ncs_allowed_operations:
+      - endpoint_lookup
+      - endpoint_risk_report
+      - switch_lookup
+      - port_endpoint_report
+      - user_auth_history
+      - failed_auth_summary
+      - endpoint_coa
+      - endpoint_timeline
+      - policy_hit_explorer
+      - endpoint_anc
+      - nad_troubleshooting
+      - nad_port_history
+      - policy_object_detail
+    _dispatch_map:
+      _default_: collect
+      endpoint_lookup: one_offs
+      endpoint_risk_report: one_offs
+      switch_lookup: one_offs
+      port_endpoint_report: one_offs
+      user_auth_history: one_offs
+      failed_auth_summary: one_offs
+      endpoint_coa: endpoint_coa
+      endpoint_timeline: one_offs
+      policy_hit_explorer: one_offs
+      endpoint_anc: endpoint_anc
+      nad_troubleshooting: one_offs
+      nad_port_history: one_offs
+      policy_object_detail: one_offs

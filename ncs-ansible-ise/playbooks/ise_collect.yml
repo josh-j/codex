@@ -1,0 +1,16 @@
+---
+# internal/ise/playbooks/ise_collect.yml
+# Gather read-only Cisco ISE inventory and health-oriented API data.
+#
+# Usage:
+#   ansible-playbook internal.ise.ise_collect -i inventory/production
+
+- name: "Cisco ISE Collect"
+  hosts: "{{ ise_target_hosts | default('ise_servers') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  tags: ["ise", "audit"]
+  roles:
+    - role: internal.ise.ise
+      vars:
+        ncs_action: collect

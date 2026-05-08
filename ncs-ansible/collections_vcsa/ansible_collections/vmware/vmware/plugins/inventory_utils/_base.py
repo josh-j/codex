@@ -13,20 +13,17 @@ from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cachea
 from ansible.parsing.yaml.objects import AnsibleVaultEncryptedUnicode
 from ansible.module_utils.common.text.converters import to_native
 from ansible.module_utils.common.dict_transformations import camel_dict_to_snake_dict
-from ansible.utils.display import Display
 
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import PyvmomiClient
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.rest import VmwareRestClient
-from ansible_collections.vmware.vmware.plugins.module_utils._folder_paths import (
+
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import PyvmomiClient
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._rest import VmwareRestClient
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_folder_paths import (
     get_folder_path_of_vsphere_object
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._facts import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_facts import (
     vmware_obj_to_json,
     flatten_dict
 )
-
-
-DISPLAY = Display()
 
 
 class VmwareInventoryHost(ABC):
@@ -34,9 +31,6 @@ class VmwareInventoryHost(ABC):
     This is an abstract class. Its meant to be extended by a class more closely rerpresenting a specific
     VMware object, like VM or ESXi host
     """
-    RESERVED_HOST_VARIABLE_PREFIX = 'vmware_inventory_'
-    RESERVED_HOST_VARIABLES = ['name', 'tags']
-
     def __init__(self):
         self.object = None
         self.inventory_hostname = None
@@ -92,36 +86,16 @@ class VmwareInventoryHost(ABC):
     def flatten_properties(self):
         self.properties = flatten_dict(self.properties)
 
-    def rename_reserved_variables(self):
-        for variable in self.RESERVED_HOST_VARIABLES:
-            if variable in self.properties:
-                self.properties[f"{self.RESERVED_HOST_VARIABLE_PREFIX}{variable}"] = self.properties.pop(variable)
-
 
 class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
 
-    def parse(self, inventory, loader, path, cache=True):
-        """
-        This is the main entrypoint for the inventory. It will read the config file and update
-        an internal dict (_options) with the user input. Then, it will try to load the results
-        from a cache if appropriate. Otherwise, it will load the results from vCenter.
-        """
-        super().parse(inventory, loader, path, cache=cache)
-        self._consume_options(self._read_config_data(path))
-        cache_key = self.get_cache_key(path)
-        result_was_cached, results = self.get_cached_result(cache, cache_key)
-
-        if result_was_cached:
-            self.populate_from_cache(results)
-        else:
-            results = self.populate_from_vcenter()
-
-        self.update_cached_result(cache, cache_key, results)
-
-    def initialize_pyvmomi_client(self):
+    def initialize_pyvmomi_client(self, config_data):
         """
         Create an instance of the pyvmomi client based on the user's input (auth) parameters
         """
+        # update _options from config data
+        self._consume_options(config_data)
+
         username, password = self.get_credentials_from_options()
 
         try:
@@ -131,16 +105,19 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
                 password=password,
                 port=self.get_option("port"),
                 validate_certs=self.get_option("validate_certs"),
-                proxy_host=self.get_option("proxy_host"),
-                proxy_port=self.get_option("proxy_port")
+                http_proxy_host=self.get_option("proxy_host"),
+                http_proxy_port=self.get_option("proxy_port")
             )
         except Exception as e:
             raise AnsibleParserError(message=to_native(e))
 
-    def initialize_rest_client(self):
+    def initialize_rest_client(self, config_data):
         """
         Create an instance of the REST client based on the user's input (auth) parameters
         """
+        # update _options from config data
+        self._consume_options(config_data)
+
         username, password = self.get_credentials_from_options()
 
         try:
@@ -150,9 +127,9 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
                 password=password,
                 port=self.get_option("port"),
                 validate_certs=self.get_option("validate_certs"),
-                proxy_host=self.get_option("proxy_host"),
-                proxy_port=self.get_option("proxy_port"),
-                proxy_protocol=self.get_option("proxy_protocol")
+                http_proxy_host=self.get_option("proxy_host"),
+                http_proxy_port=self.get_option("proxy_port"),
+                http_proxy_protocol=self.get_option("proxy_protocol")
             )
         except Exception as e:
             raise AnsibleParserError(message=to_native(e))
@@ -193,7 +170,6 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
             Second value is the cached data. Cached data could be empty, which is why the first value is needed.
         """
         # false when refresh_cache or --flush-cache is used
-
         if not cache:
             return False, None
 
@@ -265,7 +241,6 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
 
         tags = {}
         tags_by_category = {}
-        property_prefix = 'vmware_inventory_'
         for tag in vmware_host_object.get_tags(self.rest_client):
             tags[tag.id] = tag.name
             try:
@@ -317,9 +292,6 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
 
         if self.get_option("flatten_nested_properties"):
             vmware_host_object.flatten_properties()
-
-        if self.get_option("rename_reserved_variables"):
-            vmware_host_object.rename_reserved_variables()
 
         for k, v in vmware_host_object.properties.items():
             self.inventory.set_variable(vmware_host_object.inventory_hostname, k, v)
@@ -373,62 +345,3 @@ class VmwareInventoryBase(BaseInventoryPlugin, Constructable, Cacheable):
                     )
 
         return False
-
-    def _handle_duplicate_host(self, existing_host_vars, new_host):
-        """
-            Handles the instance where two hosts have the same inventory hostname. If the user has strict set to true, this
-            should be an error. Otherwise it is just a warning.
-            Args:
-                existing_host_vars: dict, The host properties of the existing host (for example, hostvars[inventory_hostname])
-                new_host: VmwareInventoryHost, The host object that was going to be added, but is a duplicate hostname of another
-        """
-        if self.get_option('strict'):
-            raise AnsibleError(
-                "Host %s has the same inventory hostname (%s) as %s. This is a fatal issue since strict is true." %
-                (existing_host_vars['moid'], new_host.inventory_hostname, new_host.object._GetMoId())
-            )
-        else:
-            DISPLAY.warning(
-                "Host %s has the same inventory hostname (%s) as %s. Only the first host, %s, will be included since strict is false." %
-                (existing_host_vars['moid'], new_host.inventory_hostname, new_host.object._GetMoId(), existing_host_vars['moid'])
-            )
-
-    def add_host_object_from_vcenter_to_inventory(self, new_host, hostvars):
-        """
-            Add a new host to the inventory and populate host vars based on object properties.
-            If the host should be filtered out or if a host with the same name already exists, this method will handle that
-            and simply return without processing the host.
-            Args:
-                new_host: VmwareInventoryHost, The new host to add to the inventory
-                hostvars: dict, The hostvars dict that should be updated with the new host's properties
-        """
-        if new_host.inventory_hostname in hostvars:
-            self._handle_duplicate_host(hostvars[new_host.inventory_hostname], new_host)
-            return
-
-        if self.host_should_be_filtered_out(new_host):
-            return
-
-        hostvars[new_host.inventory_hostname] = new_host.properties
-        self.inventory.add_host(new_host.inventory_hostname)
-        self.set_default_ansible_host_var(new_host)
-
-        _strict = self.get_option("strict")
-        self._set_composite_vars(
-            self.get_option("compose"), new_host.properties, new_host.inventory_hostname, strict=_strict)
-        self._add_host_to_composed_groups(
-            self.get_option("groups"), new_host.properties, new_host.inventory_hostname, strict=_strict)
-        self._add_host_to_keyed_groups(
-            self.get_option("keyed_groups"), new_host.properties, new_host.inventory_hostname, strict=_strict)
-
-        self.add_host_to_groups_based_on_path(new_host)
-        self.set_host_variables_from_host_properties(new_host)
-
-    def set_default_ansible_host_var(self, vmware_host_object):
-        """
-            Sets the default ansible_host var. This is usually an IP that is dependent on the object type.
-            This is a default because the user can override this via compose
-            Args:
-              vmware_host_object: The host object that should be used. The type will be dependent on the plugin type.
-        """
-        raise NotImplementedError('ansible_host should be defined in the inventory plugin class.')

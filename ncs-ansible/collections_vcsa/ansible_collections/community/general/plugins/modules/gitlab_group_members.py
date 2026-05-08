@@ -199,7 +199,7 @@ class GitLabGroup(object):
             member = group.members.get(gitlab_user_id)
             if member:
                 return member
-        except gitlab.exceptions.GitlabGetError:
+        except gitlab.exceptions.GitlabGetError as e:
             return None
 
     # check if the user is a member of the group

@@ -1,14 +1,20 @@
 ---
 # internal.vmware.vm : tasks/stig_v7r4/main.yaml
 # Per-VM V7R4 STIG dispatcher. Included via check.yaml per VM.
+#
+# Paths resolve against ``{{ _ncs_task_root }}`` (set in vm/tasks/main.yaml).
+# ``import_tasks`` and relative ``include_tasks`` paths resolve against
+# ``playbook_dir`` when this file is loaded via the dynamic per-VM loop in
+# check.yaml, and miss the role tree. Same Ansible quirk fixed for Ubuntu.
 
-- import_tasks: stig_v7r4/00_prelude.yaml
+- name: "VM STIG | Prelude"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/00_prelude.yaml"
 
-- name: "Include 10_advanced_settings.yaml"
-  ansible.builtin.include_tasks: stig_v7r4/10_advanced_settings.yaml
+- name: "VM STIG | Advanced settings"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/10_advanced_settings.yaml"
 
-- name: "Include 20_hardware_audit.yaml"
-  ansible.builtin.include_tasks: stig_v7r4/20_hardware_audit.yaml
+- name: "VM STIG | Hardware audit"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/20_hardware_audit.yaml"
 
-- name: "Include 30_vm_attributes.yaml"
-  ansible.builtin.include_tasks: stig_v7r4/30_vm_attributes.yaml
+- name: "VM STIG | VM attributes"
+  ansible.builtin.include_tasks: "{{ _ncs_task_root }}/stig_v7r4/30_vm_attributes.yaml"

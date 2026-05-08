@@ -10,9 +10,9 @@
 - name: "Discover all VMs on vCenter"
   community.vmware.vmware_vm_info:
     hostname: "{{ _vmware_discovery_hostname | default(inventory_hostname) }}"
-    username: "{{ vmware_username }}"
-    password: "{{ vmware_password }}"
-    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    username: "{{ _vmware_creds.username }}"
+    password: "{{ _vmware_creds.password }}"
+    validate_certs: "{{ _vmware_creds.validate_certs }}"
   register: _vcenter_vms
   when: vm_stig_target_vms | default([]) | length == 0
 

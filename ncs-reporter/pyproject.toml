@@ -30,6 +30,15 @@ ncs-reporter = "ncs_reporter.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Jinja2's lexer calls bytes.decode("unicode-escape") on string-literal
+    # tokens, which warns on regex shorthand like `\d` and `\]` even though
+    # the resulting regex is valid. The warning is fundamental to Jinja's
+    # tokenizer; rewriting our regexes around it would hurt readability.
+    "ignore:invalid escape sequence:DeprecationWarning:jinja2.lexer",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"

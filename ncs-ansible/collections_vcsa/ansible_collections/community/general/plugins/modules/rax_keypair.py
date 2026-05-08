@@ -118,7 +118,7 @@ def rax_keypair(module, name, public_key, state):
                 f = open(public_key)
                 public_key = f.read()
                 f.close()
-            except Exception:
+            except Exception as e:
                 module.fail_json(msg='Failed to load %s' % public_key)
 
         try:

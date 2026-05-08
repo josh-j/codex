@@ -2,25 +2,24 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import ModulePyvmomiBase
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import (
     PyvmomiClient
 )
 from ...common.utils import set_module_args, fail_json, AnsibleFailJson
 from ...common.vmware_object_mocks import create_mock_vsphere_object
 from pyVmomi import vim
 import pytest
-from unittest.mock import ANY
 
 
 class TestModulePyvmomiBase():
 
     def __prepare(self, mocker):
         mocker.patch.object(PyvmomiClient, 'connect_to_api', return_value=(mocker.Mock(), mocker.Mock()))
-        with set_module_args():
-            module = mocker.Mock()
-            module.fail_json = fail_json
-            module.params = {"hostname": "a", "username": "b", "password": "c"}
-            self.base = ModulePyvmomiBase(module=module)
+        set_module_args()
+        module = mocker.Mock()
+        module.fail_json = fail_json
+        module.params = {"hostname": "a", "username": "b", "password": "c"}
+        self.base = ModulePyvmomiBase(module=module)
 
     def test_is_vcenter(self, mocker):
         self.__prepare(mocker)
@@ -141,13 +140,6 @@ class TestModulePyvmomiBase():
         mocker.patch.object(self.base, 'get_objs_by_name_or_moid', return_value=[])
         self.base.get_datastore_cluster_by_name_or_moid('foo', fail_on_missing=True)
         mock_fail.assert_called_once()
-
-        # test datacenter param
-        datacenter = mocker.Mock()
-        mocker.patch.object(self.base, 'get_objs_by_name_or_moid', return_value=[])
-        self.base.get_datastore_cluster_by_name_or_moid('foo', datacenter=datacenter)
-        self.base.get_objs_by_name_or_moid.assert_called_once_with(
-            ANY, ANY, return_all=ANY, search_root_folder=datacenter.datastoreFolder)
 
     def test_get_resource_pool_by_name_or_moid(self, mocker):
         self.__prepare(mocker)

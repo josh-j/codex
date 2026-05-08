@@ -16,6 +16,23 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     esxi_stig_enable_ssh_checks: false
   pre_tasks:
+    - name: Resolve ESXi targets from vSphere graph
+      internal.vmware.vsphere_graph_targets_info:
+        report_directory: "{{ lookup('env', 'NCS_REPORT_DIRECTORY') | default(ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports/data')), true) }}"
+        target_type: esxi
+      register: _graph_esxi_targets
+      delegate_to: localhost
+      changed_when: false
+      when: esxi_stig_target_hosts | default([]) | length == 0
+
+    - name: Use graph-selected ESXi targets
+      ansible.builtin.set_fact:
+        esxi_stig_target_hosts: "{{ _graph_esxi_targets.targets }}"
+      changed_when: false
+      when:
+        - esxi_stig_target_hosts | default([]) | length == 0
+        - _graph_esxi_targets.targets | default([]) | length > 0
+
     - name: Route ESXi targets
       ansible.builtin.include_role:
         name: internal.vmware.common
@@ -39,6 +56,23 @@
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
   pre_tasks:
+    - name: Resolve ESXi targets from vSphere graph
+      internal.vmware.vsphere_graph_targets_info:
+        report_directory: "{{ lookup('env', 'NCS_REPORT_DIRECTORY') | default(ncs_report_directory | default(ncs_config.report_directory | default('/srv/samba/reports/data')), true) }}"
+        target_type: esxi
+      register: _graph_esxi_targets
+      delegate_to: localhost
+      changed_when: false
+      when: esxi_stig_target_hosts | default([]) | length == 0
+
+    - name: Use graph-selected ESXi targets
+      ansible.builtin.set_fact:
+        esxi_stig_target_hosts: "{{ _graph_esxi_targets.targets }}"
+      changed_when: false
+      when:
+        - esxi_stig_target_hosts | default([]) | length == 0
+        - _graph_esxi_targets.targets | default([]) | length > 0
+
     - name: Route ESXi targets
       ansible.builtin.include_role:
         name: internal.vmware.common

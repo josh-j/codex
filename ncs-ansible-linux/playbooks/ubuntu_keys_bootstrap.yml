@@ -1,0 +1,55 @@
+---
+# internal/linux/playbooks/ubuntu_keys_bootstrap.yml
+# First-time enrollment: install the controller's SSH pubkey on a brand-new
+# Ubuntu host you currently have password access to.
+#
+# Run once per fresh host with --ask-pass (or with ansible_password vaulted);
+# subsequent runs of ubuntu_collect / ubuntu_stig_audit / etc. authenticate
+# via the installed key with no further password prompts.
+#
+# Required vars:
+#   - ansible_user        (defaults to "ansible")
+#   - ansible_password    (one-time password, supply via --ask-pass or vault)
+#
+# Optional vars:
+#   - ubuntu_bootstrap_pubkey_path
+#       Path to the public key to install. Defaults to the controller's
+#       ~/.ssh/id_ed25519.pub. Override when the controller's primary key
+#       lives elsewhere (e.g. ~/.ssh/inter_host).
+#   - ubuntu_bootstrap_managed_user
+#       The account to land the key under. Defaults to ``ansible_user`` so
+#       the very next run authenticates as the same operator. Override when
+#       enrolling a separate management account (e.g. ``ansible``).
+#
+# Idempotent: safe to re-run; ``authorized_key`` only appends when missing.
+
+- name: "Ubuntu | Keys Bootstrap"
+  hosts: "{{ ubuntu_target_hosts | default('ubuntu_servers') }}"
+  gather_facts: false
+  vars_files:
+    - vars/ubuntu_bootstrap.yml
+  vars:
+    ansible_ssh_common_args: "{{ ubuntu_bootstrap_ssh_args_password_only }}"
+    ubuntu_bootstrap_pubkey_path: "{{ lookup('env', 'HOME') ~ '/.ssh/id_ed25519.pub' }}"
+    ubuntu_bootstrap_managed_user: "{{ ansible_user }}"
+  tasks:
+    - name: "Ubuntu Bootstrap | Read controller pubkey"
+      ansible.builtin.set_fact:
+        _ubuntu_bootstrap_pubkey: "{{ lookup('file', ubuntu_bootstrap_pubkey_path) }}"
+      delegate_to: localhost
+      run_once: true
+      changed_when: false
+
+    - name: "Ubuntu Bootstrap | Install controller pubkey"
+      ansible.posix.authorized_key:
+        user: "{{ ubuntu_bootstrap_managed_user }}"
+        key: "{{ _ubuntu_bootstrap_pubkey }}"
+        state: present
+        manage_dir: true
+
+    - name: "Ubuntu Bootstrap | Verify key auth works"
+      ansible.builtin.command:
+        cmd: "true"
+      vars:
+        ansible_ssh_common_args: "{{ ubuntu_bootstrap_ssh_args_key_only }}"
+      changed_when: false

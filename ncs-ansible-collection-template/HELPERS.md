@@ -80,12 +80,15 @@ Collection results flow to disk via the `ncs_collector` callback plugin
   ansible.builtin.include_role:
     name: internal.core.emit
   vars:
-    emit_type: "raw_<collection>"
-    emit_data: "{{ _collected_data }}"
+    _ncs_emit_platform: "<collection>"
+    _ncs_emit_payload: "{{ _collected_data }}"
+    _ncs_emit_skip: "{{ <collection>_skip_export | default(false) }}"
 ```
 
 The callback persists the emitted data to
-`<report_directory>/platform/<platform>/<hostname>/raw_<type>.yaml`.
+`<report_directory>/platform/<platform>/<hostname>/raw_<platform>.yaml`
+for legacy flat layouts, or to `<report_directory>/<tree_path>/raw.yaml`
+when `_ncs_emit_tree_path` is set.
 
 ## ncs-console UI metadata
 

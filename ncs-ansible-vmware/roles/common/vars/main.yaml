@@ -1,0 +1,10 @@
+---
+# internal.vmware.common : vars/main.yaml
+# Auto-loaded into every role that lists ``internal.vmware.common`` as a
+# meta dependency (esxi, vcsa, vm). Single source of truth for the
+# credential block that every VMware module wires through ``module_defaults``.
+_vmware_creds:
+  hostname: "{{ ansible_host }}"
+  username: "{{ vmware_username }}"
+  password: "{{ vmware_password }}"
+  validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"

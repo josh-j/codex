@@ -1,13 +1,16 @@
 ---
 - name: Test On Simulator
-  when: not run_on_vcenter
-  environment: "{{ environment_auth_vars }}"
-
+  when: run_on_simulator
   block:
     - name: Set DRS Settings In Cluster
       vmware.vmware.cluster_drs:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
         enable: "{{ drs_enable }}"
         drs_enable_vm_behavior_overrides: "{{ drs_enable_vm_behavior_overrides}}"
         drs_default_vm_behavior: "{{ drs_default_vm_behavior }}"
@@ -17,21 +20,29 @@
     # The simulator never seems to update its DRS settings, so there's nothing to validate here
 
 - name: Test On VCenter
-  when: run_on_vcenter
-  environment: "{{ environment_auth_vars }}"
-
+  when: not run_on_simulator
   block:
-    - name: Include Eco Vcenter Test Vars
+    - name: Import common vars
       ansible.builtin.include_vars:
-        file: eco-vcenter.yml
+        file: ../group_vars.yml
     - name: Create Test Cluster
-      vmware.vmware.cluster:
+      community.vmware.vmware_cluster:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
-        name: "{{ test_cluster }}"
+        validate_certs: false
+        port: "{{ vcenter_port }}"
+        cluster_name: "{{ test_cluster }}"
     - name: Set DRS Settings In Test Cluster
       vmware.vmware.cluster_drs:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
         drs_enable_vm_behavior_overrides: "{{ drs_enable_vm_behavior_overrides}}"
         drs_default_vm_behavior: "{{ drs_default_vm_behavior }}"
         drs_vmotion_rate: "{{ drs_vmotion_rate }}"
@@ -40,8 +51,13 @@
       register: _out
     - name: Set DRS Settings In Test Cluster Again - Idempotence
       vmware.vmware.cluster_drs:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
         drs_enable_vm_behavior_overrides: "{{ drs_enable_vm_behavior_overrides}}"
         drs_default_vm_behavior: "{{ drs_default_vm_behavior }}"
         drs_vmotion_rate: "{{ drs_vmotion_rate }}"
@@ -50,8 +66,13 @@
       register: _idempotence_check
     - name: Gather Cluster Settings
       vmware.vmware.cluster_info:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster_name: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
       register: _cluster_info
     - name: Check DRS Settings Were Applied
       ansible.builtin.assert:
@@ -66,7 +87,12 @@
 
   always:
     - name: Destroy Test Cluster
-      vmware.vmware.cluster:
+      community.vmware.vmware_cluster:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
-        name: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
+        validate_certs: false
+        cluster_name: "{{ test_cluster }}"
         state: absent

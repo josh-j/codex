@@ -17,7 +17,7 @@ class ModuleDocFragment(object):
 options:
     datacenter:
         description:
-            - The name or MOID of the datacenter to use when searching for and deploying resources.
+            - The name of the datacenter to use when searching for and deploying resources.
         type: str
         required: true
         aliases: [datacenter_name]
@@ -39,28 +39,16 @@ options:
         type: str
         required: false
         aliases: [folder]
-    folder_paths_are_absolute:
-        description:
-            - If true, any folder path parameters are treated as absolute paths.
-            - If false, modules will try to intelligently determine if the path is absolute
-              or relative.
-            - This option is useful when your environment has a complex folder structure. By default,
-              modules will try to intelligently determine if the path is absolute or relative.
-              They may mistakenly prepend the datacenter name or other folder names, and this option
-              can be used to avoid this.
-        type: bool
-        required: false
-        default: false
     resource_pool:
         description:
-            - The name or MOID of a resource pool into which the virtual machine should be deployed.
+            - The name of a resource pool into which the virtual machine should be deployed.
             - Changing this option will not result in the VM being redeployed (it does not affect idempotency).
             - O(resource_pool) and O(cluster) are mutually exclusive.
         type: str
         required: false
     cluster:
         description:
-            - The name or MOID of the cluster where the VM should be deployed.
+            - The name of the cluster where the VM should be deployed.
             - Changing this option will not result in the VM being redeployed (it does not affect idempotency).
             - O(resource_pool) and O(cluster) are mutually exclusive.
         type: str
@@ -68,13 +56,13 @@ options:
         aliases: [cluster_name]
     datastore:
         description:
-            - Name or MOID of the datastore to store deployed VM and disk.
+            - Name of the datastore to store deployed VM and disk.
             - O(datastore) and O(datastore_cluster) are mutually exclusive.
         type: str
         required: false
     datastore_cluster:
         description:
-            - Name or MOID of the datastore cluster to store deployed VM and disk.
+            - Name of the datastore cluster to store deployed VM and disk.
             - Please make sure Storage DRS is active for recommended datastore from the given datastore cluster.
             - If Storage DRS is not enabled, datastore with largest free storage space is selected.
             - O(datastore) and O(datastore_cluster) are mutually exclusive.

@@ -1,21 +1,28 @@
 ---
+- name: Import common vars
+  ansible.builtin.include_vars:
+    file: ../group_vars.yml
+  when: not run_on_simulator
+
 - name: Test
-  when: run_on_vcenter
-  environment: "{{ environment_auth_vars }}"
-
+  when: not run_on_simulator
   block:
-    - name: Include Eco Vcenter Test Vars
-      ansible.builtin.include_vars:
-        file: eco-vcenter.yml
-
     - name: Create Local Content Library
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}"
         state: present
 
     - name: Publish Library
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}"
         authentication_method: BASIC
@@ -27,6 +34,10 @@
 
     - name: Publish Library - Idempotency
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}"
         authentication_method: BASIC
@@ -38,6 +49,10 @@
 
     - name: Create Subscribed Library
       vmware.vmware.subscribed_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}-subscribed"
         authentication_method: BASIC
@@ -48,6 +63,10 @@
 
     - name: Create Subscribed Library - Idemptoency
       vmware.vmware.subscribed_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}-subscribed"
         authentication_method: BASIC
@@ -59,6 +78,10 @@
 
     - name: Change Local Password
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}"
         authentication_method: BASIC
@@ -70,6 +93,10 @@
 
     - name: Change Subscribed Password
       vmware.vmware.subscribed_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}-subscribed"
         authentication_method: BASIC
@@ -80,6 +107,10 @@
 
     - name: Stop Publishing
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datastore_name: "{{ shared_storage_02 }}"
         name: "{{ test_library_name }}"
         authentication_current_password: "{{ test_library_password }}!"
@@ -99,9 +130,17 @@
   always:
     - name: Destroy local library
       vmware.vmware.local_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         name: "{{ test_library_name }}"
         state: absent
     - name: Destroy subscribed library
       vmware.vmware.subscribed_content_library:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         name: "{{ test_library_name }}-subscribed"
         state: absent

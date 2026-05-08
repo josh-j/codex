@@ -1,0 +1,684 @@
+---
+# internal.ise.ise : tasks/collect.yaml
+#
+# Read-only Cisco ISE collection through the upstream cisco.ise
+# modules. Emit raw module results; any shaping for dashboards belongs
+# in ncs_configs normalize specs.
+
+- name: "ISE | Get MnT version"
+  cisco.ise.mnt_version_info: &ise_common_args
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_mnt_version
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get telemetry information"
+  cisco.ise.telemetryinfo_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_telemetry
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get node inventory"
+  cisco.ise.node_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_nodes
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get network device groups"
+  cisco.ise.network_device_group_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_network_device_groups
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get network devices"
+  cisco.ise.network_device_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_network_devices
+  changed_when: false
+  failed_when: false
+  when: ise_collect_network_devices | bool
+
+- name: "ISE | Get identity groups"
+  cisco.ise.identitygroup_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_identity_groups
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get profiler profiles"
+  cisco.ise.profiler_profile_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_profiler_profiles
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get endpoints"
+  cisco.ise.endpoints_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_endpoints
+  changed_when: false
+  failed_when: false
+  when: ise_collect_endpoints | bool
+
+- name: "ISE | Get endpoint device type summary"
+  cisco.ise.endpoints_device_type_info:
+    <<: *ise_common_args
+  register: _ise_endpoint_device_types
+  changed_when: false
+  failed_when: false
+  when: ise_collect_endpoints | bool
+
+- name: "ISE | Get endpoint configuration"
+  cisco.ise.configuration_info:
+    <<: *ise_common_args
+  register: _ise_endpoint_configuration
+  changed_when: false
+  failed_when: false
+  when: ise_collect_endpoints | bool
+
+- name: "ISE | Get guest users"
+  cisco.ise.guest_user_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_guest_users
+  changed_when: false
+  failed_when: false
+  when: ise_collect_guests | bool
+
+- name: "ISE | Get SGACLs"
+  cisco.ise.sgacl_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_sg_acls
+  changed_when: false
+  failed_when: false
+  when: ise_collect_trustsec | bool
+
+- name: "ISE | Get SGTs"
+  cisco.ise.sgt_info:
+    ise_hostname: "{{ ise_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_sgts
+  changed_when: false
+  failed_when: false
+  when: ise_collect_trustsec | bool
+
+- name: "ISE | Get system certificates"
+  cisco.ise.system_certificate_info:
+    <<: *ise_common_args
+  register: _ise_system_certificates
+  changed_when: false
+  failed_when: false
+  when: ise_collect_certificates | bool
+
+- name: "ISE | Get trusted certificates"
+  cisco.ise.trusted_certificate_info:
+    <<: *ise_common_args
+  register: _ise_trusted_certificates
+  changed_when: false
+  failed_when: false
+  when: ise_collect_certificates | bool
+
+- name: "ISE | Get node replication status"
+  cisco.ise.node_replication_status_info:
+    <<: *ise_common_args
+    node: "{{ item }}"
+  register: _ise_node_replication_status
+  changed_when: false
+  failed_when: false
+  loop: "{{ ise_replication_nodes }}"
+  loop_control:
+    label: "{{ item }}"
+  when: ise_collect_node_health | bool
+
+- name: "ISE | Get backup last status"
+  cisco.ise.backup_last_status_info:
+    <<: *ise_common_args
+  register: _ise_backup_last_status
+  changed_when: false
+  failed_when: false
+  when: ise_collect_backup_repository | bool
+
+- name: "ISE | Get repositories"
+  cisco.ise.repository_info:
+    <<: *ise_common_args
+  register: _ise_repositories
+  changed_when: false
+  failed_when: false
+  when: ise_collect_backup_repository | bool
+
+- name: "ISE | Get repository files"
+  cisco.ise.repository_files_info:
+    <<: *ise_common_args
+    repositoryName: "{{ item }}"
+  register: _ise_repository_files
+  changed_when: false
+  failed_when: false
+  loop: "{{ ise_repository_file_names }}"
+  loop_control:
+    label: "{{ item }}"
+  when: ise_collect_backup_repository | bool
+
+- name: "ISE | Get patch information"
+  cisco.ise.patch_info:
+    <<: *ise_common_args
+  register: _ise_patches
+  changed_when: false
+  failed_when: false
+  when: ise_collect_patches | bool
+
+- name: "ISE | Get hotpatch information"
+  cisco.ise.hotpatch_info:
+    <<: *ise_common_args
+  register: _ise_hotpatches
+  changed_when: false
+  failed_when: false
+  when: ise_collect_patches | bool
+
+- name: "ISE | Get allowed protocols"
+  cisco.ise.allowed_protocols_info:
+    <<: *ise_common_args
+  register: _ise_allowed_protocols
+  changed_when: false
+  failed_when: false
+  when: ise_collect_policy | bool
+
+- name: "ISE | Get authorization profiles"
+  cisco.ise.authorization_profile_info:
+    <<: *ise_common_args
+  register: _ise_authorization_profiles
+  changed_when: false
+  failed_when: false
+  when: ise_collect_policy | bool
+
+- name: "ISE | Get downloadable ACLs"
+  cisco.ise.downloadable_acl_info:
+    <<: *ise_common_args
+  register: _ise_downloadable_acls
+  changed_when: false
+  failed_when: false
+  when: ise_collect_policy | bool
+
+- name: "ISE | Get filter policies"
+  cisco.ise.filter_policy_info:
+    <<: *ise_common_args
+  register: _ise_filter_policies
+  changed_when: false
+  failed_when: false
+  when: ise_collect_policy | bool
+
+- name: "ISE | Get TACACS command sets"
+  cisco.ise.tacacs_command_sets_info:
+    <<: *ise_common_args
+  register: _ise_tacacs_command_sets
+  changed_when: false
+  failed_when: false
+  when: ise_collect_device_admin | bool
+
+- name: "ISE | Get TACACS profiles"
+  cisco.ise.tacacs_profile_info:
+    <<: *ise_common_args
+  register: _ise_tacacs_profiles
+  changed_when: false
+  failed_when: false
+  when: ise_collect_device_admin | bool
+
+- name: "ISE | Get TACACS server sequences"
+  cisco.ise.tacacs_server_sequence_info:
+    <<: *ise_common_args
+  register: _ise_tacacs_server_sequences
+  changed_when: false
+  failed_when: false
+  when: ise_collect_device_admin | bool
+
+- name: "ISE | Get TACACS external servers"
+  cisco.ise.tacacs_external_servers_info:
+    <<: *ise_common_args
+  register: _ise_tacacs_external_servers
+  changed_when: false
+  failed_when: false
+  when: ise_collect_device_admin | bool
+
+- name: "ISE | Get Active Directory integrations"
+  cisco.ise.active_directories_info:
+    <<: *ise_common_args
+  register: _ise_active_directories
+  changed_when: false
+  failed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get ID store sequences"
+  cisco.ise.idstoresequence_info:
+    <<: *ise_common_args
+  register: _ise_id_store_sequences
+  changed_when: false
+  failed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get internal users"
+  cisco.ise.internal_user_info:
+    <<: *ise_common_args
+  register: _ise_internal_users
+  changed_when: false
+  failed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get LDAP identity sources"
+  cisco.ise.ldap_info:
+    <<: *ise_common_args
+  register: _ise_ldap_sources
+  changed_when: false
+  failed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get active session count"
+  cisco.ise.mnt_session_active_count_info:
+    <<: *ise_common_args
+  register: _ise_active_session_count
+  changed_when: false
+  failed_when: false
+  when: ise_collect_sessions | bool
+
+- name: "ISE | Get active session list"
+  cisco.ise.mnt_session_active_list_info:
+    <<: *ise_common_args
+  register: _ise_active_sessions
+  changed_when: false
+  failed_when: false
+  when:
+    - ise_collect_sessions | bool
+    - ise_collect_active_session_list | bool
+
+- name: "ISE | Get authentication failure reasons"
+  cisco.ise.mnt_failure_reasons_info:
+    <<: *ise_common_args
+  register: _ise_failure_reasons
+  changed_when: false
+  failed_when: false
+  when: ise_collect_sessions | bool
+
+- name: "ISE | Get recent authentication status"
+  cisco.ise.mnt_athentication_status_info:
+    <<: *ise_common_args
+    SECONDS: "{{ ise_authentication_status_seconds }}"
+    RECORDS: "{{ ise_authentication_status_records }}"
+  register: _ise_authentication_status
+  changed_when: false
+  failed_when: false
+  when: ise_collect_sessions | bool
+
+- name: "ISE | Build collection payload"
+  ansible.builtin.set_fact:
+    _ise_payload:
+      inventory_hostname: "{{ inventory_hostname }}"
+      ise_hostname: "{{ ise_hostname }}"
+      ise_version: "{{ ise_version }}"
+      collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      collection_options:
+        network_devices: "{{ ise_collect_network_devices | bool }}"
+        endpoints: "{{ ise_collect_endpoints | bool }}"
+        guests: "{{ ise_collect_guests | bool }}"
+        trustsec: "{{ ise_collect_trustsec | bool }}"
+        certificates: "{{ ise_collect_certificates | bool }}"
+        node_health: "{{ ise_collect_node_health | bool }}"
+        backup_repository: "{{ ise_collect_backup_repository | bool }}"
+        patches: "{{ ise_collect_patches | bool }}"
+        policy: "{{ ise_collect_policy | bool }}"
+        device_admin: "{{ ise_collect_device_admin | bool }}"
+        identity_sources: "{{ ise_collect_identity_sources | bool }}"
+        sessions: "{{ ise_collect_sessions | bool }}"
+        active_session_list: "{{ ise_collect_active_session_list | bool }}"
+        endpoint_repeat_counter_threshold: "{{ ise_endpoint_repeat_counter_threshold | int }}"
+      mnt_version:
+        failed: "{{ _ise_mnt_version.failed | default(false) | bool }}"
+        msg: "{{ _ise_mnt_version.msg | default('') }}"
+        ise_response: "{{ _ise_mnt_version.ise_response | default({}) }}"
+      telemetry:
+        failed: "{{ _ise_telemetry.failed | default(false) | bool }}"
+        msg: "{{ _ise_telemetry.msg | default('') }}"
+        ise_response: "{{ _ise_telemetry.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_telemetry.ise_responses | default([]) }}"
+      nodes:
+        failed: "{{ _ise_nodes.failed | default(false) | bool }}"
+        msg: "{{ _ise_nodes.msg | default('') }}"
+        ise_response: "{{ _ise_nodes.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_nodes.ise_responses | default([]) }}"
+      network_device_groups:
+        failed: "{{ _ise_network_device_groups.failed | default(false) | bool }}"
+        msg: "{{ _ise_network_device_groups.msg | default('') }}"
+        ise_response: "{{ _ise_network_device_groups.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_network_device_groups.ise_responses | default([]) }}"
+      network_devices:
+        failed: "{{ _ise_network_devices.failed | default(false) | bool }}"
+        skipped: "{{ _ise_network_devices.skipped | default(false) | bool }}"
+        msg: "{{ _ise_network_devices.msg | default('') }}"
+        ise_response: "{{ _ise_network_devices.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_network_devices.ise_responses | default([]) }}"
+      identity_groups:
+        failed: "{{ _ise_identity_groups.failed | default(false) | bool }}"
+        msg: "{{ _ise_identity_groups.msg | default('') }}"
+        ise_response: "{{ _ise_identity_groups.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_identity_groups.ise_responses | default([]) }}"
+      profiler_profiles:
+        failed: "{{ _ise_profiler_profiles.failed | default(false) | bool }}"
+        msg: "{{ _ise_profiler_profiles.msg | default('') }}"
+        ise_response: "{{ _ise_profiler_profiles.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_profiler_profiles.ise_responses | default([]) }}"
+      endpoints:
+        failed: "{{ _ise_endpoints.failed | default(false) | bool }}"
+        skipped: "{{ _ise_endpoints.skipped | default(false) | bool }}"
+        msg: "{{ _ise_endpoints.msg | default('') }}"
+        ise_response: "{{ _ise_endpoints.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_endpoints.ise_responses | default([]) }}"
+      endpoint_device_types:
+        failed: "{{ _ise_endpoint_device_types.failed | default(false) | bool }}"
+        skipped: "{{ _ise_endpoint_device_types.skipped | default(false) | bool }}"
+        msg: "{{ _ise_endpoint_device_types.msg | default('') }}"
+        ise_response: "{{ _ise_endpoint_device_types.ise_response | default([]) }}"
+      endpoint_configuration:
+        failed: "{{ _ise_endpoint_configuration.failed | default(false) | bool }}"
+        skipped: "{{ _ise_endpoint_configuration.skipped | default(false) | bool }}"
+        msg: "{{ _ise_endpoint_configuration.msg | default('') }}"
+        ise_response: "{{ _ise_endpoint_configuration.ise_response | default({}) }}"
+      guest_users:
+        failed: "{{ _ise_guest_users.failed | default(false) | bool }}"
+        skipped: "{{ _ise_guest_users.skipped | default(false) | bool }}"
+        msg: "{{ _ise_guest_users.msg | default('') }}"
+        ise_response: "{{ _ise_guest_users.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_guest_users.ise_responses | default([]) }}"
+      sg_acls:
+        failed: "{{ _ise_sg_acls.failed | default(false) | bool }}"
+        skipped: "{{ _ise_sg_acls.skipped | default(false) | bool }}"
+        msg: "{{ _ise_sg_acls.msg | default('') }}"
+        ise_response: "{{ _ise_sg_acls.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_sg_acls.ise_responses | default([]) }}"
+      sgts:
+        failed: "{{ _ise_sgts.failed | default(false) | bool }}"
+        skipped: "{{ _ise_sgts.skipped | default(false) | bool }}"
+        msg: "{{ _ise_sgts.msg | default('') }}"
+        ise_response: "{{ _ise_sgts.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_sgts.ise_responses | default([]) }}"
+      system_certificates:
+        failed: "{{ _ise_system_certificates.failed | default(false) | bool }}"
+        skipped: "{{ _ise_system_certificates.skipped | default(false) | bool }}"
+        msg: "{{ _ise_system_certificates.msg | default('') }}"
+        ise_response: "{{ _ise_system_certificates.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_system_certificates.ise_responses | default([]) }}"
+      trusted_certificates:
+        failed: "{{ _ise_trusted_certificates.failed | default(false) | bool }}"
+        skipped: "{{ _ise_trusted_certificates.skipped | default(false) | bool }}"
+        msg: "{{ _ise_trusted_certificates.msg | default('') }}"
+        ise_response: "{{ _ise_trusted_certificates.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_trusted_certificates.ise_responses | default([]) }}"
+      node_replication_status:
+        failed: "{{ _ise_node_replication_status.failed | default(false) | bool }}"
+        skipped: "{{ _ise_node_replication_status.skipped | default(false) | bool }}"
+        msg: "{{ _ise_node_replication_status.msg | default('') }}"
+        results: "{{ _ise_node_replication_status.results | default([]) }}"
+      backup_last_status:
+        failed: "{{ _ise_backup_last_status.failed | default(false) | bool }}"
+        skipped: "{{ _ise_backup_last_status.skipped | default(false) | bool }}"
+        msg: "{{ _ise_backup_last_status.msg | default('') }}"
+        ise_response: "{{ _ise_backup_last_status.ise_response | default({}) }}"
+      repositories:
+        failed: "{{ _ise_repositories.failed | default(false) | bool }}"
+        skipped: "{{ _ise_repositories.skipped | default(false) | bool }}"
+        msg: "{{ _ise_repositories.msg | default('') }}"
+        ise_response: "{{ _ise_repositories.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_repositories.ise_responses | default([]) }}"
+      repository_files:
+        failed: "{{ _ise_repository_files.failed | default(false) | bool }}"
+        skipped: "{{ _ise_repository_files.skipped | default(false) | bool }}"
+        msg: "{{ _ise_repository_files.msg | default('') }}"
+        results: "{{ _ise_repository_files.results | default([]) }}"
+      patches:
+        failed: "{{ _ise_patches.failed | default(false) | bool }}"
+        skipped: "{{ _ise_patches.skipped | default(false) | bool }}"
+        msg: "{{ _ise_patches.msg | default('') }}"
+        ise_response: "{{ _ise_patches.ise_response | default({}) }}"
+      hotpatches:
+        failed: "{{ _ise_hotpatches.failed | default(false) | bool }}"
+        skipped: "{{ _ise_hotpatches.skipped | default(false) | bool }}"
+        msg: "{{ _ise_hotpatches.msg | default('') }}"
+        ise_response: "{{ _ise_hotpatches.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_hotpatches.ise_responses | default([]) }}"
+      allowed_protocols:
+        failed: "{{ _ise_allowed_protocols.failed | default(false) | bool }}"
+        skipped: "{{ _ise_allowed_protocols.skipped | default(false) | bool }}"
+        msg: "{{ _ise_allowed_protocols.msg | default('') }}"
+        ise_response: "{{ _ise_allowed_protocols.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_allowed_protocols.ise_responses | default([]) }}"
+      authorization_profiles:
+        failed: "{{ _ise_authorization_profiles.failed | default(false) | bool }}"
+        skipped: "{{ _ise_authorization_profiles.skipped | default(false) | bool }}"
+        msg: "{{ _ise_authorization_profiles.msg | default('') }}"
+        ise_response: "{{ _ise_authorization_profiles.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_authorization_profiles.ise_responses | default([]) }}"
+      downloadable_acls:
+        failed: "{{ _ise_downloadable_acls.failed | default(false) | bool }}"
+        skipped: "{{ _ise_downloadable_acls.skipped | default(false) | bool }}"
+        msg: "{{ _ise_downloadable_acls.msg | default('') }}"
+        ise_response: "{{ _ise_downloadable_acls.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_downloadable_acls.ise_responses | default([]) }}"
+      filter_policies:
+        failed: "{{ _ise_filter_policies.failed | default(false) | bool }}"
+        skipped: "{{ _ise_filter_policies.skipped | default(false) | bool }}"
+        msg: "{{ _ise_filter_policies.msg | default('') }}"
+        ise_response: "{{ _ise_filter_policies.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_filter_policies.ise_responses | default([]) }}"
+      tacacs_command_sets:
+        failed: "{{ _ise_tacacs_command_sets.failed | default(false) | bool }}"
+        skipped: "{{ _ise_tacacs_command_sets.skipped | default(false) | bool }}"
+        msg: "{{ _ise_tacacs_command_sets.msg | default('') }}"
+        ise_response: "{{ _ise_tacacs_command_sets.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_tacacs_command_sets.ise_responses | default([]) }}"
+      tacacs_profiles:
+        failed: "{{ _ise_tacacs_profiles.failed | default(false) | bool }}"
+        skipped: "{{ _ise_tacacs_profiles.skipped | default(false) | bool }}"
+        msg: "{{ _ise_tacacs_profiles.msg | default('') }}"
+        ise_response: "{{ _ise_tacacs_profiles.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_tacacs_profiles.ise_responses | default([]) }}"
+      tacacs_server_sequences:
+        failed: "{{ _ise_tacacs_server_sequences.failed | default(false) | bool }}"
+        skipped: "{{ _ise_tacacs_server_sequences.skipped | default(false) | bool }}"
+        msg: "{{ _ise_tacacs_server_sequences.msg | default('') }}"
+        ise_response: "{{ _ise_tacacs_server_sequences.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_tacacs_server_sequences.ise_responses | default([]) }}"
+      tacacs_external_servers:
+        failed: "{{ _ise_tacacs_external_servers.failed | default(false) | bool }}"
+        skipped: "{{ _ise_tacacs_external_servers.skipped | default(false) | bool }}"
+        msg: "{{ _ise_tacacs_external_servers.msg | default('') }}"
+        ise_response: "{{ _ise_tacacs_external_servers.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_tacacs_external_servers.ise_responses | default([]) }}"
+      active_directories:
+        failed: "{{ _ise_active_directories.failed | default(false) | bool }}"
+        skipped: "{{ _ise_active_directories.skipped | default(false) | bool }}"
+        msg: "{{ _ise_active_directories.msg | default('') }}"
+        ise_response: "{{ _ise_active_directories.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_active_directories.ise_responses | default([]) }}"
+      id_store_sequences:
+        failed: "{{ _ise_id_store_sequences.failed | default(false) | bool }}"
+        skipped: "{{ _ise_id_store_sequences.skipped | default(false) | bool }}"
+        msg: "{{ _ise_id_store_sequences.msg | default('') }}"
+        ise_response: "{{ _ise_id_store_sequences.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_id_store_sequences.ise_responses | default([]) }}"
+      internal_users:
+        failed: "{{ _ise_internal_users.failed | default(false) | bool }}"
+        skipped: "{{ _ise_internal_users.skipped | default(false) | bool }}"
+        msg: "{{ _ise_internal_users.msg | default('') }}"
+        ise_response: "{{ _ise_internal_users.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_internal_users.ise_responses | default([]) }}"
+      ldap_sources:
+        failed: "{{ _ise_ldap_sources.failed | default(false) | bool }}"
+        skipped: "{{ _ise_ldap_sources.skipped | default(false) | bool }}"
+        msg: "{{ _ise_ldap_sources.msg | default('') }}"
+        ise_response: "{{ _ise_ldap_sources.ise_response | default([]) }}"
+        ise_responses: "{{ _ise_ldap_sources.ise_responses | default([]) }}"
+      active_session_count:
+        failed: "{{ _ise_active_session_count.failed | default(false) | bool }}"
+        skipped: "{{ _ise_active_session_count.skipped | default(false) | bool }}"
+        msg: "{{ _ise_active_session_count.msg | default('') }}"
+        ise_response: "{{ _ise_active_session_count.ise_response | default({}) }}"
+      active_sessions:
+        failed: "{{ _ise_active_sessions.failed | default(false) | bool }}"
+        skipped: "{{ _ise_active_sessions.skipped | default(false) | bool }}"
+        msg: "{{ _ise_active_sessions.msg | default('') }}"
+        ise_response: "{{ _ise_active_sessions.ise_response | default([]) }}"
+      failure_reasons:
+        failed: "{{ _ise_failure_reasons.failed | default(false) | bool }}"
+        skipped: "{{ _ise_failure_reasons.skipped | default(false) | bool }}"
+        msg: "{{ _ise_failure_reasons.msg | default('') }}"
+        ise_response: "{{ _ise_failure_reasons.ise_response | default([]) }}"
+      authentication_status:
+        failed: "{{ _ise_authentication_status.failed | default(false) | bool }}"
+        skipped: "{{ _ise_authentication_status.skipped | default(false) | bool }}"
+        msg: "{{ _ise_authentication_status.msg | default('') }}"
+        ise_response: "{{ _ise_authentication_status.ise_response | default({}) }}"
+      audit_failed: >-
+        {{
+          (_ise_mnt_version.failed | default(false) | bool)
+          or (_ise_telemetry.failed | default(false) | bool)
+          or (_ise_nodes.failed | default(false) | bool)
+          or (_ise_network_device_groups.failed | default(false) | bool)
+          or (_ise_network_devices.failed | default(false) | bool)
+          or (_ise_identity_groups.failed | default(false) | bool)
+          or (_ise_profiler_profiles.failed | default(false) | bool)
+          or (_ise_endpoints.failed | default(false) | bool)
+          or (_ise_endpoint_device_types.failed | default(false) | bool)
+          or (_ise_endpoint_configuration.failed | default(false) | bool)
+          or (_ise_guest_users.failed | default(false) | bool)
+          or (_ise_sg_acls.failed | default(false) | bool)
+          or (_ise_sgts.failed | default(false) | bool)
+          or (_ise_system_certificates.failed | default(false) | bool)
+          or (_ise_trusted_certificates.failed | default(false) | bool)
+          or (_ise_node_replication_status.failed | default(false) | bool)
+          or (_ise_backup_last_status.failed | default(false) | bool)
+          or (_ise_repositories.failed | default(false) | bool)
+          or (_ise_repository_files.failed | default(false) | bool)
+          or (_ise_patches.failed | default(false) | bool)
+          or (_ise_hotpatches.failed | default(false) | bool)
+          or (_ise_allowed_protocols.failed | default(false) | bool)
+          or (_ise_authorization_profiles.failed | default(false) | bool)
+          or (_ise_downloadable_acls.failed | default(false) | bool)
+          or (_ise_filter_policies.failed | default(false) | bool)
+          or (_ise_tacacs_command_sets.failed | default(false) | bool)
+          or (_ise_tacacs_profiles.failed | default(false) | bool)
+          or (_ise_tacacs_server_sequences.failed | default(false) | bool)
+          or (_ise_tacacs_external_servers.failed | default(false) | bool)
+          or (_ise_active_directories.failed | default(false) | bool)
+          or (_ise_id_store_sequences.failed | default(false) | bool)
+          or (_ise_internal_users.failed | default(false) | bool)
+          or (_ise_ldap_sources.failed | default(false) | bool)
+          or (_ise_active_session_count.failed | default(false) | bool)
+          or (_ise_active_sessions.failed | default(false) | bool)
+          or (_ise_failure_reasons.failed | default(false) | bool)
+          or (_ise_authentication_status.failed | default(false) | bool)
+        }}
+  changed_when: false
+
+- name: "ISE | Emit raw_ise.yaml"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "ise"
+    _ncs_emit_payload: "{{ _ise_payload }}"
+    _ncs_emit_skip: "{{ ise_skip_export | default(false) }}"

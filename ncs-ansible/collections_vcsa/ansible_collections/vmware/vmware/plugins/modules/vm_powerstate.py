@@ -64,18 +64,6 @@ options:
             - For example 'datacenter_name/vm/path/to/folder' or 'path/to/folder'
         type: str
         required: false
-    folder_paths_are_absolute:
-        description:
-            - If true, any folder path parameters are treated as absolute paths.
-            - If false, modules will try to intelligently determine if the path is absolute
-              or relative.
-            - This option is useful when your environment has a complex folder structure. By default,
-              modules will try to intelligently determine if the path is absolute or relative.
-              They may mistakenly prepend the datacenter name or other folder names, and this option
-              can be used to avoid this.
-        type: bool
-        required: false
-        default: false
     scheduled_at:
         description:
             - Date and time in string format at which specified task needs to be performed.
@@ -110,7 +98,7 @@ options:
         description:
             - If this argument is set to a positive integer, the module will wait for the VM to reach the poweredoff state.
             - The value sets a timeout in seconds for the module to wait for the state change.
-            - This value is ignored if the desired state is V(reboot-guest).
+            - Can not be used if O(state) is V(shutdown-guest) or V(reboot-guest).
         default: 3600
         type: int
     question_answers:
@@ -231,18 +219,17 @@ except ImportError:
     pass
 
 from random import randint
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.common.text.converters import to_text, to_native
+from ansible.module_utils._text import to_text, to_native
 
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import (
     ModulePyvmomiBase
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import TaskError, RunningTaskMonitor, VmQuestionHandler
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import TaskError, RunningTaskMonitor, VmQuestionHandler
 
 
 class VmPowerstateModule(ModulePyvmomiBase):
@@ -259,7 +246,7 @@ class VmPowerstateModule(ModulePyvmomiBase):
 
         vm_list = self.get_vms_using_params(fail_on_missing=True)
         self.vm = vm_list[0]
-        state = self.params['state']
+        state = self.module.params['state']
         self.desired_state = state.replace('_', '').replace('-', '').lower()
         self.current_state = self.vm.summary.runtime.powerState.lower()
         self.result["vm"]['moid'] = self.vm._GetMoId()
@@ -270,29 +257,11 @@ class VmPowerstateModule(ModulePyvmomiBase):
             return
         try:
             succeeded, task_result = RunningTaskMonitor(task).wait_for_completion(
-                vm=self.vm, timeout=self.params['timeout'], answers=self.params.get('question_answers', None))
+                vm=self.vm, timeout=self.module.params['timeout'], answers=self.module.params.get('question_answers', None))
         except TaskError as e:
             self.module.fail_json(msg=to_text(e))
         finally:
             self.result['changed'] = True
-
-    def _poll_vm_state_for_shutdown(self):
-        """
-        Since the shutdown guest state is triggered through VMware tools, we cannot tell when the task ends. So
-        instead we will poll the VM state over and over again, until the timeout is met.
-        """
-        timeout = self.params['timeout']
-        if not timeout:
-            return
-
-        end_time = datetime.now() + timedelta(seconds=timeout)
-        while datetime.now() < end_time:
-            if self.vm.summary.runtime.powerState.lower() == 'poweredoff':
-                break
-            time.sleep(5)
-
-        else:
-            self.module.fail_json(msg="Timeout limit reached while waiting for VM to enter a powered off state.")
 
     def reset_vm(self):
         if self.current_state not in ('poweredon', 'poweringon', 'resetting', 'poweredoff'):
@@ -329,7 +298,7 @@ class VmPowerstateModule(ModulePyvmomiBase):
         requested states. force is forceful
         """
         # Need Force
-        if not self.params['force'] and self.current_state not in ['poweredon', 'poweredoff']:
+        if not self.module.params['force'] and self.current_state not in ['poweredon', 'poweredoff']:
             self.module.fail_json(msg="Virtual Machine is in %s power state. Force is required!" % self.current_state)
 
         task = None
@@ -351,14 +320,12 @@ class VmPowerstateModule(ModulePyvmomiBase):
             self.module.fail_json(msg=to_text(e))
 
         self.run_vm_configuration_task(task)
-        if self.desired_state == 'shutdownguest':
-            self._poll_vm_state_for_shutdown()
 
     def configure_vm_powerstate(self):
         """
         Configures a VMs powerstate
         """
-        scheduled_at = self.params.get('scheduled_at', None)
+        scheduled_at = self.module.params.get('scheduled_at', None)
         if scheduled_at:
             scheduled_task_spec = self.configure_scheduled_task_spec(scheduled_at)
             self.configure_vm_scheduled_powerstate(scheduled_task_spec)
@@ -372,7 +339,7 @@ class VmPowerstateModule(ModulePyvmomiBase):
         """
         if not self.is_vcenter():
             self.module.fail_json(msg="Scheduling task requires vCenter, hostname %s "
-                                  "is an ESXi server." % self.params.get('hostname'))
+                                  "is an ESXi server." % self.module.params.get('hostname'))
         powerstate = {
             'powered-off': vim.VirtualMachine.PowerOff,
             'powered-on': vim.VirtualMachine.PowerOn,
@@ -387,15 +354,15 @@ class VmPowerstateModule(ModulePyvmomiBase):
             self.module.fail_json(msg="Failed to convert given date and time string to Python datetime object,"
                                   "please specify string in 'dd/mm/yyyy hh:mm' format: %s" % to_native(e))
         scheduled_task_spec = vim.scheduler.ScheduledTaskSpec()
-        scheduled_task_spec.name = self.params['scheduled_task_name'] or 'task_%s' % str(randint(10000, 99999))
-        default_desciption = 'Scheduled task for vm %s for operation %s at %s' % (self.vm.name, self.params['state'],
+        scheduled_task_spec.name = self.module.params['scheduled_task_name'] or 'task_%s' % str(randint(10000, 99999))
+        default_desciption = 'Scheduled task for vm %s for operation %s at %s' % (self.vm.name, self.module.params['state'],
                                                                                   scheduled_at)
         scheduled_task_spec.scheduler = vim.scheduler.OnceTaskScheduler()
-        scheduled_task_spec.description = self.params['scheduled_task_description'] or default_desciption
+        scheduled_task_spec.description = self.module.params['scheduled_task_description'] or default_desciption
         scheduled_task_spec.scheduler.runAt = scheduled_date
         scheduled_task_spec.action = vim.action.MethodAction()
-        scheduled_task_spec.action.name = powerstate[self.params['state']]
-        scheduled_task_spec.enabled = self.params['scheduled_task_enabled']
+        scheduled_task_spec.action.name = powerstate[self.module.params['state']]
+        scheduled_task_spec.enabled = self.module.params['scheduled_task_enabled']
 
         return scheduled_task_spec
 
@@ -408,32 +375,29 @@ class VmPowerstateModule(ModulePyvmomiBase):
             # As this is async task, we create scheduled task and mark state to changed.
             self.result['changed'] = True
         except vim.fault.InvalidName as e:
-            self.module.fail_json(msg="Failed to create scheduled task %s for %s : %s" % (self.params.get('state'),
+            self.module.fail_json(msg="Failed to create scheduled task %s for %s : %s" % (self.module.params.get('state'),
                                                                                           self.vm.name,
                                                                                           to_native(e.msg)))
         except vim.fault.DuplicateName as e:
             self.module.fail_json(msg="Failed to create scheduled task %s as specified task "
-                                  "name is invalid: %s" % (self.params.get('state'),
+                                  "name is invalid: %s" % (self.module.params.get('state'),
                                                            to_native(e.msg)))
         except vmodl.fault.InvalidArgument as e:
-            err_msg = "Failed to create scheduled task %s as specifications given are invalid: " % self.params.get('state')
-            if scheduled_task_spec.scheduler.runAt < datetime.now():
-                err_msg += "the specified time has already passed"
-            else:
-                err_msg += to_native(e.msg)
-            self.module.fail_json(msg=err_msg)
+            self.module.fail_json(msg="Failed to create scheduled task %s as specifications "
+                                  "given are invalid: %s" % (self.module.params.get('state'),
+                                                             to_native(e.msg)))
 
     def answer_questions(self):
         if not self.vm.runtime.question:
             return
-        if not self.params['question_answers']:
+        if not self.module.params['question_answers']:
             self.module.fail_json(msg="No answers provided for question %s, set answers using the question_answers option"
                                   % self.vm.runtime.question.text)
         self.result['changed'] = True
         if self.module.check_mode:
             return
         try:
-            VmQuestionHandler(vm=self.vm, answers=self.params.get('question_answers', None)).handle_vm_questions()
+            VmQuestionHandler(vm=self.vm, answers=self.module.params.get('question_answers', None)).handle_vm_questions()
         except TaskError as e:
             self.module.fail_json(msg=to_text(e))
 
@@ -451,7 +415,6 @@ def main():
                 moid=dict(type='str'),
                 use_instance_uuid=dict(type='bool', default=False),
                 folder=dict(type='str', required=False),
-                folder_paths_are_absolute=dict(type='bool', required=False, default=False),
                 force=dict(type='bool', default=False),
                 scheduled_at=dict(type='str', required=False),
                 scheduled_task_name=dict(type='str', required=False),

@@ -14,18 +14,18 @@
 - name: "Query datacenters"
   community.vmware.vmware_datacenter_info:
     hostname: "{{ ansible_host | default(inventory_hostname) }}"
-    username: "{{ vmware_username }}"
-    password: "{{ vmware_password }}"
-    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    username: "{{ _vmware_creds.username }}"
+    password: "{{ _vmware_creds.password }}"
+    validate_certs: "{{ _vmware_creds.validate_certs }}"
   register: _esxi_disc_datacenters
   when: esxi_stig_target_hosts | default([]) | length == 0
 
 - name: "Query clusters per datacenter"
   vmware.vmware.cluster_info:
     hostname: "{{ ansible_host | default(inventory_hostname) }}"
-    username: "{{ vmware_username }}"
-    password: "{{ vmware_password }}"
-    validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+    username: "{{ _vmware_creds.username }}"
+    password: "{{ _vmware_creds.password }}"
+    validate_certs: "{{ _vmware_creds.validate_certs }}"
     datacenter: "{{ item }}"
   loop: "{{ _esxi_disc_datacenters.datacenter_info | default([]) | map(attribute='name') | list }}"
   register: _esxi_disc_clusters

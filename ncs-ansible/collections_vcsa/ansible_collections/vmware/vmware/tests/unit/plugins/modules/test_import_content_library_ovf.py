@@ -8,11 +8,11 @@ from ansible_collections.vmware.vmware.plugins.modules.import_content_library_ov
     VmwareRemoteOvf,
     main as module_main
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.rest import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._rest import (
     VmwareRestClient
 )
 from ...common.utils import (
-    run_module, ModuleTestCase
+    AnsibleExitJson, ModuleTestCase, set_module_args,
 )
 from com.vmware.content.library.item.updatesession_client import PreviewInfo
 
@@ -39,7 +39,11 @@ class TestVmwareRemoteOvf(ModuleTestCase):
 
     def test_absent(self, mocker):
         self.__prepare(mocker)
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             dest='foo',
             state='absent',
             library_name='foo'
@@ -47,20 +51,26 @@ class TestVmwareRemoteOvf(ModuleTestCase):
 
         # test item exists
         mocker.patch.object(VmwareRemoteOvf, 'get_library_item_ids', return_value=["1"])
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
-        assert result["library_item"]["id"] == '1'
+        assert c.value.args[0]["changed"] is True
+        assert c.value.args[0]["library_item"]["id"] == '1'
 
         # test item already absent
         mocker.patch.object(VmwareRemoteOvf, 'get_library_item_ids', return_value=[])
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is False
+        assert c.value.args[0]["changed"] is False
 
     def test_present_url_source(self, mocker):
         self.__prepare(mocker)
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             dest='foo',
             src='http://example.com/foo.ova',
             state='present',
@@ -69,24 +79,30 @@ class TestVmwareRemoteOvf(ModuleTestCase):
 
         # test item already present
         mocker.patch.object(VmwareRemoteOvf, 'get_library_item_ids', return_value=["1"])
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is False
-        assert result["library_item"]["id"] == '1'
+        assert c.value.args[0]["changed"] is False
+        assert c.value.args[0]["library_item"]["id"] == '1'
 
         # test item missing
         mocker.patch.object(VmwareRemoteOvf, 'get_library_item_ids', return_value=[])
         mocker.patch.object(self.mock_rest_client.content.library.Item, 'create', return_value='2')
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
-        assert result["library_item"]["id"] == '2'
+        assert c.value.args[0]["changed"] is True
+        assert c.value.args[0]["library_item"]["id"] == '2'
 
     def test_present_file_source(self, mocker):
         self.__prepare(mocker)
 
         # test ovf
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             dest='foo',
             src='/tmp',
             state='present',
@@ -99,9 +115,10 @@ class TestVmwareRemoteOvf(ModuleTestCase):
         mocker.patch.object(os.path, 'getsize', return_value=10)
         mocker.patch.object(os, 'listdir', return_value=['foo', 'foo.ovf', 'foo.vmdk'])
         mocker.patch("builtins.open", new_callable=mocker.mock_open, read_data="data")
-        mocker.patch('requests.post')
+        mocker.patch('ansible_collections.vmware.vmware.plugins.modules.import_content_library_ovf.open_url')
 
-        result = run_module(module_entry=module_main, module_args=module_args)
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
-        assert result["changed"] is True
-        assert result["library_item"]["id"] == '2'
+        assert c.value.args[0]["changed"] is True
+        assert c.value.args[0]["library_item"]["id"] == '2'

@@ -65,37 +65,29 @@
       changed_when: false
 
   always:
+    # Emit raw register subtrees verbatim; the schema's `first_of` +
+    # `type:` per-field declarations apply type coercion and missing-value
+    # fallbacks. See `ncs-ansible-windows/ncs_configs/windows.yaml`.
     - name: Assemble flat discovery payload
       ansible.builtin.set_fact:
         _win_raw_payload:
-          # CCMExec service
-          ccm_service_state: "{{ (_ccm_service | default({})).state | default('unknown') }}"
-          # ConfigMgr applications
+          # Raw register subtrees consumed by schema `first_of` chains.
+          _ccm_service: "{{ _ccm_service | default({}) }}"
+          _health_os_info: "{{ _health_os_info | default({}) }}"
+          _health_memory_cpu: "{{ _health_memory_cpu | default({}) }}"
+          _health_reboot_pending: "{{ _health_reboot_pending | default({}) }}"
+          _health_event_logs: "{{ _health_event_logs | default({}) }}"
+          _health_secure_channel: "{{ _health_secure_channel | default({}) }}"
+          _vuln_results: "{{ _vuln_results | default({}) }}"
+          # Already-flat lists (no shaping needed beyond the empty fallback).
           configmgr_apps: "{{ _win_configmgr_apps | default([]) }}"
           apps_to_update: "{{ _win_apps_to_update | default([]) }}"
           installed_apps: "{{ _win_installed_apps | default([]) }}"
           update_results: "{{ _win_update_results | default([]) }}"
-          # Health
-          health_hostname: "{{ (_health_os_info | default({})).hostname | default('') }}"
-          health_os_name: "{{ (_health_os_info | default({})).os_name | default('') }}"
-          health_uptime_hours: "{{ (_health_os_info | default({})).uptime_hours | default(0) }}"
           health_disk: "{{ _health_disk | default([]) }}"
-          health_memory_used_pct: "{{ (_health_memory_cpu | default({})).memory_used_pct | default(0) }}"
-          health_cpu_load_pct: "{{ (_health_memory_cpu | default({})).cpu_load_pct | default(0) }}"
           health_services: "{{ _health_services | default([]) }}"
           health_network: "{{ _health_network | default([]) }}"
-          health_reboot_pending: "{{ (_health_reboot_pending | default({})).reboot_pending | default(false) }}"
-          health_reboot_reasons: "{{ (_health_reboot_pending | default({})).reasons | default([]) }}"
-          health_event_count: "{{ (_health_event_logs | default({})).event_count | default(0) }}"
-          health_events: "{{ (_health_event_logs | default({})).events | default([]) }}"
-          health_secure_channel: "{{ (_health_secure_channel | default({})).secure_channel | default('N/A') }}"
           health_software_versions: "{{ _health_software_versions | default([]) }}"
-          # Vulnerability scan
-          vuln_total_findings: "{{ (_vuln_results | default({})).total_findings | default(0) }}"
-          vuln_remediated: "{{ (_vuln_results | default({})).remediated | default(0) }}"
-          vuln_open: "{{ (_vuln_results | default({})).open | default(0) }}"
-          vuln_findings: "{{ (_vuln_results | default({})).findings | default([]) }}"
-          # KB status
           kb_detection: "{{ _kb_detection | default([]) }}"
           kb_install_results: "{{ _kb_install_results | default([]) }}"
           audit_failed: "{{ _discover_failed | bool }}"

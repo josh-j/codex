@@ -1,13 +1,16 @@
 ---
 - name: Test On Simulator
-  when: not run_on_vcenter
-  environment: "{{ environment_auth_vars }}"
-
+  when: run_on_simulator
   block:
     - name: Create Cluster
       vmware.vmware.cluster:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
         state: present
       register: _create
     - name: Check Cluster Output
@@ -17,22 +20,30 @@
     # deleting a cluster in the simulator is not supporter
 
 - name: Test On VCenter
-  when: run_on_vcenter
-  environment: "{{ environment_auth_vars }}"
-
+  when: not run_on_simulator
   block:
-    - name: Include Eco Vcenter Test Vars
+    - name: Import common vars
       ansible.builtin.include_vars:
-        file: eco-vcenter.yml
+        file: ../group_vars.yml
     - name: Create Test Cluster
       vmware.vmware.cluster:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: false
+        port: "{{ vcenter_port }}"
         cluster_name: "{{ test_cluster }}"
       register: _create
     - name: Gather Cluster Info
       vmware.vmware.cluster_info:
+        validate_certs: false
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         cluster_name: "{{ test_cluster }}"
+        port: "{{ vcenter_port }}"
       register: _cluster_info
     - name: Check Cluster Output
       ansible.builtin.assert:
@@ -43,6 +54,11 @@
   always:
     - name: Destroy Test Cluster
       vmware.vmware.cluster:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
+        port: "{{ vcenter_port }}"
+        validate_certs: false
         cluster_name: "{{ test_cluster }}"
         state: absent

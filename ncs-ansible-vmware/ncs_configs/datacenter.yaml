@@ -15,76 +15,77 @@
 # Storage Policies are not yet collected; the section renders empty when the
 # data is absent, which is the intended behavior.
 config:
-  display_name: "Datacenter"
-  platform: datacenter
-  extra_inventory_widget_columns:
-    - name: Clusters
-      value: "{{ cluster_count }}"
-    - name: ESXi Hosts
-      value: "{{ esxi_host_count }}"
+    display_name: "Datacenter"
+    platform: datacenter
+    extra_inventory_widget_columns:
+        - name: Clusters
+          value: "{{ cluster_count }}"
+        - name: ESXi Hosts
+          value: "{{ esxi_host_count }}"
 
 vars:
-  clusters_list:
-    compute: "{{ clusters.values() | list }}"
-    type: list
-  cluster_count:
-    compute: "{{ clusters_list | length }}"
+    clusters_list:
+        normalize: { pluck: { source: clusters, path: value } }
+        type: list
+    cluster_count:
+        normalize: { count: clusters_list }
+        type: int
 
 alerts: []
 
 widgets:
-  # The "Datacenter Footprint" stat-cards widget was retired — counts
-  # for clusters, ESXi hosts, datastores, and distributed switches are
-  # already in the auto-injected children section + the per-tier
-  # tables below, so the standalone strip duplicated info.
+    # The "Datacenter Footprint" stat-cards widget was retired — counts
+    # for clusters, ESXi hosts, datastores, and distributed switches are
+    # already in the auto-injected children section + the per-tier
+    # tables below, so the standalone strip duplicated info.
 
-  # The "ESXi Hosts" listing is provided by the tree renderer's
-  # auto-generated children widget (Name/Tier/Sub-nodes/Critical/Warning),
-  # which carries the descendant alert rollup. Defining a second table
-  # here duplicated rows without adding meaningful info (the per-child
-  # health badge is captured by the rollup columns).
-  - type: table
-    name: "Compute — Clusters"
-    when: cluster_count > 0
-    rows: "{{ clusters_list }}"
-    columns:
-      - name: Cluster
-        value: "{{ name }}"
-      - name: Hosts
-        value: "{{ host_count }}"
-      - name: HA
-        value: "{{ ha_enabled }}"
-        as: status-badge
-      - name: DRS
-        value: "{{ drs_enabled }}"
-        as: status-badge
-      - name: CPU %
-        value: "{{ cpu_usage_pct }}"
-      - name: Mem %
-        value: "{{ mem_usage_pct }}"
+    # The "ESXi Hosts" listing is provided by the tree renderer's
+    # auto-generated children widget (Name/Tier/Sub-nodes/Critical/Warning),
+    # which carries the descendant alert rollup. Defining a second table
+    # here duplicated rows without adding meaningful info (the per-child
+    # health badge is captured by the rollup columns).
+    - type: table
+      name: "Compute — Clusters"
+      when: cluster_count > 0
+      rows: "{{ clusters_list }}"
+      columns:
+          - name: Cluster
+            value: "{{ name }}"
+          - name: Hosts
+            value: "{{ host_count }}"
+          - name: HA
+            value: "{{ ha_enabled }}"
+            as: status-badge
+          - name: DRS
+            value: "{{ drs_enabled }}"
+            as: status-badge
+          - name: CPU %
+            value: "{{ cpu_usage_pct }}"
+          - name: Mem %
+            value: "{{ mem_usage_pct }}"
 
-  - type: table
-    name: "Storage — Datastores"
-    rows: "{{ datastores }}"
-    columns:
-      - name: Name
-        value: "{{ name }}"
-      - name: Capacity (GB)
-        value: "{{ capacity_gb }}"
-      - name: Free (GB)
-        value: "{{ free_gb }}"
-      - name: Used %
-        value: "{{ used_pct }}"
+    - type: table
+      name: "Storage — Datastores"
+      rows: "{{ datastores }}"
+      columns:
+          - name: Name
+            value: "{{ name }}"
+          - name: Capacity (GB)
+            value: "{{ capacity_gb }}"
+          - name: Free (GB)
+            value: "{{ free_gb }}"
+          - name: Used %
+            value: "{{ used_pct }}"
 
-  - type: table
-    name: "Networking — Distributed Switches"
-    rows: "{{ dvswitches }}"
-    columns:
-      - name: Name
-        value: "{{ name }}"
-      - name: Ports
-        value: "{{ num_ports }}"
-      - name: Uplinks
-        value: "{{ num_uplinks }}"
-      - name: MTU
-        value: "{{ mtu }}"
+    - type: table
+      name: "Networking — Distributed Switches"
+      rows: "{{ dvswitches }}"
+      columns:
+          - name: Name
+            value: "{{ name }}"
+          - name: Ports
+            value: "{{ num_ports }}"
+          - name: Uplinks
+            value: "{{ num_uplinks }}"
+          - name: MTU
+            value: "{{ mtu }}"

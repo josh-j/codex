@@ -1,0 +1,5 @@
+---
+vcenter_hostname: 
+vcenter_username: 
+vcenter_password: 
+ansible_tags: eco-vcenter-ci

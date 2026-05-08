@@ -83,6 +83,22 @@
         apply:
           check_mode: "{{ _stig_audit_only | bool }}"
           tags: [stig_task]
+          # Loop items that carry a ``target_type`` field (e.g. VCSA's
+          # per-service loop: ``[{name: eam, target_type: eam}, ...]``)
+          # set ``_stig_active_target_type`` here at task-vars precedence.
+          # The action plugin checks this name first, ahead of the
+          # role-level ``_ncs_stig_target_type`` binding, so each
+          # iteration's rules attribute to the correct target_type.
+          # Other callers (ESXi, Linux) whose loop items aren't dicts
+          # leave it empty and the action plugin falls back to the
+          # existing role-level vars.
+          vars:
+            _stig_active_target_type: >-
+              {%- set _itm = lookup('vars', _ncs_stig_phase1_loop_var | default('_current_item'), default=none) -%}
+              {%- if _itm is mapping and _itm.get('target_type') -%}
+              {{ _itm['target_type'] }}
+              {%- else -%}
+              {%- endif -%}
 
       loop: "{{ _ncs_stig_phase1_loop }}"
       loop_control:

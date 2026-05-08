@@ -3,21 +3,19 @@ __metaclass__ = type
 
 import sys
 import pytest
-from unittest.mock import patch
 
 from ansible_collections.vmware.vmware.plugins.modules.deploy_folder_template import (
     VmwareFolderTemplate,
     main as module_main
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import (
     PyvmomiClient
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.rest import (
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._rest import (
     VmwareRestClient
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.vm.services._placement import VmPlacement
 from ...common.utils import (
-    run_module, ModuleTestCase
+    AnsibleExitJson, AnsibleFailJson, ModuleTestCase, set_module_args,
 )
 from ...common.vmware_object_mocks import (
     MockVmwareObject
@@ -39,62 +37,80 @@ class TestVmwareFolderTemplate(ModuleTestCase):
 
         mocker.patch.object(VmwareFolderTemplate, 'get_folder_by_absolute_path', return_value=MockVmwareObject())
         mocker.patch.object(VmwareFolderTemplate, 'get_objs_by_name_or_moid', return_value=[self.test_template])
+        mocker.patch.object(VmwareFolderTemplate, 'get_resource_pool_by_name_or_moid', return_value=MockVmwareObject())
+        mocker.patch.object(VmwareFolderTemplate, 'get_datastore_by_name_or_moid', return_value=MockVmwareObject())
+        mocker.patch.object(VmwareFolderTemplate, 'get_datacenter_by_name_or_moid', return_value=MockVmwareObject())
         mocker.patch.object(VmwareFolderTemplate, 'deploy', return_value=self.test_vm)
 
-        mocker.patch.object(VmPlacement, 'get_folder', return_value=MockVmwareObject())
-        mocker.patch.object(VmPlacement, 'get_datacenter', return_value=MockVmwareObject())
-        mocker.patch.object(VmPlacement, 'get_resource_pool', return_value=MockVmwareObject())
-        mocker.patch.object(VmPlacement, 'get_datastore', return_value=MockVmwareObject())
-
-    @patch(
-        "ansible_collections.vmware.vmware.plugins.modules.deploy_folder_template.vim.vm.RelocateSpec"
-    )
-    @patch(
-        "ansible_collections.vmware.vmware.plugins.modules.deploy_folder_template.vim.vm.CloneSpec"
-    )
-    def test_present(self, mock_relocate_spec, mock_clone_spec, mocker):
+    def test_present(self, mocker):
         self.__prepare(mocker)
-        mock_relocate_spec.return_value = mocker.Mock()
-        mock_clone_spec.return_value = mocker.Mock()
         # test template_name
         mocker.patch.object(VmwareFolderTemplate, 'get_deployed_vm', return_value=None)
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             vm_name=self.test_vm.name,
             template_name="foo",
             datacenter='foo',
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert result["vm"]["moid"] is self.test_vm._GetMoId()
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
+
+        assert c.value.args[0]["changed"] is True
+        assert c.value.args[0]["vm"]["moid"] is self.test_vm._GetMoId()
 
         # test template_id
         mocker.patch.object(VmwareFolderTemplate, 'get_deployed_vm', return_value=None)
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             vm_name=self.test_vm.name,
             template_id="foo",
             datacenter='foo',
         )
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is True
-        assert result["vm"]["moid"] is self.test_vm._GetMoId()
+
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
 
         # test no change
         mocker.patch.object(VmwareFolderTemplate, 'get_deployed_vm', return_value=self.test_vm)
-        result = run_module(module_entry=module_main, module_args=module_args)
-        assert result["changed"] is False
-        assert result["vm"]["moid"] is self.test_vm._GetMoId()
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
+            vm_name=self.test_vm.name,
+            template_name="foo",
+            datacenter='foo',
+        )
+
+        with pytest.raises(AnsibleExitJson) as c:
+            module_main()
+
+        assert c.value.args[0]["changed"] is False
+        assert c.value.args[0]["vm"]["moid"] is self.test_vm._GetMoId()
 
     def test_template_error(self, mocker):
         self.__prepare(mocker)
         mocker.patch.object(VmwareFolderTemplate, 'get_deployed_vm', return_value=None)
         mocker.patch.object(VmwareFolderTemplate, 'get_objs_by_name_or_moid', return_value=None)
-        module_args = dict(
+        set_module_args(
+            hostname="127.0.0.1",
+            username="administrator@local",
+            password="123456",
+            add_cluster=False,
             vm_name=self.test_vm.name,
             template_id="foo",
             datacenter='foo',
         )
 
-        result = run_module(module_entry=module_main, module_args=module_args, expect_success=False)
-        assert result["msg"].startswith('Unable to find template with ID')
-        assert result["failed"] is True
+        with pytest.raises(AnsibleFailJson) as c:
+            module_main()
+
+        assert c.value.args[0]["msg"].startswith('Unable to find template with ID')
+        assert c.value.args[0]["failed"] is True

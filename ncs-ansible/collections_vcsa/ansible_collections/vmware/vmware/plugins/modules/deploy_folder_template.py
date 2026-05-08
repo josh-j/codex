@@ -105,17 +105,6 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-vm:
-    description:
-        - Identifying information about the vm
-    returned: always
-    type: dict
-    sample: {
-        "vm": {
-            "moid": "vm-111111",
-            "name": "my-vm"
-        },
-    }
 '''
 
 import traceback
@@ -125,10 +114,11 @@ from ansible_collections.vmware.vmware.plugins.module_utils._module_deploy_vm_ba
     ModuleVmDeployBase,
     vm_deploy_module_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import RunningTaskMonitor, TaskError
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_folder_paths import format_folder_path_as_vm_fq_path
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import RunningTaskMonitor, TaskError
 
 PYVMOMI_IMP_ERR = None
 try:
@@ -148,16 +138,10 @@ class VmwareFolderTemplate(ModuleVmDeployBase):
         if self.params['template_folder_id']:
             folder = self.get_folders_by_name_or_moid(self.params['template_folder_id'], fail_on_missing=True)[0]
         else:
-            # Lookup the template folder using the placement service. This service is also used for the vm folder, and
-            # the vm folder property in the ModuleVmDeployBase depends on that result being cached in the placement service.
-            # So we stash the current cached folder, lookup the template folder, and then restore the cached folder to
-            # maintain functionality.
-            cached_folder = self.placement_service._folder
-            self.placement_service._folder = None
-            folder = self.placement_service.get_folder(folder_param='template_folder')
-            if cached_folder:
-                self.placement_service._folder = cached_folder
-
+            fq_folder_path = format_folder_path_as_vm_fq_path(
+                self.params.get("template_folder"), self.params.get("datacenter")
+            )
+            folder = self.get_folder_by_absolute_path(fq_folder_path, fail_on_missing=True)
         return folder
 
     def __lookup_template_from_name_and_folder(self):
@@ -228,7 +212,10 @@ class VmwareFolderTemplate(ModuleVmDeployBase):
             relo_spec.pool = self.resource_pool
 
         if self.params['esxi_host']:
-            relo_spec.host = self.placement_service.get_esxi_host()
+            relo_spec.host = self.get_esxi_host_by_name_or_moid(
+                self.params['esxi_host'],
+                fail_on_missing=True
+            )
 
         clone_spec = vim.vm.CloneSpec()
         clone_spec.location = relo_spec

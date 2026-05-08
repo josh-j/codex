@@ -3155,6 +3155,6 @@ class KeycloakAPI(object):
         try:
             if isinstance(e, HTTPError):
                 msg = "%s: %s" % (msg, to_native(e.read()))
-        except Exception:
+        except Exception as ingore:
             pass
         self.module.fail_json(msg, **kwargs)

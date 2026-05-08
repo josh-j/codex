@@ -1188,6 +1188,25 @@ details[open] > .details-box {
   padding: var(--space-14);
 }
 
+/* log_tail widget — scrollable monospace block. The widget sets
+   --log-tail-max-height inline. */
+.log-tail-body {
+  padding: 0;
+}
+.log-tail-pre {
+  margin: 0;
+  padding: var(--space-12);
+  max-height: var(--log-tail-max-height, 400px);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text);
+  background: var(--surface-alt);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  white-space: pre;
+  line-height: 1.4;
+}
+
 .stat-cards-row {
   display: flex;
   flex-wrap: wrap;

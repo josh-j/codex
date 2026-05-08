@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -70,16 +71,90 @@ def _regex_findall(value: Any, pattern: str, ignorecase: bool = False) -> list[s
     return re.findall(pattern, "" if value is None else str(value), re.IGNORECASE if ignorecase else 0)
 
 
+def _regex_match(value: Any, pattern: str, ignorecase: bool = False) -> bool:
+    """Anchored regex test mirroring Ansible's ``match`` test — true when
+    *pattern* matches the start of *value*. Use ``regex_search`` for a
+    non-anchored match."""
+    if value is None:
+        return False
+    return re.match(pattern, str(value), re.IGNORECASE if ignorecase else 0) is not None
+
+
+def _dict2items(value: Any, key_name: str = "key", value_name: str = "value") -> list[dict[str, Any]]:
+    """Convert a dict to a list of {key, value} pairs (Ansible's ``dict2items``)."""
+    if not isinstance(value, dict):
+        return []
+    return [{key_name: k, value_name: v} for k, v in value.items()]
+
+
+def _from_json(value: Any) -> Any:
+    """Decode a JSON string (Ansible's ``from_json`` filter)."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, (dict, list)):
+        return value
+    return json.loads(str(value))
+
+
+def _to_json(value: Any) -> str:
+    """Encode a value as a JSON string (Ansible's ``to_json`` filter)."""
+    return json.dumps(value, default=str)
+
+
+def _ternary(value: Any, true_val: Any, false_val: Any, none_val: Any | None = None) -> Any:
+    """Ansible's ``ternary`` filter — branch on truthiness with an optional none branch."""
+    if value is None and none_val is not None:
+        return none_val
+    return true_val if value else false_val
+
+
+_FALSY_STRINGS: frozenset[str] = frozenset({"false", "no", "0", "off", ""})
+
+
+def _truthy(value: Any) -> bool:
+    """Return a bool for common string/number representations."""
+    if isinstance(value, str):
+        return value.strip().lower() not in _FALSY_STRINGS
+    return bool(value)
+
+
+def _coalesce(*values: Any) -> Any:
+    """Return the first value that is not None, empty string, empty list, or empty dict."""
+    for value in values:
+        if value not in (None, "", [], {}):
+            return value
+    return None
+
+
+def _lookup(value: Any, mapping: Any, default: Any = None) -> Any:
+    """Lookup *value* in a mapping, returning *default* when absent."""
+    return mapping.get(value, default) if isinstance(mapping, dict) else default
+
+
 def _register_common_filters(env: NativeEnvironment) -> None:
     env.filters["age_days"] = _age_days
     env.filters["regex_search"] = _regex_search
     env.filters["regex_replace"] = _regex_replace
     env.filters["regex_findall"] = _regex_findall
+    # Ansible-compat filters/tests so schema compute expressions can use the
+    # idioms they're written in. The reporter uses NativeEnvironment which
+    # doesn't auto-load Ansible's filter/test set.
+    env.filters["dict2items"] = _dict2items
+    env.filters["from_json"] = _from_json
+    env.filters["to_json"] = _to_json
+    env.filters["ternary"] = _ternary
+    env.filters["truthy"] = _truthy
+    env.filters["lookup"] = _lookup
+    env.tests["match"] = _regex_match
+    env.globals["coalesce"] = _coalesce
+    env.globals["truthy"] = _truthy
+    env.globals["lookup"] = _lookup
+    env.globals["dict"] = dict
 
 
 @functools.lru_cache(maxsize=1)
 def _build_jinja_env() -> NativeEnvironment:
-    env = NativeEnvironment(undefined=Undefined)
+    env = NativeEnvironment(undefined=Undefined, extensions=["jinja2.ext.do"])
     _register_common_filters(env)
     return env
 
@@ -96,12 +171,12 @@ def _compile_template(template: str) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Arithmetic expression evaluation (compute fields, list_map)
+# Arithmetic expression evaluation (compute fields, normalize `expr:` ops)
 # ---------------------------------------------------------------------------
 
 
 class _NumericUndefined(Undefined):
-    """Undefined that acts as ``0`` in arithmetic — for compute/list_map expressions."""
+    """Undefined that acts as ``0`` in arithmetic — for compute / `expr:` expressions."""
 
     def __int__(self) -> int:  # type: ignore[override]
         return 0

@@ -1,0 +1,1493 @@
+# yaml-language-server: $schema=../../.schemas/ncs_reporter_config_schema.json
+config:
+  display_name: "Cisco ISE"
+  platform: ise
+  extra_inventory_widget_columns:
+    - name: "ISE Version"
+      value: "{{ product_version }}"
+    - name: "Nodes"
+      value: "{{ node_count }}"
+    - name: "Network Devices"
+      value: "{{ network_device_count }}"
+    - name: "API Failures"
+      value: "{{ api_failure_count }}"
+    - name: "Certs <=30d"
+      value: "{{ certificate_expiring_30_count }}"
+    - name: "Backup"
+      value: "{{ backup_status }}"
+    - name: "Patch"
+      value: "{{ latest_patch_label }}"
+    - name: "Critical"
+      value: "{{ _critical_count }}"
+    - name: "Warning"
+      value: "{{ _warning_count }}"
+
+vars:
+  product_name:
+    normalize:
+      first_of:
+        - {path: mnt_version.ise_response.name}
+        - {const: "Cisco ISE"}
+    type: str
+
+  product_version:
+    normalize:
+      first_of:
+        - {path: mnt_version.ise_response.version}
+        - ise_version
+        - {const: "unknown"}
+    type: str
+
+  product_node_type:
+    normalize:
+      first_of:
+        - {path: mnt_version.ise_response.type_of_node}
+        - {const: ""}
+    type: str
+
+  telemetry_rows:
+    normalize:
+      first_of:
+        - {path: telemetry.ise_response}
+        - {path: telemetry.ise_responses}
+        - {const: []}
+    type: list
+
+  node_rows:
+    normalize:
+      first_of:
+        - {path: nodes.ise_response}
+        - {path: nodes.ise_responses}
+        - {const: []}
+    type: list
+
+  network_device_group_rows:
+    normalize:
+      first_of:
+        - {path: network_device_groups.ise_response}
+        - {path: network_device_groups.ise_responses}
+        - {const: []}
+    type: list
+
+  network_device_rows:
+    normalize:
+      first_of:
+        - {path: network_devices.ise_response}
+        - {path: network_devices.ise_responses}
+        - {const: []}
+    type: list
+
+  identity_group_rows:
+    normalize:
+      first_of:
+        - {path: identity_groups.ise_response}
+        - {path: identity_groups.ise_responses}
+        - {const: []}
+    type: list
+
+  profiler_profile_rows:
+    normalize:
+      first_of:
+        - {path: profiler_profiles.ise_response}
+        - {path: profiler_profiles.ise_responses}
+        - {const: []}
+    type: list
+
+  endpoint_rows:
+    normalize:
+      first_of:
+        - {path: endpoints.ise_response}
+        - {path: endpoints.ise_responses}
+        - {const: []}
+    type: list
+
+  endpoint_audit_rows:
+    normalize:
+      list:
+        source: endpoint_rows
+        include_source: false
+        map:
+          name: {first_of: [name, id, mac, {const: ""}]}
+          id: {first_of: [id, {const: ""}]}
+          mac: {first_of: [mac, macAddress, mac_address, {const: ""}]}
+          ip_address: {first_of: [ipAddress, ip, {const: ""}]}
+          profile: {first_of: [profile, profileName, logicalProfileName, deviceType, {const: ""}]}
+          group_id: {first_of: [groupId, endpointGroupId, {const: ""}]}
+          identity_store: {first_of: [identityStore, identityStoreId, {const: ""}]}
+          static_group_assignment: {truthy: {first_of: [staticGroupAssignment, {const: false}]}}
+          static_profile_assignment: {truthy: {first_of: [staticProfileAssignment, {const: false}]}}
+          repeat_counter:
+            first_of:
+              - repeatCounter
+              - repeat_counter
+              - randomMacCount
+              - macRandomizationCount
+              - {path: customAttributes.repeatCounter}
+              - {path: customAttributes.repeat_counter}
+              - {path: customAttributes.randomMacCount}
+              - {path: customAttributes.macRandomizationCount}
+              - {path: mdmAttributes.repeatCounter}
+              - {const: 0}
+          randomized_mac: {expr: "{{ (mac | default('') | lower) is match('^[0-9a-f][26ae][:-]') }}"}
+          default_policy_marker: {expr: "{{ 'default' in ((profile | default('')) ~ ' ' ~ (group_id | default('')) ~ ' ' ~ (identity_store | default(''))) | lower }}"}
+    type: list
+
+  endpoint_device_type_rows:
+    normalize:
+      first_of:
+        - {path: endpoint_device_types.ise_response}
+        - {const: []}
+    type: list
+
+  endpoint_random_mac_detection_enabled:
+    normalize:
+      first_of:
+        - {truthy: {path: endpoint_configuration.ise_response.enableRCM}}
+        - {const: false}
+    type: bool
+
+  endpoint_randomized_mac_rows:
+    normalize:
+      list:
+        source: endpoint_audit_rows
+        include_where: {randomized_mac: true}
+    type: list
+
+  endpoint_randomized_mac_count:
+    normalize: {count: endpoint_randomized_mac_rows}
+    type: int
+
+  endpoint_repeat_counter_threshold:
+    normalize:
+      first_of:
+        - {path: collection_options.endpoint_repeat_counter_threshold}
+        - {const: 3}
+    type: int
+
+  endpoint_high_repeat_counter_rows:
+    normalize:
+      list:
+        source: endpoint_audit_rows
+        include_where: {field: repeat_counter, op: ge, value: {path: endpoint_repeat_counter_threshold}}
+    type: list
+
+  endpoint_high_repeat_counter_count:
+    normalize: {count: endpoint_high_repeat_counter_rows}
+    type: int
+
+  endpoint_default_policy_rows:
+    normalize:
+      list:
+        source: endpoint_audit_rows
+        include_where: {default_policy_marker: true}
+    type: list
+
+  endpoint_default_policy_count:
+    normalize: {count: endpoint_default_policy_rows}
+    type: int
+
+  guest_user_rows:
+    normalize:
+      first_of:
+        - {path: guest_users.ise_response}
+        - {path: guest_users.ise_responses}
+        - {const: []}
+    type: list
+
+  sgacl_rows:
+    normalize:
+      first_of:
+        - {path: sg_acls.ise_response}
+        - {path: sg_acls.ise_responses}
+        - {const: []}
+    type: list
+
+  sgt_rows:
+    normalize:
+      first_of:
+        - {path: sgts.ise_response}
+        - {path: sgts.ise_responses}
+        - {const: []}
+    type: list
+
+  system_certificate_rows:
+    normalize:
+      list:
+        source:
+          first_of:
+            - {path: system_certificates.ise_response}
+            - {path: system_certificates.ise_responses}
+            - {const: []}
+        include_source: false
+        map:
+          type: {const: "System"}
+          name: {first_of: [friendlyName, name, id, {const: ""}]}
+          id: {first_of: [id, {const: ""}]}
+          issued_to: {first_of: [issuedTo, subject, {const: ""}]}
+          issued_by: {first_of: [issuedBy, {const: ""}]}
+          used_by: {first_of: [usedBy, trustedFor, {const: ""}]}
+          expiration_date: {first_of: [expirationDate, {const: ""}]}
+          expires_in_days:
+            if: {defined: expirationDate}
+            then: {expr: "{{ 0 - (expirationDate | age_days(collected_at)) }}"}
+            else: {const: 99999}
+    type: list
+
+  trusted_certificate_rows:
+    normalize:
+      list:
+        source:
+          first_of:
+            - {path: trusted_certificates.ise_response}
+            - {path: trusted_certificates.ise_responses}
+            - {const: []}
+        include_source: false
+        map:
+          type: {const: "Trusted"}
+          name: {first_of: [friendlyName, name, id, {const: ""}]}
+          id: {first_of: [id, {const: ""}]}
+          issued_to: {first_of: [issuedTo, subject, {const: ""}]}
+          issued_by: {first_of: [issuedBy, {const: ""}]}
+          used_by: {first_of: [trustedFor, usedBy, {const: ""}]}
+          status: {first_of: [status, {const: ""}]}
+          expiration_date: {first_of: [expirationDate, {const: ""}]}
+          expires_in_days:
+            if: {defined: expirationDate}
+            then: {expr: "{{ 0 - (expirationDate | age_days(collected_at)) }}"}
+            else: {const: 99999}
+    type: list
+
+  system_certificate_count:
+    normalize: {count: system_certificate_rows}
+    type: int
+  trusted_certificate_count:
+    normalize: {count: trusted_certificate_rows}
+    type: int
+  certificate_count:
+    compute: "{{ system_certificate_count + trusted_certificate_count }}"
+    type: int
+  system_certificate_expired_count:
+    normalize:
+      count:
+        list:
+          source: system_certificate_rows
+          include_where: {field: expires_in_days, op: lt, value: 0}
+    type: int
+  trusted_certificate_expired_count:
+    normalize:
+      count:
+        list:
+          source: trusted_certificate_rows
+          include_where: {field: expires_in_days, op: lt, value: 0}
+    type: int
+  certificate_expired_count:
+    compute: "{{ system_certificate_expired_count + trusted_certificate_expired_count }}"
+    type: int
+  system_certificate_expiring_30_count:
+    normalize:
+      count:
+        list:
+          source: system_certificate_rows
+          include_where:
+            - {field: expires_in_days, op: ge, value: 0}
+            - {field: expires_in_days, op: le, value: 30}
+    type: int
+  trusted_certificate_expiring_30_count:
+    normalize:
+      count:
+        list:
+          source: trusted_certificate_rows
+          include_where:
+            - {field: expires_in_days, op: ge, value: 0}
+            - {field: expires_in_days, op: le, value: 30}
+    type: int
+  certificate_expiring_30_count:
+    compute: "{{ system_certificate_expiring_30_count + trusted_certificate_expiring_30_count }}"
+    type: int
+  system_certificate_expiring_7_count:
+    normalize:
+      count:
+        list:
+          source: system_certificate_rows
+          include_where:
+            - {field: expires_in_days, op: ge, value: 0}
+            - {field: expires_in_days, op: le, value: 7}
+    type: int
+  trusted_certificate_expiring_7_count:
+    normalize:
+      count:
+        list:
+          source: trusted_certificate_rows
+          include_where:
+            - {field: expires_in_days, op: ge, value: 0}
+            - {field: expires_in_days, op: le, value: 7}
+    type: int
+  certificate_expiring_7_count:
+    compute: "{{ system_certificate_expiring_7_count + trusted_certificate_expiring_7_count }}"
+    type: int
+
+  node_replication_rows:
+    normalize:
+      list:
+        source:
+          first_of:
+            - {path: node_replication_status.results}
+            - {const: []}
+        include_source: false
+        map:
+          node: {first_of: [item, {const: ""}]}
+          failed: {truthy: failed}
+          status: {first_of: [ise_response.status, ise_response.replicationStatus, ise_response, msg, {const: ""}]}
+          message: {first_of: [msg, {const: ""}]}
+    type: list
+  node_replication_checked_count:
+    normalize: {count: node_replication_rows}
+    type: int
+  node_replication_failed_count:
+    normalize:
+      count:
+        list:
+          source: node_replication_rows
+          include_where: {failed: true}
+    type: int
+
+  backup_status:
+    normalize:
+      first_of:
+        - {path: backup_last_status.ise_response.status}
+        - {const: "unknown"}
+    type: str
+  backup_name:
+    normalize:
+      first_of:
+        - {path: backup_last_status.ise_response.name}
+        - {const: ""}
+    type: str
+  backup_repository:
+    normalize:
+      first_of:
+        - {path: backup_last_status.ise_response.repository}
+        - {const: ""}
+    type: str
+  backup_start_date:
+    normalize:
+      first_of:
+        - {path: backup_last_status.ise_response.startDate}
+        - {const: ""}
+    type: str
+  backup_age_days:
+    normalize:
+      first_of:
+        - {if: {defined: backup_start_date}, then: {age_days: {value: backup_start_date, reference: collected_at, round: 1}}}
+        - {const: 0}
+    type: float
+
+  repository_rows:
+    normalize:
+      first_of:
+        - {path: repositories.ise_response}
+        - {path: repositories.ise_responses}
+        - {const: []}
+    type: list
+  repository_count:
+    normalize: {count: repository_rows}
+    type: int
+  repository_file_rows:
+    normalize:
+      list:
+        source:
+          first_of:
+            - {path: repository_files.results}
+            - {const: []}
+        include_source: false
+        map:
+          repository: {first_of: [item, {const: ""}]}
+          failed: {truthy: failed}
+          files: {first_of: [ise_response, {const: []}]}
+          file_count: {count: {first_of: [ise_response, {const: []}]}}
+          message: {first_of: [msg, {const: ""}]}
+    type: list
+
+  patch_ise_version:
+    normalize:
+      first_of:
+        - {path: patches.ise_response.iseVersion}
+        - product_version
+        - {const: "unknown"}
+    type: str
+  patch_rows:
+    normalize:
+      first_of:
+        - {path: patches.ise_response.patchVersion}
+        - {const: []}
+    type: list
+  patch_count:
+    normalize: {count: patch_rows}
+    type: int
+  latest_patch_label:
+    normalize:
+      first_of:
+        - {path: patch_rows.0.patchNumber}
+        - {const: "none"}
+    type: str
+  hotpatch_rows:
+    normalize:
+      first_of:
+        - {path: hotpatches.ise_response}
+        - {path: hotpatches.ise_responses}
+        - {const: []}
+    type: list
+  hotpatch_count:
+    normalize: {count: hotpatch_rows}
+    type: int
+
+  allowed_protocol_rows:
+    normalize:
+      first_of:
+        - {path: allowed_protocols.ise_response}
+        - {path: allowed_protocols.ise_responses}
+        - {const: []}
+    type: list
+  authorization_profile_rows:
+    normalize:
+      first_of:
+        - {path: authorization_profiles.ise_response}
+        - {path: authorization_profiles.ise_responses}
+        - {const: []}
+    type: list
+  downloadable_acl_rows:
+    normalize:
+      first_of:
+        - {path: downloadable_acls.ise_response}
+        - {path: downloadable_acls.ise_responses}
+        - {const: []}
+    type: list
+  filter_policy_rows:
+    normalize:
+      first_of:
+        - {path: filter_policies.ise_response}
+        - {path: filter_policies.ise_responses}
+        - {const: []}
+    type: list
+  allowed_protocol_count:
+    normalize: {count: allowed_protocol_rows}
+    type: int
+  authorization_profile_count:
+    normalize: {count: authorization_profile_rows}
+    type: int
+  downloadable_acl_count:
+    normalize: {count: downloadable_acl_rows}
+    type: int
+  filter_policy_count:
+    normalize: {count: filter_policy_rows}
+    type: int
+
+  tacacs_command_set_rows:
+    normalize:
+      first_of:
+        - {path: tacacs_command_sets.ise_response}
+        - {path: tacacs_command_sets.ise_responses}
+        - {const: []}
+    type: list
+  tacacs_profile_rows:
+    normalize:
+      first_of:
+        - {path: tacacs_profiles.ise_response}
+        - {path: tacacs_profiles.ise_responses}
+        - {const: []}
+    type: list
+  tacacs_server_sequence_rows:
+    normalize:
+      first_of:
+        - {path: tacacs_server_sequences.ise_response}
+        - {path: tacacs_server_sequences.ise_responses}
+        - {const: []}
+    type: list
+  tacacs_external_server_rows:
+    normalize:
+      first_of:
+        - {path: tacacs_external_servers.ise_response}
+        - {path: tacacs_external_servers.ise_responses}
+        - {const: []}
+    type: list
+  tacacs_command_set_count:
+    normalize: {count: tacacs_command_set_rows}
+    type: int
+  tacacs_profile_count:
+    normalize: {count: tacacs_profile_rows}
+    type: int
+  tacacs_server_sequence_count:
+    normalize: {count: tacacs_server_sequence_rows}
+    type: int
+  tacacs_external_server_count:
+    normalize: {count: tacacs_external_server_rows}
+    type: int
+
+  active_directory_rows:
+    normalize:
+      first_of:
+        - {path: active_directories.ise_response}
+        - {path: active_directories.ise_responses}
+        - {const: []}
+    type: list
+  id_store_sequence_rows:
+    normalize:
+      first_of:
+        - {path: id_store_sequences.ise_response}
+        - {path: id_store_sequences.ise_responses}
+        - {const: []}
+    type: list
+  internal_user_rows:
+    normalize:
+      first_of:
+        - {path: internal_users.ise_response}
+        - {path: internal_users.ise_responses}
+        - {const: []}
+    type: list
+  ldap_source_rows:
+    normalize:
+      first_of:
+        - {path: ldap_sources.ise_response}
+        - {path: ldap_sources.ise_responses}
+        - {const: []}
+    type: list
+  active_directory_count:
+    normalize: {count: active_directory_rows}
+    type: int
+  id_store_sequence_count:
+    normalize: {count: id_store_sequence_rows}
+    type: int
+  internal_user_count:
+    normalize: {count: internal_user_rows}
+    type: int
+  ldap_source_count:
+    normalize: {count: ldap_source_rows}
+    type: int
+
+  active_session_count_value:
+    normalize:
+      first_of:
+        - {path: active_session_count.ise_response.count}
+        - {const: 0}
+    type: int
+  active_session_rows:
+    normalize:
+      first_of:
+        - {path: active_sessions.ise_response.activeList}
+        - {path: active_sessions.ise_response}
+        - {const: []}
+    type: list
+  failure_reason_rows:
+    normalize:
+      first_of:
+        - {path: failure_reasons.ise_response}
+        - {const: []}
+    type: list
+  failure_reason_count:
+    normalize: {count: failure_reason_rows}
+    type: int
+  authentication_status_rows:
+    normalize:
+      first_of:
+        - {path: authentication_status.ise_response.authentications}
+        - {path: authentication_status.ise_response.sessions}
+        - {path: authentication_status.ise_response.response}
+        - {path: authentication_status.ise_response}
+        - {const: []}
+    type: list
+
+  default_policy_authentication_rows:
+    normalize:
+      list:
+        source: authentication_status_rows
+        include_where:
+          any:
+            - {field: authorizationPolicyMatchedRule, op: matches, value: default}
+            - {field: authenticationPolicyMatchedRule, op: matches, value: default}
+            - {field: authorizationRule, op: matches, value: default}
+            - {field: authenticationRule, op: matches, value: default}
+            - {field: selectedAuthorizationProfiles, op: matches, value: default}
+            - {field: authorizationProfile, op: matches, value: default}
+            - {field: matchedRule, op: matches, value: default}
+    type: list
+
+  default_policy_authentication_count:
+    normalize: {count: default_policy_authentication_rows}
+    type: int
+
+  default_policy_hit_count:
+    compute: "{{ endpoint_default_policy_count + default_policy_authentication_count }}"
+    type: int
+
+  node_count:
+    normalize: {count: node_rows}
+    type: int
+  telemetry_count:
+    normalize: {count: telemetry_rows}
+    type: int
+  network_device_group_count:
+    normalize: {count: network_device_group_rows}
+    type: int
+  network_device_count:
+    normalize: {count: network_device_rows}
+    type: int
+  identity_group_count:
+    normalize: {count: identity_group_rows}
+    type: int
+  profiler_profile_count:
+    normalize: {count: profiler_profile_rows}
+    type: int
+  endpoint_count:
+    normalize: {count: endpoint_rows}
+    type: int
+  guest_user_count:
+    normalize: {count: guest_user_rows}
+    type: int
+  sgacl_count:
+    normalize: {count: sgacl_rows}
+    type: int
+  sgt_count:
+    normalize: {count: sgt_rows}
+    type: int
+
+  mnt_version_failed:
+    normalize: {truthy: {path: mnt_version.failed}}
+    type: bool
+  telemetry_failed:
+    normalize: {truthy: {path: telemetry.failed}}
+    type: bool
+  nodes_failed:
+    normalize: {truthy: {path: nodes.failed}}
+    type: bool
+  network_device_groups_failed:
+    normalize: {truthy: {path: network_device_groups.failed}}
+    type: bool
+  network_devices_failed:
+    normalize: {truthy: {path: network_devices.failed}}
+    type: bool
+  identity_groups_failed:
+    normalize: {truthy: {path: identity_groups.failed}}
+    type: bool
+  profiler_profiles_failed:
+    normalize: {truthy: {path: profiler_profiles.failed}}
+    type: bool
+  endpoints_failed:
+    normalize: {truthy: {path: endpoints.failed}}
+    type: bool
+  endpoint_device_types_failed:
+    normalize: {truthy: {path: endpoint_device_types.failed}}
+    type: bool
+  endpoint_configuration_failed:
+    normalize: {truthy: {path: endpoint_configuration.failed}}
+    type: bool
+  guest_users_failed:
+    normalize: {truthy: {path: guest_users.failed}}
+    type: bool
+  sgacls_failed:
+    normalize: {truthy: {path: sg_acls.failed}}
+    type: bool
+  sgts_failed:
+    normalize: {truthy: {path: sgts.failed}}
+    type: bool
+  system_certificates_failed:
+    normalize: {truthy: {path: system_certificates.failed}}
+    type: bool
+  trusted_certificates_failed:
+    normalize: {truthy: {path: trusted_certificates.failed}}
+    type: bool
+  node_replication_status_failed:
+    normalize: {truthy: {path: node_replication_status.failed}}
+    type: bool
+  backup_last_status_failed:
+    normalize: {truthy: {path: backup_last_status.failed}}
+    type: bool
+  repositories_failed:
+    normalize: {truthy: {path: repositories.failed}}
+    type: bool
+  repository_files_failed:
+    normalize: {truthy: {path: repository_files.failed}}
+    type: bool
+  patches_failed:
+    normalize: {truthy: {path: patches.failed}}
+    type: bool
+  hotpatches_failed:
+    normalize: {truthy: {path: hotpatches.failed}}
+    type: bool
+  allowed_protocols_failed:
+    normalize: {truthy: {path: allowed_protocols.failed}}
+    type: bool
+  authorization_profiles_failed:
+    normalize: {truthy: {path: authorization_profiles.failed}}
+    type: bool
+  downloadable_acls_failed:
+    normalize: {truthy: {path: downloadable_acls.failed}}
+    type: bool
+  filter_policies_failed:
+    normalize: {truthy: {path: filter_policies.failed}}
+    type: bool
+  tacacs_command_sets_failed:
+    normalize: {truthy: {path: tacacs_command_sets.failed}}
+    type: bool
+  tacacs_profiles_failed:
+    normalize: {truthy: {path: tacacs_profiles.failed}}
+    type: bool
+  tacacs_server_sequences_failed:
+    normalize: {truthy: {path: tacacs_server_sequences.failed}}
+    type: bool
+  tacacs_external_servers_failed:
+    normalize: {truthy: {path: tacacs_external_servers.failed}}
+    type: bool
+  active_directories_failed:
+    normalize: {truthy: {path: active_directories.failed}}
+    type: bool
+  id_store_sequences_failed:
+    normalize: {truthy: {path: id_store_sequences.failed}}
+    type: bool
+  internal_users_failed:
+    normalize: {truthy: {path: internal_users.failed}}
+    type: bool
+  ldap_sources_failed:
+    normalize: {truthy: {path: ldap_sources.failed}}
+    type: bool
+  active_session_count_failed:
+    normalize: {truthy: {path: active_session_count.failed}}
+    type: bool
+  active_sessions_failed:
+    normalize: {truthy: {path: active_sessions.failed}}
+    type: bool
+  failure_reasons_failed:
+    normalize: {truthy: {path: failure_reasons.failed}}
+    type: bool
+  authentication_status_failed:
+    normalize: {truthy: {path: authentication_status.failed}}
+    type: bool
+
+  endpoints_enabled:
+    normalize: {truthy: {path: collection_options.endpoints}}
+    type: bool
+  guests_enabled:
+    normalize: {truthy: {path: collection_options.guests}}
+    type: bool
+  trustsec_enabled:
+    normalize: {truthy: {path: collection_options.trustsec}}
+    type: bool
+  sessions_enabled:
+    normalize: {truthy: {path: collection_options.sessions}}
+    type: bool
+  active_session_list_enabled:
+    normalize: {truthy: {path: collection_options.active_session_list}}
+    type: bool
+
+  api_failure_count:
+    compute: "{{ (mnt_version_failed | int) + (telemetry_failed | int) + (nodes_failed | int) + (network_device_groups_failed | int) + (network_devices_failed | int) + (identity_groups_failed | int) + (profiler_profiles_failed | int) + (endpoints_failed | int) + (endpoint_device_types_failed | int) + (endpoint_configuration_failed | int) + (guest_users_failed | int) + (sgacls_failed | int) + (sgts_failed | int) + (system_certificates_failed | int) + (trusted_certificates_failed | int) + (node_replication_status_failed | int) + (backup_last_status_failed | int) + (repositories_failed | int) + (repository_files_failed | int) + (patches_failed | int) + (hotpatches_failed | int) + (allowed_protocols_failed | int) + (authorization_profiles_failed | int) + (downloadable_acls_failed | int) + (filter_policies_failed | int) + (tacacs_command_sets_failed | int) + (tacacs_profiles_failed | int) + (tacacs_server_sequences_failed | int) + (tacacs_external_servers_failed | int) + (active_directories_failed | int) + (id_store_sequences_failed | int) + (internal_users_failed | int) + (ldap_sources_failed | int) + (active_session_count_failed | int) + (active_sessions_failed | int) + (failure_reasons_failed | int) + (authentication_status_failed | int) }}"
+    type: int
+
+  audit_failed:
+    compute: "{{ api_failure_count > 0 }}"
+    type: bool
+
+alerts:
+  - id: collection_failed
+    category: "Data Quality"
+    severity: CRITICAL
+    when: audit_failed
+    msg: "One or more Cisco ISE API collection calls failed"
+
+  - id: api_failures
+    category: "Data Quality"
+    severity: WARNING
+    suppress_if: collection_failed
+    when: api_failure_count > 0
+    msg: "{{ api_failure_count }} Cisco ISE API collection call(s) failed"
+
+  - id: no_nodes_collected
+    category: "Inventory"
+    severity: WARNING
+    when: not nodes_failed and node_count == 0
+    msg: "Cisco ISE node inventory returned no nodes"
+
+  - id: no_network_devices_collected
+    category: "Inventory"
+    severity: INFO
+    when: not network_devices_failed and network_device_count == 0
+    msg: "Cisco ISE network device inventory returned no devices"
+
+  - id: endpoint_collection_disabled
+    category: "Collection Scope"
+    severity: INFO
+    when: not endpoints_enabled
+    msg: "Cisco ISE endpoint collection is disabled for this run"
+
+  - id: guest_collection_disabled
+    category: "Collection Scope"
+    severity: INFO
+    when: not guests_enabled
+    msg: "Cisco ISE guest user collection is disabled for this run"
+
+  - id: certificates_expired
+    category: "Certificates"
+    severity: CRITICAL
+    when: certificate_expired_count > 0
+    msg: "{{ certificate_expired_count }} Cisco ISE certificate(s) are expired"
+
+  - id: certificates_expiring_7
+    category: "Certificates"
+    severity: CRITICAL
+    suppress_if: certificates_expired
+    when: certificate_expiring_7_count > 0
+    msg: "{{ certificate_expiring_7_count }} Cisco ISE certificate(s) expire within 7 days"
+
+  - id: certificates_expiring_30
+    category: "Certificates"
+    severity: WARNING
+    suppress_if: [certificates_expired, certificates_expiring_7]
+    when: certificate_expiring_30_count > 0
+    msg: "{{ certificate_expiring_30_count }} Cisco ISE certificate(s) expire within 30 days"
+
+  - id: node_replication_failed
+    category: "Node Health"
+    severity: CRITICAL
+    when: node_replication_failed_count > 0
+    msg: "{{ node_replication_failed_count }} Cisco ISE node replication status check(s) failed"
+
+  - id: backup_last_status_failed
+    category: "Backup"
+    severity: WARNING
+    when: backup_status | lower not in ['success', 'completed', 'complete', 'none', 'unknown', '']
+    msg: "Cisco ISE last backup status is {{ backup_status }}"
+
+  - id: backup_stale
+    category: "Backup"
+    severity: WARNING
+    when: backup_start_date != '' and backup_age_days > 7
+    msg: "Cisco ISE last backup is {{ backup_age_days | round(1) }} day(s) old"
+
+  - id: no_repositories_collected
+    category: "Backup"
+    severity: WARNING
+    when: not repositories_failed and repository_count == 0
+    msg: "Cisco ISE repository inventory returned no repositories"
+
+  - id: no_patches_installed
+    category: "Patching"
+    severity: INFO
+    when: not patches_failed and patch_count == 0
+    msg: "Cisco ISE patch inventory reports no installed patches"
+
+  - id: active_sessions_not_collected
+    category: "Collection Scope"
+    severity: INFO
+    when: sessions_enabled and not active_session_list_enabled
+    msg: "Cisco ISE active session list collection is disabled for this run"
+
+  - id: default_policy_hits
+    category: "Policy"
+    severity: WARNING
+    when: default_policy_hit_count > 0
+    msg: "{{ default_policy_hit_count }} endpoint/authentication row(s) appear to use a default policy marker"
+
+  - id: high_repeat_counter_endpoints
+    category: "Endpoints"
+    severity: WARNING
+    when: endpoint_high_repeat_counter_count > 0
+    msg: "{{ endpoint_high_repeat_counter_count }} endpoint(s) meet or exceed repeat counter threshold {{ endpoint_repeat_counter_threshold }}"
+
+  - id: randomized_mac_endpoints
+    category: "Endpoints"
+    severity: INFO
+    when: endpoint_randomized_mac_count > 0
+    msg: "{{ endpoint_randomized_mac_count }} endpoint(s) use locally administered/randomized MAC addresses"
+
+widgets:
+  - type: stat-cards
+    slug: ise_overview
+    name: "ISE Overview"
+    cards:
+      - name: "Version"
+        value: "{{ product_version }}"
+      - name: "Nodes"
+        value: "{{ node_count }}"
+      - name: "Network Devices"
+        value: "{{ network_device_count }}"
+      - name: "Device Groups"
+        value: "{{ network_device_group_count }}"
+      - name: "API Failures"
+        value: "{{ api_failure_count }}"
+      - name: "TrustSec Objects"
+        value: "{{ sgacl_count + sgt_count }}"
+      - name: "Certificates"
+        value: "{{ certificate_count }}"
+      - name: "Certs <=30d"
+        value: "{{ certificate_expiring_30_count }}"
+      - name: "Active Sessions"
+        value: "{{ active_session_count_value }}"
+      - name: "Default Policy"
+        value: "{{ default_policy_hit_count }}"
+      - name: "High Repeat"
+        value: "{{ endpoint_high_repeat_counter_count }}"
+      - name: "Random MACs"
+        value: "{{ endpoint_randomized_mac_count }}"
+
+  - type: key-value
+    name: "Collection Summary"
+    fields:
+      - name: "ISE Hostname"
+        value: "{{ ise_hostname }}"
+      - name: "Product Name"
+        value: "{{ product_name }}"
+      - name: "Product Version"
+        value: "{{ product_version }}"
+      - name: "Node Type"
+        value: "{{ product_node_type }}"
+      - name: "Collected At"
+        value: "{{ collected_at }}"
+      - name: "Endpoint Collection"
+        value: "{{ endpoints_enabled }}"
+      - name: "Guest Collection"
+        value: "{{ guests_enabled }}"
+      - name: "TrustSec Collection"
+        value: "{{ trustsec_enabled }}"
+      - name: "Session Collection"
+        value: "{{ sessions_enabled }}"
+      - name: "Active Session List"
+        value: "{{ active_session_list_enabled }}"
+      - name: "RCM Detection"
+        value: "{{ endpoint_random_mac_detection_enabled }}"
+      - name: "Repeat Threshold"
+        value: "{{ endpoint_repeat_counter_threshold }}"
+
+  - type: key-value
+    name: "Backup and Patch Summary"
+    fields:
+      - name: "Last Backup Status"
+        value: "{{ backup_status }}"
+      - name: "Last Backup Name"
+        value: "{{ backup_name }}"
+      - name: "Last Backup Repository"
+        value: "{{ backup_repository }}"
+      - name: "Last Backup Start"
+        value: "{{ backup_start_date }}"
+      - name: "Backup Age Days"
+        value: "{{ backup_age_days }}"
+      - name: "ISE Version"
+        value: "{{ patch_ise_version }}"
+      - name: "Installed Patches"
+        value: "{{ patch_count }}"
+      - name: "Hotpatches"
+        value: "{{ hotpatch_count }}"
+
+  - type: stat-cards
+    slug: ise_security_audit
+    name: "Security Audit"
+    cards:
+      - name: "System Certs"
+        value: "{{ system_certificate_count }}"
+      - name: "Trusted Certs"
+        value: "{{ trusted_certificate_count }}"
+      - name: "Expired Certs"
+        value: "{{ certificate_expired_count }}"
+      - name: "Certs <=7d"
+        value: "{{ certificate_expiring_7_count }}"
+      - name: "Auth Profiles"
+        value: "{{ authorization_profile_count }}"
+      - name: "DACLs"
+        value: "{{ downloadable_acl_count }}"
+
+  - type: stat-cards
+    slug: ise_access_audit
+    name: "Access and Identity"
+    cards:
+      - name: "Allowed Protocols"
+        value: "{{ allowed_protocol_count }}"
+      - name: "TACACS Cmd Sets"
+        value: "{{ tacacs_command_set_count }}"
+      - name: "TACACS Profiles"
+        value: "{{ tacacs_profile_count }}"
+      - name: "AD Sources"
+        value: "{{ active_directory_count }}"
+      - name: "ID Store Sequences"
+        value: "{{ id_store_sequence_count }}"
+      - name: "Internal Users"
+        value: "{{ internal_user_count }}"
+
+  - type: table
+    name: "System Certificates"
+    when: system_certificate_count > 0
+    rows: "{{ system_certificate_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name }}"
+      - name: "Issued To"
+        value: "{{ issued_to }}"
+      - name: "Issued By"
+        value: "{{ issued_by }}"
+      - name: "Used By"
+        value: "{{ used_by }}"
+      - name: "Expires"
+        value: "{{ expiration_date }}"
+      - name: "Days Left"
+        value: "{{ expires_in_days | round(1) }}"
+        as: status-badge
+        style_rules:
+          - when: expires_in_days < 0
+            css_class: "sv-critical"
+          - when: expires_in_days >= 0 and expires_in_days <= 30
+            css_class: "sv-warning"
+
+  - type: table
+    name: "Trusted Certificates"
+    when: trusted_certificate_count > 0
+    rows: "{{ trusted_certificate_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name }}"
+      - name: "Issued To"
+        value: "{{ issued_to }}"
+      - name: "Issued By"
+        value: "{{ issued_by }}"
+      - name: "Trusted For"
+        value: "{{ used_by }}"
+      - name: "Status"
+        value: "{{ status }}"
+        as: status-badge
+      - name: "Expires"
+        value: "{{ expiration_date }}"
+      - name: "Days Left"
+        value: "{{ expires_in_days | round(1) }}"
+        as: status-badge
+        style_rules:
+          - when: expires_in_days < 0
+            css_class: "sv-critical"
+          - when: expires_in_days >= 0 and expires_in_days <= 30
+            css_class: "sv-warning"
+
+  - type: table
+    name: "Node Replication Status"
+    when: node_replication_checked_count > 0
+    rows: "{{ node_replication_rows }}"
+    columns:
+      - name: "Node"
+        value: "{{ node }}"
+      - name: "Failed"
+        value: "{{ failed }}"
+        as: status-badge
+      - name: "Status"
+        value: "{{ status }}"
+      - name: "Message"
+        value: "{{ message }}"
+
+  - type: table
+    name: "Repositories"
+    when: repository_count > 0
+    rows: "{{ repository_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(repositoryName | default('')) }}"
+      - name: "Protocol"
+        value: "{{ protocol | default('') }}"
+      - name: "Path"
+        value: "{{ path | default('') }}"
+
+  - type: table
+    name: "Repository File Checks"
+    when: (repository_file_rows | length) > 0
+    rows: "{{ repository_file_rows }}"
+    columns:
+      - name: "Repository"
+        value: "{{ repository }}"
+      - name: "Failed"
+        value: "{{ failed }}"
+        as: status-badge
+      - name: "Files"
+        value: "{{ file_count }}"
+      - name: "Message"
+        value: "{{ message }}"
+
+  - type: table
+    name: "Installed Patches"
+    when: patch_count > 0
+    rows: "{{ patch_rows }}"
+    columns:
+      - name: "Patch"
+        value: "{{ patchNumber | default('') }}"
+      - name: "Install Date"
+        value: "{{ installDate | default('') }}"
+
+  - type: table
+    name: "Hotpatches"
+    when: hotpatch_count > 0
+    rows: "{{ hotpatch_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "Status"
+        value: "{{ status | default('') }}"
+        as: status-badge
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "ISE Nodes"
+    when: node_count > 0
+    rows: "{{ node_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(hostname | default(id | default(''))) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+      - name: "Link"
+        value: "{{ link.href | default('') }}"
+
+  - type: table
+    name: "Network Devices"
+    when: network_device_count > 0
+    rows: "{{ network_device_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+      - name: "Link"
+        value: "{{ link.href | default('') }}"
+
+  - type: table
+    name: "Network Device Groups"
+    when: network_device_group_count > 0
+    rows: "{{ network_device_group_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Identity Groups"
+    when: identity_group_count > 0
+    rows: "{{ identity_group_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Profiler Profiles"
+    when: profiler_profile_count > 0
+    rows: "{{ profiler_profile_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Endpoints"
+    when: endpoint_count > 0
+    rows: "{{ endpoint_audit_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name }}"
+      - name: "ID"
+        value: "{{ id }}"
+      - name: "MAC"
+        value: "{{ mac }}"
+      - name: "Profile"
+        value: "{{ profile }}"
+      - name: "Repeat"
+        value: "{{ repeat_counter }}"
+        as: status-badge
+        style_rules:
+          - when: repeat_counter >= endpoint_repeat_counter_threshold
+            css_class: "sv-warning"
+      - name: "Random MAC"
+        value: "{{ randomized_mac }}"
+        as: status-badge
+      - name: "Default Marker"
+        value: "{{ default_policy_marker }}"
+        as: status-badge
+
+  - type: table
+    name: "Endpoint Device Types"
+    when: (endpoint_device_type_rows | length) > 0
+    rows: "{{ endpoint_device_type_rows }}"
+    columns:
+      - name: "Device Type"
+        value: "{{ deviceType | default(name | default('')) }}"
+      - name: "Total"
+        value: "{{ total | default(count | default('')) }}"
+
+  - type: table
+    name: "Default Policy Endpoint Markers"
+    when: endpoint_default_policy_count > 0
+    rows: "{{ endpoint_default_policy_rows }}"
+    columns:
+      - name: "Endpoint"
+        value: "{{ name }}"
+      - name: "MAC"
+        value: "{{ mac }}"
+      - name: "Profile"
+        value: "{{ profile }}"
+      - name: "Group"
+        value: "{{ group_id }}"
+
+  - type: table
+    name: "Default Policy Authentication Hits"
+    when: default_policy_authentication_count > 0
+    rows: "{{ default_policy_authentication_rows }}"
+    columns:
+      - name: "User"
+        value: "{{ userName | default(username | default('')) }}"
+      - name: "MAC"
+        value: "{{ macAddress | default(mac | default('')) }}"
+      - name: "Auth Rule"
+        value: "{{ authenticationPolicyMatchedRule | default(authenticationRule | default(matchedRule | default(''))) }}"
+      - name: "Authz Rule"
+        value: "{{ authorizationPolicyMatchedRule | default(authorizationRule | default('')) }}"
+      - name: "Authz Profile"
+        value: "{{ selectedAuthorizationProfiles | default(authorizationProfile | default('')) }}"
+
+  - type: table
+    name: "High Repeat Counter Endpoints"
+    when: endpoint_high_repeat_counter_count > 0
+    rows: "{{ endpoint_high_repeat_counter_rows }}"
+    columns:
+      - name: "Endpoint"
+        value: "{{ name }}"
+      - name: "MAC"
+        value: "{{ mac }}"
+      - name: "Profile"
+        value: "{{ profile }}"
+      - name: "Repeat Counter"
+        value: "{{ repeat_counter }}"
+        as: status-badge
+
+  - type: table
+    name: "Randomized MAC Endpoints"
+    when: endpoint_randomized_mac_count > 0
+    rows: "{{ endpoint_randomized_mac_rows }}"
+    columns:
+      - name: "Endpoint"
+        value: "{{ name }}"
+      - name: "MAC"
+        value: "{{ mac }}"
+      - name: "Profile"
+        value: "{{ profile }}"
+      - name: "Device Type"
+        value: "{{ device_type | default(profile | default('')) }}"
+
+  - type: table
+    name: "Guest Users"
+    when: guest_user_count > 0
+    rows: "{{ guest_user_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Allowed Protocols"
+    when: allowed_protocol_count > 0
+    rows: "{{ allowed_protocol_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Authorization Profiles"
+    when: authorization_profile_count > 0
+    rows: "{{ authorization_profile_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Downloadable ACLs"
+    when: downloadable_acl_count > 0
+    rows: "{{ downloadable_acl_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Filter Policies"
+    when: filter_policy_count > 0
+    rows: "{{ filter_policy_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "TACACS Command Sets"
+    when: tacacs_command_set_count > 0
+    rows: "{{ tacacs_command_set_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "TACACS Profiles"
+    when: tacacs_profile_count > 0
+    rows: "{{ tacacs_profile_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "TACACS Server Sequences"
+    when: tacacs_server_sequence_count > 0
+    rows: "{{ tacacs_server_sequence_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "TACACS External Servers"
+    when: tacacs_external_server_count > 0
+    rows: "{{ tacacs_external_server_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Active Directory Sources"
+    when: active_directory_count > 0
+    rows: "{{ active_directory_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(domain | default(id | default(''))) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "ID Store Sequences"
+    when: id_store_sequence_count > 0
+    rows: "{{ id_store_sequence_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Internal Users"
+    when: internal_user_count > 0
+    rows: "{{ internal_user_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "LDAP Sources"
+    when: ldap_source_count > 0
+    rows: "{{ ldap_source_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default(id | default('')) }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "Authentication Failure Reasons"
+    when: failure_reason_count > 0
+    rows: "{{ failure_reason_rows }}"
+    columns:
+      - name: "Code"
+        value: "{{ code | default(id | default('')) }}"
+      - name: "Reason"
+        value: "{{ reason | default(name | default(description | default(''))) }}"
+
+  - type: table
+    name: "Active Sessions"
+    when: active_session_list_enabled and (active_session_rows | length) > 0
+    rows: "{{ active_session_rows }}"
+    columns:
+      - name: "User"
+        value: "{{ userName | default(username | default('')) }}"
+      - name: "MAC"
+        value: "{{ macAddress | default(mac | default('')) }}"
+      - name: "IP"
+        value: "{{ ipAddress | default(ip | default('')) }}"
+      - name: "NAS"
+        value: "{{ nasIpAddress | default(nasIp | default('')) }}"
+      - name: "Status"
+        value: "{{ status | default('') }}"
+        as: status-badge
+
+  - type: table
+    name: "TrustSec SGACLs"
+    when: sgacl_count > 0
+    rows: "{{ sgacl_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"
+
+  - type: table
+    name: "TrustSec SGTs"
+    when: sgt_count > 0
+    rows: "{{ sgt_rows }}"
+    columns:
+      - name: "Name"
+        value: "{{ name | default('') }}"
+      - name: "ID"
+        value: "{{ id | default('') }}"
+      - name: "Description"
+        value: "{{ description | default('') }}"

@@ -15,8 +15,8 @@ except ImportError:
     pass
     # handled in base class
 
-from ansible_collections.vmware.vmware.plugins.module_utils.clients.pyvmomi import PyvmomiClient
-from ansible_collections.vmware.vmware.plugins.module_utils._folder_paths import format_folder_path_as_vm_fq_path
+from ansible_collections.vmware.vmware.plugins.module_utils.clients._pyvmomi import PyvmomiClient
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_folder_paths import format_folder_path_as_vm_fq_path
 
 
 class ModulePyvmomiBase(PyvmomiClient):
@@ -150,10 +150,7 @@ class ModulePyvmomiBase(PyvmomiClient):
         else:
             folder = None
             if self.params.get(folder_param):
-                if self.params.get('folder_paths_are_absolute'):
-                    _fq_path = self.params.get(folder_param)
-                else:
-                    _fq_path = format_folder_path_as_vm_fq_path(self.params.get(folder_param), self.params.get('datacenter'))
+                _fq_path = format_folder_path_as_vm_fq_path(self.params.get(folder_param), self.params.get('datacenter'))
                 folder = self.get_folder_by_absolute_path(_fq_path, fail_on_missing=fail_on_missing)
             vms = self.get_objs_by_name_or_moid([vim.VirtualMachine], self.params.get(_search_id), return_all=True, search_root_folder=folder)
 
@@ -256,7 +253,7 @@ class ModulePyvmomiBase(PyvmomiClient):
         """
         search_folder = None
         if datacenter and hasattr(datacenter, 'datastoreFolder'):
-            search_folder = datacenter.datastoreFolder
+            search_folder = datacenter.hostFolder
 
         data_store_cluster = self.get_objs_by_name_or_moid(
             [vim.StoragePod],
@@ -370,6 +367,30 @@ class ModulePyvmomiBase(PyvmomiClient):
             self.module.fail_json(msg="Unable to find ESXi host with name or MOID %s" % identifier)
 
         return None
+
+    def get_sdrs_recommended_datastore_from_ds_cluster(self, ds_cluster):
+        """
+            Returns the Storage DRS recommended datastore from a datastore cluster
+            Args:
+                ds_cluster: datastore cluster managed object
+
+            Returns:
+                Datastore object, or none if sdrs is not configured for the cluster
+
+        """
+        # Check if Datastore Cluster provided by user is SDRS ready
+        if not ds_cluster.podStorageDrsEntry.storageDrsConfig.podConfig.enabled:
+            return None
+
+        pod_sel_spec = vim.storageDrs.PodSelectionSpec()
+        pod_sel_spec.storagePod = ds_cluster
+        storage_spec = vim.storageDrs.StoragePlacementSpec()
+        storage_spec.podSelectionSpec = pod_sel_spec
+        storage_spec.type = 'create'
+
+        rec = self.content.storageResourceManager.RecommendDatastores(storageSpec=storage_spec)
+        rec_action = rec.recommendations[0].action[0]
+        return rec_action.destination
 
     def get_datastore_with_max_free_space(self, datastores):
         """

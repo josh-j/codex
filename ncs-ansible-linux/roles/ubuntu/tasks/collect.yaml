@@ -32,6 +32,13 @@
       ansible.builtin.getent:
         database: passwd
 
+    - name: Get group definitions from /etc/group
+      ansible.builtin.getent:
+        database: group
+
+    - name: Gather systemd service facts
+      ansible.builtin.service_facts:
+
     - name: Get password aging data from /etc/shadow
       ansible.builtin.command: cat /etc/shadow
       register: _shadow_raw
@@ -77,6 +84,32 @@
       failed_when: _apt_simulate.rc != 0 and 'Could not get lock' not in _apt_simulate.stderr
       check_mode: false
 
+    # Synchronous on purpose — see internal.vmware.esxi/tasks/collect.yaml
+    # for the same incident note: ansible-core 2.20's async_status action
+    # plugin raises "Action failed: Unknown error" on intermediate
+    # (finished: false) polls regardless of async/delay/retries tuning,
+    # so a poll: 0 + async_status fan-out never reaps. host-level
+    # parallelism (play forks across the inventory) still applies.
+    - name: Tail authentication log
+      ansible.builtin.command: tail -n 200 /var/log/auth.log
+      register: _auth_log_raw
+      become: true
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Get last 24h of journal entries at warning+ severity
+      # --priority 4 = warning (4) and above (err 3, crit 2, alert 1, emerg 0).
+      ansible.builtin.command: >-
+        journalctl --since "24 hours ago" --priority 4 --no-pager
+        --output=json
+        --output-fields=PRIORITY,MESSAGE,SYSLOG_IDENTIFIER,__REALTIME_TIMESTAMP
+      register: _journal_recent_raw
+      become: true
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
     - name: Get permissions of sensitive files
       ansible.builtin.stat:
         path: "{{ item }}"
@@ -87,29 +120,66 @@
         - /etc/ssh/sshd_config
       check_mode: false
 
+    # Flatten ansible_facts subtrees into top-level keys the schema reads
+    # by bare name. The `default(...)` guards keep the play from failing
+    # if a constrained collector skips a fact subset; the schema applies
+    # type coercion via `type:` so we drop the redundant `| float`/`| int`
+    # filters here.
     - name: Assemble flat discovery payload
       ansible.builtin.set_fact:
         ubuntu_raw_discovery:
-          # System identity (flattened from ansible_facts)
+          # System identity
           hostname: "{{ ansible_facts.hostname | default('unknown') }}"
           ip_address: "{{ ansible_facts.default_ipv4.address | default('N/A') }}"
           kernel: "{{ ansible_facts.kernel | default('unknown') }}"
           os_family: "{{ ansible_facts.os_family | default('unknown') }}"
           distribution: "{{ ansible_facts.distribution | default('unknown') }}"
           distribution_version: "{{ ansible_facts.distribution_version | default('unknown') }}"
-          uptime_seconds: "{{ ansible_facts.uptime_seconds | default(0) | float }}"
-          load_avg_15m: "{{ ansible_facts.loadavg['15m'] | default(0) | float }}"
+          uptime_seconds: "{{ ansible_facts.uptime_seconds | default(0) }}"
+          load_avg_15m: "{{ ansible_facts.loadavg['15m'] | default(0) }}"
+          # Hardware inventory (DMI / SMBIOS)
+          system_vendor: "{{ ansible_facts.system_vendor | default('') }}"
+          product_name: "{{ ansible_facts.product_name | default('') }}"
+          product_serial: "{{ ansible_facts.product_serial | default('') }}"
+          product_version: "{{ ansible_facts.product_version | default('') }}"
+          product_uuid: "{{ ansible_facts.product_uuid | default('') }}"
+          form_factor: "{{ ansible_facts.form_factor | default('') }}"
+          bios_vendor: "{{ ansible_facts.bios_vendor | default('') }}"
+          bios_version: "{{ ansible_facts.bios_version | default('') }}"
+          bios_date: "{{ ansible_facts.bios_date | default('') }}"
+          board_vendor: "{{ ansible_facts.board_vendor | default('') }}"
+          board_name: "{{ ansible_facts.board_name | default('') }}"
+          board_serial: "{{ ansible_facts.board_serial | default('') }}"
+          board_version: "{{ ansible_facts.board_version | default('') }}"
+          chassis_vendor: "{{ ansible_facts.chassis_vendor | default('') }}"
+          chassis_serial: "{{ ansible_facts.chassis_serial | default('') }}"
+          chassis_asset_tag: "{{ ansible_facts.chassis_asset_tag | default('') }}"
+          architecture: "{{ ansible_facts.architecture | default('') }}"
+          machine_id: "{{ ansible_facts.machine_id | default('') }}"
+          virtualization_type: "{{ ansible_facts.virtualization_type | default('') }}"
+          virtualization_role: "{{ ansible_facts.virtualization_role | default('') }}"
+          processor: "{{ ansible_facts.processor | default([]) }}"
+          processor_count: "{{ ansible_facts.processor_count | default(0) }}"
+          processor_cores: "{{ ansible_facts.processor_cores | default(0) }}"
+          processor_vcpus: "{{ ansible_facts.processor_vcpus | default(0) }}"
+          processor_threads_per_core: "{{ ansible_facts.processor_threads_per_core | default(0) }}"
           # Memory
-          memory_total_mb: "{{ ansible_facts.memtotal_mb | default(1) | float }}"
-          memory_free_mb: "{{ ansible_facts.memfree_mb | default(0) | float }}"
-          swap_total_mb: "{{ ansible_facts.swaptotal_mb | default(0) | float }}"
-          swap_free_mb: "{{ ansible_facts.swapfree_mb | default(0) | float }}"
+          memory_total_mb: "{{ ansible_facts.memtotal_mb | default(1) }}"
+          memory_free_mb: "{{ ansible_facts.memfree_mb | default(0) }}"
+          swap_total_mb: "{{ ansible_facts.swaptotal_mb | default(0) }}"
+          swap_free_mb: "{{ ansible_facts.swapfree_mb | default(0) }}"
           # Security
           getent_passwd: "{{ ansible_facts.getent_passwd | default({}) }}"
-          epoch_seconds: "{{ ansible_facts.date_time.epoch | default(0) | float }}"
-          # Raw mounts (for disk filtering in reporter)
+          getent_group: "{{ ansible_facts.getent_group | default({}) }}"
+          epoch_seconds: "{{ ansible_facts.date_time.epoch | default(0) }}"
+          service_states: "{{ ansible_facts.services | default({}) }}"
           mounts: "{{ ansible_facts.mounts | default([]) }}"
-          # Command output (kept nested for reporter pipe transforms)
+          # Forward-compatible: emit the full ansible_facts subtree
+          # alongside the flat keys above. Schema migrations can switch
+          # individual fields to read `ansible_facts.X` via `first_of`
+          # without breaking the current flat-key consumers.
+          ansible_facts: "{{ ansible_facts | default({}) }}"
+          # Command-task register output (nested for reporter pipe transforms)
           failed_services: "{{ _failed_services_raw }}"
           shadow_raw: "{{ _shadow_raw }}"
           sshd_raw: "{{ _sshd_raw }}"
@@ -117,6 +187,8 @@
           reboot_stat: "{{ _reboot_stat }}"
           apt_simulate: "{{ _apt_simulate }}"
           file_stats: "{{ _file_stats_raw }}"
+          journal_recent: "{{ _journal_recent_raw }}"
+          auth_log: "{{ _auth_log_raw }}"
       changed_when: false
 
   rescue:

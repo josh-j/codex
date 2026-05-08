@@ -229,7 +229,7 @@ def main():
             )
         try:
             pwd.getpwnam(name)
-        except KeyError:
+        except KeyError as e:
             module.fail_json(msg="User '%s' does not exist." % name, **result)
 
     elif quota_type == "group":
@@ -250,7 +250,7 @@ def main():
             )
         try:
             grp.getgrnam(name)
-        except KeyError:
+        except KeyError as e:
             module.fail_json(msg="User '%s' does not exist." % name, **result)
 
     elif quota_type == "project":

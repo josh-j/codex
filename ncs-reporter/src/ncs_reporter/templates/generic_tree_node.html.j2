@@ -51,6 +51,7 @@
     {# Breadcrumb trail — typed crumbs (link/label/dropdown/search) shared
        with the site dashboard via ``_breadcrumb_bar.html.j2``. #}
     {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
+    {% from '_log_tail.html.j2' import log_tail_body %}
     {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
     <div class="page-header page-header-standalone">
@@ -157,6 +158,9 @@
                     {% endfor %}
                 </div>
             </div>
+
+            {% elif widget.type == 'log_tail' %}
+            {{ log_tail_body(widget) }}
 
             {% else %}
             <div class="widget-body widget-table-view">

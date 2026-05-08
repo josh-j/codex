@@ -1,0 +1,280 @@
+---
+- name: "vSphere | Catalog task"
+  hosts: "{{ vmware_task_hosts | default('vcsa') }}"
+  connection: local
+  gather_facts: false
+  become: false
+  vars_files:
+    - ../vars/task_catalog.yml
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    vmware_task_id: "{{ vmware_task_id | default('') }}"
+
+  pre_tasks:
+    - name: Resolve VMware connection parameters
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_vcenter
+
+    - name: Validate task id
+      ansible.builtin.assert:
+        that:
+          - vmware_task_id | length > 0
+          - vmware_task_id in vmware_task_catalog
+        fail_msg: >-
+          Unknown vmware_task_id '{{ vmware_task_id }}'. Valid ids:
+          {{ vmware_task_catalog.keys() | list | sort | join(', ') }}.
+
+    - name: Capture operation start
+      ansible.builtin.set_fact:
+        _vmware_task: "{{ vmware_task_catalog[vmware_task_id] }}"
+        _vmware_operation_started_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        _vmware_operation_id: "{{ vmware_task_id | regex_replace('[^A-Za-z0-9_.-]+', '-') }}-{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+      changed_when: false
+
+    - name: Resolve requested targets
+      ansible.builtin.set_fact:
+        _vmware_requested_targets: >-
+          {{
+            vars.get(_vmware_task.target_selector, [])
+            if _vmware_task.target_selector not in ['inventory_hostname', 'vsphere_graph.vms']
+            else ([inventory_hostname] if _vmware_task.target_selector == 'inventory_hostname' else [])
+          }}
+      changed_when: false
+
+  tasks:
+    - name: Execute role-backed VMware catalog task
+      ansible.builtin.include_role:
+        name: "{{ _vmware_task.executor.role }}"
+      vars:
+        ncs_action: "{{ _vmware_task.executor.ncs_action }}"
+        ncs_operation: "{{ _vmware_task.executor.ncs_operation }}"
+      register: _vmware_executor_result
+      when: _vmware_task.executor.role is defined
+
+  post_tasks:
+    - name: Capture operation end
+      ansible.builtin.set_fact:
+        _vmware_operation_ended_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      changed_when: false
+
+    - name: Emit operation event
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "vmware/operation"
+        _ncs_emit_payload:
+          schema_version: 1
+          kind: operation_event
+          id: "{{ _vmware_operation_id }}"
+          task_id: "{{ _vmware_task.id }}"
+          tier: "{{ _vmware_task.tier }}"
+          target_type: "{{ _vmware_task.target_type }}"
+          read_only: "{{ _vmware_task.read_only }}"
+          requested_targets: "{{ _vmware_requested_targets }}"
+          resolved_targets: "{{ _vmware_requested_targets }}"
+          started_at: "{{ _vmware_operation_started_at }}"
+          ended_at: "{{ _vmware_operation_ended_at }}"
+          result: ok
+          changed: "{{ _vmware_executor_result.changed | default(false) }}"
+          before: {}
+          after: {}
+          errors: []
+        _ncs_emit_tree_path:
+          - vsphere
+          - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+        _ncs_emit_raw_filename: "{{ _vmware_operation_id }}.operation.yaml"
+        _ncs_emit_artifact_kind: operation
+        _ncs_emit_artifact_id: "{{ _vmware_operation_id }}"
+      when: _vmware_task.executor.role is defined
+
+- name: "vSphere | VCSA catalog task"
+  hosts: "{{ rotate_target | default('vcsa') }}"
+  gather_facts: false
+  vars_files:
+    - ../vars/task_catalog.yml
+  vars:
+    vmware_task_id: "{{ vmware_task_id | default('') }}"
+    rotate_user: "{{ rotate_user | default('root') }}"
+    rotate_password: "{{ rotate_password | default(vault_rotate_password | default('')) }}"
+    rotate_force_change: "{{ rotate_force_change | default(false) | bool }}"
+
+  pre_tasks:
+    - name: Skip non-VCSA catalog ids
+      ansible.builtin.meta: end_host
+      when: vmware_task_id not in ['vcsa.password_status', 'vcsa.password_rotate']
+
+    - name: Validate VCSA task id
+      ansible.builtin.assert:
+        that:
+          - vmware_task_id in vmware_task_catalog
+
+    - name: Capture VCSA operation start
+      ansible.builtin.set_fact:
+        _vmware_task: "{{ vmware_task_catalog[vmware_task_id] }}"
+        _vmware_operation_started_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        _vmware_operation_id: "{{ vmware_task_id | regex_replace('[^A-Za-z0-9_.-]+', '-') }}-{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+      changed_when: false
+
+    - name: Validate rotation password
+      ansible.builtin.assert:
+        that:
+          - rotate_password | length > 0
+        fail_msg: "Define rotate_password or vault_rotate_password before rotating the VCSA password."
+      when: vmware_task_id == 'vcsa.password_rotate'
+
+  tasks:
+    - name: VCSA password status
+      block:
+        - name: Wait for SSH connection
+          ansible.builtin.wait_for_connection:
+            timeout: 10
+
+        - name: Get password aging info
+          ansible.builtin.command: chage -l {{ rotate_user }}
+          register: _vcsa_chage
+          changed_when: false
+
+        - name: Get account status
+          ansible.builtin.command: passwd -S {{ rotate_user }}
+          register: _vcsa_passwd
+          changed_when: false
+      when: vmware_task_id == 'vcsa.password_status'
+
+    - name: VCSA password rotate
+      block:
+        - name: Wait for SSH connection
+          ansible.builtin.wait_for_connection:
+            timeout: 10
+
+        - name: Set user password
+          ansible.builtin.user:
+            name: "{{ rotate_user }}"
+            password: "{{ rotate_password | password_hash('sha512') }}"
+            update_password: always
+          no_log: true
+
+        - name: Force password change on next login
+          ansible.builtin.command: chage -d 0 {{ rotate_user }}
+          changed_when: true
+          when: rotate_force_change | bool
+      when: vmware_task_id == 'vcsa.password_rotate'
+
+  post_tasks:
+    - name: Capture VCSA operation end
+      ansible.builtin.set_fact:
+        _vmware_operation_ended_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      changed_when: false
+
+    - name: Emit VCSA operation event
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "vmware/operation"
+        _ncs_emit_payload:
+          schema_version: 1
+          kind: operation_event
+          id: "{{ _vmware_operation_id }}"
+          task_id: "{{ _vmware_task.id }}"
+          tier: "{{ _vmware_task.tier }}"
+          target_type: "{{ _vmware_task.target_type }}"
+          read_only: "{{ _vmware_task.read_only }}"
+          requested_targets: ["{{ inventory_hostname }}"]
+          resolved_targets: ["{{ inventory_hostname }}"]
+          started_at: "{{ _vmware_operation_started_at }}"
+          ended_at: "{{ _vmware_operation_ended_at }}"
+          result: ok
+          changed: "{{ vmware_task_id == 'vcsa.password_rotate' }}"
+          before:
+            passwd: "{{ _vcsa_passwd.stdout | default('') }}"
+            chage: "{{ _vcsa_chage.stdout | default('') }}"
+          after: {}
+          errors: []
+        _ncs_emit_tree_path:
+          - vsphere
+          - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+        _ncs_emit_raw_filename: "{{ _vmware_operation_id }}.operation.yaml"
+        _ncs_emit_artifact_kind: operation
+        _ncs_emit_artifact_id: "{{ _vmware_operation_id }}"
+
+- name: "vSphere | Owner digest catalog task"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars_files:
+    - ../vars/task_catalog.yml
+  vars:
+    vmware_task_id: "{{ vmware_task_id | default('') }}"
+    platform_root: "{{ lookup('env', 'NCS_REPORT_DIRECTORY') | default('/srv/samba/reports/data', true) }}"
+    scripts_dir: "{{ playbook_dir }}/../ncs_configs/scripts"
+    owner_digest_exe: "{{ playbook_dir }}/files/build_owner_digest.py"
+    age_days: "{{ ncs_digest_snapshot_age_days | default(7) | int }}"
+    dry_run: "{{ dry_run | default(false) | bool }}"
+    notify_powered_off: "{{ notify_powered_off | default(false) | bool }}"
+
+  pre_tasks:
+    - name: Skip non-owner-digest catalog ids
+      ansible.builtin.meta: end_host
+      when: vmware_task_id != 'vm.owner_digest'
+
+    - name: Capture owner digest operation start
+      ansible.builtin.set_fact:
+        _vmware_task: "{{ vmware_task_catalog[vmware_task_id] }}"
+        _vmware_operation_started_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        _vmware_operation_id: "{{ vmware_task_id | regex_replace('[^A-Za-z0-9_.-]+', '-') }}-{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+      changed_when: false
+
+  tasks:
+    - name: Build per-owner digest payload
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [
+              owner_digest_exe,
+              '--platform-root', platform_root,
+              '--scripts-dir', scripts_dir,
+              '--age-days', age_days | string,
+            ] + (['--notify-powered-off'] if notify_powered_off else [])
+          }}
+      register: _digest_raw
+      changed_when: false
+
+    - name: Parse digest payload
+      ansible.builtin.set_fact:
+        digest: "{{ _digest_raw.stdout | from_json }}"
+
+  post_tasks:
+    - name: Capture owner digest operation end
+      ansible.builtin.set_fact:
+        _vmware_operation_ended_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      changed_when: false
+
+    - name: Emit owner digest operation event
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "vmware/operation"
+        _ncs_emit_payload:
+          schema_version: 1
+          kind: operation_event
+          id: "{{ _vmware_operation_id }}"
+          task_id: "{{ _vmware_task.id }}"
+          tier: "{{ _vmware_task.tier }}"
+          target_type: "{{ _vmware_task.target_type }}"
+          read_only: true
+          requested_targets: []
+          resolved_targets: "{{ digest.owner_issues.keys() | list | default([]) }}"
+          started_at: "{{ _vmware_operation_started_at }}"
+          ended_at: "{{ _vmware_operation_ended_at }}"
+          result: ok
+          changed: false
+          before: {}
+          after:
+            owner_count: "{{ digest.owner_issues | length | default(0) }}"
+          errors: []
+        _ncs_emit_tree_path:
+          - vsphere
+        _ncs_emit_raw_filename: "{{ _vmware_operation_id }}.operation.yaml"
+        _ncs_emit_artifact_kind: operation
+        _ncs_emit_artifact_id: "{{ _vmware_operation_id }}"

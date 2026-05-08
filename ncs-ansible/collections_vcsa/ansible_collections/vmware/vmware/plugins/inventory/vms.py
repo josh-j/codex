@@ -39,15 +39,6 @@ options:
             {key: 'config.guestId', separator: ''},
             {key: 'summary.runtime.powerState', separator: ''},
         ]
-    gather_compute_objects:
-        description:
-            - If true, gather the cluster and ESXi host identifiers for this VM. This will add the cluster
-              and esxi_host properties to the VM object.
-            - If these properties are not available for some reason, the values will be empty strings.
-            - If false, these properties will not be added to the VM object.
-            - Looking up these values can add time to the inventory process.
-        default: false
-        type: bool
 """
 
 EXAMPLES = r"""
@@ -80,18 +71,15 @@ keyed_groups:
     separator: ""
   - key: guest.toolsRunningStatus
     separator: ""
-# Only gather VMs found in certain vSphere folder paths
+# Only gather VMs found in certain paths
 search_paths:
-  - /DC1/vm/production
-  - /DC1/vm/hq/production
+  - /DC1/vm/ClusterA
+  - /DC1/vm/ClusterC
   - /DC3
 # Filter out VMs using jinja patterns. For example, filter out powered off VMs
 filter_expressions:
   - 'summary.runtime.powerState == "poweredOff"'
-
 # Set custom inventory hostnames based on attributes
-# If more than one host has the same name, only the first host is shown in the inventory and a warning is thrown.
-# If strict is true, this warning is considered a fatal error.
 hostnames:
   - "'VM - ' + name + ' - ' + guest.ipAddress"
   - "'VM - ' + name + ' - ' + config.instanceUuid"
@@ -99,66 +87,20 @@ hostnames:
 compose:
   ansible_user: "'root'"
   ansible_connection: "'ssh'"
-  # assuming path is something like /MyDC/vms/myfolder
+  # assuming path is something like /MyDC/vms/MyCluster
   datacenter: "(path | split('/'))[1]"
+  cluster: "(path | split('/'))[3]"
 ...
 
 # Use Tags and Tag Categories to create groups
-# Given the example tags below:
-#
-#   tags:
-#     urn:vmomi:InventoryServiceTag:70f87e82-6ac6-42bc-878c-817d7b2a4520:GLOBAL: db
-#     urn:vmomi:InventoryServiceTag:bb10e90b-263f-4248-be06-086df1100d6b:GLOBAL: tofu-managed
-#     urn:vmomi:InventoryServiceTag:70f87e82-6ac6-42bc-878c-111111111111:GLOBAL: web
-#   tags_by_category:
-#     app_type:
-#       - urn:vmomi:InventoryServiceTag:70f87e82-6ac6-42bc-878c-817d7b2a4520:GLOBAL: db
-#       - urn:vmomi:InventoryServiceTag:70f87e82-6ac6-42bc-878c-111111111111:GLOBAL: web
-#     tofu:
-#       - urn:vmomi:InventoryServiceTag:bb10e90b-263f-4248-be06-086df1100d6b:GLOBAL: tofu-managed
 ---
 plugin: vmware.vmware.vms
 gather_tags: true
 keyed_groups:
-  # create groups based on tag names/values, like db, web, and tofu-managed
-  - key: tags.values()
-    prefix: ""
-    separator: ""
-
-  # create groups based on app types, like db and web
-  - key: tags_by_category.app_type | map('dict2items') | flatten | map(attribute='value')
-    prefix: "vmware_tag_app_type_category_"
-    separator: ""
-
-  # create groups based on categories, like app_type or tofu
-  - key: tags_by_category.keys()
-    prefix: "vmware_tag_category_name_"
+  - key: tags_by_category.OS
+    prefix: "vmware_tag_os_category_"
     separator: ""
 ...
-
-# gather and group hosts by compute resource information.
----
-plugin: vmware.vmware.vms
-
-# creates properties for cluster and ESXi host identifiers on the VM object, like
-# cluster: {name: "Cluster1", moid: "1234567890"}
-# esxi_host: {name: "esxi-host-1", moid: "1234567890"}
-gather_compute_objects: true
-
-# create groups based on cluster and ESXi host name.
-keyed_groups:
-  - key: 'cluster["name"]'
-    prefix: "cluster"
-    separator: "_"
-  - key: 'esxi_host["name"]'
-    prefix: "esxi_host"
-    separator: "_"
-
-# filter out VMs that are not running in one or more of clusters.
-filter_expressions:
-  - 'cluster["name"] in ["Cluster1", "Cluster2"]'
-...
-
 
 # customizing hostnames based on VM's FQDN. The second hostnames template acts as a fallback mechanism.
 ---
@@ -219,8 +161,6 @@ class VmInventoryHost(VmwareInventoryHost):
     def __init__(self):
         super().__init__()
         self._guest_ip = None
-        self._cluster = None
-        self._esxi_host = None
 
     @property
     def guest_ip(self):
@@ -233,34 +173,6 @@ class VmInventoryHost(VmwareInventoryHost):
             self._guest_ip = ""
 
         return self._guest_ip
-
-    @property
-    def cluster(self):
-        if self._cluster is None:
-            try:
-                _cluster = self.object.summary.runtime.host.parent
-                self._cluster = dict(
-                    name=_cluster.name,
-                    moid=_cluster._GetMoId()
-                )
-            except AttributeError:
-                self._cluster = dict(name='', moid='')
-
-        return self._cluster
-
-    @property
-    def esxi_host(self):
-        if self._esxi_host is None:
-            try:
-                _esxi_host = self.object.summary.runtime.host
-                self._esxi_host = dict(
-                    name=_esxi_host.name,
-                    moid=_esxi_host._GetMoId()
-                )
-            except AttributeError:
-                self._esxi_host = dict(name='', moid='')
-
-        return self._esxi_host
 
     def get_tags(self, rest_client):
         return rest_client.get_tags_by_vm_moid(self.object._GetMoId())
@@ -290,6 +202,21 @@ class InventoryModule(VmwareInventoryBase):
             )
         return False
 
+    def parse(self, inventory, loader, path, cache=True):
+        """
+        Parses the inventory file options and creates an inventory based on those inputs
+        """
+        super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
+        cache_key = self.get_cache_key(path)
+        result_was_cached, results = self.get_cached_result(cache, cache_key)
+
+        if result_was_cached:
+            self.populate_from_cache(results)
+        else:
+            results = self.populate_from_vcenter(self._read_config_data(path))
+
+        self.update_cached_result(cache, cache_key, results)
+
     def parse_properties_param(self):
         """
         The properties option can be a variety of inputs from the user and we need to
@@ -308,17 +235,8 @@ class InventoryModule(VmwareInventoryBase):
         if "name" not in properties_param:
             properties_param.append("name")
 
-        # needed by keyed_groups default value
-        if "config.guestId" not in properties_param:
-            properties_param.append("config.guestId")
-
-        # needed by keyed_groups default value
         if "summary.runtime.powerState" not in properties_param:
             properties_param.append("summary.runtime.powerState")
-
-        # needed by esxi_host and cluster properties value
-        if self.get_option("gather_compute_objects"):
-            properties_param.append("summary.runtime.host")
 
         return properties_param
 
@@ -326,23 +244,22 @@ class InventoryModule(VmwareInventoryBase):
         """
         Populate inventory data from cache
         """
-        hostvars = {}
         for inventory_hostname, vm_properties in cache_data.items():
             vm = VmInventoryHost.create_from_cache(
                 inventory_hostname=inventory_hostname,
                 properties=vm_properties
             )
-            self.add_host_object_from_vcenter_to_inventory(vm, hostvars)
+            self.__update_inventory(vm)
 
-    def populate_from_vcenter(self):
+    def populate_from_vcenter(self, config_data):
         """
         Populate inventory data from vCenter
         """
         hostvars = {}
         properties_to_gather = self.parse_properties_param()
-        self.initialize_pyvmomi_client()
+        self.initialize_pyvmomi_client(config_data)
         if self.get_option("gather_tags"):
-            self.initialize_rest_client()
+            self.initialize_rest_client(config_data)
 
         for vm_object in self.get_objects_by_type(vim_type=[vim.VirtualMachine]):
             vm = VmInventoryHost.create_from_object(
@@ -354,23 +271,32 @@ class InventoryModule(VmwareInventoryBase):
             if self.get_option("gather_tags"):
                 self.add_tags_to_object_properties(vm)
 
-            if self.get_option("gather_compute_objects"):
-                vm.properties['cluster'] = vm.cluster
-                vm.properties['esxi_host'] = vm.esxi_host
-
             self.set_inventory_hostname(vm)
-            self.add_host_object_from_vcenter_to_inventory(new_host=vm, hostvars=hostvars)
+            if vm.inventory_hostname not in hostvars:
+                hostvars[vm.inventory_hostname] = vm.properties
+                self.__update_inventory(vm)
 
         return hostvars
 
-    def set_default_ansible_host_var(self, vmware_host_object):
+    def __update_inventory(self, vm):
+        if self.host_should_be_filtered_out(vm):
+            return
+        self.add_host_to_inventory(vm)
+        self.add_host_to_groups_based_on_path(vm)
+        self.set_host_variables_from_host_properties(vm)
+
+    def add_host_to_inventory(self, vm: VmInventoryHost):
         """
-            Sets the default ansible_host var. This is usually an IP that is dependent on the object type.
-            This is a default because the user can override this via compose
-            Args:
-              vmware_host_object: EsxiInventoryHost, The host object that should be used
+        Add the host to the inventory and any groups that the user wants to create based on inventory
+        parameters like groups or keyed groups.
         """
-        self.inventory.set_variable(
-            vmware_host_object.inventory_hostname, "ansible_host",
-            vmware_host_object.guest_ip
-        )
+        strict = self.get_option("strict")
+        self.inventory.add_host(vm.inventory_hostname)
+        self.inventory.set_variable(vm.inventory_hostname, "ansible_host", vm.guest_ip)
+
+        self._set_composite_vars(
+            self.get_option("compose"), vm.properties, vm.inventory_hostname, strict=strict)
+        self._add_host_to_composed_groups(
+            self.get_option("groups"), vm.properties, vm.inventory_hostname, strict=strict)
+        self._add_host_to_keyed_groups(
+            self.get_option("keyed_groups"), vm.properties, vm.inventory_hostname, strict=strict)

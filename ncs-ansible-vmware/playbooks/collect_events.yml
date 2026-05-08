@@ -1,0 +1,43 @@
+---
+- name: "vSphere | Collect events"
+  hosts: vcsa
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    vmware_event_window_hours: "{{ vmware_event_window_hours | default(24) }}"
+    vmware_event_limit: "{{ vmware_event_limit | default(500) }}"
+
+  pre_tasks:
+    - name: Resolve VMware connection parameters
+      ansible.builtin.include_role:
+        name: internal.vmware.common
+        tasks_from: init_vcenter
+
+  tasks:
+    - name: Collect vSphere events
+      internal.vmware.vsphere_events_info:
+        hostname: "{{ ansible_host }}"
+        username: "{{ vmware_username }}"
+        password: "{{ vmware_password }}"
+        validate_certs: "{{ vmware_validate_certs | default(false) | bool }}"
+        window_hours: "{{ vmware_event_window_hours | int }}"
+        limit: "{{ vmware_event_limit | int }}"
+      register: _vsphere_events_result
+      no_log: true
+      changed_when: false
+
+    - name: Emit vSphere events artifact
+      ansible.builtin.include_role:
+        name: internal.core.emit
+      vars:
+        _ncs_emit_platform: "vmware/vsphere"
+        _ncs_emit_payload: "{{ _vsphere_events_result.vsphere_events }}"
+        _ncs_emit_tree_path:
+          - vsphere
+          - "{{ inventory_hostname | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('^-+|-+$', '') }}"
+        _ncs_emit_raw_filename: events.yaml
+        _ncs_emit_artifact_kind: events
+        _ncs_emit_artifact_id: "{{ inventory_hostname }}-events"
+

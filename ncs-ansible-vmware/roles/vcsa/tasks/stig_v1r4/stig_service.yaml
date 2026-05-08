@@ -1,17 +1,24 @@
 ---
 # internal.vmware.vcsa : tasks/stig_v1r4/stig_service.yaml
-# Included once per service from the stig orchestrator loop.
+# Included once per service from the stig orchestrator's phase1 loop.
+#
+# Sets the per-service target context as host facts (host-precedence,
+# higher than role/task vars), so every nested include_tasks sees the
+# right values without apply.vars plumbing. The eight services iterate
+# sequentially within a single play, so each iteration's set_fact
+# overwrites the previous cleanly.
 
-- name: "VCSA STIG | Register target for callback ({{ _vcsa_service.name }})"
+- name: "VCSA STIG | Set per-service context ({{ _vcsa_service.name }})"
   ansible.builtin.set_fact:
     _ncs_stig_target_host: "{{ inventory_hostname }}"
     _ncs_stig_target_type: "{{ _vcsa_service.target_type }}"
+    stig_target_host: "{{ inventory_hostname }}"
+    stig_target_type: "{{ _vcsa_service.target_type }}"
+    stig_platform: "vmware/vcenter/vcsa"
+    run_create_backups: "{{ vcsa_stig_create_backups | default(true) | bool }}"
+    photon_version: "{{ vcsa_stig_photon_version | default('3') | string }}"
   check_mode: false
   changed_when: false
-
-- name: "VCSA STIG | Load {{ _vcsa_service.name }} defaults"
-  ansible.builtin.include_vars:
-    file: "{{ _ncs_task_root }}/stig_v1r4/defaults/{{ _vcsa_service.name }}.yaml"
 
 - name: "VCSA STIG | Load {{ _vcsa_service.name }} vars"
   ansible.builtin.include_vars:
@@ -28,9 +35,3 @@
     apply:
       tags:
         - "{{ _vcsa_service.name }}"
-      vars:
-        stig_target_host: "{{ inventory_hostname }}"
-        stig_target_type: "{{ _vcsa_service.target_type }}"
-        stig_platform: "vmware/vcenter/vcsa"
-        run_create_backups: "{{ vcsa_stig_create_backups | default(true) | bool }}"
-        photon_version: "{{ vcsa_stig_photon_version | default('3') | string }}"

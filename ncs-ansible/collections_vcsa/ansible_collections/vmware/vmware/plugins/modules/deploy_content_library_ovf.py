@@ -7,7 +7,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
 
@@ -23,6 +22,7 @@ author:
 
 requirements:
     - vSphere Automation SDK
+    - aiohttp
 
 extends_documentation_fragment:
     - vmware.vmware.base_options
@@ -73,7 +73,7 @@ options:
             - Default storage provisioning type to use for all sections of type vmw:StorageSection in the OVF descriptor.
         type: str
         default: 'thin'
-        choices: [ thin, thick, eagerZeroedThick ]
+        choices: [ thin, thick, eagerZeroedThick, eagerzeroedthick ]
 
     # These are defined in the vmware.vmware.module_deploy_vm_base_options doc frag, so this section is just updating the
     # description of these options as needed
@@ -129,21 +129,20 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-vm:
-    description:
-        - Identifying information about the vm
-    returned: always
-    type: dict
-    sample: {
-        "vm": {
-            "moid": "vm-111111",
-            "name": "my-vm"
-        },
-    }
+vm_name:
+  description: The name of the vm, as specified by the input parameter vm_name
+  returned: always
+  type: str
+  sample: myvm
+vm_moid:
+  description: The MOID of the deployed VM
+  returned: when state is present
+  type: str
+  sample: vm-1000
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import rest_compatible_argument_spec
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import rest_compatible_argument_spec
 from ansible.module_utils.common.text.converters import to_native
 from ansible_collections.vmware.vmware.plugins.module_utils._module_rest_base import ModuleRestBase
 from ansible_collections.vmware.vmware.plugins.module_utils._module_deploy_vm_base import (
@@ -209,8 +208,7 @@ class VmwareContentDeployOvf(ModuleVmDeployBase):
 
         if not response.succeeded:
             self.module.fail_json(msg=(
-                "Failed to deploy OVF %s to VM %s. Check vSphere event log for more details" %
-                (self.library_item_id, self.params['vm_name'])
+                "Failed to deploy OVF %s to VM %s" % (self.library_item_id, self.params['vm_name'])
             ))
 
         return response.resource_id.id
@@ -224,7 +222,7 @@ def main():
         library_id=dict(type='str', required=False),
         library_item_name=dict(type='str', required=False, aliases=['template_name']),
         library_item_id=dict(type='str', required=False, aliases=['template_id']),
-        storage_provisioning=dict(type='str', default='thin', choices=['thin', 'thick', 'eagerZeroedThick']),
+        storage_provisioning=dict(type='str', default='thin', choices=['thin', 'thick', 'eagerZeroedThick', 'eagerzeroedthick']),
     )
     module = AnsibleModule(
         argument_spec=argument_spec,

@@ -82,6 +82,21 @@ def _classify(vms_info_raw: dict[str, Any], exclude_patterns: list[str], module)
     return module.get_vms_list(vms_info_raw, exclude_patterns=exclude_patterns)
 
 
+def _graph_vmware_vm_info_rows(graph_vms: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for vm in graph_vms:
+        if not isinstance(vm, dict):
+            continue
+        rows.append({
+            **vm,
+            "guest_name": vm.get("guest_name") or vm.get("name", ""),
+            "guest_fullname": vm.get("guest_fullname") or vm.get("guest_os", ""),
+            "esxi_hostname": vm.get("esxi_hostname") or vm.get("host", ""),
+            "customvalues": vm.get("customvalues") or vm.get("custom_attributes") or {},
+        })
+    return rows
+
+
 def _parse_iso(ts: str) -> datetime | None:
     if not ts:
         return None
@@ -154,11 +169,22 @@ def main(argv: list[str]) -> int:
         bundle = _load_yaml(bundle_path)
         data = bundle.get("data") or bundle
         vcenter = bundle.get("metadata", {}).get("host") or bundle_path.parent.name
-        vms_info_raw = data.get("vms_info_raw") or {"virtual_machines": data.get("virtual_machines", [])}
+        if data.get("kind") == "vsphere_graph":
+            vms_info_raw = {"virtual_machines": _graph_vmware_vm_info_rows(data.get("vms", []))}
+            snapshots_raw = [
+                {
+                    **snap,
+                    "creation_time": snap.get("creation_time") or snap.get("created", ""),
+                }
+                for snap in data.get("snapshots", [])
+                if isinstance(snap, dict)
+            ]
+        else:
+            vms_info_raw = data.get("vms_info_raw") or {"virtual_machines": data.get("virtual_machines", [])}
+            snapshots_raw = data.get("snapshots_raw", [])
         infra_patterns = data.get("infra_patterns", [])
         vms = _classify(vms_info_raw, infra_patterns, get_vms_list)
 
-        snapshots_raw = data.get("snapshots_raw", [])
         aged = _aged_snapshots_with_owner(snapshots_raw, args.age_days, vms, datetime.now(tz=timezone.utc))
 
         for vm in vms:

@@ -80,6 +80,7 @@
 
     {% from '_breadcrumb_bar.html.j2' import breadcrumb_bar %}
     {% from '_alert_detail.html.j2' import alert_detail_row %}
+    {% from '_log_tail.html.j2' import log_tail_body %}
     {{ breadcrumb_bar(nav.get('breadcrumbs', [])) }}
 
     {% if nav.get('sibling_reports') and nav.sibling_reports | length > 1 %}
@@ -148,6 +149,9 @@
             <div class="widget-body details-description" style="margin-bottom: 0; border: 1px solid var(--line); border-top: none; border-radius: 0 0 10px 10px;">
                 {{ widget.content }}
             </div>
+
+            {% elif widget.type == 'log_tail' %}
+            {{ log_tail_body(widget) }}
 
             {% elif widget.type == 'stat_cards' %}
             <div class="widget-body widget-body-padded">

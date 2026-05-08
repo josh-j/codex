@@ -1,0 +1,21 @@
+---
+# internal/linux/playbooks/vars/ubuntu_bootstrap.yml
+# Shared connection defaults for first-time enrollment playbooks
+# (ubuntu_keys_bootstrap, ubuntu_proxyjump_bootstrap). Loaded via
+# ``vars_files:`` so the SSH-arg policy lives in one place — change
+# StrictHostKeyChecking accept-new vs ask vs no here, not per playbook.
+
+ansible_connection: ssh
+# Force password auth for the keys-bootstrap step. Pubkey would defeat
+# the whole purpose, since the point of the bootstrap is to install the
+# pubkey. Subsequent (non-bootstrap) playbooks fall back to the project
+# default (key auth).
+ubuntu_bootstrap_ssh_args_password_only: >-
+  -o PreferredAuthentications=password
+  -o PubkeyAuthentication=no
+  -o StrictHostKeyChecking=accept-new
+
+ubuntu_bootstrap_ssh_args_key_only: >-
+  -o PreferredAuthentications=publickey
+  -o PubkeyAuthentication=yes
+  -o StrictHostKeyChecking=accept-new

@@ -2,10 +2,9 @@
 # internal.vmware : meta/runtime.yml
 # Idiomatic collection metadata for NCS VMware collection.
 
-plugin_routing:
-  modules:
-    vmware_triggered_alarms_info:
-      deprecation:
-        warning_text: "This module is internal to NCS."
+# vmware_triggered_alarms_info has no upstream replacement: neither
+# community.vmware nor vmware.vmware ships an alarms-query module.
+# Replace with a script under ncs_configs/scripts/ if the module
+# wrapper proves heavier than its purpose.
 
 requires_ansible: ">=2.15.0"

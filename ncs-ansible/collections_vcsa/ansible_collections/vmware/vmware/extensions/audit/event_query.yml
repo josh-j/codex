@@ -4,39 +4,35 @@ vmware.vmware.guest_info:
     .guests[] | {
       name: .moid,
       canonical_facts: {
-        instance_uuid: .instance_uuid,
-        bios_uuid: .hw_product_uuid,
+        name: .name,
         moid: .moid,
-        esxi: .hw_esxi_host
+        esxi_host: .hw_esxi_host
       },
       facts: {
-        infra_type: "PrivateCloud",
-        infra_bucket: "Compute",
         device_type: "VM"
+      }
+    }, {
+      name: .hw_esxi_host,
+      facts: {
+        device_type: "ESXi"
       }
     }
 
-####
-# Catch all query
-####
-vmware.vmware.*:
+vmware.vmware.vm_list_group_by_clusters_info:
   query: >-
-    (
-      {"vm": "VM", "host": "ESXi", "vcsa": "vCenter Appliance", "cluster": "Cluster"} as $mapping |
-      . as $data |
-      ($data | with_entries(select(.key | in($mapping))) | keys | first) as $node_type |
-      select(($node_type != null) and ($data[$node_type].name != null) and ($data[$node_type].moid != null)) |
-      {
-        name: $data[$node_type].moid,
-        canonical_facts: {
-          name: $data[$node_type].name,
-          id: $data[$node_type].moid,
-          node_type: $node_type
-        },
-        facts: {
-          infra_type: "PrivateCloud",
-          infra_bucket: "Compute",
-          device_type: ($mapping[$node_type] // "UNKNOWN")
-        }
+    .vm_list_group_by_clusters_info | values[] | values[] | values[] | {
+      name: .moid,
+      canonical_facts: {
+        name: .name,
+        moid: .moid,
+        esxi_host: .hw_esxi_host
+      },
+      facts: {
+        device_type: "VM"
       }
-    )
+    }, {
+      name: .hw_esxi_host,
+      facts: {
+        device_type: "ESXi"
+      }
+    }

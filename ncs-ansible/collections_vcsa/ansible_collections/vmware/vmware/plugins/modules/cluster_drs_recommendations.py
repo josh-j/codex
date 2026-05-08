@@ -57,14 +57,6 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-cluster:
-    description:
-        - Information about the target cluster
-    returned: On success
-    type: dict
-    sample:
-        moid: cluster-79828,
-        name: test-cluster
 applied_recommendations:
     description:
         - List of dictionaries describing the applied recommendations
@@ -106,14 +98,14 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.vmware.vmware.plugins.module_utils._module_pyvmomi_base import (
     ModulePyvmomiBase
 )
-from ansible_collections.vmware.vmware.plugins.module_utils.argument_spec import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_argument_spec import (
     base_argument_spec
 )
-from ansible_collections.vmware.vmware.plugins.module_utils._vsphere_tasks import (
+from ansible_collections.vmware.vmware.plugins.module_utils._vmware_tasks import (
     TaskError,
     RunningTaskMonitor
 )
-from ansible.module_utils.common.text.converters import to_native
+from ansible.module_utils._text import to_native
 
 
 class VMwareCluster(ModulePyvmomiBase):
@@ -197,17 +189,10 @@ def main():
 
     result = dict(
         changed=False,
-        applied_recommendations=[],
-        cluster=dict(
-            name="",
-            moid=""
-        )
+        applied_recommendations=[]
     )
 
     cluster_drs = VMwareCluster(module)
-    result['cluster']['name'] = cluster_drs.cluster.name
-    result['cluster']['moid'] = cluster_drs.cluster._GetMoId()
-
     recommendations = cluster_drs.get_recommendations()
     if recommendations:
         result['changed'] = True

@@ -213,7 +213,7 @@ build-collections-all:
     set -euo pipefail
     mkdir -p dist
     rm -f dist/internal-*.tar.gz
-    for name in core vmware linux windows aci; do
+    for name in core vmware linux windows aci ise; do
         just build-collection "$name"
     done
     echo "✓ all collections built under dist/"
@@ -621,9 +621,28 @@ windows-ad-search type term:
 windows-openssh target:
     {{ ansible_playbook }} internal.windows.server_openssh -l {{ target }}
 
-# Bootstrap OpenSSH on Windows targets via WinRM (first-time setup)
+# =============================================================================
+# First-time enrollment
+#
+# One-shot recipes that prepare a brand-new lab/prod host so subsequent
+# ncs-ansible runs Just Work. Each is idempotent and safe to re-run.
+# =============================================================================
+
+# Bootstrap OpenSSH on Windows targets via WinRM
 windows-openssh-bootstrap target transport="kerberos":
     {{ ansible_playbook }} internal.windows.server_openssh -l {{ target }} -e 'ansible_connection=winrm ansible_winrm_transport={{ transport }} ansible_port=5985'
+
+# Install the controller's pubkey on an Ubuntu host via one-shot password
+# auth. Prompts for the SSH password; subsequent ubuntu_* runs use key auth.
+ubuntu-bootstrap-keys target:
+    {{ ansible_playbook }} internal.linux.ubuntu_keys_bootstrap -l {{ target }} --ask-pass
+
+# Pin a ProxyJump on an Ubuntu host that's only reachable through a jump
+# host (e.g. ubu01 reached via sio@maas). Writes a host_vars snippet so
+# subsequent runs route through the jump automatically.
+# Example: just ubuntu-bootstrap-proxyjump ubu01 sio@maas
+ubuntu-bootstrap-proxyjump target via:
+    {{ ansible_playbook }} internal.linux.ubuntu_proxyjump_bootstrap -e ubuntu_proxyjump_target={{ target }} -e ubuntu_proxyjump_via={{ via }}
 
 # =============================================================================
 # STIG Audits (read-only compliance checks)

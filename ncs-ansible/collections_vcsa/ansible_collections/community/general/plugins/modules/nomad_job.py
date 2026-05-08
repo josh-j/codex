@@ -236,7 +236,7 @@ def run():
     if module.params.get('state') == "absent":
 
         try:
-            if module.params.get('name') is not None:
+            if not module.params.get('name') is None:
                 job_name = module.params.get('name')
             else:
                 if module.params.get('content_format') == 'hcl':

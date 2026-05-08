@@ -49,6 +49,12 @@ exclude = [
     "collections_vcsa/",
     "\\.venv/",
     "\\.venv-vcsa/",
+    # `roles/` is a symlink to the umbrella repo root that exists so
+    # Ansible can resolve sibling collection paths. Following it from
+    # mypy walks into roles/ncs-ansible/roles/ncs-ansible/... ad
+    # infinitum and trips duplicate-module errors against the real
+    # plugins/filter packages.
+    "^roles/",
 ]
 
 [tool.basedpyright]
@@ -58,6 +64,7 @@ exclude = [
     "collections_vcsa",
     ".venv",
     ".venv-vcsa",
+    "roles",
 ]
 reportExplicitAny = false
 reportAny = false

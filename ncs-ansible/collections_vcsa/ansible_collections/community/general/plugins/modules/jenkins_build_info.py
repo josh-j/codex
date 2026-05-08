@@ -158,7 +158,7 @@ class JenkinsBuildInfo:
                 self.build_number = job_info['lastBuild']['number']
 
             return self.server.get_build_info(self.name, self.build_number)
-        except jenkins.JenkinsException:
+        except jenkins.JenkinsException as e:
             response = {}
             response["result"] = "ABSENT"
             return response
