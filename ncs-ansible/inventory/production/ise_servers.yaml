@@ -1,11 +1,13 @@
 ---
+# One anchor host per ISE deployment (the primary PAN). Both PAN and MnT
+# hostnames live on this entry so playbook tasks can route ERS/OpenAPI calls
+# to the PAN and MnT calls to the MnT node within a single play.
 all:
   children:
     ise_servers:
       hosts: {}
-      # Example shape (matches vcsa.yaml):
       # hosts:
-      #   ise-psn-01:
-      #     ansible_host: ise-psn-01.area52.afnoapps.usaf.mil
-      #   ise-mnt-01:
-      #     ansible_host: ise-mnt-01.area52.afnoapps.usaf.mil
+      #   tyfr-ise:
+      #     ansible_host: tyfr-ise-pan-01.area52.afnoapps.usaf.mil
+      #     ise_pan_hostname: tyfr-ise-pan-01.area52.afnoapps.usaf.mil
+      #     ise_mnt_hostname: tyfr-ise-mnt-01.area52.afnoapps.usaf.mil

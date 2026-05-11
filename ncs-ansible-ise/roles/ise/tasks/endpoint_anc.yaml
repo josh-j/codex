@@ -26,8 +26,8 @@
       ise_anc_action=apply|clear, and ise_anc_confirm=ANC.
 
 - name: "ISE ANC | Get endpoint inventory"
-  cisco.ise.endpoints_info: &ise_common_args
-    ise_hostname: "{{ ise_hostname }}"
+  cisco.ise.endpoints_info: &ise_pan_args
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -42,22 +42,31 @@
   failed_when: false
 
 - name: "ISE ANC | Get active sessions"
-  cisco.ise.mnt_session_active_list_info:
-    <<: *ise_common_args
+  cisco.ise.mnt_session_active_list_info: &ise_mnt_args
+    ise_hostname: "{{ ise_mnt_hostname }}"
+    ise_username: "{{ ise_username }}"
+    ise_password: "{{ ise_password }}"
+    ise_verify: "{{ ise_verify }}"
+    ise_version: "{{ ise_version }}"
+    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+    ise_debug: "{{ ise_debug }}"
+    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
   register: _ise_anc_active_sessions_raw
   changed_when: false
   failed_when: false
 
 - name: "ISE ANC | Get ANC policies"
   cisco.ise.anc_policy_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_anc_policies_raw
   changed_when: false
   failed_when: false
 
 - name: "ISE ANC | Get current ANC endpoints"
   cisco.ise.anc_endpoint_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_anc_endpoint_assignments_raw
   changed_when: false
   failed_when: false
@@ -89,7 +98,7 @@
   ansible.builtin.set_fact:
     _ise_anc_target: "{{ _ise_anc_candidates[0] }}"
     _ise_anc_url: >-
-      https://{{ ise_hostname }}/ers/config/ancendpoint/{{ _ise_anc_action }}
+      https://{{ ise_pan_hostname }}/ers/config/ancendpoint/{{ _ise_anc_action }}
     _ise_anc_body:
       ErsAncEndpoint:
         macAddress: "{{ _ise_anc_candidates[0].mac | upper }}"

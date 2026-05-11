@@ -1,6 +1,10 @@
 ---
-# Cisco ISE per-node credentials. ise_hostname is per-host — set it
-# alongside ansible_host under each entry in inventory/production/ise_servers.yaml.
+# Cisco ISE deployment-level vars. ise_pan_hostname / ise_mnt_hostname are
+# per-host — set them alongside ansible_host under each entry in
+# inventory/production/ise_servers.yaml. Use one anchor host per deployment
+# (the primary PAN), with both hostnames pointing at the right node persona:
+#   - ise_pan_hostname → primary PAN  (ERS + OpenAPI)
+#   - ise_mnt_hostname → any MnT node (/admin/API/mnt/...)
 ise_username: "{{ vault_ise_username }}"
 ise_password: "{{ vault_ise_password }}"
 ise_verify: false

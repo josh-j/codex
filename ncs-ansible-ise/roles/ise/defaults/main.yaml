@@ -2,7 +2,16 @@
 # internal.ise.ise : defaults/main.yaml
 
 # Cisco ISE API credentials. Override from inventory / group_vars / vault.
+# Two API surfaces, two targets:
+#   - PAN (ise_pan_hostname): ERS (/ers/...) + OpenAPI (/api/v1/...) — endpoints,
+#     network devices, ANC policies, ANC endpoints, ANC PUT.
+#   - MnT (ise_mnt_hostname): /admin/API/mnt/... — active sessions, auth history,
+#     failure reasons, session-by-mac/username, CoA.
+# Both fall back to ise_hostname for single-node deployments and legacy
+# inventories that haven't been split yet.
 ise_hostname: "{{ ansible_host | default(inventory_hostname) }}"
+ise_pan_hostname: "{{ ise_hostname }}"
+ise_mnt_hostname: "{{ ise_hostname }}"
 ise_username: admin
 ise_password: ""
 ise_verify: false

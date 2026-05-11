@@ -6,8 +6,8 @@
 # in ncs_configs normalize specs.
 
 - name: "ISE | Get MnT version"
-  cisco.ise.mnt_version_info: &ise_common_args
-    ise_hostname: "{{ ise_hostname }}"
+  cisco.ise.mnt_version_info: &ise_mnt_args
+    ise_hostname: "{{ ise_mnt_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -22,8 +22,8 @@
   failed_when: false
 
 - name: "ISE | Get telemetry information"
-  cisco.ise.telemetryinfo_info:
-    ise_hostname: "{{ ise_hostname }}"
+  cisco.ise.telemetryinfo_info: &ise_pan_args
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -39,7 +39,7 @@
 
 - name: "ISE | Get node inventory"
   cisco.ise.node_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -55,7 +55,7 @@
 
 - name: "ISE | Get network device groups"
   cisco.ise.network_device_group_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -71,7 +71,7 @@
 
 - name: "ISE | Get network devices"
   cisco.ise.network_device_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -88,7 +88,7 @@
 
 - name: "ISE | Get identity groups"
   cisco.ise.identitygroup_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -104,7 +104,7 @@
 
 - name: "ISE | Get profiler profiles"
   cisco.ise.profiler_profile_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -120,7 +120,7 @@
 
 - name: "ISE | Get endpoints"
   cisco.ise.endpoints_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -137,7 +137,7 @@
 
 - name: "ISE | Get endpoint device type summary"
   cisco.ise.endpoints_device_type_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_endpoint_device_types
   changed_when: false
   failed_when: false
@@ -145,7 +145,7 @@
 
 - name: "ISE | Get endpoint configuration"
   cisco.ise.configuration_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_endpoint_configuration
   changed_when: false
   failed_when: false
@@ -153,7 +153,7 @@
 
 - name: "ISE | Get guest users"
   cisco.ise.guest_user_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -170,7 +170,7 @@
 
 - name: "ISE | Get SGACLs"
   cisco.ise.sgacl_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -187,7 +187,7 @@
 
 - name: "ISE | Get SGTs"
   cisco.ise.sgt_info:
-    ise_hostname: "{{ ise_hostname }}"
+    ise_hostname: "{{ ise_pan_hostname }}"
     ise_username: "{{ ise_username }}"
     ise_password: "{{ ise_password }}"
     ise_verify: "{{ ise_verify }}"
@@ -204,7 +204,7 @@
 
 - name: "ISE | Get system certificates"
   cisco.ise.system_certificate_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_system_certificates
   changed_when: false
   failed_when: false
@@ -212,7 +212,7 @@
 
 - name: "ISE | Get trusted certificates"
   cisco.ise.trusted_certificate_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_trusted_certificates
   changed_when: false
   failed_when: false
@@ -220,7 +220,7 @@
 
 - name: "ISE | Get node replication status"
   cisco.ise.node_replication_status_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
     node: "{{ item }}"
   register: _ise_node_replication_status
   changed_when: false
@@ -232,7 +232,7 @@
 
 - name: "ISE | Get backup last status"
   cisco.ise.backup_last_status_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_backup_last_status
   changed_when: false
   failed_when: false
@@ -240,7 +240,7 @@
 
 - name: "ISE | Get repositories"
   cisco.ise.repository_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_repositories
   changed_when: false
   failed_when: false
@@ -248,7 +248,7 @@
 
 - name: "ISE | Get repository files"
   cisco.ise.repository_files_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
     repositoryName: "{{ item }}"
   register: _ise_repository_files
   changed_when: false
@@ -260,7 +260,7 @@
 
 - name: "ISE | Get patch information"
   cisco.ise.patch_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_patches
   changed_when: false
   failed_when: false
@@ -268,7 +268,7 @@
 
 - name: "ISE | Get hotpatch information"
   cisco.ise.hotpatch_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_hotpatches
   changed_when: false
   failed_when: false
@@ -276,7 +276,7 @@
 
 - name: "ISE | Get allowed protocols"
   cisco.ise.allowed_protocols_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_allowed_protocols
   changed_when: false
   failed_when: false
@@ -284,7 +284,7 @@
 
 - name: "ISE | Get authorization profiles"
   cisco.ise.authorization_profile_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_authorization_profiles
   changed_when: false
   failed_when: false
@@ -292,7 +292,7 @@
 
 - name: "ISE | Get downloadable ACLs"
   cisco.ise.downloadable_acl_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_downloadable_acls
   changed_when: false
   failed_when: false
@@ -300,7 +300,7 @@
 
 - name: "ISE | Get filter policies"
   cisco.ise.filter_policy_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_filter_policies
   changed_when: false
   failed_when: false
@@ -308,7 +308,7 @@
 
 - name: "ISE | Get TACACS command sets"
   cisco.ise.tacacs_command_sets_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_tacacs_command_sets
   changed_when: false
   failed_when: false
@@ -316,7 +316,7 @@
 
 - name: "ISE | Get TACACS profiles"
   cisco.ise.tacacs_profile_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_tacacs_profiles
   changed_when: false
   failed_when: false
@@ -324,7 +324,7 @@
 
 - name: "ISE | Get TACACS server sequences"
   cisco.ise.tacacs_server_sequence_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_tacacs_server_sequences
   changed_when: false
   failed_when: false
@@ -332,7 +332,7 @@
 
 - name: "ISE | Get TACACS external servers"
   cisco.ise.tacacs_external_servers_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_tacacs_external_servers
   changed_when: false
   failed_when: false
@@ -340,7 +340,7 @@
 
 - name: "ISE | Get Active Directory integrations"
   cisco.ise.active_directories_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_active_directories
   changed_when: false
   failed_when: false
@@ -348,7 +348,7 @@
 
 - name: "ISE | Get ID store sequences"
   cisco.ise.idstoresequence_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_id_store_sequences
   changed_when: false
   failed_when: false
@@ -356,7 +356,7 @@
 
 - name: "ISE | Get internal users"
   cisco.ise.internal_user_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_internal_users
   changed_when: false
   failed_when: false
@@ -364,7 +364,7 @@
 
 - name: "ISE | Get LDAP identity sources"
   cisco.ise.ldap_info:
-    <<: *ise_common_args
+    <<: *ise_pan_args
   register: _ise_ldap_sources
   changed_when: false
   failed_when: false
@@ -372,7 +372,7 @@
 
 - name: "ISE | Get active session count"
   cisco.ise.mnt_session_active_count_info:
-    <<: *ise_common_args
+    <<: *ise_mnt_args
   register: _ise_active_session_count
   changed_when: false
   failed_when: false
@@ -380,7 +380,7 @@
 
 - name: "ISE | Get active session list"
   cisco.ise.mnt_session_active_list_info:
-    <<: *ise_common_args
+    <<: *ise_mnt_args
   register: _ise_active_sessions
   changed_when: false
   failed_when: false
@@ -390,7 +390,7 @@
 
 - name: "ISE | Get authentication failure reasons"
   cisco.ise.mnt_failure_reasons_info:
-    <<: *ise_common_args
+    <<: *ise_mnt_args
   register: _ise_failure_reasons
   changed_when: false
   failed_when: false
@@ -398,7 +398,7 @@
 
 - name: "ISE | Get recent authentication status"
   cisco.ise.mnt_athentication_status_info:
-    <<: *ise_common_args
+    <<: *ise_mnt_args
     SECONDS: "{{ ise_authentication_status_seconds }}"
     RECORDS: "{{ ise_authentication_status_records }}"
   register: _ise_authentication_status
@@ -410,7 +410,7 @@
   ansible.builtin.set_fact:
     _ise_payload:
       inventory_hostname: "{{ inventory_hostname }}"
-      ise_hostname: "{{ ise_hostname }}"
+      ise_hostname: "{{ ise_pan_hostname }}"
       ise_version: "{{ ise_version }}"
       collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
       collection_options:
