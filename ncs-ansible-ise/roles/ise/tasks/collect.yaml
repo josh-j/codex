@@ -293,6 +293,29 @@
   failed_when: false
   when: ise_collect_node_health | bool
 
+- name: "ISE | Get node replication status"
+  # OpenAPI replacement for the SDK's mnt_node_replication_status_info.
+  # If a given ISE version doesn't expose this path, failed_when=false
+  # keeps the play green and the schema's first_of falls back to empty
+  # rows.
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}/api/v1/deployment/node-replication-status"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_node_replication_status
+  changed_when: false
+  failed_when: false
+  when: ise_collect_node_health | bool
+
 # =============================================================================
 # ERS calls (PAN:9060/ers/config) — single-page reads; bump ?size= if your
 # deployment exceeds these caps. ERS supports paging via SearchResult.nextPage
@@ -728,39 +751,47 @@
         failed: "{{ _ise_network_device_groups.failed | default(false) | bool }}"
         msg: "{{ _ise_network_device_groups.msg | default('') }}"
         ise_response: "{{ _ise_network_device_groups.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_network_device_groups.json.SearchResult.total | default(0) | int }}"
       network_devices:
         failed: "{{ _ise_network_devices.failed | default(false) | bool }}"
         skipped: "{{ _ise_network_devices.skipped | default(false) | bool }}"
         msg: "{{ _ise_network_devices.msg | default('') }}"
         ise_response: "{{ _ise_network_devices.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_network_devices.json.SearchResult.total | default(0) | int }}"
       identity_groups:
         failed: "{{ _ise_identity_groups.failed | default(false) | bool }}"
         msg: "{{ _ise_identity_groups.msg | default('') }}"
         ise_response: "{{ _ise_identity_groups.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_identity_groups.json.SearchResult.total | default(0) | int }}"
       profiler_profiles:
         failed: "{{ _ise_profiler_profiles.failed | default(false) | bool }}"
         msg: "{{ _ise_profiler_profiles.msg | default('') }}"
         ise_response: "{{ _ise_profiler_profiles.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_profiler_profiles.json.SearchResult.total | default(0) | int }}"
       endpoints:
         failed: "{{ _ise_endpoints.failed | default(false) | bool }}"
         skipped: "{{ _ise_endpoints.skipped | default(false) | bool }}"
         msg: "{{ _ise_endpoints.msg | default('') }}"
         ise_response: "{{ _ise_endpoints.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_endpoints.json.SearchResult.total | default(0) | int }}"
       guest_users:
         failed: "{{ _ise_guest_users.failed | default(false) | bool }}"
         skipped: "{{ _ise_guest_users.skipped | default(false) | bool }}"
         msg: "{{ _ise_guest_users.msg | default('') }}"
         ise_response: "{{ _ise_guest_users.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_guest_users.json.SearchResult.total | default(0) | int }}"
       sg_acls:
         failed: "{{ _ise_sg_acls.failed | default(false) | bool }}"
         skipped: "{{ _ise_sg_acls.skipped | default(false) | bool }}"
         msg: "{{ _ise_sg_acls.msg | default('') }}"
         ise_response: "{{ _ise_sg_acls.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_sg_acls.json.SearchResult.total | default(0) | int }}"
       sgts:
         failed: "{{ _ise_sgts.failed | default(false) | bool }}"
         skipped: "{{ _ise_sgts.skipped | default(false) | bool }}"
         msg: "{{ _ise_sgts.msg | default('') }}"
         ise_response: "{{ _ise_sgts.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_sgts.json.SearchResult.total | default(0) | int }}"
       system_certificates:
         failed: "{{ _ise_system_certificates.failed | default(false) | bool }}"
         skipped: "{{ _ise_system_certificates.skipped | default(false) | bool }}"
@@ -802,66 +833,85 @@
         skipped: "{{ _ise_license.skipped | default(false) | bool }}"
         msg: "{{ _ise_license.msg | default('') }}"
         ise_response: "{{ _ise_license.json | default([]) }}"
+      # Schema reads node_replication_status.results — same key the old
+      # cisco.ise loop output used, so the existing normalize spec works.
+      node_replication_status:
+        failed: "{{ _ise_node_replication_status.failed | default(false) | bool }}"
+        skipped: "{{ _ise_node_replication_status.skipped | default(false) | bool }}"
+        msg: "{{ _ise_node_replication_status.msg | default('') }}"
+        results: "{{ _ise_node_replication_status.json.response | default([]) }}"
       allowed_protocols:
         failed: "{{ _ise_allowed_protocols.failed | default(false) | bool }}"
         skipped: "{{ _ise_allowed_protocols.skipped | default(false) | bool }}"
         msg: "{{ _ise_allowed_protocols.msg | default('') }}"
         ise_response: "{{ _ise_allowed_protocols.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_allowed_protocols.json.SearchResult.total | default(0) | int }}"
       authorization_profiles:
         failed: "{{ _ise_authorization_profiles.failed | default(false) | bool }}"
         skipped: "{{ _ise_authorization_profiles.skipped | default(false) | bool }}"
         msg: "{{ _ise_authorization_profiles.msg | default('') }}"
         ise_response: "{{ _ise_authorization_profiles.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_authorization_profiles.json.SearchResult.total | default(0) | int }}"
       downloadable_acls:
         failed: "{{ _ise_downloadable_acls.failed | default(false) | bool }}"
         skipped: "{{ _ise_downloadable_acls.skipped | default(false) | bool }}"
         msg: "{{ _ise_downloadable_acls.msg | default('') }}"
         ise_response: "{{ _ise_downloadable_acls.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_downloadable_acls.json.SearchResult.total | default(0) | int }}"
       filter_policies:
         failed: "{{ _ise_filter_policies.failed | default(false) | bool }}"
         skipped: "{{ _ise_filter_policies.skipped | default(false) | bool }}"
         msg: "{{ _ise_filter_policies.msg | default('') }}"
         ise_response: "{{ _ise_filter_policies.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_filter_policies.json.SearchResult.total | default(0) | int }}"
       tacacs_command_sets:
         failed: "{{ _ise_tacacs_command_sets.failed | default(false) | bool }}"
         skipped: "{{ _ise_tacacs_command_sets.skipped | default(false) | bool }}"
         msg: "{{ _ise_tacacs_command_sets.msg | default('') }}"
         ise_response: "{{ _ise_tacacs_command_sets.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_tacacs_command_sets.json.SearchResult.total | default(0) | int }}"
       tacacs_profiles:
         failed: "{{ _ise_tacacs_profiles.failed | default(false) | bool }}"
         skipped: "{{ _ise_tacacs_profiles.skipped | default(false) | bool }}"
         msg: "{{ _ise_tacacs_profiles.msg | default('') }}"
         ise_response: "{{ _ise_tacacs_profiles.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_tacacs_profiles.json.SearchResult.total | default(0) | int }}"
       tacacs_server_sequences:
         failed: "{{ _ise_tacacs_server_sequences.failed | default(false) | bool }}"
         skipped: "{{ _ise_tacacs_server_sequences.skipped | default(false) | bool }}"
         msg: "{{ _ise_tacacs_server_sequences.msg | default('') }}"
         ise_response: "{{ _ise_tacacs_server_sequences.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_tacacs_server_sequences.json.SearchResult.total | default(0) | int }}"
       tacacs_external_servers:
         failed: "{{ _ise_tacacs_external_servers.failed | default(false) | bool }}"
         skipped: "{{ _ise_tacacs_external_servers.skipped | default(false) | bool }}"
         msg: "{{ _ise_tacacs_external_servers.msg | default('') }}"
         ise_response: "{{ _ise_tacacs_external_servers.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_tacacs_external_servers.json.SearchResult.total | default(0) | int }}"
       active_directories:
         failed: "{{ _ise_active_directories.failed | default(false) | bool }}"
         skipped: "{{ _ise_active_directories.skipped | default(false) | bool }}"
         msg: "{{ _ise_active_directories.msg | default('') }}"
         ise_response: "{{ _ise_active_directories.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_active_directories.json.SearchResult.total | default(0) | int }}"
       id_store_sequences:
         failed: "{{ _ise_id_store_sequences.failed | default(false) | bool }}"
         skipped: "{{ _ise_id_store_sequences.skipped | default(false) | bool }}"
         msg: "{{ _ise_id_store_sequences.msg | default('') }}"
         ise_response: "{{ _ise_id_store_sequences.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_id_store_sequences.json.SearchResult.total | default(0) | int }}"
       internal_users:
         failed: "{{ _ise_internal_users.failed | default(false) | bool }}"
         skipped: "{{ _ise_internal_users.skipped | default(false) | bool }}"
         msg: "{{ _ise_internal_users.msg | default('') }}"
         ise_response: "{{ _ise_internal_users.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_internal_users.json.SearchResult.total | default(0) | int }}"
       ldap_sources:
         failed: "{{ _ise_ldap_sources.failed | default(false) | bool }}"
         skipped: "{{ _ise_ldap_sources.skipped | default(false) | bool }}"
         msg: "{{ _ise_ldap_sources.msg | default('') }}"
         ise_response: "{{ _ise_ldap_sources.json.SearchResult.resources | default([]) }}"
+        total: "{{ _ise_ldap_sources.json.SearchResult.total | default(0) | int }}"
       active_session_count:
         failed: "{{ _ise_active_session_count.failed | default(false) | bool }}"
         skipped: "{{ _ise_active_session_count.skipped | default(false) | bool }}"

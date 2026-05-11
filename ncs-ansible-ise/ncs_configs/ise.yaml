@@ -470,16 +470,28 @@ vars:
         - {const: []}
     type: list
   allowed_protocol_count:
-    normalize: {count: allowed_protocol_rows}
+    normalize:
+      first_of:
+        - {path: allowed_protocols.total}
+        - {count: allowed_protocol_rows}
     type: int
   authorization_profile_count:
-    normalize: {count: authorization_profile_rows}
+    normalize:
+      first_of:
+        - {path: authorization_profiles.total}
+        - {count: authorization_profile_rows}
     type: int
   downloadable_acl_count:
-    normalize: {count: downloadable_acl_rows}
+    normalize:
+      first_of:
+        - {path: downloadable_acls.total}
+        - {count: downloadable_acl_rows}
     type: int
   filter_policy_count:
-    normalize: {count: filter_policy_rows}
+    normalize:
+      first_of:
+        - {path: filter_policies.total}
+        - {count: filter_policy_rows}
     type: int
 
   tacacs_command_set_rows:
@@ -511,16 +523,28 @@ vars:
         - {const: []}
     type: list
   tacacs_command_set_count:
-    normalize: {count: tacacs_command_set_rows}
+    normalize:
+      first_of:
+        - {path: tacacs_command_sets.total}
+        - {count: tacacs_command_set_rows}
     type: int
   tacacs_profile_count:
-    normalize: {count: tacacs_profile_rows}
+    normalize:
+      first_of:
+        - {path: tacacs_profiles.total}
+        - {count: tacacs_profile_rows}
     type: int
   tacacs_server_sequence_count:
-    normalize: {count: tacacs_server_sequence_rows}
+    normalize:
+      first_of:
+        - {path: tacacs_server_sequences.total}
+        - {count: tacacs_server_sequence_rows}
     type: int
   tacacs_external_server_count:
-    normalize: {count: tacacs_external_server_rows}
+    normalize:
+      first_of:
+        - {path: tacacs_external_servers.total}
+        - {count: tacacs_external_server_rows}
     type: int
 
   active_directory_rows:
@@ -552,16 +576,28 @@ vars:
         - {const: []}
     type: list
   active_directory_count:
-    normalize: {count: active_directory_rows}
+    normalize:
+      first_of:
+        - {path: active_directories.total}
+        - {count: active_directory_rows}
     type: int
   id_store_sequence_count:
-    normalize: {count: id_store_sequence_rows}
+    normalize:
+      first_of:
+        - {path: id_store_sequences.total}
+        - {count: id_store_sequence_rows}
     type: int
   internal_user_count:
-    normalize: {count: internal_user_rows}
+    normalize:
+      first_of:
+        - {path: internal_users.total}
+        - {count: internal_user_rows}
     type: int
   ldap_source_count:
-    normalize: {count: ldap_source_rows}
+    normalize:
+      first_of:
+        - {path: ldap_sources.total}
+        - {count: ldap_source_rows}
     type: int
 
   active_session_count_value:
@@ -626,28 +662,52 @@ vars:
     normalize: {count: telemetry_rows}
     type: int
   network_device_group_count:
-    normalize: {count: network_device_group_rows}
+    normalize:
+      first_of:
+        - {path: network_device_groups.total}
+        - {count: network_device_group_rows}
     type: int
   network_device_count:
-    normalize: {count: network_device_rows}
+    normalize:
+      first_of:
+        - {path: network_devices.total}
+        - {count: network_device_rows}
     type: int
   identity_group_count:
-    normalize: {count: identity_group_rows}
+    normalize:
+      first_of:
+        - {path: identity_groups.total}
+        - {count: identity_group_rows}
     type: int
   profiler_profile_count:
-    normalize: {count: profiler_profile_rows}
+    normalize:
+      first_of:
+        - {path: profiler_profiles.total}
+        - {count: profiler_profile_rows}
     type: int
   endpoint_count:
-    normalize: {count: endpoint_rows}
+    normalize:
+      first_of:
+        - {path: endpoints.total}
+        - {count: endpoint_rows}
     type: int
   guest_user_count:
-    normalize: {count: guest_user_rows}
+    normalize:
+      first_of:
+        - {path: guest_users.total}
+        - {count: guest_user_rows}
     type: int
   sgacl_count:
-    normalize: {count: sgacl_rows}
+    normalize:
+      first_of:
+        - {path: sg_acls.total}
+        - {count: sgacl_rows}
     type: int
   sgt_count:
-    normalize: {count: sgt_rows}
+    normalize:
+      first_of:
+        - {path: sgts.total}
+        - {count: sgt_rows}
     type: int
 
   mnt_version_failed:

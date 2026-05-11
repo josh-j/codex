@@ -3,10 +3,13 @@
 Cisco Identity Services Engine (ISE) collection for NCS audit and
 automation workflows.
 
-This collection wraps Cisco's upstream `cisco.ise` Ansible collection
-with the local NCS dispatch and emission patterns. It depends on
-`internal.core` for `internal.core.dispatch` and `internal.core.emit`,
-and on `cisco.ise` for the actual ISE API modules.
+This collection talks to Cisco Identity Services Engine over the three
+HTTP surfaces it exposes — ERS on port 9060 (`/ers/config/...`),
+OpenAPI on port 443 (`/api/v1/...`), and the MnT XML API on port 443
+(`/admin/API/mnt/...`) — using `ansible.builtin.uri` directly. It
+depends on `internal.core` for `internal.core.dispatch` and
+`internal.core.emit`. The upstream `cisco.ise` Ansible collection and
+the `ciscoisesdk` Python package are not needed.
 
 ## Installation
 
@@ -18,12 +21,8 @@ ansible-galaxy collection install internal-ise-<version>.tar.gz
 ansible-galaxy collection install -r requirements.yml
 ```
 
-The upstream Cisco collection and SDK are also required:
-
-```bash
-ansible-galaxy collection install cisco.ise
-python -m pip install ciscoisesdk requests
-```
+No Python SDK or upstream Cisco collection install is required; all
+API access goes through `ansible.builtin.uri`.
 
 ## Usage
 
@@ -34,15 +33,18 @@ ansible-playbook -i inventory/production internal.ise.ise_collect
 ansible-playbook -i inventory/production internal.ise.ise_one_offs -e ncs_operation=endpoint_lookup -e ise_lookup=00:11:22:33:44:55
 ```
 
-Required inventory variables for each ISE node:
+Required inventory variables for each ISE deployment anchor:
 
-- `ise_hostname`
-- `ise_username`
-- `ise_password`
-- `ise_verify`
-- `ise_version`
+- `ise_pan_hostname` — Primary Admin Node (serves ERS + OpenAPI)
+- `ise_mnt_hostname` — Monitoring node (serves MnT XML; same as PAN
+  in single-node deployments)
+- `ise_username`, `ise_password`
+- `ise_verify` (bool; set `false` for self-signed test labs)
 
-Prefer storing `ise_password` through Ansible Vault.
+Both hostnames fall back to the legacy `ise_hostname` if set, so
+existing inventories that only define `ise_hostname` keep working
+for single-node deployments. Prefer storing `ise_password` through
+Ansible Vault.
 
 ## Layout
 
@@ -52,7 +54,7 @@ ncs-ansible-ise/
 ├── docs/                 # Cisco ISE Ansible/API reference material
 ├── galaxy.yml            # namespace/name/version + dependencies
 ├── meta/runtime.yml      # required ansible-core version
-├── roles/ise/            # ISE role using cisco.ise modules
+├── roles/ise/            # ISE role hitting ERS/OpenAPI/MnT via uri
 ├── playbooks/            # flat filename convention: ise_collect.yml
 ├── tests/                # standalone lab inventory skeleton
 ├── plugins/              # optional future plugins
