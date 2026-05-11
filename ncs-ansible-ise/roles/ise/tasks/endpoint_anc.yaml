@@ -112,15 +112,15 @@
 
 - name: "ISE ANC | Shape candidates"
   ansible.builtin.set_fact:
-    _ise_anc_endpoint_rows: "{{ _ise_anc_endpoints_raw | ise_result_rows | ise_endpoint_rows }}"
-    _ise_anc_session_rows: "{{ _ise_anc_active_sessions_raw | ise_result_rows | ise_auth_rows }}"
-    _ise_anc_policy_rows: "{{ _ise_anc_policies_raw | ise_result_rows }}"
-    _ise_anc_assignment_rows: "{{ _ise_anc_endpoint_assignments_raw | ise_result_rows }}"
+    _ise_anc_endpoint_rows: "{{ _ise_anc_endpoints_raw | internal.ise.ise_result_rows | internal.ise.ise_endpoint_rows }}"
+    _ise_anc_session_rows: "{{ _ise_anc_active_sessions_raw | internal.ise.ise_result_rows | internal.ise.ise_auth_rows }}"
+    _ise_anc_policy_rows: "{{ _ise_anc_policies_raw | internal.ise.ise_result_rows }}"
+    _ise_anc_assignment_rows: "{{ _ise_anc_endpoint_assignments_raw | internal.ise.ise_result_rows }}"
   changed_when: false
 
 - name: "ISE ANC | Resolve endpoint candidates"
   ansible.builtin.set_fact:
-    _ise_anc_candidates: "{{ _ise_anc_endpoint_rows | ise_coa_candidates(_ise_anc_session_rows, _ise_anc_lookup) }}"
+    _ise_anc_candidates: "{{ _ise_anc_endpoint_rows | internal.ise.ise_coa_candidates(_ise_anc_session_rows, _ise_anc_lookup) }}"
   changed_when: false
 
 - name: "ISE ANC | Require a resolved endpoint"
@@ -150,8 +150,8 @@
       action: "{{ _ise_anc_action }}"
       policy: "{{ _ise_anc_policy_name }}"
       selected_target: "{{ _ise_anc_target }}"
-      matching_policies: "{{ _ise_anc_policy_rows | ise_search_rows(_ise_anc_policy_name) }}"
-      current_assignments: "{{ _ise_anc_assignment_rows | ise_search_rows(_ise_anc_target.mac) }}"
+      matching_policies: "{{ _ise_anc_policy_rows | internal.ise.ise_search_rows(_ise_anc_policy_name) }}"
+      current_assignments: "{{ _ise_anc_assignment_rows | internal.ise.ise_search_rows(_ise_anc_target.mac) }}"
 
 - name: "ISE ANC | Apply or clear endpoint policy"
   ansible.builtin.uri:
@@ -187,8 +187,8 @@
       policy: "{{ _ise_anc_policy_name }}"
       status: "{{ _ise_anc_result.status | default('unknown') }}"
       selected_target: "{{ _ise_anc_target }}"
-      matching_policies: "{{ _ise_anc_policy_rows | ise_search_rows(_ise_anc_policy_name) }}"
-      current_assignments_before_action: "{{ _ise_anc_assignment_rows | ise_search_rows(_ise_anc_target.mac) }}"
+      matching_policies: "{{ _ise_anc_policy_rows | internal.ise.ise_search_rows(_ise_anc_policy_name) }}"
+      current_assignments_before_action: "{{ _ise_anc_assignment_rows | internal.ise.ise_search_rows(_ise_anc_target.mac) }}"
       response:
         content: "{{ _ise_anc_result.content | default('') }}"
   changed_when: false
@@ -204,7 +204,7 @@
     dest: >-
       {{ _ise_anc_reports_root }}/{{ _ise_anc_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-anc.html
     mode: "0644"
-    content: "{{ _ise_anc_report | ise_one_off_html }}"
+    content: "{{ _ise_anc_report | internal.ise.ise_one_off_html }}"
   register: _ise_anc_html_artifact
 
 - name: "ISE ANC | Write CSV report"
@@ -212,7 +212,7 @@
     dest: >-
       {{ _ise_anc_reports_root }}/{{ _ise_anc_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-anc.csv
     mode: "0644"
-    content: "{{ _ise_anc_report | ise_one_off_csv }}"
+    content: "{{ _ise_anc_report | internal.ise.ise_one_off_csv }}"
 
 - name: "ISE ANC | Result"
   ansible.builtin.debug:

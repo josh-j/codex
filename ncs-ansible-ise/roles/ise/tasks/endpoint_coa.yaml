@@ -100,8 +100,8 @@
 
 - name: "ISE CoA | Shape candidates"
   ansible.builtin.set_fact:
-    _ise_coa_endpoint_rows: "{{ _ise_coa_endpoints_raw | ise_result_rows | ise_endpoint_rows }}"
-    _ise_coa_session_rows: "{{ _ise_coa_active_sessions_raw | ise_result_rows | ise_auth_rows }}"
+    _ise_coa_endpoint_rows: "{{ _ise_coa_endpoints_raw | internal.ise.ise_result_rows | internal.ise.ise_endpoint_rows }}"
+    _ise_coa_session_rows: "{{ _ise_coa_active_sessions_raw | internal.ise.ise_result_rows | internal.ise.ise_auth_rows }}"
   changed_when: false
 
 - name: "ISE CoA | Resolve endpoint candidates"
@@ -109,7 +109,7 @@
     _ise_coa_candidates: >-
       {{
         _ise_coa_endpoint_rows
-        | ise_coa_candidates(_ise_coa_session_rows, _ise_coa_lookup)
+        | internal.ise.ise_coa_candidates(_ise_coa_session_rows, _ise_coa_lookup)
       }}
   changed_when: false
 
@@ -227,7 +227,7 @@
     dest: >-
       {{ _ise_coa_reports_root }}/{{ _ise_coa_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-coa.html
     mode: "0644"
-    content: "{{ _ise_coa_report | ise_one_off_html }}"
+    content: "{{ _ise_coa_report | internal.ise.ise_one_off_html }}"
   register: _ise_coa_html_artifact
 
 - name: "ISE CoA | Write CSV report"
@@ -235,7 +235,7 @@
     dest: >-
       {{ _ise_coa_reports_root }}/{{ _ise_coa_stamp }}-{{ inventory_hostname | lower | regex_replace('[^a-z0-9._-]+', '-') }}-endpoint-coa.csv
     mode: "0644"
-    content: "{{ _ise_coa_report | ise_one_off_csv }}"
+    content: "{{ _ise_coa_report | internal.ise.ise_one_off_csv }}"
 
 - name: "ISE CoA | Publish report path"
   ansible.builtin.debug:
