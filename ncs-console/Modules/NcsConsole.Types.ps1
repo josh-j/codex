@@ -220,6 +220,8 @@ def parse_ncs_blocks(text):
         if current is not None and stripped.startswith("#"):
             txt = stripped[2:] if stripped.startswith("# ") else stripped[1:]
             current.append(txt)
+        elif current is None and stripped == "---" and not raw_blocks:
+            continue
         elif current is None and not stripped.startswith("#") and stripped != "":
             break
     segments = []
@@ -254,8 +256,8 @@ def parse_ncs_blocks(text):
             continue
     return result if result else None
 
-def build_item(playbook, label, mutating=False, options=None):
-    item = {"Label": label, "playbook": playbook}
+def build_item(playbook, label, mutating=False, options=None, action_id=None):
+    item = {"Label": label, "playbook": playbook, "action_id": action_id or playbook}
     if mutating:
         item["mutating"] = True
     if options:
@@ -357,25 +359,15 @@ def add_playbook_file(path, playbook_id, segments, display_stem):
     f_label = display_stem + ".yml"
     blocks = parse_ncs_blocks(text) or []
     if len(blocks) > 1:
-        profiles = []
-        any_mutating = False
         for blk in blocks:
             lbl = blk.get("label", fallback_label(f_label, None if is_import else play))
             mut = blk.get("mutating", False)
-            if mut:
-                any_mutating = True
-            profile = {"label": lbl}
-            if mut:
-                profile["mutating"] = True
             op = blk.get("operation")
+            opts = blk.get("options", [])
             if op:
-                profile["operation"] = op
-            if blk.get("options"):
-                profile["options"] = blk["options"]
-            profiles.append(profile)
-        item = build_item(playbook_id, fallback_label(f_label, None if is_import else play), any_mutating)
-        item["profiles"] = profiles
-        add_item(tree, segments, item)
+                opts = [{"name": "ncs_operation", "label": "Operation", "default": op}] + opts
+            action_id = "{}#{}".format(playbook_id, op or re.sub(r"\W+", "_", lbl.lower()).strip("_"))
+            add_item(tree, segments, build_item(playbook_id, lbl, mut, opts, action_id))
     elif len(blocks) == 1:
         blk = blocks[0]
         lbl = blk.get("label", fallback_label(f_label, None if is_import else play))

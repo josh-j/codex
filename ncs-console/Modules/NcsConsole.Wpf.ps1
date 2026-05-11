@@ -745,7 +745,7 @@ function New-NcsLeafTreeItem {
     } else {
         ""
     }
-    $leafItem.ToolTip = if ($Item[$TagProperty]) { $Item[$TagProperty] } else { $Item.Label }
+    $leafItem.ToolTip = if ($Item.ContainsKey('playbook') -and $Item.playbook) { $Item.playbook } elseif ($Item[$TagProperty]) { $Item[$TagProperty] } else { $Item.Label }
     if (-not [string]::IsNullOrWhiteSpace($LeafIcon)) {
         $sp = [System.Windows.Controls.StackPanel]::new()
         $sp.Orientation = "Horizontal"
@@ -894,8 +894,7 @@ function Find-NcsTreeViewItemByTag {
 function Find-NcsFirstLeafItem {
     param($Parent)
     foreach ($child in @($Parent.Items)) {
-        # A leaf has a Tag that looks like a playbook path (contains '.')
-        if ($null -ne $child.Tag -and $child.Tag -match '\.ya?ml$') { return $child }
+        if ($null -ne $child.Tag -and $child.Items.Count -eq 0) { return $child }
         $found = Find-NcsFirstLeafItem -Parent $child
         if ($null -ne $found) { return $found }
     }
@@ -932,8 +931,9 @@ function Get-NcsActionItemMap {
     $map = @{}
     foreach ($group in @($Groups)) {
         foreach ($item in @($group.Items)) {
-            if ($item.ContainsKey('playbook') -and -not [string]::IsNullOrWhiteSpace($item.playbook)) {
-                $map[[string]$item.playbook] = $item
+            $key = if ($item.ContainsKey('action_id')) { [string]$item.action_id } elseif ($item.ContainsKey('playbook')) { [string]$item.playbook } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $map[$key] = $item
             }
         }
         if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
@@ -943,6 +943,18 @@ function Get-NcsActionItemMap {
         }
     }
     return $map
+}
+
+function Get-NcsActionPlaybookChoices {
+    param($ActionMap)
+
+    $playbooks = [System.Collections.Generic.SortedSet[string]]::new()
+    foreach ($item in @($ActionMap.Values)) {
+        if ($null -ne $item -and $item.ContainsKey('playbook') -and -not [string]::IsNullOrWhiteSpace($item.playbook)) {
+            [void] $playbooks.Add([string] $item.playbook)
+        }
+    }
+    return @($playbooks)
 }
 
 function Get-NcsSchedulePlaybookChoices {
@@ -1011,6 +1023,17 @@ function Add-NcsOptionControls {
     foreach ($opt in @($Options)) {
         $optType = if ($opt.ContainsKey('type')) { $opt['type'] } else { 'text' }
         $tip = if ($opt.ContainsKey('tooltip')) { $opt['tooltip'] } else { $null }
+
+        # ncs_operation is set by the tree-node selection (action_id), not by the operator.
+        # Render as a hidden TextBox so its value still flows through Get-NcsControlValues.
+        if ($opt['name'] -eq 'ncs_operation') {
+            $hidden = [System.Windows.Controls.TextBox]::new()
+            $hidden.Tag = $opt['name']
+            if ($opt.ContainsKey('default')) { $hidden.Text = $opt['default'] }
+            $hidden.Visibility = "Collapsed"
+            $Panel.Children.Add($hidden) | Out-Null
+            continue
+        }
 
         if ($optType -ne 'bool') {
             $label = [System.Windows.Controls.TextBlock]::new()
@@ -1083,58 +1106,11 @@ function Update-NcsActionOptions {
 
     if ($null -eq $ActionItem) { return }
 
-    $hasProfiles = $ActionItem.ContainsKey('profiles') -and @($ActionItem['profiles']).Length -gt 0
     $hasOptions = $ActionItem.ContainsKey('options') -and @($ActionItem['options']).Length -gt 0
-
-    if (-not $hasProfiles -and -not $hasOptions) { return }
+    if (-not $hasOptions) { return }
 
     $Controls.ActionOptionsPanel.Visibility = "Visible"
-
-    if ($hasProfiles) {
-        $profiles = @($ActionItem['profiles'])
-
-        $profileLabel = [System.Windows.Controls.TextBlock]::new()
-        $profileLabel.Text = "Operation"
-        $profileLabel.Foreground = Get-NcsBrush -Color "#8e939c"
-        $profileLabel.FontSize = 11
-        $Controls.ActionOptionsPanel.Children.Add($profileLabel) | Out-Null
-
-        $profileCombo = [System.Windows.Controls.ComboBox]::new()
-        $profileCombo.Tag = "_ncs_profile_selector"
-        $profileCombo.ItemsSource = @($profiles | ForEach-Object { $_.label })
-        $profileCombo.SelectedIndex = 0
-
-        $profileOptionsPanel = [System.Windows.Controls.StackPanel]::new()
-        $profileOptionsPanel.Tag = "_ncs_profile_options"
-
-        $updateProfileOptions = {
-            param($Panel, $Profiles, $Index)
-            $Panel.Children.Clear()
-            if ($Index -lt 0 -or $Index -ge $Profiles.Length) { return }
-            $p = $Profiles[$Index]
-            if ($p.ContainsKey('operation')) {
-                $opField = [System.Windows.Controls.TextBox]::new()
-                $opField.Tag = "ncs_operation"
-                $opField.Text = $p['operation']
-                $opField.Visibility = "Collapsed"
-                $Panel.Children.Add($opField) | Out-Null
-            }
-            if ($p.ContainsKey('options')) {
-                Add-NcsOptionControls -Panel $Panel -Options $p['options']
-            }
-        }
-
-        & $updateProfileOptions $profileOptionsPanel $profiles 0
-
-        $profileCombo.Add_SelectionChanged({
-            & $updateProfileOptions $profileOptionsPanel $profiles $profileCombo.SelectedIndex
-        }.GetNewClosure())
-
-        $Controls.ActionOptionsPanel.Children.Add($profileCombo) | Out-Null
-        $Controls.ActionOptionsPanel.Children.Add($profileOptionsPanel) | Out-Null
-    } else {
-        Add-NcsOptionControls -Panel $Controls.ActionOptionsPanel -Options $ActionItem['options']
-    }
+    Add-NcsOptionControls -Panel $Controls.ActionOptionsPanel -Options $ActionItem['options']
 }
 
 function Get-NcsControlValues {
@@ -1608,7 +1584,9 @@ function Update-NcsCommandPreview {
         [NcsConsoleSettings] $Settings
     )
 
-    $playbook = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
+    $actionId = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
+    $matchedAction = if (-not [string]::IsNullOrWhiteSpace($actionId) -and $script:ActionItemMap.ContainsKey($actionId)) { $script:ActionItemMap[$actionId] } else { $null }
+    $playbook = if ($null -ne $matchedAction -and $matchedAction.ContainsKey('playbook')) { [string] $matchedAction.playbook } else { $actionId }
 
     if (-not [string]::IsNullOrWhiteSpace($playbook)) {
         try {
@@ -2088,16 +2066,20 @@ function Show-NcsConsoleApp {
     $controls.ActionTreeView.Add_SelectedItemChanged({
         param($_sender, $e)
         $item = $e.NewValue
+        $actionId = ""
         $playbook = ""
         $label = "Select a playbook"
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
             $state.Settings.LastAction = $item.Tag
-            $playbook = $item.Tag
-            $label = if ($item.ToolTip) { [string] $item.ToolTip } else { [string] $item.Tag }
+            $actionId = [string] $item.Tag
+            $label = if (-not [string]::IsNullOrWhiteSpace($item.DataContext)) { [string] $item.DataContext } else { [string] $item.Tag }
         }
         $controls.ActionSelectionTitle.Text = $label
-        $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($playbook)) { "Collapsed" } else { "Visible" }
-        $matchedAction = if (-not [string]::IsNullOrWhiteSpace($playbook) -and $script:ActionItemMap.ContainsKey($playbook)) { $script:ActionItemMap[$playbook] } else { $null }
+        $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($actionId)) { "Collapsed" } else { "Visible" }
+        $matchedAction = if (-not [string]::IsNullOrWhiteSpace($actionId) -and $script:ActionItemMap.ContainsKey($actionId)) { $script:ActionItemMap[$actionId] } else { $null }
+        if ($null -ne $matchedAction -and $matchedAction.ContainsKey('playbook')) {
+            $playbook = [string] $matchedAction.playbook
+        }
         $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
         Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
@@ -2585,7 +2567,8 @@ function Show-NcsConsoleApp {
 
     $populatePlaybookCombo = {
         param([string] $Include)
-        $controls.SchedulePlaybookComboBox.ItemsSource = @(Get-NcsSchedulePlaybookChoices -ScheduleEntries $script:ScheduleEntries -BaseChoices @($script:ActionItemMap.Keys) -Include $Include)
+        $baseChoices = @(Get-NcsActionPlaybookChoices -ActionMap $script:ActionItemMap)
+        $controls.SchedulePlaybookComboBox.ItemsSource = @(Get-NcsSchedulePlaybookChoices -ScheduleEntries $script:ScheduleEntries -BaseChoices $baseChoices -Include $Include)
     }
 
     $populateTagsTree = {
@@ -2847,7 +2830,7 @@ function Show-NcsConsoleApp {
                     $script:ActionItemMap = @{}
                     $statusParts += "Playbook scan failed."
                 }
-                Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
+                Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
                 $controls.PlaybookPlaceholder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Visible"
                 $controls.RefreshPlaybooksButton.Visibility = "Visible"
@@ -2878,7 +2861,7 @@ function Show-NcsConsoleApp {
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
             $controls.StatusTextBlock.Text = "Refreshing..."
-            $selectedPlaybook = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
+            $selectedAction = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
             try {
                 $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                 if (@($inventoryTree).Length -gt 0) {
@@ -2898,8 +2881,8 @@ function Show-NcsConsoleApp {
                 $script:ActionItemMap = @{}
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
-            Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "playbook" -Expanded $true -LeafIcon $script:IconFile
-            Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedPlaybook -FallbackToFirst
+            Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
+            Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedAction -FallbackToFirst
             $controls.StatusTextBlock.Text = "Refreshed."
         } catch {
             $controls.StatusTextBlock.Text = "Refresh failed: $($_.Exception.Message)"
@@ -2919,24 +2902,15 @@ function Show-NcsConsoleApp {
             $controls.ExitCodeTextBlock.Text = "-"
             $controls.DurationTextBlock.Text = "-"
             Set-NcsRunStateBadge -Controls $controls -State "Running"
-            $selectedPlaybook = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
-            if ([string]::IsNullOrWhiteSpace($selectedPlaybook)) {
+            $selectedAction = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
+            if ([string]::IsNullOrWhiteSpace($selectedAction)) {
                 throw "Select an action before running."
             }
 
             # Confirm before running mutating actions
-            $matchedAction = if ($script:ActionItemMap.ContainsKey($selectedPlaybook)) { $script:ActionItemMap[$selectedPlaybook] } else { $null }
+            $matchedAction = if ($script:ActionItemMap.ContainsKey($selectedAction)) { $script:ActionItemMap[$selectedAction] } else { $null }
+            $selectedPlaybook = if ($null -ne $matchedAction -and $matchedAction.ContainsKey('playbook')) { [string] $matchedAction.playbook } else { $selectedAction }
             $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
-            if ($isMutating -and $matchedAction.ContainsKey('profiles')) {
-                $selectedOptions = Get-NcsActionOptionValues -Controls $controls
-                $selectedOperation = if ($selectedOptions.ContainsKey('ncs_operation')) { $selectedOptions['ncs_operation'] } else { "" }
-                $selectedProfile = @($matchedAction['profiles']) |
-                    Where-Object { $_.ContainsKey('operation') -and $_['operation'] -eq $selectedOperation } |
-                    Select-Object -First 1
-                if ($null -ne $selectedProfile) {
-                    $isMutating = $selectedProfile.ContainsKey('mutating') -and $selectedProfile['mutating'] -eq $true
-                }
-            }
             if ($isMutating) {
                 $confirmBox = [System.Windows.Window]::new()
                 $confirmBox.Title = ""
