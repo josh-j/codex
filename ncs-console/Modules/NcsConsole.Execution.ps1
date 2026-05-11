@@ -59,7 +59,10 @@ function New-NcsRepoShellCommand {
     )
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
-    return "cd $repo && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && $Command"
+    # NCS_REPO_ROOT pins the ncs_collector callback to the orchestrator dir; without it,
+    # _find_repo_root may stop at the installed collection's ncs_configs/ and miss the
+    # canonical config.yaml + extra_config_dirs at the orchestrator root.
+    return "cd $repo && export NCS_REPO_ROOT=`$(pwd) && if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi && $Command"
 }
 
 function New-NcsRemoteHeredocCommand {

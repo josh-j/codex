@@ -1,0 +1,11 @@
+---
+all:
+  children:
+    ise_servers:
+      hosts: {}
+      # Example shape (matches vcsa.yaml):
+      # hosts:
+      #   ise-psn-01:
+      #     ansible_host: ise-psn-01.area52.afnoapps.usaf.mil
+      #   ise-mnt-01:
+      #     ansible_host: ise-mnt-01.area52.afnoapps.usaf.mil
