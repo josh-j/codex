@@ -38,16 +38,9 @@ def ise_nad_protocol_status(loop_results: Any) -> list[dict[str, Any]]:
         if not has_tacacs:
             missing.append("TACACS")
 
-        ip_list = nd.get("NetworkDeviceIPList") or []
-        ip_address = ""
-        if isinstance(ip_list, list) and ip_list:
-            first = ip_list[0]
-            if isinstance(first, dict):
-                ip_address = _first(first, ["ipaddress", "ipAddress", "ip"], "")
-
         rows.append({
             "name": _first(nd, ["name"], ""),
-            "ip_address": ip_address,
+            "ip_address": _first_ip_address(nd),
             "description": _first(nd, ["description"], ""),
             "has_radius": has_radius,
             "has_tacacs": has_tacacs,
@@ -143,6 +136,16 @@ def _contains(row: dict[str, Any], query: str, fields: list[str] | None = None) 
     else:
         haystack = _text(row).lower()
     return needle in haystack
+
+
+def _first_ip_address(nd: dict[str, Any]) -> str:
+    """Return the first IP from a NetworkDevice's NetworkDeviceIPList,
+    tolerating ERS / OpenAPI casing variants for the wrapping key and the
+    inner ipaddress field."""
+    ip_list = _first(nd, ["NetworkDeviceIPList", "networkDeviceIPList"], [])
+    if isinstance(ip_list, list) and ip_list and isinstance(ip_list[0], dict):
+        return _first(ip_list[0], ["ipaddress", "ipAddress", "ip"], "")
+    return ""
 
 
 def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
@@ -339,18 +342,12 @@ def ise_network_device_rows(value: Any) -> list[dict[str, Any]]:
     for item in ise_result_rows(value):
         if not isinstance(item, dict):
             continue
-        ip_list = _first(item, ["NetworkDeviceIPList", "networkDeviceIPList"], [])
-        ip_address = ""
-        if isinstance(ip_list, list) and ip_list:
-            first = ip_list[0]
-            if isinstance(first, dict):
-                ip_address = _first(first, ["ipaddress", "ipAddress", "ip"], "")
         rows.append(
             {
                 "name": _first(item, ["name"]),
                 "id": _first(item, ["id"]),
                 "description": _first(item, ["description"]),
-                "ip_address": _first(item, ["ipaddress", "ipAddress"], ip_address),
+                "ip_address": _first(item, ["ipaddress", "ipAddress"], _first_ip_address(item)),
                 "location": _first(item, ["location"]),
                 "type": _first(item, ["type"]),
                 "groups": _first(item, ["NetworkDeviceGroupList", "networkDeviceGroupList"], []),

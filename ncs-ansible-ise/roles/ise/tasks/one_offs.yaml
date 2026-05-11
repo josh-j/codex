@@ -65,15 +65,8 @@
   ansible.builtin.uri:
     url: "{{ _ise_endpoint_url }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_endpoints_raw
   changed_when: false
@@ -84,15 +77,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page=1"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_network_devices_raw
   changed_when: false
@@ -106,15 +92,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page={{ item }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_network_devices_pages
   changed_when: false
@@ -127,24 +106,21 @@
     - _ise_one_off_operation == 'nad_missing_protocols'
     - (_ise_one_off_network_devices_raw.json.SearchResult.total | default(0) | int) > 100
 
-- name: "ISE One-Off | Get NAD details for protocol audit"
-  # ERS summary list only returns {id, name, link} per device — to see
-  # whether each NAD has authenticationSettings (RADIUS) and/or
-  # tacacsSettings configured, we fetch detail for each device id.
+- name: "ISE One-Off | Start NAD detail fetches (background)"
+  # ERS summary list returns {id, name, link} per device. To see whether
+  # each NAD has authenticationSettings (RADIUS) and/or tacacsSettings,
+  # we fetch detail for each id. async + poll: 0 fires each request as a
+  # background job so we don't pay RTT × N wall-clock; the harvest task
+  # below joins on the jobs.
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice/{{ item }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
-  register: _ise_one_off_nad_details
+  async: "{{ ise_single_request_timeout }}"
+  poll: 0
+  register: _ise_one_off_nad_detail_jobs
   changed_when: false
   failed_when: false
   loop: >-
@@ -157,6 +133,21 @@
     label: "{{ item }}"
   when: _ise_one_off_operation == 'nad_missing_protocols'
 
+- name: "ISE One-Off | Harvest NAD detail fetches"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  become: false
+  register: _ise_one_off_nad_details
+  changed_when: false
+  failed_when: false
+  until: _ise_one_off_nad_details.finished
+  retries: 30
+  delay: 2
+  loop: "{{ _ise_one_off_nad_detail_jobs.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('') }}"
+  when: _ise_one_off_operation == 'nad_missing_protocols'
+
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
 # that don't exist on the installed SDK version. Operator's exporter
 # confirms /admin/API/mnt/Session/ActiveList works directly; the rest are
@@ -165,15 +156,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveList"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_active_sessions_raw
   changed_when: false
@@ -194,15 +178,8 @@
     url: >-
       https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ _ise_one_off_seconds }}/{{ _ise_one_off_records }}/All
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_auth_status_raw
   changed_when: false
@@ -226,15 +203,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/MACAddress/{{ _ise_lookup | internal.ise.ise_normalize_mac }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_session_by_mac_raw
   changed_when: false
@@ -247,15 +217,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/UserName/{{ _ise_username_query }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_session_by_username_raw
   changed_when: false
@@ -268,15 +231,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/FailureReasons"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_failure_reasons_raw
   changed_when: false
@@ -287,15 +243,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/authorizationprofile?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_authorization_profiles_raw
   changed_when: false
@@ -306,15 +255,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/downloadableacl?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_downloadable_acls_raw
   changed_when: false
@@ -325,15 +267,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/allowedprotocols?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_allowed_protocols_raw
   changed_when: false
@@ -344,15 +279,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/filterpolicy?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_one_off_filter_policies_raw
   changed_when: false
@@ -584,8 +512,8 @@
       nads_missing_protocols: >-
         {{ _ise_one_off_nad_protocol_rows
            | selectattr('missing_protocols', '!=', '') | list
-           | internal.ise.ise_limit_rows(500) }}
-      all_nads_status: "{{ _ise_one_off_nad_protocol_rows | internal.ise.ise_limit_rows(500) }}"
+           | internal.ise.ise_limit_rows(250) }}
+      all_nads_status: "{{ _ise_one_off_nad_protocol_rows | internal.ise.ise_limit_rows(250) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_missing_protocols'
 

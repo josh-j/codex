@@ -15,6 +15,15 @@
   connection: local
   become: false
   tags: ["ise", "audit"]
+  module_defaults:
+    ansible.builtin.uri:
+      url_username: "{{ ise_username }}"
+      url_password: "{{ ise_password }}"
+      force_basic_auth: true
+      validate_certs: "{{ ise_verify }}"
+      return_content: true
+      status_code: [200]
+      timeout: "{{ ise_single_request_timeout }}"
   roles:
     - role: internal.ise.ise
       vars:

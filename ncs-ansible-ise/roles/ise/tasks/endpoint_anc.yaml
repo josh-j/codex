@@ -50,15 +50,8 @@
   ansible.builtin.uri:
     url: "{{ _ise_anc_endpoint_url }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_anc_endpoints_raw
   changed_when: false
@@ -68,15 +61,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveList"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_anc_active_sessions_raw
   changed_when: false
@@ -86,15 +72,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ancpolicy?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_anc_policies_raw
   changed_when: false
@@ -104,15 +83,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ancendpoint?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_anc_endpoint_assignments_raw
   changed_when: false
@@ -172,18 +144,9 @@
   ansible.builtin.uri:
     url: "{{ _ise_anc_url }}"
     method: PUT
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
-    return_content: true
     body_format: json
     body: "{{ _ise_anc_body }}"
-    status_code:
-      - 200
-      - 201
-      - 202
-      - 204
+    status_code: [200, 201, 202, 204]
     headers:
       Accept: application/json
       Content-Type: application/json

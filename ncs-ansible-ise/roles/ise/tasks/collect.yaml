@@ -22,15 +22,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Version"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_mnt_version
   changed_when: false
@@ -40,15 +33,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveCount"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_active_session_count
   changed_when: false
@@ -59,15 +45,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveList"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_active_sessions
   changed_when: false
@@ -80,15 +59,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/FailureReasons"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_failure_reasons
   changed_when: false
@@ -100,15 +72,8 @@
     url: >-
       https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ ise_authentication_status_seconds }}/{{ ise_authentication_status_records }}/All
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_authentication_status
   changed_when: false
@@ -123,15 +88,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/deployment/node"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_nodes
   changed_when: false
@@ -141,15 +99,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/deployment/pan-ha"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_pan_ha
   changed_when: false
@@ -160,15 +111,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/certs/system-certificate/{{ item }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_system_certificates
   changed_when: false
@@ -183,15 +127,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/certs/trusted-certificate"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_trusted_certificates
   changed_when: false
@@ -202,15 +139,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/backup-restore/config/last-backup-status"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_backup_last_status
   changed_when: false
@@ -221,15 +151,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/repository"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_repositories
   changed_when: false
@@ -240,15 +163,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/patch"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_patches
   changed_when: false
@@ -259,15 +175,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/hotpatch"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_hotpatches
   changed_when: false
@@ -278,15 +187,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/license/system/tier-state"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_license
   changed_when: false
@@ -300,15 +202,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/telemetry/info"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_telemetry
   changed_when: false
@@ -320,15 +215,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/endpoint/deviceType"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_endpoint_device_types
   changed_when: false
@@ -341,15 +229,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/profile/endpoint/randomMacDetection"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_endpoint_configuration
   changed_when: false
@@ -363,15 +244,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/deployment/node-replication-status"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_node_replication_status
   changed_when: false
@@ -388,15 +262,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevicegroup?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_network_device_groups
   changed_when: false
@@ -406,15 +273,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page=1"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_network_devices
   changed_when: false
@@ -425,15 +285,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page={{ item }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_network_devices_pages
   changed_when: false
@@ -460,15 +313,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/identitygroup?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_identity_groups
   changed_when: false
@@ -478,15 +324,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/profilerprofile?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_profiler_profiles
   changed_when: false
@@ -496,15 +335,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page=1"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_endpoints
   changed_when: false
@@ -516,15 +348,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page={{ item }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_endpoints_pages
   changed_when: false
@@ -551,15 +376,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/guestuser?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_guest_users
   changed_when: false
@@ -570,15 +388,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/sgacl?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_sg_acls
   changed_when: false
@@ -589,15 +400,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/sgt?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_sgts
   changed_when: false
@@ -608,15 +412,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/allowedprotocols?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_allowed_protocols
   changed_when: false
@@ -627,15 +424,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/authorizationprofile?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_authorization_profiles
   changed_when: false
@@ -646,15 +436,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/downloadableacl?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_downloadable_acls
   changed_when: false
@@ -665,15 +448,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/filterpolicy?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_filter_policies
   changed_when: false
@@ -684,15 +460,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/tacacscommandsets?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_tacacs_command_sets
   changed_when: false
@@ -703,15 +472,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/tacacsprofile?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_tacacs_profiles
   changed_when: false
@@ -722,15 +484,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/tacacsserversequence?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_tacacs_server_sequences
   changed_when: false
@@ -741,15 +496,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/tacacsexternalservers?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_tacacs_external_servers
   changed_when: false
@@ -760,15 +508,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/activedirectory?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_active_directories
   changed_when: false
@@ -779,15 +520,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/idstoresequence?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_id_store_sequences
   changed_when: false
@@ -798,15 +532,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/internaluser?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_internal_users
   changed_when: false
@@ -817,15 +544,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ldap?size=100"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_ldap_sources
   changed_when: false

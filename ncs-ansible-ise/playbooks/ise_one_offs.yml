@@ -135,6 +135,17 @@
   connection: local
   become: false
   tags: ["ise", "audit", "one_off"]
+  # Common ISE HTTP request shape. Per-task fields (url, method, headers,
+  # body, status_code) override these as needed.
+  module_defaults:
+    ansible.builtin.uri:
+      url_username: "{{ ise_username }}"
+      url_password: "{{ ise_password }}"
+      force_basic_auth: true
+      validate_certs: "{{ ise_verify }}"
+      return_content: true
+      status_code: [200]
+      timeout: "{{ ise_single_request_timeout }}"
   roles:
     - role: internal.ise.ise
       vars:

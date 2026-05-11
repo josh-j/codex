@@ -52,15 +52,8 @@
   ansible.builtin.uri:
     url: "{{ _ise_coa_endpoint_url }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/json
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_coa_endpoints_raw
   changed_when: false
@@ -70,15 +63,8 @@
   ansible.builtin.uri:
     url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveList"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
     headers:
       Accept: application/xml
-    return_content: true
-    status_code: [200]
-    timeout: "{{ ise_single_request_timeout }}"
   become: false
   register: _ise_coa_active_sessions_raw
   changed_when: false
@@ -169,13 +155,6 @@
   ansible.builtin.uri:
     url: "{{ _ise_coa_url }}"
     method: GET
-    url_username: "{{ ise_username }}"
-    url_password: "{{ ise_password }}"
-    force_basic_auth: true
-    validate_certs: "{{ ise_verify }}"
-    return_content: true
-    status_code:
-      - 200
     headers:
       Accept: application/xml
   become: false
