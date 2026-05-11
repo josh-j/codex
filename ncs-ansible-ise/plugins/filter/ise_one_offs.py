@@ -223,8 +223,41 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
     for item in ise_result_rows(value):
         if not isinstance(item, dict):
             continue
-        status = _first(item, ["status", "response", "passed", "failed"])
-        failure = _first(item, ["failure_reason", "failureReason", "FailureReason", "failed.reason"])
+        # ISE MnT XML element names vary across ISE 3.1–3.5 and across
+        # Session/ActiveList vs AuthStatus vs MACAddress vs UserName
+        # endpoints. The fallback chains below cover the union of names
+        # we've seen documented; whichever element the payload happens
+        # to carry wins.
+        status_raw = _first(
+            item,
+            [
+                "status",
+                "response",
+                "session_state",
+                "acct_status_type",
+                "auth_status",
+            ],
+        )
+        # passed/failed are boolean-strings in AuthStatus. Map them to
+        # a human label when no explicit status field was present.
+        if status_raw in (None, ""):
+            passed = str(_first(item, ["passed"])).lower()
+            failed = str(_first(item, ["failed"])).lower()
+            if passed in {"true", "1"}:
+                status_raw = "passed"
+            elif failed in {"true", "1"}:
+                status_raw = "failed"
+        failure = _first(
+            item,
+            [
+                "failure_reason",
+                "failureReason",
+                "FailureReason",
+                "failed_reason",
+                "failure_code",
+                "auth_status_failure_reason",
+            ],
+        )
         rows.append(
             {
                 "timestamp": _first(
@@ -232,12 +265,23 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                     [
                         "auth_acs_timestamp",
                         "auth_acsview_timestamp",
+                        "acs_timestamp",
                         "event_timestamp",
+                        "acct_timestamp",
                         "timestamp",
                         "time",
                     ],
                 ),
-                "username": _first(item, ["user_name", "username", "UserName", "identity"]),
+                "username": _first(
+                    item,
+                    [
+                        "user_name",
+                        "username",
+                        "UserName",
+                        "identity",
+                        "calling_station_username",
+                    ],
+                ),
                 "mac": _first(
                     item,
                     [
@@ -246,30 +290,128 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "callingStationId",
                         "orig_calling_station_id",
                         "mac",
+                        "mac_address",
                     ],
                 ),
-                "ip_address": _first(item, ["framed_ip_address", "ipAddress", "ip_address"]),
-                "nad_name": _first(item, ["network_device_name", "NetworkDeviceName", "nad_name"]),
-                "nad_ip": _first(item, ["nas_ip_address", "device_ip_address", "nad_ip"]),
-                "server": _first(item, ["acs_server", "server", "serverhostname"]),
-                "destination_ip_address": _first(item, ["destination_ip_address", "destinationIpAddress"]),
-                "port": _first(item, ["nas_port_id", "nasPortId", "port", "interface"]),
-                "status": _text(status),
+                "ip_address": _first(
+                    item,
+                    [
+                        "framed_ip_address",
+                        "framedIpAddress",
+                        "ipAddress",
+                        "ip_address",
+                        "endpoint_ip",
+                    ],
+                ),
+                "nad_name": _first(
+                    item,
+                    [
+                        "network_device_name",
+                        "NetworkDeviceName",
+                        "nad_name",
+                        "device_name",
+                    ],
+                ),
+                "nad_ip": _first(
+                    item,
+                    [
+                        "nas_ip_address",
+                        "nasIpAddress",
+                        "device_ip_address",
+                        "nad_ip",
+                        "called_station_id",
+                    ],
+                ),
+                "server": _first(
+                    item,
+                    [
+                        "acs_server",
+                        "acsServer",
+                        "server",
+                        "serverhostname",
+                        "psn",
+                        "ise_node",
+                    ],
+                ),
+                "destination_ip_address": _first(
+                    item,
+                    [
+                        "destination_ip_address",
+                        "destinationIpAddress",
+                        "dest_ip_address",
+                        "destination_ip",
+                    ],
+                ),
+                "port": _first(
+                    item,
+                    [
+                        "nas_port_id",
+                        "nasPortId",
+                        "nas_port",
+                        "nasPort",
+                        "port",
+                        "interface",
+                    ],
+                ),
+                "port_type": _first(item, ["nas_port_type", "nasPortType"]),
+                "authentication_method": _first(
+                    item,
+                    [
+                        "authentication_method",
+                        "authenticationMethod",
+                        "auth_method",
+                    ],
+                ),
+                "authentication_protocol": _first(
+                    item,
+                    [
+                        "authentication_protocol",
+                        "authenticationProtocol",
+                        "auth_protocol",
+                    ],
+                ),
+                "identity_group": _first(
+                    item,
+                    [
+                        "identity_group",
+                        "identityGroup",
+                        "user_identity_group",
+                    ],
+                ),
+                "audit_session_id": _first(
+                    item,
+                    [
+                        "audit_session_id",
+                        "auditSessionId",
+                        "session_id",
+                        "acct_session_id",
+                    ],
+                ),
+                "session_state": _first(item, ["session_state", "sessionState"]),
+                "vlan": _first(item, ["vlan", "vlan_id", "vlanId"]),
+                "status": _text(status_raw),
                 "failure_reason": failure,
                 "authorization_profile": _first(
                     item,
                     [
                         "selected_azn_profiles",
+                        "selected_authorization_profiles",
                         "selectedAuthorizationProfiles",
+                        "authorization_profile",
                         "authorizationProfile",
+                        "authz_profile",
                     ],
                 ),
                 "matched_rule": _first(
                     item,
                     [
+                        "authorization_rule",
+                        "authorizationRule",
                         "authorizationPolicyMatchedRule",
                         "authenticationPolicyMatchedRule",
                         "matchedRule",
+                        "auth_rule",
+                        "policy_set_name",
                     ],
                 ),
             }
