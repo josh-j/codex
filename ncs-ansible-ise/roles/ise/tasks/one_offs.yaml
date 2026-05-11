@@ -32,18 +32,46 @@
       records: "{{ _ise_one_off_records }}"
       repeat_threshold: "{{ _ise_one_off_repeat_threshold }}"
 
+# endpoint_risk_report and nad_port_history need the full population for
+# their joins; everything else filters server-side so we don't paginate
+# tens of thousands of endpoints for a single-MAC lookup.
+- name: "ISE One-Off | Build endpoint filter"
+  ansible.builtin.set_fact:
+    _ise_endpoint_filter: >-
+      {{
+        []
+        if _ise_one_off_operation in ['endpoint_risk_report', 'nad_port_history']
+        or (_ise_lookup | length) == 0
+        else (
+          ['mac.EQ.' ~ (_ise_lookup | upper)]
+          if _ise_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+          else ['mac.CONTAINS.' ~ _ise_lookup, 'name.CONTAINS.' ~ _ise_lookup]
+        )
+      }}
+    _ise_endpoint_filter_type: >-
+      {{
+        'OR'
+        if _ise_one_off_operation in ['endpoint_lookup', 'endpoint_timeline']
+           and _ise_lookup is not match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else 'AND'
+      }}
+  changed_when: false
+
 - name: "ISE One-Off | Get endpoints"
-  cisco.ise.endpoints_info: &ise_pan_args
-    ise_hostname: "{{ ise_pan_hostname }}"
-    ise_username: "{{ ise_username }}"
-    ise_password: "{{ ise_password }}"
-    ise_verify: "{{ ise_verify }}"
-    ise_version: "{{ ise_version }}"
-    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-    ise_debug: "{{ ise_debug }}"
-    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  cisco.ise.endpoints_info:
+    <<: &ise_pan_args
+      ise_hostname: "{{ ise_pan_hostname }}"
+      ise_username: "{{ ise_username }}"
+      ise_password: "{{ ise_password }}"
+      ise_verify: "{{ ise_verify }}"
+      ise_version: "{{ ise_version }}"
+      ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+      ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+      ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+      ise_debug: "{{ ise_debug }}"
+      ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+    filter: "{{ _ise_endpoint_filter }}"
+    filterType: "{{ _ise_endpoint_filter_type }}"
   register: _ise_one_off_endpoints_raw
   changed_when: false
   failed_when: false

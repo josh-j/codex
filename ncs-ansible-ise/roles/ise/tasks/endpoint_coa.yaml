@@ -27,18 +27,37 @@
       Endpoint CoA requires ise_lookup, ise_coa_confirm=COA, and a valid
       ise_coa_action.
 
+- name: "ISE CoA | Build endpoint filter"
+  ansible.builtin.set_fact:
+    _ise_coa_endpoint_filter: >-
+      {{
+        ['mac.EQ.' ~ (_ise_coa_lookup | upper)]
+        if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else ['mac.CONTAINS.' ~ _ise_coa_lookup, 'name.CONTAINS.' ~ _ise_coa_lookup]
+      }}
+    _ise_coa_endpoint_filter_type: >-
+      {{
+        'AND'
+        if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else 'OR'
+      }}
+  changed_when: false
+
 - name: "ISE CoA | Get endpoint inventory"
-  cisco.ise.endpoints_info: &ise_pan_args
-    ise_hostname: "{{ ise_pan_hostname }}"
-    ise_username: "{{ ise_username }}"
-    ise_password: "{{ ise_password }}"
-    ise_verify: "{{ ise_verify }}"
-    ise_version: "{{ ise_version }}"
-    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-    ise_debug: "{{ ise_debug }}"
-    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  cisco.ise.endpoints_info:
+    <<: &ise_pan_args
+      ise_hostname: "{{ ise_pan_hostname }}"
+      ise_username: "{{ ise_username }}"
+      ise_password: "{{ ise_password }}"
+      ise_verify: "{{ ise_verify }}"
+      ise_version: "{{ ise_version }}"
+      ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+      ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+      ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+      ise_debug: "{{ ise_debug }}"
+      ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+    filter: "{{ _ise_coa_endpoint_filter }}"
+    filterType: "{{ _ise_coa_endpoint_filter_type }}"
   register: _ise_coa_endpoints_raw
   changed_when: false
   failed_when: false

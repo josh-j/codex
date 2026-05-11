@@ -25,18 +25,37 @@
       Endpoint ANC requires ise_lookup, ise_anc_policy_name,
       ise_anc_action=apply|clear, and ise_anc_confirm=ANC.
 
+- name: "ISE ANC | Build endpoint filter"
+  ansible.builtin.set_fact:
+    _ise_anc_endpoint_filter: >-
+      {{
+        ['mac.EQ.' ~ (_ise_anc_lookup | upper)]
+        if _ise_anc_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else ['mac.CONTAINS.' ~ _ise_anc_lookup, 'name.CONTAINS.' ~ _ise_anc_lookup]
+      }}
+    _ise_anc_endpoint_filter_type: >-
+      {{
+        'AND'
+        if _ise_anc_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else 'OR'
+      }}
+  changed_when: false
+
 - name: "ISE ANC | Get endpoint inventory"
-  cisco.ise.endpoints_info: &ise_pan_args
-    ise_hostname: "{{ ise_pan_hostname }}"
-    ise_username: "{{ ise_username }}"
-    ise_password: "{{ ise_password }}"
-    ise_verify: "{{ ise_verify }}"
-    ise_version: "{{ ise_version }}"
-    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-    ise_debug: "{{ ise_debug }}"
-    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  cisco.ise.endpoints_info:
+    <<: &ise_pan_args
+      ise_hostname: "{{ ise_pan_hostname }}"
+      ise_username: "{{ ise_username }}"
+      ise_password: "{{ ise_password }}"
+      ise_verify: "{{ ise_verify }}"
+      ise_version: "{{ ise_version }}"
+      ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
+      ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
+      ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
+      ise_debug: "{{ ise_debug }}"
+      ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+    filter: "{{ _ise_anc_endpoint_filter }}"
+    filterType: "{{ _ise_anc_endpoint_filter_type }}"
   register: _ise_anc_endpoints_raw
   changed_when: false
   failed_when: false
