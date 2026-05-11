@@ -17,10 +17,14 @@
 
   tasks:
     - name: Ensure platform root exists
+      # No mode/owner — the dir is typically pre-created by the samba
+      # setup play and owned by the samba user, so chmod-from-here
+      # would EPERM. We only need to assert existence; if it's missing,
+      # ansible creates it with the running user's umask.
       ansible.builtin.file:
         path: "{{ _platform_root }}"
         state: directory
-        mode: "0755"
+      ignore_errors: true
 
     - name: Run Unified Reporting Engine (ncs-reporter all)
       block:
