@@ -28,7 +28,7 @@
           ansible.builtin.command:
             cmd: >-
               ncs-reporter all
-              --platform-root "{{ _platform_root }}"
+              --bundle-root "{{ _platform_root }}"
               --reports-root "{{ _reports_root }}"
               --report-stamp "{{ report_stamp }}"
               --config-dir "{{ _config_dir }}"

@@ -860,18 +860,16 @@ report:
     fi
     {{ ncs_reporter }} all \
         --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ data_dir }} \
         --reports-root {{ rendered_dir }} \
         --bundle-root {{ data_dir }}
     {{ python }} scripts/verify_report_artifacts.py --report-root {{ rendered_dir }}
 
 # Generate reports with custom paths
-report-custom custom_platform_root custom_reports_root custom_groups:
+report-custom custom_bundle_root custom_reports_root:
     {{ ncs_reporter }} all \
         --config-dir {{ reporter_config_dir }} \
-        --platform-root {{ custom_platform_root }} \
         --reports-root {{ custom_reports_root }} \
-        --groups {{ custom_groups }}
+        --bundle-root {{ custom_bundle_root }}
 
 # Generate STIG compliance reports only
 report-stig input output="reports/stig":
