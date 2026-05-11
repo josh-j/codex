@@ -110,6 +110,77 @@ def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
     return [{c.tag: c.text for c in root}]
 
 
+def _parse_mnt_xml_root_leaves(content: str) -> dict[str, Any]:
+    """Parse an MnT XML response whose root holds leaf children directly.
+
+    Used for responses like /Version where the structure is:
+    <product><name>...</name><version>...</version></product>
+    Returns {'name': ..., 'version': ...}.
+    """
+    from xml.etree import ElementTree as ET
+
+    if not isinstance(content, str) or not content.strip():
+        return {}
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return {}
+
+    if any(list(child) for child in root):
+        return {}
+    return {c.tag: c.text for c in root}
+
+
+def ise_mnt_version(content: Any) -> dict[str, Any]:
+    """Parse /admin/API/mnt/Version XML into the dict shape the reporter
+    schema reads (mnt_version.ise_response.{name,version,type_of_node})."""
+    return _parse_mnt_xml_root_leaves(content if isinstance(content, str) else "")
+
+
+def ise_mnt_active_count(content: Any) -> dict[str, Any]:
+    """Parse /Session/ActiveCount XML into {count: int}. The response is
+    typically <numberOfActiveSession>N</numberOfActiveSession>."""
+    from xml.etree import ElementTree as ET
+
+    if not isinstance(content, str) or not content.strip():
+        return {"count": 0}
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return {"count": 0}
+    raw = (root.text or "").strip()
+    try:
+        return {"count": int(raw)}
+    except ValueError:
+        return {"count": 0}
+
+
+def ise_mnt_active_sessions(content: Any) -> dict[str, Any]:
+    """Parse /Session/ActiveList XML into {activeList: [session, ...]} —
+    matches the shape the reporter schema reads via
+    active_sessions.ise_response.activeList."""
+    if not isinstance(content, str):
+        return {"activeList": []}
+    return {"activeList": _parse_mnt_xml_rows(content)}
+
+
+def ise_mnt_failure_reasons(content: Any) -> list[dict[str, Any]]:
+    """Parse /FailureReasons XML into a flat list of failure_reason dicts."""
+    if not isinstance(content, str):
+        return []
+    return _parse_mnt_xml_rows(content)
+
+
+def ise_mnt_auth_status(content: Any) -> dict[str, Any]:
+    """Parse /AuthStatus/... XML into a dict carrying the parsed records
+    under the keys the schema's first_of chain looks for
+    (authentications / sessions / response)."""
+    if not isinstance(content, str):
+        return {"authentications": []}
+    rows = _parse_mnt_xml_rows(content)
+    return {"authentications": rows, "sessions": rows, "response": rows}
+
+
 def ise_result_rows(value: Any) -> list[Any]:
     """Unwrap common cisco.ise module result shapes into a list of rows."""
     if value is None:
@@ -813,6 +884,11 @@ class FilterModule:
             "ise_network_device_rows": ise_network_device_rows,
             "ise_auth_rows": ise_auth_rows,
             "ise_coa_candidates": ise_coa_candidates,
+            "ise_mnt_version": ise_mnt_version,
+            "ise_mnt_active_count": ise_mnt_active_count,
+            "ise_mnt_active_sessions": ise_mnt_active_sessions,
+            "ise_mnt_failure_reasons": ise_mnt_failure_reasons,
+            "ise_mnt_auth_status": ise_mnt_auth_status,
             "ise_search_rows": ise_search_rows,
             "ise_nad_rows": ise_nad_rows,
             "ise_port_rows": ise_port_rows,

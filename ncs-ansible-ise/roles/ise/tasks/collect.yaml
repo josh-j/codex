@@ -714,7 +714,7 @@
       mnt_version:
         failed: "{{ _ise_mnt_version.failed | default(false) | bool }}"
         msg: "{{ _ise_mnt_version.msg | default('') }}"
-        content: "{{ _ise_mnt_version.content | default('') }}"
+        ise_response: "{{ _ise_mnt_version.content | default('') | internal.ise.ise_mnt_version }}"
       nodes:
         failed: "{{ _ise_nodes.failed | default(false) | bool }}"
         msg: "{{ _ise_nodes.msg | default('') }}"
@@ -860,22 +860,22 @@
         failed: "{{ _ise_active_session_count.failed | default(false) | bool }}"
         skipped: "{{ _ise_active_session_count.skipped | default(false) | bool }}"
         msg: "{{ _ise_active_session_count.msg | default('') }}"
-        content: "{{ _ise_active_session_count.content | default('') }}"
+        ise_response: "{{ _ise_active_session_count.content | default('') | internal.ise.ise_mnt_active_count }}"
       active_sessions:
         failed: "{{ _ise_active_sessions.failed | default(false) | bool }}"
         skipped: "{{ _ise_active_sessions.skipped | default(false) | bool }}"
         msg: "{{ _ise_active_sessions.msg | default('') }}"
-        content: "{{ _ise_active_sessions.content | default('') }}"
+        ise_response: "{{ _ise_active_sessions.content | default('') | internal.ise.ise_mnt_active_sessions }}"
       failure_reasons:
         failed: "{{ _ise_failure_reasons.failed | default(false) | bool }}"
         skipped: "{{ _ise_failure_reasons.skipped | default(false) | bool }}"
         msg: "{{ _ise_failure_reasons.msg | default('') }}"
-        content: "{{ _ise_failure_reasons.content | default('') }}"
+        ise_response: "{{ _ise_failure_reasons.content | default('') | internal.ise.ise_mnt_failure_reasons }}"
       authentication_status:
         failed: "{{ _ise_authentication_status.failed | default(false) | bool }}"
         skipped: "{{ _ise_authentication_status.skipped | default(false) | bool }}"
         msg: "{{ _ise_authentication_status.msg | default('') }}"
-        content: "{{ _ise_authentication_status.content | default('') }}"
+        ise_response: "{{ _ise_authentication_status.content | default('') | internal.ise.ise_mnt_auth_status }}"
       audit_failed: >-
         {{
           (_ise_mnt_version.failed | default(false) | bool)
