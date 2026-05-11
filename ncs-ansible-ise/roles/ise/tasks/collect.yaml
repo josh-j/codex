@@ -159,6 +159,26 @@
   failed_when: false
   when: ise_collect_backup_repository | bool
 
+- name: "ISE | Get repository files (per repo)"
+  # OpenAPI exposes a per-repo file list at /api/v1/repository/<name>/files.
+  # Loop over the discovered repository names from the prior list call.
+  # failed_when: false tolerates repositories the ISE user can't read
+  # (e.g. local disk repos with restricted permissions).
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}/api/v1/repository/{{ item }}/files"
+    method: GET
+    headers:
+      Accept: application/json
+  become: false
+  register: _ise_repository_files
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ (_ise_repositories.json.response | default([])) | map(attribute='name') | select | list }}
+  loop_control:
+    label: "{{ item }}"
+  when: ise_collect_backup_repository | bool
+
 - name: "ISE | Get patch information"
   ansible.builtin.uri:
     url: "https://{{ ise_pan_hostname }}/api/v1/patch"
@@ -331,9 +351,15 @@
   changed_when: false
   failed_when: false
 
+# Bulk endpoint pull uses OpenAPI rather than ERS:9060. The ERS list
+# response only includes {id, name, link} per device — useless for the
+# random-MAC / repeat-counter / device-type widgets that need real
+# fields. OpenAPI returns full ERSEndPoint records inline, with
+# pagination at {response, totalCount}. One-off endpoint_lookup keeps
+# ERS:9060 since that path's mac.EQ filter works there.
 - name: "ISE | Get endpoints (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page=1"
+    url: "https://{{ ise_pan_hostname }}/api/v1/endpoint?size=100&page=1"
     method: GET
     headers:
       Accept: application/json
@@ -346,7 +372,7 @@
 # Cap pagination at 200 pages (20k endpoints) to keep run time bounded.
 - name: "ISE | Get endpoints (pages 2..N)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page={{ item }}"
+    url: "https://{{ ise_pan_hostname }}/api/v1/endpoint?size=100&page={{ item }}"
     method: GET
     headers:
       Accept: application/json
@@ -355,26 +381,26 @@
   changed_when: false
   failed_when: false
   loop: >-
-    {{ range(2, [((_ise_endpoints.json.SearchResult.total | default(0) | int) + 99) // 100, 200] | min + 1) | list }}
+    {{ range(2, [((_ise_endpoints.json.totalCount | default(0) | int) + 99) // 100, 200] | min + 1) | list }}
   loop_control:
     label: "page {{ item }}"
   when:
     - ise_collect_endpoints | bool
-    - (_ise_endpoints.json.SearchResult.total | default(0) | int) > 100
+    - (_ise_endpoints.json.totalCount | default(0) | int) > 100
 
 - name: "ISE | Combine endpoint pages"
   ansible.builtin.set_fact:
     _ise_endpoints_all: >-
-      {{ (_ise_endpoints.json.SearchResult.resources | default([]))
+      {{ (_ise_endpoints.json.response | default([]))
          + ((_ise_endpoints_pages.results | default([]))
-            | map(attribute='json.SearchResult.resources')
+            | map(attribute='json.response')
             | select | list | flatten) }}
   changed_when: false
   when: ise_collect_endpoints | bool
 
-- name: "ISE | Get guest users"
+- name: "ISE | Get guest users (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/guestuser?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/guestuser?size=100&page=1"
     method: GET
     headers:
       Accept: application/json
@@ -382,6 +408,34 @@
   register: _ise_guest_users
   changed_when: false
   failed_when: false
+  when: ise_collect_guests | bool
+
+- name: "ISE | Get guest users (pages 2..N)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/guestuser?size=100&page={{ item }}"
+    method: GET
+    headers:
+      Accept: application/json
+  become: false
+  register: _ise_guest_users_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_guest_users.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - ise_collect_guests | bool
+    - (_ise_guest_users.json.SearchResult.total | default(0) | int) > 100
+
+- name: "ISE | Combine guest user pages"
+  ansible.builtin.set_fact:
+    _ise_guest_users_all: >-
+      {{ (_ise_guest_users.json.SearchResult.resources | default([]))
+         + ((_ise_guest_users_pages.results | default([]))
+            | map(attribute='json.SearchResult.resources')
+            | select | list | flatten) }}
+  changed_when: false
   when: ise_collect_guests | bool
 
 - name: "ISE | Get SGACLs"
@@ -528,9 +582,9 @@
   failed_when: false
   when: ise_collect_identity_sources | bool
 
-- name: "ISE | Get internal users"
+- name: "ISE | Get internal users (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/internaluser?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/internaluser?size=100&page=1"
     method: GET
     headers:
       Accept: application/json
@@ -540,9 +594,37 @@
   failed_when: false
   when: ise_collect_identity_sources | bool
 
-- name: "ISE | Get LDAP identity sources"
+- name: "ISE | Get internal users (pages 2..N)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ldap?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/internaluser?size=100&page={{ item }}"
+    method: GET
+    headers:
+      Accept: application/json
+  become: false
+  register: _ise_internal_users_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_internal_users.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - ise_collect_identity_sources | bool
+    - (_ise_internal_users.json.SearchResult.total | default(0) | int) > 100
+
+- name: "ISE | Combine internal user pages"
+  ansible.builtin.set_fact:
+    _ise_internal_users_all: >-
+      {{ (_ise_internal_users.json.SearchResult.resources | default([]))
+         + ((_ise_internal_users_pages.results | default([]))
+            | map(attribute='json.SearchResult.resources')
+            | select | list | flatten) }}
+  changed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get LDAP identity sources (page 1)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ldap?size=100&page=1"
     method: GET
     headers:
       Accept: application/json
@@ -550,6 +632,34 @@
   register: _ise_ldap_sources
   changed_when: false
   failed_when: false
+  when: ise_collect_identity_sources | bool
+
+- name: "ISE | Get LDAP identity sources (pages 2..N)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ldap?size=100&page={{ item }}"
+    method: GET
+    headers:
+      Accept: application/json
+  become: false
+  register: _ise_ldap_sources_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_ldap_sources.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - ise_collect_identity_sources | bool
+    - (_ise_ldap_sources.json.SearchResult.total | default(0) | int) > 100
+
+- name: "ISE | Combine LDAP source pages"
+  ansible.builtin.set_fact:
+    _ise_ldap_sources_all: >-
+      {{ (_ise_ldap_sources.json.SearchResult.resources | default([]))
+         + ((_ise_ldap_sources_pages.results | default([]))
+            | map(attribute='json.SearchResult.resources')
+            | select | list | flatten) }}
+  changed_when: false
   when: ise_collect_identity_sources | bool
 
 # =============================================================================
@@ -621,17 +731,18 @@
         msg: "{{ _ise_profiler_profiles.msg | default('') }}"
         ise_response: "{{ _ise_profiler_profiles.json.SearchResult.resources | default([]) }}"
         total: "{{ _ise_profiler_profiles.json.SearchResult.total | default(0) | int }}"
+      # OpenAPI shape: .json.response (list), .json.totalCount.
       endpoints:
         failed: "{{ _ise_endpoints.failed | default(false) | bool }}"
         skipped: "{{ _ise_endpoints.skipped | default(false) | bool }}"
         msg: "{{ _ise_endpoints.msg | default('') }}"
-        ise_response: "{{ _ise_endpoints_all | default(_ise_endpoints.json.SearchResult.resources | default([])) }}"
-        total: "{{ _ise_endpoints.json.SearchResult.total | default(0) | int }}"
+        ise_response: "{{ _ise_endpoints_all | default(_ise_endpoints.json.response | default([])) }}"
+        total: "{{ _ise_endpoints.json.totalCount | default(0) | int }}"
       guest_users:
         failed: "{{ _ise_guest_users.failed | default(false) | bool }}"
         skipped: "{{ _ise_guest_users.skipped | default(false) | bool }}"
         msg: "{{ _ise_guest_users.msg | default('') }}"
-        ise_response: "{{ _ise_guest_users.json.SearchResult.resources | default([]) }}"
+        ise_response: "{{ _ise_guest_users_all | default(_ise_guest_users.json.SearchResult.resources | default([])) }}"
         total: "{{ _ise_guest_users.json.SearchResult.total | default(0) | int }}"
       sg_acls:
         failed: "{{ _ise_sg_acls.failed | default(false) | bool }}"
@@ -671,6 +782,13 @@
         skipped: "{{ _ise_repositories.skipped | default(false) | bool }}"
         msg: "{{ _ise_repositories.msg | default('') }}"
         ise_response: "{{ _ise_repositories.json.response | default([]) }}"
+      # Schema reads repository_files.results — list of per-repo uri
+      # responses, mirroring the old cisco.ise loop output shape.
+      repository_files:
+        failed: "{{ _ise_repository_files.failed | default(false) | bool }}"
+        skipped: "{{ _ise_repository_files.skipped | default(false) | bool }}"
+        msg: "{{ _ise_repository_files.msg | default('') }}"
+        results: "{{ _ise_repository_files.results | default([]) }}"
       patches:
         failed: "{{ _ise_patches.failed | default(false) | bool }}"
         skipped: "{{ _ise_patches.skipped | default(false) | bool }}"
@@ -770,13 +888,13 @@
         failed: "{{ _ise_internal_users.failed | default(false) | bool }}"
         skipped: "{{ _ise_internal_users.skipped | default(false) | bool }}"
         msg: "{{ _ise_internal_users.msg | default('') }}"
-        ise_response: "{{ _ise_internal_users.json.SearchResult.resources | default([]) }}"
+        ise_response: "{{ _ise_internal_users_all | default(_ise_internal_users.json.SearchResult.resources | default([])) }}"
         total: "{{ _ise_internal_users.json.SearchResult.total | default(0) | int }}"
       ldap_sources:
         failed: "{{ _ise_ldap_sources.failed | default(false) | bool }}"
         skipped: "{{ _ise_ldap_sources.skipped | default(false) | bool }}"
         msg: "{{ _ise_ldap_sources.msg | default('') }}"
-        ise_response: "{{ _ise_ldap_sources.json.SearchResult.resources | default([]) }}"
+        ise_response: "{{ _ise_ldap_sources_all | default(_ise_ldap_sources.json.SearchResult.resources | default([])) }}"
         total: "{{ _ise_ldap_sources.json.SearchResult.total | default(0) | int }}"
       active_session_count:
         failed: "{{ _ise_active_session_count.failed | default(false) | bool }}"

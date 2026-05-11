@@ -1,28 +1,35 @@
-# Cisco ISE Ansible References
+# Cisco ISE — Ansible Reference Notes
 
-This folder collects the reference material needed to build, run, and
-maintain Ansible automation for Cisco Identity Services Engine (ISE).
+Background material for building, running, and maintaining the
+`internal.ise` collection against Cisco Identity Services Engine.
 
 ## Files
 
-- `REFERENCES.md` - authoritative source links and version notes.
-- `QUICKSTART.md` - install, inventory, and first-playbook examples.
-- `MODULE_CATALOG.md` - curated map of `cisco.ise` module families.
-- `API_NOTES.md` - ISE API Gateway, ERS/OpenAPI, privileges, and
-  versioning notes that affect Ansible automation.
+- `REFERENCES.md` — authoritative source links and version notes.
+- `QUICKSTART.md` — install, inventory, and first-playbook examples.
+- `MODULE_CATALOG.md` — historical map of `cisco.ise` module families
+  (kept as a cross-reference; the role itself no longer calls them).
+- `API_NOTES.md` — API Gateway, ERS/OpenAPI/MnT surfaces, required
+  permissions, and versioning notes that affect direct HTTP access.
 
-## Current State
+## Current state
 
-As of 2026-05-07, Ansible community docs for Ansible 12 say
-`cisco.ise` has been removed from the bundled `ansible` package docs.
-The collection can still be installed manually with:
+The `internal.ise` role does **not** depend on the upstream `cisco.ise`
+collection or the `ciscoisesdk` Python package. Every API call is made
+through `ansible.builtin.uri` directly against one of three ISE HTTP
+surfaces:
 
-```bash
-ansible-galaxy collection install cisco.ise
-```
+| Surface  | Port | Path prefix              | Body |
+|----------|------|--------------------------|------|
+| ERS      | 9060 | `/ers/config/...`        | JSON |
+| OpenAPI  | 443  | `/api/v1/...`            | JSON |
+| MnT XML  | 443  | `/admin/API/mnt/...`     | XML  |
 
-The Ansible 11 hosted docs list `cisco.ise` collection version 2.10.0
-and mark it unmaintained in the Ansible community bundle. A live Galaxy
-install on 2026-05-07 resolved `cisco.ise` 3.1.0. Cisco's upstream
-repository continues to publish the Cisco ISE collection source and
-compatibility matrix.
+This avoids the SDK-version coupling that broke `mnt_*_info` and
+related modules whenever the deployment's installed `ciscoisesdk`
+didn't expose the method signature the cisco.ise collection expected
+(e.g. `'Misc' object has no attribute 'get_product_version'`).
+
+`MODULE_CATALOG.md` is retained because it remains a useful index of
+which ISE API resources exist; just remember the role talks to those
+resources via raw `uri`, not via `cisco.ise.*` modules.
