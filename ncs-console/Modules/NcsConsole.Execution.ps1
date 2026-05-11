@@ -532,6 +532,12 @@ function Get-NcsRemoteShellCommand {
         "test -d $repo || { echo 'Remote repo path does not exist.' >&2; exit 21; }"
         "cd $repo"
         "export NCS_REPO_ROOT=`$(pwd)"
+        # Match the orchestrator Justfile, which exports the same value
+        # so `just`-driven and console-driven plays agree on where the
+        # ncs_collector callback writes raw bundles. Without this, the
+        # callback falls back to /srv/samba/reports and `just report`
+        # (which scans /srv/samba/reports/data) can't see the data.
+        "export NCS_REPORT_DIRECTORY=`"`${NCS_REPORT_DIRECTORY:-/srv/samba/reports/data}`""
         $inventoryCheck
         "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
         "if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi"
