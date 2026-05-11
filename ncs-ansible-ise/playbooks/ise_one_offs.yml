@@ -115,6 +115,11 @@
   hosts: "{{ ise_target_hosts | default('ise_servers') }}"
   gather_facts: false
   ignore_unreachable: true
+  # The role makes HTTPS calls from the controller, not SSH/sudo on the
+  # ISE node. Disable connection + become so inherited inventory defaults
+  # (ansible_become=true, etc.) don't trigger sudo prompts for uri tasks.
+  connection: local
+  become: false
   tags: ["ise", "audit", "one_off"]
   roles:
     - role: internal.ise.ise
