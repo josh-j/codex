@@ -18,15 +18,35 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_iso(ts: str) -> datetime | None:
-    """Parse an ISO-8601 timestamp, returning a UTC-aware datetime or None."""
+    """Parse a timestamp into a UTC-aware datetime, or None.
+
+    Tries datetime.fromisoformat first (covers most ISO-8601 variants),
+    then falls back through a list of strftime formats. The non-ISO
+    formats here come from real platform responses — notably ISE's
+    OpenAPI/MnT, which emits ctime-style strings like
+    ``"Tue Jul 29 13:35:04 UTC 2025"`` for cert expirations and backup
+    timestamps. Without those formats every cert parses as None, age_days
+    returns 0, and expires_in_days collapses to 0 (every cert reports
+    "expiring today").
+    """
     try:
         return datetime.fromisoformat(ts).astimezone(timezone.utc)
     except (ValueError, TypeError):
         pass
-    ts = ts.rstrip("Z")
-    for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+    stripped = ts.rstrip("Z")
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d",
+        # ISE OpenAPI / MnT (system + trusted cert expirationDate,
+        # backup startDate). Order matters: try the UTC-literal variant
+        # before the generic %Z one so the literal "UTC" matches.
+        "%a %b %d %H:%M:%S UTC %Y",
+        "%a %b %d %H:%M:%S %Z %Y",
+        "%a %b %d %H:%M:%S %Y",
+    ):
         try:
-            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(stripped, fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             continue
     return None
