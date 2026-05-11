@@ -14,22 +14,16 @@ MAC_RANDOM_RE = re.compile(r"^[0-9a-f][26ae][:-]")
 _MAC_CHARS_RE = re.compile(r"[^0-9A-Fa-f]")
 
 
-def ise_nad_protocol_status(
-    loop_results: Any,
-    query: str = "",
-    only_missing: bool = False,
-) -> list[dict[str, Any]]:
+def ise_nad_protocol_status(loop_results: Any) -> list[dict[str, Any]]:
     """Extract RADIUS/TACACS configuration status from a loop of
     ``/ers/config/networkdevice/<id>`` detail fetches.
 
     Each Ansible loop result wraps the response as ``.json.NetworkDevice``.
     A device with no ``authenticationSettings`` key is missing RADIUS; a
-    device with no ``tacacsSettings`` is missing TACACS. Optional ``query``
-    narrows the list to NADs whose name, IP, or description match a
-    substring. ``only_missing=True`` filters out fully-configured NADs.
+    device with no ``tacacsSettings`` is missing TACACS. Caller narrows
+    via ``ise_search_rows`` and ``ise_limit_rows`` (project convention).
     """
     rows: list[dict[str, Any]] = []
-    needle = query.strip().lower() if isinstance(query, str) else ""
     for result in loop_results or []:
         if not isinstance(result, dict):
             continue
@@ -43,8 +37,6 @@ def ise_nad_protocol_status(
             missing.append("RADIUS")
         if not has_tacacs:
             missing.append("TACACS")
-        if only_missing and not missing:
-            continue
 
         ip_list = nd.get("NetworkDeviceIPList") or []
         ip_address = ""
@@ -53,23 +45,16 @@ def ise_nad_protocol_status(
             if isinstance(first, dict):
                 ip_address = _first(first, ["ipaddress", "ipAddress", "ip"], "")
 
-        row = {
+        rows.append({
             "name": _first(nd, ["name"], ""),
             "ip_address": ip_address,
             "description": _first(nd, ["description"], ""),
-            "has_radius": "yes" if has_radius else "no",
-            "has_tacacs": "yes" if has_tacacs else "no",
-            "missing_protocols": ", ".join(missing) if missing else "",
+            "has_radius": has_radius,
+            "has_tacacs": has_tacacs,
+            "missing_protocols": ", ".join(missing),
             "profile_name": _first(nd, ["profileName"], ""),
             "model_name": _first(nd, ["modelName"], ""),
-        }
-        if needle:
-            haystack = (
-                f"{row['name']} {row['ip_address']} {row['description']}".lower()
-            )
-            if needle not in haystack:
-                continue
-        rows.append(row)
+        })
     return rows
 
 

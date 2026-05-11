@@ -80,9 +80,9 @@
   failed_when: false
   when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
 
-- name: "ISE One-Off | Get network devices"
+- name: "ISE One-Off | Get network devices (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page=1"
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"
@@ -98,6 +98,34 @@
   changed_when: false
   failed_when: false
   when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols']
+
+# Audit operations need the whole fleet, not just page 1. Other NAD-scoped
+# ops (switch_lookup, nad_*) work fine off page 1 because they filter to a
+# single switch downstream, so this only kicks in for nad_missing_protocols.
+- name: "ISE One-Off | Get network devices (pages 2..N)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page={{ item }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_one_off_network_devices_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_one_off_network_devices_raw.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - _ise_one_off_operation == 'nad_missing_protocols'
+    - (_ise_one_off_network_devices_raw.json.SearchResult.total | default(0) | int) > 100
 
 - name: "ISE One-Off | Get NAD details for protocol audit"
   # ERS summary list only returns {id, name, link} per device — to see
@@ -120,8 +148,11 @@
   changed_when: false
   failed_when: false
   loop: >-
-    {{ (_ise_one_off_network_devices_raw.json.SearchResult.resources | default([]))
-       | map(attribute='id') | list }}
+    {{ ((_ise_one_off_network_devices_raw.json.SearchResult.resources | default([]))
+        + ((_ise_one_off_network_devices_pages.results | default([]))
+           | map(attribute='json.SearchResult.resources')
+           | select | list | flatten))
+       | map(attribute='id') | select | list }}
   loop_control:
     label: "{{ item }}"
   when: _ise_one_off_operation == 'nad_missing_protocols'
@@ -534,6 +565,15 @@
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
+- name: "ISE One-Off | Shape NAD protocol audit rows"
+  ansible.builtin.set_fact:
+    _ise_one_off_nad_protocol_rows: >-
+      {{ _ise_one_off_nad_details.results | default([])
+         | internal.ise.ise_nad_protocol_status
+         | internal.ise.ise_search_rows(_ise_nad_query) }}
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_missing_protocols'
+
 - name: "ISE One-Off | Build NAD protocol audit report"
   ansible.builtin.set_fact:
     _ise_one_off_report:
@@ -542,13 +582,10 @@
       collected_at: "{{ _ise_one_off_collected_at }}"
       ise_hostname: "{{ ise_hostname }}"
       nads_missing_protocols: >-
-        {{ _ise_one_off_nad_details.results | default([])
-           | internal.ise.ise_nad_protocol_status(_ise_nad_query, only_missing=true)
+        {{ _ise_one_off_nad_protocol_rows
+           | selectattr('missing_protocols', '!=', '') | list
            | internal.ise.ise_limit_rows(500) }}
-      all_nads_status: >-
-        {{ _ise_one_off_nad_details.results | default([])
-           | internal.ise.ise_nad_protocol_status(_ise_nad_query)
-           | internal.ise.ise_limit_rows(500) }}
+      all_nads_status: "{{ _ise_one_off_nad_protocol_rows | internal.ise.ise_limit_rows(500) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_missing_protocols'
 
