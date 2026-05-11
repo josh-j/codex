@@ -149,7 +149,7 @@
                     </Border>
                 </ScrollViewer>
 
-                <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+                <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Style="{StaticResource ColumnSplitterStyle}" Visibility="Collapsed" />
 
                     <Grid x:Name="OperateContent" Grid.Column="2" HorizontalAlignment="Stretch">
                         <Border Style="{StaticResource StatusCardStyle}" Margin="0">
@@ -179,7 +179,7 @@
                                             <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                         </ScrollViewer>
                                     </Border>
-                                    <GridSplitter Grid.Column="1" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" />
+                                    <GridSplitter Grid.Column="1" Style="{StaticResource ColumnSplitterStyle}" />
                                     <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
@@ -275,11 +275,11 @@
                         </Border>
                     </Grid>
 
-                    <GridSplitter x:Name="ConsoleSplitter" Grid.Column="3" Width="0" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Visibility="Collapsed" />
+                    <GridSplitter x:Name="ConsoleSplitter" Grid.Column="3" Width="0" Visibility="Collapsed" />
 
                     <!-- ConsolePane lives in the bottom drawer (Grid.Row=3); column 4 retained at width=0 for legacy index stability. -->
 
-                    <GridSplitter x:Name="ReportsSplitter" Grid.Column="5" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+                    <GridSplitter x:Name="ReportsSplitter" Grid.Column="5" Style="{StaticResource ColumnSplitterStyle}" Visibility="Collapsed" />
 
                     <Grid x:Name="ReportsPane" Grid.Column="6" Visibility="Collapsed">
                         <Grid.RowDefinitions>
@@ -318,7 +318,7 @@
                         </Border>
                     </Grid>
 
-                    <GridSplitter x:Name="SchedulesSplitter" Grid.Column="7" Width="4" Background="#2c3038" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="3,0" Visibility="Collapsed" />
+                    <GridSplitter x:Name="SchedulesSplitter" Grid.Column="7" Style="{StaticResource ColumnSplitterStyle}" Visibility="Collapsed" />
 
                     <Grid x:Name="SchedulesPane" Grid.Column="8" Visibility="Collapsed">
                         <Grid.RowDefinitions>
@@ -514,7 +514,7 @@
                     </Grid>
                 </Grid>
 
-            <GridSplitter x:Name="ConsoleDrawerSplitter" Grid.Row="2" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#2c3038" ResizeBehavior="PreviousAndNext" ResizeDirection="Rows" Visibility="Collapsed" />
+            <GridSplitter x:Name="ConsoleDrawerSplitter" Grid.Row="2" Style="{StaticResource RowSplitterStyle}" Visibility="Collapsed" />
 
             <Grid x:Name="ConsolePane" Grid.Row="3" Visibility="Collapsed" Background="#0d1015">
                 <Grid.RowDefinitions>
@@ -523,7 +523,8 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Style="{StaticResource PanelTitleBarStyle}">
+                <!-- Drawer is anchored to the bottom of the window — no rounded corners. -->
+                <Border Grid.Row="0" Style="{StaticResource PanelTitleBarStyle}" CornerRadius="0">
                     <StackPanel>
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
