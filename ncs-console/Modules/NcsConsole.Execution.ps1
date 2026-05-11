@@ -531,6 +531,7 @@ function Get-NcsRemoteShellCommand {
         "set -e"
         "test -d $repo || { echo 'Remote repo path does not exist.' >&2; exit 21; }"
         "cd $repo"
+        "export NCS_REPO_ROOT=`$(pwd)"
         $inventoryCheck
         "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
         "if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi"

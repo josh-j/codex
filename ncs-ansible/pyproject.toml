@@ -7,6 +7,7 @@ dependencies = [
     "ansible-core>=2.16",
     "pyvmomi",
     "requests",
+    "ciscoisesdk",
     "ncs-reporter",
 ]
 
