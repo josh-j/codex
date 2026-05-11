@@ -918,5 +918,13 @@
     name: internal.core.emit
   vars:
     _ncs_emit_platform: "ise"
+    # Tree-layout path so ncs-reporter's _merge_tree_bundles_into_global
+    # discovers the bundle at <bundle_root>/ise/<host>/raw.yaml. Without
+    # this the callback would fall back to the legacy layout
+    # (<reports_root>/platform/ise/<host>/raw_ise.yaml) which the tree
+    # walker doesn't recurse into.
+    _ncs_emit_tree_path:
+      - ise
+      - "{{ inventory_hostname }}"
     _ncs_emit_payload: "{{ _ise_payload }}"
     _ncs_emit_skip: "{{ ise_skip_export | default(false) }}"
