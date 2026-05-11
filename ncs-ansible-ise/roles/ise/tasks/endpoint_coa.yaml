@@ -27,25 +27,46 @@
       Endpoint CoA requires ise_lookup, ise_coa_confirm=COA, and a valid
       ise_coa_action.
 
-- name: "ISE CoA | Build endpoint filter"
+- name: "ISE CoA | Build endpoint URL"
   ansible.builtin.set_fact:
-    _ise_coa_endpoint_filter: >-
+    _ise_coa_endpoint_filter_clauses: >-
       {{
         ['mac.EQ.' ~ (_ise_coa_lookup | upper)]
         if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
         else ['mac.CONTAINS.' ~ _ise_coa_lookup, 'name.CONTAINS.' ~ _ise_coa_lookup]
       }}
-    _ise_coa_endpoint_filter_type: >-
-      {{
-        'AND'
-        if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
-        else 'OR'
-      }}
+  changed_when: false
+
+- name: "ISE CoA | Assemble endpoint URL"
+  ansible.builtin.set_fact:
+    _ise_coa_endpoint_url: >-
+      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?{{
+        (_ise_coa_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | list
+         + (['filterType=OR'] if _ise_coa_endpoint_filter_clauses | length > 1 else []))
+        | join('&') }}
   changed_when: false
 
 - name: "ISE CoA | Get endpoint inventory"
-  cisco.ise.endpoints_info:
-    <<: &ise_pan_args
+  ansible.builtin.uri:
+    url: "{{ _ise_coa_endpoint_url }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_coa_endpoints_raw
+  changed_when: false
+  failed_when: false
+
+- name: "ISE CoA | Anchor cisco.ise PAN args"
+  ansible.builtin.set_fact:
+    _ise_pan_args_anchor:
+      &ise_pan_args
       ise_hostname: "{{ ise_pan_hostname }}"
       ise_username: "{{ ise_username }}"
       ise_password: "{{ ise_password }}"
@@ -56,11 +77,7 @@
       ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
       ise_debug: "{{ ise_debug }}"
       ise_single_request_timeout: "{{ ise_single_request_timeout }}"
-    filter: "{{ _ise_coa_endpoint_filter }}"
-    filterType: "{{ _ise_coa_endpoint_filter_type }}"
-  register: _ise_coa_endpoints_raw
   changed_when: false
-  failed_when: false
 
 - name: "ISE CoA | Get active sessions"
   cisco.ise.mnt_session_active_list_info: &ise_mnt_args

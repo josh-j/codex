@@ -94,6 +94,7 @@ def ise_result_rows(value: Any) -> list[Any]:
         return [value]
 
     for key in (
+        "json",
         "ise_response",
         "ise_responses",
         "response",

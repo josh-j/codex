@@ -17,13 +17,12 @@ ise_password: ""
 ise_verify: false
 ise_version: "3.5.0"
 ise_wait_on_rate_limit: true
-# false → SDK hits ERS on port 9060 directly (the path operator curl tests
-# usually use); true → routes ERS through the OpenAPI gateway on 443. The
-# gateway doesn't accept ERS-style filter=field.OP.value, so we default to
-# the direct path. OpenAPI-only modules (system_certificate_info, etc.)
-# still reach 443/api/v1/... regardless of this flag.
 ise_uses_api_gateway: false
 ise_uses_csrf_token: false
+# ERS port used by direct uri calls that bypass the cisco.ise SDK
+# (endpoints_info in particular always routes through OpenAPI on 443
+# regardless of ise_uses_api_gateway, so we hit ERS:9060 directly).
+ise_ers_port: 9060
 ise_debug: false
 ise_single_request_timeout: 60
 

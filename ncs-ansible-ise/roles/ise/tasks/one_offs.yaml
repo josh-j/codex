@@ -32,12 +32,14 @@
       records: "{{ _ise_one_off_records }}"
       repeat_threshold: "{{ _ise_one_off_repeat_threshold }}"
 
-# endpoint_risk_report and nad_port_history need the full population for
-# their joins; everything else filters server-side so we don't paginate
-# tens of thousands of endpoints for a single-MAC lookup.
-- name: "ISE One-Off | Build endpoint filter"
+# Hit ERS:9060 directly. The cisco.ise SDK's endpoints_info module routes
+# through OpenAPI on 443 regardless of ise_uses_api_gateway, and OpenAPI
+# doesn't accept the ERS filter syntax we need. endpoint_risk_report and
+# nad_port_history pull the full population for their joins; the others
+# filter server-side so we don't paginate the entire endpoint inventory.
+- name: "ISE One-Off | Build endpoint URL"
   ansible.builtin.set_fact:
-    _ise_endpoint_filter: >-
+    _ise_endpoint_filter_clauses: >-
       {{
         []
         if _ise_one_off_operation in ['endpoint_risk_report', 'nad_port_history']
@@ -48,18 +50,43 @@
           else ['mac.CONTAINS.' ~ _ise_lookup, 'name.CONTAINS.' ~ _ise_lookup]
         )
       }}
-    _ise_endpoint_filter_type: >-
-      {{
-        'OR'
-        if _ise_one_off_operation in ['endpoint_lookup', 'endpoint_timeline']
-           and _ise_lookup is not match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
-        else 'AND'
-      }}
+  changed_when: false
+
+- name: "ISE One-Off | Assemble endpoint URL"
+  ansible.builtin.set_fact:
+    _ise_endpoint_url: >-
+      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint{%
+        if _ise_endpoint_filter_clauses | length > 0
+      %}?{{ (_ise_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | list
+            + (['filterType=OR'] if _ise_endpoint_filter_clauses | length > 1 else []))
+          | join('&') }}{% endif %}
   changed_when: false
 
 - name: "ISE One-Off | Get endpoints"
-  cisco.ise.endpoints_info:
-    <<: &ise_pan_args
+  ansible.builtin.uri:
+    url: "{{ _ise_endpoint_url }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  register: _ise_one_off_endpoints_raw
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
+
+# Anchor still defined here so the other PAN cisco.ise calls below
+# (network_device_info, *_info policy modules) keep their existing wiring
+# until we confirm whether they hit the same SDK routing issue.
+- name: "ISE One-Off | Anchor cisco.ise PAN args"
+  ansible.builtin.set_fact:
+    _ise_pan_args_anchor:
+      &ise_pan_args
       ise_hostname: "{{ ise_pan_hostname }}"
       ise_username: "{{ ise_username }}"
       ise_password: "{{ ise_password }}"
@@ -70,12 +97,7 @@
       ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
       ise_debug: "{{ ise_debug }}"
       ise_single_request_timeout: "{{ ise_single_request_timeout }}"
-    filter: "{{ _ise_endpoint_filter }}"
-    filterType: "{{ _ise_endpoint_filter_type }}"
-  register: _ise_one_off_endpoints_raw
   changed_when: false
-  failed_when: false
-  when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
 
 - name: "ISE One-Off | Get network devices"
   cisco.ise.network_device_info:
