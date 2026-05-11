@@ -51,6 +51,8 @@ function ConvertTo-NcsConsoleSettings {
         "SmbUser",
         "ReportDeliveryMode",
         "AutoRefreshIntervalSeconds",
+        "AutoOpenConsoleOnRun",
+        "ConsoleDrawerHeight",
         "StrictHostKeyChecking",
         "ConnectTimeoutSeconds",
         "ServerAliveIntervalSeconds",
@@ -72,6 +74,7 @@ function ConvertTo-NcsConsoleSettings {
     if ([string]::IsNullOrWhiteSpace($settings.SmbShareName)) { $settings.SmbShareName = $defaults.SmbShareName }
     if ($settings.ReportDeliveryMode -notin [NcsReportDeliveryMode].GetEnumNames()) { $settings.ReportDeliveryMode = $defaults.ReportDeliveryMode }
     if ($settings.AutoRefreshIntervalSeconds -lt 0) { $settings.AutoRefreshIntervalSeconds = $defaults.AutoRefreshIntervalSeconds }
+    if ($settings.ConsoleDrawerHeight -lt 80) { $settings.ConsoleDrawerHeight = $defaults.ConsoleDrawerHeight }
     if ([string]::IsNullOrWhiteSpace($settings.StrictHostKeyChecking)) { $settings.StrictHostKeyChecking = $defaults.StrictHostKeyChecking }
     if ($settings.ConnectTimeoutSeconds -lt 1) { $settings.ConnectTimeoutSeconds = $defaults.ConnectTimeoutSeconds }
     if ($settings.ServerAliveIntervalSeconds -lt 0) { $settings.ServerAliveIntervalSeconds = $defaults.ServerAliveIntervalSeconds }
@@ -125,6 +128,8 @@ function Save-NcsConsoleSettings {
         SmbUser                  = $Settings.SmbUser
         ReportDeliveryMode       = $Settings.ReportDeliveryMode
         AutoRefreshIntervalSeconds = $Settings.AutoRefreshIntervalSeconds
+        AutoOpenConsoleOnRun     = $Settings.AutoOpenConsoleOnRun
+        ConsoleDrawerHeight      = $Settings.ConsoleDrawerHeight
         StrictHostKeyChecking    = $Settings.StrictHostKeyChecking
         ConnectTimeoutSeconds    = $Settings.ConnectTimeoutSeconds
         ServerAliveIntervalSeconds = $Settings.ServerAliveIntervalSeconds

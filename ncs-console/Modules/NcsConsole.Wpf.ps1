@@ -634,6 +634,11 @@ function Get-NcsXamlControlMap {
         "ConsoleSplitter",
         "ConsoleToggleButton",
         "ConsoleShowButton",
+        "ConsoleDrawerToggleButton",
+        "ConsoleDrawerSplitter",
+        "ConsoleDrawerSplitterRow",
+        "ConsoleDrawerRow",
+        "AutoOpenConsoleOnRunCheckBox",
         "ReportsColumn",
         "ReportsToggleButton",
         "ReportsPane",
@@ -1361,6 +1366,10 @@ function Sync-NcsSettingsFromControls {
     }
     if ($parsedRefresh -lt 0) { $parsedRefresh = 0 }
     $Settings.AutoRefreshIntervalSeconds = $parsedRefresh
+    $Settings.AutoOpenConsoleOnRun = [bool] $Controls.AutoOpenConsoleOnRunCheckBox.IsChecked
+    if ($Controls.ConsoleDrawerRow.Height.Value -gt 80) {
+        $Settings.ConsoleDrawerHeight = [int] $Controls.ConsoleDrawerRow.Height.Value
+    }
     $Settings.LastAction = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
 }
 
@@ -1395,6 +1404,7 @@ function Sync-NcsControlsFromSettings {
         $Controls.ReportDeliveryModeComboBox.SelectedItem = [NcsReportDeliveryMode]::Auto.ToString()
     }
     $Controls.AutoRefreshIntervalTextBox.Text = [string] $Settings.AutoRefreshIntervalSeconds
+    $Controls.AutoOpenConsoleOnRunCheckBox.IsChecked = [bool] $Settings.AutoOpenConsoleOnRun
     Select-NcsTreeViewItem -TreeView $Controls.ActionTreeView -Tag $Settings.LastAction -FallbackToFirst
 
     Update-NcsSshAuthVisibility -Controls $Controls -AuthMode $Settings.SshAuthMode
@@ -2232,33 +2242,39 @@ function Show-NcsConsoleApp {
         }
     })
 
-    $consoleColumn = $controls.OperatePanel.ColumnDefinitions[4]
-
     $openConsole = {
-        $consoleColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $consoleColumn.MinWidth = 0
+        $h = $state.Settings.ConsoleDrawerHeight
+        if ($h -lt 80) { $h = 280 }
+        $controls.ConsoleDrawerSplitterRow.Height = [System.Windows.GridLength]::new(4, [System.Windows.GridUnitType]::Pixel)
+        $controls.ConsoleDrawerRow.Height = [System.Windows.GridLength]::new($h, [System.Windows.GridUnitType]::Pixel)
+        $controls.ConsoleDrawerSplitter.Visibility = "Visible"
         $controls.ConsolePane.Visibility = "Visible"
-        $controls.ConsoleSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
     }
 
     $closeConsole = {
+        # Persist current height so reopens land at the user's last size.
+        if ($controls.ConsoleDrawerRow.Height.Value -gt 80) {
+            $state.Settings.ConsoleDrawerHeight = [int] $controls.ConsoleDrawerRow.Height.Value
+        }
         $controls.ConsolePane.Visibility = "Collapsed"
-        $controls.ConsoleSplitter.Visibility = "Collapsed"
-        $consoleColumn.Width = [System.Windows.GridLength]::new(0)
-        $consoleColumn.MinWidth = 0
+        $controls.ConsoleDrawerSplitter.Visibility = "Collapsed"
+        $controls.ConsoleDrawerSplitterRow.Height = [System.Windows.GridLength]::new(0)
+        $controls.ConsoleDrawerRow.Height = [System.Windows.GridLength]::new(0)
         Update-NcsTopTabState -Controls $controls
     }
 
-    $controls.ConsoleToggleButton.Add_Click({ & $closeConsole })
-
-    $controls.ConsoleShowButton.Add_Click({
+    $toggleConsole = {
         if ($controls.ConsolePane.Visibility -eq "Visible") {
             & $closeConsole
         } else {
             & $openConsole
         }
-    })
+    }
+
+    $controls.ConsoleToggleButton.Add_Click({ & $closeConsole })
+    $controls.ConsoleShowButton.Add_Click({ & $toggleConsole })
+    $controls.ConsoleDrawerToggleButton.Add_Click({ & $toggleConsole })
 
     $reportsColumn = $controls.ReportsColumn
     $schedulesColumn = $controls.SchedulesColumn
@@ -2425,9 +2441,10 @@ function Show-NcsConsoleApp {
                 $controls.OperateContent.Visibility = "Visible"
             }
             if ($prev.ConsoleVisible) {
-                $consoleColumn.Width = $prev.ConsoleWidth
-                $controls.ConsolePane.Visibility = "Visible"
-                $controls.ConsoleSplitter.Visibility = "Visible"
+                if ($prev.ConsoleHeight -gt 80) {
+                    $state.Settings.ConsoleDrawerHeight = [int] $prev.ConsoleHeight
+                }
+                & $openConsole
             }
             if ($prev.SettingsVisible) {
                 $settingsColumn.Width = $prev.SettingsWidth
@@ -2446,7 +2463,7 @@ function Show-NcsConsoleApp {
                 OperateVisible    = $controls.OperateContent.Visibility -eq "Visible"
                 OperateWidth      = $operateColumn.Width
                 ConsoleVisible    = $controls.ConsolePane.Visibility -eq "Visible"
-                ConsoleWidth      = $consoleColumn.Width
+                ConsoleHeight     = $controls.ConsoleDrawerRow.Height.Value
                 SettingsVisible   = $controls.SettingsPanel.Visibility -eq "Visible"
                 SettingsWidth     = $settingsColumn.Width
                 SchedulesVisible  = $controls.SchedulesPane.Visibility -eq "Visible"
@@ -3000,7 +3017,7 @@ function Show-NcsConsoleApp {
             $controls.RunMetaText.Text = $state.LastActionLabel
             $controls.StatusTextBlock.Text = "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
-            if ($controls.ConsolePane.Visibility -eq "Collapsed") {
+            if ($state.Settings.AutoOpenConsoleOnRun -and $controls.ConsolePane.Visibility -eq "Collapsed") {
                 & $openConsole
             }
 

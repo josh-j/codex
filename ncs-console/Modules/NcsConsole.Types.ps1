@@ -51,6 +51,8 @@ class NcsConsoleSettings {
     [string] $SmbPassword = ""
     [string] $ReportDeliveryMode = [NcsReportDeliveryMode]::Auto.ToString()
     [int]    $AutoRefreshIntervalSeconds = 5
+    [bool]   $AutoOpenConsoleOnRun = $true
+    [int]    $ConsoleDrawerHeight = 280
     [string] $StrictHostKeyChecking = "accept-new"
     [int] $ConnectTimeoutSeconds = 10
     [int] $ServerAliveIntervalSeconds = 15
