@@ -2341,12 +2341,27 @@ function Show-NcsConsoleApp {
         param([string] $RelativePath)
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
-            if (-not (& $syncReports)) { return }
-
-            if ($state.ReportSource -eq [NcsReportSource]::Smb) {
-                $reportFilePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($RelativePath -replace '/', '\')
+            # Fast path for one-off reports: a single new HTML file we just
+            # produced. Skip the full SMB/SCP mirror and scp only that file.
+            # Avoids re-syncing the entire reports tree for a point-in-time
+            # artifact, and dodges any SMB share dependency for ad-hoc runs.
+            if ($RelativePath -like 'one_offs/*') {
+                $reportFilePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [IO.Path]::DirectorySeparatorChar)
+                $remoteFile = "$($state.Settings.RemoteReportsPath.TrimEnd('/'))/$RelativePath"
+                $fetch = Invoke-NcsSshFileFetch -Settings $state.Settings -RemoteFile $remoteFile -LocalFile $reportFilePath
+                if ($fetch.ExitCode -ne 0) {
+                    $err = if ([string]::IsNullOrWhiteSpace($fetch.StdErr)) { "scp failed" } else { $fetch.StdErr.Trim() }
+                    & $setReportStatus "Fetch failed: $err" $true
+                    return
+                }
             } else {
-                $reportFilePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+                if (-not (& $syncReports)) { return }
+
+                if ($state.ReportSource -eq [NcsReportSource]::Smb) {
+                    $reportFilePath = Join-Path -Path $state.ReportUncRoot -ChildPath ($RelativePath -replace '/', '\')
+                } else {
+                    $reportFilePath = Join-Path -Path $state.ReportCacheRoot -ChildPath ($RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+                }
             }
 
             if (-not (Test-Path -LiteralPath $reportFilePath)) {
